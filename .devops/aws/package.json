@@ -1,0 +1,42 @@
+{
+  "name": "coop-cdk",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "generate-k8s-api-defs": "cdk8s import"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-elastic-load-balancing-v2": "^3.360.0",
+    "@aws-sdk/client-resource-groups-tagging-api": "^3.540.0",
+    "@kubernetes/client-node": "^0.21.0",
+    "@types/jest": "^26.0.10",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^18.17.4",
+    "aws-cdk": "^2.168.0",
+    "esbuild": "^0.19.5",
+    "ts-node": "^10.5.0",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-sagemaker-alpha": "^2.147.0-alpha.0",
+    "@aws-cdk/lambda-layer-kubectl-v29": "^2.0.0",
+    "@aws-sdk/client-secrets-manager": "^3.491.0",
+    "@ethanresnick/match": "^0.0.4",
+    "@types/lodash": "^4.14.178",
+    "aws-cdk-lib": "^2.168.0",
+    "cdk8s": "^2.0.5",
+    "cdk8s-cli": "^1.0.58",
+    "constructs": "^10.0.0",
+    "js-yaml": "^4.1.0",
+    "json-to-pretty-yaml": "^1.2.2",
+    "k8s-resource-parser": "^0.2.1",
+    "lodash": "^4.17.21",
+    "safe-stable-stringify": "^2.4.3",
+    "type-fest": "^4.2.0"
+  }
+}

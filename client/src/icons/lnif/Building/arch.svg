@@ -1,0 +1,5 @@
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+<path d="M2 5C2 3.34315 3.34315 2 5 2H19C20.6569 2 22 3.34315 22 5V6.25H2V5Z" fill="currentColor"/>
+<path d="M2 7.75H22V19C22 20.6569 20.6569 22 19 22H18V16C18 12.6863 15.3137 10 12 10C8.68629 10 6 12.6863 6 16V22H5C3.34315 22 2 20.6569 2 19V7.75Z" fill="currentColor"/>
+<path d="M8 22H16V16C16 13.7909 14.2091 12 12 12C9.79086 12 8 13.7909 8 16V22Z" fill="currentColor"/>
+</svg>

@@ -1,0 +1,237 @@
+services:
+  redis:
+    image: redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6379:6379'
+
+  # Runs all migrations from scratch, after clearing the database(s).
+  migrations:
+    image: node:20
+    command: bash -c 'npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true ) 
+                      && for db in api-server-pg scylla clickhouse; do npm run db:update -- --db "$$db" --env staging; done'
+    working_dir: /src
+    env_file: ./.env.githubci
+    environment:
+      # when running migrations locally, you must set these to target your
+      # personal db, as in:
+      #
+      # docker compose run \
+      #   -e SNOWFLAKE_ROLE=ACCOUNTADMIN \
+      #   -e SNOWFLAKE_USERNAME=YOUR_USERNAME \
+      #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
+      #   -e SNOWFLAKE_DB_NAME=YOURDB \
+      # migrations
+      - SNOWFLAKE_DB_NAME
+      - MIGRATOR_DB_NAME
+      - CLICKHOUSE_DATABASE
+      - NPM_TOKEN
+    volumes:
+      - .:/src
+    depends_on:
+      - postgres
+      - scylla
+      - clickhouse
+
+  drop_dbs:
+    image: node:20
+    command: bash -c 'npm i && npm run db:drop -- --env staging'
+    working_dir: /src
+    env_file: ./.env.githubci
+    environment:
+      # when running migrations locally, you must set these to target your
+      # personal db, as in:
+      #
+      # docker compose run \
+      #   -e SNOWFLAKE_ROLE=ACCOUNTADMIN \
+      #   -e SNOWFLAKE_USERNAME=YOUR_USERNAME \
+      #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
+      #   -e SNOWFLAKE_DB_NAME=YOURDB \
+      # drop_dbs
+      - SNOWFLAKE_DB_NAME
+      - MIGRATOR_DB_NAME
+      - NPM_TOKEN
+    volumes:
+      - .:/src
+    depends_on:
+      - postgres
+
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    # image: postgres:15.3
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'postgres']
+      interval: 2s
+      start_period: 2s
+    environment:
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+
+  hma:
+    build:
+      context: ./hma
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_PASSWORD=postgres123
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST=postgres
+    ports:
+      - '5000:5000'
+    depends_on:
+      - postgres
+
+  scylla:
+    image: scylladb/scylla:5.2
+    volumes:
+      - scylla_data:/var/lib/scylla
+    ports:
+      - '9042:9042'
+
+  zookeeper:
+    image: zookeeper:3.7.0
+    container_name: zookeeper
+    ports:
+      - '22181:2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:8.1.0-1-ubi9
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - '29092:29092'
+    # https://github.com/confluentinc/kafka-images/issues/127#issuecomment-1152703071
+    user: root
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+  schema_registry:
+    image: confluentinc/cp-schema-registry
+    container_name: schema-registry
+    depends_on:
+      - kafka
+    ports:
+      - '8081:8081'
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      SCHEMA_REGISTRY_HOST_NAME: schema_registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - schema_registry_data:/var/lib/schema-registry
+
+  # Runs the api server's tests
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server_base
+      args:
+        - NPM_TOKEN
+        - OMIT_SNOWFLAKE
+    command: bash -c 'npm run test:ci'
+    working_dir: /app
+    volumes:
+      - ./server/reports:/app/reports
+    env_file: ./.env.githubci
+    environment:
+      - SNOWFLAKE_DB_NAME
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      schema_registry:
+        condition: service_started
+
+
+  lint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server_base
+      args:
+        - NPM_TOKEN
+    command: npm run lint
+
+  lint-client:
+    build:
+      context: client
+      target: client_base
+      args:
+        - NPM_TOKEN
+    command: npm run lint
+    volumes:
+      - ./client/eslint:/app/eslint
+      - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - '16686:16686'
+      - '14268'
+      - '14250'
+    environment:
+      - LOG_LEVEL=info
+
+  otel-collector:
+    # We have to pin to this version of the collector, because versions beyond
+    # this do not support the Jaeger exporter. See here for details:
+    # https://github.com/open-telemetry/opentelemetry-specification/pull/2858
+    image: otel/opentelemetry-collector-contrib:0.71.0
+    volumes:
+      - ./otel-collector.yaml:/etc/otel-collector.yaml
+    command: ['--config=/etc/otel-collector.yaml']
+    ports:
+      - '1888:1888' # pprof extension
+      - '13133:13133' # health_check extension
+      - '4317:4317' # OTLP gRPC receiver
+      - '55670:55679' # zpages extension
+    depends_on:
+      - jaeger
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: clickhouse
+    ports:
+      - '8123:8123' # HTTP interface
+      - '9000:9000' # Native TCP interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: 'clickhouse'
+    healthcheck:
+      test: ['CMD-SHELL', 'clickhouse-client --host localhost --query "SELECT 1"']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pg_data:
+  scylla_data:
+  redis_data:
+  kafka_data:
+  schema_registry_data:
+  clickhouse_data:

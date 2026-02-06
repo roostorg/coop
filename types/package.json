@@ -1,0 +1,35 @@
+{
+  "name": "@roostorg/types",
+  "type": "module",
+  "version": "1.0.49",
+  "description": "Shared types across Coop services",
+  "module": "transpiled/index.js",
+  "typings": "./transpiled/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "npm run build && node --test transpiled/test_scripts/"
+  },
+  "author": "Roostorg",
+  "files": [
+    "transpiled"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.3.1",
+    "typescript": "^4.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "import": "./transpiled/index.js",
+      "types": "./transpiled/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "date-fns": "^2.29.3",
+    "type-fest": "^4.3.2"
+  }
+}

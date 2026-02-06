@@ -1,0 +1,19 @@
+on: [pull_request]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  checklist_job:
+    runs-on: ubuntu-latest
+    name: Checklist job
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checklist
+        uses: ethanresnick/pr-checklists@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config: .github/workflows/checklistConfig.json

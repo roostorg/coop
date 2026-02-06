@@ -1,0 +1,15 @@
+{
+  "language": "typescript",
+  "app": "npx ts-node --require dotenv/config src/main.ts",
+  "projectId": "bc1246cb-e595-4291-b719-40dfb8e9b1c6",
+  "sendCrashReports": "true",
+  "terraformProviders": [
+    "scylladb/scylladbcloud@~> 1.6",
+    "confluentinc/confluent@~> 1.72"
+  ],
+  "terraformModules": [],
+  "context": {},
+  "watchPattern": [
+    "./**/*.ts"
+  ]
+}

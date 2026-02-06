@@ -1,0 +1,6 @@
+server/graphql/generated.ts linguist-generated=true
+client/src/graphql/generated.ts linguist-generated=true
+.betterer.results linguist-generated=true
+
+# Betterer merge
+.betterer.results merge=betterer

@@ -1,0 +1,61 @@
+name: Publish Packages
+
+on:
+  push:
+    branches: [main, OSS]
+    paths:
+      - 'migrator/**'
+      - 'types/**'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Check and publish migrator
+        run: |
+          cd migrator
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Checking @roostorg/db-migrator@$VERSION..."
+          
+          if npm view "@roostorg/db-migrator@$VERSION" version >/dev/null 2>&1; then
+            echo "⚠️  Version $VERSION of @roostorg/db-migrator already exists on npm - skipping"
+          else
+            echo "✅ Publishing @roostorg/db-migrator@$VERSION..."
+            npm ci
+            npm run build
+            npm publish
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Check and publish types
+        run: |
+          cd types
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Checking @roostorg/types@$VERSION..."
+          
+          if npm view "@roostorg/types@$VERSION" version >/dev/null 2>&1; then
+            echo "⚠️  Version $VERSION of @roostorg/types already exists on npm - skipping"
+          else
+            echo "✅ Publishing @roostorg/types@$VERSION..."
+            npm ci
+            npm run build
+            npm publish
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

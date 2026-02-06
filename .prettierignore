@@ -1,0 +1,5 @@
+.devops/aws/cdk.out/
+.mypy_cache/
+client/build/
+server/signals/text_matching/fuzzy_matching/homoglyphReplacements.*
+.dockerignore

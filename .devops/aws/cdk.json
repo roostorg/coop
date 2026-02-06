@@ -1,0 +1,21 @@
+{
+  "//": "Do npm install in the server dir b/c our CDK package imports server code, and we need to make sure all the types are available.",
+  "app": "cd ../../server; npm i --no-audit; cd ../.devops/aws; node --loader ts-node/esm --experimental-specifier-resolution=node src/app.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "yarn.lock",
+      "node_modules",
+      "test"
+    ]
+  },
+  "context": {
+    "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true
+  }
+}

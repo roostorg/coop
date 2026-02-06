@@ -1,0 +1,215 @@
+name: Run all PR checks
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check_for_client_changes:
+    uses: ./.github/workflows/check_if_directory_changed.yaml
+    with:
+      directory: 'client'
+  check_for_server_changes:
+    uses: ./.github/workflows/check_if_directory_changed.yaml
+    with:
+      directory: 'server'
+
+  check_generated_graphql:
+    timeout-minutes: 4
+    needs: [check_for_client_changes, check_for_server_changes]
+    if: needs.check_for_server_changes.outputs.result == 'true' || needs.check_for_client_changes.outputs.result == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm ci
+      - name: Generate graphql
+        run: |
+          npm run generate
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "Generated GraphQL is up to date."
+          else
+            echo "GraphQL re-generation required!!"
+            echo "::error:: $(git status)"
+            exit 1
+          fi
+
+  run_betterer:
+    timeout-minutes: 4
+    needs: [check_for_client_changes, check_for_server_changes]
+    if: needs.check_for_server_changes.outputs.result == 'true' || needs.check_for_client_changes.outputs.result == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies in root and client directory
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm ci
+          cd client
+          cp ../.npmrc .
+          npm ci
+
+      - name: Run Betterer tests
+        run: npm run betterer
+        env:
+          NODE_OPTIONS: '--max-old-space-size=5250'
+
+  check_migration_order:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # this is needed to fetch the main branch
+          ref: ${{ github.base_ref || 'main' }}
+          fetch-depth: 1
+          sparse-checkout: '.devops/migrator/src/scripts'
+      - uses: actions/checkout@v4
+        with:
+          # this is needed to fetch the main branch
+          fetch-depth: 1
+          sparse-checkout: '.devops/migrator/src/scripts'
+
+      - name: Check changed migration files
+        id: check-changed-migration-files
+        run: |
+          # Helpers to print in different colors
+          # Found here: https://gist.github.com/stevewithington/b1b620b5bc9252e2c32e2cad35efbf83#bash-ansi-variables
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+
+          # Extract the datestamp from the filename by pulling the path's
+          # basename, reversing it, delimiting the string by the "." character,
+          # chop off the first 3 tokens, and reverse it again to be left with
+          # the datestamp.
+          #
+          # NB: The filename will look something like:
+          # 2022.12.22T03.39.16.test_snowflake_migration.(cjs|sql|cql)
+          datestamp() {
+            echo $(basename $1 | rev | cut -d . -f3- | rev)
+          }
+
+          validate_migration() {
+            local file=$1
+            local most_recent_datestamp=$2
+            local file_datestamp=$(datestamp "${file}")
+
+            if [[ "$file_datestamp" > "$most_recent_datestamp" ]]; then
+              echo -e "${GREEN}Valid migration ${file}."
+            else
+              echo -e "${RED}Error: Invalid migration: new migration's datestamp ($file_datestamp) is earlier than the most recent existing migration's datestamp ($most_recent_datestamp)"
+              exit 1
+            fi
+          }
+
+          SCRIPTS_DIR=".devops/migrator/src/scripts/"
+
+          # Checkout main so that we're correctly identifying the existing migrations
+          # in the loop below.
+          git checkout ${{ github.base_ref || 'main' }}
+
+          # Loop through each sub-directory under the scripts directory
+          for subdir in ${SCRIPTS_DIR}*/ ; do
+            existing_migrations=("$subdir"*.{sql,cjs,cql})
+            IFS=$'\n' sorted_existing_migrations=($(sort <<<"${existing_migrations[*]}"))
+            most_recent_migration_datestamp=$(datestamp ${sorted_existing_migrations[-1]})
+
+            readarray -t CHANGED_FILES < <(git diff --name-only $GITHUB_SHA ${{ github.base_ref || 'main' }})
+
+            # Identify and validate changed migration files in the current sub-directory
+            printf "%s\n" "${existing_migrations[@]}"
+            printf "%s\n" "${sorted_existing_migrations[@]}"
+            if [ ${#CHANGED_FILES[@]} -ne 0 ]; then
+              for file in "${CHANGED_FILES[@]}"
+              do
+                if [[ "${file}" == ${subdir}* ]]; then
+                  validate_migration "${file}" "${most_recent_migration_datestamp}"
+                else
+                  echo -e "Skipping ${file} because it is not in the ${subdir} directory."
+                fi
+              done
+            fi
+          done
+
+          exit 0
+
+  # jobs have to be defined in the root workflow file in order to be marked as
+  # 'Required Checks' in GitHub CI
+  check_api_server:
+    needs: check_for_server_changes
+    if: needs.check_for_server_changes.outputs.result == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      SNOWFLAKE_DB_NAME: CI_DB_${{ github.run_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint
+        run: docker compose run --quiet-pull lint
+
+      - name: Build server
+        run: DOCKER_BUILDKIT=1 docker build . --target build_backend --build-arg NPM_TOKEN=$NPM_TOKEN
+
+      - name: Migrate CI DBs and Test
+        run: |
+          docker compose run --quiet-pull test
+          echo "ATTENTION: If this step fails, look in the next step for the migration logs."
+
+      - # Only output the migration logs if the prior step failed, as they
+        # could be helpful for debugging in that case; otherwise, they're just
+        # noise that's costing us money in Datadog.
+        if: failure()
+        name: Get Migrations Logs
+        run: docker compose logs migrations
+
+      - name: Test Report
+        if: always() # run this step even if previous step failed
+        uses: dorny/test-reporter@v1
+        continue-on-error: true
+        with:
+          name: JEST Tests # Name of the check run which will be created
+          path: server/reports/jest-*.xml # Path to test results
+          reporter: jest-junit # Format of test results
+
+  run_frontend_checks_if_changed:
+    needs: check_for_client_changes
+    if: needs.check_for_client_changes.outputs.result == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint client
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: docker compose run --quiet-pull lint-client
+
+      - name: Build client
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Without DOCKER_BUILDKIT we'll attempt to build the backend as well
+        run: DOCKER_BUILDKIT=1 docker build client --build-arg NPM_TOKEN=$NPM_TOKEN
+
+

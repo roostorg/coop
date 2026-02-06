@@ -1,0 +1,50 @@
+name: Check provided directory on current branch for changes relative to main
+on:
+  workflow_call:
+    inputs:
+      directory:
+        required: true
+        type: string
+        description: 'The directory to check'
+    outputs:
+      result:
+        description: 'Whether there are changed files'
+        value: ${{ jobs.check_if_directory_changed.outputs.files_changed }}
+
+jobs:
+  check_if_directory_changed:
+    runs-on: ubuntu-latest
+    outputs:
+      files_changed: ${{ steps.check-files-changed.outputs.files_changed }}
+    steps:
+      # We need to checkout the main branch to compare it against the current
+      # branch
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: '${{ inputs.directory }}'
+          ref: ${{ github.base_ref || 'main' }}
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: '${{ inputs.directory }}'
+          fetch-depth: 1
+
+      # Nb: we may be able to simplify this a lot with
+      # https://github.com/marketplace/actions/changed-files
+      # I think we'de use since_last_remote_commit: true.
+      - name: Verify Changed Server files
+        id: check-files-changed
+        run: |
+          git checkout ${{ github.base_ref || 'main' }}
+          git diff --name-only $GITHUB_SHA ${{ github.base_ref || 'main' }} > files.txt
+          git checkout $GITHUB_SHA
+          while IFS= read -r file
+          do
+            echo $file
+            if [[ $file == "${{ inputs.directory }}/"* ]]; then
+              echo "This file is under the directory '${{ inputs.directory }}'."
+              echo "files_changed=true" >> $GITHUB_OUTPUT
+              break
+            fi
+          done < files.txt

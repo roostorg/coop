@@ -1,0 +1,46 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# testing
+coverage/
+server/coverage/
+client/coverage/
+
+# production
+/build
+
+# docs
+docs/book/
+
+# misc
+.DS_Store
+.swp
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.mypy_cache
+dump.rdb
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.vscode/
+.devops/migrator/build
+.idea/
+
+transpiled
+build/
+.eslintcache
+*.tsbuildinfo
+
+.claude/
+
+# NCMEC report XML files (contain sensitive data)
+ncmec-reports/

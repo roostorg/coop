@@ -1,0 +1,201 @@
+import { AuthenticationError } from 'apollo-server-express';
+
+import {
+  isConfigurableIntegration,
+} from '../../services/signalAuthService/index.js';
+import { Integration } from '../../services/signalsService/index.js';
+import { isCoopErrorOfType } from '../../utils/errors.js';
+import { assertUnreachable } from '../../utils/misc.js';
+import {
+  makeIntegrationConfigUnsupportedIntegrationError,
+  type TIntegrationCredential,
+} from '../datasources/IntegrationApi.js';
+import {
+  type GQLMutationResolvers,
+  type GQLQueryResolvers,
+} from '../generated.js';
+import { type ResolverMap } from '../resolvers.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+
+const typeDefs = /* GraphQL */ `
+  enum Integration {
+    AKISMET
+    L1GHT
+    MICROSOFT_AZURE_CONTENT_MODERATOR
+    OOPSPAM
+    OPEN_AI
+    SIGHT_ENGINE
+    TWO_HAT
+  }
+
+  type OpenAiIntegrationApiCredential {
+    apiKey: String!
+  }
+
+  union IntegrationApiCredential =
+      OpenAiIntegrationApiCredential
+
+  type IntegrationConfig {
+    name: Integration!
+    apiCredential: IntegrationApiCredential!
+  }
+
+  input OpenAiIntegrationApiCredentialInput {
+    apiKey: String!
+  }
+
+  input IntegrationApiCredentialInput {
+    openAi: OpenAiIntegrationApiCredentialInput
+  }
+
+  input SetIntegrationConfigInput {
+    apiCredential: IntegrationApiCredentialInput!
+  }
+
+  type SetIntegrationConfigSuccessResponse {
+    config: IntegrationConfig!
+  }
+
+  type IntegrationNoInputCredentialsError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
+  type IntegrationConfigTooManyCredentialsError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
+  type IntegrationEmptyInputCredentialsError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
+  union SetIntegrationConfigResponse =
+      SetIntegrationConfigSuccessResponse
+    | IntegrationConfigTooManyCredentialsError
+    | IntegrationNoInputCredentialsError
+    | IntegrationEmptyInputCredentialsError
+
+  type IntegrationConfigSuccessResult {
+    config: IntegrationConfig
+  }
+
+  type IntegrationConfigUnsupportedIntegrationError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
+  union IntegrationConfigQueryResponse =
+      IntegrationConfigSuccessResult
+    | IntegrationConfigUnsupportedIntegrationError
+
+  type Query {
+    integrationConfig(name: Integration!): IntegrationConfigQueryResponse!
+  }
+
+  type Mutation {
+    setIntegrationConfig(
+      input: SetIntegrationConfigInput!
+    ): SetIntegrationConfigResponse!
+  }
+`;
+
+const IntegrationApiCredential: ResolverMap<TIntegrationCredential> = {
+  __resolveType(it) {
+    switch (it.name) {
+      case Integration.OPEN_AI:
+        return 'OpenAiIntegrationApiCredential';
+      default:
+        assertUnreachable(it.name);
+    }
+  },
+};
+
+const Query: GQLQueryResolvers = {
+  async integrationConfig(_, { name }, context) {
+    try {
+      const user = context.getUser();
+      if (user == null) {
+        throw new AuthenticationError('Unauthenticated User');
+      }
+
+      if (!isConfigurableIntegration(name)) {
+        throw makeIntegrationConfigUnsupportedIntegrationError({
+          shouldErrorSpan: true,
+        });
+      }
+
+      const config = await context.dataSources.integrationAPI.getConfig(
+        user.orgId,
+        name,
+      );
+
+      return gqlSuccessResult({ config }, 'IntegrationConfigSuccessResult');
+    } catch (e: unknown) {
+      if (
+        isCoopErrorOfType(e, 'IntegrationConfigUnsupportedIntegrationError')
+      ) {
+        return gqlErrorResult(e);
+      }
+
+      throw e;
+    }
+  },
+};
+
+const Mutation: GQLMutationResolvers = {
+  async setIntegrationConfig(_, params, context) {
+    try {
+      const user = context.getUser();
+      if (user == null) {
+        throw new AuthenticationError('Unauthenticated User');
+      }
+      const newConfig = await context.dataSources.integrationAPI.setConfig(
+        params.input,
+        user.orgId,
+      );
+
+      return gqlSuccessResult(
+        { config: newConfig },
+        'SetIntegrationConfigSuccessResponse',
+      );
+    } catch (e: unknown) {
+      if (
+        isCoopErrorOfType(e, [
+          'IntegrationConfigTooManyCredentialsError',
+          'IntegrationNoInputCredentialsError',
+          'IntegrationEmptyInputCredentialsError',
+        ])
+      ) {
+        return gqlErrorResult(e);
+      }
+
+      throw e;
+    }
+  },
+};
+
+const resolvers = {
+  IntegrationApiCredential,
+  Query,
+  Mutation,
+};
+
+export { typeDefs, resolvers };

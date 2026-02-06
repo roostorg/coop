@@ -1,0 +1,16 @@
+{
+  "availability-zones:account=361188080279:region=us-east-2": [
+    "us-east-2a",
+    "us-east-2b",
+    "us-east-2c"
+  ],
+  "availability-zones:account=361188080279:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "ami:account=361188080279:filters.image-id.0=ami-073b5635996bead97:filters.image-type.0=machine:filters.name.0=ubuntu-eks/k8s_1.29/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20241113:filters.state.0=available:owners.0=099720109477:region=us-east-2": "ami-073b5635996bead97"
+}

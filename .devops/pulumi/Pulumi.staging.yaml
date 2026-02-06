@@ -1,0 +1,13 @@
+config:
+  aws:region: us-east-1
+  aws:defaultTags:
+    tags:
+      env: staging
+  peerVpc:
+    vpcId: 'StagingPipelineStack-Staging-Vpc-vpc-id-export'
+    region: 'StagingPipelineStack-Staging-Vpc-vpc-region-export'
+    cidrBlock: 'StagingPipelineStack-Staging-Vpc-vpc-cidr-export'
+    subnet0Id: 'StagingPipelineStack-Staging-Vpc-vpc-subnet-0-id-export'
+    routeTable0Id: 'StagingPipelineStack-Staging-Vpc-vpc-subnet-0-route-table-id-export'
+    subnet1Id: 'StagingPipelineStack-Staging-Vpc-vpc-subnet-1-id-export'
+    routeTable1Id: 'StagingPipelineStack-Staging-Vpc-vpc-subnet-1-route-table-id-export'

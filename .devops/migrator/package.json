@@ -1,0 +1,38 @@
+{
+  "name": "coop-data-migrator",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Migrating (and eventually seeding) our dbs on deploy",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && cp -R src/scripts package.json build/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Roostorg",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-rds": "^3.49.0",
+    "@clickhouse/client": "^1.13.0",
+    "@roostorg/db-migrator": "^1.0.7",
+    "@types/glob": "^7.2.0",
+    "@types/umzug": "^2.3.3",
+    "cassandra-driver": "^4.6.4",
+    "csv-parse": "^5.0.4",
+    "glob": "^7.2.0",
+    "kysely": "^0.26.1",
+    "latlon-geohash": "^1.1.0",
+    "lodash": "^4.17.21",
+    "pg": "^8.7.1",
+    "sequelize": "^6.32.1",
+    "snowflake-sdk": "^2.3.3",
+    "ts-node": "^10.9.2",
+    "uid": "^2.0.0",
+    "umzug": "^3.0.0",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.2",
+    "dotenv": "^16.0.0",
+    "typescript": "^5.2.2"
+  }
+}

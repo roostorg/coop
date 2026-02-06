@@ -1,0 +1,13 @@
+{
+  "singleQuote": true,
+  "plugins": ["@ianvs/prettier-plugin-sort-imports"],
+  "importOrder": [
+    "<BUILTIN_MODULES>",
+    "<THIRD_PARTY_MODULES>",
+    "",
+    "(.*)components/(.*)$",
+    "",
+    "^[./]"
+  ],
+  "importOrderTypeScriptVersion": "4.9.0"
+}

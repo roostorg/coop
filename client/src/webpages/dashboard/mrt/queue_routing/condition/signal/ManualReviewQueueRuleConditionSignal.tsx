@@ -1,0 +1,114 @@
+import { DownOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
+import { useState } from 'react';
+
+import { CoreSignal } from '../../../../../../models/signal';
+import RuleFormSignalModal from '../../../../rules/rule_form/signal_modal/RuleFormSignalModal';
+import {
+  ConditionLocation,
+  RuleFormLeafCondition,
+} from '../../../../rules/types';
+import { ManualReviewQueueRoutingStaticTextField } from '../../ManualReviewQueueRoutingStaticField';
+import ManualReviewQueueRuleConditionSignalSubcategory from './ManualReviewQueueRuleConditionSignalSubcategory';
+
+export default function ManualReviewQueueRuleConditionSignal(props: {
+  condition: RuleFormLeafCondition;
+  location: ConditionLocation;
+  editing: boolean;
+  onUpdateSignal: (signal: CoreSignal, subcategory?: string) => void;
+}) {
+  const { condition, location, editing, onUpdateSignal } = props;
+  const eligibleSignals = condition.eligibleSignals;
+  const [modalInfo, setModalInfo] = useState<{
+    visible: boolean;
+    initialSelectedSignal: CoreSignal | undefined;
+  }>({
+    visible: false,
+    initialSelectedSignal: undefined,
+  });
+
+  if (
+    !condition.input ||
+    !eligibleSignals ||
+    !Array.from(eligibleSignals.values()).flat().length ||
+    (condition.input.type === 'CONTENT_COOP_INPUT' &&
+      condition.input.name === 'Creation Source')
+  ) {
+    // Number, Boolean and Geohash inputs don't have any eligible signals
+    return null;
+  }
+
+  const { conditionIndex, conditionSetIndex } = location;
+  const closeModal = () => setModalInfo({ ...modalInfo, visible: false });
+  const signalLabel = condition.signal?.name ?? 'Select Signal';
+
+  return (
+    <div
+      key={`signal_and_subcategory_wrapper_set_index_${conditionSetIndex}_index_${conditionIndex}`}
+      className="flex flex-row justify-between"
+    >
+      <div
+        key={
+          'signal_wrapper_set_index_' +
+          conditionSetIndex +
+          '_index_' +
+          conditionIndex
+        }
+        className="!mb-0 !pl-4 !align-middle flex flex-col items-start"
+      >
+        <div className="pb-1 text-sm font-bold whitespace-nowrap">Signal</div>
+        {editing ? (
+          <Button
+            className={`px-3 cursor-pointer ${
+              condition.signal
+                ? '!hover:text-black !focus:text-black'
+                : '!text-[#bfbfbf] !hover:text-[#bfbfbf] !focus:text-[#bfbfbf]'
+            }`}
+            onClick={() =>
+              setModalInfo({
+                visible: true,
+                initialSelectedSignal: undefined,
+              })
+            }
+          >
+            {signalLabel}{' '}
+            <DownOutlined className="text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
+          </Button>
+        ) : (
+          <ManualReviewQueueRoutingStaticTextField text={signalLabel} />
+        )}
+        <div className="invisible pb-1 text-sm font-bold whitespace-nowrap">
+          Signal
+        </div>
+      </div>
+      <ManualReviewQueueRuleConditionSignalSubcategory
+        params={{ condition, location }}
+        editing={editing}
+        onClick={() =>
+          setModalInfo({
+            visible: true,
+            initialSelectedSignal: condition.signal,
+          })
+        }
+      />
+      <RuleFormSignalModal
+        visible={modalInfo.visible}
+        selectedSignal={modalInfo.initialSelectedSignal}
+        allSignals={eligibleSignals}
+        onSelectSignal={(signal, subcategoryOption) => {
+          if (
+            signal &&
+            signal.eligibleSubcategories.length &&
+            !subcategoryOption
+          ) {
+            return;
+          }
+
+          onUpdateSignal(signal, subcategoryOption);
+          closeModal();
+        }}
+        onClose={closeModal}
+      />
+    </div>
+  );
+}

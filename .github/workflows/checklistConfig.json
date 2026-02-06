@@ -1,0 +1,34 @@
+{
+  "mappings": [
+    {
+      "paths": [
+        "server/models/**/{ContentTypeModel,ActionModel,RuleModel,PolicyModel}.ts"
+      ],
+      "triggers": ["declare"],
+      "items": [
+        "If you're adding/removing fields from this model, did you update the corresponding history tables and their triggers?"
+      ]
+    },
+    {
+      "paths": [".devops/migrator/src/scripts/**"],
+      "triggers": ["create table", "add column", "alter column"],
+      "items": [
+        "Are as many columns marked NOT NULL as possible? If some columns can sometimes be null, but _not_ when another column is filled in, have you considered normalizing the schema further (see https://www.guru99.com/database-normalization.html)? If that's not viable/desirable, are there adequate SQL CHECK constraints to capture the relationships between column values (e.g., which can be null together), and are these also captured using unions in the associated kysely types?"
+      ]
+    },
+    {
+      "paths": ["server/services/signalsService/signals/**/*.ts"],
+      "triggers": ["async run\\("],
+      "items": [
+        "If you're creating a new signal, did you check all the potential error cases, and classify, for each one, whether it should be thrown as a permanent error (not subject to retry) or just a normal error (which will lead the signal to being retried and the error value not cached)? **NOTE**: in our data model, any case in which the signal can not determine the score for the provided input should result in a SignalPermanentError."
+      ]
+    },
+    {
+      "paths": [".devops/migrator/src/scripts/snowflake/*"],
+      "triggers": ["create task", "alter task"],
+      "items": [
+        "If you're creating a new snowflake task, did you set ERROR_INTEGRATION = 'AWS_NOTIFICATION_INTEGRATION'?"
+      ]
+    }
+  ]
+}

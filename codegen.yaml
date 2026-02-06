@@ -1,0 +1,156 @@
+overwrite: true
+hooks:
+  afterAllFileWrite:
+    - prettier --write
+schema: './server/graphql/**/*.ts'
+documents:
+  ['./client/src/**/*.tsx', './client/src/**/*.ts', './client/src/**/*.js']
+generates:
+  ./client/src/graphql/generated.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo
+      - named-operations-object
+      - add:
+          content:
+            - '/* eslint-disable */'
+            - 'import { JsonObject, JsonValue } from "type-fest";'
+    config:
+      fetcher:
+        endpoint: '"/api/v1/graphql"'
+        fetchParams:
+          headers:
+            Content-Type: application/json
+      immutableTypes: true
+      nonOptionalTypename: true
+      useTypeImports: true
+      enumsAsConst: true
+      # NB: on the client side, we can't use the built-in prefixing, since it
+      # only supports types + document variables + fragments (e.g., there's no
+      # option for prefixing hook names.
+      # TODO: do we even need all these prefixes client-side, given that the
+      # client will eventually have (more or less) only GQL types?
+      # typesPrefix: 'GQL'
+      # documentVariablePrefix: 'GQL'
+      # fragmentVariablePrefix: 'GQL'
+      namingConvention:
+        typeNames: ./scripts/add_graphql_prefix.ts
+      scalars:
+        Date: Date | string
+        DateTime: Date | string
+        Cursor: string
+        JSONObject: JsonObject
+        CoopInputOrString: string
+        StringOrFloat: string | number
+        NonEmptyString: string
+  ./server/graphql/generated.ts:
+    plugins:
+      - typescript
+      - typescript-resolvers
+      - add:
+          content:
+            - '/* eslint-disable */'
+            - 'import { JsonObject, JsonValue } from "type-fest";'
+    config:
+      immutableTypes: true
+      # __typename is only a field on output types (not input types,
+      # interestingly, which ig is b/c GQL doesn't support input unions) and, on
+      # the backend, we only _produce_ output types (from resolvers) and never
+      # inspect them (like the client does). so, the effect of making __typename
+      # optional on the backend is to control whether our resolvers have to
+      # return objects with a __typename property. The runtime reality is that a
+      # __typename is needed iff the resolver returns a union type; if the
+      # schema specifies that the resolver can only return a single type, then
+      # apollo can fill in the __typename automatically. Unfortunately, there's
+      # no way (I think) to reflect that conditional rule in the config here, so
+      # we have to either require a __typename always, which leads to some
+      # boilerplate in cases where it wouldn't have been necessary, or make it
+      # always optional, which leads to potential runtime errors if its missing.
+      # Since those runtime errors should be pretty obvious during testing, we
+      # opt for less boilerplate over full safety.
+      nonOptionalTypename: false
+      useTypeImports: true
+      enumsAsConst: true
+      typesPrefix: 'GQL'
+      scalars:
+        Date: Date | string
+        DateTime: Date | string
+        Cursor: JsonValue
+        JSONObject: JsonObject
+        CoopInputOrString: string
+        StringOrFloat: string | number
+        NonEmptyString: NonEmptyString
+      contextType: ./resolvers.js#Context
+      # this override of maybe's definition needed to make optional resolver/query
+      # return types work correctly.
+      maybeValue: 'T extends Promise<infer U> ? Promise<U | null> : T | null'
+      # Don't change this; it makes type checking too permissive.
+      allowParentTypeOverride: false
+      mappers:
+        CustomAction: ../models/rules/ActionModel.js#CustomAction
+        EnqueueToMrtAction: ../models/rules/ActionModel.js#EnqueueToMrtAction
+        EnqueueToNcmecAction: ../models/rules/ActionModel.js#EnqueueToNcmecAction
+        EnqueueAuthorToMrtAction: ../models/rules/ActionModel.js#EnqueueAuthorToMrtAction
+        Backtest: ../models/rules/BacktestModel.js#Backtest
+        ContentType: ../models/rules/ItemTypeModel.js#ItemType
+        DerivedFieldSource: ../services/derivedFieldsService/helpers.js#DerivedFieldSpecSource
+        HashBank: ../models/HashBankModel.js#HashBank
+        Org: ../models/OrgModel.js#Org
+        # NB: for now we always resolve MatchingBanks with an Org model, and
+        # then call methods on the org model to resolve the sub-fields. This is
+        # a bit unusual, as matchingBanks could in theory be a standalone type,
+        # so we might have to expand this later.
+        MatchingBanks: ../models/OrgModel.js#Org
+        User: ../models/UserModel.js#User
+        LocationBank: ./datasources/LocationBankApi.js#LocationBankWithoutFullPlacesAPIResponse
+        Rule: ../models/rules/RuleModel.js#Rule
+        Condition: ../services/moderationConfigService/index.js#Condition
+        ConditionWithResult: ../models/rules/RuleModel.js#ConditionWithResult
+        ConditionSet: ../services/moderationConfigService/index.js#ConditionSet
+        ConditionSetWithResult: ../models/rules/RuleModel.js#ConditionSetWithResult
+        LeafCondition: ../services/moderationConfigService/index.js#LeafCondition
+        LeafConditionWithResult: ../models/rules/RuleModel.js#LeafConditionWithResult
+        UserRule: ../models/rules/RuleModel.js#Rule
+        ContentRule: ../models/rules/RuleModel.js#Rule
+        RuleInsights: ../models/rules/RuleModel.js#Rule
+        Notification: ../services/notificationsService/notificationsService.js#Notification
+        Signal: ../services/signalsService/index.js#Signal
+        ManualReviewJobPayload: ../services/manualReviewToolService/index.js#ManualReviewJobPayload
+        ThreadManualReviewJobPayload: ../services/manualReviewToolService/index.js#ThreadManualReviewJobPayload
+        ContentManualReviewJobPayload: ../services/manualReviewToolService/index.js#ContentManualReviewJobPayload
+        UserManualReviewJobPayload: ../services/manualReviewToolService/index.js#UserManualReviewJobPayload
+        NcmecManualReviewJobPayload: ../services/manualReviewToolService/index.js#NcmecManualReviewJobPayload
+        ThreadAppealManualReviewJobPayload: ../services/manualReviewToolService/index.js#ThreadAppealReviewJobPayload
+        ContentAppealManualReviewJobPayload: ../services/manualReviewToolService/index.js#ContentAppealReviewJobPayload
+        UserAppealManualReviewJobPayload: ../services/manualReviewToolService/index.js#UserAppealReviewJobPayload
+        NonEmptyString: ../utils/typescript-types.js#NonEmptyString
+        ManualReviewQueue: ../services/manualReviewToolService/index.js#ManualReviewQueue
+        # NB: ItemBase only exists in GQL to make the fragments a bit DRYer
+        # (e.g., not have to repeat every field in `... on XXXItem` for every
+        # kind of item, in cases where we don't care about the item's type).
+        Item: ./types.js#ItemSubmissionForGQL
+        ItemBase: ./types.js#ItemSubmissionForGQL
+        # Our internal TS ItemType union type includes all the different kinds
+        # of ItemTypes, just like the GQL ItemType union does. Accordingly, it's
+        # safe to say that, wherever a resolver is for an ItemTypeBase GQL type,
+        # it'll actually have an ItemType (or ItemTypeSelector) as its input.
+        # Like ItemBase, ItemTypeBase only exists in GQL to make the fragments
+        # a bit DRYer.
+        ItemType: ../graphql/modules/itemType.js#ItemTypeResolversParentType
+        ItemTypeBase: ../graphql/modules/itemType.js#ItemTypeResolversParentType
+        ThreadItemType: ../graphql/modules/itemType.js#ThreadItemTypeResolversParentType
+        UserItemType: ../graphql/modules/itemType.js#UserItemTypeResolversParentType
+        ContentItemType: ../graphql/modules/itemType.js#ContentItemTypeResolversParentType
+        # This has to be here, not in `enumValues`, because of this bug https://github.com/dotansimha/graphql-code-generator/issues/9520
+        ItemTypeSchemaVariant: ../graphql/modules/itemType.js#ItemTypeSchemaVariantResolverValue
+        ItemTypeSchemaVariantInput: ../graphql/modules/itemType.js#ItemTypeSchemaVariantInputResolverValue
+        ReportingInsights: ../graphql/modules/reporting.js#ReportingInsights
+        ReportingRule: ../services/reportingService/ReportingRules.js#ReportingRuleWithoutVersion
+        RoutingRule: ../services/manualReviewToolService/modules/JobRouting.js#RoutingRuleWithoutVersion
+        ManualReviewJobComment: ../services/manualReviewToolService/modules/CommentOperations.js#ManualReviewJobComment
+        UserItem: ./types.js#ItemSubmissionForGQL
+        UserHistory: ../graphql/datasources/InvestigationApi.js#UserHistoryForGQL
+        ManualReviewJob: ../services/manualReviewToolService/index.js#ManualReviewJobOrAppeal
+        SignalWithScore: ../services/analyticsQueries/RuleActionInsights.js#SignalWithScore
+        ReportingRuleInsights: ../services/reportingService/ReportingRules.js#ReportingRuleWithoutVersion

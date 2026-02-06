@@ -1,0 +1,13 @@
+config:
+  aws:region: us-east-1
+  aws:defaultTags:
+    tags:
+      env: production
+  peerVpc:
+    vpcId: PipelineStack-Prod-Vpc-vpc-id-export
+    region: PipelineStack-Prod-Vpc-vpc-region-export
+    cidrBlock: PipelineStack-Prod-Vpc-vpc-cidr-export
+    subnet0Id: PipelineStack-Prod-Vpc-vpc-subnet-0-id-export
+    routeTable0Id: PipelineStack-Prod-Vpc-vpc-subnet-0-route-table-id-export
+    subnet1Id: PipelineStack-Prod-Vpc-vpc-subnet-1-id-export
+    routeTable1Id: PipelineStack-Prod-Vpc-vpc-subnet-1-route-table-id-export

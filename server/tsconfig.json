@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "ES2022",
+      "DOM" /* needed for s3 sdk, which references dom readablestream */
+    ],
+    "outDir": "./transpiled",
+    "declaration": false,
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowJs": true,
+    "typeRoots": ["./node_modules/@types", "./shim"],
+    "skipLibCheck": true,
+    "sourceMap": true,
+  },
+  // https://stackoverflow.com/questions/51610583/ts-node-ignores-d-ts-files-while-tsc-successfully-compiles-the-project
+  "files": ["decs.d.ts"],
+  "include": ["./**/*.ts", "./**/*.cts", "./**/*.mts"],
+  "ts-node": {
+    "files": true
+  },
+  "exclude": ["node_modules", "package.json", "package-lock.json"]
+}

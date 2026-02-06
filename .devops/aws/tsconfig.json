@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // Need lib DOM because some of the server code that this package imports
+    // references ReadableStream, which is currently only defined in the DOM types
+    // (even though it actually exists in Node)
+    "lib": ["es2022", "DOM"],
+    "outDir": "./transpiled",
+    "declaration": false,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": false,
+    "strictPropertyInitialization": true,
+    "typeRoots": ["./node_modules/@types"]
+  },
+  // https://stackoverflow.com/questions/51610583/ts-node-ignores-d-ts-files-while-tsc-successfully-compiles-the-project
+  "files": ["./typings.d.ts", "../../server/decs.d.ts"],
+  "include": ["./**/*.ts"],
+  "ts-node": {
+    "files": true
+  },
+  "exclude": ["node_modules", "cdk.out"]
+}

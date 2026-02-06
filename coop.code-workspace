@@ -1,0 +1,21 @@
+// This file allows us to define the git repo root directory as containing
+// multiple independent VS code workspaces (which, thanks to this file, can
+// still also be opened all at once). This lets us give each folder different
+// VSCode settings, which we need so that -- in server TS only -- auto-generated
+// ESM imports end with `.js`
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "git.ignoreLimitWarning": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "typescript.tsdk": "./node_modules/typescript/lib/",
+    "rewrap.autoWrap.enabled": true,
+    "editor.wordWrap": "off",
+    "githubPullRequests.ignoredPullRequestBranches": ["main"]
+  }
+}

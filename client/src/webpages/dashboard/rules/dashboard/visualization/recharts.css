@@ -1,0 +1,15 @@
+.recharts-legend-item {
+  vertical-align: middle;
+}
+
+.recharts-legend-item-text {
+  vertical-align: middle;
+}
+
+.recharts-default-legend {
+  padding: 32px;
+}
+
+.recharts-legend-wrapper {
+  bottom: -20px !important;
+}
