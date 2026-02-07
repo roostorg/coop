@@ -769,20 +769,6 @@ export class K8sClusterStack extends Stack {
       },
     });
 
-    new KubeSecret(openTelemetryChart, 'datadog-secret', {
-      metadata: {
-        name: 'datadog-secret',
-        namespace: opentelemetryNamespace,
-      },
-      // using stringData will tell k8s to base64 encode the values so we don't
-      // have to do that ourselves
-      stringData: {
-        // yes this is a secret in plaintext, but it's already in our codebase:
-        // see datadog.ts
-        DD_API_KEY: '4d394dffc4ef84960adc58460c0505c1',
-      },
-    });
-
     const { hostedZoneId, zoneName, subdomainName } = props.domain;
 
     const siteFQDN = subdomainName
