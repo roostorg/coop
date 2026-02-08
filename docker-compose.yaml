@@ -9,8 +9,9 @@ services:
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
     image: node:20
-    command: bash -c 'npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true ) 
-                      && for db in api-server-pg scylla clickhouse; do npm run db:update -- --db "$$db" --env staging; done'
+    command: bash -c 'set -e
+                      npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
+                      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -30,9 +31,12 @@ services:
     volumes:
       - .:/src
     depends_on:
-      - postgres
-      - scylla
-      - clickhouse
+      postgres:
+        condition: service_healthy
+      scylla:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
 
   drop_dbs:
     image: node:20
@@ -93,6 +97,12 @@ services:
       - scylla_data:/var/lib/scylla
     ports:
       - '9042:9042'
+    healthcheck:
+      test: ['CMD-SHELL', 'nodetool status || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
 
   zookeeper:
     image: zookeeper:3.7.0
