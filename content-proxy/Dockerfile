@@ -2,7 +2,7 @@
 # Generic content proxy for iframe rendering with safety controls
 
 # Stage 1: Build the application
-FROM node:20-bullseye-slim AS builder
+FROM node:24-bullseye-slim AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN npm run build
 
 RUN npm prune --omit=dev
 
-FROM node:20-bullseye-slim
+FROM node:24-bullseye-slim
 
 WORKDIR /app
 

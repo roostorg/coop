@@ -39,7 +39,7 @@
     "sequelize-cli": "^6.2.0"
   },
   "engines": {
-    "node": "^20.0.0"
+    "node": "^24.0.0"
   },
   "devDependencies": {
     "@betterer/betterer": "^5.4.0",

@@ -88,7 +88,7 @@ export class CloudfrontStack extends Stack {
       this,
       'RedirectLambda',
       {
-        runtime: Runtime.NODEJS_20_X,
+        runtime: Runtime.NODEJS_24_X,
         code: Code.fromAsset(
           path.join(path.dirname(fileURLToPath(import.meta.url)), './redirect'),
         ),

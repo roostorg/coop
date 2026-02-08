@@ -1,13 +1,13 @@
-FROM ghcr.io/facebook/threatexchange/hma:1.0.16
+FROM ghcr.io/facebook/threatexchange/hma:1.1.1
 
-WORKDIR /build
+WORKDIR /app
 
-COPY omm_config.py /build/omm_config.py
-COPY local-entrypoint.sh /build/entrypoint.sh
+COPY omm_config.py /app/omm_config.py
+COPY local-entrypoint.sh /app/entrypoint.sh
 
 # Make the entrypoint script executable
-RUN chmod +x /build/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-ENV OMM_CONFIG=/build/omm_config.py
+ENV OMM_CONFIG=/app/omm_config.py
 
-ENTRYPOINT ["/build/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]

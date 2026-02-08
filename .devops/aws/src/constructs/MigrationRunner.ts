@@ -107,7 +107,7 @@ export class MigrationRunner extends Construct {
     secretToken.node.addDependency(migrationsManifest);
     secretCert.node.addDependency(migrationsManifest);
     const onEventHandler = new NodejsFunction(this, 'DbMigrationsOnEvent', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler',
       entry: path.join(
         path.dirname(fileURLToPath(import.meta.url)),
@@ -121,7 +121,7 @@ export class MigrationRunner extends Construct {
       this,
       'DbMigrationsIsComplete',
       {
-        runtime: lambda.Runtime.NODEJS_20_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         handler: 'handler',
         entry: path.join(
           path.dirname(fileURLToPath(import.meta.url)),

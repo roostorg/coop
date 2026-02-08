@@ -8,7 +8,7 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:20
+    image: node:24-bullseye-slim
     command: bash -c 'npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true ) 
                       && for db in api-server-pg scylla clickhouse; do npm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
@@ -35,7 +35,7 @@ services:
       - clickhouse
 
   drop_dbs:
-    image: node:20
+    image: node:24-bullseye-slim
     command: bash -c 'npm i && npm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci

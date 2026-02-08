@@ -34,7 +34,7 @@ We're developing Coop in the open and want to hear from you! Whether you're test
 For development on Coop it is recommended to:
 
 - use a machine with 16 GiB RAM or more
-- use Node 20 or newer (e.g. with `nvm`)
+- use Node 24 (run `nvm install && nvm use` so local matches `.nvmrc`)
 
 and then follow the steps below:
 

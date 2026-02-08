@@ -5,7 +5,7 @@ This guide covers configuration details and troubleshooting for local developmen
 ## Prerequisites
 
 - **Operating System**: macOS, Linux, or Windows with WSL2
-- **Node.js 20+** (check `.nvmrc` for exact version, use `nvm install && nvm use`)
+- **Node.js 24** (use `nvm install && nvm use` so local matches `.nvmrc`)
 - **npm** (included with Node.js)
 - **Docker and Docker Compose**
 - **16 GB RAM** or more recommended
