@@ -184,7 +184,7 @@ export function generateFakeScalarFieldValue(fieldType: ScalarType) {
     case 'BOOLEAN':
       return Math.random() < 0.5;
     case 'DATETIME':
-      return new Date().toLocaleTimeString();
+      return new Date().toISOString();
     case 'GEOHASH':
       // Geohashes are always 6 characters long, so we just hardcode this one
       // for example purposes. NB: not all 6 character strings are valid geohashes.
