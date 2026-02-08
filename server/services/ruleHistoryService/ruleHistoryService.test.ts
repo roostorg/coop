@@ -69,19 +69,19 @@ describe('RuleHistory Service', () => {
       const mockGetRawHistory = async () => [
         {
           id: '4fb36ec8fb0',
-          name: 'Perspective Threat (WIP)',
+          name: 'Toxicity Rule (WIP)',
           statusIfUnexpired: RuleStatus.LIVE,
           exactVersion: '2022-05-04 19:00:59.556331+00',
         },
         {
           id: '4fb36ec8fb0',
-          name: 'Perspective Threat',
+          name: 'Toxicity Rule',
           statusIfUnexpired: RuleStatus.LIVE,
           exactVersion: '2022-05-11 19:00:59.556331+00',
         },
         {
           id: '4fb36ec8fb0',
-          name: 'Perspective Threat',
+          name: 'Toxicity Rule',
           statusIfUnexpired: RuleStatus.BACKGROUND,
           exactVersion: '2022-05-19 23:39:21.261444+00',
         },
@@ -97,14 +97,14 @@ describe('RuleHistory Service', () => {
       expect(res).toEqual([
         {
           id: '4fb36ec8fb0',
-          name: 'Perspective Threat',
+          name: 'Toxicity Rule',
           statusIfUnexpired: 'LIVE',
           exactVersion: '2022-05-11 19:00:59.556331+00',
           approxVersion: new Date('2022-05-11T19:00:59.556Z'),
         },
         {
           id: '4fb36ec8fb0',
-          name: 'Perspective Threat',
+          name: 'Toxicity Rule',
           statusIfUnexpired: 'BACKGROUND',
           exactVersion: '2022-05-19 23:39:21.261444+00',
           approxVersion: new Date('2022-05-19T23:39:21.261Z'),

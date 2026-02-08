@@ -54,7 +54,6 @@ type WorkersStackProps = StackProps & {
     | 'KAFKA_SNOWFLAKE_INGEST_SERVICE_ACCOUNT_PASSWORD'
     | 'KAFKA_API_SERVICE_ACCOUNT_USERNAME'
     | 'KAFKA_API_SERVICE_ACCOUNT_PASSWORD'
-    | 'PERSPECTIVE_API_KEY'
   >;
   stage: DeploymentEnvironmentName;
   provisionProdLevelsOfCompute: boolean;
@@ -230,7 +229,6 @@ export class JobsAndWorkersStack extends Stack {
               ...pgEnvVars,
               ...redisEnvVars,
               'OPEN_AI_API_KEY',
-              'PERSPECTIVE_API_KEY',
             ]),
             KAFKA_BROKER_USERNAME: secrets.KAFKA_API_SERVICE_ACCOUNT_USERNAME,
             KAFKA_BROKER_PASSWORD: secrets.KAFKA_API_SERVICE_ACCOUNT_PASSWORD,

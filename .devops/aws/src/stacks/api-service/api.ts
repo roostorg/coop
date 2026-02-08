@@ -88,7 +88,6 @@ type ApiStackProps = StackProps & {
   // the arns of all secrets that should be exposed to the api pods.
   secrets: SecretsMap<
     | 'SESSION_SECRET'
-    | 'PERSPECTIVE_API_KEY'
     | 'GROQ_SECRET_KEY'
     | 'SENDGRID_API_KEY'
     | 'GOOGLE_PLACES_API_KEY'
@@ -299,23 +298,6 @@ export class ApiStack extends Stack {
     // TODO: this if condition is very hacky, but we need to set different metrics
     // per env before we can do this properly.
     if (stage === 'Prod') {
-      // If we had more than 30 rate limit errors
-      // in two out of three of the last 1 minute periods, alarm.
-      withSnsNotifications(
-        new Metric({
-          namespace: 'coop-signals',
-          metricName: 'Perspective Rate Limit Error',
-          statistic: 'sum',
-          period: Duration.minutes(1),
-        }).createAlarm(this, 'PerspectiveRateLimitErrorAlarm', {
-          alarmName: 'Recurring Perspective Rate Limit Errors',
-          threshold: 30,
-          evaluationPeriods: 3,
-          datapointsToAlarm: 2,
-        }),
-        monitoringAlertsTopic,
-      );
-
       gateway.restApi.methods.forEach((method) => {
         // Similarly, alert if 500s are too high.
         withSnsNotifications(

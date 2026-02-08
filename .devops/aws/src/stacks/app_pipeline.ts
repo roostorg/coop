@@ -242,9 +242,6 @@ class DeploymentEnv extends Stage {
     const { arns, globalArns } = props;
     const secrets = {
       SESSION_SECRET: [arns.sessionSecret],
-      PERSPECTIVE_API_KEY: [
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/PerspectiveApiKey-R5YxuN',
-      ],
       GROQ_SECRET_KEY: [
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/GroqSecretKey-CucLyH',
       ],
