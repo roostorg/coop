@@ -44,7 +44,7 @@ jobs:
           URL="https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/${ARCHIVE}"
           mkdir -p mdbook-bin
           curl -sSL -o mdbook.tar.gz "$URL"
-          tar -xzf mdbook.tar.gz -C mdbook-bin --strip-components=1
+          tar -xzf mdbook.tar.gz -C mdbook-bin
           rm mdbook.tar.gz
 
       - name: Setup Pages
