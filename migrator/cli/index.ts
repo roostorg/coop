@@ -1,6 +1,5 @@
 import path from 'path';
-import { promisify } from 'util';
-import glob from 'glob';
+import { glob } from 'node:fs/promises';
 
 import '@total-typescript/ts-reset/array-includes';
 
@@ -10,7 +9,18 @@ import yargs from 'yargs';
 import { nameScript, scriptTypes, shouldRun } from './script-generator.js';
 import type { DatabaseConfig } from './typescript-types.js';
 
-const globAsync = promisify(glob);
+async function globMigrationFiles(
+  scriptsDirectory: string,
+  supportedExtensions: string,
+): Promise<string[]> {
+  const matchingFilePaths: string[] = [];
+  for await (const p of glob(`*.${supportedExtensions}`, {
+    cwd: scriptsDirectory,
+  })) {
+    matchingFilePaths.push(path.resolve(scriptsDirectory, p));
+  }
+  return matchingFilePaths;
+}
 
 export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
   const dbNames = Object.keys(dbs);
@@ -201,9 +211,9 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
                   supportedScriptFormats.length > 1
                     ? `{${supportedScriptFormats.join(',')}}`
                     : `${supportedScriptFormats[0]}`;
-                const matchingFilePaths = await globAsync(
-                  `${scriptsDirectory}/*.${supportedExtensions}`,
-                  { absolute: true },
+                const matchingFilePaths = await globMigrationFiles(
+                  scriptsDirectory,
+                  supportedExtensions,
                 );
 
                 return matchingFilePaths
