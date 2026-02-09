@@ -13,7 +13,7 @@
   "dependencies": {
     "@aws-sdk/client-rds": "^3.49.0",
     "@clickhouse/client": "^1.13.0",
-    "@roostorg/db-migrator": "^1.0.7",
+    "@roostorg/db-migrator": "^1.0.8",
     "@types/umzug": "^2.3.3",
     "cassandra-driver": "^4.8.0",
     "csv-parse": "^5.0.4",
