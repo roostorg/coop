@@ -47,14 +47,11 @@ jobs:
           tar -xzf mdbook.tar.gz -C mdbook-bin --strip-components=1
           rm mdbook.tar.gz
 
-      - name: Add mdBook to PATH
-        run: echo "${{ github.workspace }}/mdbook-bin" >> $GITHUB_PATH
-
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
       - name: Build with mdBook
-        run: mdbook build docs
+        run: ${{ github.workspace }}/mdbook-bin/mdbook build docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
