@@ -1,4 +1,3 @@
-declare module 'perspective-api-client';
 declare module 'homoglyph-search';
 declare module 'nilsimsa';
 
@@ -275,7 +274,6 @@ namespace NodeJS {
     REDIS_PORT?: string;
     REDIS_USER?: string;
     REDIS_PASSWORD?: string;
-    PERSPECTIVE_API_KEY?: string;
     GROQ_SECRET_KEY?: string;
     SENDGRID_API_KEY?: string;
     GOOGLE_PLACES_API_KEY?: string;

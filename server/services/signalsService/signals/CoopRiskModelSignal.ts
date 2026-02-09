@@ -1,10 +1,5 @@
 import { ScalarTypes } from '@roostorg/types';
 
-// import { filterNullOrUndefined } from '../../../utils/collections.js';
-// import {
-//   isCoopErrorOfType,
-//   makeSignalPermanentError,
-// } from '../../../utils/errors.js';
 import { Language } from '../../../utils/language.js';
 import { SignalPricingStructure as SignalPricingStructureType } from '../types/SignalPricingStructure.js';
 import { SignalType } from '../types/SignalType.js';
@@ -13,21 +8,9 @@ import SignalBase, {
   type SignalInput,
 } from './SignalBase.js';
 
-// const riskModelAttributes = ['IDENTITY_ATTACK', 'INSULT', 'THREAT'] as const;
-
-// const RISK_MODEL_ORDERED_OUTPUTS = [
-//   'Very High',
-//   'High',
-//   'Medium',
-//   'Low',
-//   'Very Low',
-//   'Extremely Low',
-// ];
-
 export default class CoopRiskModelSignal extends SignalBase<
   ScalarTypes['STRING'],
   { scalarType: ScalarTypes['NUMBER'] }
-  // { scalarType: ScalarTypes['STRING']; enum: string[]; ordered: true }
 > {
   get docsUrl() {
     return null;
@@ -43,8 +26,6 @@ export default class CoopRiskModelSignal extends SignalBase<
 
   get recommendedThresholds() {
     return {
-      // highPrecisionThreshold: 'Very High',
-      // highRecallThreshold: 'Medium',
       highPrecisionThreshold: '0.95',
       highRecallThreshold: '0.8',
     };
@@ -65,8 +46,6 @@ export default class CoopRiskModelSignal extends SignalBase<
   override get outputType() {
     return {
       scalarType: ScalarTypes.NUMBER,
-      // enum: RISK_MODEL_ORDERED_OUTPUTS,
-      // ordered: true as const,
     };
   }
 
@@ -124,69 +103,5 @@ export default class CoopRiskModelSignal extends SignalBase<
       score: 0.5,
       outputType: { scalarType: ScalarTypes.NUMBER },
     };
-    // const { value } = input;
-    // const outputType = {
-    //   scalarType: ScalarTypes.STRING,
-    //   enum: RISK_MODEL_ORDERED_OUTPUTS,
-    //   ordered: true as const,
-    // };
-    // try {
-    //   // Perspective throws an error when given an empty string input, so
-    //   // we just return the max score of 5 immediately
-    //   if (value.value.length === 0) {
-    //     return {
-    //       score: 'Very Low',
-    //       outputType,
-    //     };
-    //   }
-
-    //   const result = await this.getPerspectiveScores(
-    //     process.env.PERSPECTIVE_API_KEY!,
-    //     value.value,
-    //   );
-
-    //   if (result.type === 'UNSUPPORTED_LANGUAGE') {
-    //     throw makeSignalPermanentError(
-    //       `Unable to evaluate content: ${value.value}`,
-    //     );
-    //   }
-
-    //   const attributeScores = filterNullOrUndefined(
-    //     riskModelAttributes.map((attribute) =>
-    //       result.attributeMap.get(attribute),
-    //     ),
-    //   );
-
-    //   if (attributeScores.length === 0) {
-    //     throw makeSignalPermanentError(
-    //       `Undefined scores for content: ${value.value}`,
-    //     );
-    //   }
-
-    //   const maxScore = Math.max(...attributeScores);
-    //   const finalScore =
-    //     maxScore > 0.8
-    //       ? 'Very High'
-    //       : maxScore > 0.6
-    //       ? 'High'
-    //       : maxScore > 0.3
-    //       ? 'Medium'
-    //       : maxScore > 0.1
-    //       ? 'Low'
-    //       : maxScore > 0.036
-    //       ? 'Very Low'
-    //       : 'Extremely Low';
-
-    //   return {
-    //     score: finalScore,
-    //     outputType,
-    //   };
-    // } catch (e) {
-    //   if (isCoopErrorOfType(e, 'SignalPermanentError')) {
-    //     return { score: e, type: 'ERROR' as const };
-    //   }
-
-    //   throw e;
-    // }
   }
 }
