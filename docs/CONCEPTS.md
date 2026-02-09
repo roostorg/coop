@@ -144,7 +144,7 @@ You can create an Appeal in Coop when a user on your platform requests that a mo
 
 The User Score is calculated based on the ratio of penalties to submissions:
 
- `weightedPenaltyRate \= sum(penalties) / numSubmissions`
+ `weightedPenaltyRate = sum(penalties) / numSubmissions`
 
 #### Score Thresholds
 
@@ -154,7 +154,7 @@ Penalty Rate | Score
 ≤ 5%         | 4
 ≤ 10%        | 3
 ≤ 25%        | 2
-> 25%        | 1 (Worst)
+\> 25%       | 1 (Worst)
 
 #### How Penalties Work
 
