@@ -135,7 +135,7 @@ The response contains 1 of 5 priorities:
 | HIGH          |
 | VERY_HIGH     |
 
-The higher the priority, the more likely the video may be abusive content. However, this is an indication and not a confirmation of it. You must always do a manual review to confirm and avoid false positives. This signal is only available for manual routing rules and not automated action rules.
+The higher the priority, the more likely the image may be abusive content. However, this is an indication and not a confirmation of it. You must always do a manual review to confirm and avoid false positives. This signal is only available for manual routing rules and not automated action rules.
 
 #### Best practice
 * It is recommended for the image resolution to be around 640x480 pixels (about 300k pixels) for best performance.
