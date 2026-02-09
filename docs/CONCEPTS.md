@@ -154,7 +154,7 @@ Penalty Rate | Score
 ≤ 5%         | 4
 ≤ 10%        | 3
 ≤ 25%        | 2
-> 25%        | 1 (Worst)
+\> 25%       | 1 (Worst)
 
 #### How Penalties Work
 
