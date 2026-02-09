@@ -88,15 +88,16 @@ if (conditionMet) {
 | Integration | Signals | Configuration |
 | :---- | :---- | :---- |
 | **Moderation API by OpenAI** | There are two models you can use with this endpoint: **omni-moderation-latest:** This model and all snapshots support more categorization options and multi-modal inputs. <br> <br> **text-moderation-latest (Legacy):** Older model that supports only text inputs and fewer input categorizations. The newer omni-moderation models will be the best choice for new applications.  | OpenAI API key |
-| **Content Safety API by Google** | V0: image classification | Content Safety API Key <br> <br> Industry and civil society third parties seeking to protect their platform against abuse can sign up to access the Content Safety API. Applications are subject to approval. You can submit an interest form through Google’s Child Safety Toolkit program [here](https://protectingchildren.google/toolkit-interest-form/?roost-coop).  |
+| **Content Safety API by Google** | V0: image classification | Content Safety API Key[^csapi] |
+
+[^csapi]: Industry and civil society third parties seeking to protect their platform against abuse can sign up to access the Content Safety API. Applications are subject to approval. You can submit an interest form through [Google’s Child Safety Toolkit program](https://protectingchildren.google/toolkit-interest-form/?roost-coop).
 
 #### Moderation API by OpenAI
 Use the [moderations endpoint](https://platform.openai.com/docs/guides/moderation) to check whether text or images are potentially harmful. If harmful content is identified, you can take corrective action, like filtering content or intervening with user accounts creating offending content. The moderation endpoint is free to use.
 
-
 #### Content Safety API by Google
 
-The Content Safety API is an AI classifier which issues a Child Safety prioritization recommendation on content sent to it. Content Safety API users must conduct their own manual review in order to determine whether to take action on the content, and comply with applicable local reporting laws. Apply for API keys [HERE](https://protectingchildren.google/toolkit-interest-form/?roost-coop) and mention in your application that you are using the Coop review tool. Upon reviewing your application, Google will be back in touch shortly to take the application forward if you qualify.
+The Content Safety API is an AI classifier which issues a Child Safety prioritization recommendation on content sent to it. Content Safety API users must conduct their own manual review in order to determine whether to take action on the content, and comply with applicable local reporting laws. [Apply for an API key](https://protectingchildren.google/toolkit-interest-form/?roost-coop) and mention in your application that you are using the Coop review tool. Upon reviewing your application, Google will be back in touch shortly to take the application forward if you qualify.
 
 The API accepts a list of raw image bytes. The supported file types are listed below:
 
