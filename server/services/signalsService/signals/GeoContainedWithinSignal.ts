@@ -52,6 +52,10 @@ export default class GeoContainedWithinSignal extends SignalBase<
     return 5;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override get docsUrl() {
     return null;
   }

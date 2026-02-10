@@ -36,6 +36,8 @@ import {
 import {
   isSignalId,
   signalIsExternal,
+  type ExternalSignalType,
+  type SignalId,
 } from '../../services/signalsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import { type SnowflakePublicSchema } from '../../snowflake/types.js';
@@ -50,6 +52,7 @@ import { assertUnreachable, patchInPlace } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
 import {
   type Mutable,
+  type NonEmptyString,
   type RequiredWithoutNull,
 } from '../../utils/typescript-types.js';
 import {
@@ -273,6 +276,7 @@ class RuleAPI extends DataSource {
     private readonly actionStats: Dependencies['ActionStatisticsService'],
     private readonly models: Dependencies['Sequelize'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly signalsService: Dependencies['SignalsService'],
   ) {
     super();
   }
@@ -335,6 +339,12 @@ class RuleAPI extends DataSource {
 
     if (ruleType === RuleType.CONTENT && input.contentTypeIds.length === 0) {
       throw makeRuleIsMissingContentTypeError({ shouldErrorSpan: true });
+    }
+
+    // Validate that signals used in automated rules are allowed
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (actionIds && actionIds.length > 0) {
+      await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
 
     const rule = this.models.Rule.build({
@@ -482,6 +492,17 @@ class RuleAPI extends DataSource {
       rule.parentId = parentId ?? null;
     }
 
+    // Validate that signals used in automated rules are allowed
+    // Check if the rule will have actions meaning automated rule.
+    // This ensures we don't allow creating automated rules with signals 
+    // that are restricted to routing rules only.
+    const willHaveActions = actionIds 
+      ? actionIds.length > 0 
+      : (await rule.getActions()).length > 0;
+    
+    if (willHaveActions && conditionSet) {
+      await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
+    }
 
     // Before we actually send any updates (which will happen as soon as we call
     // setXXX to set the associations), we need to make sure that there are no
@@ -819,6 +840,75 @@ class RuleAPI extends DataSource {
     //   return { _: false };
     // }
   }
+
+  /**
+   * Validates that all signals used in the condition set are allowed in automated rules.
+   * Throws an error if any restricted signal is found.
+   */
+  private async validateSignalsAllowedInAutomatedRules(
+    conditionSet: GQLConditionSetInput,
+    orgId: string,
+  ): Promise<void> {
+    const signalIds = this.extractSignalIdsFromConditionSet(conditionSet);
+    
+    for (const signalId of signalIds) {
+      const signal = await this.signalsService.getSignal({
+        signalId,
+        orgId,
+      });
+      
+      if (signal && !signal.allowedInAutomatedRules) {
+        throw new Error(
+          `Signal "${signal.displayName}" cannot be used in automated rules with actions. ` +
+          `This signal is restricted to routing rules only.`
+        );
+      }
+    }
+  }
+
+  /**
+   * Extracts all signal IDs from a condition set recursively
+   */
+  private extractSignalIdsFromConditionSet(
+    conditionSet: GQLConditionSetInput,
+  ): SignalId[] {
+    const signalIds: SignalId[] = [];
+
+    const processCondition = (condition: GQLConditionInput) => {
+      if ('conditions' in condition && condition.conditions) {
+        // It's a condition set, recurse
+        for (const subCondition of condition.conditions) {
+          processCondition(subCondition);
+        }
+      } else if ('signal' in condition && condition.signal) {
+        // It's a leaf condition with a signal
+        const { type, id } = condition.signal;
+        // GQLSignalType values map to ExternalSignalType (conditions can only
+        // contain user-visible external signals). Cast is safe since this comes
+        // from validated GraphQL input.
+        let signalId: SignalId;
+        if (type === 'CUSTOM') {
+          // CUSTOM signals require an id field. The id comes from validated GraphQL
+          // input where it's a required Scalars['ID'], so we can safely cast it.
+          signalId = { type: 'CUSTOM' as const, id: id as NonEmptyString };
+        } else {
+          // Built-in signals only need the type
+          signalId = { type: type as Exclude<ExternalSignalType, 'CUSTOM'> };
+        }
+        signalIds.push(signalId);
+      }
+    };
+
+    // Start processing from the root
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (conditionSet.conditions) {
+      for (const condition of conditionSet.conditions) {
+        processCondition(condition);
+      }
+    }
+
+    return signalIds;
+  }
 }
 
 export default inject(
@@ -829,6 +919,7 @@ export default inject(
     'ActionStatisticsService',
     'Sequelize',
     'Tracer',
+    'SignalsService',
   ],
   RuleAPI,
 );

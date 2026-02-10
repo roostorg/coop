@@ -234,6 +234,7 @@ export const SIGNALS_FRAGMENT = gql`
       }
     }
     shouldPromptForMatchingValues
+    allowedInAutomatedRules
     eligibleSubcategories {
       id
       label
@@ -635,6 +636,7 @@ export default function RuleForm() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const [form] = useForm();
+  
 
   const onDeleteRule = (id: string) => {
     deleteRule({
@@ -1094,6 +1096,7 @@ export default function RuleForm() {
             eligibleInputs={state.eligibleInputs}
             selectedItemTypes={state.selectedItemTypes}
             allSignals={allSignals}
+            isAutomatedRule={true}
             onUpdateInput={(input, signals) =>
               dispatch({
                 type: RuleFormReducerActionType.UpdateInput,

@@ -54,6 +54,10 @@ export default abstract class TextRegexMatchingSignalBase extends SignalBase<
   override getCost() {
     return 0;
   }
+
+  override get allowedInAutomatedRules() {
+    return true;
+  }
 }
 
 /**

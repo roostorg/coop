@@ -57,6 +57,10 @@ export default class ImageExactMatchSignal extends SignalBase<
     return 10;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override get recommendedThresholds() {
     return null;
   }

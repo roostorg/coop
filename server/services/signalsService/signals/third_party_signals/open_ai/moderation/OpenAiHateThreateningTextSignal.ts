@@ -93,6 +93,10 @@ export default class OpenAiHateThreateningTextSignal extends SignalBase<
     return 20;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   async run(input: SignalInput<ScalarTypes['STRING']>) {
     return runOpenAiModerationImpl(
       this.getOpenAiCredentials,

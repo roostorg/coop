@@ -117,6 +117,7 @@ export default function RuleFormCondition(props: {
   eligibleInputs: Map<string, ConditionInput[]>;
   selectedItemTypes: RuleFormConfigResponse['itemTypes'];
   allSignals: RuleFormConfigResponse['signals'];
+  isAutomatedRule?: boolean;
   onUpdateInput: (
     input: SimplifiedConditionInput,
     allSignals: readonly CoreSignal[],
@@ -141,6 +142,7 @@ export default function RuleFormCondition(props: {
     eligibleInputs,
     selectedItemTypes,
     allSignals,
+    isAutomatedRule,
     onUpdateInput,
     onUpdateSignal,
     onUpdateSignalSubcategory,
@@ -232,6 +234,7 @@ export default function RuleFormCondition(props: {
         location={location}
         onUpdateSignal={onUpdateSignal}
         onUpdateSignalSubcategory={onUpdateSignalSubcategory}
+        isAutomatedRule={isAutomatedRule}
       />
       <RuleFormConditionSignalArgs
         condition={condition}

@@ -57,6 +57,10 @@ export default class AggregationSignal extends SignalBase<
     return 0;
   }
 
+  get allowedInAutomatedRules() {
+    return true;
+  }
+
   override async getDisabledInfo() {
     return { disabled: false as const };
   }

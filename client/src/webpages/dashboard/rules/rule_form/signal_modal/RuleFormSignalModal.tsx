@@ -17,8 +17,10 @@ export default function RuleFormSignalModal(props: {
   // If the user has already selected a signal, the modal needs to know
   // which signal it is.
   selectedSignal?: CoreSignal;
+  // Whether this is the automated rule form ( proactive/autoenforcements )
+  isAutomatedRule?: boolean;
 }) {
-  const { visible, allSignals, onSelectSignal, onClose, selectedSignal } =
+  const { visible, allSignals, onSelectSignal, onClose, selectedSignal, isAutomatedRule } =
     props;
 
   const onModalClose = () => {
@@ -102,6 +104,7 @@ export default function RuleFormSignalModal(props: {
               onSelectSignal(signal);
             }
           }}
+          isAutomatedRule={isAutomatedRule}
         />
       )}
     </CoopModal>

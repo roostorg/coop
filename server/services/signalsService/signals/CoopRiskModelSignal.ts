@@ -94,6 +94,10 @@ export default class CoopRiskModelSignal extends SignalBase<
     return 15;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override get needsActionPenalties() {
     return false as const;
   }

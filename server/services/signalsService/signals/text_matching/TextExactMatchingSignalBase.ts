@@ -57,4 +57,8 @@ export default abstract class TextExactMatchingSignalBase extends SignalBase<
   override getCost() {
     return 0;
   }
+
+  override get allowedInAutomatedRules() {
+    return true;
+  }
 }

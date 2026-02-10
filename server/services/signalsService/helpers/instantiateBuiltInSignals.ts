@@ -22,6 +22,7 @@ import TextMatchingContainsRegexSignal from '../signals/text_matching/TextMatchi
 import TextMatchingContainsTextSignal from '../signals/text_matching/TextMatchingContainsTextSignal.js';
 import TextMatchingNotContainsRegexSignal from '../signals/text_matching/TextMatchingNotContainsRegexSignal.js';
 import TextMatchingNotContainsTextSignal from '../signals/text_matching/TextMatchingNotContainsTextSignal.js';
+import GoogleContentSafetyImageSignal from '../signals/third_party_signals/google/content_safety/GoogleContentSafetyImageSignal.js';
 import GoogleCloudTranslationAPISignal from '../signals/third_party_signals/google/GoogleCloudTranslationAPISignal.js';
 import OpenAiGraphicViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceTextSignal.js';
 import OpenAiHateTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.js';
@@ -51,6 +52,7 @@ export function instantiateBuiltInSignals(
   hmaService: HmaService,
 ) {
   const {
+    googleContentSafetyFetcher: getGoogleContentSafetyScores,
     openAiModerationFetcher: getOpenAiScores,
     openAiWhisperTranscriptionFetcher: getOpenAiTranscription,
   } = cachedFetchers;
@@ -75,6 +77,11 @@ export function instantiateBuiltInSignals(
     [SignalType.IMAGE_SIMILARITY_MATCH]: new ImageSimilarityMatchSignal(
       hmaService,
     ),
+    [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]:
+      new GoogleContentSafetyImageSignal(
+        credentialGetters.GOOGLE_CONTENT_SAFETY_API,
+        getGoogleContentSafetyScores,
+      ),
     [SignalType.OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL]:
       new OpenAiGraphicViolenceTextSignal(
         credentialGetters.OPEN_AI,

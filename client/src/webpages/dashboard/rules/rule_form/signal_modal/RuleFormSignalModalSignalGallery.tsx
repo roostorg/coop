@@ -12,8 +12,9 @@ export default function RuleFormSignalModalSignalGallery(props: {
   allSignals: CoreSignal[];
   onSelectSignal: (signal: CoreSignal) => void;
   onSignalInfoSelected: (signal: CoreSignal) => void;
+  isAutomatedRule?: boolean;
 }) {
-  const { allSignals, onSelectSignal, onSignalInfoSelected } = props;
+  const { allSignals, onSelectSignal, onSignalInfoSelected, isAutomatedRule } = props;
   const { data: isDemoOrgData } = useGQLIsDemoOrgQuery();
   const isDemoOrg = isDemoOrgData?.myOrg?.isDemoOrg ?? false;
 
@@ -59,29 +60,45 @@ export default function RuleFormSignalModalSignalGallery(props: {
       {filteredSignals?.length ? (
         <div className="grid grid-cols-3 max-h-[75vh] gap-4 overflow-scroll px-5 py-2">
           {[...filteredSignals]
+            .map((signal) => {
+              // Override disabledInfo if signal is restricted for automated rules
+              const effectiveDisabledInfo = 
+                isAutomatedRule && !signal.allowedInAutomatedRules
+                  ? {
+                      __typename: 'DisabledInfo' as const,
+                      disabled: true,
+                      disabledMessage: 'This signal can only be used in routing rules, not in automated rules with actions.',
+                    }
+                  : signal.disabledInfo;
+              
+              return {
+                signal,
+                effectiveDisabledInfo,
+              };
+            })
             .sort((a, b) =>
-              a.disabledInfo.disabled && !b.disabledInfo.disabled
+              a.effectiveDisabledInfo.disabled && !b.effectiveDisabledInfo.disabled
                 ? 1
-                : !a.disabledInfo.disabled && b.disabledInfo.disabled
+                : !a.effectiveDisabledInfo.disabled && b.effectiveDisabledInfo.disabled
                 ? -1
-                : `${a.integration}_${a.name}`.localeCompare(
-                    `${b.integration}_${b.name}`,
+                : `${a.signal.integration}_${a.signal.name}`.localeCompare(
+                    `${b.signal.integration}_${b.signal.name}`,
                   ),
             )
-            .map((signal) => (
+            .map(({ signal, effectiveDisabledInfo }) => (
               <div key={signal.name}>
-                <RuleFormSignalModalMenuItem
-                  key={signal.id}
-                  signal={signal}
-                  imagePath={
-                    INTEGRATION_CONFIGS.find(
-                      (it) => it.name === signal.integration,
-                    )?.logoWithBackground
-                  }
-                  onClick={() => onSelectSignal(signal)}
-                  infoButtonTapped={() => onSignalInfoSelected(signal)}
-                  disabledInfo={signal.disabledInfo}
-                />
+                  <RuleFormSignalModalMenuItem
+                    key={signal.id}
+                    signal={signal}
+                    imagePath={
+                      INTEGRATION_CONFIGS.find(
+                        (it) => it.name === signal.integration,
+                      )?.logoWithBackground
+                    }
+                    onClick={() => onSelectSignal(signal)}
+                    infoButtonTapped={() => onSignalInfoSelected(signal)}
+                    disabledInfo={effectiveDisabledInfo}
+                  />
               </div>
             ))}
         </div>

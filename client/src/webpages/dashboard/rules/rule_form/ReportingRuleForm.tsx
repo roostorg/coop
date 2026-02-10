@@ -566,6 +566,7 @@ export default function RuleForm() {
             eligibleInputs={state.eligibleInputs}
             selectedItemTypes={state.selectedItemTypes}
             allSignals={allSignals}
+            isAutomatedRule={true}
             onUpdateInput={(input, signals) =>
               dispatch({
                 type: ReportingRuleFormReducerActionType.UpdateInput,

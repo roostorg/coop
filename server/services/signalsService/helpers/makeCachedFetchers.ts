@@ -9,6 +9,7 @@ import {
 } from '../../../utils/encoding.js';
 import { isCoopErrorOfType, type CoopError } from '../../../utils/errors.js';
 import { type JSON } from '../../../utils/json-schema-types.js';
+import { getGoogleContentSafetyScores } from '../signals/third_party_signals/google/content_safety/googleContentSafetyLib.js';
 import { getOpenAiModerationScores } from '../signals/third_party_signals/open_ai/moderation/openAIModerationUtils.js';
 import { getOpenAiTranscription } from '../signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.js';
 
@@ -30,6 +31,9 @@ export function makeCachedFetchers(
   // entry, which seems conservative, that's only a meager ~2mb per cache.
 
   return {
+    googleContentSafetyFetcher: toCachedFetcher(
+      getGoogleContentSafetyScores.bind(null, fetchHTTP, tracer),
+    ),
     openAiModerationFetcher: toCachedFetcher(
       getOpenAiModerationScores.bind(null, fetchHTTP, tracer),
     ),

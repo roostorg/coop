@@ -22,6 +22,7 @@ export function makeCachedCredentialGetters(
     });
 
   return {
+    GOOGLE_CONTENT_SAFETY_API: getApiCredentialForIntegration('GOOGLE_CONTENT_SAFETY_API'),
     OPEN_AI: getApiCredentialForIntegration('OPEN_AI'),
   };
 }

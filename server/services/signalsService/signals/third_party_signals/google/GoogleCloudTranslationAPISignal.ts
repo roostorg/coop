@@ -84,6 +84,10 @@ export default class GoogleCloudTranslationAPISignal extends SignalBase<
     return 20;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override async run(
     input: SignalInput<ScalarTypes['STRING']>,
   ): Promise<SignalResult<{ scalarType: ScalarTypes['STRING'] }>> {

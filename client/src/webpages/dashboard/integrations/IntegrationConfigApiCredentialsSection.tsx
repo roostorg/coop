@@ -1,6 +1,7 @@
 import { Input } from 'antd';
 
 import {
+  GQLGoogleContentSafetyApiIntegrationApiCredential,
   GQLIntegration,
   GQLIntegrationApiCredential,
   GQLOpenAiIntegrationApiCredential,
@@ -12,6 +13,25 @@ export default function IntegrationConfigApiCredentialsSection(props: {
   apiCredential: GQLIntegrationApiCredential;
 }) {
   const { setApiCredential, apiCredential } = props;
+
+  const renderGoogleContentSafetyApiCredential = (
+    apiCredential: GQLGoogleContentSafetyApiIntegrationApiCredential,
+  ) => {
+    return (
+      <div className="flex flex-col w-1/2">
+        <div className="mb-1">API Key</div>
+        <Input
+          value={apiCredential.apiKey}
+          onChange={(event) =>
+            setApiCredential({
+              ...apiCredential,
+              apiKey: event.target.value,
+            })
+          }
+        />
+      </div>
+    );
+  };
 
   const renderOpenAiCredential = (
     apiCredential: GQLOpenAiIntegrationApiCredential,
@@ -34,6 +54,8 @@ export default function IntegrationConfigApiCredentialsSection(props: {
 
   const projectKeysInput = () => {
     switch (apiCredential.__typename) {
+      case 'GoogleContentSafetyApiIntegrationApiCredential':
+        return renderGoogleContentSafetyApiCredential(apiCredential);
       case 'OpenAiIntegrationApiCredential':
         return renderOpenAiCredential(apiCredential);
       default:

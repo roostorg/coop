@@ -75,6 +75,10 @@ export default class UserScoreSignal extends SignalBase<
     return 10;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override get eligibleSubcategories() {
     return [];
   }

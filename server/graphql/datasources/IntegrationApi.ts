@@ -41,15 +41,23 @@ class IntegrationAPI extends DataSource {
   ): Promise<TIntegrationConfig> {
     const { apiCredential } = params;
 
-    if (!apiCredential.openAi) {
-      throw new Error('OpenAI credentials are required');
+    if (apiCredential.googleContentSafetyApi) {
+      return this.__private__setConfig(
+        'GOOGLE_CONTENT_SAFETY_API',
+        { apiKey: apiCredential.googleContentSafetyApi.apiKey },
+        orgId,
+      );
     }
 
-    return this.__private__setConfig(
-      'OPEN_AI',
-      { apiKey: apiCredential.openAi.apiKey },
-      orgId,
-    );
+    if (apiCredential.openAi) {
+      return this.__private__setConfig(
+        'OPEN_AI',
+        { apiKey: apiCredential.openAi.apiKey },
+        orgId,
+      );
+    }
+
+    throw new Error('No credentials provided');
   }
 
   async getConfig(
