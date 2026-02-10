@@ -32,6 +32,7 @@ export type SignalArgsByType = Satisfies<
     [SignalType.OPEN_AI_SEXUAL_MINORS_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SEXUAL_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_VIOLENCE_TEXT_MODEL]: undefined;
+    [SignalType.ZENTROPI_LABELER]: undefined;
     [SignalType.CUSTOM]: undefined;
   },
   { [K in SignalType]: unknown }
@@ -66,6 +67,7 @@ export type RuntimeSignalArgsByType = Satisfies<
     [SignalType.OPEN_AI_SEXUAL_MINORS_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SEXUAL_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_VIOLENCE_TEXT_MODEL]: undefined;
+    [SignalType.ZENTROPI_LABELER]: undefined;
     [SignalType.CUSTOM]: undefined;
   },
   { [K in SignalType]: unknown }

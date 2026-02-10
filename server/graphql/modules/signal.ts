@@ -96,6 +96,7 @@ const typeDefs = /* GraphQL */ `
     OPEN_AI_SEXUAL_TEXT_MODEL
     OPEN_AI_VIOLENCE_TEXT_MODEL
     OPEN_AI_WHISPER_TRANSCRIPTION
+    ZENTROPI_LABELER
     GEO_CONTAINED_WITHIN
     USER_SCORE
     USER_STRIKE_VALUE
@@ -162,7 +163,6 @@ const typeDefs = /* GraphQL */ `
   enum AggregationType {
     COUNT
   }
-
 `;
 
 const SignalOutputType: ResolverMap<TSignalOutputType> = {

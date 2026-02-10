@@ -1251,17 +1251,20 @@ export const GQLIntegration = {
   OpenAi: 'OPEN_AI',
   SightEngine: 'SIGHT_ENGINE',
   TwoHat: 'TWO_HAT',
+  Zentropi: 'ZENTROPI',
 } as const;
 
 export type GQLIntegration =
   (typeof GQLIntegration)[keyof typeof GQLIntegration];
 export type GQLIntegrationApiCredential =
   | GQLGoogleContentSafetyApiIntegrationApiCredential
-  | GQLOpenAiIntegrationApiCredential;
+  | GQLOpenAiIntegrationApiCredential
+  | GQLZentropiIntegrationApiCredential;
 
 export type GQLIntegrationApiCredentialInput = {
   readonly googleContentSafetyApi?: InputMaybe<GQLGoogleContentSafetyApiIntegrationApiCredentialInput>;
   readonly openAi?: InputMaybe<GQLOpenAiIntegrationApiCredentialInput>;
+  readonly zentropi?: InputMaybe<GQLZentropiIntegrationApiCredentialInput>;
 };
 
 export type GQLIntegrationConfig = {
@@ -3949,6 +3952,7 @@ export const GQLSignalType = {
   TextSimilarityScore: 'TEXT_SIMILARITY_SCORE',
   UserScore: 'USER_SCORE',
   UserStrikeValue: 'USER_STRIKE_VALUE',
+  ZentropiLabeler: 'ZENTROPI_LABELER',
 } as const;
 
 export type GQLSignalType = (typeof GQLSignalType)[keyof typeof GQLSignalType];
@@ -4661,6 +4665,15 @@ export type GQLWindowConfiguration = {
 export type GQLWindowConfigurationInput = {
   readonly hopMs: Scalars['Int'];
   readonly sizeMs: Scalars['Int'];
+};
+
+export type GQLZentropiIntegrationApiCredential = {
+  readonly __typename: 'ZentropiIntegrationApiCredential';
+  readonly apiKey: Scalars['String'];
+};
+
+export type GQLZentropiIntegrationApiCredentialInput = {
+  readonly apiKey: Scalars['String'];
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -5580,7 +5593,8 @@ export type GQLIntegrationConfigQuery = {
             | {
                 readonly __typename: 'OpenAiIntegrationApiCredential';
                 readonly apiKey: string;
-              };
+              }
+            | { readonly __typename: 'ZentropiIntegrationApiCredential' };
         } | null;
       }
     | {
