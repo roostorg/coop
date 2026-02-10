@@ -2,16 +2,17 @@
 import { type ItemIdentifier } from '@roostorg/types';
 
 import type { AggregationsService } from '../../aggregationsService/index.js';
+import type { HmaService } from '../../hmaService/index.js';
 import type { GetPoliciesByIdEventuallyConsistent } from '../../manualReviewToolService/manualReviewToolQueries.js';
 import { type UserScore } from '../../userStatisticsService/userStatisticsService.js';
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
+import CoopRiskModelSignal from '../signals/CoopRiskModelSignal.js';
 import GeoContainedWithinSignal from '../signals/GeoContainedWithinSignal.js';
 import ImageExactMatchSignal from '../signals/ImageExactMatchSignal.js';
-import ImageSimilarityScoreSignal from '../signals/ImageSimilarityScoreSignal.js';
 import ImageSimilarityDoesNotMatchSignal from '../signals/ImageSimilarityDoesNotMatch.js';
 import ImageSimilarityMatchSignal from '../signals/ImageSimilarityMatch.js';
-import CoopRiskModelSignal from '../signals/CoopRiskModelSignal.js';
+import ImageSimilarityScoreSignal from '../signals/ImageSimilarityScoreSignal.js';
 import {
   type SignalBase,
   type SignalInputType,
@@ -32,12 +33,12 @@ import OpenAiSexualMinorsTextSignal from '../signals/third_party_signals/open_ai
 import OpenAiSexualTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSexualTextSignal.js';
 import OpenAiViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiViolenceTextSignal.js';
 import OpenAiWhisperTranscriptionSignal from '../signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.js';
+import ZentropiLabelerSignal from '../signals/third_party_signals/zentropi/ZentropiLabelerSignal.js';
 import UserScoreSignal from '../signals/UserScoreSignal.js';
 import UserStrikesSignal from '../signals/UserStrikesSignal.js';
 import { SignalType, type BuiltInSignalType } from '../types/SignalType.js';
 import { type CredentialGetters } from './makeCachedCredentialsGetters.js';
 import { type CachedFetchers } from './makeCachedFetchers.js';
-import type { HmaService } from '../../hmaService/index.js';
 
 export function instantiateBuiltInSignals(
   credentialGetters: CredentialGetters,
@@ -55,6 +56,7 @@ export function instantiateBuiltInSignals(
     googleContentSafetyFetcher: getGoogleContentSafetyScores,
     openAiModerationFetcher: getOpenAiScores,
     openAiWhisperTranscriptionFetcher: getOpenAiTranscription,
+    zentropiFetcher: getZentropiScores,
   } = cachedFetchers;
 
   return {
@@ -71,9 +73,8 @@ export function instantiateBuiltInSignals(
     [SignalType.TEXT_SIMILARITY_SCORE]: new TextSimilarityScoreSignal(),
     [SignalType.IMAGE_EXACT_MATCH]: new ImageExactMatchSignal(),
     [SignalType.IMAGE_SIMILARITY_SCORE]: new ImageSimilarityScoreSignal(),
-    [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]: new ImageSimilarityDoesNotMatchSignal(
-      hmaService,
-    ),
+    [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]:
+      new ImageSimilarityDoesNotMatchSignal(hmaService),
     [SignalType.IMAGE_SIMILARITY_MATCH]: new ImageSimilarityMatchSignal(
       hmaService,
     ),
@@ -127,6 +128,10 @@ export function instantiateBuiltInSignals(
       new GoogleCloudTranslationAPISignal(),
     [SignalType.BENIGN_MODEL]: new CoopRiskModelSignal(),
     [SignalType.AGGREGATION]: new AggregationSignal(aggregationsService),
+    [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
+      credentialGetters.ZENTROPI,
+      getZentropiScores,
+    ),
     // Satisfies check to make sure we didn't forget any signals.
   } satisfies { [K in BuiltInSignalType]: SignalBase<SignalInputType> };
 }
