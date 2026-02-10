@@ -26,7 +26,7 @@ function makeInput(
 }
 
 function makeCredentialGetter(
-  apiKey: string | undefined = 'test-api-key',
+  apiKey: string | null = 'test-api-key',
 ): CachedGetCredentials<'ZENTROPI'> {
   const fn = jest
     .fn()
@@ -99,6 +99,36 @@ describe('zentropiUtils', () => {
       expect(result.score).toBe(0.6);
     });
 
+    it('handles label as string "1" (API returns strings)', async () => {
+      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+        label: '1',
+        confidence: 0.95,
+      } satisfies ZentropiResponse);
+
+      const result = await runZentropiLabelerImpl(
+        makeCredentialGetter(),
+        makeInput(),
+        fetchScores,
+      );
+
+      expect(result.score).toBe(0.95);
+    });
+
+    it('handles label as string "0" (API returns strings)', async () => {
+      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+        label: '0',
+        confidence: 0.95,
+      } satisfies ZentropiResponse);
+
+      const result = await runZentropiLabelerImpl(
+        makeCredentialGetter(),
+        makeInput(),
+        fetchScores,
+      );
+
+      expect(result.score).toBeCloseTo(0.05);
+    });
+
     it('returns correct outputType', async () => {
       const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
         label: 1,
@@ -121,7 +151,7 @@ describe('zentropiUtils', () => {
 
       await expect(
         runZentropiLabelerImpl(
-          makeCredentialGetter(undefined),
+          makeCredentialGetter(null),
           makeInput(),
           fetchScores,
         ),

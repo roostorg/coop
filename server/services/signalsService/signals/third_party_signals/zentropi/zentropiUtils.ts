@@ -8,7 +8,7 @@ import { SignalPricingStructure } from '../../../types/SignalPricingStructure.js
 import { type SignalDisabledInfo, type SignalInput } from '../../SignalBase.js';
 
 export interface ZentropiResponse {
-  label: 0 | 1;
+  label: 0 | 1 | '0' | '1';
   confidence: number;
   explanation?: string;
 }
@@ -85,7 +85,7 @@ export async function runZentropiLabelerImpl(
   // label=0 (safe) → invert confidence
   // Result: 0 = confidently safe, 0.5 = uncertain, 1 = confidently violating
   const { label, confidence } = response;
-  const score = label === 1 ? confidence : 1 - confidence;
+  const score = Number(label) === 1 ? confidence : 1 - confidence;
 
   return {
     score,

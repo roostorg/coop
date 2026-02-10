@@ -13,7 +13,7 @@ import {
 type StringSignalInput = SignalInput<ScalarTypes['STRING']>;
 
 function makeCredentialGetter(
-  apiKey: string | undefined = 'test-api-key',
+  apiKey: string | null = 'test-api-key',
 ): CachedGetCredentials<'ZENTROPI'> {
   const fn = jest
     .fn()
@@ -56,7 +56,7 @@ describe('ZentropiLabelerSignal', () => {
 
   it('returns disabled info when credentials are missing', async () => {
     const signal = new ZentropiLabelerSignal(
-      makeCredentialGetter(undefined),
+      makeCredentialGetter(null),
       jest.fn(),
     );
 
