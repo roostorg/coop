@@ -188,7 +188,7 @@ export default function IntegrationConfigForm() {
       'googleContentSafetyApi' in mappedApiCredential &&
       !(
         mappedApiCredential[
-          'googleContentSafetyApi'
+        'googleContentSafetyApi'
         ] as GQLGoogleContentSafetyApiIntegrationApiCredential
       ).apiKey
     ) {
@@ -234,15 +234,15 @@ export default function IntegrationConfigForm() {
   const [modalTitle, modalBody, modalButtonText] =
     mutationError == null
       ? [
-          `${formattedName} Config Saved`,
-          `Your ${formattedName} Config was successfully saved!`,
-          'Done',
-        ]
+        `${formattedName} Config Saved`,
+        `Your ${formattedName} Config was successfully saved!`,
+        'Done',
+      ]
       : [
-          `Error Saving ${formattedName} Config`,
-          `We encountered an error trying to save your ${formattedName} Config. Please try again.`,
-          'OK',
-        ];
+        `Error Saving ${formattedName} Config`,
+        `We encountered an error trying to save your ${formattedName} Config. Please try again.`,
+        'OK',
+      ];
 
   const onHideModal = () => {
     hideModal();
@@ -276,9 +276,11 @@ export default function IntegrationConfigForm() {
       case GQLIntegration.GoogleContentSafetyApi:
         return (
           <>
-            Content Safety API is an AI classifier which issues a Child Safety prioritization recommendation on content sent to it. 
-            Content Safety API users must conduct their own manual review in order to determine whether to take action on the content, 
-            and comply with applicable local reporting laws. Apply for API keys{' '}
+            The Content Safety API is an AI classifier which issues a Child 
+            Safety prioritization recommendation on content sent to it. Content Safety API users
+            must conduct their own manual review in order to determine whether to take
+            action on the content, and comply with applicable local reporting
+            laws. Apply for API keys{' '}
             <a
               href="https://protectingchildren.google/tools-for-partners/"
               target="_blank"
@@ -287,8 +289,10 @@ export default function IntegrationConfigForm() {
             >
               here
             </a>
-            {' '}and mention in your application that you are using the COOP moderation tool. Upon reviewing your application, 
-            Google will be back in touch shortly to take the application forward if you qualify.
+            {' '}
+            and mention in your application that you are using the COOP
+            moderation tool. Upon reviewing your application, Google will be
+            back in touch shortly to take the application forward if you qualify.
           </>
         );
       case GQLIntegration.OpenAi:

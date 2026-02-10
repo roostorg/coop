@@ -36,7 +36,7 @@ export default class GoogleContentSafetyImageSignal extends SignalBase<
   }
 
   override get description() {
-    return `Google's Content Safety API uses AI to classify and prioritize files for child safety manual review. The API returns a priority value (VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH) indicating the likelihood that the image is abusive`;
+    return `Google's Content Safety API uses AI to classify and prioritize files for child safety manual review. The API returns a priority value (VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH) indicating the likelihood that the image is abusive.`;
   }
 
   override get docsUrl() {
