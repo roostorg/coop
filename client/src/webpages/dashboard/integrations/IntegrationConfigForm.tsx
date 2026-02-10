@@ -290,7 +290,7 @@ export default function IntegrationConfigForm() {
               here
             </a>
             {' '}
-            and mention in your application that you are using the COOP
+            and mention in your application that you are using the Coop
             moderation tool. Upon reviewing your application, Google will be
             back in touch shortly to take the application forward if you qualify.
           </>
