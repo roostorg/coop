@@ -60,6 +60,8 @@ export function integrationForSignalType(type: GQLSignalType) {
     case 'OPEN_AI_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_WHISPER_TRANSCRIPTION':
       return GQLIntegration.OpenAi;
+    case 'ZENTROPI_LABELER':
+      return GQLIntegration.Zentropi;
     case 'AGGREGATION':
     case 'CUSTOM':
     case 'GEO_CONTAINED_WITHIN':

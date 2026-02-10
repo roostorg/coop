@@ -227,7 +227,25 @@ const Signal: GQLSignalResolvers = {
       return { languages: supportedLanguages satisfies readonly GQLLanguage[] };
     }
   },
-  eligibleSubcategories(signal) {
+  async eligibleSubcategories(signal, _, context) {
+    // For Zentropi signals, return org-specific labeler versions as subcategories
+    if (signal.id.type === 'ZENTROPI_LABELER') {
+      const user = context.getUser();
+      if (user) {
+        const config = await context.dataSources.integrationAPI.getConfig(
+          user.orgId,
+          'ZENTROPI',
+        );
+        if (config?.name === 'ZENTROPI') {
+          const versions = config.apiCredential.labelerVersions ?? [];
+          return versions.map((v) => ({
+            id: v.id,
+            label: v.label,
+            childrenIds: [],
+          }));
+        }
+      }
+    }
     return flattenSubcategories(signal.eligibleSubcategories);
   },
   shouldPromptForMatchingValues(signal) {

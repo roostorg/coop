@@ -60,7 +60,10 @@ class IntegrationAPI extends DataSource {
     if (apiCredential.zentropi) {
       return this.__private__setConfig(
         'ZENTROPI',
-        { apiKey: apiCredential.zentropi.apiKey },
+        {
+          apiKey: apiCredential.zentropi.apiKey,
+          labelerVersions: [...(apiCredential.zentropi.labelerVersions ?? [])],
+        },
         orgId,
       );
     }

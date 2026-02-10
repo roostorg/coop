@@ -18,21 +18,22 @@ const typeDefs = /* GraphQL */ `
 `;
 
 const Query: GQLQueryResolvers = {
-  async spotTestRule(_, { ruleId, item }, { services, getUser }) {
+  async spotTestRule(_, { ruleId, item }, { services, dataSources, getUser }) {
     const user = getUser();
     if (user == null) {
       throw new AuthenticationError('Authenticated user required');
     }
 
-    const [itemTypes, enabledRules] = await Promise.all([
-      await services.ModerationConfigService.getItemTypes({
+    const [itemTypes, rule] = await Promise.all([
+      services.ModerationConfigService.getItemTypes({
         orgId: user.orgId,
         directives: { maxAge: 10 },
       }),
-      await services.getEnabledRulesForItemTypeEventuallyConsistent(
-        item.itemTypeIdentifier.id,
-      ),
+      dataSources.ruleAPI.getGraphQLRuleFromId(ruleId, user.orgId),
     ]);
+    if (!rule) {
+      throw new Error('Could not find rule');
+    }
     const itemType = itemTypes.find(
       (it) => it.id === item.itemTypeIdentifier.id,
     );
@@ -64,10 +65,6 @@ const Query: GQLQueryResolvers = {
       orgId: user.orgId,
       input: itemSubmissionOrErrors.itemSubmission,
     });
-    const rule = enabledRules?.find((rule) => rule.id === ruleId);
-    if (!rule) {
-      throw new Error('Could not find rule');
-    }
     const result = await services.RuleEvaluator.runRule(
       rule.conditionSet,
       executionContext,

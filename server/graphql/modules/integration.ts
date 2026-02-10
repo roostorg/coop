@@ -36,8 +36,14 @@ const typeDefs = /* GraphQL */ `
     apiKey: String!
   }
 
+  type ZentropiLabelerVersion {
+    id: String!
+    label: String!
+  }
+
   type ZentropiIntegrationApiCredential {
     apiKey: String!
+    labelerVersions: [ZentropiLabelerVersion!]!
   }
 
   union IntegrationApiCredential =
@@ -58,8 +64,14 @@ const typeDefs = /* GraphQL */ `
     apiKey: String!
   }
 
+  input ZentropiLabelerVersionInput {
+    id: String!
+    label: String!
+  }
+
   input ZentropiIntegrationApiCredentialInput {
     apiKey: String!
+    labelerVersions: [ZentropiLabelerVersionInput!]
   }
 
   input IntegrationApiCredentialInput {

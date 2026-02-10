@@ -4739,10 +4739,25 @@ export type GQLWindowConfigurationInput = {
 export type GQLZentropiIntegrationApiCredential = {
   readonly __typename?: 'ZentropiIntegrationApiCredential';
   readonly apiKey: Scalars['String'];
+  readonly labelerVersions: ReadonlyArray<GQLZentropiLabelerVersion>;
 };
 
 export type GQLZentropiIntegrationApiCredentialInput = {
   readonly apiKey: Scalars['String'];
+  readonly labelerVersions?: InputMaybe<
+    ReadonlyArray<GQLZentropiLabelerVersionInput>
+  >;
+};
+
+export type GQLZentropiLabelerVersion = {
+  readonly __typename?: 'ZentropiLabelerVersion';
+  readonly id: Scalars['String'];
+  readonly label: Scalars['String'];
+};
+
+export type GQLZentropiLabelerVersionInput = {
+  readonly id: Scalars['String'];
+  readonly label: Scalars['String'];
 };
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
@@ -5717,6 +5732,8 @@ export type GQLResolversTypes = {
   WindowConfigurationInput: GQLWindowConfigurationInput;
   ZentropiIntegrationApiCredential: ResolverTypeWrapper<GQLZentropiIntegrationApiCredential>;
   ZentropiIntegrationApiCredentialInput: GQLZentropiIntegrationApiCredentialInput;
+  ZentropiLabelerVersion: ResolverTypeWrapper<GQLZentropiLabelerVersion>;
+  ZentropiLabelerVersionInput: GQLZentropiLabelerVersionInput;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -6479,6 +6496,8 @@ export type GQLResolversParentTypes = {
   WindowConfigurationInput: GQLWindowConfigurationInput;
   ZentropiIntegrationApiCredential: GQLZentropiIntegrationApiCredential;
   ZentropiIntegrationApiCredentialInput: GQLZentropiIntegrationApiCredentialInput;
+  ZentropiLabelerVersion: GQLZentropiLabelerVersion;
+  ZentropiLabelerVersionInput: GQLZentropiLabelerVersionInput;
 };
 
 export type GQLPublicResolverDirectiveArgs = {};
@@ -13696,6 +13715,21 @@ export type GQLZentropiIntegrationApiCredentialResolvers<
     GQLResolversParentTypes['ZentropiIntegrationApiCredential'] = GQLResolversParentTypes['ZentropiIntegrationApiCredential'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  labelerVersions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ZentropiLabelerVersion']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLZentropiLabelerVersionResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ZentropiLabelerVersion'] = GQLResolversParentTypes['ZentropiLabelerVersion'],
+> = {
+  id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -14009,6 +14043,7 @@ export type GQLResolvers<ContextType = Context> = {
   UserSubmissionsHistory?: GQLUserSubmissionsHistoryResolvers<ContextType>;
   WindowConfiguration?: GQLWindowConfigurationResolvers<ContextType>;
   ZentropiIntegrationApiCredential?: GQLZentropiIntegrationApiCredentialResolvers<ContextType>;
+  ZentropiLabelerVersion?: GQLZentropiLabelerVersionResolvers<ContextType>;
 };
 
 export type GQLDirectiveResolvers<ContextType = Context> = {

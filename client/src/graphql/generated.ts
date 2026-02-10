@@ -4670,10 +4670,25 @@ export type GQLWindowConfigurationInput = {
 export type GQLZentropiIntegrationApiCredential = {
   readonly __typename: 'ZentropiIntegrationApiCredential';
   readonly apiKey: Scalars['String'];
+  readonly labelerVersions: ReadonlyArray<GQLZentropiLabelerVersion>;
 };
 
 export type GQLZentropiIntegrationApiCredentialInput = {
   readonly apiKey: Scalars['String'];
+  readonly labelerVersions?: InputMaybe<
+    ReadonlyArray<GQLZentropiLabelerVersionInput>
+  >;
+};
+
+export type GQLZentropiLabelerVersion = {
+  readonly __typename: 'ZentropiLabelerVersion';
+  readonly id: Scalars['String'];
+  readonly label: Scalars['String'];
+};
+
+export type GQLZentropiLabelerVersionInput = {
+  readonly id: Scalars['String'];
+  readonly label: Scalars['String'];
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -5594,7 +5609,15 @@ export type GQLIntegrationConfigQuery = {
                 readonly __typename: 'OpenAiIntegrationApiCredential';
                 readonly apiKey: string;
               }
-            | { readonly __typename: 'ZentropiIntegrationApiCredential' };
+            | {
+                readonly __typename: 'ZentropiIntegrationApiCredential';
+                readonly apiKey: string;
+                readonly labelerVersions: ReadonlyArray<{
+                  readonly __typename: 'ZentropiLabelerVersion';
+                  readonly id: string;
+                  readonly label: string;
+                }>;
+              };
         } | null;
       }
     | {
@@ -27209,6 +27232,13 @@ export const GQLIntegrationConfigDocument = gql`
             }
             ... on OpenAiIntegrationApiCredential {
               apiKey
+            }
+            ... on ZentropiIntegrationApiCredential {
+              apiKey
+              labelerVersions {
+                id
+                label
+              }
             }
           }
         }

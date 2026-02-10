@@ -24,7 +24,11 @@ export type Credentials<T extends ConfigurableIntegration> = {
 
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
-export type ZentropiCredential = { apiKey: string };
+export type ZentropiLabelerVersion = { id: string; label: string };
+export type ZentropiCredential = {
+  apiKey: string;
+  labelerVersions?: ZentropiLabelerVersion[];
+};
 export type ClarifaiApiCredential = { apiKey: NonEmptyString };
 export type ClarifaiModelType = 'IMAGE' | 'TEXT';
 export type ClarifaiPATCredential = {
@@ -184,26 +188,52 @@ function makeImplementations(
     },
     [Integration.ZENTROPI]: {
       get: async (orgId: string) => {
-        return pg
+        const row = await pg
           .selectFrom('signal_auth_service.zentropi_configs')
-          .select(['api_key as apiKey'])
+          .select(['api_key', 'labeler_versions'])
           .where('org_id', '=', orgId)
           .executeTakeFirst();
+        if (row == null) return undefined;
+        const labelerVersions = row.labeler_versions;
+        return {
+          apiKey: row.api_key,
+          labelerVersions: Array.isArray(labelerVersions)
+            ? (labelerVersions as ZentropiLabelerVersion[])
+            : typeof labelerVersions === 'string'
+              ? (JSON.parse(labelerVersions) as ZentropiLabelerVersion[])
+              : [],
+        };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
-        return pg
+        const labelerVersionsJson = JSON.stringify(
+          credential.labelerVersions ?? [],
+        );
+        const row = await pg
           .insertInto('signal_auth_service.zentropi_configs')
           .values([
             {
               org_id: orgId,
               api_key: credential.apiKey,
+              labeler_versions: labelerVersionsJson,
             },
           ])
           .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({ api_key: credential.apiKey }),
+            oc.column('org_id').doUpdateSet({
+              api_key: credential.apiKey,
+              labeler_versions: labelerVersionsJson,
+            }),
           )
-          .returning(['api_key as apiKey'])
+          .returning(['api_key', 'labeler_versions'])
           .executeTakeFirstOrThrow();
+        const returnedVersions = row.labeler_versions;
+        return {
+          apiKey: row.api_key,
+          labelerVersions: Array.isArray(returnedVersions)
+            ? (returnedVersions as ZentropiLabelerVersion[])
+            : typeof returnedVersions === 'string'
+              ? (JSON.parse(returnedVersions) as ZentropiLabelerVersion[])
+              : [],
+        };
       },
       delete: async (orgId: string) => {
         await pg
