@@ -24,6 +24,7 @@ export type Credentials<T extends ConfigurableIntegration> = {
 
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
+export type ZentropiCredential = { apiKey: string };
 export type ClarifaiApiCredential = { apiKey: NonEmptyString };
 export type ClarifaiModelType = 'IMAGE' | 'TEXT';
 export type ClarifaiPATCredential = {
@@ -38,6 +39,7 @@ export type ClarifaiPATCredential = {
 export type CredentialTypes = {
   [Integration.GOOGLE_CONTENT_SAFETY_API]: GoogleContentSafetyCredential;
   [Integration.OPEN_AI]: OpenAICredential;
+  [Integration.ZENTROPI]: ZentropiCredential;
 };
 
 // Both our internal Integration enum and the external GQL enum include some
@@ -49,6 +51,7 @@ export type CredentialTypes = {
 export const configurableIntegrations = [
   Integration.GOOGLE_CONTENT_SAFETY_API,
   Integration.OPEN_AI,
+  Integration.ZENTROPI,
 ] as const;
 
 /**
@@ -179,6 +182,35 @@ function makeImplementations(
           .executeTakeFirst();
       },
     },
-
+    [Integration.ZENTROPI]: {
+      get: async (orgId: string) => {
+        return pg
+          .selectFrom('signal_auth_service.zentropi_configs')
+          .select(['api_key as apiKey'])
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+      },
+      set: async (orgId: string, credential: ZentropiCredential) => {
+        return pg
+          .insertInto('signal_auth_service.zentropi_configs')
+          .values([
+            {
+              org_id: orgId,
+              api_key: credential.apiKey,
+            },
+          ])
+          .onConflict((oc) =>
+            oc.column('org_id').doUpdateSet({ api_key: credential.apiKey }),
+          )
+          .returning(['api_key as apiKey'])
+          .executeTakeFirstOrThrow();
+      },
+      delete: async (orgId: string) => {
+        await pg
+          .deleteFrom('signal_auth_service.zentropi_configs')
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+      },
+    },
   };
 }
