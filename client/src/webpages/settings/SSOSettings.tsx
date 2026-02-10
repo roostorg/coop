@@ -159,8 +159,7 @@ export default function SSOSettings() {
         <Text id="SsoCert" size="SM">
           This is the certificate used to verify the identity of your
           organization when users attempt to log in via SSO. Please ensure this
-          certificate matches the one provided by your identity provider. For
-          more information on setting up SSO, please contact Coop directly.
+          certificate matches the one provided by your identity provider.
         </Text>
       </div>
       <Textarea

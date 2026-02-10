@@ -91,7 +91,36 @@ Rules Managers can create, edit, and deploy Rules, and they can view all metrics
 
 Once you invite a new user to Coop, you can either configure an email service to send the link to that person or copy the invite link and share it directly with them.
 
+### SSO
 
+Learn how to configure SSO using Okta SAML.
+
+Coop only supports SSO through Okta SAML.
+
+**Prerequisites**
+
+To configure Okta SAML SSO, you must:
+
+* Be in Admin mode in Okta.
+* Have group names that match exactly between Okta and SAML.
+* Have admin permissions in Coop.
+* Have the ability to create a custom SAML application.
+
+**Configuration**
+
+1. Create a [custom SAML application](https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm) in Okta. Use the following settings.
+
+   | Setting | Value |
+   | :------ | :---- |
+   | Single sign-on URL | Your organization's callback URL (e.g. `https://your-coop-instance.com/login/saml/12345/callback`). You can find your callback link in Coop under **Settings → SSO**. |
+   | Audience URI (SP Entity ID) | Your Coop instance base URL (e.g. `https://your-coop-instance.com`). |
+   | `email` attribute (in **Attribute Statements**) | `email`. This field depends on your Identity Provider's attribute mappings (e.g. Google SSO may use "Primary Email"). |
+
+2. In the **Feedback** tab, check **I'm a software vendor. I'd like to integrate my app with Okta**.
+3. In your app's settings, go to the **Sign On** tab. Under **SAML Signing Certificates → SHA-2**, click **Actions → View IdP metadata**.
+4. Copy the contents of the XML file. In Coop, go to **Settings → SSO** and paste the XML into the **Identity Provider Metadata** field.
+5. On the same page, enter `email` in the **Attributes** section.
+6. In your Okta app under **Assignments**, assign users or groups to your app.
 
 ### Wellness and Safety
 
