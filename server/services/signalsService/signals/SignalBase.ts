@@ -273,6 +273,20 @@ export default abstract class SignalBase<
   abstract get needsActionPenalties(): boolean;
 
   abstract get integration(): Integration | null;
+
+  /**
+   * Indicates whether this signal can be used in automated rules with actions.
+   * When false, the signal can only be used in routing rules (for manual review).
+   *
+   * This is useful for signals that:
+   * - Are intended only for prioritization/routing
+   * - Have high latency or cost
+   * - Require human review before action
+   * - Have regulatory or policy restrictions on automated decisions
+   *
+   * Default: true (most signals can be used in automated rules)
+   */
+  abstract get allowedInAutomatedRules(): boolean;
 }
 
 export { SignalBase };

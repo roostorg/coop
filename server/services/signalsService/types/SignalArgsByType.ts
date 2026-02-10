@@ -9,6 +9,7 @@ export type SignalArgsByType = Satisfies<
   {
     [SignalType.AGGREGATION]: { aggregationClause: AggregationClause };
     [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]: undefined;
+    [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]: undefined;
     [SignalType.OPEN_AI_WHISPER_TRANSCRIPTION]: undefined;
     [SignalType.TEXT_MATCHING_CONTAINS_TEXT]: undefined;
     [SignalType.TEXT_MATCHING_NOT_CONTAINS_TEXT]: undefined;
@@ -42,6 +43,7 @@ export type RuntimeSignalArgsByType = Satisfies<
   {
     [SignalType.AGGREGATION]: AggregationRuntimeArgsForItem;
     [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]: undefined;
+    [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]: undefined;
     [SignalType.OPEN_AI_WHISPER_TRANSCRIPTION]: undefined;
     [SignalType.TEXT_MATCHING_CONTAINS_TEXT]: undefined;
     [SignalType.TEXT_MATCHING_NOT_CONTAINS_TEXT]: undefined;

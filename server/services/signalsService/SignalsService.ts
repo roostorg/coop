@@ -39,6 +39,7 @@ const publicSignalProps = [
   'eligibleSubcategories',
   'getCost',
   'integration',
+  'allowedInAutomatedRules',
 ] as const;
 
 /**
@@ -325,6 +326,7 @@ export class SignalsService {
       eligibleSubcategories: it.eligibleSubcategories,
       getCost: it.getCost,
       integration: it.integration,
+      allowedInAutomatedRules: it.allowedInAutomatedRules,
     } satisfies Signal as Signal;
   }
 }

@@ -82,6 +82,10 @@ export default class UnusedCustomSignal extends SignalBase<SignalInputType> {
     return 30;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override get docsUrl() {
     return null;
   }

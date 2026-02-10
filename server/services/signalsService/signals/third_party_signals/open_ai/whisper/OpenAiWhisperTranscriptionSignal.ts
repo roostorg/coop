@@ -170,6 +170,10 @@ export default class OpenAiWhisperTranscriptionSignal extends SignalBase<
     return 20;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   async run(
     input: SignalInput<
       ScalarTypes['AUDIO'] | ScalarTypes['VIDEO'],

@@ -70,6 +70,7 @@ const typeDefs = /* GraphQL */ `
     callbackUrlBody: String
     eligibleSubcategories: [SignalSubcategory!]!
     args: SignalArgs
+    allowedInAutomatedRules: Boolean!
   }
 
   enum SignalType {
@@ -86,6 +87,7 @@ const typeDefs = /* GraphQL */ `
     IMAGE_SIMILARITY_DOES_NOT_MATCH
     IMAGE_SIMILARITY_MATCH
     BENIGN_MODEL
+    GOOGLE_CONTENT_SAFETY_API_IMAGE
     OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL
     OPEN_AI_HATE_TEXT_MODEL
     OPEN_AI_HATE_THREATENING_TEXT_MODEL
@@ -230,6 +232,9 @@ const Signal: GQLSignalResolvers = {
   },
   shouldPromptForMatchingValues(signal) {
     return signal.needsMatchingValues;
+  },
+  allowedInAutomatedRules(signal) {
+    return signal.allowedInAutomatedRules;
   },
 };
 

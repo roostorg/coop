@@ -22,6 +22,7 @@ export type Credentials<T extends ConfigurableIntegration> = {
   delete(orgId: string): Promise<void>;
 };
 
+export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
 export type ClarifaiApiCredential = { apiKey: NonEmptyString };
 export type ClarifaiModelType = 'IMAGE' | 'TEXT';
@@ -35,6 +36,7 @@ export type ClarifaiPATCredential = {
 // is the only place where you have to manually make the mapping from
 // integration name to credentials type.
 export type CredentialTypes = {
+  [Integration.GOOGLE_CONTENT_SAFETY_API]: GoogleContentSafetyCredential;
   [Integration.OPEN_AI]: OpenAICredential;
 };
 
@@ -45,6 +47,7 @@ export type CredentialTypes = {
 // integrations that only includes the subset of the Integrations enum for which
 // users can provide their own keys.
 export const configurableIntegrations = [
+  Integration.GOOGLE_CONTENT_SAFETY_API,
   Integration.OPEN_AI,
 ] as const;
 
@@ -116,6 +119,36 @@ function makeImplementations(
   pg: Kysely<SignalAuthServicePg>,
 ): CredentialImplementations {
   return {
+    [Integration.GOOGLE_CONTENT_SAFETY_API]: {
+      get: async (orgId: string) => {
+        return pg
+          .selectFrom('signal_auth_service.google_content_safety_configs')
+          .select(['api_key as apiKey'])
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+      },
+      set: async (orgId: string, credential: GoogleContentSafetyCredential) => {
+        return pg
+          .insertInto('signal_auth_service.google_content_safety_configs')
+          .values([
+            {
+              org_id: orgId,
+              api_key: credential.apiKey,
+            },
+          ])
+          .onConflict((oc) =>
+            oc.column('org_id').doUpdateSet({ api_key: credential.apiKey }),
+          )
+          .returning(['api_key as apiKey'])
+          .executeTakeFirstOrThrow();
+      },
+      delete: async (orgId: string) => {
+        await pg
+          .deleteFrom('signal_auth_service.google_content_safety_configs')
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+      },
+    },
     [Integration.OPEN_AI]: {
       get: async (orgId: string) => {
         return pg

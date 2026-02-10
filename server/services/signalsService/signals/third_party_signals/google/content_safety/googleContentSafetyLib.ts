@@ -1,5 +1,15 @@
-import {type ReadonlyDeep} from 'type-fest';
-import {fetchWithTimeout} from './fetch_utils';
+import { ScalarTypes } from '@roostorg/types';
+import { type ReadonlyDeep } from 'type-fest';
+
+import { jsonStringify } from '../../../../../../utils/encoding.js';
+import { makeSignalPermanentError } from '../../../../../../utils/errors.js';
+import { safeGet } from '../../../../../../utils/misc.js';
+import type SafeTracer from '../../../../../../utils/SafeTracer.js';
+import { type Bind2 } from '../../../../../../utils/typescript-types.js';
+import { type FetchHTTP } from '../../../../../networkingService/index.js';
+import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type SignalInput } from '../../../SignalBase.js';
+import { fetchImage, fetchWithTimeout } from './fetchUtils.js';
 
 export const GOOGLE_CONTENT_SAFETY_PRIORITIES = [
   'VERY_LOW',
@@ -16,6 +26,7 @@ export interface GoogleContentSafetyOptions {
   apiKey: string;
   /** Timeout for requests to the API in milliseconds. */
   timeoutMs?: number;
+  fetchHTTP: FetchHTTP;
 }
 
 export interface ClassificationResult {
@@ -26,6 +37,7 @@ export interface ClassificationResult {
 export class GoogleContentSafetyClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly fetchHTTP: FetchHTTP;
   private readonly baseUrl =
     'https://contentsafety.googleapis.com/v1beta1/images:classify';
 
@@ -35,6 +47,7 @@ export class GoogleContentSafetyClient {
     }
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? 10_000;
+    this.fetchHTTP = options.fetchHTTP;
   }
 
   /**
@@ -71,25 +84,32 @@ export class GoogleContentSafetyClient {
 
     try {
       const response = await fetchWithTimeout(
+        this.fetchHTTP,
         url,
         {
-          method: 'POST',
+          method: 'post',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(reqBody),
+          body: jsonStringify(reqBody),
         },
         this.timeoutMs,
       );
 
       if (!response.ok) {
         throw new Error(
-          `Google Content Safety API request failed with status ${response.status}: ${response.statusText}`,
+          `Google Content Safety API request failed with status ${response.status}`,
         );
       }
 
-      const responseJson = (await response.json()) as {
-        reviewPriorities: GoogleContentSafetyPriority[];
-        model_version: string;
-      };
+      const responseJson = (response.body ?? undefined) as
+        | {
+            reviewPriorities: GoogleContentSafetyPriority[];
+            model_version: string;
+          }
+        | undefined;
+
+      if (!responseJson?.reviewPriorities) {
+        throw new Error('Google Content Safety API returned unexpected format');
+      }
 
       return responseJson.reviewPriorities;
     } catch (error: unknown) {
@@ -102,3 +122,99 @@ export class GoogleContentSafetyClient {
   }
 }
 
+export async function runGoogleContentSafetyImageImpl(
+  getGoogleContentSafetyCredentials: CachedGetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
+  input: SignalInput<ScalarTypes['IMAGE']>,
+  getGoogleContentSafetyScores: FetchGoogleContentSafetyScores,
+) {
+  const { value, orgId } = input;
+  const credential = await getGoogleContentSafetyCredentials(orgId);
+
+  // eslint-disable-next-line security/detect-possible-timing-attacks
+  if (!credential?.apiKey) {
+    throw new Error('Missing API credentials');
+  }
+
+  const response = await getGoogleContentSafetyScores({
+    imageUrl: value.value.url,
+    apiKey: credential.apiKey,
+  });
+
+  if (response.length === 0) {
+    throw new Error('Empty Google Content Safety API results');
+  }
+
+  const priority = response[0];
+
+  return {
+    score: priority,
+    outputType: {
+      scalarType: ScalarTypes.STRING,
+      enum: GOOGLE_CONTENT_SAFETY_PRIORITIES,
+      ordered: true as const,
+    },
+  };
+}
+
+export type FetchGoogleContentSafetyScores = Bind2<
+  typeof getGoogleContentSafetyScores,
+  FetchHTTP,
+  SafeTracer
+>;
+
+const IMAGE_FETCH_TIMEOUT_MS = 10_000;
+const CONTENT_SAFETY_API_TIMEOUT_MS = 10_000;
+
+export async function getGoogleContentSafetyScores(
+  fetchHTTP: FetchHTTP,
+  tracer: SafeTracer,
+  req: { apiKey: string; imageUrl: string },
+): Promise<ReadonlyDeep<GoogleContentSafetyPriority[]>> {
+  const { apiKey, imageUrl } = req;
+
+  let imageBuffer: Buffer;
+  try {
+    imageBuffer = await fetchImage(
+      fetchHTTP,
+      imageUrl,
+      IMAGE_FETCH_TIMEOUT_MS,
+    );
+  } catch (e) {
+    if (safeGet(e, ['name']) === 'ResponseExceededMaxSizeError') {
+      throw makeSignalPermanentError('Response too large', {
+        shouldErrorSpan: true,
+      });
+    }
+    const activeSpan = tracer.getActiveSpan();
+    if (activeSpan?.isRecording()) {
+      activeSpan.recordException(e as Error);
+    }
+    throw new Error(
+      `Failed to fetch image for Google Content Safety API: ${String(e)}`,
+    );
+  }
+
+  try {
+    const client = new GoogleContentSafetyClient({
+      apiKey,
+      fetchHTTP,
+      timeoutMs: CONTENT_SAFETY_API_TIMEOUT_MS,
+    });
+    const priority = await client.classifyImage(imageBuffer);
+    if (priority === undefined) {
+      throw new Error('Empty Google Content Safety API results');
+    }
+    return [priority];
+  } catch (e) {
+    if (safeGet(e, ['name']) === 'ResponseExceededMaxSizeError') {
+      throw makeSignalPermanentError('Response too large', {
+        shouldErrorSpan: true,
+      });
+    }
+    const activeSpan = tracer.getActiveSpan();
+    if (activeSpan?.isRecording()) {
+      activeSpan.recordException(e as Error);
+    }
+    throw e;
+  }
+}

@@ -31,6 +31,7 @@ export type CoreSignal = Pick<
   | 'recommendedThresholds'
   | 'supportedLanguages'
   | 'args'
+  | 'allowedInAutomatedRules'
 >;
 
 export function receivesRegexInput(type: GQLSignalType) {
@@ -48,6 +49,8 @@ export function receivesRegexInput(type: GQLSignalType) {
  */
 export function integrationForSignalType(type: GQLSignalType) {
   switch (type) {
+    case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
+      return GQLIntegration.GoogleContentSafetyApi;
     case 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_HATE_TEXT_MODEL':
     case 'OPEN_AI_HATE_THREATENING_TEXT_MODEL':

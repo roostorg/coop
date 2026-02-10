@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { CoreSignal } from '../../../../../../models/signal';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
 import RuleFormSignalModal from '../../signal_modal/RuleFormSignalModal';
-import { signalDisplayName } from '../../signal_modal/RuleFormSignalModalMenuItem';
 import RuleFormConditionSignalSubcategory from './RuleFormConditionSignalSubcategory';
 
 export default function RuleFormConditionSignal(props: {
@@ -13,8 +12,9 @@ export default function RuleFormConditionSignal(props: {
   location: ConditionLocation;
   onUpdateSignal: (signal: CoreSignal) => void;
   onUpdateSignalSubcategory: (subcategory: string) => void;
+  isAutomatedRule?: boolean;
 }) {
-  const { condition, location, onUpdateSignal, onUpdateSignalSubcategory } =
+  const { condition, location, onUpdateSignal, onUpdateSignalSubcategory, isAutomatedRule } =
     props;
   const eligibleSignals = condition.eligibleSignals;
   const [modalInfo, setModalInfo] = useState<{
@@ -65,9 +65,7 @@ export default function RuleFormConditionSignal(props: {
             })
           }
         >
-          {condition.signal
-            ? signalDisplayName(condition.signal, false)
-            : 'Select Signal'}{' '}
+          {condition.signal?.name ?? 'Select Signal'}{' '}
           <DownOutlined className="!text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
         </Button>
         <div className="invisible pb-1 text-xs font-bold">Signal</div>
@@ -101,6 +99,7 @@ export default function RuleFormConditionSignal(props: {
           closeModal();
         }}
         onClose={closeModal}
+        isAutomatedRule={isAutomatedRule}
       />
     </div>
   );

@@ -1281,6 +1281,15 @@ export type GQLGetSkippedJobCountInput = {
   readonly timeZone: Scalars['String'];
 };
 
+export type GQLGoogleContentSafetyApiIntegrationApiCredential = {
+  readonly __typename?: 'GoogleContentSafetyApiIntegrationApiCredential';
+  readonly apiKey: Scalars['String'];
+};
+
+export type GQLGoogleContentSafetyApiIntegrationApiCredentialInput = {
+  readonly apiKey: Scalars['String'];
+};
+
 export type GQLGooglePlaceLocationInfo = {
   readonly __typename?: 'GooglePlaceLocationInfo';
   readonly id: Scalars['ID'];
@@ -1304,6 +1313,7 @@ export type GQLIgnoreDecisionComponent =
 
 export const GQLIntegration = {
   Akismet: 'AKISMET',
+  GoogleContentSafetyApi: 'GOOGLE_CONTENT_SAFETY_API',
   L1Ght: 'L1GHT',
   MicrosoftAzureContentModerator: 'MICROSOFT_AZURE_CONTENT_MODERATOR',
   Oopspam: 'OOPSPAM',
@@ -1314,9 +1324,12 @@ export const GQLIntegration = {
 
 export type GQLIntegration =
   (typeof GQLIntegration)[keyof typeof GQLIntegration];
-export type GQLIntegrationApiCredential = GQLOpenAiIntegrationApiCredential;
+export type GQLIntegrationApiCredential =
+  | GQLGoogleContentSafetyApiIntegrationApiCredential
+  | GQLOpenAiIntegrationApiCredential;
 
 export type GQLIntegrationApiCredentialInput = {
+  readonly googleContentSafetyApi?: InputMaybe<GQLGoogleContentSafetyApiIntegrationApiCredentialInput>;
   readonly openAi?: InputMaybe<GQLOpenAiIntegrationApiCredentialInput>;
 };
 
@@ -3896,6 +3909,7 @@ export type GQLSignUpUserExistsError = GQLError & {
 
 export type GQLSignal = {
   readonly __typename?: 'Signal';
+  readonly allowedInAutomatedRules: Scalars['Boolean'];
   readonly args?: Maybe<GQLSignalArgs>;
   readonly callbackUrl?: Maybe<Scalars['String']>;
   readonly callbackUrlBody?: Maybe<Scalars['String']>;
@@ -3983,6 +3997,7 @@ export const GQLSignalType = {
   BenignModel: 'BENIGN_MODEL',
   Custom: 'CUSTOM',
   GeoContainedWithin: 'GEO_CONTAINED_WITHIN',
+  GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
   ImageExactMatch: 'IMAGE_EXACT_MATCH',
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
@@ -5093,13 +5108,17 @@ export type GQLResolversTypes = {
   GetJobCreationCountSettings: ResolverTypeWrapper<GQLGetJobCreationCountSettings>;
   GetResolvedJobCountInput: GQLGetResolvedJobCountInput;
   GetSkippedJobCountInput: GQLGetSkippedJobCountInput;
+  GoogleContentSafetyApiIntegrationApiCredential: ResolverTypeWrapper<GQLGoogleContentSafetyApiIntegrationApiCredential>;
+  GoogleContentSafetyApiIntegrationApiCredentialInput: GQLGoogleContentSafetyApiIntegrationApiCredentialInput;
   GooglePlaceLocationInfo: ResolverTypeWrapper<GQLGooglePlaceLocationInfo>;
   HashBank: ResolverTypeWrapper<HashBank>;
   ID: ResolverTypeWrapper<Scalars['ID']>;
   IgnoreDecisionComponent: ResolverTypeWrapper<GQLIgnoreDecisionComponent>;
   Int: ResolverTypeWrapper<Scalars['Int']>;
   Integration: GQLIntegration;
-  IntegrationApiCredential: GQLResolversTypes['OpenAiIntegrationApiCredential'];
+  IntegrationApiCredential:
+    | GQLResolversTypes['GoogleContentSafetyApiIntegrationApiCredential']
+    | GQLResolversTypes['OpenAiIntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
   IntegrationConfig: ResolverTypeWrapper<
     Omit<GQLIntegrationConfig, 'apiCredential'> & {
@@ -5925,12 +5944,16 @@ export type GQLResolversParentTypes = {
   GetJobCreationCountSettings: GQLGetJobCreationCountSettings;
   GetResolvedJobCountInput: GQLGetResolvedJobCountInput;
   GetSkippedJobCountInput: GQLGetSkippedJobCountInput;
+  GoogleContentSafetyApiIntegrationApiCredential: GQLGoogleContentSafetyApiIntegrationApiCredential;
+  GoogleContentSafetyApiIntegrationApiCredentialInput: GQLGoogleContentSafetyApiIntegrationApiCredentialInput;
   GooglePlaceLocationInfo: GQLGooglePlaceLocationInfo;
   HashBank: HashBank;
   ID: Scalars['ID'];
   IgnoreDecisionComponent: GQLIgnoreDecisionComponent;
   Int: Scalars['Int'];
-  IntegrationApiCredential: GQLResolversParentTypes['OpenAiIntegrationApiCredential'];
+  IntegrationApiCredential:
+    | GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential']
+    | GQLResolversParentTypes['OpenAiIntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
   IntegrationConfig: Omit<GQLIntegrationConfig, 'apiCredential'> & {
     apiCredential: GQLResolversParentTypes['IntegrationApiCredential'];
@@ -8276,6 +8299,15 @@ export type GQLGetJobCreationCountSettingsResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLGoogleContentSafetyApiIntegrationApiCredentialResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential'] = GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential'],
+> = {
+  apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLGooglePlaceLocationInfoResolvers<
   ContextType = Context,
   ParentType extends
@@ -8322,7 +8354,8 @@ export type GQLIntegrationApiCredentialResolvers<
     GQLResolversParentTypes['IntegrationApiCredential'] = GQLResolversParentTypes['IntegrationApiCredential'],
 > = {
   __resolveType: TypeResolveFn<
-    'OpenAiIntegrationApiCredential',
+    | 'GoogleContentSafetyApiIntegrationApiCredential'
+    | 'OpenAiIntegrationApiCredential',
     ParentType,
     ContextType
   >;
@@ -12435,6 +12468,11 @@ export type GQLSignalResolvers<
   ParentType extends
     GQLResolversParentTypes['Signal'] = GQLResolversParentTypes['Signal'],
 > = {
+  allowedInAutomatedRules?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
   args?: Resolver<
     Maybe<GQLResolversTypes['SignalArgs']>,
     ParentType,
@@ -13724,6 +13762,7 @@ export type GQLResolvers<ContextType = Context> = {
   GetFullReportingRuleResultForItemResponse?: GQLGetFullReportingRuleResultForItemResponseResolvers<ContextType>;
   GetFullResultForItemResponse?: GQLGetFullResultForItemResponseResolvers<ContextType>;
   GetJobCreationCountSettings?: GQLGetJobCreationCountSettingsResolvers<ContextType>;
+  GoogleContentSafetyApiIntegrationApiCredential?: GQLGoogleContentSafetyApiIntegrationApiCredentialResolvers<ContextType>;
   GooglePlaceLocationInfo?: GQLGooglePlaceLocationInfoResolvers<ContextType>;
   HashBank?: GQLHashBankResolvers<ContextType>;
   IgnoreDecisionComponent?: GQLIgnoreDecisionComponentResolvers<ContextType>;

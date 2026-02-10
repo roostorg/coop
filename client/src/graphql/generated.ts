@@ -1212,6 +1212,15 @@ export type GQLGetSkippedJobCountInput = {
   readonly timeZone: Scalars['String'];
 };
 
+export type GQLGoogleContentSafetyApiIntegrationApiCredential = {
+  readonly __typename: 'GoogleContentSafetyApiIntegrationApiCredential';
+  readonly apiKey: Scalars['String'];
+};
+
+export type GQLGoogleContentSafetyApiIntegrationApiCredentialInput = {
+  readonly apiKey: Scalars['String'];
+};
+
 export type GQLGooglePlaceLocationInfo = {
   readonly __typename: 'GooglePlaceLocationInfo';
   readonly id: Scalars['ID'];
@@ -1235,6 +1244,7 @@ export type GQLIgnoreDecisionComponent =
 
 export const GQLIntegration = {
   Akismet: 'AKISMET',
+  GoogleContentSafetyApi: 'GOOGLE_CONTENT_SAFETY_API',
   L1Ght: 'L1GHT',
   MicrosoftAzureContentModerator: 'MICROSOFT_AZURE_CONTENT_MODERATOR',
   Oopspam: 'OOPSPAM',
@@ -1245,9 +1255,12 @@ export const GQLIntegration = {
 
 export type GQLIntegration =
   (typeof GQLIntegration)[keyof typeof GQLIntegration];
-export type GQLIntegrationApiCredential = GQLOpenAiIntegrationApiCredential;
+export type GQLIntegrationApiCredential =
+  | GQLGoogleContentSafetyApiIntegrationApiCredential
+  | GQLOpenAiIntegrationApiCredential;
 
 export type GQLIntegrationApiCredentialInput = {
+  readonly googleContentSafetyApi?: InputMaybe<GQLGoogleContentSafetyApiIntegrationApiCredentialInput>;
   readonly openAi?: InputMaybe<GQLOpenAiIntegrationApiCredentialInput>;
 };
 
@@ -3827,6 +3840,7 @@ export type GQLSignUpUserExistsError = GQLError & {
 
 export type GQLSignal = {
   readonly __typename: 'Signal';
+  readonly allowedInAutomatedRules: Scalars['Boolean'];
   readonly args?: Maybe<GQLSignalArgs>;
   readonly callbackUrl?: Maybe<Scalars['String']>;
   readonly callbackUrlBody?: Maybe<Scalars['String']>;
@@ -3914,6 +3928,7 @@ export const GQLSignalType = {
   BenignModel: 'BENIGN_MODEL',
   Custom: 'CUSTOM',
   GeoContainedWithin: 'GEO_CONTAINED_WITHIN',
+  GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
   ImageExactMatch: 'IMAGE_EXACT_MATCH',
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
@@ -5557,10 +5572,15 @@ export type GQLIntegrationConfigQuery = {
         readonly config?: {
           readonly __typename: 'IntegrationConfig';
           readonly name: GQLIntegration;
-          readonly apiCredential: {
-            readonly __typename: 'OpenAiIntegrationApiCredential';
-            readonly apiKey: string;
-          };
+          readonly apiCredential:
+            | {
+                readonly __typename: 'GoogleContentSafetyApiIntegrationApiCredential';
+                readonly apiKey: string;
+              }
+            | {
+                readonly __typename: 'OpenAiIntegrationApiCredential';
+                readonly apiKey: string;
+              };
         } | null;
       }
     | {
@@ -17291,6 +17311,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
       readonly description: string;
       readonly eligibleInputs: ReadonlyArray<GQLSignalInputType>;
       readonly shouldPromptForMatchingValues: boolean;
+      readonly allowedInAutomatedRules: boolean;
       readonly recommendedThresholds?: {
         readonly __typename: 'RecommendedThresholds';
         readonly highPrecisionThreshold: string | number;
@@ -20885,6 +20906,7 @@ export type GQLReportingRuleFormOrgDataQuery = {
       readonly description: string;
       readonly eligibleInputs: ReadonlyArray<GQLSignalInputType>;
       readonly shouldPromptForMatchingValues: boolean;
+      readonly allowedInAutomatedRules: boolean;
       readonly recommendedThresholds?: {
         readonly __typename: 'RecommendedThresholds';
         readonly highPrecisionThreshold: string | number;
@@ -21247,6 +21269,7 @@ export type GQLSignalsFragmentFragment = {
   readonly description: string;
   readonly eligibleInputs: ReadonlyArray<GQLSignalInputType>;
   readonly shouldPromptForMatchingValues: boolean;
+  readonly allowedInAutomatedRules: boolean;
   readonly recommendedThresholds?: {
     readonly __typename: 'RecommendedThresholds';
     readonly highPrecisionThreshold: string | number;
@@ -23186,6 +23209,7 @@ export type GQLContentRuleFormConfigQuery = {
       readonly description: string;
       readonly eligibleInputs: ReadonlyArray<GQLSignalInputType>;
       readonly shouldPromptForMatchingValues: boolean;
+      readonly allowedInAutomatedRules: boolean;
       readonly recommendedThresholds?: {
         readonly __typename: 'RecommendedThresholds';
         readonly highPrecisionThreshold: string | number;
@@ -24502,6 +24526,7 @@ export const GQLSignalsFragmentFragmentDoc = gql`
       }
     }
     shouldPromptForMatchingValues
+    allowedInAutomatedRules
     eligibleSubcategories {
       id
       label
@@ -27165,6 +27190,9 @@ export const GQLIntegrationConfigDocument = gql`
         config {
           name
           apiCredential {
+            ... on GoogleContentSafetyApiIntegrationApiCredential {
+              apiKey
+            }
             ... on OpenAiIntegrationApiCredential {
               apiKey
             }

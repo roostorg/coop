@@ -38,6 +38,7 @@ describe('Test Rule Form Utils', () => {
       type: GQLSignalPricingStructureType.Free,
     },
     supportedLanguages: { __typename: 'AllLanguages', _: true },
+    allowedInAutomatedRules: true,
   };
 
   describe('Test should show comparator/threshold for condition', () => {

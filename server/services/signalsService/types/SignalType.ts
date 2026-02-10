@@ -40,6 +40,7 @@ export const BuiltInExternalSignalType = makeEnumLike([
 
 export const BuiltInThirdPartySignalType = makeEnumLike([
   'BENIGN_MODEL',
+  'GOOGLE_CONTENT_SAFETY_API_IMAGE',
   'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   'OPEN_AI_HATE_TEXT_MODEL',
   'OPEN_AI_HATE_THREATENING_TEXT_MODEL',
@@ -86,6 +87,8 @@ export const ExternalSignalTypeArbitrary = enumToArbitrary(ExternalSignalType);
 // eslint-disable-next-line complexity
 export function integrationForSignalType(type: SignalType) {
   switch (type) {
+    case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
+      return Integration.GOOGLE_CONTENT_SAFETY_API;
     case 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_HATE_TEXT_MODEL':
     case 'OPEN_AI_HATE_THREATENING_TEXT_MODEL':

@@ -5,7 +5,6 @@ import {
 } from '../../services/signalAuthService/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
-import { assertUnreachable } from '../../utils/misc.js';
 import {
   makeIntegrationConfigUnsupportedIntegrationError,
   type TIntegrationCredential,
@@ -16,10 +15,12 @@ import {
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { assertUnreachable } from '../../utils/misc.js';
 
 const typeDefs = /* GraphQL */ `
   enum Integration {
     AKISMET
+    GOOGLE_CONTENT_SAFETY_API
     L1GHT
     MICROSOFT_AZURE_CONTENT_MODERATOR
     OOPSPAM
@@ -28,16 +29,25 @@ const typeDefs = /* GraphQL */ `
     TWO_HAT
   }
 
+  type GoogleContentSafetyApiIntegrationApiCredential {
+    apiKey: String!
+  }
+
   type OpenAiIntegrationApiCredential {
     apiKey: String!
   }
 
   union IntegrationApiCredential =
-      OpenAiIntegrationApiCredential
+      GoogleContentSafetyApiIntegrationApiCredential
+    | OpenAiIntegrationApiCredential
 
   type IntegrationConfig {
     name: Integration!
     apiCredential: IntegrationApiCredential!
+  }
+
+  input GoogleContentSafetyApiIntegrationApiCredentialInput {
+    apiKey: String!
   }
 
   input OpenAiIntegrationApiCredentialInput {
@@ -45,6 +55,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   input IntegrationApiCredentialInput {
+    googleContentSafetyApi: GoogleContentSafetyApiIntegrationApiCredentialInput
     openAi: OpenAiIntegrationApiCredentialInput
   }
 
@@ -119,11 +130,15 @@ const typeDefs = /* GraphQL */ `
 
 const IntegrationApiCredential: ResolverMap<TIntegrationCredential> = {
   __resolveType(it) {
-    switch (it.name) {
+    const integrationName = it.name;
+    switch (integrationName) {
+      case Integration.GOOGLE_CONTENT_SAFETY_API:
+        return 'GoogleContentSafetyApiIntegrationApiCredential';
       case Integration.OPEN_AI:
         return 'OpenAiIntegrationApiCredential';
       default:
-        assertUnreachable(it.name);
+        // TypeScript can't verify exhaustiveness here because GQL enum includes
+        assertUnreachable(integrationName, `Unsupported integration: ${integrationName}`);
     }
   },
 };

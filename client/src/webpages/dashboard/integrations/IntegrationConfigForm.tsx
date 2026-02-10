@@ -16,6 +16,7 @@ import {
   useGQLIntegrationConfigQuery,
   useGQLPermissionGatedRouteLoggedInUserQuery,
   useGQLSetIntegrationConfigMutation,
+  type GQLGoogleContentSafetyApiIntegrationApiCredential,
   type GQLOpenAiIntegrationApiCredential,
 } from '../../../graphql/generated';
 import {
@@ -52,6 +53,9 @@ gql`
         config {
           name
           apiCredential {
+            ... on GoogleContentSafetyApiIntegrationApiCredential {
+              apiKey
+            }
             ... on OpenAiIntegrationApiCredential {
               apiKey
             }
@@ -79,6 +83,12 @@ export function getNewEmptyApiKey(
   name: GQLIntegration,
 ): GQLIntegrationApiCredential {
   switch (name) {
+    case 'GOOGLE_CONTENT_SAFETY_API': {
+      return {
+        __typename: 'GoogleContentSafetyApiIntegrationApiCredential',
+        apiKey: '',
+      };
+    }
     case 'OPEN_AI': {
       return { __typename: 'OpenAiIntegrationApiCredential', apiKey: '' };
     }
@@ -169,10 +179,22 @@ export default function IntegrationConfigForm() {
   ]);
 
   const mappedApiCredential = taggedUnionToOneOfInput(apiCredential, {
+    GoogleContentSafetyApiIntegrationApiCredential: 'googleContentSafetyApi',
     OpenAiIntegrationApiCredential: 'openAi',
   });
 
   const validationMessage = (() => {
+    if (
+      'googleContentSafetyApi' in mappedApiCredential &&
+      !(
+        mappedApiCredential[
+        'googleContentSafetyApi'
+        ] as GQLGoogleContentSafetyApiIntegrationApiCredential
+      ).apiKey
+    ) {
+      return 'Please input the Google Content Safety API key';
+    }
+
     if (
       'openAi' in mappedApiCredential &&
       !(mappedApiCredential['openAi'] as GQLOpenAiIntegrationApiCredential)
@@ -212,15 +234,15 @@ export default function IntegrationConfigForm() {
   const [modalTitle, modalBody, modalButtonText] =
     mutationError == null
       ? [
-          `${formattedName} Config Saved`,
-          `Your ${formattedName} Config was successfully saved!`,
-          'Done',
-        ]
+        `${formattedName} Config Saved`,
+        `Your ${formattedName} Config was successfully saved!`,
+        'Done',
+      ]
       : [
-          `Error Saving ${formattedName} Config`,
-          `We encountered an error trying to save your ${formattedName} Config. Please try again.`,
-          'OK',
-        ];
+        `Error Saving ${formattedName} Config`,
+        `We encountered an error trying to save your ${formattedName} Config. Please try again.`,
+        'OK',
+      ];
 
   const onHideModal = () => {
     hideModal();
@@ -251,6 +273,28 @@ export default function IntegrationConfigForm() {
     formattedName: string,
   ): React.ReactNode | string | undefined => {
     switch (integration) {
+      case GQLIntegration.GoogleContentSafetyApi:
+        return (
+          <>
+            The Content Safety API is an AI classifier which issues a Child 
+            Safety prioritization recommendation on content sent to it. Content Safety API users
+            must conduct their own manual review in order to determine whether to take
+            action on the content, and comply with applicable local reporting
+            laws. Apply for API keys{' '}
+            <a
+              href="https://protectingchildren.google/tools-for-partners/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              here
+            </a>
+            {' '}
+            and mention in your application that you are using the Coop
+            moderation tool. Upon reviewing your application, Google will be
+            back in touch shortly to take the application forward if you qualify.
+          </>
+        );
       case GQLIntegration.OpenAi:
         return `The ${formattedName} integration requires one API Key.`;
       default:

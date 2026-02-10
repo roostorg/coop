@@ -154,30 +154,30 @@ exports[`No explicit any in client`] = {
       [624, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [748, 11, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:4242588550": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
       [424, 38, 3, "Unexpected any. Specify a different type.", "193409811"],
       [442, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:2408070124": [
       [102, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2116984601": [
-      [899, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [920, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [947, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [967, 42, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2133305192": [
+      [901, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [922, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [949, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [969, 42, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
       [124, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:3740879300": [
-      [196, 23, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [244, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [247, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [360, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [366, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [420, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [426, 24, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:1402343162": [
+      [197, 23, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [245, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [248, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [361, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [367, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [421, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [427, 24, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/settings/ManageUsers.tsx:1882754453": [
       [386, 31, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -206,9 +206,9 @@ exports[`No explicit any in server`] = {
     "server/condition_evaluator/leafCondition.ts:3547992583": [
       [212, 47, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/graphql/datasources/RuleApi.ts:2970456180": [
-      [614, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [754, 28, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/graphql/datasources/RuleApi.ts:1760036803": [
+      [635, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [775, 28, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/graphql/datasources/UserApi.ts:3075210134": [
       [52, 22, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -386,7 +386,7 @@ exports[`No Deprecated API usage`] = {
       [39, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [157, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:4242588550": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
       [284, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [482, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
@@ -398,14 +398,14 @@ exports[`No Deprecated API usage`] = {
       [158, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [396, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2116984601": [
-      [671, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [1009, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2133305192": [
+      [673, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [1011, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:1236376220": [
-      [121, 25, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [123, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [125, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:453078395": [
+      [122, 25, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [124, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [126, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
       [123, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
@@ -415,35 +415,35 @@ exports[`No Deprecated API usage`] = {
       [191, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [495, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:3740879300": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:1402343162": [
       [22, 22, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.ts:3893795356": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.ts:2991309052": [
       [56, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [521, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [615, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+      [531, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [625, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/condition/input/RuleFormConditionInput.tsx:25825548": [
       [55, 25, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [161, 46, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignal.tsx:2136365929": [
-      [13, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+    "client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignal.tsx:645725014": [
+      [12, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [21, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [88, 33, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+      [86, 33, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignalArgs.tsx:2792044510": [
       [7, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModal.tsx:3075517984": [
+    "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModal.tsx:2596084458": [
       [13, 14, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [14, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [18, 19, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [30, 59, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [35, 13, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [80, 20, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [94, 41, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [97, 35, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+      [32, 59, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [37, 13, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [82, 20, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [96, 41, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [99, 35, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalMenuItem.tsx:1243180955": [
       [12, 35, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
@@ -456,7 +456,7 @@ exports[`No Deprecated API usage`] = {
       [18, 12, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [94, 39, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalSignalGallery.tsx:326509196": [
+    "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalSignalGallery.tsx:2104107710": [
       [11, 14, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [12, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [13, 33, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
@@ -501,8 +501,8 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:1711845154": [
       [405, 15, 18, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4144316489"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2116984601": [
-      [1006, 11, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "3776056839"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2133305192": [
+      [1008, 11, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "3776056839"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
       [669, 5, 24, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1730074379"],
@@ -679,19 +679,19 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/rules/info/insights/sample_details/RuleInsightsSampleDetailResults.tsx:865225447": [
       [11, 0, 92, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "548385828"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:4242588550": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
       [2, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3206710238"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2116984601": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2133305192": [
       [4, 0, 75, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2372850505"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:1236376220": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:453078395": [
       [0, 0, 71, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "799160233"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/condition/matching_values/RuleFormConditionLocationMatchingValues.tsx:2430034963": [
       [0, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3206710238"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignal.tsx:2136365929": [
+    "client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignal.tsx:645725014": [
       [0, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2561705942"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignalSubcategory.tsx:679343573": [
@@ -706,7 +706,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalNoSearchResults.tsx:2700507085": [
       [0, 0, 51, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3222053322"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalSignalGallery.tsx:326509196": [
+    "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalSignalGallery.tsx:2104107710": [
       [1, 0, 51, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3222053322"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/signal_modal/RuleFormSignalModalSubcategoryGallery.tsx:3258286357": [
@@ -843,11 +843,11 @@ exports[`No new line-icon imports`] = {
     "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1526952710": [
       [1, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:4242588550": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
       [0, 0, 88, "\'@/icons/lni/Web and Technology/copy-alt.svg\' import is restricted from being used by a pattern.", "654958816"],
       [1, 0, 90, "\'@/icons/lni/Web and Technology/trash-can.svg\' import is restricted from being used by a pattern.", "3521839680"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2116984601": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:2133305192": [
       [2, 0, 88, "\'@/icons/lni/Web and Technology/copy-alt.svg\' import is restricted from being used by a pattern.", "654958816"],
       [3, 0, 90, "\'@/icons/lni/Web and Technology/trash-can.svg\' import is restricted from being used by a pattern.", "3521839680"]
     ]

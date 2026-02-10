@@ -55,9 +55,19 @@ export function getEligibleSignalsForInput(
   input: SimplifiedConditionInput,
   ruleContentTypes: readonly RuleFormItemType[],
   allSignals: readonly CoreSignal[],
+  isAutomatedRule = false,
 ) {
+  let eligibleSignals = allSignals;
+
+  // Filter out signals not allowed in automated rules if this is an automated rule
+  if (isAutomatedRule) {
+    eligibleSignals = eligibleSignals.filter(
+      (signal) => signal.allowedInAutomatedRules,
+    );
+  }
+
   if (input.type === 'FULL_ITEM') {
-    return allSignals.filter((signal) =>
+    return eligibleSignals.filter((signal) =>
       signal.eligibleInputs.includes('FULL_ITEM'),
     );
   }
@@ -78,7 +88,7 @@ export function getEligibleSignalsForInput(
   // Then, sort the remaining signals using the following rules:
   // 1) If both signals are Coop signals (or 3rd party signals), then sort by name.
   // 2) Otherwise, display Coop signals first.
-  return allSignals
+  return eligibleSignals
     .filter(
       (it) =>
         it.eligibleInputs.includes(scalarType) &&

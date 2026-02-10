@@ -58,6 +58,10 @@ export default class TextMatchingContainsVariantSignal extends TextRegexMatching
     return 1;
   }
 
+  override get allowedInAutomatedRules() {
+    return true;
+  }
+
   override get eligibleSubcategories() {
     return [];
   }

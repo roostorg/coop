@@ -5,6 +5,7 @@ import { makeEnumLike } from '@roostorg/types';
  * 3rd party service, even if that service offers multiple model/signal types.
  */
 export const Integration = makeEnumLike([
+  'GOOGLE_CONTENT_SAFETY_API',
   'OPEN_AI',
 ]);
 
