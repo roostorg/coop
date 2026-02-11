@@ -439,8 +439,20 @@ export default function submitReport({
             await enqueueWithRetries();
           },
         );
-        // Do nothing on error, as the span will already be marked as failed
-      } catch {}
+        // Record on active span and log so we can diagnose when enqueue fails (e.g. no default queue, BullMQ/Redis errors)
+      } catch (e) {
+        const activeSpan = Tracer.getActiveSpan();
+        if (activeSpan?.isRecording()) {
+          activeSpan.recordException(e as Exception);
+        }
+        // eslint-disable-next-line no-console
+        console.error(
+          'Failed to enqueue report to manual review queue',
+          reportId,
+          orgId,
+          e,
+        );
+      }
       // this error handling only triggers on errors before the `res.sendStatus` call
     } catch (e: unknown) {
       const activeSpan = Tracer.getActiveSpan();

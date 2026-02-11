@@ -64,7 +64,7 @@
     "avsc": "^5.7.7",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
-    "bullmq": "^3.16.2",
+    "bullmq": "^5.0.0",
     "cassandra-driver": "^4.8.0",
     "cls-hooked": "^4.2.2",
     "connect-pg-simple": "^7.0.0",
@@ -160,7 +160,6 @@
   "//": "Use an override to remove the @types/restify dependency, b/c it conflicts w/ pino-http. And a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm.",
   "overrides": {
     "@types/restify": "npm:pino@8.6.0",
-    "msgpackr": "^1.11.2",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
     },

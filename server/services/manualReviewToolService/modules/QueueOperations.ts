@@ -821,7 +821,7 @@ export default class QueueOperations {
     const queue = await this.#getBullQueue(orgId, queueId);
     const { bullId } = parseExternalId(jobId);
     const job = await queue.getJob(bullId);
-    await job?.update(data);
+    await job?.updateData(data);
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
     // data for this particular job won't be in the legacy format.
@@ -1356,17 +1356,20 @@ export default class QueueOperations {
 /**
  * We want Bull to dedupe jobs on the same item, so this function maps each
  * distinct item identifier object to a string that can be used as a Bull job id.
+ * Uses '.' as separator because BullMQ v5 disallows ':' in custom job ids.
  *
  * NB: only exported for use in tests.
  * @private
  */
+const BULL_JOB_ID_SEPARATOR = '.';
+
 export function itemIdToBullJobId({ typeId, id }: ItemIdentifier) {
   if (!typeId || !id) {
     throw new Error('itemTypeId and itemId cannot be empty strings');
   }
 
   return instantiateOpaqueType<BullJobId>(
-    [typeId, id].map(b64UrlEncode).join(':'),
+    [typeId, id].map(b64UrlEncode).join(BULL_JOB_ID_SEPARATOR),
   );
 }
 
