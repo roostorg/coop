@@ -1,6 +1,7 @@
 import { ScalarTypes } from '@roostorg/types';
 
 import { isCoopErrorOfType } from '../../../../../utils/errors.js';
+import { type FetchHTTP } from '../../../../networkingService/index.js';
 import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
 import {
@@ -192,13 +193,13 @@ describe('zentropiUtils', () => {
 
   describe('getZentropiScores', () => {
     it('returns SignalPermanentError for 404', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = jest.fn().mockResolvedValue({
         ok: false,
         status: 404,
-      }) as jest.Mock;
+      }) as unknown as FetchHTTP;
 
       try {
-        await getZentropiScores({
+        await getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_bad',
@@ -210,13 +211,13 @@ describe('zentropiUtils', () => {
     });
 
     it('returns SignalPermanentError for 401', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = jest.fn().mockResolvedValue({
         ok: false,
         status: 401,
-      }) as jest.Mock;
+      }) as unknown as FetchHTTP;
 
       try {
-        await getZentropiScores({
+        await getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'bad-key',
           labelerVersionId: 'lv_123',
@@ -228,13 +229,13 @@ describe('zentropiUtils', () => {
     });
 
     it('throws transient error for 5xx', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = jest.fn().mockResolvedValue({
         ok: false,
         status: 500,
-      }) as jest.Mock;
+      }) as unknown as FetchHTTP;
 
       await expect(
-        getZentropiScores({
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_123',
@@ -243,7 +244,7 @@ describe('zentropiUtils', () => {
 
       // Verify it's NOT a SignalPermanentError
       try {
-        await getZentropiScores({
+        await getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_123',
@@ -260,30 +261,28 @@ describe('zentropiUtils', () => {
         explanation: 'Content violates policy',
       };
 
-      global.fetch = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = jest.fn().mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockResponse),
-      }) as jest.Mock;
+        body: mockResponse,
+      }) as unknown as FetchHTTP;
 
-      const result = await getZentropiScores({
+      const result = await getZentropiScores(mockFetchHTTP, {
         text: 'test content',
         apiKey: 'key',
         labelerVersionId: 'lv_123',
       });
 
       expect(result).toEqual(mockResponse);
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.zentropi.ai/v1/label',
+      expect(mockFetchHTTP).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
+          url: 'https://api.zentropi.ai/v1/label',
+          method: 'post',
           headers: {
             Authorization: 'Bearer key',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            content_text: 'test content',
-            labeler_version_id: 'lv_123',
-          }),
+          handleResponseBody: 'as-json',
+          timeoutMs: 5_000,
         }),
       );
     });

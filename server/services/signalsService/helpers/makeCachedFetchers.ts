@@ -41,7 +41,7 @@ export function makeCachedFetchers(
     openAiWhisperTranscriptionFetcher: toCachedFetcher(
       getOpenAiTranscription.bind(null, fetchHTTP),
     ),
-    zentropiFetcher: toCachedFetcher(getZentropiScores),
+    zentropiFetcher: toCachedFetcher(getZentropiScores.bind(null, fetchHTTP)),
   };
 }
 

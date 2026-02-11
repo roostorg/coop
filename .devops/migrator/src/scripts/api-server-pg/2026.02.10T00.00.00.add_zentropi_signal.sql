@@ -1,4 +1,6 @@
 -- Add Zentropi signal type and config table
+ALTER TYPE public.enum_signals_type ADD VALUE IF NOT EXISTS 'ZENTROPI_LABELER';
+
 CREATE TABLE IF NOT EXISTS signal_auth_service.zentropi_configs (
     org_id character varying(255) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
