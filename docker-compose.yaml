@@ -24,7 +24,6 @@ services:
       #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
       #   -e SNOWFLAKE_DB_NAME=YOURDB \
       # migrations
-      - SNOWFLAKE_DB_NAME
       - MIGRATOR_DB_NAME
       - CLICKHOUSE_DATABASE
       - NPM_TOKEN
@@ -53,7 +52,7 @@ services:
       #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
       #   -e SNOWFLAKE_DB_NAME=YOURDB \
       # drop_dbs
-      - SNOWFLAKE_DB_NAME
+      - CLICKHOUSE_DATABASE
       - MIGRATOR_DB_NAME
       - NPM_TOKEN
     volumes:
@@ -162,8 +161,6 @@ services:
     volumes:
       - ./server/reports:/app/reports
     env_file: ./.env.githubci
-    environment:
-      - SNOWFLAKE_DB_NAME
     depends_on:
       migrations:
         condition: service_completed_successfully
