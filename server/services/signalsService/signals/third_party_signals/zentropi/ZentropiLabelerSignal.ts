@@ -1,19 +1,12 @@
 import { ScalarTypes } from '@roostorg/types';
 
 import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { Integration } from '../../../types/Integration.js';
+import { SignalPricingStructure } from '../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../SignalBase.js';
 import {
   runZentropiLabelerImpl,
-  zentropiDocsUrl,
-  zentropiEligibleSubcategories,
-  zentropiGetDisabledInfo,
-  zentropiIntegration,
-  zentropiNeedsActionPenalties,
-  zentropiNeedsMatchingValues,
-  zentropiPricingStructure,
-  zentropiRecommendedThresholds,
-  zentropiSupportedLanguages,
   type FetchZentropiScores,
 } from './zentropiUtils.js';
 
@@ -46,39 +39,49 @@ export default class ZentropiLabelerSignal extends SignalBase<
   }
 
   override get docsUrl() {
-    return zentropiDocsUrl();
+    return 'https://docs.zentropi.ai';
   }
 
   override get integration() {
-    return zentropiIntegration();
+    return Integration.ZENTROPI;
   }
 
   override get pricingStructure() {
-    return zentropiPricingStructure();
+    return SignalPricingStructure.SUBSCRIPTION;
   }
 
   override get recommendedThresholds() {
-    return zentropiRecommendedThresholds();
+    return {
+      highPrecisionThreshold: 0.8,
+      highRecallThreshold: 0.6,
+    };
   }
 
   override get supportedLanguages() {
-    return zentropiSupportedLanguages();
+    return 'ALL' as const;
   }
 
   override get eligibleSubcategories() {
-    return zentropiEligibleSubcategories();
+    return [];
   }
 
   override get needsActionPenalties() {
-    return zentropiNeedsActionPenalties();
+    return false;
   }
 
   override get needsMatchingValues() {
-    return zentropiNeedsMatchingValues();
+    return false;
   }
 
   override async getDisabledInfo(orgId: string) {
-    return zentropiGetDisabledInfo(orgId, this.getZentropiCredentials);
+    const credential = await this.getZentropiCredentials(orgId);
+    return !credential?.apiKey
+      ? {
+          disabled: true as const,
+          disabledMessage:
+            'You need to input your Zentropi API key to use Zentropi signals',
+        }
+      : { disabled: false as const };
   }
 
   override get eligibleInputs() {
