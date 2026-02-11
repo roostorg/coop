@@ -24,16 +24,6 @@ if (
   FrontendTracer();
 }
 
-if (
-  typeof window !== 'undefined' &&
-  process.env.NODE_ENV === 'development' &&
-  process.env.REACT_APP_ENABLE_VIVID === 'true'
-  // && /VIVID_ENABLED=true/.test(document.cookie)
-) {
-  import('vivid-studio').then((v) => v.run());
-  import('vivid-studio/style.css');
-}
-
 declare global {
   interface Window {}
 }
