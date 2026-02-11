@@ -143,6 +143,39 @@ function getUrlsFromItem(
   );
 }
 
+/** Get matched bank names for a given media URL from the content item's field data. */
+export function getMatchedBanksForMediaUrl(
+  item: NCMECMediaQueryResult['contentItem'],
+  mediaUrl: string,
+): string[] {
+  const mediaFields = item.type.baseFields.filter(
+    (it) =>
+      it.type === 'IMAGE' ||
+      it.type === 'VIDEO' ||
+      it.container?.valueScalarType === 'IMAGE' ||
+      it.container?.valueScalarType === 'VIDEO',
+  );
+  for (const field of mediaFields) {
+    const valueOrValues = getFieldValueOrValues(item.data, field) as
+      | { value: { url?: string; matchedBanks?: string[] }; type: string }
+      | { value: { url?: string; matchedBanks?: string[] }; type: string }[]
+      | undefined;
+    if (valueOrValues === undefined) continue;
+    const values = Array.isArray(valueOrValues) ? valueOrValues : [valueOrValues];
+    for (const tagged of values) {
+      const v = tagged.value;
+      if (v?.url === mediaUrl) {
+        const matchedBanks = v?.matchedBanks;
+        if (Array.isArray(matchedBanks) && matchedBanks.length > 0) {
+          return matchedBanks;
+        }
+        return [];
+      }
+    }
+  }
+  return [];
+}
+
 // Mapping from GraphQL enum values to display labels
 const NCMEC_INCIDENT_TYPE_LABELS: Record<GQLNcmecIncidentType, string> = {
   [GQLNcmecIncidentType.ChildPornography]:

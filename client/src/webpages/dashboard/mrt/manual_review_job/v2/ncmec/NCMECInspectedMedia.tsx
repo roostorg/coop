@@ -26,6 +26,7 @@ import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImage
 import NCMECLabelSelector from './NCMECLabelSelector';
 import NCMECMediaViewer from './NCMECMediaViewer';
 import {
+  getMatchedBanksForMediaUrl,
   NCMECCategory,
   NCMECMediaIdentifier,
   NCMECMediaQueryResult,
@@ -166,24 +167,21 @@ export default function NCMECInspectedMedia(props: {
   const navigationButtons = (
     <div className="flex items-center justify-between w-full mb-3">
       <div
-        className={`cursor-pointer py-1 px-3 rounded border border-solid ${
-          index === 0
+        className={`cursor-pointer py-1 px-3 rounded border border-solid ${index === 0
             ? 'text-slate-300 border-slate-100'
             : 'text-coop-blue border-coop-blue hover:border-coop-blue hover:bg-coop-lightblue'
-        }`}
+          }`}
         onClick={goToPreviousMedia}
       >
         <ArrowLeftOutlined className="pr-1 text-xs" /> Previous
       </div>
-      <div className="text-sm text-slate-500">{`${
-        index + 1
-      } / ${totalLength}`}</div>
+      <div className="text-sm text-slate-500">{`${index + 1
+        } / ${totalLength}`}</div>
       <div
-        className={`cursor-pointer py-1 px-3 rounded border border-solid ${
-          index === totalLength - 1
+        className={`cursor-pointer py-1 px-3 rounded border border-solid ${index === totalLength - 1
             ? 'text-slate-300 border-slate-100'
             : 'text-coop-blue border-coop-blue hover:border-coop-blue hover:bg-coop-lightblue'
-        }`}
+          }`}
         onClick={goToNextMedia}
       >
         Next <ArrowRightOutlined className="pl-1 text-xs" />
@@ -192,22 +190,22 @@ export default function NCMECInspectedMedia(props: {
   );
   const threadInfoFields = threadInfo
     ? threadInfo.type.baseFields
-        .map(
-          (itemTypeField) =>
-            ({
-              ...itemTypeField,
-              value: threadInfo.data[itemTypeField.name],
-            }) as ItemTypeFieldFieldData,
-        )
-        .filter((field) => {
-          return isContainerType(field.type)
-            ? !isMediaType(field.container!.valueScalarType) &&
-                field.container!.valueScalarType !== ScalarTypes.RELATED_ITEM &&
-                threadInfo.data[field.name] !== undefined
-            : !isMediaType(field.type) &&
-                field.type !== ScalarTypes.RELATED_ITEM &&
-                threadInfo.data[field.name] !== undefined;
-        })
+      .map(
+        (itemTypeField) =>
+          ({
+            ...itemTypeField,
+            value: threadInfo.data[itemTypeField.name],
+          }) as ItemTypeFieldFieldData,
+      )
+      .filter((field) => {
+        return isContainerType(field.type)
+          ? !isMediaType(field.container!.valueScalarType) &&
+          field.container!.valueScalarType !== ScalarTypes.RELATED_ITEM &&
+          threadInfo.data[field.name] !== undefined
+          : !isMediaType(field.type) &&
+          field.type !== ScalarTypes.RELATED_ITEM &&
+          threadInfo.data[field.name] !== undefined;
+      })
     : [];
   const threadComponent = (() => {
     if (threadLoading) {
@@ -295,6 +293,24 @@ export default function NCMECInspectedMedia(props: {
                 setIsOpen={setIsLabelSelectorInInspectedMediaVisible}
               />
             </div>
+            {(() => {
+              const matchedBanks = getMatchedBanksForMediaUrl(
+                fullNcmecContentItem.contentItem,
+                mediaId.urlInfo.url,
+              );
+              if (matchedBanks.length === 0) return null;
+              return (
+                <>
+                  {divider}
+                  <div className="flex flex-col w-full gap-2 text-start">
+                    <div className="text-base font-bold pb-0.5">Matched</div>
+                    <div className="w-full px-3 py-2 text-sm border border-gray-200 border-solid rounded-md bg-white min-h-[32px] flex items-center">
+                      [ {matchedBanks.join(', ')} ]
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
           {divider}
           <div className="text-base font-bold pb-0.5">Media Info</div>
@@ -303,10 +319,10 @@ export default function NCMECInspectedMedia(props: {
               fields={fieldData.filter((field) => {
                 return isContainerType(field.type)
                   ? !isMediaType(field.container!.valueScalarType) &&
-                      field.container!.valueScalarType !==
-                        ScalarTypes.RELATED_ITEM
+                  field.container!.valueScalarType !==
+                  ScalarTypes.RELATED_ITEM
                   : !isMediaType(field.type) &&
-                      field.type !== ScalarTypes.RELATED_ITEM;
+                  field.type !== ScalarTypes.RELATED_ITEM;
               })}
               itemTypeId={fullNcmecContentItem.contentItem.type.id}
             />
