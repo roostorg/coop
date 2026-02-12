@@ -138,6 +138,9 @@
     },
     "tailwindcss": {
       "sucrase": "^3.35.1"
+    },
+    "source-map-explorer": {
+      "rimraf": "^6.1.2"
     }
   },
   "browserslist": {
