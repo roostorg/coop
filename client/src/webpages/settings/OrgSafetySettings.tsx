@@ -27,6 +27,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -46,6 +47,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function ManualReviewSafetySettings() {
@@ -53,6 +55,7 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: true,
   });
 
   const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery();
@@ -77,11 +80,13 @@ export default function ManualReviewSafetySettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = data.myOrg.defaultInterfacePreferences;
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [data?.myOrg?.defaultInterfacePreferences]);
 
@@ -104,11 +109,11 @@ export default function ManualReviewSafetySettings() {
           Standardize Your Organization's Safety Settings
         </Heading>
         <Text size="SM" className="mb-12">
-        Configure your organization's default safety settings. When a new 
-        employee joins your team and needs to use Coop, these settings 
-        will be applied by default to maintain their safety and well-being. 
-        If an employee wants to override these settings, they can do so in 
-        their personal Safety Settings.
+          Configure your organization's default safety settings. When a new
+          employee joins your team and needs to use Coop, these settings will be
+          applied by default to maintain their safety and well-being. If an
+          employee wants to override these settings, they can do so in their
+          personal Safety Settings.
         </Text>
         <div className="flex gap-12 mb-8">
           <div className="flex flex-col gap-5 w-64 pt-10">
@@ -145,6 +150,19 @@ export default function ManualReviewSafetySettings() {
             </div>
 
             <div className="flex gap-1 items-center justify-between">
+              <Label className="text-sm font-medium leading-none">Sepia</Label>
+              <Switch
+                checked={safetySettings.moderatorSafetySepia}
+                onCheckedChange={(value) =>
+                  setSafetySettings({
+                    ...safetySettings,
+                    moderatorSafetySepia: value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex gap-1 items-center justify-between">
               <Label className="text-sm font-medium leading-none">
                 Mute Videos
               </Label>
@@ -163,7 +181,9 @@ export default function ManualReviewSafetySettings() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+              safetySettings.moderatorSafetySepia ? 'sepia' : ''
+            }`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

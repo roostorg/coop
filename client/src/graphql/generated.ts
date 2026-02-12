@@ -2095,6 +2095,7 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean'];
+  readonly moderatorSafetySepia: Scalars['Boolean'];
 };
 
 export type GQLMrtJobEnqueueSourceInfo = {
@@ -4473,6 +4474,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean'];
+  readonly moderatorSafetySepia: Scalars['Boolean'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -11237,6 +11239,7 @@ export type GQLManualReviewSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -23426,6 +23429,7 @@ export type GQLPersonalSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -23617,6 +23621,7 @@ export type GQLOrgDefaultSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -30034,6 +30039,7 @@ export const GQLManualReviewSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -35859,6 +35865,7 @@ export const GQLPersonalSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -36620,6 +36627,7 @@ export const GQLOrgDefaultSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }

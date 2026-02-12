@@ -2164,6 +2164,7 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean'];
+  readonly moderatorSafetySepia: Scalars['Boolean'];
 };
 
 export type GQLMrtJobEnqueueSourceInfo = {
@@ -4542,6 +4543,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean'];
+  readonly moderatorSafetySepia: Scalars['Boolean'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -13337,6 +13339,11 @@ export type GQLUserInterfacePreferencesResolvers<
     ContextType
   >;
   moderatorSafetyMuteVideo?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  moderatorSafetySepia?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
     ContextType

@@ -60,6 +60,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -141,6 +142,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function AccountSettings() {
@@ -149,6 +151,7 @@ export default function AccountSettings() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: true,
   });
 
   const [dialogConfig, setDialogConfig] = useState<ModalInfo>({
@@ -179,7 +182,9 @@ export default function AccountSettings() {
         });
       },
       onCompleted: (data) => {
-        if (data.changePassword.__typename === 'ChangePasswordSuccessResponse') {
+        if (
+          data.changePassword.__typename === 'ChangePasswordSuccessResponse'
+        ) {
           toast.success('Password Changed', {
             description: 'Your password has been successfully updated.',
           });
@@ -226,12 +231,14 @@ export default function AccountSettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = safetySettingsData.me.interfacePreferences;
 
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [safetySettingsData?.me?.interfacePreferences]);
 
@@ -301,6 +308,15 @@ export default function AccountSettings() {
       setSafetySettings((prevSettings) => ({
         ...prevSettings,
         moderatorSafetyGrayscale,
+      })),
+    [],
+  );
+
+  const setSepiaPreference = useCallback(
+    (moderatorSafetySepia: boolean): void =>
+      setSafetySettings((prevSettings) => ({
+        ...prevSettings,
+        moderatorSafetySepia,
       })),
     [],
   );
@@ -496,7 +512,9 @@ export default function AccountSettings() {
             </Button>
             <Button
               onClick={handleChangePassword}
-              disabled={isChangePasswordButtonDisabled || isChangePasswordLoading}
+              disabled={
+                isChangePasswordButtonDisabled || isChangePasswordLoading
+              }
               loading={isChangePasswordLoading}
             >
               Change Password
@@ -593,6 +611,14 @@ export default function AccountSettings() {
             </div>
 
             <div className="flex gap-1 items-center justify-between">
+              <Label>Sepia</Label>
+              <Switch
+                onCheckedChange={setSepiaPreference}
+                checked={safetySettings.moderatorSafetySepia}
+              />
+            </div>
+
+            <div className="flex gap-1 items-center justify-between">
               <Label>Mute Videos</Label>
               <Switch
                 onCheckedChange={setMuteVideoPreference}
@@ -604,7 +630,9 @@ export default function AccountSettings() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+              safetySettings.moderatorSafetySepia ? 'sepia' : ''
+            }`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />
