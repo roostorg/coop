@@ -59,7 +59,7 @@
     "eslint-plugin-better-mutation": "^1.4.0",
     "eslint-plugin-etc": "^2.0.3",
     "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-jsdoc": "^39.6.4",
+    "eslint-plugin-jsdoc": "^62.5.4",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-security": "^1.5.0",
