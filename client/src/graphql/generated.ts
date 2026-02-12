@@ -2295,6 +2295,7 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['input'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['input'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['input'];
 };
 
 export type GQLMrtJobEnqueueSourceInfo = {
@@ -4829,6 +4830,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['output'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['output'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['output'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['output'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -12002,6 +12004,7 @@ export type GQLManualReviewSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -24334,6 +24337,7 @@ export type GQLPersonalSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -24545,6 +24549,7 @@ export type GQLOrgDefaultSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -33696,6 +33701,7 @@ export const GQLManualReviewSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -42163,6 +42169,7 @@ export const GQLPersonalSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -43105,6 +43112,7 @@ export const GQLOrgDefaultSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }

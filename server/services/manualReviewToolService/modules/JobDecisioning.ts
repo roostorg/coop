@@ -315,7 +315,7 @@ export default class JobDecisioning {
 
       return {
         newDecisionStored: logDecisionStatus === 'SUCCESS',
-        error: match([logDecisionStatus, removeJobStatus] as const)
+        error: match([logDecisionStatus, removeJobStatus] as readonly ['SUCCESS' | 'ALREADY_LOGGED', 'SUCCESS' | 'FAILED'])
           // Case 1, happy path.
           .with(['SUCCESS', 'SUCCESS'], () => undefined)
           // Case 2, decision logged but job not deleted.

@@ -60,6 +60,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -141,6 +142,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function AccountSettings() {
@@ -149,6 +151,7 @@ export default function AccountSettings() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
 
   const [dialogConfig, setDialogConfig] = useState<ModalInfo>({
@@ -179,7 +182,9 @@ export default function AccountSettings() {
         });
       },
       onCompleted: (data) => {
-        if (data.changePassword.__typename === 'ChangePasswordSuccessResponse') {
+        if (
+          data.changePassword.__typename === 'ChangePasswordSuccessResponse'
+        ) {
           toast.success('Password Changed', {
             description: 'Your password has been successfully updated.',
           });
@@ -226,12 +231,14 @@ export default function AccountSettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = safetySettingsData.me.interfacePreferences;
 
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [safetySettingsData?.me?.interfacePreferences]);
 
@@ -296,12 +303,9 @@ export default function AccountSettings() {
     }));
   }, []);
 
-  const setGrayscalePreference = useCallback(
-    (moderatorSafetyGrayscale: boolean): void =>
-      setSafetySettings((prevSettings) => ({
-        ...prevSettings,
-        moderatorSafetyGrayscale,
-      })),
+  const setSafetyBooleanPreference = useCallback(
+    (key: keyof Omit<SafetySettings, 'moderatorSafetyBlurLevel'>, value: boolean): void =>
+      setSafetySettings((prevSettings) => ({ ...prevSettings, [key]: value })),
     [],
   );
 
@@ -364,14 +368,6 @@ export default function AccountSettings() {
     });
   }, [currentPassword, newPassword, confirmNewPassword, changePassword]);
 
-  const setMuteVideoPreference = useCallback(
-    (moderatorSafetyMuteVideo: boolean): void =>
-      setSafetySettings((prevSettings) => ({
-        ...prevSettings,
-        moderatorSafetyMuteVideo,
-      })),
-    [],
-  );
 
   const moderatorSafetyBlurValue = useMemo(
     () => [safetySettings.moderatorSafetyBlurLevel],
@@ -496,7 +492,9 @@ export default function AccountSettings() {
             </Button>
             <Button
               onClick={handleChangePassword}
-              disabled={isChangePasswordButtonDisabled || isChangePasswordLoading}
+              disabled={
+                isChangePasswordButtonDisabled || isChangePasswordLoading
+              }
               loading={isChangePasswordLoading}
             >
               Change Password
@@ -587,15 +585,23 @@ export default function AccountSettings() {
             <div className="flex gap-1 items-center justify-between">
               <Label>Grayscale</Label>
               <Switch
-                onCheckedChange={setGrayscalePreference}
+                onCheckedChange={(v) => setSafetyBooleanPreference('moderatorSafetyGrayscale', v)}
                 checked={safetySettings.moderatorSafetyGrayscale}
+              />
+            </div>
+
+            <div className="flex gap-1 items-center justify-between">
+              <Label>Sepia</Label>
+              <Switch
+                onCheckedChange={(v) => setSafetyBooleanPreference('moderatorSafetySepia', v)}
+                checked={safetySettings.moderatorSafetySepia}
               />
             </div>
 
             <div className="flex gap-1 items-center justify-between">
               <Label>Mute Videos</Label>
               <Switch
-                onCheckedChange={setMuteVideoPreference}
+                onCheckedChange={(v) => setSafetyBooleanPreference('moderatorSafetyMuteVideo', v)}
                 checked={safetySettings.moderatorSafetyMuteVideo}
               />
             </div>
@@ -604,7 +610,9 @@ export default function AccountSettings() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+              safetySettings.moderatorSafetySepia ? 'sepia' : ''
+            }`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />
