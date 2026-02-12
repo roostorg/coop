@@ -40,6 +40,7 @@ import ManualReviewJobContentBlurableVideo from '../../ManualReviewJobContentBlu
 import NCMECActions from './NCMECActions';
 import NCMECInspectedMedia from './NCMECInspectedMedia';
 import NCMECMediaGallery from './NCMECMediaGallery';
+import clsx from 'clsx';
 import { BLUR_LEVELS, BlurStrength } from './NCMECMediaViewer';
 import NCMECPreviousMessages from './NCMECPreviousMessages';
 
@@ -446,9 +447,10 @@ export default function NCMECReviewUser(
   }
 
   const {
-    moderatorSafetyBlurLevel,
-    moderatorSafetyGrayscale,
-    moderatorSafetyMuteVideo,
+    moderatorSafetyBlurLevel = 2 as BlurStrength,
+    moderatorSafetyGrayscale = true,
+    moderatorSafetyMuteVideo = true,
+    moderatorSafetySepia = false,
   } = data?.me?.interfacePreferences ?? {};
 
   // Compares two pieces of media to determine whether they're the same, based
@@ -634,23 +636,29 @@ export default function NCMECReviewUser(
             <div className="overflow-hidden shadow-lg rounded-2xl w-fit">
               {!loading &&
               moderatorSafetyBlurLevel != null &&
-              moderatorSafetyGrayscale != null ? (
+              moderatorSafetyGrayscale != null &&
+              moderatorSafetySepia != null ? (
                 media.urlInfo.mediaType === 'IMAGE' ? (
                   <img
-                    className={`object-scale-down w-64 h-48 rounded-2xl ${
+                    className={clsx(
+                      'object-scale-down w-64 h-48 rounded-2xl',
                       unblurAllMediaInConfirmation
                         ? 'blur-0'
-                        : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength]
-                    } ${moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+                        : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength],
+                      moderatorSafetyGrayscale && 'grayscale',
+                      moderatorSafetySepia && 'sepia',
+                    )}
                     alt=""
                     src={media.urlInfo.url}
                   />
                 ) : (
                   <ManualReviewJobContentBlurableVideo
                     url={media.urlInfo.url}
-                    className={`object-scale-down w-64 h-48 rounded-2xl ${
-                      moderatorSafetyGrayscale ? 'grayscale' : ''
-                    }`}
+                    className={clsx(
+                      'object-scale-down w-64 h-48 rounded-2xl',
+                      moderatorSafetyGrayscale && 'grayscale',
+                      moderatorSafetySepia && 'sepia',
+                    )}
                     options={{
                       shouldBlur:
                         !unblurAllMediaInConfirmation &&

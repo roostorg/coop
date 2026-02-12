@@ -28,6 +28,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -47,6 +48,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function WellnessTab() {
@@ -54,6 +56,7 @@ export default function WellnessTab() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
 
   const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({
@@ -80,11 +83,13 @@ export default function WellnessTab() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = defaultInterfacePreferences;
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [defaultInterfacePreferences]);
 
@@ -99,7 +104,8 @@ export default function WellnessTab() {
     safetySettings.moderatorSafetyGrayscale !==
       serverPrefs.moderatorSafetyGrayscale ||
     safetySettings.moderatorSafetyMuteVideo !==
-      serverPrefs.moderatorSafetyMuteVideo;
+      serverPrefs.moderatorSafetyMuteVideo ||
+    safetySettings.moderatorSafetySepia !== serverPrefs.moderatorSafetySepia;
 
   return (
     <div className="flex flex-col gap-8">
@@ -153,6 +159,20 @@ export default function WellnessTab() {
             </div>
             <div className="flex gap-12 mt-2 items-center">
               <Text className="text-base" weight="medium">
+                Sepia
+              </Text>
+              <Switch
+                checked={safetySettings.moderatorSafetySepia}
+                onCheckedChange={(value) =>
+                  setSafetySettings({
+                    ...safetySettings,
+                    moderatorSafetySepia: value,
+                  })
+                }
+              />
+            </div>
+            <div className="flex gap-12 mt-2 items-center">
+              <Text className="text-base" weight="medium">
                 Mute videos
               </Text>
               <Switch
@@ -169,7 +189,9 @@ export default function WellnessTab() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+              safetySettings.moderatorSafetySepia ? 'sepia' : ''
+            }`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

@@ -25,25 +25,31 @@ export default function IframeContentDisplayComponent(props: {
     blur: boolean;
     grayscale: boolean;
     shouldTranslate: boolean;
+    sepia: boolean;
   }>({
     blur: true,
     grayscale: false,
     shouldTranslate: false,
+    sepia: false,
   });
 
-  const { blur, grayscale, shouldTranslate } = state;
+  const { blur, grayscale, shouldTranslate, sepia } = state;
 
   const { loading, data } = useGQLPersonalSafetySettingsQuery();
-  const { moderatorSafetyBlurLevel = 2, moderatorSafetyGrayscale = true } =
-    data?.me?.interfacePreferences ?? {};
+  const {
+    moderatorSafetyBlurLevel = 2,
+    moderatorSafetyGrayscale = true,
+    moderatorSafetySepia = false,
+  } = data?.me?.interfacePreferences ?? {};
 
   useEffect(() => {
     setState({
       blur: moderatorSafetyBlurLevel !== 0,
       grayscale: moderatorSafetyGrayscale,
       shouldTranslate: false,
+      sepia: moderatorSafetySepia,
     });
-  }, [moderatorSafetyBlurLevel, moderatorSafetyGrayscale]);
+  }, [moderatorSafetyBlurLevel, moderatorSafetyGrayscale, moderatorSafetySepia]);
 
   useEffect(() => {
     // Translation status messages come from the content proxy. With no proxy
@@ -77,6 +83,7 @@ export default function IframeContentDisplayComponent(props: {
               blur: blur ? moderatorSafetyBlurLevel : 0,
               grayscale,
               shouldTranslate,
+              sepia,
             },
             proxyUrl,
           );
@@ -93,6 +100,7 @@ export default function IframeContentDisplayComponent(props: {
                   blur: blur ? moderatorSafetyBlurLevel : 0,
                   grayscale,
                   shouldTranslate,
+                  sepia,
                 },
                 proxyUrl,
               );
@@ -116,6 +124,7 @@ export default function IframeContentDisplayComponent(props: {
       shouldTranslate,
       contentProxyUrl,
       isIframeLoading,
+      sepia,
     ],
   );
 
