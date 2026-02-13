@@ -18,6 +18,7 @@ import {
   useGQLSetIntegrationConfigMutation,
   type GQLGoogleContentSafetyApiIntegrationApiCredential,
   type GQLOpenAiIntegrationApiCredential,
+  type GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
 import {
   stripTypename,
@@ -59,6 +60,13 @@ gql`
             ... on OpenAiIntegrationApiCredential {
               apiKey
             }
+            ... on ZentropiIntegrationApiCredential {
+              apiKey
+              labelerVersions {
+                id
+                label
+              }
+            }
           }
         }
       }
@@ -91,6 +99,13 @@ export function getNewEmptyApiKey(
     }
     case 'OPEN_AI': {
       return { __typename: 'OpenAiIntegrationApiCredential', apiKey: '' };
+    }
+    case 'ZENTROPI': {
+      return {
+        __typename: 'ZentropiIntegrationApiCredential',
+        apiKey: '',
+        labelerVersions: [],
+      };
     }
     default: {
       throw new Error(`${name} integration not implemented.`);
@@ -181,6 +196,7 @@ export default function IntegrationConfigForm() {
   const mappedApiCredential = taggedUnionToOneOfInput(apiCredential, {
     GoogleContentSafetyApiIntegrationApiCredential: 'googleContentSafetyApi',
     OpenAiIntegrationApiCredential: 'openAi',
+    ZentropiIntegrationApiCredential: 'zentropi',
   });
 
   const validationMessage = (() => {
@@ -201,6 +217,17 @@ export default function IntegrationConfigForm() {
         .apiKey
     ) {
       return 'Please input the OpenAI API key';
+    }
+
+    if (
+      'zentropi' in mappedApiCredential &&
+      !(
+        mappedApiCredential[
+          'zentropi'
+        ] as GQLZentropiIntegrationApiCredential
+      ).apiKey
+    ) {
+      return 'Please input the Zentropi API key';
     }
 
     return undefined;

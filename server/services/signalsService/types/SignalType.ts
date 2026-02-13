@@ -48,6 +48,7 @@ export const BuiltInThirdPartySignalType = makeEnumLike([
   'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL',
   'OPEN_AI_SEXUAL_TEXT_MODEL',
   'OPEN_AI_VIOLENCE_TEXT_MODEL',
+  'ZENTROPI_LABELER',
 ]);
 
 export const UserCreatedExternalSignalType = makeEnumLike(['CUSTOM']);
@@ -98,6 +99,8 @@ export function integrationForSignalType(type: SignalType) {
     case 'OPEN_AI_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_WHISPER_TRANSCRIPTION':
       return Integration.OPEN_AI;
+    case 'ZENTROPI_LABELER':
+      return Integration.ZENTROPI;
     case 'AGGREGATION':
     case 'CUSTOM':
     case 'GEO_CONTAINED_WITHIN':

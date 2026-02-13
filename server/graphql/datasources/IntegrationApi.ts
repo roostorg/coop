@@ -57,6 +57,17 @@ class IntegrationAPI extends DataSource {
       );
     }
 
+    if (apiCredential.zentropi) {
+      return this.__private__setConfig(
+        'ZENTROPI',
+        {
+          apiKey: apiCredential.zentropi.apiKey,
+          labelerVersions: [...(apiCredential.zentropi.labelerVersions ?? [])],
+        },
+        orgId,
+      );
+    }
+
     throw new Error('No credentials provided');
   }
 

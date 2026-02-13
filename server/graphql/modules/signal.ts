@@ -96,6 +96,7 @@ const typeDefs = /* GraphQL */ `
     OPEN_AI_SEXUAL_TEXT_MODEL
     OPEN_AI_VIOLENCE_TEXT_MODEL
     OPEN_AI_WHISPER_TRANSCRIPTION
+    ZENTROPI_LABELER
     GEO_CONTAINED_WITHIN
     USER_SCORE
     USER_STRIKE_VALUE
@@ -162,7 +163,6 @@ const typeDefs = /* GraphQL */ `
   enum AggregationType {
     COUNT
   }
-
 `;
 
 const SignalOutputType: ResolverMap<TSignalOutputType> = {
@@ -227,7 +227,25 @@ const Signal: GQLSignalResolvers = {
       return { languages: supportedLanguages satisfies readonly GQLLanguage[] };
     }
   },
-  eligibleSubcategories(signal) {
+  async eligibleSubcategories(signal, _, context) {
+    // For Zentropi signals, return org-specific labeler versions as subcategories
+    if (signal.id.type === 'ZENTROPI_LABELER') {
+      const user = context.getUser();
+      if (user) {
+        const config = await context.dataSources.integrationAPI.getConfig(
+          user.orgId,
+          'ZENTROPI',
+        );
+        if (config?.name === 'ZENTROPI') {
+          const versions = config.apiCredential.labelerVersions ?? [];
+          return versions.map((v) => ({
+            id: v.id,
+            label: v.label,
+            childrenIds: [],
+          }));
+        }
+      }
+    }
     return flattenSubcategories(signal.eligibleSubcategories);
   },
   shouldPromptForMatchingValues(signal) {

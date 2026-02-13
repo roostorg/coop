@@ -1,10 +1,9 @@
 import { AuthenticationError } from 'apollo-server-express';
 
-import {
-  isConfigurableIntegration,
-} from '../../services/signalAuthService/index.js';
+import { isConfigurableIntegration } from '../../services/signalAuthService/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
+import { assertUnreachable } from '../../utils/misc.js';
 import {
   makeIntegrationConfigUnsupportedIntegrationError,
   type TIntegrationCredential,
@@ -15,7 +14,6 @@ import {
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
-import { assertUnreachable } from '../../utils/misc.js';
 
 const typeDefs = /* GraphQL */ `
   enum Integration {
@@ -27,6 +25,7 @@ const typeDefs = /* GraphQL */ `
     OPEN_AI
     SIGHT_ENGINE
     TWO_HAT
+    ZENTROPI
   }
 
   type GoogleContentSafetyApiIntegrationApiCredential {
@@ -37,9 +36,20 @@ const typeDefs = /* GraphQL */ `
     apiKey: String!
   }
 
+  type ZentropiLabelerVersion {
+    id: String!
+    label: String!
+  }
+
+  type ZentropiIntegrationApiCredential {
+    apiKey: String!
+    labelerVersions: [ZentropiLabelerVersion!]!
+  }
+
   union IntegrationApiCredential =
       GoogleContentSafetyApiIntegrationApiCredential
     | OpenAiIntegrationApiCredential
+    | ZentropiIntegrationApiCredential
 
   type IntegrationConfig {
     name: Integration!
@@ -54,9 +64,20 @@ const typeDefs = /* GraphQL */ `
     apiKey: String!
   }
 
+  input ZentropiLabelerVersionInput {
+    id: String!
+    label: String!
+  }
+
+  input ZentropiIntegrationApiCredentialInput {
+    apiKey: String!
+    labelerVersions: [ZentropiLabelerVersionInput!]
+  }
+
   input IntegrationApiCredentialInput {
     googleContentSafetyApi: GoogleContentSafetyApiIntegrationApiCredentialInput
     openAi: OpenAiIntegrationApiCredentialInput
+    zentropi: ZentropiIntegrationApiCredentialInput
   }
 
   input SetIntegrationConfigInput {
@@ -136,9 +157,14 @@ const IntegrationApiCredential: ResolverMap<TIntegrationCredential> = {
         return 'GoogleContentSafetyApiIntegrationApiCredential';
       case Integration.OPEN_AI:
         return 'OpenAiIntegrationApiCredential';
+      case Integration.ZENTROPI:
+        return 'ZentropiIntegrationApiCredential';
       default:
         // TypeScript can't verify exhaustiveness here because GQL enum includes
-        assertUnreachable(integrationName, `Unsupported integration: ${integrationName}`);
+        assertUnreachable(
+          integrationName,
+          `Unsupported integration: ${integrationName}`,
+        );
     }
   },
 };

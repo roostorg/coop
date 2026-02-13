@@ -7,6 +7,7 @@ import { makeEnumLike } from '@roostorg/types';
 export const Integration = makeEnumLike([
   'GOOGLE_CONTENT_SAFETY_API',
   'OPEN_AI',
+  'ZENTROPI',
 ]);
 
 export type Integration = keyof typeof Integration;
