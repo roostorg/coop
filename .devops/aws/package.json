@@ -31,7 +31,7 @@
     "aws-cdk-lib": "^2.168.0",
     "cdk8s": "^2.0.5",
     "cdk8s-cli": "^1.0.58",
-    "constructs": "^10.0.0",
+    "constructs": "^10.4.5",
     "js-yaml": "^4.1.0",
     "json-to-pretty-yaml": "^1.2.2",
     "k8s-resource-parser": "^0.2.1",
