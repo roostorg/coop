@@ -37,6 +37,6 @@
     "k8s-resource-parser": "^0.2.1",
     "lodash": "^4.17.21",
     "safe-stable-stringify": "^2.4.3",
-    "type-fest": "^4.2.0"
+    "type-fest": "^5.4.4"
   }
 }
