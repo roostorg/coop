@@ -1413,13 +1413,26 @@ export default async function getBottle() {
                   });
                 }
                 break;
-              case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE':
+              case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE': {
+                const reportHistory =
+                  'reportHistory' in job.payload
+                    ? job.payload.reportHistory
+                    : [];
+                const reportedForReasons =
+                  'reportedForReasons' in job.payload &&
+                  job.payload.reportedForReasons != null &&
+                  job.payload.reportedForReasons.length > 0
+                    ? job.payload.reportedForReasons
+                    : reportHistory.map((entry) => ({
+                        reporterId: entry.reporterId,
+                        reason: entry.reason,
+                      }));
                 const defaultJobInput = {
                   enqueueSource: 'MRT_JOB',
                   enqueueSourceInfo: { kind: 'MRT_JOB' },
                   reenqueuedFrom: { jobId: job.id },
                   payload: {
-                    kind: 'DEFAULT',
+                    kind: 'DEFAULT' as const,
                     item: job.payload.item,
                     ...{
                       reportIds:
@@ -1435,17 +1448,8 @@ export default async function getBottle() {
                           reporterIdentifier: job.payload.reporterIdentifier,
                         }
                       : {}),
-                    ...('reportedForReasons' in job.payload
-                      ? {
-                          reportedForReasons:
-                            job.payload.reportedForReasons ?? [],
-                        }
-                      : { reportedForReasons: [] }),
-                    ...('reportHistory' in job.payload
-                      ? {
-                          reportHistory: job.payload.reportHistory,
-                        }
-                      : { reportHistory: [] }),
+                    reportedForReasons,
+                    reportHistory,
                   },
                   createdAt: new Date(),
                   orgId,
@@ -1480,6 +1484,7 @@ export default async function getBottle() {
                     assertUnreachable(decision.newJobKind);
                 }
                 break;
+              }
 
               default:
                 assertUnreachable(decision);

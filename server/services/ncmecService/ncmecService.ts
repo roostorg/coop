@@ -123,7 +123,12 @@ export class NcmecService {
         }
     ),
   ) {
-    return this.ncmecEnqueueToMrt.enqueueForHumanReviewIfApplicable(input);
+    const settings = await this.getNcmecOrgSettings(input.orgId);
+    const targetQueueId = settings?.defaultNcmecQueueId ?? undefined;
+    return this.ncmecEnqueueToMrt.enqueueForHumanReviewIfApplicable({
+      ...input,
+      targetQueueId,
+    });
   }
 
   async getNCMECActionsToRunAndPolicies(orgId: string) {
@@ -182,6 +187,7 @@ export class NcmecService {
         'legal_url as legalUrl',
         'ncmec_preservation_endpoint as ncmecPreservationEndpoint',
         'ncmec_additional_info_endpoint as ncmecAdditionalInfoEndpoint',
+        'default_ncmec_queue_id as defaultNcmecQueueId',
       ])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
@@ -199,6 +205,7 @@ export class NcmecService {
     legalUrl: string | null;
     ncmecPreservationEndpoint: string | null;
     ncmecAdditionalInfoEndpoint: string | null;
+    defaultNcmecQueueId: string | null;
   }) {
     await this.pgQuery
       .insertInto('ncmec_reporting.ncmec_org_settings')
@@ -214,6 +221,7 @@ export class NcmecService {
           params.ncmecPreservationEndpoint ?? undefined,
         ncmec_additional_info_endpoint:
           params.ncmecAdditionalInfoEndpoint ?? undefined,
+        default_ncmec_queue_id: params.defaultNcmecQueueId ?? undefined,
         actions_to_run_upon_report_creation: null,
         policies_applied_to_actions_run_on_report_creation: null,
       })
@@ -229,6 +237,7 @@ export class NcmecService {
             params.ncmecPreservationEndpoint ?? undefined,
           ncmec_additional_info_endpoint:
             params.ncmecAdditionalInfoEndpoint ?? undefined,
+          default_ncmec_queue_id: params.defaultNcmecQueueId ?? undefined,
         }),
       )
       .execute();

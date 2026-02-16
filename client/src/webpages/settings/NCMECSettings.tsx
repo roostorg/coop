@@ -1,6 +1,13 @@
 import { Button } from '@/coop-ui/Button';
 import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
@@ -24,9 +31,14 @@ gql`
       legalUrl
       ncmecPreservationEndpoint
       ncmecAdditionalInfoEndpoint
+      defaultNcmecQueueId
     }
     myOrg {
       hasNCMECReportingEnabled
+      mrtQueues {
+        id
+        name
+      }
     }
   }
 
@@ -46,6 +58,7 @@ type NcmecSettings = {
   legalUrl: string;
   ncmecPreservationEndpoint: string;
   ncmecAdditionalInfoEndpoint: string;
+  defaultNcmecQueueId: string;
 };
 
 export default function NCMECSettings() {
@@ -58,6 +71,7 @@ export default function NCMECSettings() {
     legalUrl: '',
     ncmecPreservationEndpoint: '',
     ncmecAdditionalInfoEndpoint: '',
+    defaultNcmecQueueId: '',
   });
 
   const { loading, error, data } = useGQLNcmecOrgSettingsQuery();
@@ -87,6 +101,8 @@ export default function NCMECSettings() {
           data.ncmecOrgSettings.ncmecPreservationEndpoint ?? '',
         ncmecAdditionalInfoEndpoint:
           data.ncmecOrgSettings.ncmecAdditionalInfoEndpoint ?? '',
+        defaultNcmecQueueId:
+          data.ncmecOrgSettings.defaultNcmecQueueId ?? '',
       });
     }
   }, [data?.ncmecOrgSettings]);
@@ -126,6 +142,7 @@ export default function NCMECSettings() {
             settings.ncmecPreservationEndpoint || null,
           ncmecAdditionalInfoEndpoint:
             settings.ncmecAdditionalInfoEndpoint || null,
+          defaultNcmecQueueId: settings.defaultNcmecQueueId || null,
         },
       },
     });
@@ -265,6 +282,44 @@ export default function NCMECSettings() {
               }
               placeholder="https://yourcompany.com/ncmec-info"
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label
+              htmlFor="defaultNcmecQueueId"
+              className="text-sm font-medium"
+            >
+              Default NCMEC queue
+            </Label>
+            <Select
+              value={settings.defaultNcmecQueueId || '__default__'}
+              onValueChange={(value) =>
+                setSettings({
+                  ...settings,
+                  defaultNcmecQueueId:
+                    value === '__default__' ? '' : value,
+                })
+              }
+            >
+              <SelectTrigger id="defaultNcmecQueueId">
+                <SelectValue placeholder="Use org default queue" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">
+                  Use org default queue
+                </SelectItem>
+                {(data?.myOrg?.mrtQueues ?? []).map((queue) => (
+                  <SelectItem key={queue.id} value={queue.id}>
+                    {queue.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Text size="XS" className="text-gray-500">
+              When reviewers choose &quot;Enqueue to NCMEC&quot;, jobs will be
+              sent to this queue. Leave as &quot;Use org default queue&quot; to
+              use the organization&apos;s default manual review queue.
+            </Text>
           </div>
 
           <div className="flex flex-col gap-2">

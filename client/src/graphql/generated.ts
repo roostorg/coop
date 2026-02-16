@@ -2714,6 +2714,7 @@ export type GQLNcmecOrgSettings = {
   readonly __typename: 'NcmecOrgSettings';
   readonly companyTemplate?: Maybe<Scalars['String']>;
   readonly contactEmail?: Maybe<Scalars['String']>;
+  readonly defaultNcmecQueueId?: Maybe<Scalars['String']>;
   readonly legalUrl?: Maybe<Scalars['String']>;
   readonly moreInfoUrl?: Maybe<Scalars['String']>;
   readonly ncmecAdditionalInfoEndpoint?: Maybe<Scalars['String']>;
@@ -2725,6 +2726,7 @@ export type GQLNcmecOrgSettings = {
 export type GQLNcmecOrgSettingsInput = {
   readonly companyTemplate?: InputMaybe<Scalars['String']>;
   readonly contactEmail?: InputMaybe<Scalars['String']>;
+  readonly defaultNcmecQueueId?: InputMaybe<Scalars['String']>;
   readonly legalUrl?: InputMaybe<Scalars['String']>;
   readonly moreInfoUrl?: InputMaybe<Scalars['String']>;
   readonly ncmecAdditionalInfoEndpoint?: InputMaybe<Scalars['String']>;
@@ -23585,10 +23587,16 @@ export type GQLNcmecOrgSettingsQuery = {
     readonly legalUrl?: string | null;
     readonly ncmecPreservationEndpoint?: string | null;
     readonly ncmecAdditionalInfoEndpoint?: string | null;
+    readonly defaultNcmecQueueId?: string | null;
   } | null;
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly hasNCMECReportingEnabled: boolean;
+    readonly mrtQueues: ReadonlyArray<{
+      readonly __typename: 'ManualReviewQueue';
+      readonly id: string;
+      readonly name: string;
+    }>;
   } | null;
 };
 
@@ -36506,9 +36514,14 @@ export const GQLNcmecOrgSettingsDocument = gql`
       legalUrl
       ncmecPreservationEndpoint
       ncmecAdditionalInfoEndpoint
+      defaultNcmecQueueId
     }
     myOrg {
       hasNCMECReportingEnabled
+      mrtQueues {
+        id
+        name
+      }
     }
   }
 `;

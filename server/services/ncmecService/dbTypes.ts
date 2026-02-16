@@ -18,6 +18,7 @@ export type NcmecReportingServicePg = {
     legal_url?: string;
     ncmec_preservation_endpoint?: string;
     ncmec_additional_info_endpoint?: string;
+    default_ncmec_queue_id?: string | null;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
   } & (

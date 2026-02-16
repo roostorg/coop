@@ -2783,6 +2783,7 @@ export type GQLNcmecOrgSettings = {
   readonly __typename?: 'NcmecOrgSettings';
   readonly companyTemplate?: Maybe<Scalars['String']>;
   readonly contactEmail?: Maybe<Scalars['String']>;
+  readonly defaultNcmecQueueId?: Maybe<Scalars['String']>;
   readonly legalUrl?: Maybe<Scalars['String']>;
   readonly moreInfoUrl?: Maybe<Scalars['String']>;
   readonly ncmecAdditionalInfoEndpoint?: Maybe<Scalars['String']>;
@@ -2794,6 +2795,7 @@ export type GQLNcmecOrgSettings = {
 export type GQLNcmecOrgSettingsInput = {
   readonly companyTemplate?: InputMaybe<Scalars['String']>;
   readonly contactEmail?: InputMaybe<Scalars['String']>;
+  readonly defaultNcmecQueueId?: InputMaybe<Scalars['String']>;
   readonly legalUrl?: InputMaybe<Scalars['String']>;
   readonly moreInfoUrl?: InputMaybe<Scalars['String']>;
   readonly ncmecAdditionalInfoEndpoint?: InputMaybe<Scalars['String']>;
@@ -10504,6 +10506,11 @@ export type GQLNcmecOrgSettingsResolvers<
     ContextType
   >;
   contactEmail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  defaultNcmecQueueId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
     ContextType

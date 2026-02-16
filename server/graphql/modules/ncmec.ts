@@ -28,6 +28,7 @@ const typeDefs = /* GraphQL */ `
     legalUrl: String
     ncmecPreservationEndpoint: String
     ncmecAdditionalInfoEndpoint: String
+    defaultNcmecQueueId: String
   }
 
   input NcmecOrgSettingsInput {
@@ -39,6 +40,7 @@ const typeDefs = /* GraphQL */ `
     legalUrl: String
     ncmecPreservationEndpoint: String
     ncmecAdditionalInfoEndpoint: String
+    defaultNcmecQueueId: String
   }
 
   type UpdateNcmecOrgSettingsResponse {
@@ -233,6 +235,7 @@ const Mutation: GQLMutationResolvers = {
       legalUrl: input.legalUrl ?? null,
       ncmecPreservationEndpoint: input.ncmecPreservationEndpoint ?? null,
       ncmecAdditionalInfoEndpoint: input.ncmecAdditionalInfoEndpoint ?? null,
+      defaultNcmecQueueId: input.defaultNcmecQueueId ?? null,
     });
 
     return { success: true };

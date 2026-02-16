@@ -57,6 +57,8 @@ export default class NcmecEnqueueToMrt {
       item: ItemSubmissionWithTypeIdentifier;
       correlationId: RuleExecutionCorrelationId | ActionExecutionCorrelationId;
       reenqueuedFrom?: OriginJobInfo;
+      /** When set, NCMEC jobs are enqueued to this queue instead of the org default. */
+      targetQueueId?: string;
     } & (
       | {
           enqueueSource: 'RULE_EXECUTION';
@@ -181,30 +183,33 @@ export default class NcmecEnqueueToMrt {
     }
 
     // TODO: Write this to a snowflake table and enqueue based off of a job instead
-    await this.manualReviewToolService.enqueue({
-      orgId,
-      createdAt,
-      // TODO: Pass policies through NcmecService.eventuallyEnqueue into
-      // snowflake and ultimately into here. Note that
-      // NcmecService.eventuallyEnqueue is called inside submitReport, which has
-      // access to the policies passed in with the report, and inside the
-      // ActionPublisher, which has the policies that come along with the
-      // action. This should be sufficient to pass the policies through to here.
-      policyIds: [],
-      payload: {
-        kind: 'NCMEC',
-        item: itemSubmissionToItemSubmissionWithTypeIdentifier(userSubmission),
-        allMediaItems,
-        reportHistory: [],
+    await this.manualReviewToolService.enqueue(
+      {
+        orgId,
+        createdAt,
+        // TODO: Pass policies through NcmecService.eventuallyEnqueue into
+        // snowflake and ultimately into here. Note that
+        // NcmecService.eventuallyEnqueue is called inside submitReport, which has
+        // access to the policies passed in with the report, and inside the
+        // ActionPublisher, which has the policies that come along with the
+        // action. This should be sufficient to pass the policies through to here.
+        policyIds: [],
+        payload: {
+          kind: 'NCMEC',
+          item: itemSubmissionToItemSubmissionWithTypeIdentifier(userSubmission),
+          allMediaItems,
+          reportHistory: [],
+        },
+        correlationId: input.correlationId,
+        // Safe pick to preserve correlation
+        ...safePick(input, [
+          'enqueueSource',
+          'enqueueSourceInfo',
+          'reenqueuedFrom',
+        ]),
       },
-      correlationId: input.correlationId,
-      // Safe pick to preserve correlation
-      ...safePick(input, [
-        'enqueueSource',
-        'enqueueSourceInfo',
-        'reenqueuedFrom',
-      ]),
-    });
+      input.targetQueueId,
+    );
     // eslint-disable-next-line no-console
     console.log('[NCMEC] ✅ Successfully created NCMEC manual review job!');
     return { status: 'ENQUEUED' };

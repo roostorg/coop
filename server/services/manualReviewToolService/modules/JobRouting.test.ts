@@ -432,6 +432,85 @@ describe('JobRouting tests', () => {
   );
 
   jobRoutingTestWithFixtures(
+    'When queueId is passed to enqueue, job is added to that queue (skips routing)',
+    async ({
+      manualReviewToolService,
+      org,
+      itemType,
+      defaultQueue,
+      anotherQueue,
+    }) => {
+      const initialDefault = await manualReviewToolService.getPendingJobCount({
+        orgId: org.id,
+        queueId: defaultQueue.id,
+      });
+      const initialAnother =
+        await manualReviewToolService.getPendingJobCount({
+          orgId: org.id,
+          queueId: anotherQueue.id,
+        });
+
+      const normalizedDataOrError = toNormalizedItemDataOrErrors(
+        [itemType.id],
+        itemType,
+        { text: 'other' },
+      );
+      if (Array.isArray(normalizedDataOrError)) {
+        throw new Error('Error validating item data');
+      }
+
+      const itemSubmission = await submissionDataToItemSubmission(
+        async () => itemType,
+        {
+          orgId: org.id,
+          submissionId: makeSubmissionId(),
+          itemId: uid(),
+          itemTypeId: itemType.id,
+          itemTypeVersion: '',
+          itemTypeSchemaVariant: 'original',
+          data: normalizedDataOrError,
+          creatorId: null,
+          creatorTypeId: null,
+        },
+      );
+      if (itemSubmission instanceof Error) {
+        throw new Error('Error creating item submission');
+      }
+
+      const item =
+        itemSubmissionToItemSubmissionWithTypeIdentifier(itemSubmission);
+      // Pass explicit queueId so routing is skipped (e.g. NCMEC default queue).
+      await manualReviewToolService.enqueue(
+        {
+          enqueueSource: 'RULE_EXECUTION',
+          enqueueSourceInfo: { kind: 'RULE_EXECUTION', rules: ['abc'] },
+          createdAt: new Date(),
+          orgId: org.id,
+          correlationId: toCorrelationId({ type: 'submit-report', id: uid() }),
+          policyIds: [],
+          payload: {
+            kind: 'DEFAULT',
+            reportHistory: [],
+            item,
+          },
+        },
+        anotherQueue.id,
+      );
+
+      const defaultQueueCount = await manualReviewToolService.getPendingJobCount(
+        { orgId: org.id, queueId: defaultQueue.id },
+      );
+      const anotherQueueCount =
+        await manualReviewToolService.getPendingJobCount({
+          orgId: org.id,
+          queueId: anotherQueue.id,
+        });
+      expect(defaultQueueCount).toBe(initialDefault);
+      expect(anotherQueueCount).toBe(initialAnother + 1);
+    },
+  );
+
+  jobRoutingTestWithFixtures(
     'Should match on source type',
     async ({ manualReviewToolService, org, itemType, anotherQueue }) => {
       const normalizedDataOrError = toNormalizedItemDataOrErrors(

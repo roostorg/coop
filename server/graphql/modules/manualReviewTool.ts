@@ -980,9 +980,11 @@ const ManualReviewJobPayload: GQLManualReviewJobPayloadResolvers = {
       case 'USER': {
         return 'appealId' in it
           ? 'UserAppealManualReviewJobPayload'
-          : 'allMediaItems' in it
-          ? 'NcmecManualReviewJobPayload'
-          : 'UserManualReviewJobPayload';
+          : it.kind === 'DEFAULT'
+            ? 'UserManualReviewJobPayload'
+            : 'allMediaItems' in it
+              ? 'NcmecManualReviewJobPayload'
+              : 'UserManualReviewJobPayload';
       }
       case 'THREAD': {
         return 'appealId' in it

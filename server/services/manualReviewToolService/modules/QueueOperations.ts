@@ -956,6 +956,28 @@ export default class QueueOperations {
   }
 
   /**
+   * When returning a job that's already in the new format, ensure DEFAULT
+   * payloads never carry allMediaItems so they resolve to the regular manual
+   * review view (not NCMEC) and show full decision options.
+   */
+  #returnJobWithNormalizedDefaultPayloadIfNeeded(
+    job: Job<ManualReviewJob>,
+  ): Job<ManualReviewJob> {
+    const p = job.data.payload as Record<string, unknown> & { kind?: string };
+    if (p.kind !== 'DEFAULT' || !('allMediaItems' in p)) {
+      return job;
+    }
+    const payloadWithUnknownKeys = job.data.payload as Record<string, unknown>;
+    const { allMediaItems: _omitted, ...payloadWithoutNcmec } =
+      payloadWithUnknownKeys;
+    job.data = {
+      ...job.data,
+      payload: payloadWithoutNcmec as ManualReviewJobPayload,
+    };
+    return job;
+  }
+
+  /**
    * TODO: remove when we no longer need to support legacy jobs
    */
   async legacyJobToJob(
@@ -968,7 +990,9 @@ export default class QueueOperations {
       'reportedForReasons' in job.data.payload &&
       'reportHistory' in job.data.payload
     ) {
-      return job as Job<ManualReviewJob>;
+      return this.#returnJobWithNormalizedDefaultPayloadIfNeeded(
+        job as Job<ManualReviewJob>,
+      );
     }
 
     const legacyItem = job.data.payload.item;
@@ -984,8 +1008,10 @@ export default class QueueOperations {
     // putting the payload kind in a variable to help TS do some type narrowing.
     const jobKind = job.data.payload.kind;
     if (jobKind === 'DEFAULT') {
+      const { allMediaItems: _omitted, ...storedPayloadWithoutNcmec } =
+        job.data.payload as Record<string, unknown> & { allMediaItems?: unknown };
       payload = {
-        ...job.data.payload,
+        ...storedPayloadWithoutNcmec,
         kind: 'DEFAULT',
         item: convertedItem,
 

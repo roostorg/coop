@@ -5,7 +5,7 @@ import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
 import { DownOutlined, LoadingOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { Button, Dropdown, Input, Select } from 'antd';
+import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -1078,32 +1078,35 @@ function ManualReviewJobReviewImpl(props: {
         reportHistory={reportHistory}
       />
     ) : null;
+  const decisionActions = [
+    ...(appealPayloadTypenames.includes(payload.__typename)
+      ? builtInAppealActions
+      : builtInActions),
+    ...(payload.__typename === 'ContentManualReviewJobPayload' ||
+    payload.__typename === 'UserManualReviewJobPayload'
+      ? [ncmecAction]
+      : []),
+    ...(appealPayloadTypenames.includes(payload.__typename)
+      ? []
+      : filteredActions
+          .filter(
+            (action) =>
+              action.itemTypes
+                .map((itemType) => itemType.id)
+                .includes(payload.item.type?.id ?? '') &&
+              // Transform and move actions should be done through decisions
+              action.__typename === 'CustomAction',
+          )
+          .sort((a, b) => a.name.localeCompare(b.name))),
+    ...builtInMoveAction,
+  ];
+
   const actionList = (
-    <div className="sticky flex flex-col overflow-hidden border border-gray-200 border-solid rounded-md shrink-0">
-      {[
-        ...(appealPayloadTypenames.includes(payload.__typename)
-          ? builtInAppealActions
-          : builtInActions),
-        ...(org.hasNCMECReportingEnabled &&
-        (payload.__typename === 'ContentManualReviewJobPayload' ||
-          payload.__typename === 'UserManualReviewJobPayload')
-          ? [ncmecAction]
-          : []),
-        ...(appealPayloadTypenames.includes(payload.__typename)
-          ? []
-          : filteredActions
-              .filter(
-                (action) =>
-                  action.itemTypes
-                    .map((itemType) => itemType.id)
-                    .includes(payload.item.type.id) &&
-                  // Transform and move actions should be done through decisions
-                  action.__typename === 'CustomAction',
-              )
-              .sort((a, b) => a.name.localeCompare(b.name))),
-        ...builtInMoveAction,
-      ]
-        .map((action) => {
+    <div
+      className="sticky flex flex-col border border-gray-200 border-solid rounded-md shrink-0"
+      data-testid="manual-review-decision-action-list"
+    >
+      {decisionActions.map((action) => {
           const { key, selected, label } = (() => {
             if ('type' in action) {
               return {
@@ -1156,7 +1159,7 @@ function ManualReviewJobReviewImpl(props: {
                   }`}
                   trigger={!selected ? ['click'] : []}
                   menu={{
-                    items: org.mrtQueues
+                    items: (org.mrtQueues ?? [])
                       .filter((it) => isAppeal === it.isAppealsQueue)
                       .filter((it) => it.id !== queueId)
                       .sort((a, b) => a.name.localeCompare(b.name))
@@ -1208,15 +1211,25 @@ function ManualReviewJobReviewImpl(props: {
             );
           }
 
-          return (
+          const isNcmecDisabled =
+            'type' in action &&
+            action.type === BuiltInActionType.EnqueueToNcmec &&
+            !org.hasNCMECReportingEnabled;
+
+          const actionDiv = (
             <div
-              className={`self-stretch text-start cursor-pointer text-gray-600 font-semibold p-3 ${
-                selected
-                  ? 'bg-sky-100 text-sky-600'
-                  : 'bg-white hover:bg-gray-100'
+              className={`self-stretch text-start font-semibold p-3 ${
+                isNcmecDisabled
+                  ? 'cursor-not-allowed text-gray-400 bg-gray-50'
+                  : selected
+                    ? 'cursor-pointer bg-sky-100 text-sky-600'
+                    : 'cursor-pointer text-gray-600 bg-white hover:bg-gray-100'
               }`}
               key={key}
               onClick={() => {
+                if (isNcmecDisabled) {
+                  return;
+                }
                 if (selected) {
                   // If the action is a built-in action, then nothing else can
                   // be selected anyway, so we should deselect everything
@@ -1317,6 +1330,16 @@ function ManualReviewJobReviewImpl(props: {
             >
               {label}
             </div>
+          );
+          return isNcmecDisabled ? (
+            <Tooltip
+              key={key}
+              title="NCMEC reporting is not enabled for your organization."
+            >
+              {actionDiv}
+            </Tooltip>
+          ) : (
+            actionDiv
           );
         })
         .flatMap((value, i) => [

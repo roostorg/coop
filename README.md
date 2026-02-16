@@ -52,6 +52,7 @@ and then follow the steps below:
 3. Make sure the `.env` files for `/server` and `.devops/migrator` are populated (including ClickHouse credentials). Run database migrations:
    ```bash
    npm run db:update -- --env staging --db api-server-pg
+   npm run db:update -- --env staging --db scylla
    npm run db:update -- --env staging --db clickhouse
    ```
 ### Alternative: Single Command for Steps 2-3
