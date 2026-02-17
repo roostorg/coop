@@ -221,7 +221,7 @@ export class NcmecService {
           params.ncmecPreservationEndpoint ?? undefined,
         ncmec_additional_info_endpoint:
           params.ncmecAdditionalInfoEndpoint ?? undefined,
-        default_ncmec_queue_id: params.defaultNcmecQueueId ?? undefined,
+        default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
         actions_to_run_upon_report_creation: null,
         policies_applied_to_actions_run_on_report_creation: null,
       })
@@ -237,7 +237,7 @@ export class NcmecService {
             params.ncmecPreservationEndpoint ?? undefined,
           ncmec_additional_info_endpoint:
             params.ncmecAdditionalInfoEndpoint ?? undefined,
-          default_ncmec_queue_id: params.defaultNcmecQueueId ?? undefined,
+          default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
         }),
       )
       .execute();
