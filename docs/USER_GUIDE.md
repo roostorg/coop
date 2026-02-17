@@ -67,6 +67,30 @@ Coop comes with 7 predefined roles that can be further customized:
 | Moderator | Yes | No | No | No | No | No |
 | External Moderator | Yes | No | No | No | No | No |
 
+
+### NCMEC Reporting Settings
+
+If your organization submits reports to the NCMEC CyberTipline, configure NCMEC reporting under **Settings → NCMEC** (or `/dashboard/settings/ncmec`). These settings are used when building and submitting CyberTip reports.
+
+![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](./images/coop-ncmec-settings.png) 
+
+| Setting | Required | Description |
+|--------|----------|-------------|
+| **Username** | Yes | Your NCMEC CyberTipline API username. |
+| **Password** | Yes | Your NCMEC CyberTipline API password. |
+| **Company Report Name** | Yes | Your organization name as it appears in NCMEC reports. This value is also sent as the reporter’s product/service name (ESP service) for the reported user in each report. |
+| **Legal URL** | Yes | URL to your Terms of Service or legal policies (e.g. `https://yourcompany.com/terms`). |
+| **Contact Email** | No | Email for the reporting person on the CyberTip report. The XML receipt from NCMEC can serve as the ESP notification. |
+| **Terms of Service** | No | Optional TOS relevant to the incident being reported or URL to acceptable use policy. |
+| **Contact person (for law enforcement)** | No | Optional person law enforcement can contact (other than the reporting person): first name, last name, email, phone. All fields optional. |
+| **More Info URL** | No | Optional URL for additional information (e.g. `https://yourcompany.com/ncmec-info`). |
+| **Default NCMEC queue** | No | When reviewers choose “Enqueue to NCMEC,” jobs are sent to this manual review queue. Leave as “Use org default queue” to use the organization’s default queue. |
+| **Default internet detail type** | No | Incident context (channel/medium) for CyberTip reports: Web page, Email, Newsgroup, Chat/IM, Online gaming, Cell phone, Non-internet, or Peer-to-peer. When set, each report includes this in internetDetails. For "Web page," the More Info URL is used if set. |
+| **NCMEC Preservation Endpoint** | No | Optional webhook URL for NCMEC preservation requests after a report is submitted. Your service can use this to preserve user/data as required. |
+| **NCMEC Additional Info Endpoint** | No | Optional webhook URL. When building a report, Coop calls this endpoint to request additional information (e.g. user email, screen name, IP capture events) for the reported users and media. If not set, reports use minimal defaults (e.g. user ID as screen name). |
+
+Saving credentials and required fields (Company Report Name, Legal URL) enables NCMEC reporting for the organization. Reporting only occurs when reviewers submit a report from the NCMEC Review queue.
+
 **Admin**  
 Admins manage their entire organizations. They have full control over all of the organization's resources and settings within Coop.
 

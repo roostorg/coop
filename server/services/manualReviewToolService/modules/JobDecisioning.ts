@@ -79,6 +79,7 @@ export type ManualReviewDecisionComponent =
       reportedMedia: readonly NCMECMediaReport[];
       reportedMessages: readonly NCMECThreadReport[];
       incidentType: string;
+      escalateToHighPriority?: string;
     }
   | {
       type: 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE';

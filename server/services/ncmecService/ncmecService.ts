@@ -188,6 +188,12 @@ export class NcmecService {
         'ncmec_preservation_endpoint as ncmecPreservationEndpoint',
         'ncmec_additional_info_endpoint as ncmecAdditionalInfoEndpoint',
         'default_ncmec_queue_id as defaultNcmecQueueId',
+        'default_internet_detail_type as defaultInternetDetailType',
+        'terms_of_service as termsOfService',
+        'contact_person_email as contactPersonEmail',
+        'contact_person_first_name as contactPersonFirstName',
+        'contact_person_last_name as contactPersonLastName',
+        'contact_person_phone as contactPersonPhone',
       ])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
@@ -206,6 +212,12 @@ export class NcmecService {
     ncmecPreservationEndpoint: string | null;
     ncmecAdditionalInfoEndpoint: string | null;
     defaultNcmecQueueId: string | null;
+    defaultInternetDetailType: string | null;
+    termsOfService: string | null;
+    contactPersonEmail: string | null;
+    contactPersonFirstName: string | null;
+    contactPersonLastName: string | null;
+    contactPersonPhone: string | null;
   }) {
     await this.pgQuery
       .insertInto('ncmec_reporting.ncmec_org_settings')
@@ -222,6 +234,13 @@ export class NcmecService {
         ncmec_additional_info_endpoint:
           params.ncmecAdditionalInfoEndpoint ?? undefined,
         default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
+        default_internet_detail_type:
+          params.defaultInternetDetailType ?? null,
+        terms_of_service: params.termsOfService ?? null,
+        contact_person_email: params.contactPersonEmail ?? null,
+        contact_person_first_name: params.contactPersonFirstName ?? null,
+        contact_person_last_name: params.contactPersonLastName ?? null,
+        contact_person_phone: params.contactPersonPhone ?? null,
         actions_to_run_upon_report_creation: null,
         policies_applied_to_actions_run_on_report_creation: null,
       })
@@ -238,6 +257,13 @@ export class NcmecService {
           ncmec_additional_info_endpoint:
             params.ncmecAdditionalInfoEndpoint ?? undefined,
           default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
+          default_internet_detail_type:
+            params.defaultInternetDetailType ?? null,
+          terms_of_service: params.termsOfService ?? null,
+          contact_person_email: params.contactPersonEmail ?? null,
+          contact_person_first_name: params.contactPersonFirstName ?? null,
+          contact_person_last_name: params.contactPersonLastName ?? null,
+          contact_person_phone: params.contactPersonPhone ?? null,
         }),
       )
       .execute();

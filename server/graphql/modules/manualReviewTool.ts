@@ -237,6 +237,7 @@ const typeDefs = /* GraphQL */ `
     reportedMedia: [NcmecMediaInput!]!
     reportedMessages: [NcmecThreadInput!]!
     incidentType: NCMECIncidentType!
+    escalateToHighPriority: String
   }
 
   enum AppealDecision {

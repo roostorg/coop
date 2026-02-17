@@ -3,6 +3,25 @@ import { AuthenticationError } from 'apollo-server-core';
 import { formatItemSubmissionForGQL } from '../../graphql/types.js';
 import type { GQLMutationResolvers, GQLQueryResolvers } from '../generated.js';
 
+/** Input shape for updateNcmecOrgSettings; matches NcmecOrgSettingsInput in schema (used so resolver type-checks even if generated types are stale). */
+type NcmecOrgSettingsInputShape = {
+  username: string;
+  password: string;
+  contactEmail?: string | null;
+  moreInfoUrl?: string | null;
+  companyTemplate?: string | null;
+  legalUrl?: string | null;
+  ncmecPreservationEndpoint?: string | null;
+  ncmecAdditionalInfoEndpoint?: string | null;
+  defaultNcmecQueueId?: string | null;
+  defaultInternetDetailType?: string | null;
+  termsOfService?: string | null;
+  contactPersonEmail?: string | null;
+  contactPersonFirstName?: string | null;
+  contactPersonLastName?: string | null;
+  contactPersonPhone?: string | null;
+};
+
 const typeDefs = /* GraphQL */ `
   type Query {
     ncmecReportById(reportId: ID!): NCMECReport
@@ -19,6 +38,17 @@ const typeDefs = /* GraphQL */ `
     ): UpdateNcmecOrgSettingsResponse!
   }
 
+  enum NcmecInternetDetailType {
+    WEB_PAGE
+    EMAIL
+    NEWSGROUP
+    CHAT_IM
+    ONLINE_GAMING
+    CELL_PHONE
+    NON_INTERNET
+    PEER_TO_PEER
+  }
+
   type NcmecOrgSettings {
     username: String!
     password: String!
@@ -29,6 +59,12 @@ const typeDefs = /* GraphQL */ `
     ncmecPreservationEndpoint: String
     ncmecAdditionalInfoEndpoint: String
     defaultNcmecQueueId: String
+    defaultInternetDetailType: NcmecInternetDetailType
+    termsOfService: String
+    contactPersonEmail: String
+    contactPersonFirstName: String
+    contactPersonLastName: String
+    contactPersonPhone: String
   }
 
   input NcmecOrgSettingsInput {
@@ -41,6 +77,12 @@ const typeDefs = /* GraphQL */ `
     ncmecPreservationEndpoint: String
     ncmecAdditionalInfoEndpoint: String
     defaultNcmecQueueId: String
+    defaultInternetDetailType: NcmecInternetDetailType
+    termsOfService: String
+    contactPersonEmail: String
+    contactPersonFirstName: String
+    contactPersonLastName: String
+    contactPersonPhone: String
   }
 
   type UpdateNcmecOrgSettingsResponse {
@@ -219,12 +261,12 @@ const Query: GQLQueryResolvers = {
 };
 
 const Mutation: GQLMutationResolvers = {
-  async updateNcmecOrgSettings(_, { input }, context) {
+  async updateNcmecOrgSettings(_, { input: rawInput }, context) {
     const user = context.getUser();
     if (!user) {
       throw new AuthenticationError('User required.');
     }
-
+    const input = rawInput as NcmecOrgSettingsInputShape;
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
       username: input.username,
@@ -236,6 +278,12 @@ const Mutation: GQLMutationResolvers = {
       ncmecPreservationEndpoint: input.ncmecPreservationEndpoint ?? null,
       ncmecAdditionalInfoEndpoint: input.ncmecAdditionalInfoEndpoint ?? null,
       defaultNcmecQueueId: input.defaultNcmecQueueId ?? null,
+      defaultInternetDetailType: input.defaultInternetDetailType ?? null,
+      termsOfService: input.termsOfService ?? null,
+      contactPersonEmail: input.contactPersonEmail ?? null,
+      contactPersonFirstName: input.contactPersonFirstName ?? null,
+      contactPersonLastName: input.contactPersonLastName ?? null,
+      contactPersonPhone: input.contactPersonPhone ?? null,
     });
 
     return { success: true };

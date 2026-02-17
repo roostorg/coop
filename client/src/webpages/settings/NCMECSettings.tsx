@@ -10,6 +10,7 @@ import {
 } from '@/coop-ui/Select';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
+import type { GQLNcmecInternetDetailType } from '@/graphql/generated';
 import {
   useGQLNcmecOrgSettingsQuery,
   useGQLUpdateNcmecOrgSettingsMutation,
@@ -32,6 +33,12 @@ gql`
       ncmecPreservationEndpoint
       ncmecAdditionalInfoEndpoint
       defaultNcmecQueueId
+      defaultInternetDetailType
+      termsOfService
+      contactPersonEmail
+      contactPersonFirstName
+      contactPersonLastName
+      contactPersonPhone
     }
     myOrg {
       hasNCMECReportingEnabled
@@ -59,6 +66,12 @@ type NcmecSettings = {
   ncmecPreservationEndpoint: string;
   ncmecAdditionalInfoEndpoint: string;
   defaultNcmecQueueId: string;
+  defaultInternetDetailType: string;
+  termsOfService: string;
+  contactPersonEmail: string;
+  contactPersonFirstName: string;
+  contactPersonLastName: string;
+  contactPersonPhone: string;
 };
 
 export default function NCMECSettings() {
@@ -72,6 +85,12 @@ export default function NCMECSettings() {
     ncmecPreservationEndpoint: '',
     ncmecAdditionalInfoEndpoint: '',
     defaultNcmecQueueId: '',
+    defaultInternetDetailType: '',
+    termsOfService: '',
+    contactPersonEmail: '',
+    contactPersonFirstName: '',
+    contactPersonLastName: '',
+    contactPersonPhone: '',
   });
 
   const { loading, error, data } = useGQLNcmecOrgSettingsQuery();
@@ -103,6 +122,14 @@ export default function NCMECSettings() {
           data.ncmecOrgSettings.ncmecAdditionalInfoEndpoint ?? '',
         defaultNcmecQueueId:
           data.ncmecOrgSettings.defaultNcmecQueueId ?? '',
+        defaultInternetDetailType:
+          data.ncmecOrgSettings.defaultInternetDetailType ?? '',
+        termsOfService: data.ncmecOrgSettings.termsOfService ?? '',
+        contactPersonEmail: data.ncmecOrgSettings.contactPersonEmail ?? '',
+        contactPersonFirstName:
+          data.ncmecOrgSettings.contactPersonFirstName ?? '',
+        contactPersonLastName: data.ncmecOrgSettings.contactPersonLastName ?? '',
+        contactPersonPhone: data.ncmecOrgSettings.contactPersonPhone ?? '',
       });
     }
   }, [data?.ncmecOrgSettings]);
@@ -143,6 +170,14 @@ export default function NCMECSettings() {
           ncmecAdditionalInfoEndpoint:
             settings.ncmecAdditionalInfoEndpoint || null,
           defaultNcmecQueueId: settings.defaultNcmecQueueId || null,
+          defaultInternetDetailType: settings.defaultInternetDetailType
+            ? (settings.defaultInternetDetailType as GQLNcmecInternetDetailType)
+            : null,
+          termsOfService: settings.termsOfService || null,
+          contactPersonEmail: settings.contactPersonEmail || null,
+          contactPersonFirstName: settings.contactPersonFirstName || null,
+          contactPersonLastName: settings.contactPersonLastName || null,
+          contactPersonPhone: settings.contactPersonPhone || null,
         },
       },
     });
@@ -270,6 +305,85 @@ export default function NCMECSettings() {
           </div>
 
           <div className="flex flex-col gap-2">
+            <Label htmlFor="termsOfService" className="text-sm font-medium">
+              Terms of Service
+            </Label>
+            <textarea
+              id="termsOfService"
+              maxLength={3000}
+              value={settings.termsOfService}
+              onChange={(e) =>
+                setSettings({ ...settings, termsOfService: e.target.value })
+              }
+              placeholder="e.g. Child abuse and CSAM are not allowed on our platform."
+              className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              rows={3}
+            />
+            <Text size="XS" className="text-gray-500">
+              Optional TOS line included in the CyberTip reporter. {settings.termsOfService.length}/3000 characters.
+            </Text>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label className="text-sm font-medium">
+              Contact person (for law enforcement)
+            </Label>
+            <Text size="XS" className="text-gray-500 mb-1">
+              Person law enforcement can contact other than the reporting person. All fields optional.
+            </Text>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                id="contactPersonFirstName"
+                type="text"
+                value={settings.contactPersonFirstName}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    contactPersonFirstName: e.target.value,
+                  })
+                }
+                placeholder="First name"
+              />
+              <Input
+                id="contactPersonLastName"
+                type="text"
+                value={settings.contactPersonLastName}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    contactPersonLastName: e.target.value,
+                  })
+                }
+                placeholder="Last name"
+              />
+            </div>
+            <Input
+              id="contactPersonEmail"
+              type="email"
+              value={settings.contactPersonEmail}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  contactPersonEmail: e.target.value,
+                })
+              }
+              placeholder="Email"
+            />
+            <Input
+              id="contactPersonPhone"
+              type="tel"
+              value={settings.contactPersonPhone}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  contactPersonPhone: e.target.value,
+                })
+              }
+              placeholder="Phone"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
             <Label htmlFor="moreInfoUrl" className="text-sm font-medium">
               More Info URL
             </Label>
@@ -319,6 +433,45 @@ export default function NCMECSettings() {
               When reviewers choose &quot;Enqueue to NCMEC&quot;, jobs will be
               sent to this queue. Leave as &quot;Use org default queue&quot; to
               use the organization&apos;s default manual review queue.
+            </Text>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label
+              htmlFor="defaultInternetDetailType"
+              className="text-sm font-medium"
+            >
+              Default internet detail type
+            </Label>
+            <Select
+              value={settings.defaultInternetDetailType || '__none__'}
+              onValueChange={(value) =>
+                setSettings({
+                  ...settings,
+                  defaultInternetDetailType:
+                    value === '__none__' ? '' : value,
+                })
+              }
+            >
+              <SelectTrigger id="defaultInternetDetailType">
+                <SelectValue placeholder="No default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No default</SelectItem>
+                <SelectItem value="WEB_PAGE">Web page</SelectItem>
+                <SelectItem value="EMAIL">Email</SelectItem>
+                <SelectItem value="NEWSGROUP">Newsgroup</SelectItem>
+                <SelectItem value="CHAT_IM">Chat / IM</SelectItem>
+                <SelectItem value="ONLINE_GAMING">Online gaming</SelectItem>
+                <SelectItem value="CELL_PHONE">Cell phone</SelectItem>
+                <SelectItem value="NON_INTERNET">Non-internet</SelectItem>
+                <SelectItem value="PEER_TO_PEER">Peer-to-peer</SelectItem>
+              </SelectContent>
+            </Select>
+            <Text size="XS" className="text-gray-500">
+              Incident context (channel/medium) for CyberTip reports. When set,
+              each report will include this in internetDetails. For &quot;Web
+              page&quot;, the More Info URL above is used if set.
             </Text>
           </div>
 

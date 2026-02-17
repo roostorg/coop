@@ -178,6 +178,8 @@ export type NCMECReportParams = {
   threads: readonly NCMECThreadReport[];
   reviewerId: string;
   incidentType: string;
+  /** Optional reason for higher urgency; if present must be non-blank and max 3000 chars. */
+  escalateToHighPriority?: string;
 };
 
 type Report = {
@@ -367,6 +369,53 @@ type IpCaptureEvent = {
   possibleProxy?: boolean;
   port?: number;
 };
+
+const NCMEC_INTERNET_DETAIL_TYPES = [
+  'WEB_PAGE',
+  'EMAIL',
+  'NEWSGROUP',
+  'CHAT_IM',
+  'ONLINE_GAMING',
+  'CELL_PHONE',
+  'NON_INTERNET',
+  'PEER_TO_PEER',
+] as const;
+type NcmecInternetDetailTypeSetting =
+  (typeof NCMEC_INTERNET_DETAIL_TYPES)[number];
+
+function buildInternetDetailsFromOrgSetting(
+  defaultInternetDetailType: string | null | undefined,
+  moreInfoUrl: string | null | undefined,
+): Report['report']['internetDetails'] {
+  if (!defaultInternetDetailType?.trim()) {
+    return undefined;
+  }
+  const type = defaultInternetDetailType.trim() as NcmecInternetDetailTypeSetting;
+  if (!NCMEC_INTERNET_DETAIL_TYPES.includes(type)) {
+    return undefined;
+  }
+  const webPageUrl = moreInfoUrl?.trim() || 'Not specified';
+  switch (type) {
+    case 'WEB_PAGE':
+      return [{ webPageIncident: { url: webPageUrl } }];
+    case 'EMAIL':
+      return [{ emailIncident: {} }];
+    case 'NEWSGROUP':
+      return [{ newsgroupIncident: {} }];
+    case 'CHAT_IM':
+      return [{ chatImIncident: {} }];
+    case 'ONLINE_GAMING':
+      return [{ onlineGamingIncident: {} }];
+    case 'CELL_PHONE':
+      return [{ cellPhoneIncident: {} }];
+    case 'NON_INTERNET':
+      return [{ nonInternetIncident: {} }];
+    case 'PEER_TO_PEER':
+      return [{ peer2peerIncident: {} }];
+    default:
+      return undefined;
+  }
+}
 
 // Because CyberTip always responds with XML and how xml2js works, all of the
 // objects returned by it are objects with _text keys
@@ -1147,6 +1196,12 @@ export default class NcmecReporting {
             .select([
               'company_template as companyTemplate',
               'legal_url as legalURL',
+              'default_internet_detail_type as defaultInternetDetailType',
+              'terms_of_service as termsOfService',
+              'contact_person_email as contactPersonEmail',
+              'contact_person_first_name as contactPersonFirstName',
+              'contact_person_last_name as contactPersonLastName',
+              'contact_person_phone as contactPersonPhone',
             ])
             .where('org_id', '=', reportParams.orgId)
             .executeTakeFirst();
@@ -1210,30 +1265,88 @@ export default class NcmecReporting {
 
           // Use the incident type from the report params
           const incidentType = NCMECIncidentType[reportParams.incidentType as NCMECIncidentType];
-          
+
+          const escalateToHighPriority =
+            reportParams.escalateToHighPriority != null
+              ? reportParams.escalateToHighPriority.trim()
+              : undefined;
+          if (
+            escalateToHighPriority !== undefined &&
+            (escalateToHighPriority === '' || escalateToHighPriority.length > 3000)
+          ) {
+            throw new Error(
+              'escalateToHighPriority must be non-blank when supplied and at most 3000 characters',
+            );
+          }
+
+          const internetDetails = buildInternetDetailsFromOrgSetting(
+            queryResponse.defaultInternetDetailType,
+            ncmecConfig?.more_info_url,
+          );
+
           const report: Report = {
             report: {
               incidentSummary: {
                 incidentType,
                 incidentDateTime: maxCreatedAt,
+                ...(escalateToHighPriority
+                  ? { escalateToHighPriority }
+                  : {}),
               },
-              // TODO: Make this configurable per organization or item type
-              // internetDetails: [
-              // ],
+              ...(internetDetails ? { internetDetails } : {}),
               reporter: {
                 reportingPerson: {
                   email: [emailStringToNCMECEmail(ncmecConfig?.contact_email ?? '')],
                 },
                 companyTemplate: queryResponse.companyTemplate,
                 legalURL: queryResponse.legalURL,
+                ...(queryResponse.termsOfService != null &&
+                queryResponse.termsOfService.trim() !== '' &&
+                queryResponse.termsOfService.length <= 3000
+                  ? { termsOfService: queryResponse.termsOfService.trim() }
+                  : {}),
+                ...(queryResponse.contactPersonEmail?.trim() ||
+                queryResponse.contactPersonFirstName?.trim() ||
+                queryResponse.contactPersonLastName?.trim() ||
+                queryResponse.contactPersonPhone?.trim()
+                  ? {
+                      contactPerson: {
+                        ...(queryResponse.contactPersonEmail?.trim()
+                          ? {
+                              email: [
+                                emailStringToNCMECEmail(
+                                  queryResponse.contactPersonEmail.trim(),
+                                ),
+                              ],
+                            }
+                          : {}),
+                        ...(queryResponse.contactPersonFirstName?.trim()
+                          ? {
+                              firstName: queryResponse.contactPersonFirstName.trim(),
+                            }
+                          : {}),
+                        ...(queryResponse.contactPersonLastName?.trim()
+                          ? {
+                              lastName: queryResponse.contactPersonLastName.trim(),
+                            }
+                          : {}),
+                        ...(queryResponse.contactPersonPhone?.trim()
+                          ? {
+                              phone: {
+                                _text: queryResponse.contactPersonPhone.trim(),
+                              },
+                            }
+                          : {}),
+                      },
+                    }
+                  : {}),
               },
               personOrUserReported: {
                 personOrUserReportedPerson: {
                   email: userAdditionalInfo.email,
                 },
                 espIdentifier: reportParams.reportedUser.id,
-                // TODO: Make this configurable per organization
-                espService: 'Actions',
+                espService: queryResponse.companyTemplate,
                 screenName: userAdditionalInfo.screenName,
                 ...(reportParams.reportedUser.displayName
                   ? {

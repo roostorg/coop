@@ -1385,6 +1385,10 @@ export default async function getBottle() {
                     media,
                     reviewerId,
                     incidentType: decision.incidentType,
+                    ...(decision.escalateToHighPriority != null &&
+                    decision.escalateToHighPriority.trim() !== ''
+                      ? { escalateToHighPriority: decision.escalateToHighPriority.trim() }
+                      : {}),
                   },
                   isTest,
                 );
