@@ -29,13 +29,14 @@ function makeInput(
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
 ): CachedGetCredentials<'ZENTROPI'> {
-  const fn = jest
-    .fn()
-    .mockResolvedValue(
-      apiKey ? { apiKey } : undefined,
-    ) as unknown as CachedGetCredentials<'ZENTROPI'>;
-  fn.close = jest.fn().mockResolvedValue(undefined);
-  return fn;
+  return Object.assign(
+    jest
+      .fn()
+      .mockResolvedValue(
+        apiKey ? { apiKey } : undefined,
+      ) as unknown as CachedGetCredentials<'ZENTROPI'>,
+    { close: jest.fn().mockResolvedValue(undefined) },
+  );
 }
 
 describe('zentropiUtils', () => {

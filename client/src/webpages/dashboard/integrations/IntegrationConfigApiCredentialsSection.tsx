@@ -1,5 +1,5 @@
 import { Button, Input } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Plus, Trash2 } from 'lucide-react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
@@ -123,7 +123,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
               />
               <Button
                 type="text"
-                icon={<DeleteOutlined />}
+                icon={<Trash2 size={14} />}
                 onClick={() => removeLabelerVersion(index)}
                 danger
               />
@@ -131,7 +131,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
           ))}
           <Button
             type="dashed"
-            icon={<PlusOutlined />}
+            icon={<Plus size={14} />}
             onClick={addLabelerVersion}
             className="w-fit"
           >
