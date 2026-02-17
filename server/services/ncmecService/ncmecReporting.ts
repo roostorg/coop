@@ -12,7 +12,7 @@ import { jsonStringify } from '../../utils/encoding.js';
 import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
-import { withRetries } from '../../utils/misc.js';
+import { assertUnreachable, withRetries } from '../../utils/misc.js';
 import {
   type CollapseCases,
   type NonEmptyArray,
@@ -383,7 +383,7 @@ const NCMEC_INTERNET_DETAIL_TYPES = [
 type NcmecInternetDetailTypeSetting =
   (typeof NCMEC_INTERNET_DETAIL_TYPES)[number];
 
-function buildInternetDetailsFromOrgSetting(
+export function buildInternetDetailsFromOrgSetting(
   defaultInternetDetailType: string | null | undefined,
   moreInfoUrl: string | null | undefined,
 ): Report['report']['internetDetails'] {
@@ -394,7 +394,7 @@ function buildInternetDetailsFromOrgSetting(
   if (!NCMEC_INTERNET_DETAIL_TYPES.includes(type)) {
     return undefined;
   }
-  const webPageUrl = moreInfoUrl?.trim() || 'Not specified';
+  const webPageUrl = moreInfoUrl?.trim() ?? 'Not specified';
   switch (type) {
     case 'WEB_PAGE':
       return [{ webPageIncident: { url: webPageUrl } }];
@@ -413,7 +413,7 @@ function buildInternetDetailsFromOrgSetting(
     case 'PEER_TO_PEER':
       return [{ peer2peerIncident: {} }];
     default:
-      return undefined;
+      return assertUnreachable(type);
   }
 }
 
@@ -1305,9 +1305,9 @@ export default class NcmecReporting {
                 queryResponse.termsOfService.length <= 3000
                   ? { termsOfService: queryResponse.termsOfService.trim() }
                   : {}),
-                ...(queryResponse.contactPersonEmail?.trim() ||
-                queryResponse.contactPersonFirstName?.trim() ||
-                queryResponse.contactPersonLastName?.trim() ||
+                ...(queryResponse.contactPersonEmail?.trim() ??
+                queryResponse.contactPersonFirstName?.trim() ??
+                queryResponse.contactPersonLastName?.trim() ??
                 queryResponse.contactPersonPhone?.trim()
                   ? {
                       contactPerson: {
