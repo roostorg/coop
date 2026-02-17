@@ -1,7 +1,11 @@
 import { AuthenticationError } from 'apollo-server-core';
 
 import { formatItemSubmissionForGQL } from '../../graphql/types.js';
-import type { GQLMutationResolvers, GQLQueryResolvers } from '../generated.js';
+import type {
+  GQLMutationResolvers,
+  GQLNcmecOrgSettings,
+  GQLQueryResolvers,
+} from '../generated.js';
 
 /** Input shape for updateNcmecOrgSettings; matches NcmecOrgSettingsInput in schema (used so resolver type-checks even if generated types are stale). */
 type NcmecOrgSettingsInputShape = {
@@ -248,7 +252,7 @@ const Query: GQLQueryResolvers = {
       })),
     }));
   },
-  async ncmecOrgSettings(_, __, context) {
+  async ncmecOrgSettings(_, __, context): Promise<GQLNcmecOrgSettings | null> {
     const user = context.getUser();
     if (!user) {
       throw new AuthenticationError('User required.');
@@ -256,7 +260,7 @@ const Query: GQLQueryResolvers = {
     const settings = await context.services.NcmecService.getNcmecOrgSettings(
       user.orgId,
     );
-    return settings;
+    return settings as GQLNcmecOrgSettings | null;
   },
 };
 
