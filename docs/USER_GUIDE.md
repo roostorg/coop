@@ -223,7 +223,13 @@ How you set things up depends on your use case:
 
 Banks created directly in HMA (e.g. via the HMA UI or seed scripts) will not appear in Coop's Matching Banks UI unless they are also registered in the hash_banks table. The recommended approach is to create banks through the Coop UI (Settings → Matching Banks), which registers the bank in both HMA and Coop's database automatically.
 
-Banks created through Coop are named in HMA using the convention COOP_<ORGID>_<NORMALIZED_NAME> — for example, a bank named "Test Bank" for org e7c89ce7729 becomes `COOP_E7C89CE7729_TEST_BANK` in HMA. This is what you will see in the HMA UI.
+![Coop matching banks page showing a test hash bank created in the Coop UI](./images/coop-hma.png) 
+
+
+Banks created through Coop are named in HMA using the convention COOP_<ORGID>_<NORMALIZED_NAME> — for example, a bank named "Test Bank" for org e7c89ce7729 becomes `COOP_E7C89CE7729_TEST_BANK` in HMA. This is what you will see in the HMA UI. You can use the HMA UI to manually add content to the bank for local testing.
+
+![HMA UI showing the bank created in Coop, along with a modal that appears if you manually upload media to the matching bank](./images/hma-ui-coop-banks.png) 
+
 
 #### Location Banks
 ![Creating a location bank for the middle of Times Square using a geohash](./images/coop-location-bank.png) 
