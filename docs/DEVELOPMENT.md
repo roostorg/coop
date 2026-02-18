@@ -46,7 +46,6 @@ Redis           | 6379       | Caching and job queues
 Kafka           | 29092      | Event streaming 
 Schema Registry | 8081       | Kafka schemas 
 Zookeeper       | 22181      | Kafka coordination 
-HMA             | 5000       | Hash Matching Algorithm service 
 Jaeger          | 16686      | Tracing UI (opens automatically) 
 OTEL Collector  | 4317       | Telemetry collection 
 
