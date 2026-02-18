@@ -3,6 +3,8 @@ import { type Kysely } from 'kysely';
 
 import { inject } from '../../iocContainer/utils.js';
 import { type Cached } from '../../utils/caching.js';
+import { type JsonOf } from '../../utils/encoding.js';
+import { jsonParse, jsonStringify } from '../../utils/encoding.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
 import { type SignalAuthServicePg } from './dbTypes.js';
@@ -200,12 +202,12 @@ function makeImplementations(
           labelerVersions: Array.isArray(labelerVersions)
             ? (labelerVersions as ZentropiLabelerVersion[])
             : typeof labelerVersions === 'string'
-              ? (JSON.parse(labelerVersions) as ZentropiLabelerVersion[])
+              ? (jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>))
               : [],
         };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
-        const labelerVersionsJson = JSON.stringify(
+        const labelerVersionsJson = jsonStringify(
           credential.labelerVersions ?? [],
         );
         const row = await pg
@@ -231,7 +233,7 @@ function makeImplementations(
           labelerVersions: Array.isArray(returnedVersions)
             ? (returnedVersions as ZentropiLabelerVersion[])
             : typeof returnedVersions === 'string'
-              ? (JSON.parse(returnedVersions) as ZentropiLabelerVersion[])
+              ? (jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>))
               : [],
         };
       },

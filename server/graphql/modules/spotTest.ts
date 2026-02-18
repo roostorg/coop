@@ -31,9 +31,6 @@ const Query: GQLQueryResolvers = {
       }),
       dataSources.ruleAPI.getGraphQLRuleFromId(ruleId, user.orgId),
     ]);
-    if (!rule) {
-      throw new Error('Could not find rule');
-    }
     const itemType = itemTypes.find(
       (it) => it.id === item.itemTypeIdentifier.id,
     );
