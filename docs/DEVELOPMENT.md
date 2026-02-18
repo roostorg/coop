@@ -166,6 +166,21 @@ Generated files:
 
 Schema changes trigger recompilation of both client and server. If you experience regeneration loops, stop watch mode and run manually.
 
+## HMA Development
+HMA is not started automatically with `npm run up`. Start it separately if you're doing hash matching: `docker compose up --build -d hma`
+
+HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:5000`. No additional environment setup is needed for local development.
+
+### Image URL Accessibility
+When submitting items to Coop, image URLs must be reachable by the HMA Docker container and not just your browser or the Node.js server. 
+HMA fetches the image itself to compute the hash. This means localhost URLs will silently fail: HMA will return empty hashes, the image similarity signal will not evaluate, and no rule will fire.
+
+For local development, if you're serving images from your host machine, add the following to /etc/hosts:
+
+127.0.0.1 host.docker.internal
+
+Then use `host.docker.internal:<port>` in image URLs when submitting items. This URL resolves correctly from both the browser and inside Docker.
+
 ## Troubleshooting
 
 ### ScyllaDB Not Ready
