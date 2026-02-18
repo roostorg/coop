@@ -208,9 +208,22 @@ These banks can then be used as signals in both automatic enforcement rules and 
 
 
 #### Hash Banks
-Coop integrates with  hasher-matcher-actioner (HMA), providing a configurable way to match known CSAM, non-consensual intimate imagery, terrorist and violent extremist content, and any internal hash banks you maintain. Setup requires API credentials from supported hash databases like NCMEC and Tech Against Terrorism. Read more about HMA documentation here.
+Coop integrates with [hasher-matcher-actioner (HMA)](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner/), providing a configurable way to match known CSAM, non-consensual intimate imagery, terrorist and violent extremist content, and any internal hash banks you maintain. Setup requires API credentials from supported hash databases like NCMEC and StopNCII. Read more about HMA documentation [here]([https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner/docs)).
 
 HMA signals are available as a signal in Coop’s signal library.
+
+##### Setting Up HMA
+How you set things up depends on your use case:
+
+* If items are submitted by user reports (`POST /api/v1/report`): no enforcement rule is needed. Reported items are automatically enqueued to MRT, and routing rules will direct them to the right queue. Simply create a routing rule with the image hash condition and your target queue.
+
+* If items are submitted via the items API `(POST /api/v1/items/async/)` and you want Coop to proactively flag matches without a user report: you need an automated enforcement rule with the image hash condition and a "Send to Manual Review" action. Optionally pair it with a routing rule to direct matches to a specific queue (otherwise they go to the default queue).
+
+##### Managing hash banks
+
+Banks created directly in HMA (e.g. via the HMA UI or seed scripts) will not appear in Coop's Matching Banks UI unless they are also registered in the hash_banks table. The recommended approach is to create banks through the Coop UI (Settings → Matching Banks), which registers the bank in both HMA and Coop's database automatically.
+
+Banks created through Coop are named in HMA using the convention COOP_<ORGID>_<NORMALIZED_NAME> — for example, a bank named "Test Bank" for org e7c89ce7729 becomes `COOP_E7C89CE7729_TEST_BANK` in HMA. This is what you will see in the HMA UI.
 
 #### Location Banks
 ![Creating a location bank for the middle of Times Square using a geohash](./images/coop-location-bank.png) 
