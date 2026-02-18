@@ -2325,6 +2325,7 @@ export type GQLMutation = {
   readonly requestDemo?: Maybe<Scalars['Boolean']>;
   readonly resetPassword: Scalars['Boolean'];
   readonly rotateApiKey: GQLRotateApiKeyResponse;
+  readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
   readonly sendPasswordReset: Scalars['Boolean'];
   readonly setAllUserStrikeThresholds: GQLSetAllUserStrikeThresholdsSuccessResponse;
@@ -3647,6 +3648,25 @@ export type GQLRotateApiKeySuccessResponse = {
   readonly __typename?: 'RotateApiKeySuccessResponse';
   readonly apiKey: Scalars['String'];
   readonly record: GQLApiKey;
+};
+
+export type GQLRotateWebhookSigningKeyError = GQLError & {
+  readonly __typename?: 'RotateWebhookSigningKeyError';
+  readonly detail?: Maybe<Scalars['String']>;
+  readonly pointer?: Maybe<Scalars['String']>;
+  readonly requestId?: Maybe<Scalars['String']>;
+  readonly status: Scalars['Int'];
+  readonly title: Scalars['String'];
+  readonly type: ReadonlyArray<Scalars['String']>;
+};
+
+export type GQLRotateWebhookSigningKeyResponse =
+  | GQLRotateWebhookSigningKeyError
+  | GQLRotateWebhookSigningKeySuccessResponse;
+
+export type GQLRotateWebhookSigningKeySuccessResponse = {
+  readonly __typename?: 'RotateWebhookSigningKeySuccessResponse';
+  readonly publicSigningKey: Scalars['String'];
 };
 
 export type GQLRoutingRule = {
@@ -5082,6 +5102,7 @@ export type GQLResolversTypes = {
     | GQLResolversTypes['RecordingJobDecisionFailedError']
     | GQLResolversTypes['ReportingRuleNameExistsError']
     | GQLResolversTypes['RotateApiKeyError']
+    | GQLResolversTypes['RotateWebhookSigningKeyError']
     | GQLResolversTypes['RoutingRuleNameExistsError']
     | GQLResolversTypes['RuleHasRunningBacktestsError']
     | GQLResolversTypes['RuleNameExistsError']
@@ -5483,6 +5504,11 @@ export type GQLResolversTypes = {
     | GQLResolversTypes['RotateApiKeyError']
     | GQLResolversTypes['RotateApiKeySuccessResponse'];
   RotateApiKeySuccessResponse: ResolverTypeWrapper<GQLRotateApiKeySuccessResponse>;
+  RotateWebhookSigningKeyError: ResolverTypeWrapper<GQLRotateWebhookSigningKeyError>;
+  RotateWebhookSigningKeyResponse:
+    | GQLResolversTypes['RotateWebhookSigningKeyError']
+    | GQLResolversTypes['RotateWebhookSigningKeySuccessResponse'];
+  RotateWebhookSigningKeySuccessResponse: ResolverTypeWrapper<GQLRotateWebhookSigningKeySuccessResponse>;
   RoutingRule: ResolverTypeWrapper<RoutingRuleWithoutVersion>;
   RoutingRuleNameExistsError: ResolverTypeWrapper<GQLRoutingRuleNameExistsError>;
   RoutingRuleStatus: GQLRoutingRuleStatus;
@@ -5918,6 +5944,7 @@ export type GQLResolversParentTypes = {
     | GQLResolversParentTypes['RecordingJobDecisionFailedError']
     | GQLResolversParentTypes['ReportingRuleNameExistsError']
     | GQLResolversParentTypes['RotateApiKeyError']
+    | GQLResolversParentTypes['RotateWebhookSigningKeyError']
     | GQLResolversParentTypes['RoutingRuleNameExistsError']
     | GQLResolversParentTypes['RuleHasRunningBacktestsError']
     | GQLResolversParentTypes['RuleNameExistsError']
@@ -6264,6 +6291,11 @@ export type GQLResolversParentTypes = {
     | GQLResolversParentTypes['RotateApiKeyError']
     | GQLResolversParentTypes['RotateApiKeySuccessResponse'];
   RotateApiKeySuccessResponse: GQLRotateApiKeySuccessResponse;
+  RotateWebhookSigningKeyError: GQLRotateWebhookSigningKeyError;
+  RotateWebhookSigningKeyResponse:
+    | GQLResolversParentTypes['RotateWebhookSigningKeyError']
+    | GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'];
+  RotateWebhookSigningKeySuccessResponse: GQLRotateWebhookSigningKeySuccessResponse;
   RoutingRule: RoutingRuleWithoutVersion;
   RoutingRuleNameExistsError: GQLRoutingRuleNameExistsError;
   Rule: Rule;
@@ -8144,6 +8176,7 @@ export type GQLErrorResolvers<
     | 'RecordingJobDecisionFailedError'
     | 'ReportingRuleNameExistsError'
     | 'RotateApiKeyError'
+    | 'RotateWebhookSigningKeyError'
     | 'RoutingRuleNameExistsError'
     | 'RuleHasRunningBacktestsError'
     | 'RuleNameExistsError'
@@ -10197,6 +10230,11 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationRotateApiKeyArgs, 'input'>
   >;
+  rotateWebhookSigningKey?: Resolver<
+    GQLResolversTypes['RotateWebhookSigningKeyResponse'],
+    ParentType,
+    ContextType
+  >;
   runRetroaction?: Resolver<
     Maybe<GQLResolversTypes['RunRetroactionResponse']>,
     ParentType,
@@ -11989,6 +12027,61 @@ export type GQLRotateApiKeySuccessResponseResolvers<
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   record?: Resolver<GQLResolversTypes['ApiKey'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLRotateWebhookSigningKeyErrorResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['RotateWebhookSigningKeyError'] = GQLResolversParentTypes['RotateWebhookSigningKeyError'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLRotateWebhookSigningKeyResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['RotateWebhookSigningKeyResponse'] = GQLResolversParentTypes['RotateWebhookSigningKeyResponse'],
+> = {
+  __resolveType: TypeResolveFn<
+    'RotateWebhookSigningKeyError' | 'RotateWebhookSigningKeySuccessResponse',
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLRotateWebhookSigningKeySuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'] = GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'],
+> = {
+  publicSigningKey?: Resolver<
+    GQLResolversTypes['String'],
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -13910,6 +14003,9 @@ export type GQLResolvers<ContextType = Context> = {
   RotateApiKeyError?: GQLRotateApiKeyErrorResolvers<ContextType>;
   RotateApiKeyResponse?: GQLRotateApiKeyResponseResolvers<ContextType>;
   RotateApiKeySuccessResponse?: GQLRotateApiKeySuccessResponseResolvers<ContextType>;
+  RotateWebhookSigningKeyError?: GQLRotateWebhookSigningKeyErrorResolvers<ContextType>;
+  RotateWebhookSigningKeyResponse?: GQLRotateWebhookSigningKeyResponseResolvers<ContextType>;
+  RotateWebhookSigningKeySuccessResponse?: GQLRotateWebhookSigningKeySuccessResponseResolvers<ContextType>;
   RoutingRule?: GQLRoutingRuleResolvers<ContextType>;
   RoutingRuleNameExistsError?: GQLRoutingRuleNameExistsErrorResolvers<ContextType>;
   Rule?: GQLRuleResolvers<ContextType>;

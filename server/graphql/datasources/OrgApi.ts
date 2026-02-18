@@ -11,6 +11,7 @@ import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
+  isCoopErrorOfType,
 } from '../../utils/errors.js';
 import { WEEK_MS } from '../../utils/time.js';
 import {
@@ -228,32 +229,37 @@ class OrgAPI extends DataSource {
     };
   }
 
+  /**
+   * Returns the org's webhook public signing key as PEM. If no key exists yet
+   * (e.g. org created before this feature), we create and persist one once.
+   */
   async getPublicSigningKeyPem(orgId: string) {
+    let key: CryptoKey;
     try {
-      const key = await this.signingKeyPairService.getSignatureVerificationInfo(
+      key = await this.signingKeyPairService.getSignatureVerificationInfo(
         orgId,
       );
-      const exported = await crypto.subtle.exportKey('spki', key);
-      const exportedAsBase64 = b64EncodeArrayBuffer(exported);
-      return `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
     } catch (error) {
-      // In development, if there's no signing key, generate one on-the-fly
-      if (process.env.NODE_ENV === 'development') {
-        try {
-          // Generate a development signing key for this organization
-          const devKey = await this.signingKeyPairService.createAndStoreSigningKeys(orgId);
-          const exported = await crypto.subtle.exportKey('spki', devKey);
-          const exportedAsBase64 = b64EncodeArrayBuffer(exported);
-          return `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
-        } catch (devError) {
-          // If even the dev key generation fails, return a placeholder
-          // eslint-disable-next-line no-console
-          console.warn(`Failed to generate dev signing key for org ${orgId}:`, devError);
-          return 'dev-signing-key-placeholder';
-        }
+      if (isCoopErrorOfType(error, 'SigningKeyPairNotFound')) {
+        key = await this.signingKeyPairService.createAndStoreSigningKeys(orgId);
+      } else {
+        throw error;
       }
-      throw error;
     }
+    const exported = await crypto.subtle.exportKey('spki', key);
+    const exportedAsBase64 = b64EncodeArrayBuffer(exported);
+    return `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
+  }
+
+  /**
+   * Rotates the webhook signing key for the org: generates a new key pair,
+   * overwrites storage, invalidates cache, and returns the new public key as PEM.
+   */
+  async rotateWebhookSigningKey(orgId: string): Promise<string> {
+    const publicKey = await this.signingKeyPairService.rotateSigningKeys(orgId);
+    const exported = await crypto.subtle.exportKey('spki', publicKey);
+    const exportedAsBase64 = b64EncodeArrayBuffer(exported);
+    return `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64}\n-----END PUBLIC KEY-----`;
   }
 }
 

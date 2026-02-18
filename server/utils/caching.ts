@@ -47,6 +47,8 @@ type CachedFn<KeyType, CachedContentType> = {
     directives?: ConsumerDirectives,
   ): Promise<ReadonlyDeep<CachedContentType>>;
   close(): Promise<void>;
+  /** Invalidates the cached value for the given key. Used when the source data has been replaced (e.g. key rotation). */
+  invalidate?(key: KeyType): Promise<void>;
 };
 
 /**
@@ -147,6 +149,10 @@ export function cached<
   }
 
   exposedGet.close = async () => getWithCache.cache.close();
+  exposedGet.invalidate = async (key: KeyType) => {
+    const cacheKey = keyGeneration.toString(key);
+    await getWithCache.cache.delete(cacheKey);
+  };
   return exposedGet;
 }
 

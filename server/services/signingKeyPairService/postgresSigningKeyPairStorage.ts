@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type { Kysely } from 'kysely';
 
-import { jsonStringify } from '../../utils/encoding.js';
+import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
 import {
@@ -79,8 +79,12 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
       });
     }
 
-    // eslint-disable-next-line no-restricted-syntax
-    const keyData: JWTCryptoKeyPairWithAlgorithm = JSON.parse(result.key_data);
+    const keyData: JWTCryptoKeyPairWithAlgorithm =
+      typeof result.key_data === 'string'
+        ? jsonParse(
+            result.key_data as JsonOf<JWTCryptoKeyPairWithAlgorithm>,
+          )
+        : (result.key_data as JWTCryptoKeyPairWithAlgorithm);
     const { privateKeyWithAlgorithm, publicKeyWithAlgorithm } = keyData;
 
     return {

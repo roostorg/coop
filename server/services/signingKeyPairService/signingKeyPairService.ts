@@ -6,12 +6,20 @@ import { cached, type Cached } from '../../utils/caching.js';
 
 /**
  * This service generates + stores key pairs for request signing, which it can
- * then retrieve.
+ * then retrieve. It operates under the assumption that the resulting key will
+ * be stored somewhere, and then retrieved from storage for signing requests or
+ * to show to the user in the UI.
  *
- * It operates under the assumption that the resulting key will be stored
- * somewhere, and then retrieved from storage for signing requests or to show to
- * the user in the UI.
+ * After rotating, storage (e.g. AWS Secrets Manager) may be eventually
+ * consistent, so the next read can still return the old key. We cache the new
+ * public key here briefly so the UI refetch/refresh sees the correct key.
  */
+const ROTATED_KEY_TTL_MS = 10_000;
+const recentlyRotatedPublicKeys = new Map<
+  string,
+  { key: CryptoKey; expiresAt: number }
+>();
+
 class SigningKeyPairService {
   private fetchPrivateKey: Cached<(key: SigningKeyId) => Promise<CryptoKey>>;
 
@@ -51,9 +59,39 @@ class SigningKeyPairService {
   }
 
   /**
-   * Returns the same public CryptoKey as `createAndStoreSigningKeys`
+   * Generates a new key pair, overwrites the stored pair for the org, and
+   * invalidates any cached private key so the new key is used for signing.
+   * Use this to rotate the webhook signature verification key.
+   *
+   * @param orgId The org for which to rotate the key pair.
+   * @returns The new public key (for exporting to PEM and showing once to the user).
+   */
+  public async rotateSigningKeys(orgId: string) {
+    const keyPair = await this.createSigningKeys();
+    await this.store.storeKeyPair({ orgId }, keyPair);
+    if (this.fetchPrivateKey.invalidate) {
+      await this.fetchPrivateKey.invalidate({ orgId });
+    }
+    recentlyRotatedPublicKeys.set(orgId, {
+      key: keyPair.publicKey,
+      expiresAt: Date.now() + ROTATED_KEY_TTL_MS,
+    });
+    return keyPair.publicKey;
+  }
+
+  /**
+   * Returns the public key for verification. If we just rotated for this org,
+   * we return the new key from memory so the next read is correct even when
+   * storage (e.g. AWS Secrets Manager) is eventually consistent.
    */
   public async getSignatureVerificationInfo(orgId: string) {
+    const entry = recentlyRotatedPublicKeys.get(orgId);
+    if (entry) {
+      if (Date.now() < entry.expiresAt) {
+        return entry.key;
+      }
+      recentlyRotatedPublicKeys.delete(orgId);
+    }
     return this.store.fetchPublicKey({ orgId });
   }
 

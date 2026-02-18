@@ -266,6 +266,14 @@ export default class Cache<
     return this.dataStore.store(entriesWithTimes);
   }
 
+  /**
+   * Deletes all stored entries for the given resource id. Used for cache
+   * invalidation (e.g. when a signing key is rotated).
+   */
+  public async delete(id: Id): Promise<void> {
+    return this.dataStore.delete(id as string);
+  }
+
   public async close(timeout?: number) {
     this.closed = true;
     return this.dataStore.close(timeout);

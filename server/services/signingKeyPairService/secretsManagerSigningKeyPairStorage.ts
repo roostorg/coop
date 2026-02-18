@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
+  PutSecretValueCommand,
+  ResourceNotFoundException,
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
 
@@ -44,22 +46,41 @@ export class SecretsManagerSigningKeyPairStorage
       crypto.subtle.exportKey('jwk', keyPair.privateKey),
       crypto.subtle.exportKey('jwk', keyPair.publicKey),
     ]);
-    await this.client.send(
-      new CreateSecretCommand({
-        Name: this.getSecretIdForKeyId(keyId),
-        Description: `Public + private key pair used to sign webhook requests for org with ID ${keyId.orgId}`,
-        SecretString: jsonStringify<JWTCryptoKeyPairWithAlgorithm>({
-          publicKeyWithAlgorithm: {
-            key: publicKey,
-            algorithm: keyPair.publicKey.algorithm,
-          },
-          privateKeyWithAlgorithm: {
-            key: privateKey,
-            algorithm: keyPair.privateKey.algorithm,
-          },
+    const secretString = jsonStringify<JWTCryptoKeyPairWithAlgorithm>({
+      publicKeyWithAlgorithm: {
+        key: publicKey,
+        algorithm: keyPair.publicKey.algorithm,
+      },
+      privateKeyWithAlgorithm: {
+        key: privateKey,
+        algorithm: keyPair.privateKey.algorithm,
+      },
+    });
+    const secretId = this.getSecretIdForKeyId(keyId);
+
+    try {
+      await this.client.send(
+        new GetSecretValueCommand({ SecretId: secretId }),
+      );
+      await this.client.send(
+        new PutSecretValueCommand({
+          SecretId: secretId,
+          SecretString: secretString,
         }),
-      }),
-    );
+      );
+    } catch (err) {
+      if (err instanceof ResourceNotFoundException) {
+        await this.client.send(
+          new CreateSecretCommand({
+            Name: secretId,
+            Description: `Public + private key pair used to sign webhook requests for org with ID ${keyId.orgId}`,
+            SecretString: secretString,
+          }),
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 
   private async fetchKeyPair(keyId: SigningKeyId): Promise<CryptoKeyPair> {

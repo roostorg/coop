@@ -40,3 +40,21 @@ export const ROTATE_API_KEY_MUTATION = gql`
     }
   }
 `;
+
+export const ROTATE_WEBHOOK_SIGNING_KEY_MUTATION = gql`
+  mutation RotateWebhookSigningKey {
+    rotateWebhookSigningKey {
+      ... on RotateWebhookSigningKeySuccessResponse {
+        publicSigningKey
+      }
+      ... on RotateWebhookSigningKeyError {
+        title
+        status
+        type
+        detail
+        pointer
+        requestId
+      }
+    }
+  }
+`;
