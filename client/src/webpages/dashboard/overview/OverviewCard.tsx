@@ -472,7 +472,7 @@ export default function OverviewCard(props: {
     previousTotal?: number;
   }) => {
     const { num, total, previousNum, previousTotal } = opts;
-    const percent = (num / total) * 100;
+    const percent = total ? (num / total) * 100 : 0;
     const previousPercent =
       previousNum && previousTotal ? (previousNum / previousTotal) * 100 : 0;
     return (

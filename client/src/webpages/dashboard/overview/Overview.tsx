@@ -56,6 +56,7 @@ export default function Overview() {
 
   const totalActionsTakenCard = (
     <OverviewCard
+      key="total-actions"
       title="Actions taken"
       icon={TapFilled}
       iconColor="text-teal-300"
@@ -66,6 +67,7 @@ export default function Overview() {
 
   const jobsPendingReviewCard = (
     <OverviewCard
+      key="jobs-pending"
       title="Jobs pending review"
       icon={UsersFilled}
       iconColor="text-orange-400"
@@ -77,6 +79,7 @@ export default function Overview() {
 
   const topPolicyViolationsCard = (
     <OverviewCard
+      key="violations-per-policy"
       title="Top policy violations"
       icon={FileExclamationFilled}
       iconColor="text-amber-400"
@@ -87,6 +90,7 @@ export default function Overview() {
 
   const automatedVsManualActionsCard = (
     <OverviewCard
+      key="automated-vs-manual"
       title="Automated vs. manual actions"
       icon={PieChartAlt1Filled}
       iconColor="text-amber-400"
@@ -104,6 +108,7 @@ export default function Overview() {
 
   const decisionsPerModeratorChart = (
     <OverviewChart
+      key="decisions"
       title="Decisions per moderator"
       icon={UsersFilled}
       iconColor="text-orange-400"
@@ -116,6 +121,7 @@ export default function Overview() {
 
   const actionsPerRuleChart = (chartType: ChartType.BAR | ChartType.LINE) => (
     <OverviewChart
+      key="actions"
       title="Actions per rule"
       icon={FlowChartAltFilled}
       iconColor="text-amber-400"
@@ -128,6 +134,7 @@ export default function Overview() {
 
   const topViolationsByPolicyTable = (
     <OverviewTable
+      key="policy"
       title="Policy Violations"
       icon={FileExclamationFilled}
       iconColor="text-amber-400"

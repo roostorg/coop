@@ -150,12 +150,12 @@ export default function NCMECSettings() {
       toast.error('Username and Password are required.');
       return;
     }
-    
+
     if (!settings.companyTemplate || !settings.legalUrl) {
       toast.error('Company Template and Legal URL are required for NCMEC reporting.');
       return;
     }
-    
+
     updateSettings({
       variables: {
         input: {
@@ -198,7 +198,7 @@ export default function NCMECSettings() {
           Exploited Children) reporting settings. These credentials will be used
           when submitting reports to NCMEC CyberTipline.
         </Text>
-        
+
         {!isNCMECEnabled && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
             <Text size="SM" className="text-blue-800">
@@ -208,7 +208,7 @@ export default function NCMECSettings() {
             </Text>
           </div>
         )}
-        
+
         {isNCMECEnabled && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
             <Text size="SM" className="text-green-800">
@@ -534,7 +534,7 @@ export default function NCMECSettings() {
             {isNCMECEnabled ? 'Update Settings' : 'Enable NCMEC & Save Settings'}
           </Button>
         </div>
-        
+
         {!isNCMECEnabled && (
           <Text size="XS" className="mt-4 text-gray-600">
             Note: Saving these settings will enable NCMEC reporting for your
