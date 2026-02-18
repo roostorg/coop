@@ -483,6 +483,7 @@ type NcmecAdditionalInfoResponse = {
     additionalInfo?: string[];
     fileName?: string;
     missing?: boolean;
+    publiclyAvailable?: boolean;
     fileDetails?: {
       hash: string;
       hashType: string;
@@ -521,6 +522,8 @@ type MediaAdditionalInfo = {
   ipCaptureEvent?: IPNCMECEvent[];
   additionalInfo?: string[];
   fileName?: string;
+  /** When set, sent to NCMEC in file details (whether the content was publicly viewable). */
+  publiclyAvailable?: boolean;
 };
 
 type FileAdditionalInfo = {
@@ -684,6 +687,7 @@ const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
           },
           fileName: { type: 'string' },
           missing: { type: 'boolean' },
+          publiclyAvailable: { type: 'boolean' },
           fileDetails: {
             type: 'object',
             properties: {
@@ -1670,11 +1674,16 @@ export default class NcmecReporting {
         fileDetails: {
           reportId: parseInt(reportId),
           fileId,
+          // All reported content is reviewed by the ESP before submission.
           fileViewedByEsp: true,
+          exifViewedByEsp: true,
           fileAnnotations: this.#fileAnnotationArrayToNCMECFileAnnotation(
             media.fileAnnotations,
           ),
           industryClassification: media.industryClassification,
+          ...(additionalInfo.publiclyAvailable !== undefined
+            ? { publiclyAvailable: additionalInfo.publiclyAvailable }
+            : {}),
           // Annoyingly, NCMEC only accepts IP Address XML in order so unwrap it
           // in the correct order in case it was passed in incorrectly
           ...(additionalInfo.ipCaptureEvent &&
