@@ -161,7 +161,9 @@ export function getMatchedBanksForMediaUrl(
       | { value: { url?: string; matchedBanks?: string[] }; type: string }[]
       | undefined;
     if (valueOrValues === undefined) continue;
-    const values = Array.isArray(valueOrValues) ? valueOrValues : [valueOrValues];
+    const values = Array.isArray(valueOrValues)
+      ? valueOrValues
+      : [valueOrValues];
     for (const tagged of values) {
       const v = tagged.value;
       if (v?.url === mediaUrl) {
@@ -397,6 +399,7 @@ export default function NCMECReviewUser(
     moderatorSafetyBlurLevel,
     moderatorSafetyGrayscale,
     moderatorSafetyMuteVideo,
+    moderatorSafetySepia,
   } = data?.me?.interfacePreferences ?? {};
 
   // Compares two pieces of media to determine whether they're the same, based
@@ -582,14 +585,17 @@ export default function NCMECReviewUser(
             <div className="overflow-hidden shadow-lg rounded-2xl w-fit">
               {!loading &&
               moderatorSafetyBlurLevel != null &&
-              moderatorSafetyGrayscale != null ? (
+              moderatorSafetyGrayscale != null &&
+              moderatorSafetySepia != null ? (
                 media.urlInfo.mediaType === 'IMAGE' ? (
                   <img
                     className={`object-scale-down w-64 h-48 rounded-2xl ${
                       unblurAllMediaInConfirmation
                         ? 'blur-0'
                         : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength]
-                    } ${moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+                    } ${moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+                      moderatorSafetySepia ? 'sepia' : ''
+                    } `}
                     alt=""
                     src={media.urlInfo.url}
                   />
@@ -598,7 +604,8 @@ export default function NCMECReviewUser(
                     url={media.urlInfo.url}
                     className={`object-scale-down w-64 h-48 rounded-2xl ${
                       moderatorSafetyGrayscale ? 'grayscale' : ''
-                    }`}
+                    }
+                    ${moderatorSafetySepia ? 'sepia' : ''} `}
                     options={{
                       shouldBlur:
                         !unblurAllMediaInConfirmation &&

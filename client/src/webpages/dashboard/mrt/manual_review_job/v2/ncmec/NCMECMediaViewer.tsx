@@ -84,10 +84,12 @@ export default function NCMECMediaViewer(props: {
     moderatorSafetyBlurLevel: BlurStrength;
     moderatorSafetyGrayscale: boolean;
     moderatorSafetyMuteVideo: boolean;
+    moderatorSafetySepia: boolean;
   }>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: true,
   });
 
   const { loading, error, data } = useGQLPersonalSafetySettingsQuery();
@@ -170,7 +172,8 @@ export default function NCMECMediaViewer(props: {
                 shouldBlur
                   ? BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel]
                   : 0
-              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}
+              ${safetySettings.moderatorSafetySepia ? 'sepia' : ''} `}
               alt=""
               src={mediaId.urlInfo.url}
               onError={(img) => {
@@ -190,7 +193,9 @@ export default function NCMECMediaViewer(props: {
                 isInInspectedView
                   ? 'w-auto'
                   : 'object-scale-down grow max-w-64 max-h-48'
-              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+                safetySettings.moderatorSafetySepia ? 'sepia' : ''
+              } `}
               url={mediaId.urlInfo.url}
               options={{
                 shouldBlur:
@@ -266,6 +271,20 @@ export default function NCMECMediaViewer(props: {
               checked={safetySettings.moderatorSafetyGrayscale}
             />
             <Label htmlFor="grayscale">Grayscale</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="sepia"
+              defaultChecked
+              onCheckedChange={(isSepia) =>
+                setSafetySettings({
+                  ...safetySettings,
+                  moderatorSafetySepia: isSepia,
+                })
+              }
+              checked={safetySettings.moderatorSafetySepia}
+            />
+            <Label htmlFor="sepia">Sepia</Label>
           </div>
         </div>
       )}

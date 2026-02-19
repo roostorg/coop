@@ -26,6 +26,7 @@ export type UserManagementPg = {
     user_id: string;
     moderator_safety_mute_video: boolean | null;
     moderator_safety_grayscale: boolean | null;
+    moderator_safety_sepia: boolean | null;
     moderator_safety_blur_level: number | null;
     mrt_chart_configurations: MrtChartConfig[] | null;
   };
@@ -40,6 +41,11 @@ export type UserManagementPg = {
       boolean | undefined
     >;
     moderator_safety_grayscale: ColumnType<
+      boolean,
+      boolean | undefined,
+      boolean | undefined
+    >;
+    moderator_safety_sepia: ColumnType<
       boolean,
       boolean | undefined,
       boolean | undefined

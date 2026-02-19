@@ -14,6 +14,7 @@ export default function ManualReviewJobContentBlurableImage(props: {
     blurStrength?: BlurStrength;
     grayscale?: boolean;
     disableZoom?: boolean;
+    sepia?: boolean
   };
   onError?: () => void;
 }) {
@@ -25,6 +26,7 @@ export default function ManualReviewJobContentBlurableImage(props: {
     blurStrength = 0,
     grayscale = false,
     disableZoom = false,
+    sepia = false,
   } = options ?? {};
 
   const [clicked, setClicked] = useState<boolean>(false);
@@ -49,7 +51,7 @@ export default function ManualReviewJobContentBlurableImage(props: {
       <img
         className={`w-full rounded-lg hover:blur-none ${
           shouldBlur ? BLUR_LEVELS[blurStrength] : 'blur-0'
-        } ${grayscale ? 'grayscale' : ''}`}
+        } ${grayscale ? 'grayscale' : ''} ${sepia ? 'sepia': ''} `}
         alt=""
         src={url}
         onClick={() => setClicked(true)}

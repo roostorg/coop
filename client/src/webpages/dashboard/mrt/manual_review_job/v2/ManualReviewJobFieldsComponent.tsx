@@ -197,6 +197,7 @@ function TableRowComponent(props: {
                 ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                 : (2 as const),
               grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+              sepia: safetySettings?.moderatorSafetySepia ?? false,
             }}
           />
           {label ? <div className="font-bold">{label}</div> : null}

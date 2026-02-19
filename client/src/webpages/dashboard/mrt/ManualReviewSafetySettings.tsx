@@ -27,6 +27,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -47,10 +48,12 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyBlurLevel: BlurStrength;
     moderatorSafetyGrayscale: boolean;
     moderatorSafetyMuteVideo: boolean;
+    moderatorSafetySepia: boolean;
   }>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: true,
   });
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
@@ -76,11 +79,13 @@ export default function ManualReviewSafetySettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = data.me.interfacePreferences;
     setSettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia
     });
   }, [data?.me?.interfacePreferences]);
 
@@ -142,6 +147,23 @@ export default function ManualReviewSafetySettings() {
           <div className="flex items-center h-10">
             <div className="flex items-center space-x-2">
               <Switch
+                id="sepia"
+                defaultChecked
+                onCheckedChange={(value) =>
+                  setSettings({
+                    ...settings,
+                    moderatorSafetySepia: value,
+                  })
+                }
+                checked={settings.moderatorSafetySepia}
+              />
+              <Label htmlFor="sepia">Sepia</Label>
+            </div>
+          </div>
+          
+          <div className="flex items-center h-10">
+            <div className="flex items-center space-x-2">
+              <Switch
                 id="mute-videos"
                 defaultChecked
                 onCheckedChange={(value) =>
@@ -161,7 +183,7 @@ export default function ManualReviewSafetySettings() {
             settings.moderatorSafetyBlurLevel != null
               ? BLUR_LEVELS[settings.moderatorSafetyBlurLevel]
               : 'blur-sm'
-          } ${settings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+          } ${settings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${settings.moderatorSafetySepia ? 'sepia' : ''}  `}
           alt="puppies"
           src={GoldenRetrieverPuppies}
         />
