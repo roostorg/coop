@@ -1,6 +1,7 @@
 import { AuthenticationError } from 'apollo-server-express';
 
 import { ErrorType, CoopError } from '../../utils/errors.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 /** Context shape required by rotateWebhookSigningKey (avoids importing resolvers). */
@@ -125,8 +126,9 @@ const Mutation: any = {
         'RotateApiKeySuccessResponse'
       );
     } catch (error) {
-      // eslint-disable-next-line no-console -- Resolver has no logger; log server-side for debugging.
-      console.error('Failed to rotate API key', error);
+      // Resolvers do not receive a request-scoped logger; use logErrorJson for structured server-side logging.
+      // eslint-disable-next-line no-restricted-syntax -- see comment above
+      logErrorJson({ message: 'Failed to rotate API key', error });
       return gqlErrorResult(
         new CoopError({
           status: 500,
@@ -162,8 +164,12 @@ const Mutation: any = {
         'RotateWebhookSigningKeySuccessResponse',
       );
     } catch (error) {
-      // eslint-disable-next-line no-console -- Resolver has no logger; log server-side for debugging.
-      console.error('Failed to rotate webhook signing key', error);
+      // Resolvers do not receive a request-scoped logger; use logErrorJson for structured server-side logging.
+      // eslint-disable-next-line no-restricted-syntax -- see comment above
+      logErrorJson({
+        message: 'Failed to rotate webhook signing key',
+        error,
+      });
       return gqlErrorResult(
         new CoopError({
           status: 500,
