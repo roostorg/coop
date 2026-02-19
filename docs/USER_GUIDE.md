@@ -262,11 +262,25 @@ Coop logs all actions taken in a Recent Decisions Log that includes basic inform
 
 ## NCMEC Review and Reporting
 
-Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. In order to review accounts and content to report to NCMEC, you must have:
+Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. Head to [NCMEC.md](/docs/NCMEC.md) for more information.
 
-1. A manual review queue called “NCMEC Review”  
-2. A User item type that is a RELATED_ITEM field for associated content. This stores a structured reference to the User item. NCMEC-type jobs extract the user identifier from this structured reference to look up the full user in the Item Investigation Service.  
-   1. Coop will automatically convert content Item Types and aggregate all media associated with the user to convert the job into a NCMEC-type job. This creates a detailed NCMEC report around one user, rather than multiple NCMEC reports for multiple pieces of content from the same user.
+![Coop's NCMEC settings page where you populate your organization's ESP username, password, name of org, and legal URL.](./images/coop-ncmec-settings.png) 
+
+  ### Prerequisites
+In order to review accounts and content to report to NCMEC, you must have:
+
+  1. NCMEC API credentials — a username and password for the CyberTip API, obtained from NCMEC directly by [registering as an Electronic Service Prover](https://esp.ncmec.org/registration).
+  2. A User item type with a creatorId field role on content types A User item type that is a RELATED_ITEM field for associated content, sometimes the `creatorId` field. This stores a structured reference to the User item. NCMEC-type jobs extract the user identifier from this structured reference to look up the full user in the Item Investigation Service.     
+  3. NCMEC org settings configured. This is set via the Settings page (Admin only): API credentials, company template, legal URL, and contact email
+  4. A dedicated NCMEC manual review queue called "NCMEC Review".  Coop uses a default_ncmec_queue_id setting to route NCMEC jobs. Queue IDs registered as production queues submit real CyberTips; all
+  others use the NCMEC test environment.
+  5. An Additional Info endpoint (optional but recommended) is a signed webhook Coop calls before submitting a CyberTip to retrieve user email addresses, screen names, IP
+  capture events, and per-media metadata. If not configured, Coop submits with minimal user data that can make reports less actionable.
+  6. A Preservation endpoint (optional) is a webhook Coop calls after a successful CyberTip submission with the report ID, so you can preserve relevant data per NCMEC
+  requirements.
+
+   Coop will automatically convert content Item Types and aggregate all media associated with the user to convert the job into a NCMEC-type job. This creates a detailed NCMEC report around one user, rather than multiple NCMEC reports for multiple pieces of content from the same user.
+
 
 ![Coop's NCMEC Reporting task view. This differs from the usual task view as it aggregates all media associated wih a user. There are keyboard shortcuts to apply specific industry classifications, a dropdown for selecting the incident type, and add labels per NCMEC's CyberTip fields](./images/coop-ncmec-job.png) 
 The NCMEC job UI includes:
@@ -280,7 +294,7 @@ The NCMEC job UI includes:
   * Misleading Words or Digital Images on the Internet  
   * Online Enticement of Children for Sexual Acts  
   * Unsolicited Obscene Material Sent to a Child  
-* [Industry categorization](https://report.cybertip.org/ispws/documentation/index.html#incident-summary) (A categorization from the ESP-designated categorization scale):  
+* [Industry categorization](https://report.cybertip.org/ispws/documentation/index.html#incident-summary) (A categorization from the [ESP-designated categorization scale](https://technologycoalition.org/wp-content/uploads/Tech_Coalition_Industry_Classification_System.pdf)):  
   * A1  
   * A2  
   * B1  
