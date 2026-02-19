@@ -2,7 +2,7 @@
 # Format: path-pattern @username @org/team-name
 
 # Maintainers: Default owners for all files
-* @juanmrad, @vinaysrao1, @pawiecz, @cassidyjames, @julietshen, @dom-notion
+* @juanmrad @vinaysrao1 @pawiecz @cassidyjames @julietshen @dom-notion
 
 # Docs contributors
 docs/ @roostorg/roosters
