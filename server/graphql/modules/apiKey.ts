@@ -5,7 +5,10 @@ import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 /** Context shape required by rotateWebhookSigningKey (avoids importing resolvers). */
 type RotateWebhookSigningKeyContext = {
-  getUser: () => { orgId: string } | null | undefined;
+  getUser: () => {
+    orgId: string;
+    getPermissions: () => readonly string[];
+  } | null | undefined;
   dataSources: {
     orgAPI: { rotateWebhookSigningKey: (orgId: string) => Promise<string> };
   };
@@ -92,6 +95,11 @@ const Mutation: any = {
     if (!user || !user.orgId) {
       throw new AuthenticationError('User must be authenticated');
     }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw new AuthenticationError(
+        'User does not have permission to rotate the API key',
+      );
+    }
 
     try {
       const { apiKey, record } = await context.services.ApiKeyService.rotateApiKey(
@@ -117,6 +125,7 @@ const Mutation: any = {
         'RotateApiKeySuccessResponse'
       );
     } catch (error) {
+      // eslint-disable-next-line no-console -- Resolver has no logger; log server-side for debugging.
       console.error('Failed to rotate API key', error);
       return gqlErrorResult(
         new CoopError({
@@ -139,6 +148,11 @@ const Mutation: any = {
     if (!user || !user.orgId) {
       throw new AuthenticationError('User must be authenticated');
     }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw new AuthenticationError(
+        'User does not have permission to rotate the webhook signing key',
+      );
+    }
 
     try {
       const publicSigningKey =
@@ -148,6 +162,7 @@ const Mutation: any = {
         'RotateWebhookSigningKeySuccessResponse',
       );
     } catch (error) {
+      // eslint-disable-next-line no-console -- Resolver has no logger; log server-side for debugging.
       console.error('Failed to rotate webhook signing key', error);
       return gqlErrorResult(
         new CoopError({

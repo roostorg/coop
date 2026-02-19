@@ -271,7 +271,7 @@ export default class Cache<
    * invalidation (e.g. when a signing key is rotated).
    */
   public async delete(id: Id): Promise<void> {
-    return this.dataStore.delete(id as string);
+    return this.dataStore.delete(id);
   }
 
   public async close(timeout?: number) {
