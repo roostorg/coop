@@ -1,4 +1,5 @@
 import { AuthenticationError } from 'apollo-server-core';
+import { UserInputError } from 'apollo-server-express';
 
 import { formatItemSubmissionForGQL } from '../../graphql/types.js';
 import type {
@@ -25,6 +26,17 @@ type NcmecOrgSettingsInputShape = {
   contactPersonLastName?: string | null;
   contactPersonPhone?: string | null;
 };
+
+const VALID_NCMEC_INTERNET_DETAIL_TYPES: readonly string[] = [
+  'WEB_PAGE',
+  'EMAIL',
+  'NEWSGROUP',
+  'CHAT_IM',
+  'ONLINE_GAMING',
+  'CELL_PHONE',
+  'NON_INTERNET',
+  'PEER_TO_PEER',
+];
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -271,6 +283,21 @@ const Mutation: GQLMutationResolvers = {
       throw new AuthenticationError('User required.');
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
+    const defaultInternetDetailType =
+      input.defaultInternetDetailType == null
+        ? null
+        : (() => {
+            const trimmed = String(input.defaultInternetDetailType).trim();
+            if (
+              trimmed !== '' &&
+              !VALID_NCMEC_INTERNET_DETAIL_TYPES.includes(trimmed)
+            ) {
+              throw new UserInputError(
+                `defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`,
+              );
+            }
+            return trimmed === '' ? null : trimmed;
+          })();
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
       username: input.username,
@@ -282,7 +309,7 @@ const Mutation: GQLMutationResolvers = {
       ncmecPreservationEndpoint: input.ncmecPreservationEndpoint ?? null,
       ncmecAdditionalInfoEndpoint: input.ncmecAdditionalInfoEndpoint ?? null,
       defaultNcmecQueueId: input.defaultNcmecQueueId ?? null,
-      defaultInternetDetailType: input.defaultInternetDetailType ?? null,
+      defaultInternetDetailType,
       termsOfService: input.termsOfService ?? null,
       contactPersonEmail: input.contactPersonEmail ?? null,
       contactPersonFirstName: input.contactPersonFirstName ?? null,

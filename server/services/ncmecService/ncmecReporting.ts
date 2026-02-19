@@ -394,7 +394,9 @@ export function buildInternetDetailsFromOrgSetting(
   if (!NCMEC_INTERNET_DETAIL_TYPES.includes(type)) {
     return undefined;
   }
-  const webPageUrl = moreInfoUrl?.trim() ?? 'Not specified';
+  // Use || so blank/empty URL becomes 'Not specified' (?? would keep '')
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: empty string should fallback
+  const webPageUrl = moreInfoUrl?.trim() || 'Not specified';
   switch (type) {
     case 'WEB_PAGE':
       return [{ webPageIncident: { url: webPageUrl } }];
@@ -1309,10 +1311,12 @@ export default class NcmecReporting {
                 queryResponse.termsOfService.length <= 3000
                   ? { termsOfService: queryResponse.termsOfService.trim() }
                   : {}),
-                ...(queryResponse.contactPersonEmail?.trim() ??
-                queryResponse.contactPersonFirstName?.trim() ??
-                queryResponse.contactPersonLastName?.trim() ??
-                queryResponse.contactPersonPhone?.trim()
+                // Use || so we only add contactPerson when at least one field is non-empty (?? would use first non-null even if empty)
+                /* eslint-disable @typescript-eslint/prefer-nullish-coalescing -- intentional: treat empty string as absent */
+                ...((queryResponse.contactPersonEmail?.trim() ||
+                  queryResponse.contactPersonFirstName?.trim() ||
+                  queryResponse.contactPersonLastName?.trim() ||
+                  queryResponse.contactPersonPhone?.trim())
                   ? {
                       contactPerson: {
                         ...(queryResponse.contactPersonEmail?.trim()
@@ -1344,6 +1348,7 @@ export default class NcmecReporting {
                       },
                     }
                   : {}),
+                /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
               },
               personOrUserReported: {
                 personOrUserReportedPerson: {
