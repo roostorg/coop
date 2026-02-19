@@ -1320,17 +1320,20 @@ export const GQLIntegration = {
   OpenAi: 'OPEN_AI',
   SightEngine: 'SIGHT_ENGINE',
   TwoHat: 'TWO_HAT',
+  Zentropi: 'ZENTROPI',
 } as const;
 
 export type GQLIntegration =
   (typeof GQLIntegration)[keyof typeof GQLIntegration];
 export type GQLIntegrationApiCredential =
   | GQLGoogleContentSafetyApiIntegrationApiCredential
-  | GQLOpenAiIntegrationApiCredential;
+  | GQLOpenAiIntegrationApiCredential
+  | GQLZentropiIntegrationApiCredential;
 
 export type GQLIntegrationApiCredentialInput = {
   readonly googleContentSafetyApi?: InputMaybe<GQLGoogleContentSafetyApiIntegrationApiCredentialInput>;
   readonly openAi?: InputMaybe<GQLOpenAiIntegrationApiCredentialInput>;
+  readonly zentropi?: InputMaybe<GQLZentropiIntegrationApiCredentialInput>;
 };
 
 export type GQLIntegrationConfig = {
@@ -4020,6 +4023,7 @@ export const GQLSignalType = {
   TextSimilarityScore: 'TEXT_SIMILARITY_SCORE',
   UserScore: 'USER_SCORE',
   UserStrikeValue: 'USER_STRIKE_VALUE',
+  ZentropiLabeler: 'ZENTROPI_LABELER',
 } as const;
 
 export type GQLSignalType = (typeof GQLSignalType)[keyof typeof GQLSignalType];
@@ -4734,6 +4738,30 @@ export type GQLWindowConfigurationInput = {
   readonly sizeMs: Scalars['Int'];
 };
 
+export type GQLZentropiIntegrationApiCredential = {
+  readonly __typename?: 'ZentropiIntegrationApiCredential';
+  readonly apiKey: Scalars['String'];
+  readonly labelerVersions: ReadonlyArray<GQLZentropiLabelerVersion>;
+};
+
+export type GQLZentropiIntegrationApiCredentialInput = {
+  readonly apiKey: Scalars['String'];
+  readonly labelerVersions?: InputMaybe<
+    ReadonlyArray<GQLZentropiLabelerVersionInput>
+  >;
+};
+
+export type GQLZentropiLabelerVersion = {
+  readonly __typename?: 'ZentropiLabelerVersion';
+  readonly id: Scalars['String'];
+  readonly label: Scalars['String'];
+};
+
+export type GQLZentropiLabelerVersionInput = {
+  readonly id: Scalars['String'];
+  readonly label: Scalars['String'];
+};
+
 export type ResolverTypeWrapper<T> = Promise<T> | T;
 
 export type ResolverWithResolve<TResult, TParent, TContext, TArgs> = {
@@ -5120,7 +5148,8 @@ export type GQLResolversTypes = {
   Integration: GQLIntegration;
   IntegrationApiCredential:
     | GQLResolversTypes['GoogleContentSafetyApiIntegrationApiCredential']
-    | GQLResolversTypes['OpenAiIntegrationApiCredential'];
+    | GQLResolversTypes['OpenAiIntegrationApiCredential']
+    | GQLResolversTypes['ZentropiIntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
   IntegrationConfig: ResolverTypeWrapper<
     Omit<GQLIntegrationConfig, 'apiCredential'> & {
@@ -5703,6 +5732,10 @@ export type GQLResolversTypes = {
   ValueComparator: GQLValueComparator;
   WindowConfiguration: ResolverTypeWrapper<GQLWindowConfiguration>;
   WindowConfigurationInput: GQLWindowConfigurationInput;
+  ZentropiIntegrationApiCredential: ResolverTypeWrapper<GQLZentropiIntegrationApiCredential>;
+  ZentropiIntegrationApiCredentialInput: GQLZentropiIntegrationApiCredentialInput;
+  ZentropiLabelerVersion: ResolverTypeWrapper<GQLZentropiLabelerVersion>;
+  ZentropiLabelerVersionInput: GQLZentropiLabelerVersionInput;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -5955,7 +5988,8 @@ export type GQLResolversParentTypes = {
   Int: Scalars['Int'];
   IntegrationApiCredential:
     | GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential']
-    | GQLResolversParentTypes['OpenAiIntegrationApiCredential'];
+    | GQLResolversParentTypes['OpenAiIntegrationApiCredential']
+    | GQLResolversParentTypes['ZentropiIntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
   IntegrationConfig: Omit<GQLIntegrationConfig, 'apiCredential'> & {
     apiCredential: GQLResolversParentTypes['IntegrationApiCredential'];
@@ -6462,6 +6496,10 @@ export type GQLResolversParentTypes = {
   UserSubmissionsHistory: GQLUserSubmissionsHistory;
   WindowConfiguration: GQLWindowConfiguration;
   WindowConfigurationInput: GQLWindowConfigurationInput;
+  ZentropiIntegrationApiCredential: GQLZentropiIntegrationApiCredential;
+  ZentropiIntegrationApiCredentialInput: GQLZentropiIntegrationApiCredentialInput;
+  ZentropiLabelerVersion: GQLZentropiLabelerVersion;
+  ZentropiLabelerVersionInput: GQLZentropiLabelerVersionInput;
 };
 
 export type GQLPublicResolverDirectiveArgs = {};
@@ -8357,7 +8395,8 @@ export type GQLIntegrationApiCredentialResolvers<
 > = {
   __resolveType: TypeResolveFn<
     | 'GoogleContentSafetyApiIntegrationApiCredential'
-    | 'OpenAiIntegrationApiCredential',
+    | 'OpenAiIntegrationApiCredential'
+    | 'ZentropiIntegrationApiCredential',
     ParentType,
     ContextType
   >;
@@ -13677,6 +13716,30 @@ export type GQLWindowConfigurationResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLZentropiIntegrationApiCredentialResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ZentropiIntegrationApiCredential'] = GQLResolversParentTypes['ZentropiIntegrationApiCredential'],
+> = {
+  apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  labelerVersions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ZentropiLabelerVersion']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLZentropiLabelerVersionResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ZentropiLabelerVersion'] = GQLResolversParentTypes['ZentropiLabelerVersion'],
+> = {
+  id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLResolvers<ContextType = Context> = {
   AcceptAppealDecisionComponent?: GQLAcceptAppealDecisionComponentResolvers<ContextType>;
   Action?: GQLActionResolvers<ContextType>;
@@ -13986,6 +14049,8 @@ export type GQLResolvers<ContextType = Context> = {
   UserSubmissionCount?: GQLUserSubmissionCountResolvers<ContextType>;
   UserSubmissionsHistory?: GQLUserSubmissionsHistoryResolvers<ContextType>;
   WindowConfiguration?: GQLWindowConfigurationResolvers<ContextType>;
+  ZentropiIntegrationApiCredential?: GQLZentropiIntegrationApiCredentialResolvers<ContextType>;
+  ZentropiLabelerVersion?: GQLZentropiLabelerVersionResolvers<ContextType>;
 };
 
 export type GQLDirectiveResolvers<ContextType = Context> = {

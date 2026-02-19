@@ -3,6 +3,8 @@ import { type Kysely } from 'kysely';
 
 import { inject } from '../../iocContainer/utils.js';
 import { type Cached } from '../../utils/caching.js';
+import { type JsonOf } from '../../utils/encoding.js';
+import { jsonParse, jsonStringify } from '../../utils/encoding.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
 import { type SignalAuthServicePg } from './dbTypes.js';
@@ -24,6 +26,11 @@ export type Credentials<T extends ConfigurableIntegration> = {
 
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
+export type ZentropiLabelerVersion = { id: string; label: string };
+export type ZentropiCredential = {
+  apiKey: string;
+  labelerVersions?: ZentropiLabelerVersion[];
+};
 export type ClarifaiApiCredential = { apiKey: NonEmptyString };
 export type ClarifaiModelType = 'IMAGE' | 'TEXT';
 export type ClarifaiPATCredential = {
@@ -38,6 +45,7 @@ export type ClarifaiPATCredential = {
 export type CredentialTypes = {
   [Integration.GOOGLE_CONTENT_SAFETY_API]: GoogleContentSafetyCredential;
   [Integration.OPEN_AI]: OpenAICredential;
+  [Integration.ZENTROPI]: ZentropiCredential;
 };
 
 // Both our internal Integration enum and the external GQL enum include some
@@ -49,6 +57,7 @@ export type CredentialTypes = {
 export const configurableIntegrations = [
   Integration.GOOGLE_CONTENT_SAFETY_API,
   Integration.OPEN_AI,
+  Integration.ZENTROPI,
 ] as const;
 
 /**
@@ -179,6 +188,61 @@ function makeImplementations(
           .executeTakeFirst();
       },
     },
-
+    [Integration.ZENTROPI]: {
+      get: async (orgId: string) => {
+        const row = await pg
+          .selectFrom('signal_auth_service.zentropi_configs')
+          .select(['api_key', 'labeler_versions'])
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+        if (row == null) return undefined;
+        const labelerVersions = row.labeler_versions;
+        return {
+          apiKey: row.api_key,
+          labelerVersions: Array.isArray(labelerVersions)
+            ? (labelerVersions as ZentropiLabelerVersion[])
+            : typeof labelerVersions === 'string'
+              ? (jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>))
+              : [],
+        };
+      },
+      set: async (orgId: string, credential: ZentropiCredential) => {
+        const labelerVersionsJson = jsonStringify(
+          credential.labelerVersions ?? [],
+        );
+        const row = await pg
+          .insertInto('signal_auth_service.zentropi_configs')
+          .values([
+            {
+              org_id: orgId,
+              api_key: credential.apiKey,
+              labeler_versions: labelerVersionsJson,
+            },
+          ])
+          .onConflict((oc) =>
+            oc.column('org_id').doUpdateSet({
+              api_key: credential.apiKey,
+              labeler_versions: labelerVersionsJson,
+            }),
+          )
+          .returning(['api_key', 'labeler_versions'])
+          .executeTakeFirstOrThrow();
+        const returnedVersions = row.labeler_versions;
+        return {
+          apiKey: row.api_key,
+          labelerVersions: Array.isArray(returnedVersions)
+            ? (returnedVersions as ZentropiLabelerVersion[])
+            : typeof returnedVersions === 'string'
+              ? (jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>))
+              : [],
+        };
+      },
+      delete: async (orgId: string) => {
+        await pg
+          .deleteFrom('signal_auth_service.zentropi_configs')
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+      },
+    },
   };
 }
