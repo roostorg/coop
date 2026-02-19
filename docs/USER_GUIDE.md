@@ -67,6 +67,30 @@ Coop comes with 7 predefined roles that can be further customized:
 | Moderator | Yes | No | No | No | No | No |
 | External Moderator | Yes | No | No | No | No | No |
 
+
+### NCMEC Reporting Settings
+
+If your organization submits reports to the NCMEC CyberTipline, configure NCMEC reporting under **Settings → NCMEC** (or `/dashboard/settings/ncmec`). These settings are used when building and submitting CyberTip reports.
+
+![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](./images/coop-ncmec-settings.png) 
+
+| Setting | Required | Description |
+|--------|----------|-------------|
+| **Username** | Yes | Your NCMEC CyberTipline API username. |
+| **Password** | Yes | Your NCMEC CyberTipline API password. |
+| **Company Report Name** | Yes | Your organization name as it appears in NCMEC reports. This value is also sent as the reporter’s product/service name (ESP service) for the reported user in each report. |
+| **Legal URL** | Yes | URL to your Terms of Service or legal policies (e.g. `https://yourcompany.com/terms`). |
+| **Contact Email** | No | Email for the reporting person on the CyberTip report. The XML receipt from NCMEC can serve as the ESP notification. |
+| **Terms of Service** | No | Optional TOS relevant to the incident being reported or URL to acceptable use policy. |
+| **Contact person (for law enforcement)** | No | Optional person law enforcement can contact (other than the reporting person): first name, last name, email, phone. All fields optional. |
+| **More Info URL** | No | Optional URL for additional information (e.g. `https://yourcompany.com/ncmec-info`). |
+| **Default NCMEC queue** | No | When reviewers choose “Enqueue to NCMEC,” jobs are sent to this manual review queue. Leave as “Use org default queue” to use the organization’s default queue. |
+| **Default internet detail type** | No | Incident context (channel/medium) for CyberTip reports: Web page, Email, Newsgroup, Chat/IM, Online gaming, Cell phone, Non-internet, or Peer-to-peer. When set, each report includes this in internetDetails. For "Web page," the More Info URL is used if set. |
+| **NCMEC Preservation Endpoint** | No | Optional webhook URL for NCMEC preservation requests after a report is submitted. Your service can use this to preserve user/data as required. |
+| **NCMEC Additional Info Endpoint** | No | Optional webhook URL. When building a report, Coop calls this endpoint to request additional information (e.g. user email, screen name, IP capture events) for the reported users and media. If not set, reports use minimal defaults (e.g. user ID as screen name). |
+
+Saving credentials and required fields (Company Report Name, Legal URL) enables NCMEC reporting for the organization. Reporting only occurs when reviewers submit a report from the NCMEC Review queue.
+
 **Admin**  
 Admins manage their entire organizations. They have full control over all of the organization's resources and settings within Coop.
 
@@ -257,11 +281,25 @@ Coop logs all actions taken in a Recent Decisions Log that includes basic inform
 
 ## NCMEC Review and Reporting
 
-Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. In order to review accounts and content to report to NCMEC, you must have:
+Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. Head to [NCMEC.md](/docs/NCMEC.md) for more information.
 
-1. A manual review queue called “NCMEC Review”  
-2. A User item type that is a RELATED_ITEM field for associated content. This stores a structured reference to the User item. NCMEC-type jobs extract the user identifier from this structured reference to look up the full user in the Item Investigation Service.  
-   1. Coop will automatically convert content Item Types and aggregate all media associated with the user to convert the job into a NCMEC-type job. This creates a detailed NCMEC report around one user, rather than multiple NCMEC reports for multiple pieces of content from the same user.
+![Coop's NCMEC settings page where you populate your organization's ESP username, password, name of org, and legal URL.](./images/coop-ncmec-settings.png) 
+
+  ### Prerequisites
+In order to review accounts and content to report to NCMEC, you must have:
+
+  1. NCMEC API credentials — a username and password for the CyberTip API, obtained from NCMEC directly by [registering as an Electronic Service Prover](https://esp.ncmec.org/registration).
+  2. A User item type with a creatorId field role on content types A User item type that is a RELATED_ITEM field for associated content, sometimes the `creatorId` field. This stores a structured reference to the User item. NCMEC-type jobs extract the user identifier from this structured reference to look up the full user in the Item Investigation Service.     
+  3. NCMEC org settings configured. This is set via the Settings page (Admin only): API credentials, company template, legal URL, and contact email
+  4. A dedicated NCMEC manual review queue called "NCMEC Review".  Coop uses a default_ncmec_queue_id setting to route NCMEC jobs. Queue IDs registered as production queues submit real CyberTips; all
+  others use the NCMEC test environment.
+  5. An Additional Info endpoint (optional but recommended) is a signed webhook Coop calls before submitting a CyberTip to retrieve user email addresses, screen names, IP
+  capture events, and per-media metadata. If not configured, Coop submits with minimal user data that can make reports less actionable.
+  6. A Preservation endpoint (optional) is a webhook Coop calls after a successful CyberTip submission with the report ID, so you can preserve relevant data per NCMEC
+  requirements.
+
+   Coop will automatically convert content Item Types and aggregate all media associated with the user to convert the job into a NCMEC-type job. This creates a detailed NCMEC report around one user, rather than multiple NCMEC reports for multiple pieces of content from the same user.
+
 
 ![Coop's NCMEC Reporting task view. This differs from the usual task view as it aggregates all media associated wih a user. There are keyboard shortcuts to apply specific industry classifications, a dropdown for selecting the incident type, and add labels per NCMEC's CyberTip fields](./images/coop-ncmec-job.png) 
 The NCMEC job UI includes:
@@ -275,7 +313,7 @@ The NCMEC job UI includes:
   * Misleading Words or Digital Images on the Internet  
   * Online Enticement of Children for Sexual Acts  
   * Unsolicited Obscene Material Sent to a Child  
-* [Industry categorization](https://report.cybertip.org/ispws/documentation/index.html#incident-summary) (A categorization from the ESP-designated categorization scale):  
+* [Industry categorization](https://report.cybertip.org/ispws/documentation/index.html#incident-summary) (A categorization from the [ESP-designated categorization scale](https://technologycoalition.org/wp-content/uploads/Tech_Coalition_Industry_Classification_System.pdf)):  
   * A1  
   * A2  
   * B1  

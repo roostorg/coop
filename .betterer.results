@@ -479,9 +479,9 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/components/table/TableFilter.tsx:774089589": [
       [169, 48, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4083471778"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3607966009": [
-      [1193, 32, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1346054869"],
-      [1259, 26, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1346054869"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177287099": [
+      [1196, 32, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1346054869"],
+      [1272, 26, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1346054869"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx:3836324260": [
       [204, 33, 16, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2813373547"]
@@ -571,7 +571,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobDequeueErrorComponent.tsx:2713757749": [
       [0, 0, 62, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2914458485"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3607966009": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177287099": [
       [5, 0, 66, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1801263448"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobCommentSection.tsx:97903294": [
@@ -583,13 +583,13 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx:3836324260": [
       [2, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2561705942"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:2598522849": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:2610319804": [
       [2, 0, 131, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1687632664"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECMediaViewer.tsx:1857584542": [
       [3, 0, 51, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3222053322"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser.tsx:560024571": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser.tsx:86063495": [
       [0, 0, 76, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2300443108"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECThreadItemComponent.tsx:2373785518": [
@@ -775,11 +775,11 @@ exports[`No new line-icon imports`] = {
       [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
       [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3607966009": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177287099": [
       [0, 0, 78, "\'@/icons/lni/Design/sidebar-1.svg\' import is restricted from being used by a pattern.", "2210410415"],
       [1, 0, 98, "\'@/icons/lni/Direction/angle-double-right.svg\' import is restricted from being used by a pattern.", "2094766677"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:2598522849": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:2610319804": [
       [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECThreadItemComponent.tsx:2373785518": [

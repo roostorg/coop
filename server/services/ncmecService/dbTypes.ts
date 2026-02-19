@@ -19,6 +19,12 @@ export type NcmecReportingServicePg = {
     ncmec_preservation_endpoint?: string;
     ncmec_additional_info_endpoint?: string;
     default_ncmec_queue_id?: string | null;
+    default_internet_detail_type?: string | null;
+    terms_of_service?: string | null;
+    contact_person_email?: string | null;
+    contact_person_first_name?: string | null;
+    contact_person_last_name?: string | null;
+    contact_person_phone?: string | null;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
   } & (

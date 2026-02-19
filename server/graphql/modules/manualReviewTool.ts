@@ -237,6 +237,7 @@ const typeDefs = /* GraphQL */ `
     reportedMedia: [NcmecMediaInput!]!
     reportedMessages: [NcmecThreadInput!]!
     incidentType: NCMECIncidentType!
+    escalateToHighPriority: String
   }
 
   enum AppealDecision {
@@ -2183,10 +2184,14 @@ const Mutation: GQLMutationResolvers = {
               };
             case 'ACCEPT_APPEAL':
             case 'REJECT_APPEAL':
-            case 'SUBMIT_NCMEC_REPORT':
             case 'IGNORE':
             case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE':
               return decision;
+            case 'SUBMIT_NCMEC_REPORT':
+              return {
+                ...decision,
+                escalateToHighPriority: decision.escalateToHighPriority ?? undefined,
+              };
 
             default:
               assertUnreachable(decision);

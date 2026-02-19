@@ -2766,6 +2766,19 @@ export const GQLNcmecIndustryClassification = {
 
 export type GQLNcmecIndustryClassification =
   (typeof GQLNcmecIndustryClassification)[keyof typeof GQLNcmecIndustryClassification];
+export const GQLNcmecInternetDetailType = {
+  CellPhone: 'CELL_PHONE',
+  ChatIm: 'CHAT_IM',
+  Email: 'EMAIL',
+  Newsgroup: 'NEWSGROUP',
+  NonInternet: 'NON_INTERNET',
+  OnlineGaming: 'ONLINE_GAMING',
+  PeerToPeer: 'PEER_TO_PEER',
+  WebPage: 'WEB_PAGE',
+} as const;
+
+export type GQLNcmecInternetDetailType =
+  (typeof GQLNcmecInternetDetailType)[keyof typeof GQLNcmecInternetDetailType];
 export type GQLNcmecManualReviewJobPayload = {
   readonly __typename?: 'NcmecManualReviewJobPayload';
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
@@ -2786,24 +2799,36 @@ export type GQLNcmecOrgSettings = {
   readonly __typename?: 'NcmecOrgSettings';
   readonly companyTemplate?: Maybe<Scalars['String']>;
   readonly contactEmail?: Maybe<Scalars['String']>;
+  readonly contactPersonEmail?: Maybe<Scalars['String']>;
+  readonly contactPersonFirstName?: Maybe<Scalars['String']>;
+  readonly contactPersonLastName?: Maybe<Scalars['String']>;
+  readonly contactPersonPhone?: Maybe<Scalars['String']>;
+  readonly defaultInternetDetailType?: Maybe<GQLNcmecInternetDetailType>;
   readonly defaultNcmecQueueId?: Maybe<Scalars['String']>;
   readonly legalUrl?: Maybe<Scalars['String']>;
   readonly moreInfoUrl?: Maybe<Scalars['String']>;
   readonly ncmecAdditionalInfoEndpoint?: Maybe<Scalars['String']>;
   readonly ncmecPreservationEndpoint?: Maybe<Scalars['String']>;
   readonly password: Scalars['String'];
+  readonly termsOfService?: Maybe<Scalars['String']>;
   readonly username: Scalars['String'];
 };
 
 export type GQLNcmecOrgSettingsInput = {
   readonly companyTemplate?: InputMaybe<Scalars['String']>;
   readonly contactEmail?: InputMaybe<Scalars['String']>;
+  readonly contactPersonEmail?: InputMaybe<Scalars['String']>;
+  readonly contactPersonFirstName?: InputMaybe<Scalars['String']>;
+  readonly contactPersonLastName?: InputMaybe<Scalars['String']>;
+  readonly contactPersonPhone?: InputMaybe<Scalars['String']>;
+  readonly defaultInternetDetailType?: InputMaybe<GQLNcmecInternetDetailType>;
   readonly defaultNcmecQueueId?: InputMaybe<Scalars['String']>;
   readonly legalUrl?: InputMaybe<Scalars['String']>;
   readonly moreInfoUrl?: InputMaybe<Scalars['String']>;
   readonly ncmecAdditionalInfoEndpoint?: InputMaybe<Scalars['String']>;
   readonly ncmecPreservationEndpoint?: InputMaybe<Scalars['String']>;
   readonly password: Scalars['String'];
+  readonly termsOfService?: InputMaybe<Scalars['String']>;
   readonly username: Scalars['String'];
 };
 
@@ -4115,6 +4140,7 @@ export type GQLSubmitNcmecReportDecisionComponent =
   };
 
 export type GQLSubmitNcmecReportInput = {
+  readonly escalateToHighPriority?: InputMaybe<Scalars['String']>;
   readonly incidentType: GQLNcmecIncidentType;
   readonly reportedMedia: ReadonlyArray<GQLNcmecMediaInput>;
   readonly reportedMessages: ReadonlyArray<GQLNcmecThreadInput>;
@@ -5416,6 +5442,7 @@ export type GQLResolversTypes = {
   >;
   NcmecFileAnnotation: GQLNcmecFileAnnotation;
   NcmecIndustryClassification: GQLNcmecIndustryClassification;
+  NcmecInternetDetailType: GQLNcmecInternetDetailType;
   NcmecManualReviewJobPayload: ResolverTypeWrapper<NcmecManualReviewJobPayload>;
   NcmecMediaInput: GQLNcmecMediaInput;
   NcmecOrgSettings: ResolverTypeWrapper<GQLNcmecOrgSettings>;
@@ -10549,6 +10576,31 @@ export type GQLNcmecOrgSettingsResolvers<
     ParentType,
     ContextType
   >;
+  contactPersonEmail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  contactPersonFirstName?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  contactPersonLastName?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  contactPersonPhone?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  defaultInternetDetailType?: Resolver<
+    Maybe<GQLResolversTypes['NcmecInternetDetailType']>,
+    ParentType,
+    ContextType
+  >;
   defaultNcmecQueueId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -10575,6 +10627,11 @@ export type GQLNcmecOrgSettingsResolvers<
     ContextType
   >;
   password?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  termsOfService?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   username?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
