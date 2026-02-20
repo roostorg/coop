@@ -15,7 +15,7 @@ export default function IframeContentDisplayComponent(props: {
   const { contentUrl } = props;
 
   const contentProxyUrl =
-    process.env.REACT_APP_CONTENT_PROXY_URL ??
+    import.meta.env.VITE_CONTENT_PROXY_URL ??
     (process.env.NODE_ENV === 'production'
       ? 'https://content.getcoop.com'
       : 'http://localhost:4000');
