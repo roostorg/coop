@@ -19,7 +19,7 @@ import App from './webpages/App';
 
 if (
   typeof window !== 'undefined' &&
-  process.env.REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT !== undefined
+  import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT !== undefined
 ) {
   FrontendTracer();
 }
@@ -43,7 +43,7 @@ gql`
 // Apollo Client
 const client = new ApolloClient({
   uri:
-    process.env.NODE_ENV === 'production'
+    import.meta.env.MODE === 'production'
       ? '/api/v1/graphql'
       : 'http://localhost:3000/api/v1/graphql',
   cache: new InMemoryCache({

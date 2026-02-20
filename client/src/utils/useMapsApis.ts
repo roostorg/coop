@@ -1,10 +1,9 @@
 import { Loader } from '@googlemaps/js-api-loader';
 import { useEffect, useState } from 'react';
 
-// TODO: use Webpack define plugin to make this more-dynamically bundled in.
-// The key should be available at build time in process.env.GOOGLE_PLACES_API_KEY
+// The key should be available at build time in VITE_GOOGLE_PLACES_API_KEY env.
 // It's not a secret key, though, so hardcoding it is fine.
-const placesApiKey = process.env.GOOGLE_PLACES_API_KEY ?? '';
+const placesApiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY ?? '';
 
 // Use this variable to not load the Google APIs twice.
 let placesApiLoaded = false;
