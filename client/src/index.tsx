@@ -19,7 +19,7 @@ import App from './webpages/App';
 
 if (
   typeof window !== 'undefined' &&
-  process.env.REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT !== undefined
+  import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT !== undefined
 ) {
   FrontendTracer();
 }
