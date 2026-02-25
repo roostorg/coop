@@ -276,3 +276,23 @@ export type ItemIdentifier = Readonly<{ id: string; typeId: string }>;
 
 export const ItemTypeKind = makeEnumLike(['CONTENT', 'THREAD', 'USER']);
 export type ItemTypeKind = keyof typeof ItemTypeKind;
+
+// Integration plugin types (for third-party integrations and adopters' config)
+export type {
+  CoopIntegrationConfigEntry,
+  CoopIntegrationPlugin,
+  CoopIntegrationsConfig,
+  IntegrationCredentialField,
+  IntegrationId,
+  IntegrationManifest,
+  ModelCard,
+  ModelCardField,
+  ModelCardSection,
+  ModelCardSubsection,
+  StoredIntegrationConfigPayload,
+} from './integration.js';
+export {
+  assertModelCardHasRequiredSections,
+  isCoopIntegrationPlugin,
+  REQUIRED_MODEL_CARD_SECTION_IDS,
+} from './integration.js';
