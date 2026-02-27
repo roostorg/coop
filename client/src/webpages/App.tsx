@@ -81,6 +81,14 @@ export default function App() {
             element: <Navigate replace to="/login" />,
           },
           {
+            path: 'login/sso_saml',
+            element: (
+              <RequireLoggedOut>
+                <LoginSSO />
+              </RequireLoggedOut>
+            ),
+          },
+          {
             path: 'login/sso',
             element: (
               <RequireLoggedOut>
