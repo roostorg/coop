@@ -95,7 +95,7 @@ class UserManagementService {
 
     const orgSettings = await this.pgQuery
       .selectFrom('public.org_settings')
-      .select('saml_enabled')
+      .select(['saml_enabled', 'oidc_enabled'])
       .where('org_id', '=', tokenRow.org_id)
       .executeTakeFirst();
 
@@ -104,6 +104,7 @@ class UserManagementService {
       orgId: tokenRow.org_id,
       createdAt: tokenRow.created_at,
       samlEnabled: orgSettings?.saml_enabled ?? false,
+      oidcEnabled: orgSettings?.oidc_enabled ?? false,
     };
   }
 
