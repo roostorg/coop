@@ -153,6 +153,53 @@ export type IntegrationManifest = Readonly<{
   modelCard?: ModelCard;
 }>;
 
+// ---------------------------------------------------------------------------
+// Plugin signals (for integrations that power routing/enforcement rules)
+// ---------------------------------------------------------------------------
+
+/** Context passed to plugin.createSignals() so the plugin can build signal instances with credential access. */
+export type PluginSignalContext = Readonly<{
+  /** Integration id (e.g. "ACME_API") from the plugin manifest. */
+  integrationId: string;
+  /** Get stored credential/config for an org. Resolves to the JSON stored for this integration. */
+  getCredential: (orgId: string) => Promise<Record<string, unknown>>;
+}>;
+
+/** Minimal signal descriptor returned by a plugin. The platform adapts this to its internal SignalBase. */
+export type PluginSignalDescriptor = Readonly<{
+  /** Stable signal type id (e.g. "ACME_MODERATION_SIGNAL"). Must match one of manifest.signalTypeIds. */
+  id: Readonly<{ type: string }>;
+  displayName: string;
+  description: string;
+  docsUrl: string | null;
+  recommendedThresholds: Readonly<{
+    highPrecisionThreshold: string | number;
+    highRecallThreshold: string | number;
+  }> | null;
+  supportedLanguages: readonly string[] | 'ALL';
+  pricingStructure: Readonly<{ type: 'FREE' | 'SUBSCRIPTION' }>;
+  eligibleInputs: readonly string[];
+  outputType: Readonly<{ scalarType: string }>;
+  getCost: () => number;
+  /** Run the signal. Input shape is platform-defined; result must have outputType and score. */
+  run: (input: unknown) => Promise<unknown>;
+  getDisabledInfo: (orgId: string) => Promise<
+    | { disabled: false; disabledMessage?: string }
+    | { disabled: true; disabledMessage: string }
+  >;
+  needsMatchingValues: boolean;
+  eligibleSubcategories: readonly ReadonlyArray<{
+    id: string;
+    label: string;
+    description?: string;
+    childrenIds: readonly string[];
+  }>;
+  needsActionPenalties: boolean;
+  /** Integration id (same as context.integrationId). */
+  integration: string;
+  allowedInAutomatedRules: boolean;
+}>;
+
 /**
  * Plugin contract that third-party integration packages must implement.
  * Export this as the default export (or a named export) from the package.
@@ -162,6 +209,9 @@ export type IntegrationManifest = Readonly<{
  *   const manifest: IntegrationManifest = { id: 'ACME_API', name: 'Acme API', ... };
  *   const plugin: CoopIntegrationPlugin = { manifest };
  *   export default plugin;
+ *
+ * To power routing/enforcement rules, also implement createSignals(context) and
+ * return one descriptor per manifest.signalTypeIds entry.
  */
 export type CoopIntegrationPlugin = Readonly<{
   manifest: IntegrationManifest;
@@ -170,6 +220,14 @@ export type CoopIntegrationPlugin = Readonly<{
    * If present, adopters can pass non-secret config in the integrations config file.
    */
   configSchema?: unknown;
+  /**
+   * Optional. If this integration provides signals for use in rules, implement this.
+   * Return one descriptor per signal type id listed in manifest.signalTypeIds.
+   * The platform will register these so they appear in the rule builder and can be used in conditions.
+   */
+  createSignals?: (
+    context: PluginSignalContext,
+  ) => ReadonlyArray<Readonly<{ signalTypeId: string; signal: PluginSignalDescriptor }>>;
 }>;
 
 /**

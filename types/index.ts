@@ -289,6 +289,8 @@ export type {
   ModelCardField,
   ModelCardSection,
   ModelCardSubsection,
+  PluginSignalContext,
+  PluginSignalDescriptor,
   StoredIntegrationConfigPayload,
 } from './integration.js';
 export {

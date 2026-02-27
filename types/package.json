@@ -1,7 +1,7 @@
 {
   "name": "@roostorg/types",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Shared types across Coop services",
   "module": "transpiled/index.js",
   "typings": "./transpiled/index.d.ts",
