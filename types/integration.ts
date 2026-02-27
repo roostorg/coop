@@ -94,11 +94,11 @@ export function assertModelCardHasRequiredSections(card: ModelCard): void {
 }
 
 /**
- * Describes a single credential field for integrations that require
- * API keys or other secrets. Used to generate or validate credential forms.
+ * Describes a single configuration field for integrations that require
+ * user-supplied config (e.g. API keys or other settings). Used to generate or validate config forms.
  */
-export type IntegrationCredentialField = Readonly<{
-  /** Form field key (e.g. "apiKey", "labelerVersions"). */
+export type IntegrationConfigField = Readonly<{
+  /** Form field key (e.g. "apiKey", "truePercentage"). */
   key: string;
   /** Human-readable label for the field. */
   label: string;
@@ -119,7 +119,7 @@ export type IntegrationCredentialField = Readonly<{
 export type IntegrationManifest = Readonly<{
   /** Unique integration id. Must be UPPER_SNAKE_CASE to align with GraphQL enums when used in COOP. */
   id: IntegrationId;
-  /** Human-readable display name (e.g. "Google Content Safety API"). */
+  /** Human-readable display name shown in the UI (e.g. signal modal, integration cards). Exposed as Signal.integrationTitle. */
   name: string;
   /** Semantic version of the integration plugin (e.g. "1.0.0"). */
   version: string;
@@ -127,17 +127,13 @@ export type IntegrationManifest = Readonly<{
   description?: string;
   /** Link to documentation or product page. */
   docsUrl?: string;
-  /** Optional URL to a logo image (or asset key if using a bundler). */
-  logoUrl?: string;
-  /** Optional URL to a logo variant (e.g. with background) for cards. */
-  logoWithBackgroundUrl?: string;
-  /** Whether this integration requires the user to supply credentials (e.g. API key). */
-  requiresCredentials: boolean;
+  /** Whether this integration requires the user to supply config (e.g. API key). */
+  requiresConfig: boolean;
   /**
-   * Schema for credential fields when requiresCredentials is true.
+   * Schema for configuration fields when requiresConfig is true.
    * Enables UI generation and validation without hardcoding per-integration forms.
    */
-  credentialFields?: readonly IntegrationCredentialField[];
+  configurationFields?: readonly IntegrationConfigField[];
   /**
    * Optional list of signal type ids this integration provides (e.g. "ZENTROPI_LABELER").
    * Used by the platform to associate signals with this integration for display and gating.
@@ -151,6 +147,25 @@ export type IntegrationManifest = Readonly<{
    * registering.
    */
   modelCard?: ModelCard;
+  /**
+   * ------------------------------------------------------------
+   * LOGO/IMAGE SECTION:
+   * ------------------------------------------------------------
+   * The following logo/image sections are optional. If none provided will use a fallback Coop logo.
+   * 
+   * Provide either logoUrl and logoWithBackgroundUrl or logoPath and logoWithBackgroundPath.
+   * 
+   * If you provide logoPath and logoWithBackgroundPath, the server will serve the files at
+   * GET /api/v1/integration-logos/:integrationId and GET /api/v1/integration-logos/:integrationId/with-background
+   * and set logoUrl and logoWithBackgroundUrl accordingly.
+   * If you provide logoUrl and logoWithBackgroundUrl, the server will use those URLs directly.
+   * Prefered size: ~180x180px for logoUrl and ~120x120px for logoWithBackgroundUrl.
+   * Prefer a square or horizontal logo that scales well.
+   */
+  logoUrl?: string;
+  logoWithBackgroundUrl?: string;
+  logoPath?: string;
+  logoWithBackgroundPath?: string;
 }>;
 
 // ---------------------------------------------------------------------------
@@ -188,7 +203,7 @@ export type PluginSignalDescriptor = Readonly<{
     | { disabled: true; disabledMessage: string }
   >;
   needsMatchingValues: boolean;
-  eligibleSubcategories: readonly ReadonlyArray<{
+  eligibleSubcategories: ReadonlyArray<{
     id: string;
     label: string;
     description?: string;
@@ -264,7 +279,7 @@ export type CoopIntegrationsConfig = Readonly<{
  * Shape of the config stored in the database for each integration (per org).
  * Stored in a generic table as JSON: one row per (org_id, integration_id) with
  * config as a JSON-serializable object. Each integration defines its own required
- * fields via IntegrationManifest.credentialFields; the app validates and
+ * fields via IntegrationManifest.configurationFields; the app validates and
  * serializes/deserializes to this type.
  *
  * Only JSON-serializable values (no functions, symbols, or BigInt) should be
@@ -290,6 +305,6 @@ export function isCoopIntegrationPlugin(
     typeof m.id === 'string' &&
     typeof m.name === 'string' &&
     typeof m.version === 'string' &&
-    typeof m.requiresCredentials === 'boolean'
+    typeof m.requiresConfig === 'boolean'
   );
 }

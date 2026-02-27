@@ -282,7 +282,7 @@ export type {
   CoopIntegrationConfigEntry,
   CoopIntegrationPlugin,
   CoopIntegrationsConfig,
-  IntegrationCredentialField,
+  IntegrationConfigField,
   IntegrationId,
   IntegrationManifest,
   ModelCard,
