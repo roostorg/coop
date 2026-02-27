@@ -81,6 +81,6 @@ export type UserManagementPg = {
   };
   'public.org_settings': Pick<
     OrgSettingsPg['public.org_settings'],
-    'org_id' | 'saml_enabled'
+    'org_id' | 'saml_enabled' | 'oidc_enabled'
   >;
 };
