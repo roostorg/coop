@@ -95,6 +95,7 @@
     "node-worker-threads-pool": "^1.5.1",
     "normalize-text": "^2.4.1",
     "openai": "^4.24.0",
+    "openid-client": "^6.8.2",
     "p-limit": "^4.0.0",
     "passport": "^0.7.0",
     "pg": "^8.8.0",

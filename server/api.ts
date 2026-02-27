@@ -28,7 +28,11 @@ import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
-
+import {
+  Strategy as OIDCStrategy,
+  type VerifyFunction,
+} from 'openid-client/passport'
+import * as oidcClient from 'openid-client'
 import {
   makeLoginIncorrectPasswordError,
   makeLoginSsoRequiredError,
@@ -54,6 +58,34 @@ import {
   isNonEmptyArray,
   type NonEmptyArray,
 } from './utils/typescript-types.js';
+import { randomState } from 'openid-client';
+
+// https://github.com/panva/openid-client/issues/818
+class MyOIDCStrategy extends OIDCStrategy {
+  override authorizationRequestParams(
+    req: Parameters<OIDCStrategy['authorizationRequestParams']>[0],
+    options: Parameters<OIDCStrategy['authorizationRequestParams']>[1],
+  ) {
+    const params = super.authorizationRequestParams(req, options);
+
+    if (!params) {
+      return params
+    }
+
+    if (params instanceof URLSearchParams) {
+      if (!params.has('state')) {
+        params.set('state', randomState())
+      }
+      return params
+    }
+
+    if (!('state' in params)) {
+      params.state = randomState()
+    }
+
+    return params;
+  }
+}
 
 function getCPUInfo() {
   const cpus = os.cpus();
@@ -247,6 +279,115 @@ export default async function makeApiServer(deps: Dependencies) {
       res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
     },
   );
+  
+  async function configureOidc(passport: any) {
+    if (process.env.OIDC_SSO_ENABLED !== 'true') {
+      return;
+    }
+  
+    const {
+      OIDC_ISSUER_URL,
+      OIDC_CLIENT_ID,
+      OIDC_CLIENT_SECRET,
+      API_BASE_URL,
+    } = process.env;
+  
+    if (!OIDC_ISSUER_URL || !OIDC_CLIENT_ID || !OIDC_CLIENT_SECRET || !API_BASE_URL) {
+      throw new Error('Missing required OIDC environment variables');
+    }
+  
+
+    const config = await oidcClient.discovery(
+      new URL(OIDC_ISSUER_URL),
+      OIDC_CLIENT_ID,
+      OIDC_CLIENT_SECRET,
+      oidcClient.ClientSecretBasic(OIDC_CLIENT_SECRET),
+    )
+    
+    const verify: VerifyFunction = async (tokens, verified) => {
+      try {
+        // eslint-disable-next-line no-console
+        // console.log('OIDC claims:', tokens.claims());
+        
+        // eslint-disable-next-line no-console
+        // console.log(tokens.scope);
+        
+        const claims = tokens.claims();
+        if (!claims) {
+          return verified(
+            makeInternalServerError('Missing ID token claims', {
+              shouldErrorSpan: true,
+            }),
+          );
+        }
+        let email = claims.email;
+    
+        if (!email) {
+          const userinfo = await oidcClient.fetchUserInfo(
+                  config,
+                  tokens.access_token,
+                  claims.sub
+                );
+          
+          // eslint-disable-next-line no-console
+          // console.log(userinfo);
+          
+          email = userinfo.email;
+        }
+        if (!email) {
+          return verified(
+            makeBadRequestError('OIDC token missing email claim', {
+              shouldErrorSpan: true,
+            }),
+          );
+        }
+    
+        const user = await User.findOne({
+          where: { email: String(email) },
+        });
+    
+        if (!user) {
+          return verified(
+            makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
+          );
+        }
+    
+        return verified(null, user as any);
+      } catch (e) {
+        return verified(
+          makeInternalServerError('Unknown error during login attempt', {
+            shouldErrorSpan: true,
+          }),
+        );
+      }
+    };
+
+    const strategy = new MyOIDCStrategy(
+      {
+        config,
+        scope: 'openid email',
+        callbackURL: `${API_BASE_URL}/oidc/login/callback`,
+      },
+      verify,
+    );
+
+    passport.use('openid', strategy);
+  }
+  
+  await configureOidc(passport);
+  
+  app.get('/oidc/login',
+    passport.authenticate('openid', { failureRedirect: '/', failureFlash: true }),
+  );
+  
+  app.get(
+    '/oidc/login/callback',
+    passport.authenticate('openid', { failureRedirect: '/', failureFlash: true }),
+    (_req, res) => {
+      res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
+    },
+  );
+
 
   passport.use(
     new GraphQLLocalStrategy(async (email, password, done) => {
