@@ -26,6 +26,9 @@ export type CoreSignal = Pick<
   | 'eligibleInputs'
   | 'subcategory'
   | 'integration'
+  | 'integrationTitle'
+  | 'integrationLogoUrl'
+  | 'integrationLogoWithBackgroundUrl'
   | 'pricingStructure'
   | 'docsUrl'
   | 'recommendedThresholds'
@@ -34,7 +37,8 @@ export type CoreSignal = Pick<
   | 'allowedInAutomatedRules'
 >;
 
-export function receivesRegexInput(type: GQLSignalType) {
+/** Signal type is string to support plugin signal types (e.g. RANDOM_SIGNAL_SELECTION). */
+export function receivesRegexInput(type: string) {
   return (
     type === GQLSignalType.TextMatchingContainsRegex ||
     type === GQLSignalType.TextMatchingNotContainsRegex
@@ -42,12 +46,11 @@ export function receivesRegexInput(type: GQLSignalType) {
 }
 
 /**
- * This function returns the integration type for a given signal type
- * @param type Signal type to find the integration for
- * @returns a GQLIntegration enum value, or null in the case of signals that are
- * not integrations
+ * Returns the integration type for a given signal type.
+ * @param type Signal type (built-in or plugin)
+ * @returns a GQLIntegration enum value, or null for non-integration signals or plugin signals
  */
-export function integrationForSignalType(type: GQLSignalType) {
+export function integrationForSignalType(type: string) {
   switch (type) {
     case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
       return GQLIntegration.GoogleContentSafetyApi;
@@ -80,7 +83,8 @@ export function integrationForSignalType(type: GQLSignalType) {
     case 'BENIGN_MODEL':
       return null;
     default:
-      assertUnreachable(type);
+      // Plugin signal types (e.g. RANDOM_SIGNAL_SELECTION) or unknown: no built-in integration
+      return null;
   }
 }
 

@@ -9,7 +9,10 @@ import {
 } from '../../../../../graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { CoreSignal } from '../../../../../models/signal';
-import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
+import {
+  type IntegrationConfig,
+  INTEGRATION_CONFIGS,
+} from '../../../integrations/integrationConfigs';
 import { signalDisplayName } from './RuleFormSignalModalMenuItem';
 
 export default function RuleFormSignalModalSignalDetailView(props: {
@@ -21,9 +24,27 @@ export default function RuleFormSignalModalSignalDetailView(props: {
   ) => void;
 }) {
   const { signal, subcategories, onSelectSignal } = props;
-  const integration = INTEGRATION_CONFIGS.find(
-    (it) => it.name === signal.integration,
+  const staticConfig = INTEGRATION_CONFIGS.find(
+    (it: IntegrationConfig) => it.name === signal.integration,
   );
+  const integrationTitle =
+    signal.integrationTitle ??
+    staticConfig?.title ??
+    (typeof signal.integration === 'string'
+      ? signal.integration
+          .replace(/_/g, ' ')
+          .toLowerCase()
+          .replace(/^([a-z])|\s+([a-z])/g, (m) => m.toUpperCase())
+      : 'Coop');
+  // Signals use the logo-with-background variant.
+  const rawLogoSrc =
+    signal.integrationLogoWithBackgroundUrl ??
+    staticConfig?.logoWithBackground ??
+    LogoWhiteWithBackground;
+  const logoSrc =
+    typeof rawLogoSrc === 'string' && rawLogoSrc.startsWith('/')
+      ? `${window.location.origin}${rawLogoSrc}`
+      : rawLogoSrc;
 
   const infoSectionData = [
     {
@@ -33,9 +54,9 @@ export default function RuleFormSignalModalSignalDetailView(props: {
           <img
             alt="logo"
             className="w-8 h-8 mr-2 rounded-full"
-            src={integration?.logoWithBackground ?? LogoWhiteWithBackground}
+            src={logoSrc}
           />{' '}
-          {integration?.title ?? 'Coop'}
+          {integrationTitle}
         </div>
       ),
     },

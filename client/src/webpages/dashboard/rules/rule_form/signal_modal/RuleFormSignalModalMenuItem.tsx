@@ -8,17 +8,31 @@ import {
 } from '../../../../../graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { CoreSignal } from '../../../../../models/signal';
-import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
+import {
+  type IntegrationConfig,
+  INTEGRATION_CONFIGS,
+} from '../../../integrations/integrationConfigs';
 
+/** Vendor/company name for display. Uses signal.integrationTitle (from API) when set, else static config, else formatted id. */
 export function vendorName(signal: CoreSignal) {
   if (signal.type === GQLSignalType.Custom) {
     return 'Custom';
-  } else if (!signal.integration) {
-    return 'Coop';
-  } else {
-    return INTEGRATION_CONFIGS.find((it) => it.name === signal.integration)!
-      .title;
   }
+  if (!signal.integration) {
+    return 'Coop';
+  }
+  if (signal.integrationTitle) {
+    return signal.integrationTitle;
+  }
+  const staticConfig = INTEGRATION_CONFIGS.find(
+    (it: IntegrationConfig) => it.name === signal.integration,
+  );
+  if (staticConfig) {
+    return staticConfig.title;
+  }
+  return typeof signal.integration === 'string'
+    ? signal.integration.replace(/_/g, ' ')
+    : 'Plugin';
 }
 
 export function signalDisplayName(signal: CoreSignal, hideVendor = true) {
@@ -28,7 +42,7 @@ export function signalDisplayName(signal: CoreSignal, hideVendor = true) {
   }
 
   const integrationConfig = INTEGRATION_CONFIGS.find(
-    (it) => it.name === integration,
+    (it: IntegrationConfig) => it.name === integration,
   );
   if (!integrationConfig) {
     return name;

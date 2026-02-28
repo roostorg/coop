@@ -100,8 +100,9 @@ export default function RuleInsightsSampleDetailMatchingValues(props: {
         matchingValues.strings!,
         result?.outcome,
         result?.matchedValue ?? undefined,
-        (condition.signal?.type && receivesRegexInput(condition.signal.type)) ??
-          false,
+        Boolean(
+          condition.signal?.type && receivesRegexInput(condition.signal.type),
+        ),
       );
     case MatchingValueType.LOCATION:
       return renderMatchingValuesStringsInput(

@@ -1,0 +1,24 @@
+{
+  "integrations": [
+    {
+      "package": "@roostorg/coop-integration-example",
+      "enabled": true
+    },
+    {
+      "package": "../coop-integration-example",
+      "enabled": false
+    },
+    {
+      "package": "@acme/coop-integration-acme",
+      "enabled": false
+    },
+    {
+      "package": "./local-integrations/my-custom-integration",
+      "enabled": false,
+      "config": {
+        "endpoint": "https://api.example.com",
+        "timeoutMs": 5000
+      }
+    }
+  ]
+}
