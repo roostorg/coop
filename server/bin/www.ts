@@ -5,12 +5,34 @@ import _ from 'lodash';
 
 import getBottle from '../iocContainer/index.js';
 import makeServer from '../server.js';
+import {
+  getIntegrationRegistry,
+  getIntegrationsConfigPath,
+} from '../services/integrationRegistry/index.js';
 import { logErrorJson, logJson } from '../utils/logging.js';
 import { sleep } from '../utils/misc.js';
 
 const { app, shutdown } = await getBottle().then(async (bottle) =>
   makeServer(bottle.container),
 );
+
+// Eager-load integration registry so config/plugins are read at startup (fail fast, and so logo URLs are set).
+try {
+  const registry = getIntegrationRegistry();
+  const configPath = getIntegrationsConfigPath();
+  const ids = registry.getConfigurableIds();
+  // eslint-disable-next-line no-restricted-syntax
+  logJson(
+    `Integrations: config=${configPath}, loaded=${ids.length} (${ids.join(', ')})`,
+  );
+} catch (err) {
+  // eslint-disable-next-line no-restricted-syntax
+  logErrorJson({
+    message: 'Failed to load integrations registry',
+    error: err instanceof Error ? err : new Error(String(err)),
+  });
+  process.exit(1);
+}
 
 const port = parsePort(process.env.PORT) ?? 8080;
 app.set('port', port);
