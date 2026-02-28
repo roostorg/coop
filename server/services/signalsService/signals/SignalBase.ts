@@ -65,7 +65,7 @@ export type SignalInput<
   NeedsMatchingValues extends boolean = boolean,
   NeedsActionPenalties extends boolean = boolean,
   MatchingValue = T extends ScalarType ? ScalarTypeRuntimeType<T> : unknown,
-  Type extends SignalType = SignalType,
+  Type extends SignalType | string = SignalType,
 > = {
   value: T extends 'FULL_ITEM'
     ? TaggedItemData
@@ -88,9 +88,13 @@ export type SignalInput<
   // TODO: figure out a better, generalized way to capture signals' required params.
   contextId?: string;
   contentType?: string;
-  args?: ReadonlyDeep<SignalArgsByType[Type]>;
+  args?: ReadonlyDeep<
+    Type extends SignalType ? SignalArgsByType[Type] : unknown
+  >;
 
-  runtimeArgs?: ReadonlyDeep<RuntimeSignalArgsByType[Type]>;
+  runtimeArgs?: ReadonlyDeep<
+    Type extends SignalType ? RuntimeSignalArgsByType[Type] : unknown
+  >;
 };
 
 // The result of running a signal can be:
@@ -140,7 +144,7 @@ export default abstract class SignalBase<
   MatchingValue = Input extends ScalarType
     ? ScalarTypeRuntimeType<Input>
     : unknown,
-  Type extends SignalType = SignalType,
+  Type extends SignalType | string = SignalType,
 > {
   /**
    * See {@link SignalId}.
@@ -272,7 +276,8 @@ export default abstract class SignalBase<
 
   abstract get needsActionPenalties(): boolean;
 
-  abstract get integration(): Integration | null;
+  /** Built-in integration enum value, or integration id string for plugin signals. */
+  abstract get integration(): Integration | string | null;
 
   /**
    * Indicates whether this signal can be used in automated rules with actions.

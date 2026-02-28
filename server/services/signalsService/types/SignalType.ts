@@ -1,7 +1,6 @@
 import { makeEnumLike } from '@roostorg/types';
 
 import { enumToArbitrary } from '../../../test/propertyTestingHelpers.js';
-import { assertUnreachable } from '../../../utils/misc.js';
 import { Integration } from './Integration.js';
 
 // Internal signal types are always built-in signals.
@@ -85,8 +84,9 @@ export const UserCreatedExternalSignalTypeArbitrary = enumToArbitrary(
 );
 export const ExternalSignalTypeArbitrary = enumToArbitrary(ExternalSignalType);
 
+/** Accepts SignalType or plugin signal type string (e.g. RANDOM_SIGNAL_SELECTION). */
 // eslint-disable-next-line complexity
-export function integrationForSignalType(type: SignalType) {
+export function integrationForSignalType(type: SignalType | string) {
   switch (type) {
     case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
       return Integration.GOOGLE_CONTENT_SAFETY_API;
@@ -120,6 +120,7 @@ export function integrationForSignalType(type: SignalType) {
     case 'BENIGN_MODEL':
       return null;
     default:
-      assertUnreachable(type);
+      // Plugin signal types (e.g. RANDOM_SIGNAL_SELECTION): no built-in integration
+      return null;
   }
 }

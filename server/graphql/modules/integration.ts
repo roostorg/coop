@@ -1,14 +1,15 @@
 import { AuthenticationError } from 'apollo-server-express';
 
-import { isConfigurableIntegration } from '../../services/signalAuthService/index.js';
+import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
-import { assertUnreachable } from '../../utils/misc.js';
 import {
   makeIntegrationConfigUnsupportedIntegrationError,
-  type TIntegrationCredential,
 } from '../datasources/IntegrationApi.js';
+import type { TIntegrationConfigWithMetadata } from '../datasources/IntegrationApi.js';
 import {
+  type GQLIntegrationConfig,
+  type GQLIntegrationMetadata,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
@@ -50,10 +51,55 @@ const typeDefs = /* GraphQL */ `
       GoogleContentSafetyApiIntegrationApiCredential
     | OpenAiIntegrationApiCredential
     | ZentropiIntegrationApiCredential
+    | PluginIntegrationApiCredential
+
+  type ModelCardField {
+    label: String!
+    value: String!
+  }
+
+  type ModelCardSubsection {
+    title: String!
+    fields: [ModelCardField!]!
+  }
+
+  type ModelCardSection {
+    id: String!
+    title: String!
+    subsections: [ModelCardSubsection!]
+    fields: [ModelCardField!]
+  }
+
+  type ModelCard {
+    modelName: String!
+    version: String!
+    releaseDate: String
+    sections: [ModelCardSection!]
+  }
+
+  type IntegrationMetadata {
+    name: String!
+    title: String!
+    docsUrl: String!
+    requiresConfig: Boolean!
+    logoUrl: String
+    logoWithBackgroundUrl: String
+  }
+
+  type PluginIntegrationApiCredential {
+    credential: JSONObject!
+  }
 
   type IntegrationConfig {
-    name: Integration!
+    name: String!
     apiCredential: IntegrationApiCredential!
+    modelCard: ModelCard!
+    modelCardLearnMoreUrl: String
+    title: String!
+    docsUrl: String!
+    requiresConfig: Boolean!
+    logoUrl: String
+    logoWithBackgroundUrl: String
   }
 
   input GoogleContentSafetyApiIntegrationApiCredentialInput {
@@ -139,19 +185,28 @@ const typeDefs = /* GraphQL */ `
     | IntegrationConfigUnsupportedIntegrationError
 
   type Query {
-    integrationConfig(name: Integration!): IntegrationConfigQueryResponse!
+    integrationConfig(name: String!): IntegrationConfigQueryResponse!
+    availableIntegrations: [IntegrationMetadata!]!
+  }
+
+  input SetPluginIntegrationConfigInput {
+    integrationId: String!
+    credential: JSONObject!
   }
 
   type Mutation {
     setIntegrationConfig(
       input: SetIntegrationConfigInput!
     ): SetIntegrationConfigResponse!
+    setPluginIntegrationConfig(
+      input: SetPluginIntegrationConfigInput!
+    ): SetIntegrationConfigResponse!
   }
 `;
 
-const IntegrationApiCredential: ResolverMap<TIntegrationCredential> = {
+const IntegrationApiCredential: ResolverMap<TIntegrationConfigWithMetadata['apiCredential']> = {
   __resolveType(it) {
-    const integrationName = it.name;
+    const integrationName = (it as { name?: string }).name ?? '';
     switch (integrationName) {
       case Integration.GOOGLE_CONTENT_SAFETY_API:
         return 'GoogleContentSafetyApiIntegrationApiCredential';
@@ -160,11 +215,7 @@ const IntegrationApiCredential: ResolverMap<TIntegrationCredential> = {
       case Integration.ZENTROPI:
         return 'ZentropiIntegrationApiCredential';
       default:
-        // TypeScript can't verify exhaustiveness here because GQL enum includes
-        assertUnreachable(
-          integrationName,
-          `Unsupported integration: ${integrationName}`,
-        );
+        return 'PluginIntegrationApiCredential';
     }
   },
 };
@@ -177,18 +228,22 @@ const Query: GQLQueryResolvers = {
         throw new AuthenticationError('Unauthenticated User');
       }
 
-      if (!isConfigurableIntegration(name)) {
+      if (!getIntegrationRegistry().has(name)) {
         throw makeIntegrationConfigUnsupportedIntegrationError({
           shouldErrorSpan: true,
         });
       }
 
-      const config = await context.dataSources.integrationAPI.getConfig(
-        user.orgId,
-        name,
-      );
+      const config =
+        await context.dataSources.integrationAPI.getConfigWithMetadata(
+          user.orgId,
+          name,
+        );
 
-      return gqlSuccessResult({ config }, 'IntegrationConfigSuccessResult');
+      return gqlSuccessResult(
+        { config: config as GQLIntegrationConfig },
+        'IntegrationConfigSuccessResult',
+      );
     } catch (e: unknown) {
       if (
         isCoopErrorOfType(e, 'IntegrationConfigUnsupportedIntegrationError')
@@ -198,6 +253,19 @@ const Query: GQLQueryResolvers = {
 
       throw e;
     }
+  },
+  async availableIntegrations(_, __, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw new AuthenticationError('Unauthenticated User');
+    }
+    return context.dataSources.integrationAPI.getAvailableIntegrations() as GQLIntegrationMetadata[];
+  },
+};
+
+const PluginIntegrationApiCredential = {
+  credential(it: TIntegrationConfigWithMetadata['apiCredential']) {
+    return it as Record<string, unknown>;
   },
 };
 
@@ -214,7 +282,38 @@ const Mutation: GQLMutationResolvers = {
       );
 
       return gqlSuccessResult(
-        { config: newConfig },
+        { config: newConfig as GQLIntegrationConfig },
+        'SetIntegrationConfigSuccessResponse',
+      );
+    } catch (e: unknown) {
+      if (
+        isCoopErrorOfType(e, [
+          'IntegrationConfigTooManyCredentialsError',
+          'IntegrationNoInputCredentialsError',
+          'IntegrationEmptyInputCredentialsError',
+        ])
+      ) {
+        return gqlErrorResult(e);
+      }
+
+      throw e;
+    }
+  },
+  async setPluginIntegrationConfig(_, params, context) {
+    try {
+      const user = context.getUser();
+      if (user == null) {
+        throw new AuthenticationError('Unauthenticated User');
+      }
+      const newConfig =
+        await context.dataSources.integrationAPI.setConfigByIntegrationId(
+          params.input.integrationId,
+          params.input.credential as Record<string, unknown>,
+          user.orgId,
+        );
+
+      return gqlSuccessResult(
+        { config: newConfig as GQLIntegrationConfig },
         'SetIntegrationConfigSuccessResponse',
       );
     } catch (e: unknown) {
@@ -235,6 +334,7 @@ const Mutation: GQLMutationResolvers = {
 
 const resolvers = {
   IntegrationApiCredential,
+  PluginIntegrationApiCredential,
   Query,
   Mutation,
 };

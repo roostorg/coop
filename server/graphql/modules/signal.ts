@@ -2,17 +2,17 @@ import { type SignalSubcategory } from '@roostorg/types';
 import { AuthenticationError } from 'apollo-server-express';
 import { type ReadonlyDeep } from 'type-fest';
 
+import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import {
   getSignalIdString,
-  type ExternalSignalType,
   type SignalOutputType as TSignalOutputType,
 } from '../../services/signalsService/index.js';
 import { safePick } from '../../utils/misc.js';
 import {
   type GQLLanguage,
   type GQLSignalArgsResolvers,
+  type GQLSignalPricingStructure,
   type GQLSignalResolvers,
-  type GQLSignalType,
   type GQLSupportedLanguagesResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
@@ -52,8 +52,14 @@ const typeDefs = /* GraphQL */ `
 
   type Signal {
     id: ID! # JsonOf<SignalId>
-    type: SignalType!
-    integration: Integration
+    type: String!
+    integration: String
+    """Display name for the signal’s integration (from registry manifest). Null when signal has no integration."""
+    integrationTitle: String
+    """Logo URL for the integration. Null if not set or when signal has no integration."""
+    integrationLogoUrl: String
+    """Logo-with-background URL for the integration. Null if not set or when signal has no integration."""
+    integrationLogoWithBackgroundUrl: String
     name: String!
     description: String!
     docsUrl: String
@@ -189,18 +195,34 @@ const Signal: GQLSignalResolvers = {
   id(signal) {
     return getSignalIdString(signal.id);
   },
-  // NB: This resolver is unnecessary from a runtime POV (its functionality is
-  // the same as the default resolver), but we keep it for type checking (i.e.,
-  // it verifies that our ExternalSignalType is assignable to the GQLSignalType
-  // that we're supposed to be returning).
-  type(signal): GQLSignalType {
-    return signal.type as ExternalSignalType;
+  // type is String! to support plugin signal types (e.g. RANDOM_SIGNAL_SELECTION)
+  // in addition to built-in ExternalSignalType values.
+  type(signal): string {
+    return signal.type;
+  },
+  integrationTitle(signal) {
+    if (signal.integration == null) return null;
+    return getIntegrationRegistry().getManifest(signal.integration)?.title ?? null;
+  },
+  integrationLogoUrl(signal) {
+    if (signal.integration == null) return null;
+    return getIntegrationRegistry().getManifest(signal.integration)?.logoUrl ?? null;
+  },
+  integrationLogoWithBackgroundUrl(signal) {
+    if (signal.integration == null) return null;
+    return getIntegrationRegistry().getManifest(signal.integration)?.logoWithBackgroundUrl ?? null;
   },
   name(signal) {
     return signal.displayName;
   },
-  pricingStructure(signal) {
-    return { type: signal.pricingStructure };
+  pricingStructure(signal): GQLSignalPricingStructure {
+    const ps = signal.pricingStructure as
+      | { type: string }
+      | string;
+    if (typeof ps === 'object' && 'type' in ps) {
+      return ps as GQLSignalPricingStructure;
+    }
+    return { type: ps as GQLSignalPricingStructure['type'] };
   },
   async disabledInfo(signal, _, context) {
     const user = context.getUser();
@@ -237,7 +259,10 @@ const Signal: GQLSignalResolvers = {
           'ZENTROPI',
         );
         if (config?.name === 'ZENTROPI') {
-          const versions = config.apiCredential.labelerVersions ?? [];
+          const versions = (config.apiCredential.labelerVersions ?? []) as Array<{
+            id: string;
+            label: string;
+          }>;
           return versions.map((v) => ({
             id: v.id,
             label: v.label,

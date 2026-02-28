@@ -30,9 +30,8 @@ export type SignalId = InternalSignalId | ExternalSignalId;
 export type InternalSignalId = { type: InternalSignalType };
 export type ExternalSignalId =
   | { type: typeof SignalType.CUSTOM; id: NonEmptyString }
-  | {
-      type: Exclude<ExternalSignalType, typeof SignalType.CUSTOM>;
-    };
+  | { type: Exclude<ExternalSignalType, typeof SignalType.CUSTOM> }
+  | { type: string }; // plugin signal type ids (not in SignalType enum)
 
 export const InternalSignalIdArbitrary = fc.record({
   type: InternalSignalTypeArbitrary,
@@ -79,7 +78,7 @@ export function isSignalId(it: unknown): it is SignalId {
     typeof it === 'object' &&
     it !== null &&
     'type' in it &&
-    Object.hasOwn(SignalType, it.type as string) &&
+    typeof (it as { type: unknown }).type === 'string' &&
     (it.type === SignalType.CUSTOM
       ? 'id' in it && isNonEmptyString(it.id)
       : true)

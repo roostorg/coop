@@ -560,11 +560,14 @@ async function getSignalRuntimeArgs(
   conditionSignalInfo: ReadonlyDeep<ConditionSignalInfo>,
 ) {
   if (conditionSignalInfo.type === 'AGGREGATION') {
-    return evaluateAggregationRuntimeArgsForItem(
-      evaluationContext,
-      itemSubmission,
-      conditionSignalInfo.args.aggregationClause,
-    );
+    const args = conditionSignalInfo.args;
+    if (args != null) {
+      return evaluateAggregationRuntimeArgsForItem(
+        evaluationContext,
+        itemSubmission,
+        args.aggregationClause,
+      );
+    }
   }
   return undefined;
 }
