@@ -5,16 +5,15 @@ on:
     branches: [main]
     paths:
       - 'migrator/**'
-      - 'types/**'
   workflow_dispatch:
+
+permissions:
+  id-token: write  # Required for OIDC i.e. publish package
+  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,22 +40,3 @@ jobs:
             npm run build
             npm publish
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Check and publish types
-        run: |
-          cd types
-          VERSION=$(node -p "require('./package.json').version")
-          echo "Checking @roostorg/types@$VERSION..."
-          
-          if npm view "@roostorg/types@$VERSION" version >/dev/null 2>&1; then
-            echo "⚠️  Version $VERSION of @roostorg/types already exists on npm - skipping"
-          else
-            echo "✅ Publishing @roostorg/types@$VERSION..."
-            npm ci
-            npm run build
-            npm publish
-          fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
