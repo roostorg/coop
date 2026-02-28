@@ -3,14 +3,13 @@ import { Plus, Trash2 } from 'lucide-react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
-  GQLIntegration,
   GQLIntegrationApiCredential,
   GQLOpenAiIntegrationApiCredential,
   GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
 
 export default function IntegrationConfigApiCredentialsSection(props: {
-  name: GQLIntegration;
+  name: string;
   setApiCredential: (cred: GQLIntegrationApiCredential) => void;
   apiCredential: GQLIntegrationApiCredential;
 }) {
@@ -142,6 +141,44 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     );
   };
 
+  const PLUGIN_FIELD_LABELS: Record<string, string> = {
+    truePercentage: 'True percentage (0–100)',
+  };
+
+  const renderPluginCredential = (
+    pluginCredential: { __typename: 'PluginIntegrationApiCredential'; credential: Record<string, unknown> },
+  ) => {
+    const credential = pluginCredential.credential ?? {};
+    const entries = Object.entries(credential).filter(
+      ([key]) => key !== 'name',
+    );
+    const fieldsToShow =
+      entries.length > 0
+        ? entries
+        : [['truePercentage', ''] as [string, unknown]];
+    return (
+      <div className="flex flex-col gap-4">
+        {fieldsToShow.map(([key, value]) => (
+          <div key={key} className="flex flex-col w-1/2">
+            <div className="mb-1">
+              {PLUGIN_FIELD_LABELS[key] ?? key}
+            </div>
+            <Input
+              value={String(value ?? '')}
+              onChange={(event) => {
+                const next = { ...credential, [key]: event.target.value };
+                setApiCredential({
+                  __typename: 'PluginIntegrationApiCredential',
+                  credential: next as import('../../../graphql/generated').Scalars['JSONObject'],
+                });
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const projectKeysInput = () => {
     switch (apiCredential.__typename) {
       case 'GoogleContentSafetyApiIntegrationApiCredential':
@@ -150,6 +187,8 @@ export default function IntegrationConfigApiCredentialsSection(props: {
         return renderOpenAiCredential(apiCredential);
       case 'ZentropiIntegrationApiCredential':
         return renderZentropiCredential(apiCredential);
+      case 'PluginIntegrationApiCredential':
+        return renderPluginCredential(apiCredential);
       default:
         throw new Error('Integration not implemented yet');
     }

@@ -29,7 +29,6 @@ import Table from '../../../components/table/Table';
 import {
   GQLField,
   GQLFieldType,
-  GQLIntegration,
   GQLRuleStatus,
   useGQLRuleInsightsCurrentVersionSamplesQuery,
   useGQLRuleInsightsPriorVersionSamplesLazyQuery,
@@ -62,7 +61,7 @@ export enum RuleEnvironment {
 export type SignalWithResult = {
   subcategory?: string | null;
   signalName: string;
-  integration?: GQLIntegration | null | undefined;
+  integration?: string | null | undefined;
   score?: string;
 };
 

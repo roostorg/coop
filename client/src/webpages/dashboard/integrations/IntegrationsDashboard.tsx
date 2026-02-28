@@ -5,20 +5,10 @@ import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import DashboardHeader from '../components/DashboardHeader';
 
 import {
-  GQLIntegration,
+  useGQLAvailableIntegrationsQuery,
   useGQLMyIntegrationsQuery,
 } from '../../../graphql/generated';
 import IntegrationCard from './IntegrationCard';
-import { INTEGRATION_CONFIGS } from './integrationConfigs';
-
-export type IntegrationConfig = {
-  name: GQLIntegration;
-  title: string;
-  logo: string;
-  logoWithBackground: string;
-  url: string;
-  requiresInfo: boolean;
-};
 
 export default function IntegrationsDashboard() {
   gql`
@@ -31,7 +21,27 @@ export default function IntegrationsDashboard() {
     }
   `;
 
-  const { loading, error, data } = useGQLMyIntegrationsQuery();
+  gql`
+    query AvailableIntegrations {
+      availableIntegrations {
+        name
+        title
+        docsUrl
+        requiresConfig
+        logoUrl
+        logoWithBackgroundUrl
+      }
+    }
+  `;
+
+  const { loading: loadingCatalog, data: catalogData } =
+    useGQLAvailableIntegrationsQuery({
+      fetchPolicy: 'network-only',
+    });
+  const { loading: loadingMy, error, data: myData } =
+    useGQLMyIntegrationsQuery();
+
+  const loading = loadingCatalog ?? loadingMy;
 
   if (loading) {
     return <FullScreenLoading />;
@@ -41,15 +51,15 @@ export default function IntegrationsDashboard() {
     throw error;
   }
 
-  const integrationNames =
-    data?.myOrg?.integrationConfigs?.map((config) => config.name) ?? [];
+  const allIntegrations = catalogData?.availableIntegrations ?? [];
+  const myIntegrationNames =
+    myData?.myOrg?.integrationConfigs?.map((config) => config.name) ?? [];
 
-  const myIntegrations = INTEGRATION_CONFIGS.filter((it) =>
-    integrationNames.includes(it.name),
+  const myIntegrations = allIntegrations.filter((it) =>
+    myIntegrationNames.includes(it.name),
   );
-
-  const otherIntegrations = INTEGRATION_CONFIGS.filter(
-    (it) => !myIntegrations.includes(it),
+  const otherIntegrations = allIntegrations.filter(
+    (it) => !myIntegrationNames.includes(it.name),
   ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (

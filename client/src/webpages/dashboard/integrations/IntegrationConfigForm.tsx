@@ -8,7 +8,6 @@ import CoopButton from '../components/CoopButton';
 import CoopModal from '../components/CoopModal';
 
 import {
-  GQLIntegration,
   GQLIntegrationApiCredential,
   GQLIntegrationConfigDocument,
   GQLUserPermission,
@@ -16,6 +15,7 @@ import {
   useGQLIntegrationConfigQuery,
   useGQLPermissionGatedRouteLoggedInUserQuery,
   useGQLSetIntegrationConfigMutation,
+  useGQLSetPluginIntegrationConfigMutation,
   type GQLGoogleContentSafetyApiIntegrationApiCredential,
   type GQLOpenAiIntegrationApiCredential,
   type GQLZentropiIntegrationApiCredential,
@@ -26,7 +26,8 @@ import {
 } from '../../../graphql/inputHelpers';
 import { userHasPermissions } from '../../../routing/permissions';
 import IntegrationConfigApiCredentialsSection from './IntegrationConfigApiCredentialsSection';
-import { INTEGRATION_CONFIGS } from './integrationConfigs';
+import { INTEGRATION_LOGO_FALLBACKS } from './integrationLogos';
+import ModelCardView from './ModelCardView';
 
 gql`
   mutation SetIntegrationConfig($input: SetIntegrationConfigInput!) {
@@ -48,11 +49,56 @@ gql`
     }
   }
 
-  query IntegrationConfig($name: Integration!) {
+  mutation SetPluginIntegrationConfig($input: SetPluginIntegrationConfigInput!) {
+    setPluginIntegrationConfig(input: $input) {
+      ... on SetIntegrationConfigSuccessResponse {
+        config {
+          name
+        }
+      }
+      ... on IntegrationConfigTooManyCredentialsError {
+        title
+      }
+      ... on IntegrationNoInputCredentialsError {
+        title
+      }
+      ... on IntegrationEmptyInputCredentialsError {
+        title
+      }
+    }
+  }
+
+  query IntegrationConfig($name: String!) {
     integrationConfig(name: $name) {
       ... on IntegrationConfigSuccessResult {
         config {
           name
+          title
+          docsUrl
+          requiresConfig
+          logoUrl
+          logoWithBackgroundUrl
+          modelCard {
+            modelName
+            version
+            releaseDate
+            sections {
+              id
+              title
+              subsections {
+                title
+                fields {
+                  label
+                  value
+                }
+              }
+              fields {
+                label
+                value
+              }
+            }
+          }
+          modelCardLearnMoreUrl
           apiCredential {
             ... on GoogleContentSafetyApiIntegrationApiCredential {
               apiKey
@@ -66,6 +112,9 @@ gql`
                 id
                 label
               }
+            }
+            ... on PluginIntegrationApiCredential {
+              credential
             }
           }
         }
@@ -88,7 +137,7 @@ gql`
  * IntegrationConfigApiCredential), so the UI can display the proper empty inputs.
  */
 export function getNewEmptyApiKey(
-  name: GQLIntegration,
+  name: string,
 ): GQLIntegrationApiCredential {
   switch (name) {
     case 'GOOGLE_CONTENT_SAFETY_API': {
@@ -108,7 +157,10 @@ export function getNewEmptyApiKey(
       };
     }
     default: {
-      throw new Error(`${name} integration not implemented.`);
+      return {
+        __typename: 'PluginIntegrationApiCredential',
+        credential: {},
+      };
     }
   }
 }
@@ -119,12 +171,7 @@ export default function IntegrationConfigForm() {
     throw Error('Integration name not provided');
   }
   // Cast back to upper case (see lowercase cast in IntegrationCard.tsx)
-  const integrationName = name.toUpperCase() as GQLIntegration;
-  const config = INTEGRATION_CONFIGS.find((i) => i.name === integrationName);
-  if (config == null) {
-    throw Error(`Integration with name ${name} not found`);
-  }
-  const formattedName = config.title;
+  const integrationName = name.toUpperCase();
   const navigate = useNavigate();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -142,8 +189,17 @@ export default function IntegrationConfigForm() {
       },
       onCompleted: () => showModal(),
     });
-  const mutationError = setConfigMutationParams.error;
-  const mutationLoading = setConfigMutationParams.loading;
+  const [setPluginConfig, setPluginConfigMutationParams] =
+    useGQLSetPluginIntegrationConfigMutation({
+      onError: () => {
+        showModal();
+      },
+      onCompleted: () => showModal(),
+    });
+  const mutationError =
+    setConfigMutationParams.error ?? setPluginConfigMutationParams.error;
+  const mutationLoading =
+    setConfigMutationParams.loading || setPluginConfigMutationParams.loading;
 
   const {
     loading,
@@ -179,7 +235,15 @@ export default function IntegrationConfigForm() {
    */
   useMemo(() => {
     if (response?.config != null) {
-      setApiCredential(response.config.apiCredential);
+      const cred = response.config.apiCredential;
+      if (cred.__typename === 'PluginIntegrationApiCredential') {
+        setApiCredential({
+          __typename: 'PluginIntegrationApiCredential',
+          credential: cred.credential ?? {},
+        });
+      } else {
+        setApiCredential(cred);
+      }
     }
   }, [response]);
 
@@ -189,6 +253,19 @@ export default function IntegrationConfigForm() {
   if (loading || userQueryLoading) {
     return <FullScreenLoading />;
   }
+
+  const apiConfig =
+    response?.__typename === 'IntegrationConfigSuccessResult'
+      ? response.config
+      : undefined;
+  const formattedName =
+    apiConfig?.title ?? integrationName.replace(/_/g, ' ');
+  const logo = apiConfig
+    ? (apiConfig.logoUrl ??
+      INTEGRATION_LOGO_FALLBACKS[apiConfig.name]?.logo ??
+      '')
+    : '';
+
   const canEditConfig = userHasPermissions(permissions, [
     GQLUserPermission.ManageOrg,
   ]);
@@ -197,9 +274,18 @@ export default function IntegrationConfigForm() {
     GoogleContentSafetyApiIntegrationApiCredential: 'googleContentSafetyApi',
     OpenAiIntegrationApiCredential: 'openAi',
     ZentropiIntegrationApiCredential: 'zentropi',
+    PluginIntegrationApiCredential: 'pluginCredential',
   });
 
+  const isPluginIntegration = ![
+    'GOOGLE_CONTENT_SAFETY_API',
+    'OPEN_AI',
+    'ZENTROPI',
+  ].includes(integrationName);
   const validationMessage = (() => {
+    if (isPluginIntegration) {
+      return undefined;
+    }
     if (
       'googleContentSafetyApi' in mappedApiCredential &&
       !(
@@ -237,22 +323,36 @@ export default function IntegrationConfigForm() {
     <CoopButton
       title="Save"
       loading={mutationLoading}
-      onClick={async () =>
-        setConfig({
-          variables: {
-            input: {
-              apiCredential: stripTypename(mappedApiCredential),
-            },
+      onClick={async () => {
+        const refetchQueries = [
+          namedOperations.Query.MyIntegrations,
+          {
+            query: GQLIntegrationConfigDocument,
+            variables: { name: integrationName },
           },
-          refetchQueries: [
-            namedOperations.Query.MyIntegrations,
-            {
-              query: GQLIntegrationConfigDocument,
-              variables: { name: integrationName },
+        ];
+        if (isPluginIntegration) {
+          const cred =
+            apiCredential.__typename === 'PluginIntegrationApiCredential'
+              ? apiCredential.credential ?? {}
+              : {};
+          await setPluginConfig({
+            variables: {
+              input: { integrationId: integrationName, credential: cred },
             },
-          ],
-        })
-      }
+            refetchQueries,
+          });
+        } else {
+          await setConfig({
+            variables: {
+              input: {
+                apiCredential: stripTypename(mappedApiCredential),
+              },
+            },
+            refetchQueries,
+          });
+        }
+      }}
       disabled={!canEditConfig || validationMessage != null}
       disabledTooltipTitle={validationMessage}
     />
@@ -296,11 +396,11 @@ export default function IntegrationConfigForm() {
   );
 
   const headerSubtitle = (
-    integration: GQLIntegration,
+    integrationName: string,
     formattedName: string,
   ): React.ReactNode | string | undefined => {
-    switch (integration) {
-      case GQLIntegration.GoogleContentSafetyApi:
+    switch (integrationName) {
+      case 'GOOGLE_CONTENT_SAFETY_API':
         return (
           <>
             The Content Safety API is an AI classifier which issues a Child 
@@ -322,12 +422,16 @@ export default function IntegrationConfigForm() {
             back in touch shortly to take the application forward if you qualify.
           </>
         );
-      case GQLIntegration.OpenAi:
+      case 'OPEN_AI':
         return `The ${formattedName} integration requires one API Key.`;
       default:
         return undefined;
     }
   };
+
+  const apiModelCard = response?.config?.modelCard;
+  const apiModelCardLearnMoreUrl = response?.config?.modelCardLearnMoreUrl;
+  const hasModelCard = apiModelCard != null;
 
   return (
     <div className="flex flex-col text-start">
@@ -335,19 +439,66 @@ export default function IntegrationConfigForm() {
         <title>{formattedName} Integration</title>
       </Helmet>
       <div className="flex flex-col justify-between w-4/5 mb-4">
-        <div className="mb-1 text-2xl font-bold">{`${formattedName} Integration`}</div>
-        <div className="mb-4 text-base text-zinc-900">
-          {headerSubtitle(integrationName, formattedName)}
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+            <img
+              src={logo}
+              alt=""
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="text-2xl font-bold">{`${formattedName} Integration`}</div>
         </div>
+        {!hasModelCard && (
+          <div className="mb-4 text-base text-zinc-900">
+            {headerSubtitle(integrationName, formattedName)}
+          </div>
+        )}
       </div>
-      <IntegrationConfigApiCredentialsSection
-        name={integrationName}
-        apiCredential={apiCredential}
-        setApiCredential={(cred: GQLIntegrationApiCredential) =>
-          setApiCredential(cred)
-        }
-      />
-      {saveButton}
+
+      {hasModelCard && apiModelCard ? (
+        <div className="flex flex-col lg:flex-row gap-8 w-full max-w-5xl">
+          <div className="flex-1 min-w-0">
+            <ModelCardView card={apiModelCard} />
+          </div>
+          <div className="flex flex-col lg:w-80 shrink-0">
+            {apiModelCardLearnMoreUrl != null && (
+              <a
+                href={apiModelCardLearnMoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:underline mb-4 inline-flex items-center gap-1"
+              >
+                <span className="align-middle">ⓘ</span>
+                <span>Learn more about how to read model cards</span>
+              </a>
+            )}
+            <div className="font-semibold text-zinc-800 mb-2">Credentials</div>
+            <div className="text-sm text-zinc-600 mb-3">
+              Configure your credentials below.
+            </div>
+            <IntegrationConfigApiCredentialsSection
+              name={integrationName}
+              apiCredential={apiCredential}
+              setApiCredential={(cred: GQLIntegrationApiCredential) =>
+                setApiCredential(cred)
+              }
+            />
+            {saveButton}
+          </div>
+        </div>
+      ) : (
+        <>
+          <IntegrationConfigApiCredentialsSection
+            name={integrationName}
+            apiCredential={apiCredential}
+            setApiCredential={(cred: GQLIntegrationApiCredential) =>
+              setApiCredential(cred)
+            }
+          />
+          {saveButton}
+        </>
+      )}
       {modal}
     </div>
   );

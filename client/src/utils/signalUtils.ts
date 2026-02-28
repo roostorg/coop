@@ -1,7 +1,7 @@
 import { SignalSubcategory } from '@roostorg/types';
 import transform from 'lodash/transform';
 
-import { GQLIntegration, GQLSignalSubcategory } from '../graphql/generated';
+import { GQLSignalSubcategory } from '../graphql/generated';
 import { safePick } from './misc';
 
 /**
@@ -39,7 +39,7 @@ export function rebuildSubcategoryTreeFromGraphQLResponse(
 
 export function createSubcategoryIdToLabelMapping(
   signals: readonly {
-    integration?: GQLIntegration | null;
+    integration?: string | null;
     eligibleSubcategories: readonly { id: string; label: string }[];
   }[],
 ) {

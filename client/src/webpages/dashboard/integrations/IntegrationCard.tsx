@@ -1,16 +1,27 @@
 import { ReactNode, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import type { GQLIntegrationMetadata } from '../../../graphql/generated';
 import CoopModal from '../components/CoopModal';
 
-import { IntegrationConfig } from './IntegrationsDashboard';
+import { INTEGRATION_LOGO_FALLBACKS } from './integrationLogos';
 
 export default function IntegrationCard(props: {
-  integration: IntegrationConfig;
+  integration: GQLIntegrationMetadata;
   useExternalURL?: boolean;
 }) {
   const { integration, useExternalURL } = props;
-  const { name, title, logo, requiresInfo, url } = integration;
+  const { name, title, docsUrl } = integration;
+  // Integrations page uses only the plain logo (logoUrl from logoPath). Do not fall back to logoWithBackgroundUrl.
+  const rawLogo =
+    integration.logoUrl ??
+    INTEGRATION_LOGO_FALLBACKS[name]?.logo ??
+    '';
+  // Resolve relative API paths to absolute URL so img loads correctly (e.g. /api/v1/integration-logos/ID).
+  const logo =
+    typeof rawLogo === 'string' && rawLogo.startsWith('/')
+      ? `${window.location.origin}${rawLogo}`
+      : rawLogo;
   const navigate = useNavigate();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -31,8 +42,10 @@ export default function IntegrationCard(props: {
       ]}
     >
       <div className="flex flex-col items-center max-w-md">
-        <div className="p-6 mb-6 rounded-full bg-slate-200 w-fit h-fit">
-          <img src={logo} alt="Logo" className="w-16 h-16" />
+        <div className="p-6 mb-6 rounded-full bg-slate-200 w-fit h-fit flex items-center justify-center">
+          {logo ? (
+            <img src={logo} alt="" className="w-16 h-16 object-contain" />
+          ) : null}
         </div>
         <div>
           <span className="font-medium">{title}</span> doesn't require any
@@ -56,12 +69,12 @@ export default function IntegrationCard(props: {
   }) => {
     if (Boolean(useExternalURL)) {
       return (
-        <a href={url} {...rest}>
+        <a href={docsUrl} {...rest}>
           {children}
         </a>
       );
     }
-    if (!requiresInfo) {
+    if (!integration.requiresConfig) {
       return (
         <div onClick={() => setModalVisible(true)} {...rest}>
           {children}
@@ -81,8 +94,10 @@ export default function IntegrationCard(props: {
   return (
     <>
       <Wrapper className="relative flex flex-col items-center justify-center w-full h-full p-6 pt-12 pb-12 bg-white border border-solid rounded-3xl border-slate-300 transition-all duration-200 ease-out box-border hover:transform hover:-translate-y-1 hover:transition-all hover:duration-200 hover:ease-in hover:dashboard-border-primary/70 hover:cursor-pointer">
-        <div className="w-16 h-16 p-4 mb-6 rounded-full bg-slate-200">
-          <img src={logo} alt="Logo" className="w-full h-full" />
+        <div className="w-16 h-16 p-4 mb-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+          {logo ? (
+            <img src={logo} alt="" className="w-full h-full object-contain" />
+          ) : null}
         </div>
         <div className="flex flex-col justify-start text-lg font-bold text-center text-slate-700">
           {title}

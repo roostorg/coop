@@ -201,6 +201,9 @@ export const SIGNALS_FRAGMENT = gql`
     type
     name
     integration
+    integrationTitle
+    integrationLogoUrl
+    integrationLogoWithBackgroundUrl
     docsUrl
     recommendedThresholds {
       highPrecisionThreshold
