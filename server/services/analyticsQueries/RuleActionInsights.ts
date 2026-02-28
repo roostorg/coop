@@ -10,10 +10,10 @@ import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';
 import {
   BuiltInThirdPartySignalType,
+  SignalType,
   UserCreatedExternalSignalType,
   integrationForSignalType,
   type Integration,
-  type SignalType,
 } from '../../services/signalsService/index.js';
 import { jsonParse, type JsonOf } from '../../utils/encoding.js';
 import {
@@ -476,7 +476,7 @@ type GatherSignalsConditionWithResult =
 type GatherSignalsLeafConditionWithResult = {
   signal?: {
     name: string;
-    type: SignalType;
+    type: string;
     subcategory?: string | null;
   } | null;
   result?: { score?: string | null } | null;
@@ -486,9 +486,11 @@ type GatherSignalsConditionSetWithResult = {
   conditions: GatherSignalsConditionWithResult[];
 };
 
-const signalResultShouldBeDisplayed = (type: SignalType) =>
+/** Includes built-in third-party, user-created, and plugin signal types (string). */
+const signalResultShouldBeDisplayed = (type: string) =>
   Object.hasOwn(BuiltInThirdPartySignalType, type) ||
-  Object.hasOwn(UserCreatedExternalSignalType, type);
+  Object.hasOwn(UserCreatedExternalSignalType, type) ||
+  !Object.hasOwn(SignalType, type); // plugin signal types not in SignalType enum
 
 /**
  * When we display signal results in the UI (specifically in the rule samples

@@ -8,13 +8,16 @@ import { jsonStringify } from '../../utils/encoding.js';
 import { CoopError, ErrorType, makeNotFoundError } from '../../utils/errors.js';
 import { __throw, assertUnreachable } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
+import { getIntegrationRegistry } from '../integrationRegistry/index.js';
 import { instantiateBuiltInSignals } from './helpers/instantiateBuiltInSignals.js';
+import { loadPluginSignals } from './helpers/loadPluginSignals.js';
 import { makeCachedCredentialGetters } from './helpers/makeCachedCredentialsGetters.js';
 import { makeCachedFetchers } from './helpers/makeCachedFetchers.js';
 import {
   signalIsExternal,
   type SignalId,
   type SignalInputType,
+  type SignalOutputType,
   type SignalType,
 } from './index.js';
 import type UnusedCustomSignal from './signals/CustomSignal.js';
@@ -55,7 +58,15 @@ const publicSignalProps = [
  *   itself.
  */
 export type Signal = Simplify<
-  Pick<SignalBase<SignalInputType>, (typeof publicSignalProps)[number]>
+  Pick<
+    SignalBase<
+      SignalInputType,
+      SignalOutputType,
+      unknown,
+      SignalType | string
+    >,
+    (typeof publicSignalProps)[number]
+  >
 >;
 
 /**
@@ -100,10 +111,17 @@ export type SignalTypesToRunOutputTypes = {
   [K in SignalType]: ReturnType<SignalClassByType[K]['run']>;
 };
 
+/** All signals by type: built-in + plugin. Used for lookup and getSignalsForOrg. */
+type SignalsByType = Record<
+  string,
+  SignalBase<SignalInputType, SignalOutputType, unknown, SignalType | string>
+>;
+
 export class SignalsService {
   public readonly close: () => Promise<void>;
 
   private readonly builtInSignalsByType: BuiltInSignalsByType;
+  private readonly signalsByType: SignalsByType;
 
   constructor(
     private readonly tracer: Dependencies['Tracer'],
@@ -134,12 +152,17 @@ export class SignalsService {
       this.hmaService,
     );
 
+    const pluginEntries = getIntegrationRegistry().getPluginEntries();
+    const pluginSignals = loadPluginSignals(pluginEntries, signalAuthService);
+    this.signalsByType = {
+      ...this.builtInSignalsByType,
+      ...pluginSignals,
+    };
+
     this.close = async function () {
+      await cachedCredentialGetters.close();
       await Promise.all(
-        [
-          ...Object.values(cachedCredentialGetters),
-          ...Object.values(cachedFetchers),
-        ].map(async (it) => it.close()),
+        Object.values(cachedFetchers).map(async (it) => it.close()),
       );
     };
   }
@@ -161,36 +184,35 @@ export class SignalsService {
   }): Promise<Signal[]> {
     const { orgId, externalOnly = true } = opts;
 
-    const builtInSignals = Object.values(this.builtInSignalsByType).filter(
-      (signal) => isSignalEnabledForOrg(signal.id, orgId),
+    const allSignals = Object.values(this.signalsByType).filter((signal) =>
+      isSignalEnabledForOrg(signal.id, orgId),
     );
 
-    const finalBuiltInSignals = externalOnly
-      ? builtInSignals.filter((it) => signalIsExternal(it.id))
-      : builtInSignals;
+    const finalSignals = externalOnly
+      ? allSignals.filter((it) => signalIsExternal(it.id))
+      : allSignals;
 
-    return finalBuiltInSignals.map((it) =>
-      this.#signalInstanceToPublicSignal(it),
-    );
+    return finalSignals.map((it) => this.#signalInstanceToPublicSignal(it));
   }
 
   async #getSignalInstance<T extends SignalType>(
     ref: SignalReference<T>,
-  ): Promise<SignalBase<SignalInputType> | undefined> {
+  ): Promise<
+    | SignalBase<
+        SignalInputType,
+        SignalOutputType,
+        unknown,
+        SignalType | string
+      >
+    | undefined
+  > {
     const { signalId } = ref;
 
-    // In this switch, we don't have assertUnreachable in the default case, but
-    // TS will give an error if the the potential values that are left in
-    // `signalId.type` aren't all usable to index into builtinSignalsByType
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (signalId.type) {
-      case 'CUSTOM':
-        throw new Error('not implemented');
-      default:
-        // For some reason, TS won't narrow the type based on the previous
-        // case expressions, so we explicitly narrow it here.
-        return this.builtInSignalsByType[signalId.type as Exclude<T, 'CUSTOM'>];
+    if (signalId.type === 'CUSTOM') {
+      throw new Error('not implemented');
     }
+
+    return this.signalsByType[signalId.type];
   }
 
   public async getSignal<T extends SignalType>(ref: SignalReference<T>) {
@@ -302,7 +324,11 @@ export class SignalsService {
     >;
   }
 
-  #signalInstanceToPublicSignal(it: ReadonlyDeep<SignalBase<SignalInputType>>) {
+  #signalInstanceToPublicSignal(
+    it: ReadonlyDeep<
+      SignalBase<SignalInputType, SignalOutputType, unknown, SignalType | string>
+    >,
+  ) {
     // This used to be implemented as simply `safePick(it, publicSignalProps)`,
     // but we found that this is such a hot path that lodash was adding very
     // noticeable overhead -- `_.pick` calls all kinds of internal lodash

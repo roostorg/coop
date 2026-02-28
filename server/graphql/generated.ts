@@ -470,7 +470,7 @@ export type GQLConditionInputSignalInput = {
   readonly id: Scalars['ID'];
   readonly name?: InputMaybe<Scalars['String']>;
   readonly subcategory?: InputMaybe<Scalars['String']>;
-  readonly type: GQLSignalType;
+  readonly type: Scalars['String'];
 };
 
 export type GQLConditionMatchingValuesInput = {
@@ -1328,6 +1328,7 @@ export type GQLIntegration =
 export type GQLIntegrationApiCredential =
   | GQLGoogleContentSafetyApiIntegrationApiCredential
   | GQLOpenAiIntegrationApiCredential
+  | GQLPluginIntegrationApiCredential
   | GQLZentropiIntegrationApiCredential;
 
 export type GQLIntegrationApiCredentialInput = {
@@ -1339,7 +1340,14 @@ export type GQLIntegrationApiCredentialInput = {
 export type GQLIntegrationConfig = {
   readonly __typename?: 'IntegrationConfig';
   readonly apiCredential: GQLIntegrationApiCredential;
-  readonly name: GQLIntegration;
+  readonly docsUrl: Scalars['String'];
+  readonly logoUrl?: Maybe<Scalars['String']>;
+  readonly logoWithBackgroundUrl?: Maybe<Scalars['String']>;
+  readonly modelCard: GQLModelCard;
+  readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']>;
+  readonly name: Scalars['String'];
+  readonly requiresConfig: Scalars['Boolean'];
+  readonly title: Scalars['String'];
 };
 
 export type GQLIntegrationConfigQueryResponse =
@@ -1379,6 +1387,16 @@ export type GQLIntegrationEmptyInputCredentialsError = GQLError & {
   readonly status: Scalars['Int'];
   readonly title: Scalars['String'];
   readonly type: ReadonlyArray<Scalars['String']>;
+};
+
+export type GQLIntegrationMetadata = {
+  readonly __typename?: 'IntegrationMetadata';
+  readonly docsUrl: Scalars['String'];
+  readonly logoUrl?: Maybe<Scalars['String']>;
+  readonly logoWithBackgroundUrl?: Maybe<Scalars['String']>;
+  readonly name: Scalars['String'];
+  readonly requiresConfig: Scalars['Boolean'];
+  readonly title: Scalars['String'];
 };
 
 export type GQLIntegrationNoInputCredentialsError = GQLError & {
@@ -2163,6 +2181,34 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLModelCard = {
+  readonly __typename?: 'ModelCard';
+  readonly modelName: Scalars['String'];
+  readonly releaseDate?: Maybe<Scalars['String']>;
+  readonly sections?: Maybe<ReadonlyArray<GQLModelCardSection>>;
+  readonly version: Scalars['String'];
+};
+
+export type GQLModelCardField = {
+  readonly __typename?: 'ModelCardField';
+  readonly label: Scalars['String'];
+  readonly value: Scalars['String'];
+};
+
+export type GQLModelCardSection = {
+  readonly __typename?: 'ModelCardSection';
+  readonly fields?: Maybe<ReadonlyArray<GQLModelCardField>>;
+  readonly id: Scalars['String'];
+  readonly subsections?: Maybe<ReadonlyArray<GQLModelCardSubsection>>;
+  readonly title: Scalars['String'];
+};
+
+export type GQLModelCardSubsection = {
+  readonly __typename?: 'ModelCardSubsection';
+  readonly fields: ReadonlyArray<GQLModelCardField>;
+  readonly title: Scalars['String'];
+};
+
 export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean'];
@@ -2336,6 +2382,7 @@ export type GQLMutation = {
   readonly setModeratorSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
   readonly setMrtChartConfigurationSettings?: Maybe<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   readonly setOrgDefaultSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
+  readonly setPluginIntegrationConfig: GQLSetIntegrationConfigResponse;
   readonly signUp: GQLSignUpResponse;
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']>;
@@ -2586,6 +2633,10 @@ export type GQLMutationSetMrtChartConfigurationSettingsArgs = {
 
 export type GQLMutationSetOrgDefaultSafetySettingsArgs = {
   orgDefaultSafetySettings: GQLModeratorSafetySettingsInput;
+};
+
+export type GQLMutationSetPluginIntegrationConfigArgs = {
+  input: GQLSetPluginIntegrationConfigInput;
 };
 
 export type GQLMutationSignUpArgs = {
@@ -3037,6 +3088,11 @@ export type GQLPlaceBoundsInput = {
   readonly southwestCorner: GQLLatLngInput;
 };
 
+export type GQLPluginIntegrationApiCredential = {
+  readonly __typename?: 'PluginIntegrationApiCredential';
+  readonly credential: Scalars['JSONObject'];
+};
+
 export type GQLPolicy = {
   readonly __typename?: 'Policy';
   readonly applyUserStrikeCountConfigToChildren?: Maybe<Scalars['Boolean']>;
@@ -3105,6 +3161,7 @@ export type GQLQuery = {
   readonly allRuleInsights: GQLAllRuleInsights;
   readonly apiKey: Scalars['String'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
+  readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
   readonly getCommentsForJob: ReadonlyArray<GQLManualReviewJobComment>;
   readonly getDecidedJob?: Maybe<GQLManualReviewJob>;
   readonly getDecidedJobFromJobId?: Maybe<GQLManualReviewJobWithDecisions>;
@@ -3247,7 +3304,7 @@ export type GQLQueryHashBankByIdArgs = {
 };
 
 export type GQLQueryIntegrationConfigArgs = {
-  name: GQLIntegration;
+  name: Scalars['String'];
 };
 
 export type GQLQueryInviteUserTokenArgs = {
@@ -3922,6 +3979,11 @@ export type GQLSetMrtChartConfigurationSettingsSuccessResponse = {
   readonly _?: Maybe<Scalars['Boolean']>;
 };
 
+export type GQLSetPluginIntegrationConfigInput = {
+  readonly credential: Scalars['JSONObject'];
+  readonly integrationId: Scalars['String'];
+};
+
 export type GQLSetUserStrikeThresholdInput = {
   readonly actions: ReadonlyArray<Scalars['String']>;
   readonly threshold: Scalars['Int'];
@@ -3970,7 +4032,13 @@ export type GQLSignal = {
   readonly eligibleInputs: ReadonlyArray<GQLSignalInputType>;
   readonly eligibleSubcategories: ReadonlyArray<GQLSignalSubcategory>;
   readonly id: Scalars['ID'];
-  readonly integration?: Maybe<GQLIntegration>;
+  readonly integration?: Maybe<Scalars['String']>;
+  /** Logo URL for the integration. Null if not set or when signal has no integration. */
+  readonly integrationLogoUrl?: Maybe<Scalars['String']>;
+  /** Logo-with-background URL for the integration. Null if not set or when signal has no integration. */
+  readonly integrationLogoWithBackgroundUrl?: Maybe<Scalars['String']>;
+  /** Display name for the signal’s integration (from registry manifest). Null when signal has no integration. */
+  readonly integrationTitle?: Maybe<Scalars['String']>;
   readonly name: Scalars['String'];
   readonly outputType: GQLSignalOutputType;
   readonly pricingStructure: GQLSignalPricingStructure;
@@ -3978,7 +4046,7 @@ export type GQLSignal = {
   readonly shouldPromptForMatchingValues: Scalars['Boolean'];
   readonly subcategory?: Maybe<Scalars['String']>;
   readonly supportedLanguages: GQLSupportedLanguages;
-  readonly type: GQLSignalType;
+  readonly type: Scalars['String'];
 };
 
 export type GQLSignalArgs = GQLAggregationSignalArgs;
@@ -4074,7 +4142,7 @@ export const GQLSignalType = {
 export type GQLSignalType = (typeof GQLSignalType)[keyof typeof GQLSignalType];
 export type GQLSignalWithScore = {
   readonly __typename?: 'SignalWithScore';
-  readonly integration?: Maybe<GQLIntegration>;
+  readonly integration?: Maybe<Scalars['String']>;
   readonly score: Scalars['String'];
   readonly signalName: Scalars['String'];
   readonly subcategory?: Maybe<Scalars['String']>;
@@ -5196,6 +5264,7 @@ export type GQLResolversTypes = {
   IntegrationApiCredential:
     | GQLResolversTypes['GoogleContentSafetyApiIntegrationApiCredential']
     | GQLResolversTypes['OpenAiIntegrationApiCredential']
+    | GQLResolversTypes['PluginIntegrationApiCredential']
     | GQLResolversTypes['ZentropiIntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
   IntegrationConfig: ResolverTypeWrapper<
@@ -5210,6 +5279,7 @@ export type GQLResolversTypes = {
   IntegrationConfigTooManyCredentialsError: ResolverTypeWrapper<GQLIntegrationConfigTooManyCredentialsError>;
   IntegrationConfigUnsupportedIntegrationError: ResolverTypeWrapper<GQLIntegrationConfigUnsupportedIntegrationError>;
   IntegrationEmptyInputCredentialsError: ResolverTypeWrapper<GQLIntegrationEmptyInputCredentialsError>;
+  IntegrationMetadata: ResolverTypeWrapper<GQLIntegrationMetadata>;
   IntegrationNoInputCredentialsError: ResolverTypeWrapper<GQLIntegrationNoInputCredentialsError>;
   InviteUserInput: GQLInviteUserInput;
   InviteUserToken: ResolverTypeWrapper<GQLInviteUserToken>;
@@ -5362,6 +5432,10 @@ export type GQLResolversTypes = {
     }
   >;
   MetricsTimeDivisionOptions: GQLMetricsTimeDivisionOptions;
+  ModelCard: ResolverTypeWrapper<GQLModelCard>;
+  ModelCardField: ResolverTypeWrapper<GQLModelCardField>;
+  ModelCardSection: ResolverTypeWrapper<GQLModelCardSection>;
+  ModelCardSubsection: ResolverTypeWrapper<GQLModelCardSubsection>;
   ModeratorSafetySettingsInput: GQLModeratorSafetySettingsInput;
   MrtJobEnqueueSourceInfo: ResolverTypeWrapper<GQLMrtJobEnqueueSourceInfo>;
   MutateAccessibleQueuesForUserSuccessResponse: ResolverTypeWrapper<GQLMutateAccessibleQueuesForUserSuccessResponse>;
@@ -5497,6 +5571,7 @@ export type GQLResolversTypes = {
   PendingInvite: ResolverTypeWrapper<GQLPendingInvite>;
   PlaceBounds: ResolverTypeWrapper<GQLPlaceBounds>;
   PlaceBoundsInput: GQLPlaceBoundsInput;
+  PluginIntegrationApiCredential: ResolverTypeWrapper<GQLPluginIntegrationApiCredential>;
   Policy: ResolverTypeWrapper<GQLPolicy>;
   PolicyActionCount: ResolverTypeWrapper<GQLPolicyActionCount>;
   PolicyNameExistsError: ResolverTypeWrapper<GQLPolicyNameExistsError>;
@@ -5619,6 +5694,7 @@ export type GQLResolversTypes = {
   SetIntegrationConfigSuccessResponse: ResolverTypeWrapper<GQLSetIntegrationConfigSuccessResponse>;
   SetModeratorSafetySettingsSuccessResponse: ResolverTypeWrapper<GQLSetModeratorSafetySettingsSuccessResponse>;
   SetMrtChartConfigurationSettingsSuccessResponse: ResolverTypeWrapper<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
+  SetPluginIntegrationConfigInput: GQLSetPluginIntegrationConfigInput;
   SetUserStrikeThresholdInput: GQLSetUserStrikeThresholdInput;
   SignUpInput: GQLSignUpInput;
   SignUpResponse:
@@ -6043,6 +6119,7 @@ export type GQLResolversParentTypes = {
   IntegrationApiCredential:
     | GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential']
     | GQLResolversParentTypes['OpenAiIntegrationApiCredential']
+    | GQLResolversParentTypes['PluginIntegrationApiCredential']
     | GQLResolversParentTypes['ZentropiIntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
   IntegrationConfig: Omit<GQLIntegrationConfig, 'apiCredential'> & {
@@ -6055,6 +6132,7 @@ export type GQLResolversParentTypes = {
   IntegrationConfigTooManyCredentialsError: GQLIntegrationConfigTooManyCredentialsError;
   IntegrationConfigUnsupportedIntegrationError: GQLIntegrationConfigUnsupportedIntegrationError;
   IntegrationEmptyInputCredentialsError: GQLIntegrationEmptyInputCredentialsError;
+  IntegrationMetadata: GQLIntegrationMetadata;
   IntegrationNoInputCredentialsError: GQLIntegrationNoInputCredentialsError;
   InviteUserInput: GQLInviteUserInput;
   InviteUserToken: GQLInviteUserToken;
@@ -6181,6 +6259,10 @@ export type GQLResolversParentTypes = {
   MessageWithIpAddress: Omit<GQLMessageWithIpAddress, 'message'> & {
     message: GQLResolversParentTypes['ContentItem'];
   };
+  ModelCard: GQLModelCard;
+  ModelCardField: GQLModelCardField;
+  ModelCardSection: GQLModelCardSection;
+  ModelCardSubsection: GQLModelCardSubsection;
   ModeratorSafetySettingsInput: GQLModeratorSafetySettingsInput;
   MrtJobEnqueueSourceInfo: GQLMrtJobEnqueueSourceInfo;
   MutateAccessibleQueuesForUserSuccessResponse: GQLMutateAccessibleQueuesForUserSuccessResponse;
@@ -6291,6 +6373,7 @@ export type GQLResolversParentTypes = {
   PendingInvite: GQLPendingInvite;
   PlaceBounds: GQLPlaceBounds;
   PlaceBoundsInput: GQLPlaceBoundsInput;
+  PluginIntegrationApiCredential: GQLPluginIntegrationApiCredential;
   Policy: GQLPolicy;
   PolicyActionCount: GQLPolicyActionCount;
   PolicyNameExistsError: GQLPolicyNameExistsError;
@@ -6406,6 +6489,7 @@ export type GQLResolversParentTypes = {
   SetIntegrationConfigSuccessResponse: GQLSetIntegrationConfigSuccessResponse;
   SetModeratorSafetySettingsSuccessResponse: GQLSetModeratorSafetySettingsSuccessResponse;
   SetMrtChartConfigurationSettingsSuccessResponse: GQLSetMrtChartConfigurationSettingsSuccessResponse;
+  SetPluginIntegrationConfigInput: GQLSetPluginIntegrationConfigInput;
   SetUserStrikeThresholdInput: GQLSetUserStrikeThresholdInput;
   SignUpInput: GQLSignUpInput;
   SignUpResponse:
@@ -8456,6 +8540,7 @@ export type GQLIntegrationApiCredentialResolvers<
   __resolveType: TypeResolveFn<
     | 'GoogleContentSafetyApiIntegrationApiCredential'
     | 'OpenAiIntegrationApiCredential'
+    | 'PluginIntegrationApiCredential'
     | 'ZentropiIntegrationApiCredential',
     ParentType,
     ContextType
@@ -8472,7 +8557,30 @@ export type GQLIntegrationConfigResolvers<
     ParentType,
     ContextType
   >;
-  name?: Resolver<GQLResolversTypes['Integration'], ParentType, ContextType>;
+  docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  logoUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  logoWithBackgroundUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCard?: Resolver<GQLResolversTypes['ModelCard'], ParentType, ContextType>;
+  modelCardLearnMoreUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  requiresConfig?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -8589,6 +8697,32 @@ export type GQLIntegrationEmptyInputCredentialsErrorResolvers<
     ParentType,
     ContextType
   >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLIntegrationMetadataResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['IntegrationMetadata'] = GQLResolversParentTypes['IntegrationMetadata'],
+> = {
+  docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  logoUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  logoWithBackgroundUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  requiresConfig?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -9750,6 +9884,70 @@ export type GQLMessageWithIpAddressResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLModelCardResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ModelCard'] = GQLResolversParentTypes['ModelCard'],
+> = {
+  modelName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  releaseDate?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  sections?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['ModelCardSection']>>,
+    ParentType,
+    ContextType
+  >;
+  version?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLModelCardFieldResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ModelCardField'] = GQLResolversParentTypes['ModelCardField'],
+> = {
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLModelCardSectionResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ModelCardSection'] = GQLResolversParentTypes['ModelCardSection'],
+> = {
+  fields?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['ModelCardField']>>,
+    ParentType,
+    ContextType
+  >;
+  id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  subsections?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['ModelCardSubsection']>>,
+    ParentType,
+    ContextType
+  >;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLModelCardSubsectionResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ModelCardSubsection'] = GQLResolversParentTypes['ModelCardSubsection'],
+> = {
+  fields?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCardField']>,
+    ParentType,
+    ContextType
+  >;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLMrtJobEnqueueSourceInfoResolvers<
   ContextType = Context,
   ParentType extends
@@ -10351,6 +10549,12 @@ export type GQLMutationResolvers<
       GQLMutationSetOrgDefaultSafetySettingsArgs,
       'orgDefaultSafetySettings'
     >
+  >;
+  setPluginIntegrationConfig?: Resolver<
+    GQLResolversTypes['SetIntegrationConfigResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationSetPluginIntegrationConfigArgs, 'input'>
   >;
   signUp?: Resolver<
     GQLResolversTypes['SignUpResponse'],
@@ -11190,6 +11394,19 @@ export type GQLPlaceBoundsResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLPluginIntegrationApiCredentialResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['PluginIntegrationApiCredential'] = GQLResolversParentTypes['PluginIntegrationApiCredential'],
+> = {
+  credential?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLPolicyResolvers<
   ContextType = Context,
   ParentType extends
@@ -11334,6 +11551,11 @@ export type GQLQueryResolvers<
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   appealSettings?: Resolver<
     Maybe<GQLResolversTypes['AppealSettings']>,
+    ParentType,
+    ContextType
+  >;
+  availableIntegrations?: Resolver<
+    ReadonlyArray<GQLResolversTypes['IntegrationMetadata']>,
     ParentType,
     ContextType
   >;
@@ -12712,7 +12934,22 @@ export type GQLSignalResolvers<
   >;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   integration?: Resolver<
-    Maybe<GQLResolversTypes['Integration']>,
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  integrationLogoUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  integrationLogoWithBackgroundUrl?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  integrationTitle?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
     ParentType,
     ContextType
   >;
@@ -12747,7 +12984,7 @@ export type GQLSignalResolvers<
     ParentType,
     ContextType
   >;
-  type?: Resolver<GQLResolversTypes['SignalType'], ParentType, ContextType>;
+  type?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -12814,7 +13051,7 @@ export type GQLSignalWithScoreResolvers<
     GQLResolversParentTypes['SignalWithScore'] = GQLResolversParentTypes['SignalWithScore'],
 > = {
   integration?: Resolver<
-    Maybe<GQLResolversTypes['Integration']>,
+    Maybe<GQLResolversTypes['String']>,
     ParentType,
     ContextType
   >;
@@ -13993,6 +14230,7 @@ export type GQLResolvers<ContextType = Context> = {
   IntegrationConfigTooManyCredentialsError?: GQLIntegrationConfigTooManyCredentialsErrorResolvers<ContextType>;
   IntegrationConfigUnsupportedIntegrationError?: GQLIntegrationConfigUnsupportedIntegrationErrorResolvers<ContextType>;
   IntegrationEmptyInputCredentialsError?: GQLIntegrationEmptyInputCredentialsErrorResolvers<ContextType>;
+  IntegrationMetadata?: GQLIntegrationMetadataResolvers<ContextType>;
   IntegrationNoInputCredentialsError?: GQLIntegrationNoInputCredentialsErrorResolvers<ContextType>;
   InviteUserToken?: GQLInviteUserTokenResolvers<ContextType>;
   InviteUserTokenExpiredError?: GQLInviteUserTokenExpiredErrorResolvers<ContextType>;
@@ -14047,6 +14285,10 @@ export type GQLResolvers<ContextType = Context> = {
   MatchingBanks?: GQLMatchingBanksResolvers<ContextType>;
   MatchingValues?: GQLMatchingValuesResolvers<ContextType>;
   MessageWithIpAddress?: GQLMessageWithIpAddressResolvers<ContextType>;
+  ModelCard?: GQLModelCardResolvers<ContextType>;
+  ModelCardField?: GQLModelCardFieldResolvers<ContextType>;
+  ModelCardSection?: GQLModelCardSectionResolvers<ContextType>;
+  ModelCardSubsection?: GQLModelCardSubsectionResolvers<ContextType>;
   MrtJobEnqueueSourceInfo?: GQLMrtJobEnqueueSourceInfoResolvers<ContextType>;
   MutateAccessibleQueuesForUserSuccessResponse?: GQLMutateAccessibleQueuesForUserSuccessResponseResolvers<ContextType>;
   MutateActionResponse?: GQLMutateActionResponseResolvers<ContextType>;
@@ -14093,6 +14335,7 @@ export type GQLResolvers<ContextType = Context> = {
   PartialItemsSuccessResponse?: GQLPartialItemsSuccessResponseResolvers<ContextType>;
   PendingInvite?: GQLPendingInviteResolvers<ContextType>;
   PlaceBounds?: GQLPlaceBoundsResolvers<ContextType>;
+  PluginIntegrationApiCredential?: GQLPluginIntegrationApiCredentialResolvers<ContextType>;
   Policy?: GQLPolicyResolvers<ContextType>;
   PolicyActionCount?: GQLPolicyActionCountResolvers<ContextType>;
   PolicyNameExistsError?: GQLPolicyNameExistsErrorResolvers<ContextType>;

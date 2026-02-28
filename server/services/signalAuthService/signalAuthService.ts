@@ -89,8 +89,10 @@ export type CredentialImplementations = {
  */
 class SignalAuthService {
   private implementations: CredentialImplementations;
+  private pg: Kysely<SignalAuthServicePg>;
 
   constructor(pg: Kysely<SignalAuthServicePg>) {
+    this.pg = pg;
     this.implementations = makeImplementations(pg);
   }
 
@@ -114,6 +116,79 @@ class SignalAuthService {
     orgId: string,
   ): Promise<void> {
     await this.implementations[integration].delete(orgId);
+  }
+
+  /**
+   * Get stored config by string integration id. For built-ins uses legacy tables;
+   * for plugin integrations uses the generic integration_configs table.
+   */
+  async getByIntegrationId(
+    integrationId: string,
+    orgId: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    if (integrationId === Integration.GOOGLE_CONTENT_SAFETY_API) {
+      const c = await this.get(Integration.GOOGLE_CONTENT_SAFETY_API, orgId);
+      return c != null ? { apiKey: c.apiKey } : undefined;
+    }
+    if (integrationId === Integration.OPEN_AI) {
+      const c = await this.get(Integration.OPEN_AI, orgId);
+      return c != null ? { apiKey: c.apiKey } : undefined;
+    }
+    if (integrationId === Integration.ZENTROPI) {
+      const c = await this.get(Integration.ZENTROPI, orgId);
+      return c != null ? { apiKey: c.apiKey, labelerVersions: c.labelerVersions } : undefined;
+    }
+    const row = await this.pg
+      .selectFrom('signal_auth_service.integration_configs')
+      .select(['config'])
+      .where('org_id', '=', orgId)
+      .where('integration_id', '=', integrationId)
+      .executeTakeFirst();
+    if (row == null) return undefined;
+    const config = row.config;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unnecessary-type-assertion -- DB JSON type can be null; cast for API shape
+    return config != null ? (config as Record<string, unknown>) : undefined;
+  }
+
+  /**
+   * Set stored config by string integration id. For built-ins uses legacy tables;
+   * for plugin integrations uses the generic integration_configs table.
+   */
+  async setByIntegrationId(
+    integrationId: string,
+    orgId: string,
+    config: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    if (integrationId === Integration.GOOGLE_CONTENT_SAFETY_API) {
+      const apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
+      await this.set(Integration.GOOGLE_CONTENT_SAFETY_API, orgId, { apiKey });
+      return { apiKey };
+    }
+    if (integrationId === Integration.OPEN_AI) {
+      const apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
+      await this.set(Integration.OPEN_AI, orgId, { apiKey });
+      return { apiKey };
+    }
+    if (integrationId === Integration.ZENTROPI) {
+      const apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
+      const labelerVersions = Array.isArray(config.labelerVersions)
+        ? (config.labelerVersions as ZentropiLabelerVersion[])
+        : [];
+      await this.set(Integration.ZENTROPI, orgId, { apiKey, labelerVersions });
+      return { apiKey, labelerVersions };
+    }
+    await this.pg
+      .insertInto('signal_auth_service.integration_configs')
+      .values({
+        org_id: orgId,
+        integration_id: integrationId,
+        config,
+      })
+      .onConflict((oc) =>
+        oc.columns(['org_id', 'integration_id']).doUpdateSet({ config }),
+      )
+      .execute();
+    return config;
   }
 }
 

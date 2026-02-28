@@ -4,6 +4,7 @@ import { AuthenticationError } from 'apollo-server-express';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { __throw } from '../../utils/misc.js';
 import {
+  type GQLIntegrationConfig,
   type GQLMatchingBanksResolvers,
   type GQLMutationResolvers,
   type GQLOrgResolvers,
@@ -327,7 +328,9 @@ const Org: GQLOrgResolvers = {
       throw new AuthenticationError('User required.');
     }
 
-    return context.dataSources.integrationAPI.getAllIntegrationConfigs(org.id);
+    return context.dataSources.integrationAPI.getAllIntegrationConfigs(
+      org.id,
+    ) as Promise<GQLIntegrationConfig[]>;
   },
   // customOnly param fetches only the org's custom signals
   async signals(org, { customOnly }, context) {

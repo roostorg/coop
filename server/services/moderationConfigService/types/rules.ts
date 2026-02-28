@@ -46,12 +46,8 @@ export type ConditionSignalInfo = {
       args: SignalArgsByType['AGGREGATION'];
     }
   | {
-      type: Exclude<SignalType, 'AGGREGATION'>;
-      // Our GQL input validation code assumes that, for all signals besides
-      // aggregation, the args must be undefined, so we want TS to give us a
-      // type error here if that ever becomes not true. Then, we can update the
-      // GQL validation code and any downstream code if the args for these other
-      // signals change.
+      // Exclude<SignalType, 'AGGREGATION'> | string to support plugin signal types (e.g. RANDOM_SIGNAL_SELECTION)
+      type: Exclude<SignalType, 'AGGREGATION'> | string;
       args?: Satisfies<
         SignalArgsByType[Exclude<SignalType, 'AGGREGATION'>],
         undefined

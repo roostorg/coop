@@ -1,29 +1,63 @@
 import { DataSource } from 'apollo-datasource';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import {
-  configurableIntegrations,
-  type ConfigurableIntegration,
-  type CredentialTypes,
-} from '../../services/signalAuthService/index.js';
-import { filterNullOrUndefined } from '../../utils/collections.js';
+import '../../services/signalAuthService/index.js';
+import { Integration } from '../../services/signalsService/index.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
+import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
+import type {
+  IntegrationManifestEntry,
+  ModelCard,
+} from './integrationManifests.js';
 import { type GQLSetIntegrationConfigInput } from '../generated.js';
 
-export type TIntegrationConfig = {
-  [K in keyof CredentialTypes]: {
-    name: K;
-    apiCredential: {
-      name: K;
-    } & CredentialTypes[K];
-  };
-}[ConfigurableIntegration];
+export type TIntegrationConfigWithMetadata = Readonly<{
+  name: string;
+  apiCredential: Readonly<Record<string, unknown>>;
+  modelCard: ModelCard;
+  modelCardLearnMoreUrl?: string;
+  title: string;
+  docsUrl: string;
+  requiresConfig: boolean;
+  logoUrl?: string;
+  logoWithBackgroundUrl?: string;
+}>;
 
-export type TIntegrationCredential = TIntegrationConfig['apiCredential'];
+function defaultCredentialForIntegrationId(
+  integrationId: string,
+): Record<string, unknown> {
+  switch (integrationId) {
+    case Integration.GOOGLE_CONTENT_SAFETY_API:
+    case Integration.OPEN_AI:
+      return { apiKey: '' };
+    case Integration.ZENTROPI:
+      return { apiKey: '', labelerVersions: [] };
+    default:
+      return {};
+  }
+}
+
+function mergeManifest(
+  integrationId: string,
+  apiCredential: Record<string, unknown>,
+  manifest: IntegrationManifestEntry,
+): TIntegrationConfigWithMetadata {
+  return {
+    name: integrationId,
+    apiCredential,
+    modelCard: manifest.modelCard,
+    modelCardLearnMoreUrl: manifest.modelCardLearnMoreUrl,
+    title: manifest.title,
+    docsUrl: manifest.docsUrl,
+    requiresConfig: manifest.requiresConfig,
+    logoUrl: manifest.logoUrl,
+    logoWithBackgroundUrl: manifest.logoWithBackgroundUrl,
+  };
+}
 
 /**
  * TODO: this whole class should probably be merged into the signal auth service.
@@ -38,27 +72,25 @@ class IntegrationAPI extends DataSource {
   async setConfig(
     params: GQLSetIntegrationConfigInput,
     orgId: string,
-  ): Promise<TIntegrationConfig> {
+  ): Promise<TIntegrationConfigWithMetadata> {
     const { apiCredential } = params;
 
     if (apiCredential.googleContentSafetyApi) {
-      return this.__private__setConfig(
+      return this.setConfigByIntegrationId(
         'GOOGLE_CONTENT_SAFETY_API',
         { apiKey: apiCredential.googleContentSafetyApi.apiKey },
         orgId,
       );
     }
-
     if (apiCredential.openAi) {
-      return this.__private__setConfig(
+      return this.setConfigByIntegrationId(
         'OPEN_AI',
         { apiKey: apiCredential.openAi.apiKey },
         orgId,
       );
     }
-
     if (apiCredential.zentropi) {
-      return this.__private__setConfig(
+      return this.setConfigByIntegrationId(
         'ZENTROPI',
         {
           apiKey: apiCredential.zentropi.apiKey,
@@ -71,50 +103,70 @@ class IntegrationAPI extends DataSource {
     throw new Error('No credentials provided');
   }
 
-  async getConfig(
+  async setConfigByIntegrationId(
+    integrationId: string,
+    credential: Record<string, unknown>,
     orgId: string,
-    integration: ConfigurableIntegration,
-  ): Promise<TIntegrationConfig | undefined> {
-    const credential = await this.signalAuthService.get(integration, orgId);
-    if (credential == null) {
-      return undefined;
+  ): Promise<TIntegrationConfigWithMetadata> {
+    const registry = getIntegrationRegistry();
+    const manifest = registry.getManifest(integrationId);
+    if (manifest == null) {
+      throw new Error(`Unknown integration: ${integrationId}`);
     }
-
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return {
-      name: integration,
-      apiCredential: { name: integration, ...credential },
-    } as TIntegrationConfig;
-  }
-
-  async getAllIntegrationConfigs(orgId: string): Promise<TIntegrationConfig[]> {
-    const allConfigs = await Promise.all(
-      configurableIntegrations.map(async (integration) =>
-        this.getConfig(orgId, integration),
-      ),
-    );
-    return filterNullOrUndefined(allConfigs);
-  }
-
-  async __private__setConfig<T extends ConfigurableIntegration>(
-    integration: T,
-    credential: CredentialTypes[T],
-    orgId: string,
-  ): Promise<TIntegrationConfig> {
-    // When we're updating an existing credentials object, we have an id available, representing
-    // the credentials object we need to update. When no id is passed in, then we're creating
-    // a new credentials object.
-    const newCredential = await this.signalAuthService.set(
-      integration,
+    const newCredential = await this.signalAuthService.setByIntegrationId(
+      integrationId,
       orgId,
       credential,
     );
+    return mergeManifest(integrationId, newCredential, manifest);
+  }
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return {
-      name: integration,
-      apiCredential: { name: integration, ...newCredential },
-    } as TIntegrationConfig;
+  async getConfig(
+    orgId: string,
+    integrationId: string,
+  ): Promise<TIntegrationConfigWithMetadata | undefined> {
+    const registry = getIntegrationRegistry();
+    const manifest = registry.getManifest(integrationId);
+    if (manifest == null) return undefined;
+    const credential = await this.signalAuthService.getByIntegrationId(
+      integrationId,
+      orgId,
+    );
+    if (credential == null) return undefined;
+    return mergeManifest(integrationId, credential, manifest);
+  }
+
+  async getConfigWithMetadata(
+    orgId: string,
+    integrationId: string,
+  ): Promise<TIntegrationConfigWithMetadata> {
+    const registry = getIntegrationRegistry();
+    const manifest = registry.getManifest(integrationId);
+    if (manifest == null) {
+      throw new Error(`Unknown integration: ${integrationId}`);
+    }
+    const credential = await this.signalAuthService.getByIntegrationId(
+      integrationId,
+      orgId,
+    );
+    const apiCredential =
+      credential ?? defaultCredentialForIntegrationId(integrationId);
+    return mergeManifest(integrationId, apiCredential, manifest);
+  }
+
+  getAvailableIntegrations() {
+    return getIntegrationRegistry().getAvailableIntegrations();
+  }
+
+  async getAllIntegrationConfigs(
+    orgId: string,
+  ): Promise<TIntegrationConfigWithMetadata[]> {
+    const ids = getIntegrationRegistry().getConfigurableIds();
+    return Promise.all(
+      ids.map(async (integrationId) =>
+        this.getConfigWithMetadata(orgId, integrationId),
+      ),
+    );
   }
 }
 

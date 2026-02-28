@@ -23,7 +23,7 @@ const typeDefs = /* GraphQL */ `
 
   type SignalWithScore {
     signalName: String!
-    integration: Integration
+    integration: String
     subcategory: String
     score: String!
   }

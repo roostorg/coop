@@ -261,11 +261,13 @@ export function tryGetOutcomeFromPartialOutcomes(
 export function getAllAggregationsInConditionSet(
   conditionSet: ReadonlyDeep<ConditionSet>,
 ): ReadonlyDeep<AggregationClause>[] {
-  return conditionSet.conditions.flatMap((condition) =>
-    isConditionSet(condition)
-      ? getAllAggregationsInConditionSet(condition)
-      : condition.signal?.type === 'AGGREGATION'
-      ? [condition.signal.args.aggregationClause]
-      : [],
-  );
+  return conditionSet.conditions.flatMap((condition) => {
+    if (isConditionSet(condition)) {
+      return getAllAggregationsInConditionSet(condition);
+    }
+    const sig = condition.signal;
+    const args =
+      sig?.type === 'AGGREGATION' ? sig.args : undefined;
+    return args != null ? [args.aggregationClause] : [];
+  });
 }

@@ -36,7 +36,6 @@ import {
 import {
   isSignalId,
   signalIsExternal,
-  type ExternalSignalType,
   type SignalId,
 } from '../../services/signalsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
@@ -881,19 +880,16 @@ class RuleAPI extends DataSource {
           processCondition(subCondition);
         }
       } else if ('signal' in condition && condition.signal) {
-        // It's a leaf condition with a signal
+        // It's a leaf condition with a signal (type is String to support plugin signals)
         const { type, id } = condition.signal;
-        // GQLSignalType values map to ExternalSignalType (conditions can only
-        // contain user-visible external signals). Cast is safe since this comes
-        // from validated GraphQL input.
         let signalId: SignalId;
         if (type === 'CUSTOM') {
           // CUSTOM signals require an id field. The id comes from validated GraphQL
           // input where it's a required Scalars['ID'], so we can safely cast it.
           signalId = { type: 'CUSTOM' as const, id: id as NonEmptyString };
         } else {
-          // Built-in signals only need the type
-          signalId = { type: type as Exclude<ExternalSignalType, 'CUSTOM'> };
+          // Built-in and plugin signals: type is the signal type string
+          signalId = { type };
         }
         signalIds.push(signalId);
       }

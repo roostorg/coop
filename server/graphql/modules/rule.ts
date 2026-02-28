@@ -371,7 +371,7 @@ const typeDefs = /* GraphQL */ `
 
   input ConditionInputSignalInput {
     id: ID! # JsonOf<SignalId>
-    type: SignalType!
+    type: String!
     name: String
     subcategory: String
     args: SignalArgsInput
