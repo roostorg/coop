@@ -1,0 +1,8 @@
+{
+  "integrations": [
+    {
+      "package": "@roostorg/coop-integration-example",
+      "enabled": true
+    }
+  ]
+}

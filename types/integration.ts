@@ -158,6 +158,8 @@ export type IntegrationManifest = Readonly<{
    * If you provide logoPath and logoWithBackgroundPath, the server will serve the files at
    * GET /api/v1/integration-logos/:integrationId and GET /api/v1/integration-logos/:integrationId/with-background
    * and set logoUrl and logoWithBackgroundUrl accordingly.
+   * Usage: logoUrl/logoPath = plain logo (no background), used on the integrations page;
+   * logoWithBackgroundUrl/logoWithBackgroundPath = logo with background, used in signal modals.
    * If you provide logoUrl and logoWithBackgroundUrl, the server will use those URLs directly.
    * Prefered size: ~180x180px for logoUrl and ~120x120px for logoWithBackgroundUrl.
    * Prefer a square or horizontal logo that scales well.
