@@ -21,11 +21,11 @@ function makeItemQueueBulkWrite(
   topic: ITEM_SUBMISSION_SCHEMAS,
 ) {
   const kafkaProducer = kafka.producer();
-  let connectError: unknown;
-  const initialConnectPromise = kafkaProducer.connect().catch((err) => {
+  let connectError: Error | undefined;
+  const initialConnectPromise = kafkaProducer.connect().catch((err: unknown) => {
     // Store the error to prevent an unhandled promise rejection from crashing
     // the process. We re-throw it when callers attempt to write to Kafka.
-    connectError = err;
+    connectError = err instanceof Error ? err : new Error(String(err));
   });
   const batchTimeout = 500;
 
