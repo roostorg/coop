@@ -21,7 +21,12 @@ function makeItemQueueBulkWrite(
   topic: ITEM_SUBMISSION_SCHEMAS,
 ) {
   const kafkaProducer = kafka.producer();
-  const initialConnectPromise = kafkaProducer.connect();
+  let connectError: Error | undefined;
+  const initialConnectPromise = kafkaProducer.connect().catch((err: unknown) => {
+    // Store the error to prevent an unhandled promise rejection from crashing
+    // the process. We re-throw it when callers attempt to write to Kafka.
+    connectError = err instanceof Error ? err : new Error(String(err));
+  });
   const batchTimeout = 500;
 
   const loader: DataLoader<ItemSubmissionKafkaMessageValue, void> =
@@ -45,6 +50,9 @@ function makeItemQueueBulkWrite(
     skipBatch: boolean = false,
   ) {
     await initialConnectPromise;
+    if (connectError) {
+      throw connectError;
+    }
     // bulkWrite and loader.loadMany have different return types, so we have to
     // handle their returns separately and construct a homogenous return type in
     // each case, in addition to the logical difference of using batching or not
