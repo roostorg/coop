@@ -1,5 +1,5 @@
-import { ReactComponent as Sparkles } from '@/icons/lni/Weather/sparkles.svg';
-import { ReactComponent as CopyAlt } from '@/icons/lni/Web and Technology/copy-alt.svg';
+import Sparkles from '@/icons/lni/Weather/sparkles.svg?react';
+import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import { ReadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/types';

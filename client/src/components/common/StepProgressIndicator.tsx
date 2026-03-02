@@ -1,5 +1,5 @@
-import { ReactComponent as Checkmark } from '@/icons/lni/Interface and Sign/checkmark.svg';
-import { ReactComponent as MoreAlt } from '@/icons/lni/Interface and Sign/more-alt.svg';
+import Checkmark from '@/icons/lni/Interface and Sign/checkmark.svg?react';
+import MoreAlt from '@/icons/lni/Interface and Sign/more-alt.svg?react';
 
 // This governs which steps, if any, are clickable by the user.
 // The options are:

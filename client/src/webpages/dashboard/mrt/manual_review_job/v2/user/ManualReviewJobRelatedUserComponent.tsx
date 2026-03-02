@@ -1,4 +1,4 @@
-import { ReactComponent as UserAlt4 } from '@/icons/lni/User/user-alt-4.svg';
+import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { arrayFromArrayOrSingleItem } from '@/utils/collections';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
