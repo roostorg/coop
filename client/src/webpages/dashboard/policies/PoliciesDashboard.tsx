@@ -1,8 +1,8 @@
-import { ReactComponent as ChevronDown } from '@/icons/lni/Direction/chevron-down.svg';
-import { ReactComponent as ChevronUp } from '@/icons/lni/Direction/chevron-up.svg';
-import { ReactComponent as Pencil } from '@/icons/lni/Education/pencil.svg';
-import { ReactComponent as Plus } from '@/icons/lni/Interface and Sign/plus.svg';
-import { ReactComponent as TrashCan } from '@/icons/lni/Web and Technology/trash-can.svg';
+import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
+import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
+import Pencil from '@/icons/lni/Education/pencil.svg?react';
+import Plus from '@/icons/lni/Interface and Sign/plus.svg?react';
+import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
 import { gql } from '@apollo/client';
 import { Input } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
