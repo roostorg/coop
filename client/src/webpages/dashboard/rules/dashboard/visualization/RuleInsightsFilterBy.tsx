@@ -95,12 +95,8 @@ export default function RuleInsightsFilterBy(props: {
     };
   }, [filterByMenuVisible]);
 
-  if (error) {
-    throw error;
-  }
-
-  if (loading) {
-    return <ComponentLoading />;
+  if (error || loading) {
+    return loading ? <ComponentLoading /> : null;
   }
 
   const toggleColumn = (column: FilterByColumnName) => {

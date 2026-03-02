@@ -432,6 +432,10 @@ export default function RuleDashboardInsightsChart(props: {
     </div>
   );
 
+  const hasNonZeroData = finalChartData.some((row) =>
+    uniqueLines.some((line) => (row[line] ?? 0) > 0),
+  );
+
   const lineChart = uniqueLines.map((name, index) => {
     return (
       <Line
@@ -536,7 +540,7 @@ export default function RuleDashboardInsightsChart(props: {
         </div>
       </div>
       <div className="z-10 flex flex-col w-full h-full min-h-[400px] pb-4">
-        {!loading && finalChartData.length === 0 ? (
+        {!loading && (finalChartData.length === 0 || uniqueLines.length === 0 || !hasNonZeroData) ? (
           emptyChart
         ) : (
           <ResponsiveContainer width="100%" height={400}>
@@ -554,6 +558,7 @@ export default function RuleDashboardInsightsChart(props: {
                   tick={renderCustomYAxisTick}
                   tickLine={false}
                   stroke="#d4d4d8"
+                  domain={[0, (dataMax: number) => dataMax || 1]}
                   label={{
                     value: `Total Actions`,
                     style: { textAnchor: 'middle' },

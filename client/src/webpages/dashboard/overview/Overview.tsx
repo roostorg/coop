@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 
 import DashboardHeader from '../components/DashboardHeader';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 import { ChartType } from '../rules/dashboard/visualization/RulesDashboardInsights';
@@ -198,15 +199,42 @@ export default function Overview() {
         <div className="flex flex-col w-full gap-4 mb-12">
           <div className="flex flex-col w-full gap-4 sm:flex-row">{cards}</div>
           <div className="flex w-full">
-            <RuleDashboardInsightsChart
-              lookback={LookbackLength.CUSTOM}
-              timeWindow={customTimeWindow}
-              timeDivision={timeDivision}
-              title="Total actions"
-              initialGroupBy="ACTION_ID"
-            />
+            <ErrorBoundary
+              containedInLayout
+              FallbackComponent={() => (
+                <div className="flex flex-col items-center justify-center w-full gap-3 p-6 rounded bg-slate-100">
+                  <div className="text-xl">
+                    No chart data available yet
+                  </div>
+                </div>
+              )}
+            >
+              <RuleDashboardInsightsChart
+                lookback={LookbackLength.CUSTOM}
+                timeWindow={customTimeWindow}
+                timeDivision={timeDivision}
+                title="Total actions"
+                initialGroupBy="ACTION_ID"
+              />
+            </ErrorBoundary>
           </div>
-          <div className="flex w-full gap-4">{charts}</div>
+          <div className="flex w-full gap-4">
+            {charts.map((chart) => (
+              <ErrorBoundary
+                key={chart.key}
+                containedInLayout
+                FallbackComponent={() => (
+                  <div className="flex flex-col items-center justify-center w-full gap-3 p-6 rounded bg-slate-100">
+                    <div className="text-xl">
+                      No chart data available yet
+                    </div>
+                  </div>
+                )}
+              >
+                {chart}
+              </ErrorBoundary>
+            ))}
+          </div>
         </div>
       )}
     </div>
