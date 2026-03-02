@@ -1,4 +1,5 @@
-import sgMail, { type MailDataRequired } from '@sendgrid/mail';
+import { SendEmailCommand, SESClient } from '@aws-sdk/client-ses';
+import sgMail from '@sendgrid/mail';
 
 export const CoopEmailAddress = {
   NoReply: process.env.NOREPLY_EMAIL ?? 'noreply@example.com',
@@ -9,35 +10,82 @@ export const CoopEmailAddress = {
 export type CoopEmailAddress =
   (typeof CoopEmailAddress)[keyof typeof CoopEmailAddress];
 
-type Content = { text: string } | { html: string } | { templateId: string };
+type Content =
+  | { text: string; html?: string }
+  | { html: string; text?: string };
 
-export type Message = Omit<MailDataRequired, 'from' | 'content'> &
-  Content & {
-    from: CoopEmailAddress | { name: string; email: CoopEmailAddress };
-  };
+export type Message = Content & {
+  to: string | string[];
+  from: CoopEmailAddress | { name: string; email: CoopEmailAddress };
+  subject: string;
+};
 
-const makeSendEmail = () => {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    // Return a no-op function if SendGrid is not configured
-    return async (_: Message) => {
-      // eslint-disable-next-line no-console
-      console.warn('SendGrid API key not configured, skipping email sending');
-    };
-  }
-  sgMail.setApiKey(apiKey);
-  return async (it: Message) => {
+const isSESClient = (x: unknown): x is SESClient =>
+  x != null && typeof (x as SESClient).send === 'function';
+
+export function makeSendEmailViaSES(client: SESClient) {
+  return async (msg: Message) => {
+    const source =
+      typeof msg.from === 'string'
+        ? msg.from
+        : `${msg.from.name} <${msg.from.email}>`;
+
+    const toAddresses = Array.isArray(msg.to) ? msg.to : [msg.to];
+
+    const body: Record<string, { Charset: string; Data: string }> = {};
+    if ('html' in msg && msg.html) {
+      body.Html = { Charset: 'UTF-8', Data: msg.html };
+    }
+    if ('text' in msg && msg.text) {
+      body.Text = { Charset: 'UTF-8', Data: msg.text };
+    }
+
+    const command = new SendEmailCommand({
+      Source: source,
+      Destination: {
+        ToAddresses: toAddresses,
+      },
+      Message: {
+        Subject: { Charset: 'UTF-8', Data: msg.subject },
+        Body: body,
+      },
+    });
+
     try {
-      await sgMail.send(it);
+      await client.send(command);
     } catch (error) {
-      // Log the error but don't throw - email failures shouldn't break the application
-      // This handles cases like invalid API keys, network errors, etc.
       if (error instanceof Error) {
         // eslint-disable-next-line no-console
         console.error('Failed to send email:', error.message);
       }
     }
   };
+}
+
+export function makeSendEmailViaSendGrid(apiKey: string) {
+  sgMail.setApiKey(apiKey);
+  return async (msg: Message) => {
+    try {
+      await sgMail.send(msg);
+    } catch (error) {
+      if (error instanceof Error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to send email:', error.message);
+      }
+    }
+  };
+}
+
+const makeSendEmail = (clientOrContainer?: SESClient | unknown) => {
+  const sendGridApiKey = process.env.SENDGRID_API_KEY;
+  if (sendGridApiKey) {
+    return makeSendEmailViaSendGrid(sendGridApiKey);
+  }
+
+  const sesClient = isSESClient(clientOrContainer)
+    ? clientOrContainer
+    : new SESClient({});
+  return makeSendEmailViaSES(sesClient);
 };
 
 export default makeSendEmail;
