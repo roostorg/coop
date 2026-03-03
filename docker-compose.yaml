@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis
+    image: redis:8.6.1-trixie
     volumes:
       - redis_data:/data
     ports:
