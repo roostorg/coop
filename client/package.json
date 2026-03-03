@@ -4,11 +4,10 @@
   "description": "Coop Client app",
   "scripts": {
     "analyze": "npm run build && source-map-explorer 'build/static/js/*.js'",
-    "start": "craco start",
-    "build": "craco build",
-    "eject": "craco eject",
-    "test": "craco test --passWithNoTests",
-    "test:prepush": "craco test --watchAll=false --passWithNoTests",
+    "start": "vite --port 3000",
+    "build": "vite build",
+    "test": "vitest --passWithNoTests",
+    "test:prepush": "vitest --watchAll=false --passWithNoTests",
     "check:prepush": "npm run build && npm run test:prepush",
     "lint": "tsc --noEmit && eslint ./src",
     "storybook": "storybook dev -p 6006",
@@ -132,6 +131,7 @@
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-svgr": "^4.5.0",
     "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.0.18",
     "webpack": "^5.93.0"
   },
   "overrides": {
