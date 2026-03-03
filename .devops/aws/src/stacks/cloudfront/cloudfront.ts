@@ -134,7 +134,7 @@ export class CloudfrontStack extends Stack {
             image: cdk.DockerImage.fromBuild(`${repoRootDir}/client`, {
               buildArgs: {
                 NPM_TOKEN: process.env.NPM_TOKEN as string,
-                REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
+                VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
                   props.otelCollectorUrl,
               },
             }),

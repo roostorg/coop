@@ -1,6 +1,6 @@
-import { ReactComponent as ChevronLeft } from '@/icons/lni/Direction/chevron-left.svg';
-import { ReactComponent as ChevronRight } from '@/icons/lni/Direction/chevron-right.svg';
-import { ReactComponent as CrossCircle } from '@/icons/lni/Interface and Sign/cross-circle.svg';
+import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
+import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
+import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
 import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';

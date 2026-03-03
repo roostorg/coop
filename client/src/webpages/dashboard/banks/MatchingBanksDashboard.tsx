@@ -1,6 +1,6 @@
 import { GQLUserPermission, useGQLPermissionsQuery } from '@/graphql/generated';
-import { ReactComponent as World2 } from '@/icons/lni/Education/world-2.svg';
-import { ReactComponent as TextUnderlineAlt } from '@/icons/lni/Text editor/text-underline-alt.svg';
+import World2 from '@/icons/lni/Education/world-2.svg?react';
+import TextUnderlineAlt from '@/icons/lni/Text editor/text-underline-alt.svg?react';
 import { userHasPermissions } from '@/routing/permissions';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';

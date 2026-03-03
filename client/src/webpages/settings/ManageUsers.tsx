@@ -218,7 +218,7 @@ export default function ManageUsers() {
 
   const copyPasswordResetLink = () => {
     if (passwordResetToken) {
-      const uiUrl = process.env.REACT_APP_UI_URL ?? window.location.origin;
+      const uiUrl = import.meta.env.VITE_UI_URL ?? window.location.origin;
       const resetUrl = `${uiUrl}/reset_password/${passwordResetToken}`;
       navigator.clipboard.writeText(resetUrl);
       setCopySuccess(true);
@@ -541,7 +541,7 @@ export default function ManageUsers() {
                         type="text"
                         readOnly
                         value={`${
-                          process.env.REACT_APP_UI_URL ?? window.location.origin
+                          import.meta.env.VITE_UI_URL ?? window.location.origin
                         }/reset_password/${passwordResetToken}`}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono bg-gray-50"
                         onClick={(e) => e.currentTarget.select()}

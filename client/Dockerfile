@@ -16,10 +16,10 @@ RUN --mount=type=cache,target=/root/.npm NPM_TOKEN=$NPM_TOKEN npm ci
 COPY . .
 FROM client_base
 
-ARG REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 
 # Don't run eslint over the frontend code when building the image, b/c we should
 # assume that it'll be run by CRA during local dev, and on Github as a PR hook,
 # before we ever deploy. So no need to do it again here.
 ENV DISABLE_ESLINT_PLUGIN=true
-RUN NODE_OPTIONS="--max-old-space-size=5250" REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT npm run build
+RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT npm run build

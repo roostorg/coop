@@ -1,10 +1,10 @@
 import type { FilledIconProps } from '../types';
-import { ReactComponent as Court } from './court.svg';
-import { ReactComponent as Jail } from './jail.svg';
-import { ReactComponent as Jurisdiction } from './jurisdiction.svg';
-import { ReactComponent as Jury } from './jury.svg';
-import { ReactComponent as LawBook } from './law-book.svg';
-import { ReactComponent as PoliceBadge } from './police-badge.svg';
+import Court from './court.svg?react';
+import Jail from './jail.svg?react';
+import Jurisdiction from './jurisdiction.svg?react';
+import Jury from './jury.svg?react';
+import LawBook from './law-book.svg?react';
+import PoliceBadge from './police-badge.svg?react';
 
 const CourtFilled = (props: FilledIconProps) => (
   <Court fill="currentColor" {...props} />

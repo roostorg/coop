@@ -7,8 +7,8 @@ import {
   useGQLViolationsPerPolicyLazyQuery,
 } from '@/graphql/generated';
 import { ChevronDownFilled, ChevronUpFilled } from '@/icons';
-import { ReactComponent as ArrowRight } from '@/icons/lni/Direction/arrow-right.svg';
-import { ReactComponent as ArrowsHorizontal } from '@/icons/lni/Direction/arrows-horizontal.svg';
+import ArrowRight from '@/icons/lni/Direction/arrow-right.svg?react';
+import ArrowsHorizontal from '@/icons/lni/Direction/arrows-horizontal.svg?react';
 import { assertUnreachable } from '@/utils/misc';
 import { gql } from '@apollo/client';
 import {

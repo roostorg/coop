@@ -1,7 +1,7 @@
 import { Label } from '@/coop-ui/Label';
 import { Switch } from '@/coop-ui/Switch';
-import { ReactComponent as ChevronDown } from '@/icons/lni/Direction/chevron-down.svg';
-import { ReactComponent as ChevronUp } from '@/icons/lni/Direction/chevron-up.svg';
+import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
+import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';

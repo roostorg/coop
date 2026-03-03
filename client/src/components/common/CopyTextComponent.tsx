@@ -1,4 +1,4 @@
-import { ReactComponent as CopyAlt } from '@/icons/lni/Web and Technology/copy-alt.svg';
+import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import { Tooltip } from 'antd';
 import { useState } from 'react';
 
