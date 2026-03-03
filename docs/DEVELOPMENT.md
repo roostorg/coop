@@ -169,7 +169,7 @@ Schema changes trigger recompilation of both client and server. If you experienc
 ## HMA Development
 HMA is not started automatically with `npm run up`. Start it separately if you're doing hash matching: `docker compose up --build -d hma`
 
-HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:5000`. No additional environment setup is needed for local development.
+HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:9876`. No additional environment setup is needed for local development.
 
 ### Image URL Accessibility
 When submitting items to Coop, image URLs must be reachable by the HMA Docker container and not just your browser or the Node.js server. 

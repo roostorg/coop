@@ -37,7 +37,7 @@ export class HmaService {
     private readonly fetchHTTP: Dependencies['fetchHTTP'],
     kyselyPg: Dependencies['KyselyPg']
   ) {
-    this.hmaServiceUrl = process.env.HMA_SERVICE_URL ?? 'http://localhost:5000/';
+    this.hmaServiceUrl = process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
     this.hashBankService = new HashBankService(kyselyPg);
   }
 
