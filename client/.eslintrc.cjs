@@ -18,7 +18,6 @@ module.exports = {
     '.eslintrc.cjs',
     'eslint',
     'tailwind.config.js',
-    'craco.config.js',
     '*.stories.tsx'
   ],
   plugins: ['etc', 'custom-rules'],
