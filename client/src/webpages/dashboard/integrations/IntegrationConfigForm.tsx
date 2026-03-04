@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -233,7 +233,7 @@ export default function IntegrationConfigForm() {
    * If editing an existing config and the INTEGRATION_CONFIG_QUERY
    * has finished, reset the state values to whatever the query returned
    */
-  useMemo(() => {
+  useEffect(() => {
     if (response?.config != null) {
       const cred = response.config.apiCredential;
       if (cred.__typename === 'PluginIntegrationApiCredential') {

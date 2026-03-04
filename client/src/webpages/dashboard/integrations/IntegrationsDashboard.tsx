@@ -41,7 +41,7 @@ export default function IntegrationsDashboard() {
   const { loading: loadingMy, error, data: myData } =
     useGQLMyIntegrationsQuery();
 
-  const loading = loadingCatalog ?? loadingMy;
+  const loading = loadingCatalog || loadingMy;
 
   if (loading) {
     return <FullScreenLoading />;
