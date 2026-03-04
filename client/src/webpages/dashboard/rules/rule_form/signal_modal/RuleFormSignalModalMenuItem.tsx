@@ -8,10 +8,7 @@ import {
 } from '../../../../../graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { CoreSignal } from '../../../../../models/signal';
-import {
-  type IntegrationConfig,
-  INTEGRATION_CONFIGS,
-} from '../../../integrations/integrationConfigs';
+import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 
 /** Vendor/company name for display. Uses signal.integrationTitle (from API) when set, else static config, else formatted id. */
 export function vendorName(signal: CoreSignal) {
@@ -25,7 +22,7 @@ export function vendorName(signal: CoreSignal) {
     return signal.integrationTitle;
   }
   const staticConfig = INTEGRATION_CONFIGS.find(
-    (it: IntegrationConfig) => it.name === signal.integration,
+    (it) => it.name === signal.integration,
   );
   if (staticConfig) {
     return staticConfig.title;
@@ -42,7 +39,7 @@ export function signalDisplayName(signal: CoreSignal, hideVendor = true) {
   }
 
   const integrationConfig = INTEGRATION_CONFIGS.find(
-    (it: IntegrationConfig) => it.name === integration,
+    (it) => it.name === integration,
   );
   if (!integrationConfig) {
     return name;

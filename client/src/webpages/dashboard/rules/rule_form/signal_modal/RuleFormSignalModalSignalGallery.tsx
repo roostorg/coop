@@ -4,10 +4,7 @@ import { Input } from 'antd';
 import { useMemo, useState } from 'react';
 
 import { CoreSignal } from '../../../../../models/signal';
-import {
-  type IntegrationConfig,
-  INTEGRATION_CONFIGS,
-} from '../../../integrations/integrationConfigs';
+import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import RuleFormSignalModalMenuItem from './RuleFormSignalModalMenuItem';
 import RuleFormSignalModalNoSearchResults from './RuleFormSignalModalNoSearchResults';
 
@@ -30,8 +27,7 @@ export default function RuleFormSignalModalSignalGallery(props: {
         .filter((signal) =>
           signal.integration === null ||
           INTEGRATION_CONFIGS.some(
-            (config: IntegrationConfig) =>
-              signal.integration === config.name,
+            (config) => signal.integration === config.name,
           ) ||
           (typeof signal.integration === 'string' &&
             signal.integration.length > 0),
@@ -92,7 +88,7 @@ export default function RuleFormSignalModalSignalGallery(props: {
             )
             .map(({ signal, effectiveDisabledInfo }) => {
               const staticConfig = INTEGRATION_CONFIGS.find(
-                (it: IntegrationConfig) => it.name === signal.integration,
+                (it) => it.name === signal.integration,
               );
               // Signals use the logo-with-background variant.
               const rawPath =

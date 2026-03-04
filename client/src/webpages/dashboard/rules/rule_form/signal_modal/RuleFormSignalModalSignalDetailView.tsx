@@ -9,10 +9,7 @@ import {
 } from '../../../../../graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { CoreSignal } from '../../../../../models/signal';
-import {
-  type IntegrationConfig,
-  INTEGRATION_CONFIGS,
-} from '../../../integrations/integrationConfigs';
+import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import { signalDisplayName } from './RuleFormSignalModalMenuItem';
 
 export default function RuleFormSignalModalSignalDetailView(props: {
@@ -25,7 +22,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
 }) {
   const { signal, subcategories, onSelectSignal } = props;
   const staticConfig = INTEGRATION_CONFIGS.find(
-    (it: IntegrationConfig) => it.name === signal.integration,
+    (it) => it.name === signal.integration,
   );
   const integrationTitle =
     signal.integrationTitle ??

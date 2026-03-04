@@ -1,5 +1,5 @@
-import { route, type Route } from '../../utils/route-helpers.js';
-import { type Controller } from '../index.js';
+import { route } from '../../utils/route-helpers.js';
+import { type Controller, type ControllerRouteList } from '../index.js';
 import serveIntegrationLogo from './serveIntegrationLogo.js';
 import serveIntegrationLogoWithBackground from './serveIntegrationLogoWithBackground.js';
 
@@ -8,5 +8,5 @@ export default {
   routes: [
     route.get<undefined>('/:integrationId/with-background', serveIntegrationLogoWithBackground),
     route.get<undefined>('/:integrationId', serveIntegrationLogo),
-  ] as Route<any, any>[],
+  ] as ControllerRouteList,
 } satisfies Controller;
