@@ -10,17 +10,15 @@
 FROM node:24-bullseye-slim AS server_base
 WORKDIR /app
 
-ARG NPM_TOKEN
 # Append "--build-arg OMIT_SNOWFLAKE='true'" to your call to avoid installing
 # optional snowflake-promise dependency
 ARG OMIT_SNOWFLAKE
 
-COPY [".npmrc", "./"]
 COPY ["server/package.json", "server/package-lock.json", "./"]
 RUN if [ "$OMIT_SNOWFLAKE" = "true" ]; then \
       npm pkg set overrides.snowflake-promise='npm:empty-module@^1.0.0'; \
     fi
-RUN NPM_TOKEN=$NPM_TOKEN npm ci
+RUN npm ci
 COPY ["server", "./"]
 
 FROM server_base AS build_backend
@@ -30,10 +28,8 @@ RUN npm run build
 FROM node:24-bullseye-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install dumb-init
-COPY [".npmrc", "./"]
 COPY --from=build_backend ["/app/package.json", "/app/package-lock.json", "./"]
-ARG NPM_TOKEN
-RUN NPM_TOKEN=$NPM_TOKEN npm ci --omit=dev
+RUN npm ci --omit=dev
 COPY --from=build_backend /app/transpiled ./
 
 # See https://github.com/Yelp/dumb-init

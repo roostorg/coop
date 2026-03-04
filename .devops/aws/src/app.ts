@@ -137,8 +137,6 @@ async function main() {
       'arn:aws:secretsmanager:us-east-2:361188080279:secret:datadog-api-key-Q82keP',
     bullmqSecret:
       'arn:aws:secretsmanager:us-east-2:361188080279:secret:npm-taskforcesh-token-SBzopm',
-    npmCiTokenSecret:
-      'arn:aws:secretsmanager:us-east-2:361188080279:secret:npm-ci-install-token-wq4LVq',
     Prod: {
       datadogRedisSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/api/datadog-redis-5MVpFr',

@@ -2,14 +2,10 @@ FROM node:24-bullseye-slim AS builder
 
 WORKDIR /app
 
-ARG NPM_TOKEN
-
-COPY .npmrc .
-
 COPY package*.json .
 
 # Install dependencies
-RUN --mount=type=cache,target=/root/.npm NPM_TOKEN=$NPM_TOKEN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 

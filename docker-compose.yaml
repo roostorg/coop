@@ -26,7 +26,6 @@ services:
       # migrations
       - MIGRATOR_DB_NAME
       - CLICKHOUSE_DATABASE
-      - NPM_TOKEN
     volumes:
       - .:/src
     depends_on:
@@ -54,7 +53,6 @@ services:
       # drop_dbs
       - CLICKHOUSE_DATABASE
       - MIGRATOR_DB_NAME
-      - NPM_TOKEN
     volumes:
       - .:/src
     depends_on:
@@ -154,7 +152,6 @@ services:
       dockerfile: Dockerfile
       target: server_base
       args:
-        - NPM_TOKEN
         - OMIT_SNOWFLAKE
     command: bash -c 'npm run test:ci'
     working_dir: /app
@@ -177,16 +174,12 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
-      args:
-        - NPM_TOKEN
     command: npm run lint
 
   lint-client:
     build:
       context: client
       target: client_base
-      args:
-        - NPM_TOKEN
     command: npm run lint
     volumes:
       - ./client/eslint:/app/eslint

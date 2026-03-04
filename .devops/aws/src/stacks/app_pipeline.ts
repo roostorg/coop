@@ -53,7 +53,6 @@ export type AppPipelineStackProps = cdk.StackProps & {
     vpnServerCertificate: string;
     datadogSecret: string;
     bullmqSecret: string;
-    npmCiTokenSecret: string;
   } & { [K in DeploymentEnvironmentName]: EnvSpecificArns };
 };
 

@@ -2,7 +2,6 @@
 
 !src/
 !public/
-!.npmrc
 !craco.config.js
 !package*.json
 !postcss.config.js

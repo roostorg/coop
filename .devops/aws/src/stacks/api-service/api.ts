@@ -186,7 +186,6 @@ export class ApiStack extends Stack {
       invalidation: { buildArgs: false },
       buildArgs: {
         BUILD_ID: process.env.CODEBUILD_RESOLVED_SOURCE_VERSION ?? '',
-        NPM_TOKEN: process.env.NPM_TOKEN ?? '',
       },
       platform: Platform.LINUX_AMD64,
     });

@@ -7,4 +7,3 @@
 !src/
 !package*.json
 !tsconfig.json
-!.npmrc

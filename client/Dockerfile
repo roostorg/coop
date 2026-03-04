@@ -7,11 +7,8 @@ WORKDIR /app
 ARG BUILD_ID
 ENV BUILD_ID=$BUILD_ID
 
-ARG NPM_TOKEN
-
-COPY .npmrc .
 COPY package*.json .
-RUN --mount=type=cache,target=/root/.npm NPM_TOKEN=$NPM_TOKEN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 FROM client_base
