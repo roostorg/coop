@@ -3,7 +3,7 @@
  * so GraphQL datasources can use them without the registry depending on graphql.
  */
 export {
-  BUILD_IN_MANIFESTS,
+  BUILT_IN_MANIFESTS,
   type AvailableIntegration,
   type IntegrationManifestEntry,
   type ModelCard,
