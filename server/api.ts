@@ -128,6 +128,8 @@ export default async function makeApiServer(deps: Dependencies) {
       store: new sessionStore({ conString: connectionString }),
       cookie: {
         secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax',
         // 30 Days in milliseconds
         maxAge: 30 * 24 * 60 * 60 * 1000,
       },
