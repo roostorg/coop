@@ -79,7 +79,7 @@ export function getUserFromActionTarget(it: ActionTargetItem) {
  */
 export type ActionTargetItem =
   | ItemSubmission
-  | { itemId: string; itemType: Pick<ItemType, 'id' | 'kind'> };
+  | { itemId: string; itemType: Pick<ItemType, 'id' | 'kind'> & Partial<Pick<ItemType, 'name'>> };
 
 export function isFullSubmission(
   input: ActionTargetItem,
@@ -310,6 +310,7 @@ class ActionPublisher {
                 item: {
                   id: targetItem.itemId,
                   typeId: targetItem.itemType.id,
+                  typeName: targetItem.itemType.name,
                 },
                 policies,
                 rules,
