@@ -107,7 +107,7 @@ describe("ActionPublisher", () => {
 				correlationId: "post-content:abc123" as CorrelationId<"post-content">,
 				targetItem: {
 					itemId: "item-123",
-					itemType: { id: "type-123", kind: "CONTENT" as const },
+					itemType: { id: "type-123", kind: "CONTENT" as const, name: "Social Post" },
 				},
 			};
 
