@@ -33,7 +33,7 @@ export type RuleInput =
       policyIds?: string[];
       sourceType?: RuleExecutionSourceType | ActionExecutionSourceType;
     })
-  | ReadonlyDeep<{ itemId: string; itemType: Pick<ItemType, 'id' | 'kind'> }>;
+  | ReadonlyDeep<{ itemId: string; itemType: Pick<ItemType, 'id' | 'kind'> & Partial<Pick<ItemType, 'name'>> }>;
 
 export function isFullSubmission(input: RuleInput): input is ItemSubmission {
   return 'data' in input && 'submissionId' in input && Boolean(input.data);
