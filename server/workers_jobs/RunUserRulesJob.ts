@@ -12,8 +12,9 @@ export default inject(
     'UserStatisticsService',
     'closeSharedResourcesForShutdown',
     'RuleModel',
+    'getItemTypeEventuallyConsistent',
   ],
-  (RuleEngine, userStatisticsService, sharedResourceShutdown, Rule) => ({
+  (RuleEngine, userStatisticsService, sharedResourceShutdown, Rule, getItemTypeEventuallyConsistent) => ({
     type: 'Job' as const,
     async run() {
       // TODO: we may have to do only some orgs per job run at some point.
@@ -39,6 +40,11 @@ export default inject(
                 return;
               }
 
+              const itemType = await getItemTypeEventuallyConsistent({
+                orgId,
+                typeSelector: { id: userTypeId },
+              });
+
               await RuleEngine.runRuleSet(
                 rulesForUser,
                 RuleEngine.makeRuleExecutionContext({
@@ -48,6 +54,7 @@ export default inject(
                     itemType: {
                       id: userTypeId,
                       kind: 'USER',
+                      name: itemType?.name ?? "unknown",
                     },
                   },
                 }),

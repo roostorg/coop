@@ -216,7 +216,7 @@ export default inject(
                 correlationId,
                 targetItem: {
                   itemId,
-                  itemType: { id: itemType.id, kind: itemType.kind },
+                  itemType: { id: itemType.id, kind: itemType.kind, name: itemType.name },
                 },
                 actorId: row.reviewer_id,
                 actorEmail: user?.email,

@@ -217,7 +217,7 @@ class ActionAPI extends DataSource {
                 correlationId,
                 targetItem: {
                   itemId,
-                  itemType: { id: itemType.id, kind: itemType.kind },
+                  itemType: { id: itemType.id, kind: itemType.kind, name: itemType.name },
                 },
                 actorId,
                 actorEmail,
