@@ -79,7 +79,7 @@ export function getUserFromActionTarget(it: ActionTargetItem) {
  */
 export type ActionTargetItem =
   | ItemSubmission
-  | { itemId: string; itemType: Pick<ItemType, 'id' | 'kind'> & Partial<Pick<ItemType, 'name'>> };
+  | { itemId: string; itemType: Pick<ItemType, 'id' | 'kind' | 'name'> };
 
 export function isFullSubmission(
   input: ActionTargetItem,
