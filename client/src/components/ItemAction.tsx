@@ -19,15 +19,23 @@ export default function ItemAction(props: {
   itemIdentifier: ItemIdentifier;
   title?: string;
 }) {
-  const { itemIdentifier, title = 'Action on this Item' } = props;
+  const { itemIdentifier, title = 'Take action on this item' } = props;
 
   const { data: queryData } = useGQLBulkActionsFormDataQuery();
   const [bulkAction, { loading }] = useGQLBulkActionExecutionMutation({
-    onCompleted: () => () => {
-      setModalBody('Actions submitted successfully');
+    onCompleted: (data) => {
+      const results = data?.bulkExecuteActions?.results ?? [];
+      const anyFailed = results.some((r) => r.success === false);
+      if (anyFailed) {
+        setModalBody(
+          'One or more actions failed. The callback URL may have returned an error. If your org requires a policy for decisions, select a policy and try again.',
+        );
+      } else {
+        setModalBody('Actions submitted successfully.');
+      }
       setShowModal(true);
     },
-    onError: () => () => {
+    onError: () => {
       setModalBody('Error submitting actions. Please try again.');
       setShowModal(true);
     },
@@ -157,6 +165,7 @@ export default function ItemAction(props: {
           size="small"
           onClick={buttonOnClick}
           loading={loading}
+          disabled={selectedActionIds.length === 0}
         />
       </div>
       <CoopModal visible={showModal} onClose={modalOnClose}>
