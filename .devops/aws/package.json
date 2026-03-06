@@ -14,7 +14,7 @@
     "@aws-sdk/client-elastic-load-balancing-v2": "^3.360.0",
     "@aws-sdk/client-resource-groups-tagging-api": "^3.540.0",
     "@kubernetes/client-node": "^0.21.0",
-    "@types/jest": "^26.0.10",
+    "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^18.17.4",
     "aws-cdk": "^2.168.0",
