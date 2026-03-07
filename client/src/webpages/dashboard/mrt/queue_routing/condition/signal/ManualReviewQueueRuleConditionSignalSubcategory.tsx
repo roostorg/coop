@@ -1,4 +1,4 @@
-import { DownOutlined } from '@ant-design/icons';
+import { ChevronDown } from 'lucide-react';
 import { Button } from 'antd';
 
 import { RuleFormConditionParams } from '../../ManualReviewQueueRuleFormCondition';
@@ -45,7 +45,7 @@ export default function ManualReviewQueueRuleConditionSignalSubcategory(props: {
       >
         {signal.subcategory ?? 'Select Subcategory'}{' '}
         {editing ? (
-          <DownOutlined className="text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
+          <ChevronDown className="w-3 h-3 !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
         ) : null}
       </Button>
       <div className="invisible pb-1 text-sm font-bold whitespace-nowrap">

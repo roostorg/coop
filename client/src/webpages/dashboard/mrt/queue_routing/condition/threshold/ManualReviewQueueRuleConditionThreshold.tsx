@@ -1,5 +1,6 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { Input, Select, Tooltip } from 'antd';
+import { AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
+import { Input, Select } from 'antd';
 
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
@@ -104,8 +105,11 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
       status={hasInvalidThreshold ? 'error' : ''}
       prefix={
         hasInvalidThreshold ? (
-          <Tooltip title="Enter a number">
-            <ExclamationCircleOutlined className="text-red-500" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertCircle className="w-4 h-4 text-red-500" />
+            </TooltipTrigger>
+            <TooltipContent>Enter a number</TooltipContent>
           </Tooltip>
         ) : (
           <span />

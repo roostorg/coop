@@ -1,4 +1,4 @@
-import { LeftOutlined } from '@ant-design/icons';
+import { ChevronLeft as LeftOutlined } from 'lucide-react';
 import { Modal as AntModal } from 'antd';
 
 import CloseButton from '@/components/common/CloseButton';

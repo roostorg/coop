@@ -1,8 +1,5 @@
-import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
-import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
-import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
+import { ChevronLeft, ChevronRight, RotateCw, XCircle as CrossCircle } from 'lucide-react';
 import { HOST_URL } from '@/lib/config';
-import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -506,7 +503,7 @@ export default function ManualReviewRecentDecisions() {
 
   const refreshButton = (
     <Button
-      icon={<RedoOutlined className="self-center" />}
+      icon={<RotateCw className="w-4 h-4 self-center" />}
       className="!inline-flex"
       onClick={async () =>
         getRecentDecisions({

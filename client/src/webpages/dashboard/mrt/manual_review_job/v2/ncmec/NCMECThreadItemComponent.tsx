@@ -1,6 +1,5 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
-import { WarningFilled } from '@ant-design/icons';
+import { AlertTriangle, User as UserAlt4 } from 'lucide-react';
 import { RelatedItem } from '@roostorg/coop-types';
 import { JsonObject } from 'type-fest';
 
@@ -66,7 +65,7 @@ export default function NCMECThreadItemComponent(props: {
               imageUrl={profileImage?.url}
               magnifiedUrls={backgroundImage ? [backgroundImage.url] : []}
               fallbackComponent={
-                <UserAlt4 className="p-3 fill-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11" />
               }
             />
           </span>
@@ -85,7 +84,7 @@ export default function NCMECThreadItemComponent(props: {
                 {isReported ? (
                   <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red">
                     Reported
-                    <WarningFilled className="flex items-center justify-center" />
+                    <AlertTriangle className="w-4 h-4 flex items-center justify-center" fill="currentColor" />
                   </div>
                 ) : null}
               </div>

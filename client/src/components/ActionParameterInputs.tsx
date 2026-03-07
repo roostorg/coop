@@ -1,4 +1,4 @@
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Info } from 'lucide-react';
 import { Input, InputNumber, Select, Switch, Tooltip } from 'antd';
 import { useMemo } from 'react';
 
@@ -93,7 +93,7 @@ function ParameterInput({
       {param.required && <span className="ml-1 text-coop-alert-red">*</span>}
       {labelTooltip && (
         <Tooltip title={labelTooltip}>
-          <InfoCircleOutlined className="ml-1 text-gray-400" />
+          <Info className="ml-1 w-4 h-4 text-gray-400" />
         </Tooltip>
       )}
     </label>

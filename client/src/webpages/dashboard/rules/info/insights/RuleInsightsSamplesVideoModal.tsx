@@ -1,4 +1,4 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import ReactPlayer from 'react-player/lazy';
 
@@ -17,7 +17,7 @@ export default function RuleInsightsSamplesVideoModal(props: {
         <div className="flex items-start justify-center w-full h-full">
           <div className="flex flex-col items-center justify-center p-12 text-zinc-500">
             <div className="pb-8 text-8xl text-neutral-300">
-              <ExclamationCircleOutlined />
+              <AlertCircle className="w-4 h-4" />
             </div>
             <div className="pb-2 text-3xl max-w-s text-zinc-500">
               Something Went Wrong

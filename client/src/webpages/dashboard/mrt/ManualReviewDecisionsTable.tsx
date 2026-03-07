@@ -3,7 +3,7 @@ import {
   useGQLGetDecisionsTableQuery,
 } from '@/graphql/generated';
 import { assertUnreachable } from '@/utils/misc';
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { gql } from '@apollo/client/core';
 import { useState } from 'react';
 import type { Column } from 'react-table';
@@ -236,13 +236,13 @@ export default function ManualReviewDecisionsTable(props: {
               stay in the component tree no matter what, and they're just hidden/visible based on
               the groupByMenuVisible state.
             */}
-              <UpOutlined
-                className={`pl-2 text-xs text-slate-400 flex items-center ${
+              <ChevronUp
+                className={`w-3 h-3 pl-2 text-slate-400 flex items-center ${
                   groupByMenuVisible ? 'visible' : 'hidden'
                 }`}
               />
-              <DownOutlined
-                className={`pl-2 text-xs text-slate-400 flex items-center ${
+              <ChevronDown
+                className={`w-3 h-3 pl-2 text-slate-400 flex items-center ${
                   groupByMenuVisible ? 'hidden' : 'visible'
                 }`}
               />

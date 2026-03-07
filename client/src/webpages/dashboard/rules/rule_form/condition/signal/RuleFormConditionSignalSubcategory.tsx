@@ -1,4 +1,4 @@
-import { DownOutlined } from '@ant-design/icons';
+import { ChevronDown } from 'lucide-react';
 import { Button } from 'antd';
 
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
@@ -40,7 +40,7 @@ export default function RuleFormConditionSignalSubcategory(props: {
         onClick={onClick}
       >
         {signal.subcategory ?? 'Select Subcategory'}{' '}
-        <DownOutlined className="!text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
+        <ChevronDown className="w-3 h-3 !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
       </Button>
       <div className="invisible pb-1 text-xs font-bold">Signal Subcategory</div>
     </div>

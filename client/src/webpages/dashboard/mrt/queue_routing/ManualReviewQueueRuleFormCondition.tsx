@@ -1,5 +1,6 @@
-import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Select, Tooltip } from 'antd';
+import { Trash2, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
+import { Button, Select } from 'antd';
 
 import { GQLConditionConjunction } from '../../../../graphql/generated';
 import { CoreSignal } from '../../../../models/signal';
@@ -63,8 +64,11 @@ export function optionWithTooltip(opts: {
       <div className="flex flex-row items-center justify-between">
         <div className="pr-6">{title}</div>
         {description && (
-          <Tooltip className="bg-white" placement="right" title={description}>
-            <InfoCircleOutlined className="bg-transparent text-slate-500" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-4 h-4 bg-transparent text-slate-500" />
+            </TooltipTrigger>
+            <TooltipContent side="right">{description}</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -266,7 +270,7 @@ export default function ManualReviewQueueRuleFormCondition(props: {
           className="ml-4"
           key={`RuleFormCondition-delete_set_index_${conditionSetIndex}_index_${conditionIndex}`}
           shape="circle"
-          icon={<DeleteOutlined />}
+          icon={<Trash2 className="w-4 h-4" />}
           onClick={() =>
             onUpdateConditionSet(removeCondition(parentConditionSet, location))
           }

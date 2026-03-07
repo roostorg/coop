@@ -5,7 +5,7 @@ import {
   type GQLActionParameter,
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
-import Pencil from '@/icons/lni/Education/pencil.svg?react';
+import { Pencil } from 'lucide-react';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';

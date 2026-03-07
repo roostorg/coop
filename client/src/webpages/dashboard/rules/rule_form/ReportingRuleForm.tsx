@@ -1,6 +1,4 @@
-import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
-import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
-import { PlusOutlined } from '@ant-design/icons';
+import { Copy as CopyAlt, Plus, Trash2 as TrashCan } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { Button, Form, Radio, Select, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -653,7 +651,7 @@ export default function RuleForm() {
           <Button
             shape="circle"
             type="default"
-            icon={<PlusOutlined />}
+            icon={<Plus className="w-4 h-4" />}
             onClick={() =>
               dispatch({
                 type: ReportingRuleFormReducerActionType.AddCondition,
@@ -818,7 +816,7 @@ export default function RuleForm() {
                 type: ReportingRuleFormReducerActionType.AddConditionSet,
               })
             }
-            icon={<PlusOutlined className="mt-1" />}
+            icon={<Plus className="w-4 h-4 mt-1" />}
           >
             Add Condition Set
           </Button>

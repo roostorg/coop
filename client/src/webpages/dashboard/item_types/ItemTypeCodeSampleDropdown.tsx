@@ -1,4 +1,4 @@
-import { CheckOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
+import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
 import { ApiRoutes, type ApiRoute } from './itemTypeCodeSampleUtils';
@@ -18,7 +18,7 @@ export default function ItemTypeCodeSampleDropdown(props: {
       >
         {selectedRoute}
         <div className="ml-2">
-          {menuOpen ? <UpOutlined /> : <DownOutlined />}
+          {menuOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </div>
       {menuOpen && (
@@ -35,7 +35,7 @@ export default function ItemTypeCodeSampleDropdown(props: {
               }}
             >
               {route}
-              {route === selectedRoute && <CheckOutlined className="ml-2" />}
+              {route === selectedRoute && <Check className="w-4 h-4 ml-2" />}
             </div>
           ))}
         </div>

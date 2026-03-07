@@ -1,8 +1,4 @@
-import {
-  DatabaseOutlined,
-  DownloadOutlined,
-  LinkOutlined,
-} from '@ant-design/icons';
+import { Database, Download, Link as LucideLink} from 'lucide-react';
 import { gql } from '@apollo/client';
 import { Select } from 'antd';
 import capitalize from 'lodash/capitalize';
@@ -384,7 +380,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
                       <span className="mr-1 text-blue-500 cursor-pointer">
                         See Image
                       </span>
-                      <LinkOutlined />
+                      <LucideLink className="w-4 h-4" />
                     </a>
                   ) : (
                     val
@@ -482,7 +478,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
 
   const noSamples = (
     <RuleInsightsEmptyCard
-      icon={<DatabaseOutlined />}
+      icon={<Database className="w-4 h-4" />}
       title="No Samples"
       subtitle="Your report rule has not matched any reports yet. As soon as it does, you'll see a sample of those reports here."
     />
@@ -519,8 +515,8 @@ export default function ReportingRuleInsightsSamplesTable(props: {
               enclosingCharacter={`"`}
               target="_blank"
             >
-              <DownloadOutlined
-                style={{ color: '#1890ff', paddingRight: '8px' }}
+              <Download
+                className="w-4 h-4 text-[#1890ff] pr-2"
               />
               Download CSV
             </CSVLink>

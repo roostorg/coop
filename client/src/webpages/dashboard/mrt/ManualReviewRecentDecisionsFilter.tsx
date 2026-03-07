@@ -1,5 +1,4 @@
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { Select } from 'antd';
 import without from 'lodash/without';
@@ -254,11 +253,11 @@ export default function ManualReviewRecentDecisionsFilter(props: {
             something to do with dynamically choosing whether to render each icon because when
             we render both and just hide one of them, componentRef.current.contains() works. */}
           <ChevronUp
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${filterByMenuVisible ? '' : 'hidden'
+            className={`ml-2 w-3 text-slate-400 flex items-center ${filterByMenuVisible ? '' : 'hidden'
               }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${filterByMenuVisible ? 'hidden' : ''
+            className={`ml-2 w-3 text-slate-400 flex items-center ${filterByMenuVisible ? 'hidden' : ''
               }`}
           />
         </div>
@@ -315,11 +314,11 @@ export default function ManualReviewRecentDecisionsFilter(props: {
                         something to do with dynamically choosing whether to render each icon because when
                         we render both and just hide one of them, componentRef.current.contains() works. */}
                       <ChevronUp
-                        className={`font-bold w-3 fill-slate-400 ${isExpanded ? '' : 'hidden'
+                        className={`font-bold w-3 text-slate-400 ${isExpanded ? '' : 'hidden'
                           }`}
                       />
                       <ChevronDown
-                        className={`font-bold w-3 fill-slate-400 ${isExpanded ? 'hidden' : ''
+                        className={`font-bold w-3 text-slate-400 ${isExpanded ? 'hidden' : ''
                           }`}
                       />
                     </div>

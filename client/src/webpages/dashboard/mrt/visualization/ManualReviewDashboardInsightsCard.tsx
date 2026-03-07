@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   differenceInDays,
   differenceInHours,
@@ -7,7 +7,6 @@ import {
   differenceInWeeks,
   differenceInYears,
 } from 'date-fns';
-import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -151,7 +150,7 @@ const ManualReviewDashboardInsightsCard = (
                 to={props.link}
               >
                 {props.linkTitle}
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4 pl-2" />
               </Link>
             ) : null}
           </div>

@@ -6,8 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/coop-ui/Select';
-import { TapFilled } from '@/icons';
-import Download from '@/icons/lni/Web and Technology/download.svg?react';
+import { Download, MousePointerClick as TapFilled } from 'lucide-react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import type { TimeDivisionOptions } from '@/webpages/dashboard/overview/Overview';
 import flatten from 'lodash/flatten';

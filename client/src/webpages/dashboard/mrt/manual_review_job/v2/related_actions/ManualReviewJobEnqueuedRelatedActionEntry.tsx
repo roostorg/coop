@@ -1,5 +1,4 @@
-import Pencil from '@/icons/lni/Education/pencil.svg?react';
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
+import { Pencil, User as UserAlt4 } from 'lucide-react';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Tooltip } from 'antd';
 
@@ -41,7 +40,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
           imageUrl={iconUrl}
           label={label}
           sublabel={sublabel}
-          fallbackComponent={<UserAlt4 className="p-3 fill-slate-500 w-11" />}
+          fallbackComponent={<UserAlt4 className="p-3 text-slate-500 w-11" />}
           labelTruncationType="wrap"
         />
         {onEditParameters && (
@@ -52,7 +51,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
               className="flex items-center justify-center w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer bg-transparent border-none p-0"
               onClick={onEditParameters}
             >
-              <Pencil className="w-3 h-3 fill-current" />
+              <Pencil className="w-3 h-3" />
             </button>
           </Tooltip>
         )}

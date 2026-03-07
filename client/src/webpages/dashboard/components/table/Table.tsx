@@ -1,6 +1,5 @@
 /* eslint-disable react/jsx-key */
-import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
-import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
+import { ArrowDownWideNarrow as SortAmountDsc, ArrowUpNarrowWide as SortAmountAsc } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Column, Row, useFilters, useSortBy, useTable } from 'react-table';

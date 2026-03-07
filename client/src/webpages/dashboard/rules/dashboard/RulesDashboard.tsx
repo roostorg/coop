@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/coop-ui/Select';
-import { AuditOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
+import { Scale, Star } from 'lucide-react';
 import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import groupBy from 'lodash/groupBy';
@@ -441,18 +441,19 @@ export default function RulesDashboard() {
             ),
             favoriteRules: (
               <div className="relative w-5 h-5">
-                <StarFilled
-                  className={`cursor-pointer absolute top-0 left-0 text-xl !text-[#faad14] ${
+                <Star
+                  className={`w-5 h-5 cursor-pointer absolute top-0 left-0 !text-[#faad14] ${
                     values.isFavorited ? '' : 'invisible'
                   }`}
+                  fill="currentColor"
                   onClick={(event) => {
                     event.stopPropagation();
                     event.preventDefault();
                     onRemoveFavoriteRule(values.id, event);
                   }}
                 />
-                <StarOutlined
-                  className={`cursor-pointer absolute top-0 left-0 text-xl !text-[#faad14] ${
+                <Star
+                  className={`w-5 h-5 cursor-pointer absolute top-0 left-0 !text-[#faad14] ${
                     values.isFavorited ? 'invisible' : ''
                   }`}
                   onClick={(event) => {
@@ -534,7 +535,7 @@ export default function RulesDashboard() {
       buttonLinkPath="form"
       buttonTitle="Create Rule"
       dashboardName="Rules"
-      icon={<AuditOutlined />}
+      icon={<Scale className="w-4 h-4" />}
     />
   );
 

@@ -1,10 +1,4 @@
-import {
-  CommentOutlined,
-  DeleteOutlined,
-  DownOutlined,
-  SendOutlined,
-  UpOutlined,
-} from '@ant-design/icons';
+import { ChevronDown, ChevronUp, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
 import { formatDistanceToNow } from 'date-fns';
@@ -113,7 +107,7 @@ function ManualReviewJobComment(props: {
       {currentUserId === comment.author?.id && (
         <Button
           className="self-start w-6 h-6 text-red-600 border-none"
-          icon={<DeleteOutlined className="text-xs" />}
+          icon={<Trash2 className="w-3 h-3" />}
           onClick={onDelete}
         />
       )}
@@ -248,7 +242,7 @@ export default function ManualReviewJobCommentSection(props: {
       />
       <Button
         className="bg-transparent border-none hover:bg-transparent text-coop-blue hover:text-coop-blue-hover"
-        icon={<SendOutlined />}
+        icon={<Send className="w-4 h-4" />}
         onClick={addCommentFunc}
       />
     </div>
@@ -276,7 +270,7 @@ export default function ManualReviewJobCommentSection(props: {
       onClick={() => setShowComments((prev) => !prev)}
     >
       <div className="flex flex-row items-center gap-3">
-        <CommentOutlined />
+        <MessageSquare className="w-4 h-4" />
         {`${comments?.length ?? 0} ${
           comments?.length === 1 ? 'Comment' : 'Comments'
         }`}
@@ -284,12 +278,12 @@ export default function ManualReviewJobCommentSection(props: {
       {showComments ? (
         <div className="flex flex-row items-center gap-2 text-coop-blue hover:text-coop-blue-hover">
           Hide
-          <UpOutlined />
+          <ChevronUp className="w-4 h-4" />
         </div>
       ) : (
         <div className="flex flex-row items-center gap-2 text-coop-blue hover:text-coop-blue-hover">
           <div>Show</div>
-          <DownOutlined />
+          <ChevronDown className="w-4 h-4" />
         </div>
       )}
     </div>

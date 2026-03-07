@@ -1,4 +1,4 @@
-import { GlobalOutlined } from '@ant-design/icons';
+import { Globe } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { MouseEvent, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -216,7 +216,7 @@ export default function LocationBanksDashboard() {
       buttonLinkPath="form/location"
       buttonTitle="Create Location Banks"
       dashboardName="Location Banks"
-      icon={<GlobalOutlined />}
+      icon={<Globe className="w-4 h-4" />}
       buttonDisabled={!canEditLocationBanks}
     />
   );

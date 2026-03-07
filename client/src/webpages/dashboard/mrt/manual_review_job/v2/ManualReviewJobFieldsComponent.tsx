@@ -1,6 +1,6 @@
 import { getFieldValueForRole } from '@/utils/itemUtils';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { DownOutlined } from '@ant-design/icons';
+import { ChevronDown } from 'lucide-react';
 import { gql } from '@apollo/client';
 import {
   isContainerField,
@@ -569,7 +569,7 @@ function ContainerComponent(props: {
           >
             Expand{' '}
             {`(${itemComponents.length - collapsedItemLimit} more items)`}
-            <DownOutlined className="pt-1 pl-2" />
+            <ChevronDown className="w-4 h-4 pt-1 pl-2" />
           </div>
         </div>
       );

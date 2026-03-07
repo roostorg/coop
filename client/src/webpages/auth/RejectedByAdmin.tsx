@@ -1,4 +1,4 @@
-import { CloseCircleOutlined } from '@ant-design/icons';
+import { XCircle } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { Button } from 'antd';
 import { useState } from 'react';
@@ -65,7 +65,7 @@ export default function RejectedByAdmin() {
   return (
     <div className="flex flex-col items-center justify-center w-full h-full mt-14">
       <div className="flex flex-col items-center justify-center p-12 mt-24 shadow">
-        <div className="pb-3 text-8xl">{<CloseCircleOutlined />}</div>
+        <div className="pb-3 text-8xl">{<XCircle className="w-16 h-16" />}</div>
         <div className="py-2 text-3xl max-w-96">Rejected by Admin</div>
         <div className="pt-2 pb-10 text-center max-w-96">
           Your Coop account was rejected by your organization's Admin. If you

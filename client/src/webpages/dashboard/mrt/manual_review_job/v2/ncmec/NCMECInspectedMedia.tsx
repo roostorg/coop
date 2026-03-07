@@ -1,19 +1,9 @@
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
+import { User as UserAlt4 } from 'lucide-react';
 import { isTypingInEditableElement } from '@/utils/misc';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import {
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DownOutlined,
-  InfoCircleOutlined,
-  UpOutlined,
-} from '@ant-design/icons';
-import {
-  isContainerType,
-  isMediaType,
-  ScalarTypes,
-} from '@roostorg/coop-types';
-import { Popover } from 'antd';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { isContainerType, isMediaType, ScalarTypes } from '@roostorg/coop-types';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { useEffect, useState } from 'react';
 import { JsonObject } from 'type-fest';
 
@@ -182,7 +172,7 @@ export default function NCMECInspectedMedia(props: {
         }`}
         onClick={goToPreviousMedia}
       >
-        <ArrowLeftOutlined className="pr-1 text-xs" /> Previous
+        <ArrowLeft className="w-3 h-3 pr-1" /> Previous
       </div>
       <div className="text-sm text-slate-500">{`${
         index + 1
@@ -195,7 +185,7 @@ export default function NCMECInspectedMedia(props: {
         }`}
         onClick={goToNextMedia}
       >
-        Next <ArrowRightOutlined className="pl-1 text-xs" />
+        Next <ArrowRight className="w-3 h-3 pl-1" />
       </div>
     </div>
   );
@@ -273,20 +263,23 @@ export default function NCMECInspectedMedia(props: {
             <div className="flex flex-col w-full mb-2 text-start">
               <div className="flex gap-3">
                 <div>Category</div>
-                <Popover
-                  content={
-                    <div className="flex flex-col">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Info className="w-4 h-4 flex items-center justify-center text-slate-500" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="start">
+                    <div className="flex flex-col gap-1">
+                      <div className="font-semibold">Keyboard shortcuts</div>
                       <div>"j" = A1</div>
                       <div>"k" = A2</div>
                       <div>"l" = B1</div>
                       <div>";" (semicolon) = B2</div>
                       <div>"n" = None</div>
                     </div>
-                  }
-                  title={'Keyboard shortcuts'}
-                >
-                  <InfoCircleOutlined className="!flex items-center justify-center !text-slate-500" />
-                </Popover>
+                  </TooltipContent>
+                </Tooltip>
               </div>
               <NCMECSelectCategory
                 selectedCategory={state?.category}
@@ -353,7 +346,7 @@ export default function NCMECInspectedMedia(props: {
               label={displayName ? `${displayName} (${user.id})` : user.id}
               labelTruncationType="wrap"
               fallbackComponent={
-                <UserAlt4 className="p-3 fill-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11" />
               }
               magnifiedUrls={backgroundImageUrl ? [backgroundImageUrl.url] : []}
             />
@@ -363,9 +356,9 @@ export default function NCMECInspectedMedia(props: {
             >
               {userInfoVisible ? 'Hide' : 'See'} user info
               {userInfoVisible ? (
-                <UpOutlined className="text-xs pl-1.5" />
+                <ChevronUp className="w-3 h-3 pl-1.5" />
               ) : (
-                <DownOutlined className="text-xs pl-1.5" />
+                <ChevronDown className="w-3 h-3 pl-1.5" />
               )}
             </div>
           </div>

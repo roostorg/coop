@@ -1,15 +1,10 @@
 import './recharts.css';
 
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
-import { InvestmentFilled, PieChartAltFilled } from '@/icons';
 import { TriangleAlert } from 'lucide-react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
-import {
-  BarChartOutlined,
-  DownOutlined,
-  LineChartOutlined,
-  PieChartOutlined,
-} from '@ant-design/icons';
+import { BarChart3, ChevronDown, LineChart, PieChart as PieChartIcon, TrendingUp as InvestmentFilled } from 'lucide-react';
+const PieChartAltFilled = PieChartIcon;
 import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import flatten from 'lodash/flatten';
@@ -826,7 +821,7 @@ export default function RulesDashboardInsights() {
         {groupByOption !== InsightsGroupByOption.NONE
           ? `: ${capitalize(groupByOption.toLowerCase())}`
           : null}
-        <DownOutlined className="text-[10px]" />
+        <ChevronDown className="w-3 h-3" />
       </div>
       {groupByMenuVisible && (
         <div className="flex flex-col bg-white absolute border border-solid border-[#d4d4d8] rounded-lg shadow mt-1 p-2 min-w-[240px] z-10">
@@ -874,9 +869,9 @@ export default function RulesDashboardInsights() {
 
   const chartSelection = (
     <div className="flex items-center justify-center">
-      {chartTypeButton(ChartType.LINE, <LineChartOutlined />)}
-      {chartTypeButton(ChartType.BAR, <BarChartOutlined />)}
-      {chartTypeButton(ChartType.PIE, <PieChartOutlined />)}
+      {chartTypeButton(ChartType.LINE, <LineChart className="w-4 h-4" />)}
+      {chartTypeButton(ChartType.BAR, <BarChart3 className="w-4 h-4" />)}
+      {chartTypeButton(ChartType.PIE, <PieChartIcon className="w-4 h-4" />)}
     </div>
   );
 
@@ -906,7 +901,7 @@ export default function RulesDashboardInsights() {
           <ComponentLoading />
         ) : totalActionedSubmissionsInLookback === 0 ? (
           <RuleInsightsEmptyCard
-            icon={<LineChartOutlined />}
+            icon={<LineChart className="w-4 h-4" />}
             title="No Actions"
             subtitle="Your rules have not executed any actions yet within this time window."
           />

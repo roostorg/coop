@@ -1,4 +1,4 @@
-import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
+import { Copy as CopyAlt } from 'lucide-react';
 import { Tooltip } from 'antd';
 import { useState } from 'react';
 
