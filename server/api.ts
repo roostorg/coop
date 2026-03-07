@@ -25,6 +25,7 @@ import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
 import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
+import depthLimit from 'graphql-depth-limit';
 import helmet from 'helmet';
 import passport from 'passport';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
@@ -356,6 +357,7 @@ export default async function makeApiServer(deps: Dependencies) {
           : ApolloServerPluginLandingPageGraphQLPlayground()),
       },
     ],
+    validationRules: [depthLimit(10)],
     introspection: process.env.NODE_ENV !== 'production',
     formatError(e) {
       // `e` can be an ApolloError instance, but will only be one if such an
