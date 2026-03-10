@@ -432,7 +432,6 @@ export default function ItemInvestigation(props: {
     }
   })();
 
-
   return (
     <div className="flex flex-col items-start">
       <div className="w-4/5 mt-2 mb-6 text-start">
