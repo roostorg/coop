@@ -358,11 +358,7 @@ export default async function makeApiServer(deps: Dependencies) {
           : ApolloServerPluginLandingPageGraphQLPlayground()),
       },
     ],
-<<<<<<< Updated upstream
-    validationRules: [depthLimit(10)],
-=======
     validationRules: [depthLimit(safeGetEnvInt('GRAPHQL_MAX_DEPTH', 10))],
->>>>>>> Stashed changes
     introspection: process.env.NODE_ENV !== 'production',
     formatError(e) {
       // `e` can be an ApolloError instance, but will only be one if such an
