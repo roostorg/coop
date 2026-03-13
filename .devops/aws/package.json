@@ -28,7 +28,7 @@
     "@aws-sdk/client-secrets-manager": "^3.491.0",
     "@ethanresnick/match": "^0.0.4",
     "@types/lodash": "^4.14.178",
-    "aws-cdk-lib": "^2.168.0",
+    "aws-cdk-lib": "^2.240.0",
     "cdk8s": "^2.0.5",
     "cdk8s-cli": "^1.0.58",
     "constructs": "^10.4.5",
