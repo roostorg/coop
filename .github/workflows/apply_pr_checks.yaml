@@ -32,7 +32,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          check-latest: true
           cache: 'npm'
       - run: npm ci
       - name: Generate graphql
@@ -56,7 +55,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          check-latest: true
           cache: 'npm'
 
       - name: Install dependencies in root and client directory
