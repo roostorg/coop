@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc && npm run copy-assets",
     "copy-assets": "copyfiles \"lib/**/*.lua\" transpiled/",
-    "start": "tsc-watch --onSuccess \"node --require dotenv/config ./transpiled/bin/www.js\"",
+    "start": "tsc-watch --onSuccess \"node --trace-warnings --require dotenv/config ./transpiled/bin/www.js\"",
     "start:trace": "tsc-watch --onSuccess \"node --trace-warnings --require dotenv/config --require ../nodejs-instrumentation/transpiled/autoinstrumentation.js ./transpiled/bin/www.js\"",
     "test": "npm run test:local",
     "test:local": "NODE_OPTIONS=\"--no-warnings --loader ts-node/esm --require dotenv/config\" jest --watch --detectOpenHandles",
