@@ -1,4 +1,4 @@
-FROM ghcr.io/facebook/threatexchange/hma:1.1.1
+FROM ghcr.io/facebook/threatexchange/hma:1.1.2
 
 WORKDIR /app
 
