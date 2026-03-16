@@ -109,7 +109,7 @@ exports[`No explicit any in client`] = {
       [699, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [747, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/overview/OverviewChart.tsx:3278028467": [
+    "client/src/webpages/dashboard/overview/OverviewChart.tsx:1863712875": [
       [372, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/dashboard/ReportingRulesDashboard.tsx:1325204439": [
@@ -127,7 +127,7 @@ exports[`No explicit any in client`] = {
       [439, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
       [661, 20, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:461491398": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:3641428222": [
       [198, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [246, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
@@ -187,10 +187,10 @@ exports[`No explicit any in client`] = {
 
 exports[`No explicit any in server`] = {
   value: `{
-    "server/api.ts:1286132275": [
-      [199, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [221, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [310, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/api.ts:1158999085": [
+      [201, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [223, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [312, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/bin/run-worker-or-job.ts:3770444259": [
       [10, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -262,10 +262,6 @@ exports[`No explicit any in server`] = {
       [181, 47, 3, "Unexpected any. Specify a different type.", "193409811"],
       [202, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [202, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/routes/index.ts:1040057535": [
-      [14, 16, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [14, 21, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/routes/policies/PoliciesRoutes.ts:1959143587": [
       [14, 6, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -637,7 +633,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:410454036": [
       [1, 0, 193, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1459973405"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:2152720760": [
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:4212933245": [
       [5, 0, 55, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2578538584"]
     ],
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDefaultCharts.tsx:4210841634": [
@@ -800,7 +796,7 @@ exports[`No new line-icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobUserVerticalComponent.tsx:1124833499": [
       [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:2152720760": [
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:4212933245": [
       [2, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
       [3, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
     ],
@@ -808,7 +804,7 @@ exports[`No new line-icon imports`] = {
       [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
       [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
     ],
-    "client/src/webpages/dashboard/overview/Overview.tsx:2095261868": [
+    "client/src/webpages/dashboard/overview/Overview.tsx:2096950063": [
       [10, 0, 123, "\'@/icons\' import is restricted from being used.", "3974909531"]
     ],
     "client/src/webpages/dashboard/overview/OverviewCard.tsx:1601864003": [
@@ -826,14 +822,14 @@ exports[`No new line-icon imports`] = {
     "client/src/webpages/dashboard/policies/PolicyForm.tsx:1529120265": [
       [2, 0, 70, "\'@/icons\' import is restricted from being used.", "3642037779"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RuleInsightsFilterBy.tsx:1453675980": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RuleInsightsFilterBy.tsx:4163409545": [
       [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
       [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
     ],
     "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2418477128": [
       [3, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:461491398": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:3641428222": [
       [8, 0, 36, "\'@/icons\' import is restricted from being used.", "1234727599"],
       [9, 0, 89, "\'@/icons/lni/Web and Technology/download.svg\' import is restricted from being used by a pattern.", "2932504973"]
     ],
