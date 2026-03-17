@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 
 import { ErrorType, CoopError } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -78,7 +78,7 @@ const Query: any = {
   async apiKey(_: any, __: any, context: any) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User must be authenticated');
+      throw new GraphQLError('User must be authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const apiKeyRecord = await context.services.ApiKeyService.getActiveApiKeyForOrg(user.orgId);
@@ -94,11 +94,12 @@ const Mutation: any = {
   async rotateApiKey(_: any, { input }: any, context: any) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User must be authenticated');
+      throw new GraphQLError('User must be authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to rotate the API key',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 
@@ -148,11 +149,12 @@ const Mutation: any = {
   ) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User must be authenticated');
+      throw new GraphQLError('User must be authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to rotate the webhook signing key',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 

@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import { URL } from 'node:url';
 import { type Exception } from '@opentelemetry/api';
-import { DataSource } from 'apollo-datasource';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
@@ -20,7 +19,7 @@ import {
   type GQLRequestDemoInput,
 } from '../generated.js';
 
-class OrgAPI extends DataSource {
+class OrgAPI {
   constructor(
     private readonly orgCreationLogger: Dependencies['OrgCreationLogger'],
     private readonly apiKeyService: Dependencies['ApiKeyService'],
@@ -34,7 +33,6 @@ class OrgAPI extends DataSource {
     private readonly orgSettingsService: Dependencies['OrgSettingsService'],
     private readonly manualReviewToolService: Dependencies['ManualReviewToolService'],
   ) {
-    super();
   }
 
   async createOrg(params: GQLMutationCreateOrgArgs) {

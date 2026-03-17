@@ -1,4 +1,4 @@
-import { AuthenticationError, ForbiddenError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 
 import { type Backtest } from '../../models/rules/BacktestModel.js';
 import {
@@ -119,11 +119,11 @@ const resolvers = {
       );
 
       if (user == null) {
-        throw new AuthenticationError('Authenticated user required');
+        throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
       } else if (!hasPermission(UserPermission.RUN_BACKTEST, user.role)) {
-        throw new ForbiddenError('User not authorized to create backtests.');
+        throw new GraphQLError('User not authorized to create backtests.', { extensions: { code: 'FORBIDDEN' } });
       } else if (!rule || user.orgId !== rule.orgId) {
-        throw new ForbiddenError('Invalid rule.');
+        throw new GraphQLError('Invalid rule.', { extensions: { code: 'FORBIDDEN' } });
       }
 
       return {

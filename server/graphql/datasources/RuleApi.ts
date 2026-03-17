@@ -2,8 +2,7 @@
 
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
-import { DataSource } from 'apollo-datasource';
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 import { sql, type Kysely } from 'kysely';
 import Sequelize from 'sequelize';
 import { uid } from 'uid';
@@ -267,7 +266,7 @@ function parseAggregationClauseInput(
 /**
  * GraphQL Object for a Rule
  */
-class RuleAPI extends DataSource {
+class RuleAPI {
   constructor(
     private readonly knex: Dependencies['Knex'],
     private readonly snowflake: Kysely<SnowflakePublicSchema>,
@@ -277,14 +276,14 @@ class RuleAPI extends DataSource {
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
   ) {
-    super();
   }
 
   async getGraphQLRuleFromId(id: string, orgId: string) {
     const rule = await this.models.Rule.findByPk(id, { rejectOnEmpty: true });
     if (rule.orgId !== orgId) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User not authenticated to fetch this rule',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 

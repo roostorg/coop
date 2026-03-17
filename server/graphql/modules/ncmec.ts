@@ -1,5 +1,5 @@
-import { AuthenticationError } from 'apollo-server-core';
-import { UserInputError } from 'apollo-server-express';
+
+import { GraphQLError } from 'graphql';
 
 import { formatItemSubmissionForGQL } from '../../graphql/types.js';
 import type {
@@ -215,7 +215,7 @@ const Query: GQLQueryResolvers = {
   async ncmecReportById(_, { reportId }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const report = await context.services.NcmecService.getNcmecReportById({
       orgId: user.orgId,
@@ -248,7 +248,7 @@ const Query: GQLQueryResolvers = {
   async ncmecThreads(_, { userId, reportedMessages }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const threads = await context.services.NcmecService.getNcmecMessages(
       user.orgId,
@@ -267,7 +267,7 @@ const Query: GQLQueryResolvers = {
   async ncmecOrgSettings(_, __, context): Promise<GQLNcmecOrgSettings | null> {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const settings = await context.services.NcmecService.getNcmecOrgSettings(
       user.orgId,
@@ -280,7 +280,7 @@ const Mutation: GQLMutationResolvers = {
   async updateNcmecOrgSettings(_, { input: rawInput }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
     const defaultInternetDetailType =
@@ -292,8 +292,9 @@ const Mutation: GQLMutationResolvers = {
               trimmed !== '' &&
               !VALID_NCMEC_INTERNET_DETAIL_TYPES.includes(trimmed)
             ) {
-              throw new UserInputError(
+              throw new GraphQLError(
                 `defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`,
+                { extensions: { code: 'BAD_USER_INPUT' } },
               );
             }
             return trimmed === '' ? null : trimmed;

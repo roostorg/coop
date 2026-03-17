@@ -1,5 +1,4 @@
 import { type Exception } from '@opentelemetry/api';
-import { DataSource } from 'apollo-datasource';
 import { uid } from 'uid';
 import { v1 as uuidV1 } from 'uuid';
 
@@ -28,14 +27,13 @@ export type LocationBankWithoutFullPlacesAPIResponse = Omit<
   'fullPlacesApiResponse'
 >;
 
-class LocationBankAPI extends DataSource {
+class LocationBankAPI {
   private lookupPlaceId: PlacesApiService['lookupPlaceId'];
   constructor(
     placesApiService: PlacesApiService,
     private readonly sequelize: Dependencies['Sequelize'],
     private readonly tracer: Dependencies['Tracer'],
   ) {
-    super();
     this.lookupPlaceId = placesApiService.lookupPlaceId.bind(placesApiService);
   }
 

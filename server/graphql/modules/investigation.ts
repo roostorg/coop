@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { type DateString } from '@roostorg/types';
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 import _ from 'lodash';
 
 import { type ConditionSetWithResult } from '../../models/rules/RuleModel.js';
@@ -130,7 +130,7 @@ const UserHistory: GQLUserHistoryResolvers = {
   async executions(it, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const rows =
@@ -151,7 +151,7 @@ const UserHistory: GQLUserHistoryResolvers = {
   async actions(it, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const actions =
@@ -165,7 +165,7 @@ const UserHistory: GQLUserHistoryResolvers = {
   async submissions(it, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const submissions =
@@ -182,7 +182,7 @@ const Query: GQLQueryResolvers = {
   async itemSubmissions(_, { itemIdentifiers }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const items = await Promise.all(
@@ -205,7 +205,7 @@ const Query: GQLQueryResolvers = {
   async latestItemSubmissions(_, { itemIdentifiers }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const items = await Promise.all(
@@ -224,7 +224,7 @@ const Query: GQLQueryResolvers = {
   async userHistory(_, { itemIdentifier }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {
@@ -259,7 +259,7 @@ const Query: GQLQueryResolvers = {
   async itemsWithId(_, { itemId, typeId, returnFirstResultOnly }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (typeId) {
@@ -335,7 +335,7 @@ const Query: GQLQueryResolvers = {
     const { id: itemId, typeId } = itemIdentifier;
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const item =
@@ -378,7 +378,7 @@ const Query: GQLQueryResolvers = {
   async threadHistory(_, { threadIdentifier, endDate }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const threadSubmissions = await asyncIterableToArray(
       context.services.ItemInvestigationService.getThreadSubmissionsByTime({
@@ -415,7 +415,7 @@ const Query: GQLQueryResolvers = {
   ) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const items = await asyncIterableToArray(
       context.services.ItemInvestigationService.getItemSubmissionsByCreator({
@@ -446,7 +446,7 @@ const Query: GQLQueryResolvers = {
   async latestItemsCreatedByWithThread(__, { itemIdentifier }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const items = await asyncIterableToArray(
@@ -555,7 +555,7 @@ const Query: GQLQueryResolvers = {
   async itemActionHistory(_, { itemIdentifier, submissionTime }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     return context.services.ItemInvestigationService.getItemActionHistory({
       orgId: user.orgId,

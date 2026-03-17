@@ -1,5 +1,4 @@
-import { UserInputError } from 'apollo-server-express';
-import { GraphQLScalarType, Kind } from 'graphql';
+import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 
 import {
   b64Decode,
@@ -33,7 +32,7 @@ export default new GraphQLScalarType<JSON, B64Of<JsonOf<JSON>>>({
   parseValue: parseCursorValue,
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new UserInputError('Cursor values must be strings.');
+      throw new GraphQLError('Cursor values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return parseCursorValue(ast.value);
   },
@@ -41,7 +40,7 @@ export default new GraphQLScalarType<JSON, B64Of<JsonOf<JSON>>>({
 
 function parseCursorValue(value: unknown) {
   if (typeof value !== 'string') {
-    throw new UserInputError('Cursor values must be strings.');
+    throw new GraphQLError('Cursor values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
   }
 
   try {
@@ -49,6 +48,6 @@ function parseCursorValue(value: unknown) {
     const jsonString = b64Decode(value as B64Of<JsonOf<JSON>>);
     return jsonParse(jsonString);
   } catch {
-    throw new UserInputError('Invalid cursor value');
+    throw new GraphQLError('Invalid cursor value', { extensions: { code: 'BAD_USER_INPUT' } });
   }
 }
