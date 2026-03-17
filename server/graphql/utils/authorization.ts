@@ -1,6 +1,6 @@
 import { getDirective } from '@graphql-tools/utils';
-import { AuthenticationError } from 'apollo-server-express';
 import {
+  GraphQLError,
   defaultFieldResolver,
   type GraphQLFieldConfig,
   type GraphQLResolveInfo,
@@ -34,7 +34,7 @@ export function authSchemaWrapper(
           info: GraphQLResolveInfo,
         ) {
           if (!context.getUser()) {
-            throw new AuthenticationError('No user in context.');
+            throw new GraphQLError('No user in context.', { extensions: { code: 'UNAUTHENTICATED' } });
           }
           return originalResolver(source, args, context, info);
         },

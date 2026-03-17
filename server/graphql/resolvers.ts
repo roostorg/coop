@@ -1,6 +1,5 @@
 import { mergeResolvers } from '@graphql-tools/merge';
-import { AuthenticationError } from 'apollo-server-core';
-import { type GraphQLFieldResolver } from 'graphql';
+import { GraphQLError, type GraphQLFieldResolver } from 'graphql';
 import { type PassportContext } from 'graphql-passport';
 
 import { type GQLServices } from '../api.js';
@@ -145,12 +144,13 @@ const Mutation: GQLMutationResolvers = {
   async generatePasswordResetToken(_, { userId }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to generate password reset tokens',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 
@@ -163,7 +163,7 @@ const Mutation: GQLMutationResolvers = {
   async updateRole(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     await context.services.UserManagementService.updateUserRole({
@@ -182,12 +182,13 @@ const Mutation: GQLMutationResolvers = {
   async inviteUser(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to invite users',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 
@@ -200,12 +201,13 @@ const Mutation: GQLMutationResolvers = {
   async deleteInvite(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to delete invites',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 
@@ -214,12 +216,13 @@ const Mutation: GQLMutationResolvers = {
   async approveUser(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to approve users',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 
@@ -228,12 +231,13 @@ const Mutation: GQLMutationResolvers = {
   async rejectUser(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User does not have permission to reject users',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 

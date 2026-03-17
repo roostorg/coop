@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-core';
+import { GraphQLError } from 'graphql';
 import _ from 'lodash';
 
 import { type Policy } from '../../models/PolicyModel.js';
@@ -101,7 +101,7 @@ const Query: GQLQueryResolvers = {
   async policy(_: unknown, { id }: GQLQueryPolicyArgs, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.services.ModerationConfigService.getPolicy({
@@ -115,7 +115,7 @@ const Mutation: GQLMutationResolvers = {
   async addPolicies(_: unknown, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required.');
+      throw new GraphQLError('Authenticated user required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const { policies } = params;
@@ -160,7 +160,7 @@ const Mutation: GQLMutationResolvers = {
   async updatePolicy(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required.');
+      throw new GraphQLError('Authenticated user required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     try {
       const {
@@ -206,7 +206,7 @@ const Mutation: GQLMutationResolvers = {
   async deletePolicy(_: unknown, params: GQLMutationDeletePolicyArgs, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.services.ModerationConfigService.deletePolicy({

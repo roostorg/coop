@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-core';
+import { GraphQLError } from 'graphql';
 import { uid } from 'uid';
 
 import { RuleEnvironment } from '../../rule_engine/RuleEngine.js';
@@ -21,7 +21,7 @@ const Query: GQLQueryResolvers = {
   async spotTestRule(_, { ruleId, item }, { services, dataSources, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const [itemTypes, rule] = await Promise.all([

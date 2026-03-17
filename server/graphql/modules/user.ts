@@ -1,4 +1,4 @@
-import { AuthenticationError, ForbiddenError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 import jwt from 'jsonwebtoken';
 
 import {
@@ -187,7 +187,7 @@ const Query: GQLQueryResolvers = {
   async user(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const { orgId } = user;
@@ -199,7 +199,7 @@ const Mutation: GQLMutationResolvers = {
   async updateAccountInfo(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.dataSources.userAPI.updateAccountInfo(user, params);
     return true; // TODO: return the updated user instead.
@@ -207,14 +207,14 @@ const Mutation: GQLMutationResolvers = {
   async changePassword(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     return context.dataSources.userAPI.changePassword(user, params.input);
   },
   async deleteUser(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.dataSources.userAPI.deleteUser({
@@ -225,7 +225,7 @@ const Mutation: GQLMutationResolvers = {
   async addFavoriteRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.dataSources.userAPI.addFavoriteRule(
       user.id,
@@ -237,7 +237,7 @@ const Mutation: GQLMutationResolvers = {
   async removeFavoriteRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.dataSources.userAPI.removeFavoriteRule(
       user.id,
@@ -249,7 +249,7 @@ const Mutation: GQLMutationResolvers = {
   async addFavoriteMRTQueue(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.services.ManualReviewToolService.addFavoriteQueueForUser({
       userId: user.id,
@@ -261,7 +261,7 @@ const Mutation: GQLMutationResolvers = {
   async removeFavoriteMRTQueue(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.services.ManualReviewToolService.removeFavoriteQueueForUser({
       userId: user.id,
@@ -273,7 +273,7 @@ const Mutation: GQLMutationResolvers = {
   async setModeratorSafetySettings(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.services.UserManagementService.upsertUserInterfaceSettings({
       userId: user.id,
@@ -287,7 +287,7 @@ const Mutation: GQLMutationResolvers = {
   async setMrtChartConfigurationSettings(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     await context.services.UserManagementService.upsertUserInterfaceSettings({
       userId: user.id,
@@ -342,7 +342,7 @@ const User: GQLUserResolvers = {
     try {
       const authedUser = getUser();
       if (!authedUser || user.id !== authedUser.id) {
-        throw new ForbiddenError('Must be signed in as this user to read JWT.');
+        throw new GraphQLError('Must be signed in as this user to read JWT.', { extensions: { code: 'FORBIDDEN' } });
       }
 
       const { email, firstName, lastName, orgId } = user;
@@ -393,7 +393,7 @@ const User: GQLUserResolvers = {
   async reviewableQueues(_, { queueIds }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const queues =

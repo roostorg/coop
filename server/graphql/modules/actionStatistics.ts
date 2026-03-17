@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-import { AuthenticationError } from 'apollo-server-core';
+import { GraphQLError } from 'graphql';
 
 import { type GQLQueryResolvers } from '../generated.js';
 
@@ -90,7 +90,7 @@ const Query: GQLQueryResolvers = {
   async actionStatistics(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const a = {
@@ -116,7 +116,7 @@ const Query: GQLQueryResolvers = {
   async topPolicyViolations(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const policyViolations =
@@ -137,7 +137,7 @@ const Query: GQLQueryResolvers = {
   async recentUserStrikeActions(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const recentUserStrikeActions =
       await context.services.UserStrikeService.getRecentUserStrikeActions({

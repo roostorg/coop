@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 
 import { type LocationBank as TLocationBank } from '../../models/banks/LocationBankModel.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
@@ -132,7 +132,7 @@ const Query: GQLQueryResolvers = {
   async locationBank(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.dataSources.locationBankAPI.getGraphQLLocationBankFromId({
@@ -147,7 +147,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('User required.');
+        throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
       }
 
       const bank = await context.dataSources.locationBankAPI.createLocationBank(
@@ -170,7 +170,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('User required.');
+        throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
       }
 
       const bank = context.dataSources.locationBankAPI.updateLocationBank(
@@ -192,7 +192,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteLocationBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.dataSources.locationBankAPI.deleteLocationBank({

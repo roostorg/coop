@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 import { isCoopErrorOfType } from '../../../utils/errors.js';
 import type { Context } from '../../resolvers.js';
 import type { GQLMutationResolvers, GQLQueryResolvers } from '../../generated.js';
@@ -8,7 +8,7 @@ const Query: GQLQueryResolvers<Context> = {
   async hashBanks(_: unknown, __: unknown, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.services.HMAHashBankService.listBanks(user.orgId);
@@ -17,7 +17,7 @@ const Query: GQLQueryResolvers<Context> = {
   async hashBank(_: unknown, { name }: { name: string }, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {
@@ -33,7 +33,7 @@ const Query: GQLQueryResolvers<Context> = {
   async hashBankById(_: unknown, { id }: { id: string }, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {
@@ -55,7 +55,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {
@@ -81,7 +81,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {
@@ -110,7 +110,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     await context.services.HMAHashBankService.deleteBank(user.orgId, id);

@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
@@ -225,7 +225,7 @@ const Query: GQLQueryResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('Unauthenticated User');
+        throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
       }
 
       if (!getIntegrationRegistry().has(name)) {
@@ -257,7 +257,7 @@ const Query: GQLQueryResolvers = {
   async availableIntegrations(_, __, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Unauthenticated User');
+      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     return context.dataSources.integrationAPI.getAvailableIntegrations() as GQLIntegrationMetadata[];
   },
@@ -274,7 +274,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('Unauthenticated User');
+        throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
       }
       const newConfig = await context.dataSources.integrationAPI.setConfig(
         params.input,
@@ -303,7 +303,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('Unauthenticated User');
+        throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
       }
       const newConfig =
         await context.dataSources.integrationAPI.setConfigByIntegrationId(
