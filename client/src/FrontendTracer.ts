@@ -19,7 +19,7 @@ const FrontendTracer = async () => {
   provider.addSpanProcessor(
     new BatchSpanProcessor(
       new OTLPTraceExporter({
-        url: process.env.REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+        url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
       }),
     ),
   );

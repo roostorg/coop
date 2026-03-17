@@ -1,4 +1,4 @@
-import { ReactComponent as SpinnerSolid } from '@/icons/lni/Spinner/spinner-solid.svg';
+import SpinnerSolid from '@/icons/lni/Spinner/spinner-solid.svg?react';
 import { Tooltip } from 'antd';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import type { SVGProps } from 'react';

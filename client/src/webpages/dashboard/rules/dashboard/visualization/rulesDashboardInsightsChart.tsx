@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from '@/coop-ui/Select';
 import { TapFilled } from '@/icons';
-import { ReactComponent as Download } from '@/icons/lni/Web and Technology/download.svg';
+import Download from '@/icons/lni/Web and Technology/download.svg?react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import type { TimeDivisionOptions } from '@/webpages/dashboard/overview/Overview';
 import flatten from 'lodash/flatten';

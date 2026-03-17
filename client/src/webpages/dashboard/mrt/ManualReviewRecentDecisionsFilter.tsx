@@ -1,5 +1,5 @@
-import { ReactComponent as ChevronDown } from '@/icons/lni/Direction/chevron-down.svg';
-import { ReactComponent as ChevronUp } from '@/icons/lni/Direction/chevron-up.svg';
+import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
+import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
 import { DatePicker, Select } from 'antd';
 import without from 'lodash/without';
 import moment from 'moment';

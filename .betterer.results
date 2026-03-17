@@ -39,11 +39,14 @@ exports[`No explicit any in client`] = {
       [81, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
       [81, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
+    "client/src/setupTests.ts:345891620": [
+      [2, 20, 3, "Unexpected any. Specify a different type.", "193409811"]
+    ],
     "client/src/utils/collections.test.ts:20044302": [
       [42, 33, 3, "Unexpected any. Specify a different type.", "193409811"],
       [51, 33, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/utils/contentUrlUtils.ts:1649511885": [
+    "client/src/utils/contentUrlUtils.ts:551331094": [
       [30, 56, 3, "Unexpected any. Specify a different type.", "193409811"],
       [47, 46, 3, "Unexpected any. Specify a different type.", "193409811"],
       [47, 54, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -66,13 +69,13 @@ exports[`No explicit any in client`] = {
     "client/src/webpages/auth/forgot_password/ForgotPassword.tsx:602340200": [
       [29, 45, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/components/table/Table.tsx:735486015": [
+    "client/src/webpages/dashboard/components/table/Table.tsx:1273435135": [
       [14, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [15, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
       [25, 40, 3, "Unexpected any. Specify a different type.", "193409811"],
       [57, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/components/table/TableFilter.tsx:774089589": [
+    "client/src/webpages/dashboard/components/table/TableFilter.tsx:2480061365": [
       [12, 54, 3, "Unexpected any. Specify a different type.", "193409811"],
       [18, 19, 3, "Unexpected any. Specify a different type.", "193409811"],
       [73, 60, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -127,7 +130,7 @@ exports[`No explicit any in client`] = {
       [439, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
       [661, 20, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:3641428222": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:458867610": [
       [198, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [246, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
@@ -154,14 +157,14 @@ exports[`No explicit any in client`] = {
       [623, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
       [747, 11, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
       [424, 38, 3, "Unexpected any. Specify a different type.", "193409811"],
       [442, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:2408070124": [
       [102, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1069542000": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
       [904, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
       [925, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
       [952, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -179,7 +182,7 @@ exports[`No explicit any in client`] = {
       [421, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
       [427, 24, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/settings/ManageUsers.tsx:1882754453": [
+    "client/src/webpages/settings/ManageUsers.tsx:2815106037": [
       [386, 31, 3, "Unexpected any. Specify a different type.", "193409811"]
     ]
   }`
@@ -382,7 +385,7 @@ exports[`No Deprecated API usage`] = {
       [39, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [157, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
       [284, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [482, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
@@ -394,7 +397,7 @@ exports[`No Deprecated API usage`] = {
       [158, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [396, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1069542000": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
       [676, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [1014, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
@@ -472,10 +475,10 @@ exports[`No counterproductive type annotations`] = {
     "client/src/coop-ui/Calendar.test.tsx:2174936412": [
       [8, 26, 20, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1812269709"]
     ],
-    "client/src/webpages/dashboard/components/table/TableFilter.tsx:774089589": [
+    "client/src/webpages/dashboard/components/table/TableFilter.tsx:2480061365": [
       [169, 48, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4083471778"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177287099": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177454971": [
       [1196, 32, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1346054869"],
       [1272, 26, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1346054869"]
     ],
@@ -497,7 +500,7 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:1132615281": [
       [404, 15, 18, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4144316489"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1069542000": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
       [1011, 11, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "3776056839"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
@@ -508,7 +511,7 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/userStrikes/StrikeAnalyticsTab.tsx:547319036": [
       [147, 5, 27, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2278215421"]
     ],
-    "client/src/webpages/settings/ManageUsers.tsx:1882754453": [
+    "client/src/webpages/settings/ManageUsers.tsx:2815106037": [
       [386, 23, 11, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "219967025"]
     ]
   }`
@@ -537,7 +540,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/components/CoopModal.tsx:3323562475": [
       [0, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "985426687"]
     ],
-    "client/src/webpages/dashboard/components/table/TableFilter.tsx:774089589": [
+    "client/src/webpages/dashboard/components/table/TableFilter.tsx:2480061365": [
       [2, 0, 51, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2319762628"]
     ],
     "client/src/webpages/dashboard/item_types/ItemTypeCodeSampleDropdown.tsx:1320336054": [
@@ -552,13 +555,13 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/item_types/ItemTypeFormRightPanel.tsx:3891608260": [
       [0, 0, 63, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "289639600"]
     ],
-    "client/src/webpages/dashboard/item_types/ItemTypesDashboard.tsx:1283699488": [
+    "client/src/webpages/dashboard/item_types/ItemTypesDashboard.tsx:3814702208": [
       [2, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2960570710"]
     ],
     "client/src/webpages/dashboard/mrt/ManualReviewDecisionsTable.tsx:1551872190": [
       [5, 0, 61, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "175792923"]
     ],
-    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx:1265048322": [
+    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx:2183365222": [
       [3, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3096449912"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobContentBlurableVideo.tsx:3241408598": [
@@ -567,7 +570,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobDequeueErrorComponent.tsx:2713757749": [
       [0, 0, 62, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2914458485"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177287099": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177454971": [
       [5, 0, 66, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1801263448"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobCommentSection.tsx:97903294": [
@@ -579,7 +582,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx:3836324260": [
       [2, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2561705942"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:2610319804": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:4077846936": [
       [2, 0, 131, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1687632664"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECMediaViewer.tsx:1857584542": [
@@ -588,16 +591,16 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser.tsx:86063495": [
       [0, 0, 76, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2300443108"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECThreadItemComponent.tsx:2373785518": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECThreadItemComponent.tsx:784247690": [
       [2, 0, 50, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "216942020"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobThreadItemComponent.tsx:3255225503": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobThreadItemComponent.tsx:3148286587": [
       [2, 0, 50, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "216942020"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent.tsx:3111379029": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent.tsx:187044465": [
       [3, 0, 50, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "216942020"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobRelatedUserComponent.tsx:973171561": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobRelatedUserComponent.tsx:1226282061": [
       [4, 0, 52, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3004049218"]
     ],
     "client/src/webpages/dashboard/mrt/queue_routing/ManualReviewQueueRoutingRule.tsx:2424450629": [
@@ -633,7 +636,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:410454036": [
       [1, 0, 193, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1459973405"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:4212933245": [
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:1436988477": [
       [5, 0, 55, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2578538584"]
     ],
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDefaultCharts.tsx:4210841634": [
@@ -675,10 +678,10 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/rules/info/insights/sample_details/RuleInsightsSampleDetailResults.tsx:865225447": [
       [11, 0, 92, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "548385828"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
       [2, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3206710238"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1069542000": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
       [4, 0, 75, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2372850505"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:453078395": [
@@ -713,125 +716,125 @@ exports[`No new ant-design icon imports`] = {
 
 exports[`No new line-icon imports`] = {
   value: `{
-    "client/src/components/Sidebar.tsx:1648214350": [
+    "client/src/components/Sidebar.tsx:3442285422": [
       [2, 0, 64, "\'@/icons\' import is restricted from being used.", "2495069050"],
-      [3, 0, 96, "\'@/icons/lni/Direction/angle-double-left.svg\' import is restricted from being used by a pattern.", "3344896149"],
-      [4, 0, 98, "\'@/icons/lni/Direction/angle-double-right.svg\' import is restricted from being used by a pattern.", "2094766677"]
+      [3, 0, 80, "\'@/icons/lni/Direction/angle-double-left.svg?react\' import is restricted from being used by a pattern.", "219512785"],
+      [4, 0, 82, "\'@/icons/lni/Direction/angle-double-right.svg?react\' import is restricted from being used by a pattern.", "1905172657"]
     ],
     "client/src/components/common/CloseButton.tsx:3899548351": [
       [0, 0, 38, "\'@/icons\' import is restricted from being used.", "259842236"]
     ],
-    "client/src/components/common/CopyTextComponent.tsx:3009922224": [
-      [0, 0, 88, "\'@/icons/lni/Web and Technology/copy-alt.svg\' import is restricted from being used by a pattern.", "654958816"]
+    "client/src/components/common/CopyTextComponent.tsx:1512378612": [
+      [0, 0, 72, "\'@/icons/lni/Web and Technology/copy-alt.svg?react\' import is restricted from being used by a pattern.", "3232224292"]
     ],
-    "client/src/components/common/StepProgressIndicator.tsx:1317956202": [
-      [0, 0, 91, "\'@/icons/lni/Interface and Sign/checkmark.svg\' import is restricted from being used by a pattern.", "470869229"],
-      [1, 0, 88, "\'@/icons/lni/Interface and Sign/more-alt.svg\' import is restricted from being used by a pattern.", "731262816"]
+    "client/src/components/common/StepProgressIndicator.tsx:3563236842": [
+      [0, 0, 75, "\'@/icons/lni/Interface and Sign/checkmark.svg?react\' import is restricted from being used by a pattern.", "2106702889"],
+      [1, 0, 72, "\'@/icons/lni/Interface and Sign/more-alt.svg?react\' import is restricted from being used by a pattern.", "4086154276"]
     ],
     "client/src/webpages/dashboard/Dashboard.tsx:3332610256": [
       [0, 0, 102, "\'@/icons\' import is restricted from being used.", "3871568653"]
     ],
-    "client/src/webpages/dashboard/banks/MatchingBanksDashboard.tsx:2691095817": [
-      [1, 0, 77, "\'@/icons/lni/Education/world-2.svg\' import is restricted from being used by a pattern.", "1020883543"],
-      [2, 0, 100, "\'@/icons/lni/Text editor/text-underline-alt.svg\' import is restricted from being used by a pattern.", "46107852"]
+    "client/src/webpages/dashboard/banks/MatchingBanksDashboard.tsx:3217201097": [
+      [1, 0, 61, "\'@/icons/lni/Education/world-2.svg?react\' import is restricted from being used by a pattern.", "1481176755"],
+      [2, 0, 84, "\'@/icons/lni/Text editor/text-underline-alt.svg?react\' import is restricted from being used by a pattern.", "1608613736"]
     ],
-    "client/src/webpages/dashboard/components/CoopButton.tsx:1346667157": [
-      [0, 0, 87, "\'@/icons/lni/Spinner/spinner-solid.svg\' import is restricted from being used by a pattern.", "1042941856"]
+    "client/src/webpages/dashboard/components/CoopButton.tsx:1250827825": [
+      [0, 0, 71, "\'@/icons/lni/Spinner/spinner-solid.svg?react\' import is restricted from being used by a pattern.", "1469501188"]
     ],
     "client/src/webpages/dashboard/components/RowMutations.tsx:3578050914": [
       [1, 0, 55, "\'@/icons\' import is restricted from being used.", "2940522213"]
     ],
-    "client/src/webpages/dashboard/components/table/Table.tsx:735486015": [
-      [1, 0, 94, "\'@/icons/lni/Text editor/sort-amount-asc.svg\' import is restricted from being used by a pattern.", "2127187148"],
-      [2, 0, 94, "\'@/icons/lni/Text editor/sort-amount-dsc.svg\' import is restricted from being used by a pattern.", "1632053068"]
+    "client/src/webpages/dashboard/components/table/Table.tsx:1273435135": [
+      [1, 0, 78, "\'@/icons/lni/Text editor/sort-amount-asc.svg?react\' import is restricted from being used by a pattern.", "961739528"],
+      [2, 0, 78, "\'@/icons/lni/Text editor/sort-amount-dsc.svg?react\' import is restricted from being used by a pattern.", "1789033352"]
     ],
-    "client/src/webpages/dashboard/components/table/TableFilter.tsx:774089589": [
-      [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
-      [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
+    "client/src/webpages/dashboard/components/table/TableFilter.tsx:2480061365": [
+      [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
+      [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
-    "client/src/webpages/dashboard/investigation/ThreadInvestigation.tsx:3447037703": [
-      [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/investigation/ThreadInvestigation.tsx:721213667": [
+      [0, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/item_types/ItemTypesDashboard.tsx:1283699488": [
-      [0, 0, 78, "\'@/icons/lni/Weather/sparkles.svg\' import is restricted from being used by a pattern.", "3780168488"],
-      [1, 0, 88, "\'@/icons/lni/Web and Technology/copy-alt.svg\' import is restricted from being used by a pattern.", "654958816"]
+    "client/src/webpages/dashboard/item_types/ItemTypesDashboard.tsx:3814702208": [
+      [0, 0, 62, "\'@/icons/lni/Weather/sparkles.svg?react\' import is restricted from being used by a pattern.", "3217875788"],
+      [1, 0, 72, "\'@/icons/lni/Web and Technology/copy-alt.svg?react\' import is restricted from being used by a pattern.", "3232224292"]
     ],
-    "client/src/webpages/dashboard/mrt/ManualReviewQueuesDashboard.tsx:3066268663": [
+    "client/src/webpages/dashboard/mrt/ManualReviewQueuesDashboard.tsx:4144591923": [
       [0, 0, 48, "\'@/icons\' import is restricted from being used.", "1465550809"],
-      [1, 0, 98, "\'@/icons/lni/Direction/angle-double-right.svg\' import is restricted from being used by a pattern.", "2094766677"],
-      [2, 0, 77, "\'@/icons/lnif/Design/grid-alt.svg\' import is restricted from being used by a pattern.", "367401481"],
-      [3, 0, 81, "\'@/icons/lni/Web and Technology/star.svg\' import is restricted from being used by a pattern.", "3440489485"]
+      [1, 0, 82, "\'@/icons/lni/Direction/angle-double-right.svg?react\' import is restricted from being used by a pattern.", "1905172657"],
+      [2, 0, 61, "\'@/icons/lnif/Design/grid-alt.svg?react\' import is restricted from being used by a pattern.", "2203300045"],
+      [3, 0, 65, "\'@/icons/lni/Web and Technology/star.svg?react\' import is restricted from being used by a pattern.", "2268953001"]
     ],
-    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx:1265048322": [
-      [0, 0, 87, "\'@/icons/lni/Direction/chevron-left.svg\' import is restricted from being used by a pattern.", "248481560"],
-      [1, 0, 89, "\'@/icons/lni/Direction/chevron-right.svg\' import is restricted from being used by a pattern.", "2657838136"],
-      [2, 0, 96, "\'@/icons/lni/Interface and Sign/cross-circle.svg\' import is restricted from being used by a pattern.", "646156576"]
+    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx:2183365222": [
+      [0, 0, 71, "\'@/icons/lni/Direction/chevron-left.svg?react\' import is restricted from being used by a pattern.", "3317241756"],
+      [1, 0, 73, "\'@/icons/lni/Direction/chevron-right.svg?react\' import is restricted from being used by a pattern.", "4174122716"],
+      [2, 0, 80, "\'@/icons/lni/Interface and Sign/cross-circle.svg?react\' import is restricted from being used by a pattern.", "37409444"]
     ],
-    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisionsFilter.tsx:3161324085": [
-      [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
-      [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
+    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisionsFilter.tsx:3253181685": [
+      [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
+      [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177287099": [
-      [0, 0, 78, "\'@/icons/lni/Design/sidebar-1.svg\' import is restricted from being used by a pattern.", "2210410415"],
-      [1, 0, 98, "\'@/icons/lni/Direction/angle-double-right.svg\' import is restricted from being used by a pattern.", "2094766677"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177454971": [
+      [0, 0, 62, "\'@/icons/lni/Design/sidebar-1.svg?react\' import is restricted from being used by a pattern.", "351186763"],
+      [1, 0, 82, "\'@/icons/lni/Direction/angle-double-right.svg?react\' import is restricted from being used by a pattern.", "1905172657"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:2610319804": [
-      [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECInspectedMedia.tsx:4077846936": [
+      [0, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECThreadItemComponent.tsx:2373785518": [
-      [1, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECThreadItemComponent.tsx:784247690": [
+      [1, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActionEntry.tsx:3999423521": [
-      [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActionEntry.tsx:2917175365": [
+      [0, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobThreadItemComponent.tsx:3255225503": [
-      [1, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobThreadItemComponent.tsx:3148286587": [
+      [1, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent.tsx:3111379029": [
-      [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent.tsx:187044465": [
+      [0, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobRelatedUserComponent.tsx:973171561": [
-      [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobRelatedUserComponent.tsx:1226282061": [
+      [0, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobUserVerticalComponent.tsx:1124833499": [
-      [0, 0, 77, "\'@/icons/lni/User/user-alt-4.svg\' import is restricted from being used by a pattern.", "4178014241"]
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobUserVerticalComponent.tsx:59841599": [
+      [0, 0, 61, "\'@/icons/lni/User/user-alt-4.svg?react\' import is restricted from being used by a pattern.", "853965253"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:4212933245": [
-      [2, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
-      [3, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:1436988477": [
+      [2, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
+      [3, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsGroupBy.tsx:3048730588": [
-      [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
-      [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsGroupBy.tsx:2094174492": [
+      [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
+      [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
     "client/src/webpages/dashboard/overview/Overview.tsx:2096950063": [
       [10, 0, 123, "\'@/icons\' import is restricted from being used.", "3974909531"]
     ],
-    "client/src/webpages/dashboard/overview/OverviewCard.tsx:1601864003": [
+    "client/src/webpages/dashboard/overview/OverviewCard.tsx:3946409475": [
       [8, 0, 61, "\'@/icons\' import is restricted from being used.", "8406751"],
-      [9, 0, 85, "\'@/icons/lni/Direction/arrow-right.svg\' import is restricted from being used by a pattern.", "427462392"],
-      [10, 0, 97, "\'@/icons/lni/Direction/arrows-horizontal.svg\' import is restricted from being used by a pattern.", "3504538040"]
+      [9, 0, 69, "\'@/icons/lni/Direction/arrow-right.svg?react\' import is restricted from being used by a pattern.", "2180497308"],
+      [10, 0, 81, "\'@/icons/lni/Direction/arrows-horizontal.svg?react\' import is restricted from being used by a pattern.", "3736456476"]
     ],
-    "client/src/webpages/dashboard/policies/PoliciesDashboard.tsx:235766838": [
-      [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
-      [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"],
-      [2, 0, 76, "\'@/icons/lni/Education/pencil.svg\' import is restricted from being used by a pattern.", "1255238202"],
-      [3, 0, 81, "\'@/icons/lni/Interface and Sign/plus.svg\' import is restricted from being used by a pattern.", "2464142477"],
-      [4, 0, 90, "\'@/icons/lni/Web and Technology/trash-can.svg\' import is restricted from being used by a pattern.", "3521839680"]
+    "client/src/webpages/dashboard/policies/PoliciesDashboard.tsx:270333074": [
+      [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
+      [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"],
+      [2, 0, 60, "\'@/icons/lni/Education/pencil.svg?react\' import is restricted from being used by a pattern.", "2307741982"],
+      [3, 0, 65, "\'@/icons/lni/Interface and Sign/plus.svg?react\' import is restricted from being used by a pattern.", "3616358249"],
+      [4, 0, 74, "\'@/icons/lni/Web and Technology/trash-can.svg?react\' import is restricted from being used by a pattern.", "615551076"]
     ],
     "client/src/webpages/dashboard/policies/PolicyForm.tsx:1529120265": [
       [2, 0, 70, "\'@/icons\' import is restricted from being used.", "3642037779"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RuleInsightsFilterBy.tsx:4163409545": [
-      [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
-      [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RuleInsightsFilterBy.tsx:3759497673": [
+      [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
+      [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
     "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2418477128": [
       [3, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:3641428222": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:458867610": [
       [8, 0, 36, "\'@/icons\' import is restricted from being used.", "1234727599"],
-      [9, 0, 89, "\'@/icons/lni/Web and Technology/download.svg\' import is restricted from being used by a pattern.", "2932504973"]
+      [9, 0, 73, "\'@/icons/lni/Web and Technology/download.svg?react\' import is restricted from being used by a pattern.", "3283715369"]
     ],
     "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:1076126041": [
       [1, 0, 43, "\'@/icons\' import is restricted from being used.", "3049589739"]
@@ -839,13 +842,13 @@ exports[`No new line-icon imports`] = {
     "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1526952710": [
       [1, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:3391496803": [
-      [0, 0, 88, "\'@/icons/lni/Web and Technology/copy-alt.svg\' import is restricted from being used by a pattern.", "654958816"],
-      [1, 0, 90, "\'@/icons/lni/Web and Technology/trash-can.svg\' import is restricted from being used by a pattern.", "3521839680"]
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
+      [0, 0, 72, "\'@/icons/lni/Web and Technology/copy-alt.svg?react\' import is restricted from being used by a pattern.", "3232224292"],
+      [1, 0, 74, "\'@/icons/lni/Web and Technology/trash-can.svg?react\' import is restricted from being used by a pattern.", "615551076"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1069542000": [
-      [2, 0, 88, "\'@/icons/lni/Web and Technology/copy-alt.svg\' import is restricted from being used by a pattern.", "654958816"],
-      [3, 0, 90, "\'@/icons/lni/Web and Technology/trash-can.svg\' import is restricted from being used by a pattern.", "3521839680"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
+      [2, 0, 72, "\'@/icons/lni/Web and Technology/copy-alt.svg?react\' import is restricted from being used by a pattern.", "3232224292"],
+      [3, 0, 74, "\'@/icons/lni/Web and Technology/trash-can.svg?react\' import is restricted from being used by a pattern.", "615551076"]
     ]
   }`
 };

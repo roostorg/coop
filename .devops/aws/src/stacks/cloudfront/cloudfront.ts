@@ -133,7 +133,7 @@ export class CloudfrontStack extends Stack {
           bundling: {
             image: cdk.DockerImage.fromBuild(`${repoRootDir}/client`, {
               buildArgs: {
-                REACT_APP_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
+                VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
                   props.otelCollectorUrl,
               },
             }),

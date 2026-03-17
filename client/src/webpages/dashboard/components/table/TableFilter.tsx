@@ -1,5 +1,5 @@
-import { ReactComponent as ChevronDown } from '@/icons/lni/Direction/chevron-down.svg';
-import { ReactComponent as ChevronUp } from '@/icons/lni/Direction/chevron-up.svg';
+import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
+import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
 import { FilterOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import omit from 'lodash/omit';

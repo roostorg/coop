@@ -79,7 +79,8 @@ npm install \
    npm run create-org
 ```
    
-   Use the credentials provided to log in at `http://localhost:3000`.
+Use the credentials provided to log in at `http://localhost:3000`.
+Please note that the initial page load may take a while.
 
 
 ### **Database Structure and Migrations**
@@ -164,4 +165,4 @@ Writing code is not the only way to help the project. Reviewing pull requests, a
   * General discussion channel \#general  
   * Development discussions \#coop  
 * Join our [newsletter](https://roost.tools/#get-started) for more announcements and information  
-* Follow us on [LinkedIn](https://www.linkedin.com/company/roost-tools/) or [Bluesky](https://bsky.app/profile/roost.tools) 
+* Follow us on [LinkedIn](https://www.linkedin.com/company/roost-tools/) or [Bluesky](https://bsky.app/profile/roost.tools)
