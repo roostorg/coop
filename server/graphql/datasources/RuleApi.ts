@@ -2,7 +2,6 @@
 
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
-import { DataSource } from 'apollo-datasource';
 import { GraphQLError } from 'graphql';
 import { sql, type Kysely } from 'kysely';
 import Sequelize from 'sequelize';
@@ -267,7 +266,7 @@ function parseAggregationClauseInput(
 /**
  * GraphQL Object for a Rule
  */
-class RuleAPI extends DataSource {
+class RuleAPI {
   constructor(
     private readonly knex: Dependencies['Knex'],
     private readonly snowflake: Kysely<SnowflakePublicSchema>,
@@ -277,7 +276,6 @@ class RuleAPI extends DataSource {
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
   ) {
-    super();
   }
 
   async getGraphQLRuleFromId(id: string, orgId: string) {

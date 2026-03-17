@@ -1,5 +1,4 @@
 import type Bottle from '@ethanresnick/bottlejs';
-import { DataSource } from 'apollo-datasource';
 
 import makeActionAPI, {
   type ActionAPI,
@@ -69,7 +68,7 @@ function makeDataSources(deps: Dependencies) {
     orgAPI: deps.OrgAPIDataSource,
     ruleAPI: deps.RuleAPIDataSource,
     userAPI: deps.UserAPIDataSource,
-    notificationsAPI: new (class extends DataSource<unknown> {
+    notificationsAPI: new (class {
       private service = deps.NotificationsService;
       public async getNotificationsForUser(id: string) {
         return this.service.getNotificationsForUser(id);
