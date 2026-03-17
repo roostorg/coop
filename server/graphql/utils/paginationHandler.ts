@@ -1,5 +1,4 @@
-import { UserInputError } from 'apollo-server-express';
-import { type GraphQLFieldResolver as Resolver } from 'graphql';
+import { GraphQLError, type GraphQLFieldResolver as Resolver } from 'graphql';
 
 import { type JSON } from '../../utils/json-schema-types.js';
 
@@ -121,7 +120,7 @@ export function makeConnectionResolver<
     // https://jsonapi.org/profiles/ethanresnick/cursor-pagination/#auto-id-error-cases
     const { takeFrom, pageSize } = (() => {
       if (first != null && last != null) {
-        throw new UserInputError(`Cannot specify both first and last`);
+        throw new GraphQLError(`Cannot specify both first and last`, { extensions: { code: 'BAD_USER_INPUT' } });
       } else if (first != null) {
         return { takeFrom: 'start', pageSize: first } as const;
       } else if (last != null) {
@@ -132,12 +131,13 @@ export function makeConnectionResolver<
     })();
 
     if (pageSize <= 0) {
-      throw new UserInputError('Page size must be a positive number.');
+      throw new GraphQLError('Page size must be a positive number.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
 
     if (pageSize > maxPageSize) {
-      throw new UserInputError(
+      throw new GraphQLError(
         `Page size must be less than or equal to ${maxPageSize}.`,
+        { extensions: { code: 'BAD_USER_INPUT' } },
       );
     }
 
@@ -147,7 +147,7 @@ export function makeConnectionResolver<
     // where the user explicitly provided only one cursor, but we synthesized
     // the other.
     if (before != null && after != null) {
-      throw new UserInputError('Combining before and after is not supported.');
+      throw new GraphQLError('Combining before and after is not supported.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
 
     // figure out the direction we're paginating in,

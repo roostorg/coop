@@ -1,5 +1,4 @@
-import { UserInputError } from 'apollo-server-express';
-import { GraphQLScalarType, Kind } from 'graphql';
+import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 
 import { CoopInput } from '../../services/moderationConfigService/index.js';
 
@@ -20,7 +19,7 @@ export default new GraphQLScalarType<CoopInput | string, string>({
     'Either an arbitrary string or a CoopInput enum key name (not the TS runtime value).',
   serialize(value) {
     if (typeof value !== 'string') {
-      throw new UserInputError('Expected a string.');
+      throw new GraphQLError('Expected a string.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
 
     return CoopInputEnumInverted[value] ?? value;
@@ -28,7 +27,7 @@ export default new GraphQLScalarType<CoopInput | string, string>({
   parseValue: parseCoopInputOrStringValue,
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new UserInputError('CoopInputOrString must be a string.');
+      throw new GraphQLError('CoopInputOrString must be a string.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return parseCoopInputOrStringValue(ast.value);
   },
@@ -36,7 +35,7 @@ export default new GraphQLScalarType<CoopInput | string, string>({
 
 function parseCoopInputOrStringValue(value: unknown) {
   if (typeof value !== 'string') {
-    throw new UserInputError('CoopInputOrString must be a CoopInput.');
+    throw new GraphQLError('CoopInputOrString must be a CoopInput.', { extensions: { code: 'BAD_USER_INPUT' } });
   }
 
   // @ts-ignore

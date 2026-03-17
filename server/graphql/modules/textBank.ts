@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
@@ -55,7 +55,7 @@ const Query: GQLQueryResolvers = {
   async textBank(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {
@@ -79,7 +79,7 @@ const Mutation: GQLMutationResolvers = {
   async createTextBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const { name, description, type, strings } = params.input;
@@ -107,7 +107,7 @@ const Mutation: GQLMutationResolvers = {
   async updateTextBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const { id, name, description, type, strings } = params.input;
@@ -135,7 +135,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteTextBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     try {

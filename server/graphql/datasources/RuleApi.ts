@@ -3,7 +3,7 @@
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
 import { DataSource } from 'apollo-datasource';
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 import { sql, type Kysely } from 'kysely';
 import Sequelize from 'sequelize';
 import { uid } from 'uid';
@@ -286,8 +286,9 @@ class RuleAPI extends DataSource {
   async getGraphQLRuleFromId(id: string, orgId: string) {
     const rule = await this.models.Rule.findByPk(id, { rejectOnEmpty: true });
     if (rule.orgId !== orgId) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User not authenticated to fetch this rule',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 

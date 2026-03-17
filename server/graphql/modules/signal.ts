@@ -1,5 +1,5 @@
 import { type SignalSubcategory } from '@roostorg/types';
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
@@ -228,8 +228,9 @@ const Signal: GQLSignalResolvers = {
     const user = context.getUser();
 
     if (!user) {
-      throw new AuthenticationError(
+      throw new GraphQLError(
         'User required to load signal disabledInfo.',
+        { extensions: { code: 'UNAUTHENTICATED' } },
       );
     }
 

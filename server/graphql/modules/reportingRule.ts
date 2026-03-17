@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-core';
+import { GraphQLError } from 'graphql';
 
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
@@ -99,7 +99,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async creator(reportingRule, _, { dataSources, getUser }) {
     const user = getUser();
     if (!user || user.orgId !== reportingRule.orgId) {
-      throw new AuthenticationError('User required');
+      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     if (!reportingRule.creatorId) {
       return null;
@@ -114,7 +114,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async itemTypes(reportingRule, _, { services, getUser }) {
     const user = getUser();
     if (!user || user.orgId !== reportingRule.orgId) {
-      throw new AuthenticationError('User required');
+      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const itemTypes = await services.ModerationConfigService.getItemTypes({
@@ -128,7 +128,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async actions(reportingRule, _, { dataSources, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return dataSources.actionAPI.getGraphQLActionsFromIds(
@@ -139,7 +139,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async policies(reportingRule, _, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const { orgId } = user;
 
@@ -159,7 +159,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
     // insights resolver. But verify the rule is owned by the user's org
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required');
+      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (rule.orgId !== user.orgId) {
@@ -174,7 +174,7 @@ const Query: GQLQueryResolvers = {
   async reportingRule(_, { id }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const reportingRules = await services.ReportingService.getReportingRules({
@@ -189,7 +189,7 @@ const Mutation: GQLMutationResolvers = {
   async createReportingRule(_, { input }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const { itemTypeIds, actionIds } = input;
@@ -228,7 +228,7 @@ const Mutation: GQLMutationResolvers = {
   async updateReportingRule(_, { input }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const { id, name, description, status, conditionSet, policyIds } = input;
 
@@ -283,7 +283,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteReportingRule(_, { id }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return services.ReportingService.deleteReportingRule({

@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
+import { GraphQLError } from 'graphql';
 
 import {
   hasPermission,
@@ -125,7 +125,7 @@ const RoutingRule: GQLRoutingRuleResolvers = {
   async destinationQueue(routingRule, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== routingRule.orgId) {
-      throw new AuthenticationError('User required');
+      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const userCanEditMRTQueues = hasPermission(
@@ -155,7 +155,7 @@ const RoutingRule: GQLRoutingRuleResolvers = {
   async itemTypes(routingRule, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== routingRule.orgId) {
-      throw new AuthenticationError('User required');
+      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const itemTypes =
@@ -177,7 +177,7 @@ const Mutation: GQLMutationResolvers = {
     const { itemTypeIds } = params.input;
 
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (!itemTypeIdsAreValid(itemTypeIds)) {
@@ -216,7 +216,7 @@ const Mutation: GQLMutationResolvers = {
     const user = context.getUser();
     const { itemTypeIds } = params.input;
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     if (itemTypeIds && !itemTypeIdsAreValid(itemTypeIds)) {
@@ -261,7 +261,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteRoutingRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.services.ManualReviewToolService.deleteRoutingRule({
@@ -272,7 +272,7 @@ const Mutation: GQLMutationResolvers = {
   async reorderRoutingRules(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const { order } = params.input;

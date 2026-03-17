@@ -1,5 +1,4 @@
-import { UserInputError } from 'apollo-server-express';
-import { GraphQLScalarType, Kind } from 'graphql';
+import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 
 import {
   tryParseNonEmptyString,
@@ -16,14 +15,14 @@ export default new GraphQLScalarType<NonEmptyString, NonEmptyString>({
   description: 'A string that must be non-empty.',
   serialize(value) {
     if (typeof value !== 'string') {
-      throw new UserInputError('Expected a string.');
+      throw new GraphQLError('Expected a string.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return tryParseNonEmptyString(value);
   },
   parseValue: tryParseNonEmptyString,
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new UserInputError('NonEmptyString must be a string.');
+      throw new GraphQLError('NonEmptyString must be a string.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return tryParseNonEmptyString(ast.value);
   },
