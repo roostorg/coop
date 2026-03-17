@@ -181,7 +181,7 @@ export function loadPlugins(
     // Plugin manifest may omit modelCard; we require it for display.
     if ((serverEntry as { modelCard?: ModelCard }).modelCard == null) {
       throw new Error(
-        `Integration "${id}" (${packageSpec}) must provide a modelCard with at least "modelDetails" and "technicalIntegration" sections.`,
+        `Integration "${id}" (${packageSpec}) must provide a modelCard with all required sections. See REQUIRED_MODEL_CARD_SECTION_IDS in types/integration.ts.`,
       );
     }
     map.set(id, serverEntry);

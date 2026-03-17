@@ -74,22 +74,39 @@ export type ModelCard = Readonly<{
  */
 export const REQUIRED_MODEL_CARD_SECTION_IDS = [
   'modelDetails',
-  'technicalIntegration',
+  'trainingDataSources',
+  'policyAndTaxonomy',
+  'annotationMethodology',
+  'performanceBenchmarks',
+  'biasAndLimitations',
+  'implementationGuidance',
 ] as const;
 
 /**
- * Asserts that a model card has at least the required sections (basic information
- * and technical integration). Call when registering integration manifests.
+ * Asserts that a model card includes all required sections.
+ * Call when registering integration manifests.
+ *
+ * Required sections:
+ *  - modelDetails: basic model information
+ *  - trainingDataSources: data used to train the model
+ *  - policyAndTaxonomy: policy and taxonomy definitions
+ *  - annotationMethodology: how data was annotated/labeled
+ *  - performanceBenchmarks: evaluation metrics and results
+ *  - biasAndLimitations: known biases, limitations, and failure modes
+ *  - implementationGuidance: technical integration and usage guidance for adopters
+ *
  * @throws Error if any required section id is missing
  */
 export function assertModelCardHasRequiredSections(card: ModelCard): void {
   const sectionIds = new Set((card.sections ?? []).map((s) => s.id));
-  for (const requiredId of REQUIRED_MODEL_CARD_SECTION_IDS) {
-    if (!sectionIds.has(requiredId)) {
-      throw new Error(
-        `Model card must include a section with id "${requiredId}" (e.g. Basic Information / Model Details and Technical Integration).`,
-      );
-    }
+  const missing = REQUIRED_MODEL_CARD_SECTION_IDS.filter(
+    (id) => !sectionIds.has(id),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `Model card is missing required section(s): ${missing.map((id) => `"${id}"`).join(', ')}. ` +
+        `All integrations must include: ${REQUIRED_MODEL_CARD_SECTION_IDS.join(', ')}.`,
+    );
   }
 }
 
@@ -142,8 +159,8 @@ export type IntegrationManifest = Readonly<{
   /**
    * Model card: structured metadata (model name, version, sections) for the UI.
    * When present, the integration detail page renders it. Built-in integrations
-   * should always provide a model card with at least sections "modelDetails" and
-   * "technicalIntegration"; use assertModelCardHasRequiredSections() when
+   * should always provide a model card with all required sections (see
+   * REQUIRED_MODEL_CARD_SECTION_IDS); use assertModelCardHasRequiredSections() when
    * registering.
    */
   modelCard?: ModelCard;

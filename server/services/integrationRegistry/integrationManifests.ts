@@ -4,7 +4,15 @@
  * Lives in the registry (not graphql) so transport-agnostic code can import it.
  */
 
-const REQUIRED_SECTION_IDS = ['modelDetails', 'technicalIntegration'] as const;
+const REQUIRED_SECTION_IDS = [
+  'modelDetails',
+  'trainingDataSources',
+  'policyAndTaxonomy',
+  'annotationMethodology',
+  'performanceBenchmarks',
+  'biasAndLimitations',
+  'implementationGuidance',
+] as const;
 
 export type ModelCardField = Readonly<{ label: string; value: string }>;
 export type ModelCardSubsection = Readonly<{
@@ -39,14 +47,43 @@ export type IntegrationManifestEntry = Readonly<{
   logoWithBackgroundUrl?: string;
 }>;
 
+/** Placeholder sections for model card fields not yet populated by the model creator. */
+const TBD_MODEL_CARD_SECTIONS: readonly ModelCardSection[] = [
+  {
+    id: 'trainingDataSources',
+    title: 'Training Data Sources',
+    fields: [{ label: 'Status', value: 'TBD — awaiting model creator documentation.' }],
+  },
+  {
+    id: 'policyAndTaxonomy',
+    title: 'Policy & Taxonomy Definitions',
+    fields: [{ label: 'Status', value: 'TBD — awaiting model creator documentation.' }],
+  },
+  {
+    id: 'annotationMethodology',
+    title: 'Annotation Methodology',
+    fields: [{ label: 'Status', value: 'TBD — awaiting model creator documentation.' }],
+  },
+  {
+    id: 'performanceBenchmarks',
+    title: 'Performance Benchmarks',
+    fields: [{ label: 'Status', value: 'TBD — awaiting model creator documentation.' }],
+  },
+  {
+    id: 'biasAndLimitations',
+    title: 'Bias & Known Limitations',
+    fields: [{ label: 'Status', value: 'TBD — awaiting model creator documentation.' }],
+  },
+];
+
 function assertModelCardHasRequiredSections(card: ModelCard): void {
   const sectionIds = new Set((card.sections ?? []).map((s) => s.id));
-  for (const requiredId of REQUIRED_SECTION_IDS) {
-    if (!sectionIds.has(requiredId)) {
-      throw new Error(
-        `Model card must include a section with id "${requiredId}".`,
-      );
-    }
+  const missing = REQUIRED_SECTION_IDS.filter((id) => !sectionIds.has(id));
+  if (missing.length > 0) {
+    throw new Error(
+      `Model card is missing required section(s): ${missing.map((id) => `"${id}"`).join(', ')}. ` +
+        `All integrations must include: ${REQUIRED_SECTION_IDS.join(', ')}.`,
+    );
   }
 }
 
@@ -92,9 +129,10 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
           },
         ],
       },
+      ...TBD_MODEL_CARD_SECTIONS,
       {
-        id: 'technicalIntegration',
-        title: 'Technical Integration',
+        id: 'implementationGuidance',
+        title: 'Implementation Guidance',
         fields: [
           {
             label: 'Authentication',
@@ -169,9 +207,10 @@ const OPENAI: IntegrationManifestEntry = {
           },
         ],
       },
+      ...TBD_MODEL_CARD_SECTIONS,
       {
-        id: 'technicalIntegration',
-        title: 'Technical Integration',
+        id: 'implementationGuidance',
+        title: 'Implementation Guidance',
         fields: [
           {
             label: 'Credentials',
@@ -233,9 +272,10 @@ const ZENTROPI: IntegrationManifestEntry = {
           },
         ],
       },
+      ...TBD_MODEL_CARD_SECTIONS,
       {
-        id: 'technicalIntegration',
-        title: 'Technical Integration',
+        id: 'implementationGuidance',
+        title: 'Implementation Guidance',
         fields: [
           {
             label: 'Credentials',
