@@ -1,5 +1,4 @@
 import { type Exception } from '@opentelemetry/api';
-import { DataSource } from 'apollo-datasource';
 import pLimit from 'p-limit';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
@@ -30,7 +29,7 @@ import {
 /**
  * GraphQL Object for an Action
  */
-class ActionAPI extends DataSource {
+class ActionAPI {
   constructor(
     private readonly actionPublisher: Dependencies['ActionPublisher'],
     private readonly sequelize: Dependencies['Sequelize'],
@@ -38,7 +37,6 @@ class ActionAPI extends DataSource {
     private readonly itemInvestigationService: Dependencies['ItemInvestigationService'],
     private readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {
-    super();
   }
 
   async getGraphQLActionFromId(opts: { id: string; orgId: string }) {

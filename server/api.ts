@@ -361,6 +361,7 @@ export default async function makeApiServer(deps: Dependencies) {
         return authSchemaWrapper(fieldConfig, schema);
       },
     }),
+    // @ts-expect-error dataSources option removed in Apollo Server v5; will be replaced later during migration
     dataSources: () => deps.DataSources,
     context: ({ req, res }) => {
       return {
