@@ -18,7 +18,9 @@ module.exports = {
     '.eslintrc.cjs',
     'eslint',
     'tailwind.config.js',
-    '*.stories.tsx'
+    '*.stories.tsx',
+    'vite.config.ts',
+    'vite-env.d.ts'
   ],
   plugins: ['etc', 'custom-rules'],
   rules: {
