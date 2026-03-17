@@ -17,11 +17,11 @@ import AwaitingApproval from './auth/AwaitingApproval';
 import RejectedByAdmin from './auth/RejectedByAdmin';
 import './dashboard/Dashboard.css';
 
-const Login = React.lazy(async () => import('./auth/Login.tsx'));
-const ForgotPassword = React.lazy(async () => import('./auth/forgot_password/ForgotPassword.tsx'));
-const ResetPassword = React.lazy(async () => import('./auth/forgot_password/ResetPassword.tsx'));
-const SignUp = React.lazy(async () => import('./auth/SignUp.tsx'));
-const LoginSSO = React.lazy(async () => import('./auth/LoginSSO.tsx'));
+const Login = React.lazy(async () => import('./auth/Login'));
+const ForgotPassword = React.lazy(async () => import('./auth/forgot_password/ForgotPassword'));
+const ResetPassword = React.lazy(async () => import('./auth/forgot_password/ResetPassword'));
+const SignUp = React.lazy(async () => import('./auth/SignUp'));
+const LoginSSO = React.lazy(async () => import('./auth/LoginSSO'));
 /**
  * This is the container for the React app. All React
  * components that render an entire webpage should be

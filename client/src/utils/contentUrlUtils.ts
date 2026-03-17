@@ -8,7 +8,7 @@
    * Supports comma-separated patterns
    */
   export function getContentUrlPatterns(): string[] {
-    const pattern = import.meta.env.VITE_CONTENT_URL_PATTERN ?? 'notion';
+    const pattern: string = import.meta.env.VITE_CONTENT_URL_PATTERN ?? 'notion';
     return pattern.split(',').map(p => p.trim()).filter(p => p.length > 0);
   }
 
