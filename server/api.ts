@@ -19,7 +19,6 @@ import {
   ApolloServerPluginLandingPageGraphQLPlayground,
 } from 'apollo-server-core';
 import { ApolloServer } from 'apollo-server-express';
-import bodyParser from 'body-parser';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
@@ -240,7 +239,7 @@ export default async function makeApiServer(deps: Dependencies) {
 
   app.post(
     `/saml/login/:orgId/callback`,
-    bodyParser.urlencoded({ extended: false }),
+    express.urlencoded({ extended: false }),
     passport.authenticate('saml', {
       failureRedirect: '/',
       failureFlash: true,
