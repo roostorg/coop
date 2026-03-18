@@ -103,7 +103,9 @@ function DynamicSchemaFields({
       <FormSectionHeader title={title} subtitle={subtitle} />
       <div className="flex flex-col gap-4">
         {fields.map((field) => {
-          const label = field.name.replace(/_/g, ' ');
+          const label = field.name
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
 
           return (
             <div key={field.name} className="flex flex-col gap-1">
