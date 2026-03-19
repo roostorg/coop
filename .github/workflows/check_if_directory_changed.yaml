@@ -11,6 +11,9 @@ on:
         description: 'Whether there are changed files'
         value: ${{ jobs.check_if_directory_changed.outputs.files_changed }}
 
+permissions:
+  contents: read
+
 jobs:
   check_if_directory_changed:
     runs-on: ubuntu-latest
