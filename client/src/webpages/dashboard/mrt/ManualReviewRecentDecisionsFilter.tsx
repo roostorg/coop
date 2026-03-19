@@ -1,8 +1,8 @@
+import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { ReactComponent as ChevronDown } from '@/icons/lni/Direction/chevron-down.svg';
 import { ReactComponent as ChevronUp } from '@/icons/lni/Direction/chevron-up.svg';
-import { DatePicker, Select } from 'antd';
+import { Select } from 'antd';
 import without from 'lodash/without';
-import moment from 'moment';
 import { useRef, useState } from 'react';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
@@ -20,7 +20,6 @@ import { safePick } from '../../../utils/misc';
 import { JsonOf, jsonStringify } from '../../../utils/typescript-types';
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
 
 type GQLRecentDecisionsFilterByColumns = Omit<
   GQLRecentDecisionsFilterInput,
@@ -279,30 +278,19 @@ export default function ManualReviewRecentDecisionsFilter(props: {
                 const isExpanded = expandedColumnNames.includes(column);
                 const columnComponent =
                   column === 'dateRange' ? (
-                    <RangePicker
-                      className="!min-w-[250px]"
-                      placeholder={['Start', 'End']}
-                      value={
-                        unsavedFilterValues.dateRange
-                          ? [
-                              moment(unsavedFilterValues.dateRange.startDate),
-                              moment(unsavedFilterValues.dateRange.endDate),
-                            ]
-                          : undefined
-                      }
-                      format="YYYY-MM-DD"
-                      showTime={{ format: 'hh:mm a' }}
-                      onChange={(dates) => {
+                    <DateRangePicker
+                      initialDateFrom={unsavedFilterValues.dateRange?.startDate}
+                      initialDateTo={unsavedFilterValues.dateRange?.endDate}
+                      onUpdate={({ range }) => {
                         setUnsavedFilterValues({
                           ...unsavedFilterValues,
                           dateRange: {
-                            startDate:
-                              dates && dates[0] ? dates[0].toDate() : undefined,
-                            endDate:
-                              dates && dates[1] ? dates[1].toDate() : undefined,
+                            startDate: range.from,
+                            endDate: range.to ?? range.from,
                           },
                         });
                       }}
+                      isSingleMonthOnly
                     />
                   ) : (
                     filterByMenuColumn(column)

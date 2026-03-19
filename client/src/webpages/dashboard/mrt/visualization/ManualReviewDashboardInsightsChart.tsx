@@ -21,7 +21,7 @@ import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import moment from 'moment';
+import { format } from 'date-fns';
 import React, {
   ReactNode,
   useCallback,
@@ -698,9 +698,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
 
   const formattedData = countsByDay?.map((it) => {
     const obj: { [key: string]: any } = {
-      ds: moment(new Date(parseInt(it.time)))
-        .local()
-        .format(`YYYY-MM-DD${timeDivision === 'HOUR' ? ' HH:mm' : ''}`),
+      ds: format(new Date(parseInt(it.time)), timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd'),
     };
     obj[getLineNameFromCount(it)] = it.count;
     return obj;

@@ -25,7 +25,7 @@ import sum from 'lodash/sum';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import moment from 'moment';
+import { format } from 'date-fns';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { Chart } from 'react-google-charts';
 import {
@@ -403,7 +403,7 @@ export default function RulesDashboardInsights() {
         fill="#71717a"
         className="pt-3 text-slate-500"
       >
-        {moment(payload.value).format('MM/DD/YY')}
+        {format(new Date(payload.value), 'MM/dd/yy')}
       </text>
     );
   };
@@ -472,7 +472,7 @@ export default function RulesDashboardInsights() {
       return (
         <div className="flex flex-col bg-white rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-t-lg bg-primary">
-            {moment(label).format('MM/DD/YY')}
+            {format(new Date(label as string), 'MM/dd/yy')}
           </div>
           {data.length > 1 && (
             <div className="flex flex-col">

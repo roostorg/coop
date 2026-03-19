@@ -2,7 +2,6 @@ import { FormInstance } from 'antd';
 import cloneDeep from 'lodash/cloneDeep';
 import omit from 'lodash/omit';
 import uniqBy from 'lodash/uniqBy';
-import moment, { Moment } from 'moment';
 
 import {
   GQLConditionConjunction,
@@ -179,7 +178,7 @@ export type RuleFormReducerAction =
     }
   | {
       type: RuleFormReducerActionType.UpdateExpirationTime;
-      payload: { time: Moment | null };
+      payload: { time: Date | null };
     }
   | {
       type: RuleFormReducerActionType.RuleQueryCompleted;
@@ -195,7 +194,7 @@ export type RuleFormReducerAction =
         maxDailyActions: number | null;
         unlimitedDailyActionsChecked: boolean;
         expirationEnabled: boolean;
-        expirationTime: Moment | null;
+        expirationTime: Date | null;
         ruleType: RuleType;
       };
     }
@@ -331,7 +330,7 @@ export function reducer(
       return {
         ...state,
         expirationEnabled: newValue,
-        expirationTime: newValue ? moment(Date.now() + DAY) : null,
+        expirationTime: newValue ? new Date(Date.now() + DAY) : null,
         ruleMutationError: false,
       };
     case RuleFormReducerActionType.UpdateExpirationTime:

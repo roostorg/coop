@@ -1,5 +1,5 @@
 import { DateString } from '@roostorg/types';
-import moment from 'moment';
+import { addDays, addHours, format, isBefore } from 'date-fns';
 
 export enum LookbackLength {
   CUSTOM = 'Custom',
@@ -28,24 +28,38 @@ export function formatDate(date = new Date()): string {
   return date.toISOString().split('T')[0];
 }
 
+function toDate(date: string | DateString | Date): Date {
+  return date instanceof Date ? date : new Date(date as string);
+}
+
 export function parseDatetimeToReadableStringInUTC(
   date: string | DateString | Date,
 ): string {
-  return moment(date).utc().format('MM/DD/YY hh:mm:ss a');
+  const d = toDate(date);
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: '2-digit',
+    day: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  })
+    .format(d)
+    .replace(',', '');
 }
 
 export function parseDatetimeToReadableStringInCurrentTimeZone(
   date: string | DateString | Date,
 ): string {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return moment(date).zone(timezone).format('MM/DD/YY hh:mm:ss a');
+  return format(toDate(date), 'MM/dd/yy hh:mm:ss a');
 }
 
 export function parseDatetimeToMonthDayYearDateStringInCurrentTimeZone(
   date: string | DateString | Date,
 ): string {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return moment(date).zone(timezone).format('MMM D, YYYY');
+  return format(toDate(date), 'MMM d, yyyy');
 }
 
 export function getEarliestDateWithLookback(lookback: LookbackLength): Date {
@@ -71,31 +85,17 @@ export function getEarliestDateWithLookback(lookback: LookbackLength): Date {
 }
 
 export function getDateRange(start: Date, end: Date, interval: 'HOUR' | 'DAY') {
-  // Start and end dates for the graph x axis
-  const startDate = moment(start).local();
-  const endDate = moment(end).local();
+  const formatStr = interval === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd';
+  const advanceFn = interval === 'HOUR' ? addHours : addDays;
 
-  // Generate an array of dates to be used as a baseline
-  // in the case that some date objects have no data
   const datesArray = [];
-  const currentDate = startDate.clone();
+  let currentDate = new Date(start);
 
-  while (currentDate.isBefore(endDate)) {
+  while (isBefore(currentDate, end)) {
     datesArray.push({
-      ds: currentDate.format(
-        // format for hour or Day conditionally
-        `YYYY-MM-DD${interval === 'HOUR' ? ' HH:mm' : ''}`,
-      ),
+      ds: format(currentDate, formatStr),
     } as { [key: string]: any });
-    // The above cast is replicating the one done to construct
-    // the `formattedData` variable, making typescript
-    // happy with the subsequent reduce function typing. God Forgive us.
-    const intervalToMomentDurationString = {
-      HOUR: 'hours',
-      DAY: 'days',
-    } as const;
-
-    currentDate.add(1, intervalToMomentDurationString[interval]);
+    currentDate = advanceFn(currentDate, 1);
   }
 
   return datesArray;

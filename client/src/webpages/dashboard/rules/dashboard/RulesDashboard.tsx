@@ -11,7 +11,7 @@ import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import groupBy from 'lodash/groupBy';
 import lowerCase from 'lodash/lowerCase';
-import moment from 'moment';
+import { startOfHour } from 'date-fns';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -543,7 +543,7 @@ export default function RulesDashboard() {
   const timeWindow = (() => {
     //get current time truncated to hour
     const oldestDate = getEarliestDateWithLookback(lookback);
-    const oldestHour = moment.utc(oldestDate).startOf('hour').toDate();
+    const oldestHour = startOfHour(oldestDate);
     return {
       start: oldestHour,
       end: new Date(),

@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
-import moment from 'moment';
+import { formatDistanceToNow } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
@@ -97,7 +97,7 @@ function ManualReviewJobComment(props: {
               isBeingDeleted ? 'text-gray-300' : 'text-gray-500'
             }`}
           >
-            {moment(new Date(comment.createdAt)).fromNow()}
+            {formatDistanceToNow(new Date(comment.createdAt as string), { addSuffix: true })}
           </div>
         </div>
         <div
