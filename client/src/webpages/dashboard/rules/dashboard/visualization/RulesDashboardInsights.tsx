@@ -25,17 +25,19 @@ import sum from 'lodash/sum';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import moment from 'moment';
+import { format, parseISO } from 'date-fns';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
-import { Chart } from 'react-google-charts';
 import {
   Area,
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -403,7 +405,7 @@ export default function RulesDashboardInsights() {
         fill="#71717a"
         className="pt-3 text-slate-500"
       >
-        {moment(payload.value).format('MM/DD/YY')}
+        {format(parseISO(payload.value), 'MM/dd/yy')}
       </text>
     );
   };
@@ -472,7 +474,7 @@ export default function RulesDashboardInsights() {
       return (
         <div className="flex flex-col bg-white rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-t-lg bg-primary">
-            {moment(label).format('MM/DD/YY')}
+            {format(parseISO(label), 'MM/dd/yy')}
           </div>
           {data.length > 1 && (
             <div className="flex flex-col">
@@ -669,23 +671,66 @@ export default function RulesDashboardInsights() {
         },
         {} as { [k: string]: string },
       );
-    const pieChartData = Object.keys(combinedChartData).map((category) => [
-      category,
-      combinedChartData[category],
-    ]);
+    const pieChartData = Object.keys(combinedChartData).map((category) => ({
+      name: category,
+      value: combinedChartData[category],
+    }));
+
+    const RADIAN = Math.PI / 180;
+    const renderLabel = ({
+      cx,
+      cy,
+      midAngle,
+      innerRadius,
+      outerRadius,
+      percent,
+    }: any) => {
+      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+      return (
+        <text
+          x={x}
+          y={y}
+          fill="white"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={12}
+          fontWeight={600}
+        >
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      );
+    };
 
     return (
-      <Chart
-        chartType="PieChart"
-        data={[['category', 'total'], ...pieChartData]}
-        options={{
-          pieSliceText: 'percentage',
-          pieStartAngle: 100,
-          pieHole: 0.5,
-        }}
-        width={'100%'}
-        height={'100%'}
-      />
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            dataKey="value"
+            nameKey="name"
+            data={pieChartData}
+            cx="50%"
+            cy="50%"
+            startAngle={100}
+            endAngle={100 + 360}
+            innerRadius="50%"
+            outerRadius="80%"
+            label={renderLabel}
+            labelLine={false}
+            isAnimationActive={false}
+          >
+            {pieChartData.map((_, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={chartColors[index % chartColors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
     );
   }, [sortedChartData]);
 

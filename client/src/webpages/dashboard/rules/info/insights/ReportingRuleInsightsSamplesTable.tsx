@@ -532,13 +532,14 @@ export default function ReportingRuleInsightsSamplesTable(props: {
       ) : tableData?.length === 0 ? (
         noSamples
       ) : (
-        <div className="flex">
-          <div className="rounded-[5px] border-solid border-0 border-b border-[#f0f0f0] max-h-[1500px] overflow-scroll scrollbar-hide">
+        <div className="flex w-full">
+          <div className="w-full rounded-[5px] border-solid border-0 border-b border-[#f0f0f0] max-h-[1500px] overflow-scroll scrollbar-hide">
             <Table
               // @ts-ignore
               columns={columns}
               data={tableData}
               onSelectRow={onSelectRow}
+              containerClassName="w-full"
             />
           </div>
           {detailViewData.visible && detailViewData.item && (
