@@ -19,7 +19,6 @@
   "license": "ISC",
   "dependencies": {
     "@total-typescript/ts-reset": "^0.5.1",
-    "@types/umzug": "^2.3.3",
     "@types/yargs": "^17.0.24",
     "cassandra-driver": "^4.8.0",
     "sequelize": "^6.32.1",
