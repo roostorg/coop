@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { resolvers } from './resolvers.js';
-import type { HashBank } from '../../../services/hmaService/dbTypes.js';
+import type { HashBank } from '../../../services/hmaService/index.js';
 
 const MOCK_BANK: HashBank = {
   id: 1,

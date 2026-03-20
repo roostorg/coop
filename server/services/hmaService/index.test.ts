@@ -1,5 +1,6 @@
 import { HmaService, type ExchangeInfo } from './index.js';
 import type { HashBank } from './dbTypes.js';
+import { jsonParse } from '../../utils/encoding.js';
 
 const MOCK_BANK: HashBank = {
   id: 1,
@@ -76,7 +77,7 @@ describe('HmaService', () => {
       const exchangeCall = fetchHTTP.mock.calls[0][0];
       expect(exchangeCall.url).toContain('/c/exchanges');
       expect(exchangeCall.method).toBe('post');
-      const body = JSON.parse(exchangeCall.body);
+      const body = jsonParse(exchangeCall.body);
       expect(body.bank).toBe('COOP_ORG1_MY_BANK');
       expect(body.api).toBe('fb_threatexchange');
       expect(body.api_json).toEqual({ privacy_group: 123 });
@@ -130,7 +131,7 @@ describe('HmaService', () => {
       const call = fetchHTTP.mock.calls[0][0];
       expect(call.url).toContain('/c/exchanges/api/ncmec');
       expect(call.method).toBe('post');
-      const body = JSON.parse(call.body);
+      const body = jsonParse(call.body);
       expect(body.credential_json).toEqual({ user: 'u', password: 'p' });
     });
 
