@@ -669,7 +669,7 @@ export default function RulesDashboardInsights() {
           });
           return curr;
         },
-        {} as { [k: string]: string },
+        {} as { [k: string]: number },
       );
     const pieChartData = Object.keys(combinedChartData).map((category) => ({
       name: category,
