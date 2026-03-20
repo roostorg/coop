@@ -34,7 +34,7 @@ type RunMigrationsProps = {
   secrets: SecretsMap;
   deploymentEnvironment: DeploymentEnvironmentName;
   env: Record<string, string>;
-  dbArgs: ('api-server-pg' | 'snowflake' | 'scylla')[];
+  dbArgs: ('api-server-pg' | 'scylla')[];
 };
 
 export class MigrationRunner extends Construct {

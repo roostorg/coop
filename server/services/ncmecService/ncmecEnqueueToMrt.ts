@@ -182,13 +182,13 @@ export default class NcmecEnqueueToMrt {
       return { status: 'SKIPPED' };
     }
 
-    // TODO: Write this to a snowflake table and enqueue based off of a job instead
+    // TODO: Write this to a data warehouse table and enqueue based off of a job instead
     await this.manualReviewToolService.enqueue(
       {
         orgId,
         createdAt,
         // TODO: Pass policies through NcmecService.eventuallyEnqueue into
-        // snowflake and ultimately into here. Note that
+        // the data warehouse and ultimately into here. Note that
         // NcmecService.eventuallyEnqueue is called inside submitReport, which has
         // access to the policies passed in with the report, and inside the
         // ActionPublisher, which has the policies that come along with the

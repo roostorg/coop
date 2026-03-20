@@ -110,7 +110,7 @@ const typeDefs = /* GraphQL */ `
   # conditions, and each of their results, on a single piece of content.
   # It's identical to the backend TS type ConditionSetWithResultAsLogged,
   # because it only has the subset of the fields that we bother to store in
-  # Snowflake about a rule execution.
+  # the data warehouse about a rule execution.
   type ConditionSetWithResult {
     conjunction: ConditionConjunction
     conditions: [ConditionWithResult!]!

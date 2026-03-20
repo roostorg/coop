@@ -16,7 +16,7 @@ import { getUtcDateOnlyString } from '../../utils/time.js';
 import {
   type ActionExecutionMatchingRule,
   type ActionExecutionPolicy,
-} from '../../snowflake/types.js';
+} from '../../storage/dataWarehouse/warehouseSchema.js';
 
 export type ActionExecutionSourceType =
   | 'post-content'
@@ -59,7 +59,7 @@ class ActionExecutionLogger {
       executions.map((data) => {
         // Remove excess properties from the matching rules and policies. We
         // need to do this, or all kinds of junk (including json null
-        // values that cause perf problems) can end up in our snowflake table.
+        // values that cause perf problems) can end up in our warehouse table.
         const matchingRules = data.matchingRules?.map((rule) => ({
           ...safePick(rule, ['id', 'name', 'version', 'tags']),
           policies: rule.policies.map((it) =>

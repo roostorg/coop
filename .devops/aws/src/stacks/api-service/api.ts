@@ -33,7 +33,6 @@ import {
   PgEnvVar,
   RedisEnvVar,
   repoRootDir,
-  SnowflakeEnvVar,
   topicSchemaIds,
 } from '../../constants.js';
 import {
@@ -102,7 +101,6 @@ type ApiStackProps = StackProps & {
     | 'SLACK_APP_BEARER_TOKEN'
     | PgEnvVar
     | RedisEnvVar
-    | SnowflakeEnvVar
   >;
   stage: DeploymentEnvironmentName;
   kafkaHosts: {

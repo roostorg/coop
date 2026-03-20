@@ -188,10 +188,6 @@ import {
 } from '../services/userStatisticsService/index.js';
 import { UserStrikeService } from '../services/userStrikeService/index.js';
 import {
-  type DataWarehouseOutboxKafkaMessageKey,
-  type DataWarehouseOutboxKafkaMessageValue,
-} from '../snowflake/snowflake.js';
-import {
   makeActionExecutionLogger,
   makeContentApiLogger,
   makeItemModelScoreLogger,
@@ -223,15 +219,10 @@ import {
 import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import {
   ClickhouseActionStatisticsAdapter,
-  SnowflakeActionStatisticsAdapter,
   ClickhouseReportingAnalyticsAdapter,
-  SnowflakeReportingAnalyticsAdapter,
   ClickhouseActionExecutionsAdapter,
-  SnowflakeActionExecutionsAdapter,
   ClickhouseContentApiRequestsAdapter,
-  SnowflakeContentApiRequestsAdapter,
   ClickhouseOrgCreationAdapter,
-  SnowflakeOrgCreationAdapter,
 } from '../plugins/warehouse/queries/index.js';
 import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
 import type { IReportingAnalyticsAdapter } from '../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
@@ -257,6 +248,17 @@ import {
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import { register, safeGetEnvVar } from './utils.js';
+
+type DataWarehouseOutboxKafkaMessageKey = {
+  orgId: string;
+  userId: string;
+};
+
+type DataWarehouseOutboxKafkaMessageValue = {
+  dataJSON: string;
+  table: string;
+  recordedAt: Date;
+};
 
 // the otel instrumentation currently intercepts require statements. support for
 // esm support is experimental so we should wait until it is stable
@@ -363,20 +365,13 @@ export interface Dependencies {
   ContentApiRequestsAdapter: IContentApiRequestsAdapter;
   OrgCreationAdapter: IOrgCreationAdapter;
 
-  // Deprecated Snowflake aliases - use DataWarehouse/DataWarehouseDialect instead
-  // Kept for backward compatibility with services that haven't migrated yet
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Snowflake: IDataWarehouse;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  KyselySnowflake: Kysely<any>;
-  
   itemSubmissionQueueBulkWrite: ItemQueueBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemQueueBulkWrite;
   Knex: Knex;
   IORedis: IORedis.Redis | Cluster;
   // We register the services as Kafka<any> so that each service that depends
   // on Kafka can type its arg more specifically, based on the topic that
-  // it's supposed to be able to "see". E.g., the Snowflake Ingestion Worker can type
+  // it's supposed to be able to "see". E.g., a worker can type
   // its argument as `Kafka<Pick<KafkaSchemaMap, 'ITEM_SUBMISSION_EVENTS'>>`, so that its code can only
   // read messages from the topic with the intended schema, and the `Kafka`
   // service will be assignable to that argument because of the `any`.
@@ -718,125 +713,45 @@ export default async function getBottle() {
 
   bottle.factory('DataWarehouseAnalytics', (container) => {
     const config = DataWarehouseFactory.createConfigFromEnv();
-    const enhancedConfig = {
-      ...config,
-      kafka: config.provider === 'snowflake' ? container.Kafka : undefined,
-    };
     return DataWarehouseFactory.createAnalyticsAdapter(
-      enhancedConfig,
+      config,
       container.DataWarehouseDialect,
     );
   });
 
   bottle.factory('ActionStatisticsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseActionStatisticsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeActionStatisticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeActionStatisticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
+    return new ClickhouseActionStatisticsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('OrgCreationAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseOrgCreationAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeOrgCreationAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      default:
-        return new SnowflakeOrgCreationAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-    }
+    return new ClickhouseOrgCreationAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('ReportingAnalyticsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseReportingAnalyticsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeReportingAnalyticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeReportingAnalyticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
+    return new ClickhouseReportingAnalyticsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('ActionExecutionsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseActionExecutionsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeActionExecutionsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeActionExecutionsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
+    return new ClickhouseActionExecutionsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('ContentApiRequestsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseContentApiRequestsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeContentApiRequestsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeContentApiRequestsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
-  });
-
-  // Snowflake-specific utilities - delegate to abstraction
-  bottle.factory('Snowflake', (container) => {
-    return container.DataWarehouse;
-  });
-
-  bottle.factory('KyselySnowflake', (container) => {
-    return container.DataWarehouseDialect.getKyselyInstance();
+    return new ClickhouseContentApiRequestsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('itemSubmissionQueueBulkWrite', (container) =>
@@ -847,12 +762,6 @@ export default async function getBottle() {
   );
 
   // Legacy service deprecated in favor of kysely.
-  // NB: for knex, we're using the pg dialect because it's the closest one to
-  // Snowflake, which knex doesn't support explicitly. The only difference
-  // should be, since Knex quotes all identifiers, that we have to make sure we
-  // pass in UPPER_CASE identifiers, as the canonical form of Snowflake
-  // identifiers (which is the form that must be provided in quoted identifier
-  // references) is usually uppercase.
   bottle.value(
     'Knex',
     knexPkg.default.knex({
@@ -1470,7 +1379,7 @@ export default async function getBottle() {
                     break;
                   case 'NCMEC':
                     // TODO: the NCMEC service is currently in charge of NCMEC job
-                    // enrichment, but once we replace the NCMEC snowflake job with
+                    // enrichment, but once we replace the NCMEC warehouse job with
                     // Scylla we should move it back into the MRT service
                     await container.NcmecService.enqueueForHumanReviewIfApplicable(
                       {
@@ -1744,7 +1653,7 @@ export default async function getBottle() {
   bottle.factory('closeSharedResourcesForShutdown', (container) => {
     // NB: we have to be careful that calling this shutdown function doesn't
     // _start up_ any of these shared services that it'd be shutting down (like
-    // a snowflake connection). Inadvertently starting up services when we're 
+    // a data warehouse connection). Inadvertently starting up services when we're
     // trying to shut down would be ironic, but it would also cause big crashes,
     // as some of these services won't start correctly
     // in some contexts (e.g., in a worker that doesn't have the required
@@ -1784,9 +1693,6 @@ export default async function getBottle() {
             | 'ItemTypeModel'
             | 'LocationBankModel'
             | 'LocationBankLocationModel'
-            // Deprecated services that delegate to DataWarehouse
-            | 'Snowflake'
-            | 'KyselySnowflake'
             // Services that don't need cleanup
             | 'UserStatisticsService'
             | 'HMAHashBankService'

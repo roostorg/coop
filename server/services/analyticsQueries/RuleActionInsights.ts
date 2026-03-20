@@ -27,8 +27,8 @@ import {
   sfDateToDateOnlyString,
   type RuleExecutionsRow,
   type SfDate,
-  type SnowflakePublicSchema,
-} from '../../snowflake/types.js';
+  type DataWarehousePublicSchema,
+} from '../../storage/dataWarehouse/warehouseSchema.js';
 
 type RulePassSample = {
   date: Date;
@@ -81,7 +81,7 @@ class RuleActionInsights {
     private readonly contentApiRequestsAdapter: Dependencies['ContentApiRequestsAdapter'],
   ) {}
 
-  private get kyselySnowflake(): Kysely<SnowflakePublicSchema> {
+  private get kyselyWarehouse(): Kysely<DataWarehousePublicSchema> {
     return this.dialect.getKyselyInstance();
   }
 
@@ -132,7 +132,7 @@ class RuleActionInsights {
 
     // NB: action + submission counts here may cross rule versions,
     // but I think that's what we want?
-    const results = await this.kyselySnowflake
+    const results = await this.kyselyWarehouse
       .selectFrom('RULE_EXECUTION_STATISTICS')
       .select((eb) => [
         eb.fn.sum<number>('NUM_PASSES').as('totalMatches'),
@@ -206,7 +206,7 @@ class RuleActionInsights {
     // of the rule's behavior. The only way to do that is to use the rule history
     // service. Note that, even if we wanted to just use the rule's latest
     // version, we'd have to use the history service (rather than reading the
-    // latest version from snowflake), b/c Snowflake is only eventually
+    // latest version from the data warehouse), b/c the warehouse is only eventually
     // consistent (i.e., after a rule update, it won't see the new version for
     // up to 5 minutes, so we'll show cleary outdated samples.)
     const history = await this.getRuleHistory(['conditionSet'], [ruleId]);
@@ -234,7 +234,7 @@ class RuleActionInsights {
 
     // Selects executions for this rule, verifying that this is the right org.
     // We'll filter by rule version below.
-    const baseQuery = this.kyselySnowflake
+    const baseQuery = this.kyselyWarehouse
       .selectFrom('RULE_EXECUTIONS')
       .select([
         'DS as date',
@@ -276,7 +276,7 @@ class RuleActionInsights {
             .where('RULE_VERSION', '>=', mostRecentVersion)
             // Find the date associated w/ the earliest relevant version (with a
             // maximum of 30 days), as passing that w/ the query will help
-            // snowflake prune a lot.
+            // the warehouse prune a lot.
             .where('DS', '>=', getUtcDateOnlyString(dateFilter))
             .orderBy('TS', 'desc')
         );
@@ -441,7 +441,7 @@ class RuleActionInsights {
     }
 
     const startDateString = getUtcDateOnlyString(startAt);
-    const results = await this.kyselySnowflake
+    const results = await this.kyselyWarehouse
       .selectFrom('CONTENT_API_REQUESTS')
       .select([sql`COUNT(*)`.as('count'), 'DS'])
       .where('DS', '>', startDateString)

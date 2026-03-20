@@ -34,7 +34,7 @@ Sometimes you may want to capture a unit of work in its own span in which case y
 
 ```js
   return tracer.addActiveSpan(
-    { resource: 'snowflake.client', operation: 'snowflake.query' },
+    { resource: 'dataWarehouse.query', operation: 'query' },
     (span) => {
       // do work
     }

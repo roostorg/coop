@@ -250,19 +250,6 @@ exports[`No explicit any in server`] = {
       [65, 60, 3, "Unexpected any. Specify a different type.", "193409811"],
       [93, 58, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/plugins/analytics/adapters/SnowflakeAnalyticsAdapter.ts:2349964782": [
-      [20, 16, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [31, 40, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [32, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [36, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [44, 34, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [45, 49, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [127, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [133, 41, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [181, 47, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [202, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [202, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
     "server/routes/policies/PoliciesRoutes.ts:1959143587": [
       [14, 6, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
@@ -323,15 +310,6 @@ exports[`No explicit any in server`] = {
     ],
     "server/services/userStatisticsService/userStatisticsService.test.ts:73360957": [
       [43, 45, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/snowflake/KyselyDialect.mock.ts:2540496454": [
-      [6, 69, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/snowflake/handleTableChanges.test.ts:497427792": [
-      [18, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/snowflake/handleTableChanges.ts:326808195": [
-      [138, 53, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/storage/dataWarehouse/ClickhouseAdapter.ts:2426172355": [
       [94, 34, 3, "Unexpected any. Specify a different type.", "193409811"]

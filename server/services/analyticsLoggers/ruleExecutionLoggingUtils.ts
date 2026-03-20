@@ -29,7 +29,7 @@ type ConditionResultAsLogged = ReplaceDeep<
 
 /**
  * A type for the subset of ConditionSetWithResults that we actually persist to
- * Snowflake when recording a rule execution. This doesn't have signal instances,
+ * the data warehouse when recording a rule execution. This doesn't have signal instances,
  * etc. and it's all we can actually show to the user in the insights UI.
  */
 export type ConditionSetWithResultAsLogged = Omit<
@@ -86,14 +86,14 @@ export type LeafConditionWithResultAsLogged = {
    */
   signal:
     | {
-        // NB: billions of legacy leaf conditions in Snowflake have this `id`
+        // NB: billions of legacy leaf conditions in the data warehouse have this `id`
         // logged as just the SignalType | null, so callers should be prepared
         // for this when handling signal results from Aug 2022 through July 2023.
         //
         // We attempted to migrate those conditions (see
         // https://github.com/roostorg/coop/pull/1386) so that we
         // could simplify the code here, but the migrations kept timing out (in
-        // some mix of CodePipeline and Snowflake, thanks to its UDF runtime
+        // some mix of CodePipeline and the warehouse, thanks to its UDF runtime
         // limit), so we ultimately gave up, and only migrated records from
         // before Aug 2022. You can verify that legacy conditions still exist by
         // running the following query, which uses 2023-04-01 as an arbitrary

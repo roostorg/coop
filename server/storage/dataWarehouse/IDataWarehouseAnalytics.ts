@@ -172,8 +172,8 @@ export interface IDataWarehouseAnalytics {
 
   /**
    * Create a CDC stream/listener on a table
-   * Implementations use their warehouse's CDC mechanism (Snowflake Streams, 
-   * Clickhouse materialized views, PostgreSQL logical replication, etc.)
+   * Implementations use their warehouse's CDC mechanism (Clickhouse materialized
+   * views, PostgreSQL logical replication, etc.)
    */
   createCDCStream<TableName extends string>(
     config: CDCConfig<TableName>,
@@ -269,16 +269,5 @@ CREATE TABLE rule_executions (
 ) ENGINE = MergeTree()
 PARTITION BY ds
 ORDER BY (ds, ts, org_id);
-
--- Example for Snowflake:
-CREATE TABLE rule_executions (
-  ds DATE NOT NULL,
-  ts NUMBER NOT NULL,
-  org_id VARCHAR NOT NULL,
-  item_id VARCHAR NOT NULL,
-  rule_id VARCHAR NOT NULL,
-  passed BOOLEAN NOT NULL,
-  -- ... other fields
-) PARTITION BY (ds);
 `;
 

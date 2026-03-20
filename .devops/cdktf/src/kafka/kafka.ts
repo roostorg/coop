@@ -271,59 +271,6 @@ export class KafkaStack extends TerraformStack {
       }),
     });
 
-    new Schema(this, 'SNOWFLAKE_INGEST_EVENTS-key', {
-      format: 'AVRO',
-      subjectName: 'SNOWFLAKE_INGEST_EVENTS-key',
-      schemaRegistryCluster: { id: schemaRegistryCluster.id },
-      restEndpoint: schemaRegistryCluster.restEndpoint,
-      recreateOnUpdate: true,
-      credentials: {
-        key: schemaRegistryApiKey.id,
-        secret: schemaRegistryApiKey.secret,
-      },
-      schema: JSON.stringify({
-        type: 'record',
-        name: 'CustomerEndUserId',
-        doc: "This schema identifies an end user (i.e., someone using an app made by one of Coop's users), _NOT_ a direct user of Coop's products.",
-        fields: [
-          {
-            name: 'orgId',
-            type: 'string',
-            doc: 'The id of the Coop organization, which makes the whole record globally unique (if different Coop organizations assign users overlapping ids).',
-          },
-          {
-            name: 'userId',
-            type: 'string',
-            doc: "The id that Coop's user assigned to the end-user on their platform.",
-          },
-        ],
-      }),
-    });
-
-    new Schema(this, 'SNOWFLAKE_INGEST_EVENTS-value', {
-      format: 'AVRO',
-      subjectName: 'SNOWFLAKE_INGEST_EVENTS-value',
-      schemaRegistryCluster: { id: schemaRegistryCluster.id },
-      restEndpoint: schemaRegistryCluster.restEndpoint,
-      recreateOnUpdate: true,
-      credentials: {
-        key: schemaRegistryApiKey.id,
-        secret: schemaRegistryApiKey.secret,
-      },
-      schema: JSON.stringify({
-        type: 'record',
-        name: 'SnowflakeRow',
-        fields: [
-          { name: 'dataJSON', type: 'string' },
-          {
-            name: 'recordedAt',
-            type: { type: 'long', logicalType: 'timestamp-millis' },
-          },
-          { name: 'table', type: 'string' },
-        ],
-      }),
-    });
-
     const kafkaClusterRoleBinding = new RoleBinding(
       this,
       'kafka-cluster-role-binding',
@@ -369,20 +316,6 @@ export class KafkaStack extends TerraformStack {
       kafkaCluster,
       restEndpoint: kafkaCluster.restEndpoint,
       partitionsCount: 200,
-      credentials: {
-        key: kafkaClusterApiKey.id,
-        secret: kafkaClusterApiKey.secret,
-      },
-      lifecycle: {
-        preventDestroy: true,
-      },
-    });
-
-    new KafkaTopic(this, 'SNOWFLAKE_INGEST_EVENTS', {
-      topicName: 'SNOWFLAKE_INGEST_EVENTS',
-      kafkaCluster,
-      restEndpoint: kafkaCluster.restEndpoint,
-      partitionsCount: props.kafka.snowflakeIngestTopic.partitionCount,
       credentials: {
         key: kafkaClusterApiKey.id,
         secret: kafkaClusterApiKey.secret,

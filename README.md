@@ -26,7 +26,7 @@ We're developing Coop in the open and want to hear from you! Whether you're test
 * **Frontend**: React-based client application, AntDesign, GraphQL, TailwindCSS  
 * **Infrastructure**: Docker, Kubernetes  
 * **Model Service:** Python-based machine learning services.  
-* **Databases**: PostgreSQL, Snowflake, Scylla  
+* **Databases**: PostgreSQL, ClickHouse, Scylla  
 * **Caching**: Redis  
 * **Utility Services**: Database migrators, instrumentation, and proxy layers.  
 
@@ -84,7 +84,7 @@ npm install \
 
 ### **Database Structure and Migrations**
 
-All of the data around the database tables ( SQL/Schema ) exist under the `.devops/migrator/src/scripts` folder where there is a folder for each service. ( api, scylla, snowflake, model service )
+All of the data around the database tables ( SQL/Schema ) exist under the `.devops/migrator/src/scripts` folder where there is a folder for each service (for example `api-server-pg`, `clickhouse`, `scylla`).
 
 ### **Management Scripts**
 

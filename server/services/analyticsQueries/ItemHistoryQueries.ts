@@ -7,7 +7,7 @@ import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import {
   sfDateToDate,
   sfDateToDateOnlyString,
-} from '../../snowflake/types.js';
+} from '../../storage/dataWarehouse/warehouseSchema.js';
 
 type ItemHistoryQueryFilter = {
   passed?: boolean;

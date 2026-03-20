@@ -57,15 +57,11 @@ export type AppPipelineStackProps = cdk.StackProps & {
 };
 
 type EnvSpecificArns = {
-  snowflakeSecret: string;
   sessionSecret: string;
   redisSecret: string;
   kafkaSchemaRegistrySecret: string;
   kafkaApiServiceAccountSecret: string;
-  kafkaSnowflakeWorkerServiceAccountSecret: string;
-  snowpipeQueue?: string;
   datadogRedisSecret: string;
-  datadogSnowflakeSecret: string;
   scyllaSecret: string;
   graphqlOpaqueScalarSecret: string;
 };
@@ -220,7 +216,6 @@ class DeploymentEnv extends Stage {
       clusterSecurityGroup: clusterStack.cluster.clusterSecurityGroup,
       kubernetesClusterAttributes: clusterAttributes,
       scyllaSecretArn: props.arns.scyllaSecret,
-      snowflakeSecretArn: props.arns.snowflakeSecret,
     });
 
     const rdsReadOnlyClusterHost = this.dbStack.rdsReadOnlyClusterHost;
@@ -273,9 +268,6 @@ class DeploymentEnv extends Stage {
       DATABASE_NAME: [this.dbStack.rdsConnectionSecretArn, 'dbname'],
       DATABASE_USER: [this.dbStack.rdsConnectionSecretArn, 'username'],
       DATABASE_PASSWORD: [this.dbStack.rdsConnectionSecretArn, 'password'],
-      SNOWFLAKE_USERNAME: [arns.snowflakeSecret, 'username'],
-      SNOWFLAKE_PASSWORD: [arns.snowflakeSecret, 'password'],
-      SNOWFLAKE_DB_NAME: [arns.snowflakeSecret, 'database'],
       GOOGLE_TRANSLATE_API_KEY: [
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/GoogleTranslateApiKey-MCdqWJ',
       ],
@@ -286,14 +278,6 @@ class DeploymentEnv extends Stage {
       ],
       KAFKA_API_SERVICE_ACCOUNT_PASSWORD: [
         arns.kafkaApiServiceAccountSecret,
-        'API_SECRET',
-      ],
-      KAFKA_SNOWFLAKE_INGEST_SERVICE_ACCOUNT_USERNAME: [
-        arns.kafkaSnowflakeWorkerServiceAccountSecret,
-        'API_KEY',
-      ],
-      KAFKA_SNOWFLAKE_INGEST_SERVICE_ACCOUNT_PASSWORD: [
-        arns.kafkaSnowflakeWorkerServiceAccountSecret,
         'API_SECRET',
       ],
       KAFKA_SCHEMA_REGISTRY_USERNAME: [
@@ -320,9 +304,7 @@ class DeploymentEnv extends Stage {
           datadogApiSecret: globalArns.datadogSecret,
           stage: id,
           datadogRedisSecret: arns.datadogRedisSecret,
-          datadogSnowflakeSecret: arns.datadogSnowflakeSecret,
           scyllaSecret: arns.scyllaSecret,
-          monitorSnowflakeAccountUsage: id === 'Prod',
           tracingSamplingPercentage: props.tracingSamplingPercentage,
         })
       : undefined;
@@ -453,9 +435,7 @@ class DeploymentEnv extends Stage {
       clusterAttributes,
       secrets,
       kafkaHosts,
-      snowpipeQueueArn: arns.snowpipeQueue,
       rdsReadOnlyClusterHost,
-      statefulResourceRemovalPolicy,
       provisionProdLevelsOfCompute,
       enableDatadog: props.enableDatadog,
     });

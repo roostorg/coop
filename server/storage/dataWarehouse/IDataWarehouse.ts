@@ -1,7 +1,7 @@
 /**
  * Interface for Data Warehouse operations.
  * Provides abstraction over different data warehouse implementations
- * (Snowflake, Clickhouse, PostgreSQL, BigQuery, Redshift, etc.)
+ * (Clickhouse, PostgreSQL, BigQuery, Redshift, etc.)
  */
 
 import { type Kysely } from 'kysely';
@@ -11,7 +11,7 @@ import type SafeTracer from '../../utils/SafeTracer.js';
  * Supported data warehouse providers
  * Integrators can add their own warehouse types here
  */
-export type DataWarehouseProvider = 'snowflake' | 'clickhouse' | 'postgresql' | string;
+export type DataWarehouseProvider = 'clickhouse' | 'postgresql' | string;
 
 /**
  * Connection settings that are common across data warehouse implementations

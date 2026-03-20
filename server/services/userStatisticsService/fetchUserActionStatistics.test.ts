@@ -6,13 +6,14 @@ import {
   type QueryResult,
 } from 'kysely';
 
-import { makeMockSnowflakeDialect } from '../../snowflake/KyselyDialect.mock.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
 import { safePick } from '../../utils/misc.js';
 import { makeFetchUserActionStatistics } from './fetchUserActionStatistics.js';
 
 describe('fetchUserActionStatistics', () => {
-  let snowflakeMock: MockedFn<
+  let warehouseMock: MockedFn<
     (it: CompiledQuery) => Promise<QueryResult<unknown>>
   >;
   let sut: ReturnType<typeof makeFetchUserActionStatistics>;
@@ -26,7 +27,7 @@ describe('fetchUserActionStatistics', () => {
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
     // eslint-disable-next-line better-mutation/no-mutation
-    snowflakeMock = jest
+    warehouseMock = jest
       .fn<DatabaseConnection['executeQuery']>()
       .mockResolvedValue({ rows: [] });
 
@@ -34,9 +35,16 @@ describe('fetchUserActionStatistics', () => {
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
     // eslint-disable-next-line better-mutation/no-mutation
-    sut = makeFetchUserActionStatistics(
-      new Kysely({ dialect: makeMockSnowflakeDialect(snowflakeMock) }),
-    );
+    const kysely = new Kysely({
+      dialect: makeMockWarehouseDialect(warehouseMock),
+    });
+    const dialectMock: Dependencies['DataWarehouseDialect'] = {
+      getKyselyInstance: () => kysely,
+      destroy: jest.fn(async () => {}),
+    };
+
+    // eslint-disable-next-line better-mutation/no-mutation
+    sut = makeFetchUserActionStatistics(dialectMock);
   });
 
   test('should generate proper query given user item identifiers', async () => {
@@ -48,9 +56,9 @@ describe('fetchUserActionStatistics', () => {
         { id: '3', typeId: 'b' },
       ],
     });
-    expect(snowflakeMock).toHaveBeenCalledTimes(2);
+    expect(warehouseMock).toHaveBeenCalledTimes(2);
 
-    const queriesRan = snowflakeMock.mock.calls.map((it) =>
+    const queriesRan = warehouseMock.mock.calls.map((it) =>
       safePick(it[0], ['parameters', 'sql']),
     );
 
@@ -86,6 +94,6 @@ describe('fetchUserActionStatistics', () => {
     }));
 
     await sut({ orgId: 'x', userItemIdentifiers: largeUserIdList });
-    expect(snowflakeMock.mock.calls.length).toBeGreaterThan(1);
+    expect(warehouseMock.mock.calls.length).toBeGreaterThan(1);
   });
 });

@@ -3,7 +3,10 @@ import { type ColumnType, type GeneratedAlways } from 'kysely';
 
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
-import { type FilterableSfDate, type SfDate } from '../../snowflake/types.js';
+import {
+  type FilterableSfDate,
+  type SfDate,
+} from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
 import {
   type ItemSubmissionWithTypeIdentifier,
@@ -155,7 +158,7 @@ export type ReportingRuleExecutionStatisticsRow = {
   RULE_POLICY_NAMES: string[] | null;
   RULE_POLICY_IDS: string[] | null;
 };
-export type ReportingServiceSnowflakeSchema = {
+export type ReportingServiceWarehouseSchema = {
   'REPORTING_SERVICE.REPORTS': ReportSubmissionsRow;
   'REPORTING_SERVICE.APPEALS': AppealSubmissionsRow;
   'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS': ReportingRuleExecutionsRow;
