@@ -141,7 +141,7 @@ export function translateJSONObjectToPHP(json: JsonValue): string {
       );
       return '[\n' + objectElements.join(',\n') + `\n${currentIndent}]`;
     } else if (typeof value === 'string') {
-      return `'${value.replace(/'/g, "\\'")}'`;
+      return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
     } else if (typeof value === 'number' || typeof value === 'boolean') {
       return value.toString();
     } else if (value === null) {

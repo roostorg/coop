@@ -97,7 +97,25 @@ export default async function makeApiServer(deps: Dependencies) {
 
   app.use(cors());
 
-  app.use(helmet(env === 'production' ? {} : { contentSecurityPolicy: false }));
+  app.use(
+    helmet(
+      env === 'production'
+        ? {}
+        : {
+            contentSecurityPolicy: {
+              directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
+                connectSrc: ["'self'", 'ws:', 'wss:', 'https:', 'http:'],
+                fontSrc: ["'self'", 'data:', 'https:'],
+                frameSrc: ["'self'"],
+              },
+            },
+          },
+    ),
+  );
   app.use(express.json({ limit: '50mb' }));
 
   app.get('/ready', async (_req, res) => {
