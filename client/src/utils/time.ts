@@ -62,6 +62,12 @@ export function parseDatetimeToMonthDayYearDateStringInCurrentTimeZone(
   return format(toDate(date), 'MMM d, yyyy');
 }
 
+export function startOfHourUTC(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCMinutes(0, 0, 0);
+  return d;
+}
+
 export function getEarliestDateWithLookback(lookback: LookbackLength): Date {
   const now = Date.now();
   switch (lookback) {

@@ -11,7 +11,6 @@ import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import groupBy from 'lodash/groupBy';
 import lowerCase from 'lodash/lowerCase';
-import { startOfHour } from 'date-fns';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -52,6 +51,7 @@ import { userHasPermissions } from '../../../../routing/permissions';
 import {
   getEarliestDateWithLookback,
   LookbackLength,
+  startOfHourUTC,
 } from '../../../../utils/time';
 import {
   getDisplayNameForTimeDivision,
@@ -543,7 +543,7 @@ export default function RulesDashboard() {
   const timeWindow = (() => {
     //get current time truncated to hour
     const oldestDate = getEarliestDateWithLookback(lookback);
-    const oldestHour = startOfHour(oldestDate);
+    const oldestHour = startOfHourUTC(oldestDate);
     return {
       start: oldestHour,
       end: new Date(),
