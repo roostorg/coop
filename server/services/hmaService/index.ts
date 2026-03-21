@@ -572,7 +572,6 @@ export class HmaService {
         return { name, supports_auth: false, has_auth: false };
       })
     );
-
     return infos;
   }
 

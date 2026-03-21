@@ -429,6 +429,10 @@ export default function HashBankForm() {
         apiName: bankExchangeApi,
         credentialsJson: JSON.stringify(editCredValues),
       },
+      refetchQueries: [
+        namedOperations.Query.HashBanks,
+        { query: GQLHashBankByIdDocument, variables: { id } },
+      ],
     });
   };
 
@@ -464,7 +468,7 @@ export default function HashBankForm() {
           exchangeCredValues[f.name] === '')
     );
 
-  const isExchangeIncomplete = hasRequiredConfigMissing ?? hasRequiredCredsMissing;
+  const isExchangeIncomplete = hasRequiredConfigMissing || hasRequiredCredsMissing;
 
   const modal = (
     <CoopModal

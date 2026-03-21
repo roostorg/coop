@@ -122,8 +122,6 @@ const Mutation: GQLMutationResolvers<Context> = {
 
       return gqlSuccessResult({ data: bank, warning }, 'MutateHashBankSuccessResponse');
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to create hash bank:', e);
       if (isCoopErrorOfType(e, 'MatchingBankNameExistsError')) {
         return gqlErrorResult(e, '/input/name');
       }
