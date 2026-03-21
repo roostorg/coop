@@ -58,7 +58,6 @@ type DbStackProps = StackProps & {
   clusterSecurityGroup: ISecurityGroup;
   kubernetesClusterAttributes: VersionAgnosticClusterAttributes;
   scyllaSecretArn: string;
-  snowflakeSecretArn: string;
 };
 
 /**
@@ -76,7 +75,6 @@ export class ApiDbClusterStack extends Stack {
       numInstances,
       provisionProdLevelsOfCompute,
       scyllaSecretArn,
-      snowflakeSecretArn,
       ...stackProps
     } = props;
 
@@ -482,9 +480,6 @@ export class ApiDbClusterStack extends Stack {
       secrets: {
         API_SERVER_DATABASE_USER: [this.rdsConnectionSecretArn, 'username'],
         API_SERVER_DATABASE_PASSWORD: [this.rdsConnectionSecretArn, 'password'],
-        SNOWFLAKE_USERNAME: [snowflakeSecretArn, 'username'],
-        SNOWFLAKE_PASSWORD: [snowflakeSecretArn, 'password'],
-        SNOWFLAKE_DB_NAME: [snowflakeSecretArn, 'database'],
         SCYLLA_HOSTS: [scyllaSecretArn, 'hosts'],
         SCYLLA_USERNAME: [scyllaSecretArn, 'username'],
         SCYLLA_PASSWORD: [scyllaSecretArn, 'password'],
@@ -493,7 +488,6 @@ export class ApiDbClusterStack extends Stack {
         API_SERVER_DATABASE_HOST: rdsCluster.clusterEndpoint.hostname,
         API_SERVER_DATABASE_PORT: rdsCluster.clusterEndpoint.port.toString(),
         API_SERVER_DATABASE_NAME: defaultDatabaseName,
-        SNOWFLAKE_WAREHOUSE: 'MIGRATIONS',
         SCYLLA_LOCAL_DATACENTER: 'AWS_US_EAST_2',
         SCYLLA_KEYSPACE: 'item_investigation_service',
         SCYLLA_REPLICATION_CLASS: 'NetworkTopologyStrategy',
@@ -501,7 +495,7 @@ export class ApiDbClusterStack extends Stack {
         SCYLLA_COMPACTION_STRATEGY: 'IncrementalCompactionStrategy',
         SCYLLA_HAS_ENTERPRISE_FEATURES: 'true',
       },
-      dbArgs: ['api-server-pg', 'snowflake', 'scylla'],
+      dbArgs: ['api-server-pg', 'scylla'],
       deploymentEnvironment: stage,
       vpc,
     });

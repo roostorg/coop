@@ -4,10 +4,6 @@
 
 /* eslint-disable max-classes-per-file */
 import {
-  SnowflakeKyselyAdapter,
-  type SnowflakeConnectionSettings,
-} from './SnowflakeAdapter.js';
-import {
   ClickhouseKyselyAdapter,
   type ClickhouseConnectionSettings,
 } from './ClickhouseAdapter.js';
@@ -27,13 +23,11 @@ import type {
 } from './IDataWarehouseAnalytics.js';
 import { PostgresAnalyticsAdapter } from './PostgresAnalyticsAdapter.js';
 import {
-  SnowflakeWarehouseAdapter,
   ClickhouseWarehouseAdapter,
   NoOpWarehouseAdapter,
   type IWarehouseAdapter,
 } from '../../plugins/warehouse/index.js';
 import {
-  SnowflakeAnalyticsAdapter as SnowflakeAnalyticsPlugin,
   ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
   NoOpAnalyticsAdapter,
   type IAnalyticsAdapter,
@@ -47,13 +41,11 @@ import type SafeTracer from '../../utils/SafeTracer.js';
  * Extend this type to add new warehouse implementations
  */
 export type DataWarehouseProvider =
-  | 'snowflake'
   | 'clickhouse'
   | 'postgresql'
   | 'noop';
 
 export type AnalyticsProvider =
-  | 'snowflake'
   | 'clickhouse'
   | 'postgresql'
   | 'noop';
@@ -62,13 +54,6 @@ export type AnalyticsProvider =
 export type { IDataWarehouseProvider };
 
 export type DataWarehouseConfig =
-  | {
-      provider: 'snowflake';
-      connection: SnowflakeConnectionSettings;
-      pool?: DataWarehousePoolSettings;
-      kafka?: any; // For Snowflake analytics
-      analyticsProvider?: AnalyticsProvider;
-    }
   | {
       provider: 'clickhouse';
       connection: ClickhouseConnectionSettings;
@@ -209,14 +194,6 @@ export class DataWarehouseFactory {
    */
   static createDataWarehouse(config: DataWarehouseConfig): IDataWarehouse {
     switch (config.provider) {
-      case 'snowflake':
-        return new WarehouseAdapterBridge(
-          'snowflake',
-          new SnowflakeWarehouseAdapter({
-            connection: config.connection,
-            pool: config.pool,
-          }),
-        );
       case 'noop':
         return new WarehouseAdapterBridge(
           'noop',
@@ -230,8 +207,7 @@ export class DataWarehouseFactory {
           }),
         );
       case 'postgresql':
-        // postgresql uses the same warehouse adapter as noop for now
-        return new WarehouseAdapterBridge('noop', new NoOpWarehouseAdapter());
+        return new WarehouseAdapterBridge('postgresql', new NoOpWarehouseAdapter());
       default:
         return assertUnreachable(
           config,
@@ -247,8 +223,6 @@ export class DataWarehouseFactory {
     config: DataWarehouseConfig,
   ): IDataWarehouseDialect {
     switch (config.provider) {
-      case 'snowflake':
-        return new SnowflakeKyselyAdapter(config.connection, config.pool);
       case 'clickhouse':
         return new ClickhouseKyselyAdapter(config.connection, config.pool);
       case 'postgresql':
@@ -272,32 +246,9 @@ export class DataWarehouseFactory {
     dialect?: IDataWarehouseDialect,
   ): IDataWarehouseAnalytics {
     const analyticsProvider =
-      config.provider === 'snowflake'
-        ? (config.analyticsProvider ?? 'snowflake')
-        : config.analyticsProvider ?? (config.provider as AnalyticsProvider);
-
-    const kafkaClient =
-      'kafka' in config ? config.kafka : undefined;
+      config.analyticsProvider ?? (config.provider as AnalyticsProvider);
 
     switch (analyticsProvider) {
-      case 'snowflake':
-        if (config.provider !== 'snowflake') {
-          throw new Error(
-            'Snowflake analytics provider requires the snowflake warehouse configuration.',
-          );
-        }
-        const kyselyInstance = dialect?.getKyselyInstance();
-        if (!kyselyInstance) {
-          throw new Error('Snowflake analytics requires Kysely instance');
-        }
-        return new AnalyticsAdapterBridge(
-          'snowflake',
-          new SnowflakeAnalyticsPlugin(kyselyInstance, {
-            kafka: kafkaClient,
-            batchSize: 200,
-            batchTimeout: 1_000,
-          }),
-        );
       case 'noop':
         return new AnalyticsAdapterBridge('noop', new NoOpAnalyticsAdapter());
       case 'clickhouse':
@@ -339,27 +290,6 @@ export class DataWarehouseFactory {
       provider) as AnalyticsProvider;
 
     switch (provider) {
-      case 'snowflake':
-        return {
-          provider: 'snowflake',
-          analyticsProvider,
-          connection: {
-            account: process.env.SNOWFLAKE_ACCOUNT ?? 'vya40538',
-            username: String(process.env.SNOWFLAKE_USERNAME),
-            password: process.env.SNOWFLAKE_PASSWORD!,
-            database: process.env.SNOWFLAKE_DB_NAME!,
-            role: process.env.SNOWFLAKE_ROLE ?? 'ACCOUNTADMIN',
-            schema: process.env.SNOWFLAKE_SCHEMA ?? 'PUBLIC',
-            warehouse:
-              process.env.SNOWFLAKE_WAREHOUSE ?? 'RULE_LOGS',
-            arrayBindingThreshold: Number.MAX_VALUE,
-          },
-          pool: {
-            ...(process.env.SNOWFLAKE_POOL_SIZE
-              ? { max: parseInt(process.env.SNOWFLAKE_POOL_SIZE) }
-              : {}),
-          },
-        };
       case 'noop':
         return {
           provider: 'noop',

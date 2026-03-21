@@ -81,7 +81,7 @@ export default function submitReport({
       );
 
       // Now that we've at least loaded the item type, we'll log successes and
-      // failures to snowflake from now on. This is the basic info we'll log.
+      // failures to the data warehouse from now on. This is the basic info we'll log.
       const reportedForReason = req.body.reportedForReason;
       const reporterIdentifier =
         req.body.reporter.kind === 'user'
@@ -313,7 +313,7 @@ export default function submitReport({
       await ReportingService.submitReport(report);
 
       // send response as soon as
-      // the report has successfully been written to snowflake
+      // the report has successfully been written to the data warehouse
       res.status(201).json({ reportId }).end();
 
       if (!req.body.reportedForReason?.csam) {

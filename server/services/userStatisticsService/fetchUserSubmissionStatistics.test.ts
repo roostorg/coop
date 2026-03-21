@@ -1,13 +1,14 @@
 import { randomUUID } from 'crypto';
 import { Kysely, type CompiledQuery, type QueryResult } from 'kysely';
 
-import { makeMockSnowflakeDialect } from '../../snowflake/KyselyDialect.mock.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
 import { safePick } from '../../utils/misc.js';
 import { makeFetchUserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
 
 describe('fetchUserSubmissionStatistics', () => {
-  let snowflakeMock: MockedFn<
+  let warehouseMock: MockedFn<
     (it: CompiledQuery) => Promise<QueryResult<unknown>>
   >;
   let sut: ReturnType<typeof makeFetchUserSubmissionStatistics>;
@@ -17,15 +18,22 @@ describe('fetchUserSubmissionStatistics', () => {
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
     // eslint-disable-next-line better-mutation/no-mutation
-    snowflakeMock = jest.fn(async (_it) => Promise.resolve({ rows: [] }));
+    warehouseMock = jest.fn(async (_it) => Promise.resolve({ rows: [] }));
 
     // This mutation is safe (while we're not running tests concurrently) as
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
     // eslint-disable-next-line better-mutation/no-mutation
-    sut = makeFetchUserSubmissionStatistics(
-      new Kysely({ dialect: makeMockSnowflakeDialect(snowflakeMock) }),
-    );
+    const kysely = new Kysely({
+      dialect: makeMockWarehouseDialect(warehouseMock),
+    });
+    const dialectMock: Dependencies['DataWarehouseDialect'] = {
+      getKyselyInstance: () => kysely,
+      destroy: jest.fn(async () => {}),
+    };
+
+    // eslint-disable-next-line better-mutation/no-mutation
+    sut = makeFetchUserSubmissionStatistics(dialectMock);
   });
 
   test('should generate proper query given org + user ids only', async () => {
@@ -38,9 +46,9 @@ describe('fetchUserSubmissionStatistics', () => {
       ],
     });
 
-    expect(snowflakeMock).toHaveBeenCalledTimes(2);
+    expect(warehouseMock).toHaveBeenCalledTimes(2);
 
-    const queriesRan = snowflakeMock.mock.calls.map((it) =>
+    const queriesRan = warehouseMock.mock.calls.map((it) =>
       safePick(it[0], ['parameters', 'sql']),
     );
 
@@ -76,7 +84,7 @@ describe('fetchUserSubmissionStatistics', () => {
     }));
 
     await sut({ orgId: 'x', userItemIdentifiers: largeUserIdList });
-    expect(snowflakeMock.mock.calls.length).toBeGreaterThan(1);
+    expect(warehouseMock.mock.calls.length).toBeGreaterThan(1);
   });
 
   test('should generate proper query given user/org ids + date filters', async () => {
@@ -105,9 +113,9 @@ describe('fetchUserSubmissionStatistics', () => {
       startTime: new Date('2020-02-01T00:00:00Z'),
     });
 
-    expect(snowflakeMock).toHaveBeenCalledTimes(3);
+    expect(warehouseMock).toHaveBeenCalledTimes(3);
 
-    const queriesRan = snowflakeMock.mock.calls.map((it) =>
+    const queriesRan = warehouseMock.mock.calls.map((it) =>
       safePick(it[0], ['parameters', 'sql']),
     );
 

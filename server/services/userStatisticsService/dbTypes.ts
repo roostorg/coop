@@ -1,7 +1,7 @@
 // Types for tables in the user stats service's schema.
 // THESE SHOULD NOT BE USED OUTSIDE OF THIS SERVICE.
 
-export type UserStatisticsServiceSnowflake = {
+export type UserStatisticsServiceWarehouse = {
   'USER_STATISTICS_SERVICE.SUBMISSION_STATS': SubmissionStats;
   'USER_STATISTICS_SERVICE.LIFETIME_ACTION_STATS': LifetimeActionStats;
   'USER_STATISTICS_SERVICE.USER_SCORES': UserScores;
@@ -37,8 +37,8 @@ export type SubmissionStats = {
   // This is the item type that the user has submitted
   ITEM_TYPE_ID: string;
   NUM_SUBMISSIONS: string;
-  // NB: these are actually "SnowflakeDate" instances. SnowflakeDate is a
-  // custom class from the Snowflake driver that roughly extends Date, but
+  // NB: these are actually warehouse Date instances (driver-specific). The
+  // warehouse driver may use a custom class that roughly extends Date, but
   // adds a custom toString() that changes (breaks) the date's default JSON
   // representation.
   // TODO: convert these globally to Dates at the Kysely level, so we don't

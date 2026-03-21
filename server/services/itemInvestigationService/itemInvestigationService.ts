@@ -224,7 +224,7 @@ export class ItemInvestigationService {
           : ScyllaNilItemIdentifier,
         item_data: jsonStringify(item.data),
         //TODO: create datestamp in submitItems route and use
-        // for write to both scylla and snowflake
+        // for write to both Scylla and the data warehouse
         item_submission_time: new Date(),
         item_synthetic_created_at: syntheticCreatedAt,
         synthetic_thread_id: syntheticThreadId,
@@ -477,7 +477,7 @@ export class ItemInvestigationService {
    * them, even if they exist.
    *
    * NB: Right now, we check the partial items endpoint before checking
-   * snowflake. This is likely fine for now, but the partial items endpoint
+   * the data warehouse. This is likely fine for now, but the partial items endpoint
    * could return an entirely different submission (if the data has been mutated
    * on their side), which could lead to unexpected behavior. It's fine to keep
    * for now but we should keep an eye out for bugs that could stem from this.
@@ -521,7 +521,7 @@ export class ItemInvestigationService {
     // attempt to fetch the item's data from there. Most users won't have a
     // partial items endpoint, so this should only apply in a handful of cases
     // If this fails for any reason, just coerce the error to an empty array so
-    // that we'll move on to trying snowflake.
+    // that we'll move on to trying the data warehouse.
     const partialItemsResult = await this.partialItemsEndpoint
       .getPartialItems(orgId, [itemIdentifier])
       .catch((_e) => []);
@@ -769,8 +769,8 @@ export class ItemInvestigationService {
         break;
       }
     }
-    //TODO: Fallback to Snowflake for parents not found
-    // in initial snowflake query
+    //TODO: Fallback to the data warehouse for parents not found
+    // in the initial Scylla query
   }
 
   async *#getSiblingStream(opts: {

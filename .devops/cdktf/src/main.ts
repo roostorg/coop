@@ -22,9 +22,6 @@ export type EnvironmentProps = StackProps & {
     clusterName: string;
     availability: string;
     clusterType: 'basic' | 'standard';
-    snowflakeIngestTopic: {
-      partitionCount: number;
-    };
   };
   sourceBranch: string;
   lifecycle: {
@@ -61,9 +58,6 @@ deployEnvironment({
     environmentName: 'Staging',
     clusterType: 'basic',
     availability: 'SINGLE_ZONE',
-    snowflakeIngestTopic: {
-      partitionCount: 4,
-    },
   },
 });
 
@@ -86,9 +80,6 @@ deployEnvironment({
     environmentName: 'Prod',
     clusterType: 'standard',
     availability: 'MULTI_ZONE',
-    snowflakeIngestTopic: {
-      partitionCount: 12,
-    },
   },
 });
 

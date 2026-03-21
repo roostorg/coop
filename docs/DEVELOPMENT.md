@@ -90,8 +90,7 @@ npm run db:drop     # Drop database
 .devops/migrator/src/scripts/
 ├── api-server-pg/    # PostgreSQL
 ├── clickhouse/       # ClickHouse
-├── scylla/           # ScyllaDB
-└── snowflake/        # Snowflake (optional)
+└── scylla/           # ScyllaDB
 ```
 
 ## Running the Application

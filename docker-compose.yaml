@@ -15,15 +15,6 @@ services:
     working_dir: /src
     env_file: ./.env.githubci
     environment:
-      # when running migrations locally, you must set these to target your
-      # personal db, as in:
-      #
-      # docker compose run \
-      #   -e SNOWFLAKE_ROLE=ACCOUNTADMIN \
-      #   -e SNOWFLAKE_USERNAME=YOUR_USERNAME \
-      #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
-      #   -e SNOWFLAKE_DB_NAME=YOURDB \
-      # migrations
       - MIGRATOR_DB_NAME
       - CLICKHOUSE_DATABASE
     volumes:
@@ -42,15 +33,6 @@ services:
     working_dir: /src
     env_file: ./.env.githubci
     environment:
-      # when running migrations locally, you must set these to target your
-      # personal db, as in:
-      #
-      # docker compose run \
-      #   -e SNOWFLAKE_ROLE=ACCOUNTADMIN \
-      #   -e SNOWFLAKE_USERNAME=YOUR_USERNAME \
-      #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
-      #   -e SNOWFLAKE_DB_NAME=YOURDB \
-      # drop_dbs
       - CLICKHOUSE_DATABASE
       - MIGRATOR_DB_NAME
     volumes:
@@ -151,8 +133,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
-      args:
-        - OMIT_SNOWFLAKE
     command: bash -c 'npm run test:ci'
     working_dir: /app
     volumes:

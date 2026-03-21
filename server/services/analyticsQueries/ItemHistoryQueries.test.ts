@@ -2,18 +2,18 @@ import { Kysely, type DatabaseConnection } from 'kysely';
 
 import { safePick } from '../../utils/misc.js';
 import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
-import { makeMockSnowflakeDialect } from '../../snowflake/KyselyDialect.mock.js';
-import { type SnowflakePublicSchema } from '../../snowflake/types.js';
+import { type DataWarehousePublicSchema } from '../../storage/dataWarehouse/warehouseSchema.js';
+import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import ItemHistoryQueries from './ItemHistoryQueries.js';
 
-describe('handleSnowflakeTableChanges', () => {
+describe('ItemHistoryQueries', () => {
   test('should issue a proper query', async () => {
     // Arrange
-    const snowflakeMock = jest.fn<DatabaseConnection['executeQuery']>(
+    const warehouseMock = jest.fn<DatabaseConnection['executeQuery']>(
       async (_it) => ({ rows: [] }),
     );
-    const dialect = makeMockSnowflakeDialect(snowflakeMock);
-    const kysely = new Kysely<SnowflakePublicSchema>({ dialect });
+    const dialect = makeMockWarehouseDialect(warehouseMock);
+    const kysely = new Kysely<DataWarehousePublicSchema>({ dialect });
     const dialectMock = {
       getKyselyInstance: () => kysely,
       destroy: jest.fn(),
@@ -28,7 +28,7 @@ describe('handleSnowflakeTableChanges', () => {
     });
 
     // Assert
-    const queriesRan = snowflakeMock.mock.calls.map((it) =>
+    const queriesRan = warehouseMock.mock.calls.map((it) =>
       safePick(it[0], ['parameters', 'sql']),
     );
     expect(queriesRan).toMatchInlineSnapshot(`

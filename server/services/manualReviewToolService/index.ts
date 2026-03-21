@@ -34,9 +34,9 @@ export {
 export { type ManualReviewDecisionComponent } from './modules/JobDecisioning.js';
 
 // Needs to be exported because it's used in the contract for
-// snowflakeEventualWrite.
+// warehouse eventual-write tables.
 export {
-  type ManualReviewToolServiceSnowflakeSchema,
+  type ManualReviewToolServiceWarehouseSchema,
   type ManualReviewToolServicePg,
 } from './dbTypes.js';
 

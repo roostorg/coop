@@ -10,7 +10,7 @@ This CDK application defined the complete AWS infrastructure for the application
 
 - **VPC and Networking**: Multi-AZ VPC setup with public/private subnets
 - **Kubernetes (EKS)**: Managed Kubernetes clusters for running the API and workers
-- **Databases**: RDS PostgreSQL, Redis, ScyllaDB, and Snowflake integrations
+- **Databases**: RDS PostgreSQL, Redis, and ScyllaDB
 - **API Gateway**: REST API with rate limiting and usage plans
 - **CloudFront**: CDN for static assets and API caching
 - **Monitoring**: Datadog integration and CloudWatch alarms

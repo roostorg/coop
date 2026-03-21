@@ -22,13 +22,6 @@
       "items": [
         "If you're creating a new signal, did you check all the potential error cases, and classify, for each one, whether it should be thrown as a permanent error (not subject to retry) or just a normal error (which will lead the signal to being retried and the error value not cached)? **NOTE**: in our data model, any case in which the signal can not determine the score for the provided input should result in a SignalPermanentError."
       ]
-    },
-    {
-      "paths": [".devops/migrator/src/scripts/snowflake/*"],
-      "triggers": ["create task", "alter task"],
-      "items": [
-        "If you're creating a new snowflake task, did you set ERROR_INTEGRATION = 'AWS_NOTIFICATION_INTEGRATION'?"
-      ]
     }
   ]
 }

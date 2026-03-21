@@ -1,7 +1,7 @@
 /**
  * Data Warehouse Abstraction Layer
  * 
- * Provides abstraction for data warehouses: Snowflake, Clickhouse, PostgreSQL, etc.
+ * Provides abstraction for data warehouses: Clickhouse, PostgreSQL, etc.
  * Switch warehouses by setting WAREHOUSE_ADAPTER
  */
 

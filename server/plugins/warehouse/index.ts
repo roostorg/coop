@@ -6,12 +6,6 @@ export type {
 } from './types.js';
 export { NoOpWarehouseAdapter } from './examples/NoOpWarehouseAdapter.js';
 export {
-  SnowflakeWarehouseAdapter,
-  type SnowflakeWarehouseAdapterOptions,
-  type SnowflakeWarehouseConnection,
-  type SnowflakeWarehousePoolConfig,
-} from './adapters/SnowflakeWarehouseAdapter.js';
-export {
   ClickhouseWarehouseAdapter,
   type ClickhouseWarehouseAdapterOptions,
   type ClickhouseWarehouseConnection,

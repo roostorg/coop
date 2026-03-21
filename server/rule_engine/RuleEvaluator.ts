@@ -150,7 +150,7 @@ class RuleEvaluator {
    *
    * Note that this function _does not_ perform any of the side effects that
    * usually attend a rule execution, including (even) logging that execution to
-   * Snowflake. For that reason, this function is private, and should only be
+   * the data warehouse. For that reason, this function is private, and should only be
    * called as an implementation detail of the RuleEngine.
    *
    * @param ruleConditions - The conditions that logically define the rule
