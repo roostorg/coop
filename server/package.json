@@ -65,7 +65,6 @@
     "apollo-server-express": "^3.10.3",
     "avsc": "^5.7.7",
     "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.2",
     "bullmq": "^5.0.0",
     "cassandra-driver": "^4.8.0",
     "cls-hooked": "^4.2.2",

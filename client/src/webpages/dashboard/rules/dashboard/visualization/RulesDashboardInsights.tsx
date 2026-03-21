@@ -27,15 +27,17 @@ import union from 'lodash/union';
 import without from 'lodash/without';
 import { format } from 'date-fns';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
-import { Chart } from 'react-google-charts';
 import {
   Area,
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -667,25 +669,75 @@ export default function RulesDashboardInsights() {
           });
           return curr;
         },
-        {} as { [k: string]: string },
+        {} as { [k: string]: number },
       );
-    const pieChartData = Object.keys(combinedChartData).map((category) => [
-      category,
-      combinedChartData[category],
-    ]);
+    const pieChartData = Object.keys(combinedChartData).map((category) => ({
+      name: category,
+      value: combinedChartData[category],
+    }));
+
+    const RADIAN = Math.PI / 180;
+    const renderLabel = ({
+      cx,
+      cy,
+      midAngle,
+      innerRadius,
+      outerRadius,
+      percent,
+    }: {
+      cx: number;
+      cy: number;
+      midAngle: number;
+      innerRadius: number;
+      outerRadius: number;
+      percent: number;
+    }) => {
+      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+      return (
+        <text
+          x={x}
+          y={y}
+          fill="white"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={12}
+          fontWeight={600}
+        >
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      );
+    };
 
     return (
-      <Chart
-        chartType="PieChart"
-        data={[['category', 'total'], ...pieChartData]}
-        options={{
-          pieSliceText: 'percentage',
-          pieStartAngle: 100,
-          pieHole: 0.5,
-        }}
-        width={'100%'}
-        height={'100%'}
-      />
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            dataKey="value"
+            nameKey="name"
+            data={pieChartData}
+            cx="50%"
+            cy="50%"
+            startAngle={100}
+            endAngle={100 + 360}
+            innerRadius="50%"
+            outerRadius="80%"
+            label={renderLabel}
+            labelLine={false}
+            isAnimationActive={false}
+          >
+            {pieChartData.map((_, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={chartColors[index % chartColors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
     );
   }, [sortedChartData]);
 

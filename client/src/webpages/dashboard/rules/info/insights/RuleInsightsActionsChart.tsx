@@ -123,17 +123,11 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
         (a: any, b: any) =>
           new Date(a.date).getTime() - new Date(b.date).getTime(),
       )
-      .map((actionData: any) => {
-        // change actionData.date format from YYYY-MM-DD to MM/DD
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const [year, month, date] = actionData.date.split('-');
-
-        return {
-          date: `${month}/${date}/${year.slice(-2)}`,
-          totalMatches: actionData.totalMatches,
-          totalRequests: actionData.totalRequests,
-        };
-      });
+      .map((actionData: any) => ({
+        date: format(new Date(actionData.date), 'MM/dd/yy'),
+        totalMatches: actionData.totalMatches,
+        totalRequests: actionData.totalRequests,
+      }));
   }, [filteredPassRateData]);
 
   const renderCustomXAxisTick = ({ x, y, payload }: any) => {
@@ -177,7 +171,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
       return (
         <div className="flex flex-col bg-white rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-t-lg bg-primary">
-            {format(new Date(label as string), 'MM/dd/yy')}
+            {label}
           </div>
           {data.length > 1 && (
             <div className="flex flex-col">

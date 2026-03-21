@@ -310,9 +310,10 @@ app.get('/', async (req: Request, res: Response) => {
     pageContent = $.html();
     return res.send(pageContent);
   } catch (error: any) {
+    console.error('Error processing content:', error);
     return res
       .status(500)
-      .send(`Error processing content: ${error.message}`);
+      .send('Error processing content');
   }
 });
 
