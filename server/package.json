@@ -82,6 +82,7 @@
     "fuzzball": "^2.1.2",
     "generic-pool": "^3.8.2",
     "graphql": "^16.0.1",
+    "graphql-depth-limit": "^1.1.0",
     "graphql-passport": "^0.6.4",
     "graphql-scalars": "^1.19.0",
     "helmet": "^4.6.0",
@@ -121,6 +122,7 @@
   "devDependencies": {
     "@faker-js/faker": "^7.5.0",
     "@types/cls-hooked": "^4.3.3",
+    "@types/graphql-depth-limit": "^1.1.6",
     "@types/jest": "^29.2.4",
     "@types/js-yaml": "^4.0.5",
     "@types/stream-json": "^1.7.7",

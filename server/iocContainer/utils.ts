@@ -661,3 +661,20 @@ export function safeGetEnvVar(varName: string): string {
     process.env[varName] ?? __throw(new Error(`Missing env var ${varName}`))
   );
 }
+
+/**
+ * Gets an env var and parses it as a positive integer. Returns `defaultValue`
+ * if the variable is unset or invalid, logging an error on misconfiguration.
+ */
+export function safeGetEnvInt(varName: string, defaultValue: number): number {
+  const raw = process.env[varName];
+  if (raw === undefined) return defaultValue;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    console.error(
+      `Invalid env var ${varName}: expected a positive integer, got ${JSON.stringify(raw)}. Using default value ${defaultValue}.`,
+    );
+    return defaultValue;
+  }
+  return parsed;
+}
