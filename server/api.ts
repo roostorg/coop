@@ -351,7 +351,7 @@ export default async function makeApiServer(deps: Dependencies) {
         res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
       });
     } catch (e) {
-      next(e);
+      return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
     }
   });
 
