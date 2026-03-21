@@ -149,7 +149,7 @@ export default function SSOSettings() {
 
   const updateLoading = samlUpdateLoading || oidcUpdateLoading || switchLoading;
 
-  const handleSaveSaml = () => {
+  const handleSaveSaml = (closeDialog = false) => {
     if (!stringIsAValidUrl(ssoUrl)) {
       toast.error('SSO URL is not a valid URL');
       return;
@@ -157,12 +157,18 @@ export default function SSOSettings() {
     updateSSOSamlCredentials({
       variables: { input: { samlEnabled: true, ssoUrl, ssoCert } },
       refetchQueries: ['GetSSOCredentials'],
-      onCompleted: () => toast.success('SAML credentials updated'),
-      onError: (e) => toast.error(`Error updating SAML credentials: ${e.message}`),
+      onCompleted: () => {
+        toast.success('SAML credentials updated');
+        if (closeDialog) setShowSwitchDialog(false);
+      },
+      onError: (e) => {
+        toast.error(`Error updating SAML credentials: ${e.message}`);
+        if (closeDialog) setShowSwitchDialog(false);
+      },
     });
   };
 
-  const handleSaveOidc = () => {
+  const handleSaveOidc = (closeDialog = false) => {
     if (!isValidDomain(issuerUrl)) {
       toast.error('Domain is not valid (e.g. your-tenant.auth0.com)');
       return;
@@ -170,8 +176,14 @@ export default function SSOSettings() {
     updateSSOOidcCredentials({
       variables: { input: { oidcEnabled: true, issuerUrl, clientId, clientSecret } },
       refetchQueries: ['GetSSOCredentials'],
-      onCompleted: () => toast.success('OIDC credentials updated'),
-      onError: (e) => toast.error(`Error updating OIDC credentials: ${e.message}`),
+      onCompleted: () => {
+        toast.success('OIDC credentials updated');
+        if (closeDialog) setShowSwitchDialog(false);
+      },
+      onError: (e) => {
+        toast.error(`Error updating OIDC credentials: ${e.message}`);
+        if (closeDialog) setShowSwitchDialog(false);
+      },
     });
   };
 
@@ -179,9 +191,8 @@ export default function SSOSettings() {
 
   const handleSwitch = () => {
     if (isEnablingFromPassword) {
-      if (activeTab === 'SAML') handleSaveSaml();
-      else handleSaveOidc();
-      setShowSwitchDialog(false);
+      if (activeTab === 'SAML') handleSaveSaml(true);
+      else handleSaveOidc(true);
       return;
     }
     if (activeTab === 'SAML') {
@@ -444,8 +455,8 @@ export default function SSOSettings() {
             : `Enable ${activeTab}`}
       </Button>
 
-      <Dialog open={showSwitchDialog} onOpenChange={setShowSwitchDialog}>
-        <DialogContent>
+      {showSwitchDialog && <Dialog open onOpenChange={setShowSwitchDialog}>
+        <DialogContent className="z-[51]">
           <DialogHeader>
             <DialogTitle>
               {isEnablingFromPassword
@@ -467,7 +478,7 @@ export default function SSOSettings() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }

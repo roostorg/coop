@@ -4,6 +4,7 @@ import { type ReadonlyObjectDeep } from 'type-fest/source/readonly-deep.js';
 
 import { inject } from '../../iocContainer/index.js';
 import { cached } from '../../utils/caching.js';
+import { encrypt, decrypt } from '../../utils/crypto.js';
 import { MINUTE_MS } from '../../utils/time.js';
 
 export type OrgSettingsPg = {
@@ -191,11 +192,15 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       }
     },
     async getOidcSettings(orgId: string) {
-      return pgQuery
+      const row = await pgQuery
         .selectFrom('public.org_settings')
         .select(['oidc_enabled', 'client_id', 'client_secret', 'issuer_url'])
         .where('org_id', '=', orgId)
         .executeTakeFirst();
+      if (row?.client_secret) {
+        return { ...row, client_secret: decrypt(row.client_secret) };
+      }
+      return row;
     },
     async updateOidcSettings(input: {
       orgId: string;
@@ -207,7 +212,12 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       await pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
-        .set({ oidc_enabled: input.oidcEnabled, issuer_url: input.issuerUrl, client_id: input.clientId, client_secret: input.clientSecret })
+        .set({
+          oidc_enabled: input.oidcEnabled,
+          issuer_url: input.issuerUrl,
+          client_id: input.clientId,
+          client_secret: encrypt(input.clientSecret),
+        })
         .executeTakeFirst();
       return true;
     },
@@ -230,7 +240,13 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         await pgQuery
           .updateTable('public.org_settings')
           .where('org_id', '=', input.orgId)
-          .set({ saml_enabled: false, oidc_enabled: true, issuer_url: input.issuerUrl, client_id: input.clientId, client_secret: input.clientSecret })
+          .set({
+            saml_enabled: false,
+            oidc_enabled: true,
+            issuer_url: input.issuerUrl,
+            client_id: input.clientId,
+            client_secret: input.clientSecret ? encrypt(input.clientSecret) : undefined,
+          })
           .executeTakeFirst();
       }
       return true;
