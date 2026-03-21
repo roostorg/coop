@@ -46,7 +46,6 @@ gql`
       ssoCert
       issuerUrl
       clientId
-      clientSecret
     }
   }
 
@@ -71,7 +70,6 @@ gql`
         ssoCert
         issuerUrl
         clientId
-        clientSecret
     }
   }
 `;
@@ -103,7 +101,6 @@ export default function SSOSettings() {
     if (org.ssoCert != null) setSsoCert(org.ssoCert);
     if (org.issuerUrl != null) setIssuerUrl(org.issuerUrl);
     if (org.clientId != null) setClientId(org.clientId);
-    if (org.clientSecret != null) setClientSecret(org.clientSecret);
     if (org.oidcEnabled) setActiveTab('OIDC');
   }, [data]);
 
@@ -124,8 +121,7 @@ export default function SSOSettings() {
   const isSwitching = !isCurrentTabActive && currentMethod !== 'Password';
 
   const samlCallbackUri = `https://getcoop.com/api/v1/saml/login/${data?.myOrg?.id}/callback`;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const oidcCallbackUri = (callbackData as any)?.getSSOOidcCallbackUrl ?? '';
+  const oidcCallbackUri = callbackData?.getSSOOidcCallbackUrl ?? '';
 
   const stringIsAValidUrl = (s: string) => {
     try {
@@ -137,12 +133,18 @@ export default function SSOSettings() {
     }
   };
 
-  const isValidDomain = (s: string) =>
-    s.trim().length > 0 && s.includes('.') && !/\s/.test(s);
+  const isValidDomain = (s: string) => {
+    try {
+      const url = new URL(`https://${s.replace(/^https?:\/\//, '')}`);
+      return url.hostname.includes('.') && url.hostname === s.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    } catch (_) {
+      return false;
+    }
+  };
 
   const isSamlFormValid = ssoUrl.length > 0 && ssoCert.length > 0;
   const isOidcFormValid =
-    issuerUrl.length > 0 && clientId.length > 0 && clientSecret.length > 0;
+    issuerUrl.length > 0 && clientId.length > 0 && (clientSecret.length > 0 || oidcEnabled);
   const isFormValid = activeTab === 'SAML' ? isSamlFormValid : isOidcFormValid;
 
   const updateLoading = samlUpdateLoading || oidcUpdateLoading || switchLoading;
@@ -332,7 +334,7 @@ export default function SSOSettings() {
           <Heading>Identity Provider Metadata</Heading>
           <div className="flex flex-col gap-2">
             <Label htmlFor="ssoUrl">SSO URL</Label>
-            <Input id="ssoUrl" value={ssoUrl} onChange={(e) => setSsoUrl(e.target.value)} disabled={isSwitching} />
+            <Input id="ssoUrl" value={ssoUrl} onChange={(e) => setSsoUrl(e.target.value)} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="SsoCert">SSO Certificate</Label>
@@ -347,8 +349,7 @@ export default function SSOSettings() {
             className="h-44"
             value={ssoCert}
             onChange={(e) => setSsoCert(e.target.value)}
-            disabled={isSwitching}
-            endSlot={
+                       endSlot={
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Button
@@ -409,12 +410,12 @@ export default function SSOSettings() {
               placeholder="your-tenant.auth0.com"
               value={issuerUrl}
               onChange={(e) => setIssuerUrl(e.target.value)}
-              disabled={isSwitching}
+
             />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="clientId">Client ID</Label>
-            <Input id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} disabled={isSwitching} />
+            <Input id="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="clientSecret">Client Secret</Label>
@@ -422,8 +423,9 @@ export default function SSOSettings() {
               id="clientSecret"
               type="password"
               value={clientSecret}
+              placeholder={oidcEnabled ? '••••••••  (enter new value to change)' : ''}
               onChange={(e) => setClientSecret(e.target.value)}
-              disabled={isSwitching}
+
             />
           </div>
         </>
