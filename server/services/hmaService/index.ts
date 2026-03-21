@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import { type JsonValue } from 'type-fest';
 import { inject } from '../../iocContainer/utils.js';
 import type { Dependencies } from '../../iocContainer/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
@@ -29,6 +30,151 @@ export interface LookupResponse {
   [bankName: string]: BankMatch[] | undefined;
 }
 
+export interface ExchangeFieldDescriptor {
+  name: string;
+  type: string;
+  required: boolean;
+  default: JsonValue | null;
+  help: string;
+  choices: string[] | null;
+}
+
+export interface ExchangeSchemaSection {
+  fields: ExchangeFieldDescriptor[];
+}
+
+export interface ExchangeApiSchema {
+  config_schema: ExchangeSchemaSection;
+  credentials_schema: ExchangeSchemaSection | null;
+}
+
+export interface ExchangeApiInfo {
+  name: string;
+  supports_auth: boolean;
+  has_auth: boolean;
+}
+
+export interface ExchangeInfo {
+  api: string;
+  enabled: boolean;
+  has_auth: boolean;
+  error?: string | null;
+  last_fetch_succeeded?: boolean | null;
+  last_fetch_time?: string | null;
+  up_to_date?: boolean | null;
+  fetched_items?: number | null;
+  is_fetching?: boolean | null;
+}
+
+const KNOWN_EXCHANGE_SCHEMAS: Partial<Record<string, ExchangeApiSchema>> = {
+  fb_threatexchange: {
+    config_schema: {
+      fields: [
+        {
+          name: 'privacy_group',
+          type: 'number',
+          required: true,
+          default: null,
+          help: 'ThreatPrivacyGroup ID for this collaboration',
+          choices: null,
+        },
+      ],
+    },
+    credentials_schema: {
+      fields: [
+        {
+          name: 'api_token',
+          type: 'string',
+          required: true,
+          default: null,
+          help: 'Meta app access token. Create one at https://developers.facebook.com/tools/accesstoken/ for your ThreatExchange app.',
+          choices: null,
+        },
+      ],
+    },
+  },
+  ncmec: {
+    config_schema: {
+      fields: [
+        {
+          name: 'environment',
+          type: 'enum',
+          required: true,
+          default: null,
+          help: 'which database to connect to',
+          choices: [
+            'https://report.cybertip.org/hashsharing',
+            'https://hashsharing.ncmec.org/npo',
+            'https://hashsharing.ncmec.org/exploitative',
+            'https://exttest.cybertip.org/hashsharing',
+            'https://hashsharing-test.ncmec.org/npo',
+            'https://hashsharing-test.ncmec.org/exploitative',
+          ],
+        },
+        {
+          name: 'only_esp_ids',
+          type: 'set_of_number',
+          required: false,
+          default: null,
+          help: 'Only take entries from these electronic service provider (ESP) ids',
+          choices: null,
+        },
+      ],
+    },
+    credentials_schema: {
+      fields: [
+        {
+          name: 'user',
+          type: 'string',
+          required: true,
+          default: null,
+          help: 'NCMEC hash sharing API username.',
+          choices: null,
+        },
+        {
+          name: 'password',
+          type: 'string',
+          required: true,
+          default: null,
+          help: 'NCMEC hash sharing API password.',
+          choices: null,
+        },
+      ],
+    },
+  },
+  stop_ncii: {
+    config_schema: { fields: [] },
+    credentials_schema: {
+      fields: [
+        {
+          name: 'fetch_function_key',
+          type: 'string',
+          required: true,
+          default: null,
+          help: 'API key for the Fetch Hashes endpoint. Used when downloading hashes from StopNCII.',
+          choices: null,
+        },
+        {
+          name: 'subscription_key',
+          type: 'string',
+          required: true,
+          default: null,
+          help: 'Azure API Management subscription key. Sent as Ocp-Apim-Subscription-Key on all requests.',
+          choices: null,
+        },
+        {
+          name: 'base_url_override',
+          type: 'string',
+          required: false,
+          default: null,
+          help: 'Optional. Override the API base URL (e.g. for testing). Leave blank to use https://api.stopncii.org/v1',
+          choices: null,
+        },
+      ],
+    },
+  },
+};
+
 export class HmaService {
   private readonly hmaServiceUrl: string;
   private readonly hashBankService: HashBankService;
@@ -52,39 +198,73 @@ export class HmaService {
     return `COOP_${orgId.toUpperCase()}_${normalizedName}`;
   }
 
-  async createBank(orgId: string, name: string, description: string, enabled_ratio: number): Promise<HashBank> {
-    // Create HMA bank name with org prefix to avoid collisions
+  async createBank(
+    orgId: string,
+    name: string,
+    description: string,
+    enabled_ratio: number,
+    exchange?: { apiName: string; apiJson: Record<string, unknown> }
+  ): Promise<HashBank> {
     const hmaName = this.getHmaName(orgId, name);
 
-    const requestBody = {
-      name: hmaName,
-      enabled_ratio: enabled_ratio.toString()
-    };
-
-    // Create bank in HMA service
-    const response = await this.fetchHTTP({
-      url: `${this.hmaServiceUrl}/c/banks`,
-      method: "post",
-      body: jsonStringify(requestBody),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      handleResponseBody: 'as-json',
-    });
-
-    if (!response.ok) {
-      const errorDetails = {
-        status: response.status,
-        responseBody: response.body,
-        requestBody,
-        url: `${this.hmaServiceUrl}/c/banks`,
-        headers: response.headers
+    if (exchange) {
+      // POST /c/exchanges creates both the exchange and the bank in HMA
+      const requestBody = {
+        bank: hmaName,
+        api: exchange.apiName,
+        api_json: exchange.apiJson,
       };
-      throw new Error(`Failed to create HMA bank: ${jsonStringify(errorDetails)}`);
+
+      const response = await this.fetchHTTP({
+        url: `${this.hmaServiceUrl}/c/exchanges`,
+        method: 'post',
+        body: jsonStringify(requestBody),
+        headers: { 'Content-Type': 'application/json' },
+        handleResponseBody: 'discard',
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to create exchange in HMA: status=${response.status}`
+        );
+      }
+
+      if (enabled_ratio !== 1.0) {
+        await this.fetchHTTP({
+          url: `${this.hmaServiceUrl}/c/bank/${hmaName}`,
+          method: 'put',
+          body: jsonStringify({ enabled_ratio }),
+          headers: { 'Content-Type': 'application/json' },
+          handleResponseBody: 'discard',
+        });
+      }
+    } else {
+      const requestBody = {
+        name: hmaName,
+        enabled_ratio: enabled_ratio.toString(),
+      };
+
+      const response = await this.fetchHTTP({
+        url: `${this.hmaServiceUrl}/c/banks`,
+        method: 'post',
+        body: jsonStringify(requestBody),
+        headers: { 'Content-Type': 'application/json' },
+        handleResponseBody: 'as-json',
+      });
+
+      if (!response.ok) {
+        const errorDetails = {
+          status: response.status,
+          responseBody: response.body,
+          requestBody,
+          url: `${this.hmaServiceUrl}/c/banks`,
+          headers: response.headers,
+        };
+        throw new Error(`Failed to create HMA bank: ${jsonStringify(errorDetails)}`);
+      }
     }
 
     try {
-      // Create local copy of the bank
       const bank = await this.hashBankService.create({
         name,
         hma_name: hmaName,
@@ -95,11 +275,10 @@ export class HmaService {
 
       return bank;
     } catch (error) {
-      // If we fail to create the local copy, we should try to clean up the HMA bank
       try {
         await this.fetchHTTP({
           url: `${this.hmaServiceUrl}/c/bank/${hmaName}`,
-          method: "delete",
+          method: 'delete',
           handleResponseBody: 'discard',
         });
       } catch (cleanupError) {
@@ -352,6 +531,207 @@ export class HmaService {
     } catch (error) {
       return [];
     }
+  }
+
+  async getExchangeApis(): Promise<ExchangeApiInfo[]> {
+    const apisResponse = await this.fetchHTTP({
+      url: `${this.hmaServiceUrl}/c/exchanges/apis`,
+      method: 'get',
+      handleResponseBody: 'as-json',
+    });
+
+    if (!apisResponse.ok) {
+      throw new Error(`Failed to fetch exchange APIs: ${apisResponse.status}`);
+    }
+
+    const apiNames = apisResponse.body as unknown as string[];
+
+    const infos = await Promise.all(
+      apiNames.map(async (name) => {
+        try {
+          const configResponse = await this.fetchHTTP({
+            url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(name)}`,
+            method: 'get',
+            handleResponseBody: 'as-json',
+          });
+
+          if (configResponse.ok) {
+            const body = configResponse.body as unknown as {
+              supports_authentification: boolean;
+              has_set_authentification: boolean;
+            };
+            return {
+              name,
+              supports_auth: body.supports_authentification,
+              has_auth: body.has_set_authentification,
+            };
+          }
+        } catch {
+          // fall through to default
+        }
+        return { name, supports_auth: false, has_auth: false };
+      })
+    );
+    return infos;
+  }
+
+  async getExchangeApiSchema(apiName: string): Promise<ExchangeApiSchema> {
+    try {
+      const response = await this.fetchHTTP({
+        url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(apiName)}/schema`,
+        method: 'get',
+        handleResponseBody: 'as-json',
+      });
+
+      if (response.ok) {
+        return response.body as unknown as ExchangeApiSchema;
+      }
+    } catch {
+      // Fall through to built-in schemas
+    }
+
+    const fallback = KNOWN_EXCHANGE_SCHEMAS[apiName];
+    if (fallback) {
+      return fallback;
+    }
+
+    return { config_schema: { fields: [] }, credentials_schema: null };
+  }
+
+  async createExchange(
+    bankName: string,
+    apiType: string,
+    apiJson: Record<string, unknown>
+  ): Promise<void> {
+    const requestBody = {
+      bank: bankName,
+      api: apiType,
+      api_json: apiJson,
+    };
+
+    const response = await this.fetchHTTP({
+      url: `${this.hmaServiceUrl}/c/exchanges`,
+      method: 'post',
+      body: jsonStringify(requestBody),
+      headers: { 'Content-Type': 'application/json' },
+      handleResponseBody: 'as-json',
+    });
+
+    if (!response.ok) {
+      const errorDetails = {
+        status: response.status,
+        responseBody: response.body,
+        requestBody,
+        url: `${this.hmaServiceUrl}/c/exchanges`,
+      };
+      throw new Error(`Failed to create exchange: ${jsonStringify(errorDetails)}`);
+    }
+  }
+
+  async setExchangeCredentials(
+    apiName: string,
+    credentialJson: Record<string, unknown>
+  ): Promise<void> {
+    const requestBody = { credential_json: credentialJson };
+
+    const response = await this.fetchHTTP({
+      url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(apiName)}`,
+      method: 'post',
+      body: jsonStringify(requestBody),
+      headers: { 'Content-Type': 'application/json' },
+      handleResponseBody: 'discard',
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to set exchange credentials for '${apiName}': status=${response.status}`
+      );
+    }
+  }
+
+  async getExchangeForBank(hmaName: string): Promise<ExchangeInfo | null> {
+    let response;
+    try {
+      response = await this.fetchHTTP({
+        url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`,
+        method: 'get',
+        handleResponseBody: 'as-json',
+      });
+    } catch (err) {
+      return {
+        api: '',
+        enabled: false,
+        has_auth: false,
+        error: `Unable to reach HMA service: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      return {
+        api: '',
+        enabled: false,
+        has_auth: false,
+        error: `Failed to fetch exchange info from HMA (status ${response.status})`,
+      };
+    }
+
+    const body = response.body as unknown as Record<string, unknown>;
+    const apiName = String(body.api ?? '');
+
+    let hasAuth = false;
+    try {
+      const apiResponse = await this.fetchHTTP({
+        url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(apiName)}`,
+        method: 'get',
+        handleResponseBody: 'as-json',
+      });
+      if (apiResponse.ok) {
+        const apiBody = apiResponse.body as unknown as {
+          has_set_authentification: boolean;
+        };
+        hasAuth = apiBody.has_set_authentification;
+      }
+    } catch {
+      // Non-critical: can't determine auth status
+    }
+
+    const info: ExchangeInfo = {
+      api: apiName,
+      enabled: Boolean(body.enabled),
+      has_auth: hasAuth,
+    };
+
+    try {
+      const statusResponse = await this.fetchHTTP({
+        url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}/status`,
+        method: 'get',
+        handleResponseBody: 'as-json',
+      });
+      if (statusResponse.ok) {
+        const status = statusResponse.body as unknown as {
+          last_fetch_succeeded: boolean;
+          last_fetch_complete_ts: number | null;
+          up_to_date: boolean;
+          fetched_items: number;
+          running_fetch_start_ts: number | null;
+        };
+        info.last_fetch_succeeded = status.last_fetch_succeeded;
+        info.up_to_date = status.up_to_date;
+        info.fetched_items = status.fetched_items;
+        info.is_fetching = status.running_fetch_start_ts != null;
+        if (status.last_fetch_complete_ts != null) {
+          info.last_fetch_time = new Date(status.last_fetch_complete_ts * 1000).toISOString();
+        }
+      }
+    } catch {
+      // Non-critical: can't determine fetch status
+    }
+
+    return info;
   }
 
   async hashContentFromUrl(url: string): Promise<Record<string, string>> {
