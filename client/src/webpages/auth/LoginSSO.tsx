@@ -32,8 +32,11 @@ export default function LoginSSO() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('error') === 'access_denied') {
+    const error = params.get('error');
+    if (error === 'access_denied') {
       toast.error('SSO login was cancelled. Please try again.');
+    } else if (error) {
+      toast.error('SSO login failed. Please try again or contact your administrator.');
     }
   }, []);
   const errorModal = (
