@@ -7,7 +7,7 @@ const typeDefs = /* GraphQL */ `
   type Query {
     me: User @publicResolver
     getSSORedirectUrl(emailAddress: String!): String @publicResolver
-    getSSOOidcCallbackUrl: String @publicResolver
+    getSSOOidcCallbackUrl: String
   }
 
   type Mutation {

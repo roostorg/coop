@@ -23,7 +23,11 @@ import depthLimit from 'graphql-depth-limit';
 import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
-import * as oidcClient from 'openid-client'
+import * as oidcClient from 'openid-client';
+
+function normalizeIssuerUrl(raw: string): string {
+  return `https://${raw.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+}
 import {
   makeLoginIncorrectPasswordError,
   makeLoginSsoRequiredError,
@@ -298,7 +302,7 @@ export default async function makeApiServer(deps: Dependencies) {
         return res.redirect('/');
       }
 
-      const issuerUrl = `https://${oidcSettings.issuer_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+      const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
 
       const { API_BASE_URL } = process.env;
       const config = await oidcClient.discovery(
@@ -364,7 +368,7 @@ export default async function makeApiServer(deps: Dependencies) {
         return next(makeInternalServerError('API_BASE_URL not configured.', { shouldErrorSpan: true }));
       }
       const callbackUrl = deps.SSOService.getSSOOidcCallbackUrl();
-      const issuerUrl = `https://${oidcSettings.issuer_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+      const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
       
       const config = await oidcClient.discovery(
         new URL(issuerUrl),
