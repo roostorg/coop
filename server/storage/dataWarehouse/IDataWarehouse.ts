@@ -14,7 +14,9 @@ import type SafeTracer from '../../utils/SafeTracer.js';
 export type DataWarehouseProvider = 'clickhouse' | 'postgresql' | string;
 
 /**
- * Connection settings that are common across data warehouse implementations
+ * Connection settings that are common across data warehouse implementations.
+ * All fields besides username/password/database are optional so that
+ * different warehouse backends can use whichever subset applies to them.
  */
 export interface DataWarehouseConnectionSettings {
   host?: string;

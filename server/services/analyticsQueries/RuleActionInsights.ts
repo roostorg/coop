@@ -23,10 +23,10 @@ import {
 import { getUtcDateOnlyString, YEAR_MS } from '../../utils/time.js';
 import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
-  sfDateToDate,
-  sfDateToDateOnlyString,
+  warehouseDateToDate,
+  warehouseDateToDateOnlyString,
   type RuleExecutionsRow,
-  type SfDate,
+  type WarehouseDate,
   type DataWarehousePublicSchema,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
 
@@ -137,7 +137,7 @@ class RuleActionInsights {
       .select((eb) => [
         eb.fn.sum<number>('NUM_PASSES').as('totalMatches'),
         eb.fn.sum<number>('NUM_RUNS').as('totalRequests'),
-        eb.fn<SfDate>('date', ['TS_START_INCLUSIVE']).as('date'),
+        eb.fn<WarehouseDate>('date', ['TS_START_INCLUSIVE']).as('date'),
       ])
       .where('ORG_ID', '=', orgId)
       .where('RULE_ID', '=', ruleId)
@@ -153,10 +153,11 @@ class RuleActionInsights {
 
     return results.map((result) => ({
       ...result,
-      // NB: this cast is likely not correct, as I believe result.date is an
-      // SfDate, which means this toJSON method returns a non-standard string
-      // result, as SfDate overrides Date.prototype.toJSON(). However, we can't
-      // change this now without risking a backwards compatibility break.
+      // NB: this cast is likely not correct, as I believe result.date is a
+      // WarehouseDate, which means this toJSON method returns a non-standard
+      // string result, as WarehouseDate overrides Date.prototype.toJSON().
+      // However, we can't change this now without risking a backwards
+      // compatibility break.
       date: (result.date as Date).toJSON(),
     }));
   }
@@ -298,8 +299,8 @@ class RuleActionInsights {
 
     return (await finalQuery.$narrowType<ResultRow>().execute()).map((it) => ({
       ...it,
-      date: sfDateToDate(it.date),
-      ts: sfDateToDate(it.ts),
+      date: warehouseDateToDate(it.date),
+      ts: warehouseDateToDate(it.ts),
       result: it.result != null ? jsonParse(it.result) : undefined,
     }));
   }
@@ -451,7 +452,7 @@ class RuleActionInsights {
       .execute();
 
     return results.map((result) => ({
-      date: sfDateToDateOnlyString(result.DS),
+      date: warehouseDateToDateOnlyString(result.DS),
       count: result.count,
     }));
   }

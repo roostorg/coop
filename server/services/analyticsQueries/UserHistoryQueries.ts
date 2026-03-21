@@ -4,8 +4,8 @@ import { sql, type Kysely } from 'kysely';
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import {
-  sfDateToDate,
-  sfDateToDateOnlyString,
+  warehouseDateToDate,
+  warehouseDateToDateOnlyString,
   type DataWarehousePublicSchema,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
 
@@ -74,11 +74,11 @@ class UserHistoryQueries {
     );
     const rows = results.flat() as Array<Record<string, unknown>>;
     return rows.map((result) => ({
-      date: sfDateToDateOnlyString(
-        result.ds as Parameters<typeof sfDateToDateOnlyString>[0],
+      date: warehouseDateToDateOnlyString(
+        result.ds as Parameters<typeof warehouseDateToDateOnlyString>[0],
       ),
-      ts: sfDateToDate(
-        result.ts as Parameters<typeof sfDateToDate>[0],
+      ts: warehouseDateToDate(
+        result.ts as Parameters<typeof warehouseDateToDate>[0],
       ),
       itemTypeName: result.item_type_name as string,
       itemTypeId: result.item_type_id as string,

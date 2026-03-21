@@ -14,7 +14,6 @@ declare module '../index.js' {
   interface Dependencies {
     // NB: worker deps cannot be renamed
     // w/o breaking the kubernetes logic that starts them!
-    DumpToS3Worker: Worker;
     ItemProcessingWorker: Worker;
 
     // Jobs. Like workers, can't be renamed w/o breaking stuff.
@@ -24,7 +23,6 @@ declare module '../index.js' {
     DetectRulePassRateAnomaliesJob: Job;
     RunUserRulesJob: Job;
     RefreshUserScoresCacheJob: Job;
-    IngestReportsIntoMRTJob: Job;
     RetryFailedNcmecDecisionsJob: Job;
     RefreshMRTDecisionsMaterializedViewJob: Job;
   }

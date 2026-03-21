@@ -27,9 +27,15 @@ import { getUtcDateOnlyString, type DateOnlyString } from '../../utils/time.js';
 import { type NullableKeysOf } from '../../utils/typescript-types.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 
-import { type FilterableSfDate, type SfDate } from './warehouseDateTypes.js';
+import {
+  type FilterableWarehouseDate,
+  type WarehouseDate,
+} from './warehouseDateTypes.js';
 
-export type { FilterableSfDate, SfDate } from './warehouseDateTypes.js';
+export type {
+  FilterableWarehouseDate,
+  WarehouseDate,
+} from './warehouseDateTypes.js';
 
 // Kysely types for data warehouse tables in the public schema.
 // These are considered fair game for the whole app to access; types for
@@ -42,17 +48,17 @@ export type DataWarehousePublicSchema = UnprefixedPublicTables & {
 };
 
 /** Convert a warehouse driver date to a standard Date object. */
-export function sfDateToDate(date: SfDate | DateOnlyString) {
+export function warehouseDateToDate(date: WarehouseDate | DateOnlyString) {
   return new Date(date as unknown as Date | string);
 }
 
 /** Convert a warehouse driver date to an ISO JSON string. */
-export function sfDateToJson(it: SfDate | DateOnlyString) {
+export function warehouseDateToJson(it: WarehouseDate | DateOnlyString) {
   return typeof it === 'string' ? new Date(it).toISOString() : it.toISOString();
 }
 
-export function sfDateToDateOnlyString(it: SfDate | DateOnlyString) {
-  return typeof it === 'string' ? it : getUtcDateOnlyString(sfDateToDate(it));
+export function warehouseDateToDateOnlyString(it: WarehouseDate | DateOnlyString) {
+  return typeof it === 'string' ? it : getUtcDateOnlyString(warehouseDateToDate(it));
 }
 
 type UnprefixedPublicTables = {
@@ -70,7 +76,7 @@ export type AllOrgsRow = {
   NAME: string;
   EMAIL: string;
   WEBSITE_URL: string;
-  DATE_CREATED: ColumnType<SfDate, never, never>;
+  DATE_CREATED: ColumnType<WarehouseDate, never, never>;
 };
 
 /**
@@ -142,8 +148,8 @@ export type ItemSubmissionsRow = {
   ITEM_TYPE_SCHEMA_FIELD_ROLES: SchemaFieldRoles;
   ITEM_TYPE_ID: string;
   ITEM_TYPE_SCHEMA: JsonOf<ItemSchema>;
-  TS: ColumnType<SfDate, number, never>;
-  DS: ColumnType<FilterableSfDate, string, never>;
+  TS: ColumnType<WarehouseDate, number, never>;
+  DS: ColumnType<FilterableWarehouseDate, string, never>;
 } & (
   | {
       EVENT: 'REQUEST_SUCCEEDED';
@@ -178,8 +184,8 @@ export type ItemModelScoresRow = {
   ITEM_TYPE_SCHEMA_FIELD_ROLES: SchemaFieldRoles;
   ITEM_TYPE_ID: string;
   ITEM_TYPE_SCHEMA: JsonOf<ItemSchema>;
-  TS: ColumnType<SfDate, number, never>;
-  DS: ColumnType<FilterableSfDate, string, never>;
+  TS: ColumnType<WarehouseDate, number, never>;
+  DS: ColumnType<FilterableWarehouseDate, string, never>;
 } & (
   | {
       EVENT: 'REQUEST_SUCCEEDED';
@@ -227,8 +233,8 @@ export type RuleExecutionsRow = {
 
   RESULT: JsonOf<ConditionSetWithResultAsLogged> | null;
   PASSED: boolean;
-  TS: ColumnType<SfDate, number, never>;
-  DS: ColumnType<FilterableSfDate, string, never>;
+  TS: ColumnType<WarehouseDate, number, never>;
+  DS: ColumnType<FilterableWarehouseDate, string, never>;
 
   ITEM_ID: string;
   ITEM_TYPE_ID: string;
@@ -288,18 +294,18 @@ type ActionExecutionsRow = {
   POLICIES: ReadonlyDeep<ActionExecutionPolicy[]>;
   FAILED: boolean;
   JOB_ID: string | null;
-  TS: ColumnType<SfDate, number, never>;
-  DS: ColumnType<FilterableSfDate, string, never>;
+  TS: ColumnType<WarehouseDate, number, never>;
+  DS: ColumnType<FilterableWarehouseDate, string, never>;
 };
 
 type RuleExecutionsStatisticsRow = {
   ORG_ID: string;
   RULE_ID: string;
-  RULE_VERSION: SfDate;
+  RULE_VERSION: WarehouseDate;
   NUM_PASSES: number;
   NUM_RUNS: number;
-  TS_START_INCLUSIVE: SfDate;
-  TS_END_EXCLUSIVE: SfDate;
+  TS_START_INCLUSIVE: WarehouseDate;
+  TS_END_EXCLUSIVE: WarehouseDate;
   ENVIRONMENT: string | null;
   RULE_POLICY_NAMES: string[] | null;
   RULE_POLICY_IDS: string[] | null;

@@ -207,7 +207,7 @@ export class DataWarehouseFactory {
           }),
         );
       case 'postgresql':
-        return new WarehouseAdapterBridge('noop', new NoOpWarehouseAdapter());
+        return new WarehouseAdapterBridge('postgresql', new NoOpWarehouseAdapter());
       default:
         return assertUnreachable(
           config,

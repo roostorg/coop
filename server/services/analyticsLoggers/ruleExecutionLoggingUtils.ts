@@ -86,41 +86,6 @@ export type LeafConditionWithResultAsLogged = {
    */
   signal:
     | {
-        // NB: billions of legacy leaf conditions in the data warehouse have this `id`
-        // logged as just the SignalType | null, so callers should be prepared
-        // for this when handling signal results from Aug 2022 through July 2023.
-        //
-        // We attempted to migrate those conditions (see
-        // https://github.com/roostorg/coop/pull/1386) so that we
-        // could simplify the code here, but the migrations kept timing out (in
-        // some mix of CodePipeline and the warehouse, thanks to its UDF runtime
-        // limit), so we ultimately gave up, and only migrated records from
-        // before Aug 2022. You can verify that legacy conditions still exist by
-        // running the following query, which uses 2023-04-01 as an arbitrary
-        // date to search:
-        //
-        // WITH RECURSIVE condition_tree AS (
-        //   SELECT
-        //     r.rule_id,
-        //     r.DS,
-        //     t.value as condition_or_set
-        //     FROM rule_executions r,
-        //       LATERAL FLATTEN(INPUT => parse_json(result):conditions) t
-        //     WHERE DS = '2023-04-01'
-        //   UNION ALL
-        //   SELECT
-        //     condition_tree.rule_id,
-        //     condition_tree.DS,
-        //     t2.value
-        //     FROM condition_tree,
-        //       LATERAL FLATTEN(INPUT => condition_or_set:conditions) t2
-        //     WHERE DS = '2023-04-01'
-        // )
-        // SELECT * from condition_tree
-        //   WHERE condition_or_set:conditions is null
-        //     AND condition_or_set:signal:id NOT LIKE '{"%'
-        //     AND DS = '2023-04-01'
-        //
         // Given that, you'd expect `id` to be typed as
         // `JsonOf<SignalId> | SignalType | null`, but, instead, we use
         // `JsonOf<{ type: string; id?: string }> | string | null` for the same

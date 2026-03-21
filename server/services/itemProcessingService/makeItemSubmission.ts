@@ -308,7 +308,7 @@ function getCreator(itemType: ItemType, itemData: NormalizedItemData) {
  *
  * To ensure uniqueness and unguessability, we now generate these as UUID v4s.
  * However, we previously used a mix of uuid v1 (our code's old default), uuid
- * v4 (when backfilling some rows in snowlfake), and (due to bugs) some strings
+ * v4 (when backfilling some rows in the data warehouse), and (due to bugs) some strings
  * that weren't uuids at all. Therefore, code consuming SubmissionIds can't
  * assume anything about it other than that it's a unique, opaque string.
  *
