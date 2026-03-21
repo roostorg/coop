@@ -233,16 +233,12 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       clientId: string;
       clientSecret: string;
     }) {
-      try {
-        await pgQuery
-          .updateTable('public.org_settings')
-          .where('org_id', '=', input.orgId)
-          .set({ oidc_enabled: input.oidcEnabled, issuer_url: input.issuerUrl, client_id: input.clientId, client_secret: input.clientSecret })
-          .executeTakeFirst();
-        return true;
-      } catch (e) {
-        return false;
-      }
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({ oidc_enabled: input.oidcEnabled, issuer_url: input.issuerUrl, client_id: input.clientId, client_secret: input.clientSecret })
+        .executeTakeFirst();
+      return true;
     },
     async switchSSOMethod(input: {
       orgId: string;
@@ -253,24 +249,20 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       clientId?: string;
       clientSecret?: string;
     }) {
-      try {
-        if (input.method === 'saml') {
-          await pgQuery
-            .updateTable('public.org_settings')
-            .where('org_id', '=', input.orgId)
-            .set({ saml_enabled: true, oidc_enabled: false, sso_url: input.ssoUrl, cert: input.cert })
-            .executeTakeFirst();
-        } else {
-          await pgQuery
-            .updateTable('public.org_settings')
-            .where('org_id', '=', input.orgId)
-            .set({ saml_enabled: false, oidc_enabled: true, issuer_url: input.issuerUrl, client_id: input.clientId, client_secret: input.clientSecret })
-            .executeTakeFirst();
-        }
-        return true;
-      } catch (e) {
-        return false;
+      if (input.method === 'saml') {
+        await pgQuery
+          .updateTable('public.org_settings')
+          .where('org_id', '=', input.orgId)
+          .set({ saml_enabled: true, oidc_enabled: false, sso_url: input.ssoUrl, cert: input.cert })
+          .executeTakeFirst();
+      } else {
+        await pgQuery
+          .updateTable('public.org_settings')
+          .where('org_id', '=', input.orgId)
+          .set({ saml_enabled: false, oidc_enabled: true, issuer_url: input.issuerUrl, client_id: input.clientId, client_secret: input.clientSecret })
+          .executeTakeFirst();
       }
+      return true;
     },
     async updateHasAppealsEnabled(input: { orgId: string; enabled: boolean }) {
       await ensureOrgSettingsRow(input.orgId);
