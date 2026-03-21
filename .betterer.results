@@ -118,7 +118,7 @@ exports[`No explicit any in client`] = {
     "client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx:3586802679": [
       [192, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3222042515": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3900072613": [
       [311, 21, 3, "Unexpected any. Specify a different type.", "193409811"],
       [340, 19, 3, "Unexpected any. Specify a different type.", "193409811"],
       [399, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -187,10 +187,11 @@ exports[`No explicit any in client`] = {
 
 exports[`No explicit any in server`] = {
   value: `{
-    "server/api.ts:1158999085": [
-      [201, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [223, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [312, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/api.ts:3236713630": [
+      [233, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [255, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [346, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [464, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/bin/run-worker-or-job.ts:3770444259": [
       [10, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -233,6 +234,10 @@ exports[`No explicit any in server`] = {
       [269, 11, 3, "Unexpected any. Specify a different type.", "193409811"],
       [299, 11, 3, "Unexpected any. Specify a different type.", "193409811"],
       [362, 13, 3, "Unexpected any. Specify a different type.", "193409811"]
+    ],
+    "server/graphql/modules/org.ts:1605147740": [
+      [17, 28, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [17, 43, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/graphql/resolvers.ts:460245623": [
       [101, 73, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -285,7 +290,7 @@ exports[`No explicit any in server`] = {
       [21, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
       [78, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/services/apiKeyService/apiKeyService.ts:2815362343": [
+    "server/services/apiKeyService/apiKeyService.ts:2712644109": [
       [198, 44, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/services/derivedFieldsService/helpers.test.ts:498634566": [
@@ -482,7 +487,7 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx:3836324260": [
       [204, 33, 16, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2813373547"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3222042515": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3900072613": [
       [663, 16, 7, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2339939476"]
     ],
     "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:1919031301": [
@@ -651,7 +656,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx:3586802679": [
       [8, 0, 76, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "4151994019"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3222042515": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3900072613": [
       [5, 0, 113, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3403673047"]
     ],
     "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:1076126041": [
@@ -713,7 +718,7 @@ exports[`No new ant-design icon imports`] = {
 
 exports[`No new line-icon imports`] = {
   value: `{
-    "client/src/components/Sidebar.tsx:1648214350": [
+    "client/src/components/Sidebar.tsx:4083793099": [
       [2, 0, 64, "\'@/icons\' import is restricted from being used.", "2495069050"],
       [3, 0, 96, "\'@/icons/lni/Direction/angle-double-left.svg\' import is restricted from being used by a pattern.", "3344896149"],
       [4, 0, 98, "\'@/icons/lni/Direction/angle-double-right.svg\' import is restricted from being used by a pattern.", "2094766677"]
@@ -728,7 +733,7 @@ exports[`No new line-icon imports`] = {
       [0, 0, 91, "\'@/icons/lni/Interface and Sign/checkmark.svg\' import is restricted from being used by a pattern.", "470869229"],
       [1, 0, 88, "\'@/icons/lni/Interface and Sign/more-alt.svg\' import is restricted from being used by a pattern.", "731262816"]
     ],
-    "client/src/webpages/dashboard/Dashboard.tsx:3332610256": [
+    "client/src/webpages/dashboard/Dashboard.tsx:975524336": [
       [0, 0, 102, "\'@/icons\' import is restricted from being used.", "3871568653"]
     ],
     "client/src/webpages/dashboard/banks/MatchingBanksDashboard.tsx:2691095817": [
@@ -826,7 +831,7 @@ exports[`No new line-icon imports`] = {
       [0, 0, 87, "\'@/icons/lni/Direction/chevron-down.svg\' import is restricted from being used by a pattern.", "3761457464"],
       [1, 0, 83, "\'@/icons/lni/Direction/chevron-up.svg\' import is restricted from being used by a pattern.", "1296196504"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3222042515": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:3900072613": [
       [3, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
     "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:3641428222": [

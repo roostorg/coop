@@ -27,7 +27,11 @@ import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
+import * as oidcClient from 'openid-client';
 
+function normalizeIssuerUrl(raw: string): string {
+  return `https://${raw.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+}
 import {
   makeLoginIncorrectPasswordError,
   makeLoginSsoRequiredError,
@@ -74,6 +78,17 @@ function getCPUInfo() {
     total,
   };
 }
+
+declare module "express-session" {
+  interface SessionData {
+    oidc: {
+      code_verifier: string;
+      state: string;
+      org_id: string;
+    };
+  }
+}
+
 
 async function getCPUUsage() {
   const stats1 = getCPUInfo();
@@ -267,6 +282,128 @@ export default async function makeApiServer(deps: Dependencies) {
     },
   );
 
+  app.get('/oidc/login/callback', async (req, res, next) => {
+    if (req.query.error) {
+      return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=${req.query.error}`);
+    }
+    try {
+      const sessionData = req.session['oidc'] as
+        | { code_verifier: string; state?: string; org_id: string }
+        | undefined;
+
+      if (!sessionData || !sessionData.code_verifier || !sessionData.org_id) {
+        return res.redirect('/');
+      }
+
+      const { code_verifier: codeVerifier, state, org_id: orgId } = sessionData;
+      // Clear session OIDC state immediately (one-time use)
+      delete req.session.oidc;
+
+      const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
+      if (!oidcSettings || !oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
+        return res.redirect('/');
+      }
+
+      const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
+
+      const { API_BASE_URL } = process.env;
+      const config = await oidcClient.discovery(
+        new URL(issuerUrl),
+        oidcSettings.client_id,
+        oidcSettings.client_secret,
+        oidcClient.ClientSecretBasic(oidcSettings.client_secret),
+      );
+
+      // Reconstruct callback URL with code/state from IdP redirect.
+      // authorizationCodeGrant needs: base = registered redirect_uri, query = code+state from IdP.
+      const currentUrl = new URL(`${API_BASE_URL}/api/v1/oidc/login/callback`);
+      for (const [k, v] of new URLSearchParams(req.url.includes('?') ? req.url.split('?')[1] : '')) {
+        currentUrl.searchParams.set(k, v);
+      }
+
+      const checks: { pkceCodeVerifier: string; expectedState?: string } = { pkceCodeVerifier: codeVerifier };
+      if (state) checks.expectedState = state;
+
+      const tokens = await oidcClient.authorizationCodeGrant(config, currentUrl, checks);
+
+      const claims = tokens.claims();
+      let email: string | undefined = claims?.email as string | undefined;
+
+      if (!email) {
+        const userinfo = await oidcClient.fetchUserInfo(config, tokens.access_token, claims!.sub);
+        email = userinfo.email;
+      }
+
+      if (!email) {
+        return res.redirect('/');
+      }
+
+      const user = await User.findOne({ where: { email: String(email) } });
+
+      if (!user || user.orgId !== orgId) {
+        return res.redirect('/');
+      }
+
+      req.login(user as any, (err) => {
+        if (err) return next(err);
+        res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
+      });
+    } catch (e) {
+      return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
+    }
+  });
+
+  app.get('/oidc/login/:orgId', async (req, res, next) => {
+    try {
+      const { orgId } = req.params;
+      const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
+      
+      if (!oidcSettings || oidcSettings.oidc_enabled !== true) {
+        return next(makeBadRequestError('OIDC not enabled for this organization.', { shouldErrorSpan: true }));
+      }
+      if (!oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
+        return next(makeInternalServerError('Missing OIDC credentials for org.', { shouldErrorSpan: true }));
+      }
+
+      const { API_BASE_URL } = process.env;
+      if (!API_BASE_URL) {
+        return next(makeInternalServerError('API_BASE_URL not configured.', { shouldErrorSpan: true }));
+      }
+      const callbackUrl = deps.SSOService.getSSOOidcCallbackUrl();
+      const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
+      
+      const config = await oidcClient.discovery(
+        new URL(issuerUrl),
+        oidcSettings.client_id,
+        oidcSettings.client_secret,
+        oidcClient.ClientSecretBasic(oidcSettings.client_secret),
+      );
+
+      const codeVerifier = oidcClient.randomPKCECodeVerifier();
+      const codeChallenge = await oidcClient.calculatePKCECodeChallenge(codeVerifier);
+
+      const params: Record<string, string> = {
+        redirect_uri: callbackUrl,
+        scope: 'openid email',
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+      };
+
+      const redirectTo = oidcClient.buildAuthorizationUrl(config, params);
+
+      const state = oidcClient.randomState();
+      redirectTo.searchParams.set('state', state);
+
+      // Store PKCE data + orgId in session for callback
+      req.session.oidc = { code_verifier: codeVerifier, state, org_id: orgId };
+
+      res.redirect(redirectTo.href);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+
   passport.use(
     new GraphQLLocalStrategy(async (email, password, done) => {
       try {
@@ -280,17 +417,15 @@ export default async function makeApiServer(deps: Dependencies) {
           user.orgId,
         );
 
-        if (
-          samlSettings?.saml_enabled &&
-          // We allow Coop users to log in with email/password even if SSO is
-          // enabled
-          // so Coop employees can manage user accounts
-          String(email).split('@')[1] !== 'getcoop.com'
-        ) {
+        const oidcSettings = await deps.OrgSettingsService.getOidcSettings(
+          user.orgId,
+        );
+
+        if (samlSettings?.saml_enabled === true || oidcSettings?.oidc_enabled === true) {
           return done(
             makeLoginSsoRequiredError({
               detail:
-                'SAML is enabled for this organization. Password login is disabled.',
+                'SSO is enabled for this organization. Password login is disabled.',
               shouldErrorSpan: true,
             }),
           );

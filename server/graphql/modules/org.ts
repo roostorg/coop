@@ -13,6 +13,29 @@ import {
 } from '../generated.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
+async function resolveOidcField(
+  org: { id: string },
+  context: { getUser: () => any; services: any },
+  field: 'client_id' | 'client_secret' | 'issuer_url',
+) {
+  const user = context.getUser();
+  if (user == null || user.orgId !== org.id) {
+    throw new AuthenticationError('Authenticated user required');
+  }
+  if (!user.getPermissions().includes('MANAGE_ORG')) {
+    throw new AuthenticationError(
+      'User does not have permission to manage SSO settings',
+    );
+  }
+  const settings = await context.services.OrgSettingsService.getOidcSettings(
+    org.id,
+  );
+  if (!settings) {
+    return null;
+  }
+  return settings[field];
+}
+
 const typeDefs = /* GraphQL */ `
   type Org {
     id: ID!
@@ -52,8 +75,14 @@ const typeDefs = /* GraphQL */ `
     userStrikeThresholds: [UserStrikeThreshold!]!
     userStrikeTTL: Int!
     isDemoOrg: Boolean!
+    samlEnabled: Boolean!
     ssoUrl: String
     ssoCert: String
+    oidcEnabled: Boolean!
+    issuerUrl: String
+    clientId: String
+    clientSecret: String
+    oidcCallbackUrl: String
     hasPartialItemsEndpoint: Boolean!
   }
 
@@ -135,9 +164,33 @@ const typeDefs = /* GraphQL */ `
     _: Boolean
   }
 
-  input UpdateSSOCredentialsInput {
+  input UpdateSSOSamlCredentialsInput {
+    samlEnabled: Boolean!
     ssoUrl: String!
     ssoCert: String!
+  }
+  
+  input UpdateSSOOidcCredentialsInput {
+    oidcEnabled: Boolean!
+    issuerUrl: String!
+    clientId: String!
+    clientSecret: String!
+  }
+
+  enum SSOMethod {
+    SAML
+    OIDC
+  }
+
+  input SwitchSSOMethodInput {
+    method: SSOMethod!
+    # SAML fields (required when method = SAML)
+    ssoUrl: String
+    ssoCert: String
+    # OIDC fields (required when method = OIDC)
+    issuerUrl: String
+    clientId: String
+    clientSecret: String
   }
 
   input UpdateOrgInfoInput {
@@ -151,6 +204,7 @@ const typeDefs = /* GraphQL */ `
     _: Boolean
   }
 
+
   type Mutation {
     createOrg(input: CreateOrgInput!): CreateOrgResponse! @publicResolver
     updateAppealSettings(input: AppealSettingsInput!): AppealSettings!
@@ -163,7 +217,9 @@ const typeDefs = /* GraphQL */ `
     setOrgDefaultSafetySettings(
       orgDefaultSafetySettings: ModeratorSafetySettingsInput!
     ): SetModeratorSafetySettingsSuccessResponse
-    updateSSOCredentials(input: UpdateSSOCredentialsInput!): Boolean!
+    updateSSOSamlCredentials(input: UpdateSSOSamlCredentialsInput!): Boolean!
+    updateSSOOidcCredentials(input: UpdateSSOOidcCredentialsInput!): Boolean!
+    switchSSOMethod(input: SwitchSSOMethodInput!): Org!
     updateOrgInfo(input: UpdateOrgInfoInput!): UpdateOrgInfoSuccessResponse!
   }
 `;
@@ -530,6 +586,26 @@ const Org: GQLOrgResolvers = {
 
     return settings.cert;
   },
+  
+  async clientSecret(org, _, context) {
+    // Never expose the real client secret — return masked value if set
+    const value = await resolveOidcField(org, context, 'client_secret');
+    return value ? '••••••••' : null;
+  },
+  async issuerUrl(org, _, context) {
+    return resolveOidcField(org, context, 'issuer_url');
+  },
+  async clientId(org, _, context) {
+    return resolveOidcField(org, context, 'client_id');
+  },
+  async samlEnabled(org, _, context) {
+    const settings = await context.services.OrgSettingsService.getSamlSettings(org.id);
+    return settings?.saml_enabled ?? false;
+  },
+  async oidcEnabled(org, _, context) {
+    const settings = await context.services.OrgSettingsService.getOidcSettings(org.id);
+    return settings?.oidc_enabled ?? false;
+  },
   async hasPartialItemsEndpoint(org, _, context) {
     const partialItemsInfo =
       await context.services.OrgSettingsService.partialItemsInfo(org.id);
@@ -638,17 +714,85 @@ const Mutation: GQLMutationResolvers = {
     });
     return gqlSuccessResult({}, 'UpdateUserStrikeTTLSuccessResponse');
   },
-  async updateSSOCredentials(_, { input }, context) {
+  async updateSSOSamlCredentials(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
       throw new AuthenticationError('User required.');
     }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw new AuthenticationError(
+        'User does not have permission to manage SSO settings',
+      );
+    }
+    const oidcSettings = await context.services.OrgSettingsService.getOidcSettings(user.orgId);
+    if (oidcSettings?.oidc_enabled && input.samlEnabled) {
+      throw new Error('SAML cannot enabled as OIDC is enabled.');
+    }
 
     return context.services.OrgSettingsService.updateSamlSettings({
       orgId: user.orgId,
+      samlEnabled: input.samlEnabled,
       ssoUrl: input.ssoUrl,
       cert: input.ssoCert,
     });
+  },
+  async updateSSOOidcCredentials(_, { input }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw new AuthenticationError('User required.');
+    }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw new AuthenticationError(
+        'User does not have permission to manage SSO settings',
+      );
+    }
+
+    const samlSettings = await context.services.OrgSettingsService.getSamlSettings(user.orgId);
+    if (samlSettings?.saml_enabled && input.oidcEnabled) {
+      throw new Error('OIDC cannot enabled as SAML is enabled.');
+    }
+
+    return context.services.OrgSettingsService.updateOidcSettings({
+      orgId: user.orgId,
+      oidcEnabled: input.oidcEnabled,
+      issuerUrl: input.issuerUrl,
+      clientId: input.clientId,
+      clientSecret: input.clientSecret,
+    });
+  },
+  async switchSSOMethod(_, { input }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw new AuthenticationError('User required.');
+    }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw new AuthenticationError(
+        'User does not have permission to manage SSO settings',
+      );
+    }
+    if (input.method === 'SAML') {
+      if (!input.ssoUrl || !input.ssoCert) {
+        throw new Error('ssoUrl and ssoCert are required when switching to SAML.');
+      }
+      await context.services.OrgSettingsService.switchSSOMethod({
+        orgId: user.orgId,
+        method: 'saml',
+        ssoUrl: input.ssoUrl,
+        cert: input.ssoCert,
+      });
+    } else {
+      if (!input.issuerUrl || !input.clientId || !input.clientSecret) {
+        throw new Error('issuerUrl, clientId, and clientSecret are required when switching to OIDC.');
+      }
+      await context.services.OrgSettingsService.switchSSOMethod({
+        orgId: user.orgId,
+        method: 'oidc',
+        issuerUrl: input.issuerUrl,
+        clientId: input.clientId,
+        clientSecret: input.clientSecret,
+      });
+    }
+    return context.dataSources.orgAPI.getGraphQLOrgFromId(user.orgId);
   },
   async updateOrgInfo(_, { input }, context) {
     const user = context.getUser();
