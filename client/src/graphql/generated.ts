@@ -24005,7 +24005,6 @@ export type GQLGetSsoCredentialsQuery = {
     readonly ssoCert?: string | null;
     readonly issuerUrl?: string | null;
     readonly clientId?: string | null;
-    readonly clientSecret?: string | null;
   } | null;
 };
 
@@ -24051,7 +24050,6 @@ export type GQLSwitchSsoMethodMutation = {
     readonly ssoCert?: string | null;
     readonly issuerUrl?: string | null;
     readonly clientId?: string | null;
-    readonly clientSecret?: string | null;
   };
 };
 
@@ -37460,7 +37458,6 @@ export const GQLGetSsoCredentialsDocument = gql`
       ssoCert
       issuerUrl
       clientId
-      clientSecret
     }
   }
 `;
@@ -37677,7 +37674,6 @@ export const GQLSwitchSsoMethodDocument = gql`
       ssoCert
       issuerUrl
       clientId
-      clientSecret
     }
   }
 `;
