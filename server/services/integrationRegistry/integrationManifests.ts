@@ -4,33 +4,15 @@
  * Lives in the registry (not graphql) so transport-agnostic code can import it.
  */
 
-const REQUIRED_SECTION_IDS = [
-  'trainingData',
-  'policyAndTaxonomy',
-  'annotationMethodology',
-  'performanceBenchmarks',
-  'biasAndLimitations',
-  'implementationGuidance',
-  'relevantLinks',
-] as const;
+import {
+  assertModelCardHasRequiredSections,
+  type ModelCard,
+  type ModelCardField,
+  type ModelCardSection,
+  type ModelCardSubsection,
+} from '@roostorg/types';
 
-export type ModelCardField = Readonly<{ label: string; value: string }>;
-export type ModelCardSubsection = Readonly<{
-  title: string;
-  fields: readonly ModelCardField[];
-}>;
-export type ModelCardSection = Readonly<{
-  id: string;
-  title: string;
-  subsections?: readonly ModelCardSubsection[];
-  fields?: readonly ModelCardField[];
-}>;
-export type ModelCard = Readonly<{
-  modelName: string;
-  version: string;
-  releaseDate?: string;
-  sections?: readonly ModelCardSection[];
-}>;
+export type { ModelCard, ModelCardField, ModelCardSection, ModelCardSubsection };
 
 export type IntegrationManifestEntry = Readonly<{
   modelCard: ModelCard;
@@ -46,16 +28,6 @@ export type IntegrationManifestEntry = Readonly<{
   /** Optional URL to a logo variant (e.g. with background). */
   logoWithBackgroundUrl?: string;
 }>;
-
-function assertModelCardHasRequiredSections(card: ModelCard): void {
-  const sectionIds = new Set((card.sections ?? []).map((s) => s.id));
-  const missing = REQUIRED_SECTION_IDS.filter((id) => !sectionIds.has(id));
-  if (missing.length > 0) {
-    throw new Error(
-      `Model card is missing required section(s): ${missing.map((id) => `"${id}"`).join(', ')}.`,
-    );
-  }
-}
 
 const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
   modelCard: {
