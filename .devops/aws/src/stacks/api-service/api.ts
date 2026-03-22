@@ -25,15 +25,11 @@ import { Topic } from 'aws-cdk-lib/aws-sns';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { App as Cdk8sApp, Chart } from 'cdk8s';
 import { Construct } from 'constructs';
-import _ from 'lodash';
-
 import {
-  KafkaSecretEnvVar,
   makeKubectlVersionProps,
   PgEnvVar,
   RedisEnvVar,
   repoRootDir,
-  topicSchemaIds,
 } from '../../constants.js';
 import {
   clusterFromAttributes,
@@ -77,7 +73,6 @@ import {
 } from '../../utils.js';
 import { type DeploymentEnvironmentName } from '../app_pipeline.js';
 
-const { omit } = _;
 
 type ApiStackProps = StackProps & {
   namespaceName: string; // where to put all the k8s resources.
@@ -95,18 +90,11 @@ type ApiStackProps = StackProps & {
     | 'GOOGLE_TRANSLATE_API_KEY'
     | 'OPEN_AI_API_KEY'
     | 'GRAPHQL_OPAQUE_SCALAR_SECRET'
-    | KafkaSecretEnvVar
-    | 'KAFKA_API_SERVICE_ACCOUNT_USERNAME'
-    | 'KAFKA_API_SERVICE_ACCOUNT_PASSWORD'
     | 'SLACK_APP_BEARER_TOKEN'
     | PgEnvVar
     | RedisEnvVar
   >;
   stage: DeploymentEnvironmentName;
-  kafkaHosts: {
-    broker: string;
-    schemaRegistry: string;
-  };
   rdsReadOnlyClusterHost: string;
   monitoringAlertsTopicArn: string;
   provisionProdLevelsOfCompute: boolean;
@@ -134,12 +122,6 @@ type ApiDeploymentProps = NamespacedChartProps & {
     routes: CoopApiGatewayProps['routes'];
   };
   rdsReadOnlyClusterHost: string;
-  // This metric to autoscale on is only defined in environments where the
-  // Datadog agents are installed.
-  kafkaHosts: {
-    broker: string;
-    schemaRegistry: string;
-  };
   provisionProdLevelsOfCompute: boolean;
 };
 
@@ -152,7 +134,6 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     const {
       clusterAttributes,
-      kafkaHosts,
       monitoringAlertsTopicArn,
       namespaceName,
       rdsReadOnlyClusterHost,
@@ -440,21 +421,13 @@ export class ApiStack extends Stack {
       enableDatadog: props.enableDatadog,
       stack: this,
       stage,
-      kafkaHosts,
       cluster,
       gitCommitSha:
         process.env.CODEBUILD_RESOLVED_SOURCE_VERSION ?? 'undefined',
       servicePort,
       secretsHandler: new KubernetesSecretsIntegration(this, 'ApiSecrets', {
         serviceAccount,
-        secrets: {
-          ...omit(secrets, [
-            'KAFKA_API_SERVICE_ACCOUNT_USERNAME',
-            'KAFKA_API_SERVICE_ACCOUNT_PASSWORD',
-          ]),
-          KAFKA_BROKER_USERNAME: secrets.KAFKA_API_SERVICE_ACCOUNT_USERNAME,
-          KAFKA_BROKER_PASSWORD: secrets.KAFKA_API_SERVICE_ACCOUNT_PASSWORD,
-        },
+        secrets,
       }),
       provisionProdLevelsOfCompute: props.provisionProdLevelsOfCompute,
       rolloutNotificationsSlackChannel: props.rolloutNotificationsSlackChannel,
@@ -1254,20 +1227,9 @@ class ApiAutoscaledServiceDeployment extends Chart {
                     //{ name: 'DD_TRACE_SAMPLE_RATE', value: '0.1' },
                     ...getTracingEnvVars(serviceName, stage),
                     {
-                      name: 'KAFKA_BROKER_HOST',
-                      value: props.kafkaHosts.broker,
-                    },
-                    {
                       name: 'LOG_REQUEST_BODY',
                       value: props.stage === 'Prod' ? 'false' : 'true',
                     },
-                    {
-                      name: 'KAFKA_SCHEMA_REGISTRY_HOST',
-                      value: props.kafkaHosts.schemaRegistry,
-                    },
-                    ...Object.entries(topicSchemaIds[props.stage] ?? {}).map(
-                      ([k, v]) => ({ name: k, value: String(v) }),
-                    ),
                     {
                       name: 'DATABASE_READ_ONLY_HOST',
                       value: props.rdsReadOnlyClusterHost,

@@ -332,7 +332,7 @@ export default class JobDecisioning {
     // TODO: start sending automatic close decisions when we are sending the
     // report decision callbacks
     if (newDecisionStored && automaticCloseDecision === undefined) {
-      // TODO: use proper publishing to a durable queue (kafka?) and retry
+      // TODO: use proper publishing to a durable queue and retry
       this.onRecordDecision({
         decisionComponents,
         relatedActions,

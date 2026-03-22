@@ -22,7 +22,7 @@ Coop is built as a monorepo with a React frontend, Node.js backend, and multi-da
 | **Frontend** | React, TypeScript, Ant Design, TailwindCSS, Apollo Client |
 | **Backend** | Node.js, Express, Apollo Server, TypeScript |
 | **Databases** | PostgreSQL, Scylla(5.2), ClickHouse, Redis |
-| **Messaging** | Kafka (optional), BullMQ |
+| **Messaging** | BullMQ (Redis) |
 | **ORM** | Sequelize, Kysely |
 | **Auth** | Passport.js, express-session, SAML (SSO) |
 | **Observability** | OpenTelemetry |
@@ -66,7 +66,7 @@ coop/
 Coop accepts both synchronous and asynchronous input.
 
 * Synchronous input is handled via REST APIs and supports item submission, action execution, reporting workflows, policy retrieval, and related operations.  
-* Asynchronous input is handled via Kafka-based event streaming using the ITEM\_SUBMISSION\_EVENT topic.
+* Asynchronous input is handled via BullMQ job queues backed by Redis.
 
 All API requests require an organization API key passed via the x-api-key header.
 
@@ -472,9 +472,6 @@ abstract class SignalBase<Input, OutputType, MatchingValue, Type> {
 
 * PostgreSQL  
 * Redis  
-* Kafka  
-  * Schema registry  
-  * Zookeeper  
 * Clickhouse  
 * ScyllaDb  
 * Metrics  

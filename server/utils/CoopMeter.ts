@@ -20,14 +20,11 @@ export class CoopMeter {
   // indicates a bug in the processing code or an infrastructure/network issue
   // that is preventing progress from being made
   public readonly itemProcessingFailuresCounter: opentelemetry.Counter;
-  // Used to track the amount of time a worker spends processing one batch of
-  // item submissions (batch as seen by Kafka, not a user batch). Gives a
-  // rough idea of item processing performance.
-  public readonly itemProcessingBatchTime: opentelemetry.Histogram;
-  // Tracks the batch size for each batch of items processed by a worker.
-  // This metric can help tune # of workers, # of partitions assigned per
-  // worker, and timeouts for kafka batch writes
-  public readonly itemProcessingBatchSize: opentelemetry.Histogram;
+  // Tracks the time a worker spends processing a single job.
+  public readonly itemProcessingJobTime: opentelemetry.Histogram;
+  // Snapshot of waiting + active jobs in the queue, sampled after each
+  // job completes. Useful for detecting backpressure.
+  public readonly itemProcessingQueueDepth: opentelemetry.Histogram;
   // Counts the number of items sent to the processing queue
   // this is mostly for debugging, and should allow us to confirm
   // the percentage of traffic we are sending to the queue and
@@ -72,11 +69,11 @@ export class CoopMeter {
     this.itemsEnqueued = myMeter.createCounter(
       `${metricNamespace}.items.enqueued-to-processing-queue.counter`,
     );
-    this.itemProcessingBatchTime = myMeter.createHistogram(
-      `${metricNamespace}.items.batch-processing-time-ms.histogram`,
+    this.itemProcessingJobTime = myMeter.createHistogram(
+      `${metricNamespace}.items.job-processing-time-ms.histogram`,
     );
-    this.itemProcessingBatchSize = myMeter.createHistogram(
-      `${metricNamespace}.items.batch-size.histogram`,
+    this.itemProcessingQueueDepth = myMeter.createHistogram(
+      `${metricNamespace}.items.queue-depth.histogram`,
     );
   }
 }
