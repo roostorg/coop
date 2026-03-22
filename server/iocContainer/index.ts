@@ -1,13 +1,10 @@
 /* eslint-disable max-lines */
 import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
-import { SchemaType } from '@kafkajs/confluent-schema-registry';
 import opentelemetry from '@opentelemetry/api';
 import { makeDateString, type ItemIdentifier } from '@roostorg/types';
-import avro from 'avsc';
 import { types as scyllaTypes } from 'cassandra-driver';
 import IORedis, { type Cluster } from 'ioredis';
-import { logLevel } from 'kafkajs';
 import * as knexPkg from 'knex';
 import { type Knex } from 'knex';
 import {
@@ -22,13 +19,13 @@ import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
-import Kafka, { SchemaRegistry, type SchemaIdFor } from '../kafka/index.js';
-import {
-  makeItemQueueBulkWrite,
-  type ItemQueueBulkWrite,
-} from '../kafka/itemQueueBulkWrite.js';
-import logCreator from '../kafka/logger.js';
 import makeDb from '../models/index.js';
+import {
+  makeItemSubmissionBulkWrite,
+  type ItemSubmissionBulkWrite,
+  ITEM_SUBMISSION_QUEUE_NAME,
+  ITEM_SUBMISSION_DLQ_NAME,
+} from '../queues/itemSubmissionQueue.js';
 import { type PolicyActionPenalties } from '../models/OrgModel.js';
 import { type HashBank, HashBankService } from '../services/hmaService/index.js';
 import makeActionPublisher, {
@@ -249,32 +246,16 @@ import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import { register, safeGetEnvVar } from './utils.js';
 
-type DataWarehouseOutboxKafkaMessageKey = {
-  orgId: string;
-  userId: string;
-};
-
-type DataWarehouseOutboxKafkaMessageValue = {
-  dataJSON: string;
-  table: string;
-  recordedAt: Date;
-};
-
 // the otel instrumentation currently intercepts require statements. support for
 // esm support is experimental so we should wait until it is stable
 const require = createRequire(import.meta.url);
 const { Client: ScyllaClient } = require('cassandra-driver');
 export type { DataSources } from './services/gqlDataSources.js';
 
-// All Kafka topics and their schemas should be referenced here. Currently, we
-// have to create schemas and topics manually, and manually keep them in sync
-// across environments, which is hard to do reliably. Eventually, we'll have
-// an IaC solution that lets us keep these schemas in code somewhere and view
-// them in the repo. Until then, talk to Ethan if you need a new topic or schema.
-export type ItemSubmissionKafkaMessageKey = {
+export type ItemSubmissionMessageKey = {
   syntheticThreadId: string;
 };
-export type ItemSubmissionKafkaMessageValue = {
+export type ItemSubmissionMessageValue = {
   metadata: {
     syntheticThreadId: string;
     requestId: CorrelationId<'post-items'>;
@@ -290,21 +271,6 @@ export type ItemSubmissionKafkaMessageValue = {
       version: string;
       schemaVariant: 'original' | 'partial';
     };
-  };
-};
-
-export type KafkaSchemaMap = {
-  ITEM_SUBMISSION_EVENTS: {
-    keySchema: SchemaIdFor<ItemSubmissionKafkaMessageKey>;
-    valueSchema: SchemaIdFor<ItemSubmissionKafkaMessageValue>;
-  };
-  ITEM_SUBMISSION_EVENTS_RETRY_0: {
-    keySchema: SchemaIdFor<ItemSubmissionKafkaMessageKey>;
-    valueSchema: SchemaIdFor<ItemSubmissionKafkaMessageValue>;
-  };
-  DATA_WAREHOUSE_INGEST_EVENTS: {
-    keySchema: SchemaIdFor<DataWarehouseOutboxKafkaMessageKey>;
-    valueSchema: SchemaIdFor<DataWarehouseOutboxKafkaMessageValue>;
   };
 };
 
@@ -365,18 +331,10 @@ export interface Dependencies {
   ContentApiRequestsAdapter: IContentApiRequestsAdapter;
   OrgCreationAdapter: IOrgCreationAdapter;
 
-  itemSubmissionQueueBulkWrite: ItemQueueBulkWrite;
-  itemSubmissionRetryQueueBulkWrite: ItemQueueBulkWrite;
+  itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
+  itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
   Knex: Knex;
   IORedis: IORedis.Redis | Cluster;
-  // We register the services as Kafka<any> so that each service that depends
-  // on Kafka can type its arg more specifically, based on the topic that
-  // it's supposed to be able to "see". E.g., a worker can type
-  // its argument as `Kafka<Pick<KafkaSchemaMap, 'ITEM_SUBMISSION_EVENTS'>>`, so that its code can only
-  // read messages from the topic with the intended schema, and the `Kafka`
-  // service will be assignable to that argument because of the `any`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Kafka: Kafka<any>;
 
   // Loggers
   RuleExecutionLogger: RuleExecutionLogger;
@@ -557,124 +515,23 @@ export default async function getBottle() {
             dnsLookup: (address, callback) => callback(null, address),
             redisOptions: {
               tls: {},
+              // Required by BullMQ: its workers use blocking Redis commands
+              // that would otherwise be misinterpreted as timed-out requests.
+              maxRetriesPerRequest: null,
               username: safeGetEnvVar('REDIS_USER'),
               password: safeGetEnvVar('REDIS_PASSWORD'),
             },
           },
         )
       : new IORedis.default({
+          // Required by BullMQ: its workers use blocking Redis commands
+          // that would otherwise be misinterpreted as timed-out requests.
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
         }),
   );
 
-  bottle.factory('Kafka', () => {
-    // TODO: think about shutdown logic. Right now, creating this instance
-    // doesn't open up any resources that need to be shutdown, so we're ok.
-    // However, when a producer/consumer are created from this instance and then
-    // they call .connect(), that opens a connection that we must terminate by
-    // manually calling .disconnect() on shutdown. Maybe there's a more
-    // elegant/robust way?
-    return new Kafka(
-      {
-        // NB: Confluent Cloud exposes only one endpoint URL that load balances
-        // between multiple brokers, so we don't need to worry about splitting
-        // this to an array.
-        brokers: [safeGetEnvVar('KAFKA_BROKER_HOST')],
-        ...(['CI', 'development'].includes(process.env.NODE_ENV ?? 'production') ? {} : {
-          ssl: true,
-          sasl: {
-            mechanism: 'plain',
-            username: safeGetEnvVar('KAFKA_BROKER_USERNAME'),
-            password: safeGetEnvVar('KAFKA_BROKER_PASSWORD'),
-          },
-        }),
-        // Found experimentally. Confluent docs seem to recommend setting at
-        // least some timeouts to a value above 10s, but they don't mention a
-        // specific value to use, and the setting described in those docs may
-        // not map 1:1 to a kafkajs setting. Nevertheless, the kafkajs default
-        // of 1s was giving timeout errors, so we had to bump this. See
-        // https://docs.confluent.io/cloud/current/cp-component/clients-cloud-config.html#prerequisitesq
-        connectionTimeout: 10_000,
-        // Default here is 30s but we set it to avoid long-running requests
-        // wait that long.
-        requestTimeout: 10_000,
-        // Set clientId to help with monitoring/observability.
-        // See https://kafka.js.org/docs/configuration#client-id
-        clientId: getEnvVarOrWarn('OTEL_SERVICE_NAME'),
-        logLevel: logLevel.WARN,
-        logCreator,
-      },
-      {
-        DATA_WAREHOUSE_INGEST_EVENTS: {
-          keySchema: parseInt(
-            safeGetEnvVar('KAFKA_TOPIC_KEY_SCHEMA_ID_DATA_WAREHOUSE_INGEST_EVENTS'),
-          ) as SchemaIdFor<DataWarehouseOutboxKafkaMessageKey>,
-          valueSchema: parseInt(
-            safeGetEnvVar(
-              'KAFKA_TOPIC_VALUE_SCHEMA_ID_DATA_WAREHOUSE_INGEST_EVENTS',
-            ),
-          ) as SchemaIdFor<DataWarehouseOutboxKafkaMessageValue>,
-        },
-        ITEM_SUBMISSION_EVENTS: {
-          keySchema: parseInt(
-            safeGetEnvVar('KAFKA_TOPIC_KEY_SCHEMA_ID_ITEM_SUBMISSION_EVENTS'),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageKey>,
-          valueSchema: parseInt(
-            safeGetEnvVar('KAFKA_TOPIC_VALUE_SCHEMA_ID_ITEM_SUBMISSION_EVENTS'),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageValue>,
-        },
-        ITEM_SUBMISSION_EVENTS_RETRY_0: {
-          keySchema: parseInt(
-            safeGetEnvVar(
-              'KAFKA_TOPIC_KEY_SCHEMA_ID_ITEM_SUBMISSION_EVENTS_RETRY_0',
-            ),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageKey>,
-          valueSchema: parseInt(
-            safeGetEnvVar(
-              'KAFKA_TOPIC_VALUE_SCHEMA_ID_ITEM_SUBMISSION_EVENTS_RETRY_0',
-            ),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageValue>,
-        },
-      },
-      new SchemaRegistry(
-        {
-          host: safeGetEnvVar('KAFKA_SCHEMA_REGISTRY_HOST'),
-          auth: {
-            username: safeGetEnvVar('KAFKA_SCHEMA_REGISTRY_USERNAME'),
-            password: safeGetEnvVar('KAFKA_SCHEMA_REGISTRY_PASSWORD'),
-          },
-        },
-        {
-          [SchemaType.AVRO]: {
-            logicalTypes: {
-              // Implementation copied from avsc docs.
-              // See https://gist.github.com/mtth/1aec40375fbcb077aee7#file-date-js
-              'timestamp-millis': class extends avro.types.LogicalType {
-                override _fromValue(val: string) {
-                  return new Date(val);
-                }
-                override _toValue(date: Date) {
-                  return date instanceof Date ? Number(date) : undefined;
-                }
-                override _resolve(type: unknown) {
-                  return avro.Type.isType(
-                    type,
-                    'long',
-                    'string',
-                    'logical:timestamp-millis',
-                  )
-                    ? this._fromValue
-                    : undefined;
-                }
-              },
-            },
-          },
-        },
-      ),
-    );
-  });
 
   bottle.factory('Sequelize', () => makeDb());
   bottle.factory('OrgModel', ({ Sequelize }) => Sequelize.Org);
@@ -755,10 +612,10 @@ export default async function getBottle() {
   });
 
   bottle.factory('itemSubmissionQueueBulkWrite', (container) =>
-    makeItemQueueBulkWrite(container.Kafka, 'ITEM_SUBMISSION_EVENTS'),
+    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_QUEUE_NAME),
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
-    makeItemQueueBulkWrite(container.Kafka, 'ITEM_SUBMISSION_EVENTS_RETRY_0'),
+    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
   );
 
   // Legacy service deprecated in favor of kysely.

@@ -81,7 +81,7 @@ export type AllOrgsRow = {
 
 /**
  * Transforms a table row type into the shape expected for bulk/eventual writes
- * (e.g. via Kafka ingestion). Keys are lowercased and nullable keys become
+ * (e.g. via bulk ingestion). Keys are lowercased and nullable keys become
  * optional. The `AcceptSlowQueries` flag controls whether JSON null values are
  * permitted (they can degrade columnar storage performance).
  */
