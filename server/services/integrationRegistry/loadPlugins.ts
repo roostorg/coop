@@ -94,7 +94,7 @@ export function loadPlugins(
       );
     }
     if (manifest.modelCard != null) {
-      assertModelCardHasRequiredSections(manifest.modelCard as ModelCard);
+      assertModelCardHasRequiredSections(manifest.modelCard);
     }
 
     let logoUrl = manifest.logoUrl;
