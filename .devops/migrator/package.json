@@ -20,7 +20,7 @@
     "latlon-geohash": "^1.1.0",
     "lodash": "^4.17.21",
     "pg": "^8.7.1",
-    "sequelize": "^6.32.1",
+    "sequelize": "^6.37.8",
     "ts-node": "^10.9.2",
     "uid": "^2.0.0",
     "umzug": "^3.0.0",
