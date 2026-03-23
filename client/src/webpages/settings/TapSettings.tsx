@@ -2,35 +2,21 @@ import { Button } from '@/coop-ui/Button';
 import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
 import { Heading, Text } from '@/coop-ui/Typography';
-import { useMutation, useQuery } from '@apollo/client';
 import { Minus, Plus, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
-import { GQLUserPermission } from '../../graphql/generated';
 import {
-  TAP_ADD_REPOS_MUTATION,
-  TAP_REMOVE_REPOS_MUTATION,
-  TAP_STATS_QUERY,
-} from '../../graphql/operations/tap';
-import { userHasPermissions } from '../../routing/permissions';
-
-interface TapStatsData {
-  tapStats: {
-    repoCount: number;
-    recordCount: number;
-    outboxBuffer: number;
-    isConnected: boolean;
-  } | null;
-}
+  useGQLTapStatsQuery,
+  useGQLTapAddReposMutation,
+  useGQLTapRemoveReposMutation,
+} from '../../graphql/generated';
 
 export default function TapSettings() {
-  const { data, loading, error, refetch } = useQuery<TapStatsData>(
-    TAP_STATS_QUERY,
-  );
-  const [addRepos] = useMutation(TAP_ADD_REPOS_MUTATION);
-  const [removeRepos] = useMutation(TAP_REMOVE_REPOS_MUTATION);
+  const { data, loading, error, refetch } = useGQLTapStatsQuery();
+  const [addRepos] = useGQLTapAddReposMutation();
+  const [removeRepos] = useGQLTapRemoveReposMutation();
 
   const [didInput, setDidInput] = useState('');
   const [removeDidInput, setRemoveDidInput] = useState('');
