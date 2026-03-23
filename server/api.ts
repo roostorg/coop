@@ -543,6 +543,7 @@ function makeGqlServices(deps: Dependencies) {
       'UserHistoryQueries',
       'UserStrikeService',
       'SSOService',
+      'TapConnectorWorker',
     ]),
     // Calling sendEmail straight from a resolver is hella sketch, as the
     // resolvers shouldn’t have real business logic in them. Future sendEmail

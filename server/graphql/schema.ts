@@ -26,6 +26,7 @@ import { typeDefs as ruleTypeDefs } from './modules/rule.js';
 import { typeDefs as signalTypeDefs } from './modules/signal.js';
 import { typeDefs as spotTestTypeDefs } from './modules/spotTest.js';
 import { typeDefs as textBankTypeDefs } from './modules/textBank.js';
+import { typeDefs as tapTypeDefs } from './modules/tap.js';
 import { typeDefs as userTypeDefs } from './modules/user.js';
 
 /**
@@ -521,6 +522,7 @@ export default mergeTypeDefs([
   ruleTypeDefs,
   signalTypeDefs,
   spotTestTypeDefs,
+  tapTypeDefs,
   textBankTypeDefs,
   userTypeDefs,
 ]);
