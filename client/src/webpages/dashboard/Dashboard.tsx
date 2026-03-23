@@ -66,6 +66,7 @@ import {
 import OrgSafetySettings from '../settings/OrgSafetySettings';
 import NCMECSettings from '../settings/NCMECSettings';
 import SSOSettings from '../settings/SSOSettings';
+import TapSettings from '../settings/TapSettings';
 import MatchingBanksDashboard from './banks/MatchingBanksDashboard';
 import Layout from './Layout';
 import ManualReviewAppealSettings from './mrt/ManualReviewAppealSettings';
@@ -448,6 +449,11 @@ export function DashboardRoutes() {
       {
         path: 'settings/ncmec',
         element: <NCMECSettings />,
+        handle: { isUsingLegacyCSS: false },
+      },
+      {
+        path: 'settings/tap',
+        element: <TapSettings />,
         handle: { isUsingLegacyCSS: false },
       },
       {

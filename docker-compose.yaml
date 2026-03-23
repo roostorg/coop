@@ -142,6 +142,24 @@ services:
     depends_on:
       - jaeger
 
+  tap:
+    image: ghcr.io/bluesky-social/indigo/tap:latest
+    ports:
+      - '2480:2480'
+    volumes:
+      - tap_data:/data
+    environment:
+      TAP_DATABASE_URL: 'sqlite:///data/tap.db'
+      TAP_RELAY_URL: 'https://relay1.us-east.bsky.network'
+      TAP_COLLECTION_FILTERS: 'app.bsky.feed.post,app.bsky.actor.profile'
+      TAP_DISABLE_ACKS: 'false'
+      TAP_BIND: ':2480'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:2480/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
     container_name: clickhouse
@@ -165,3 +183,4 @@ volumes:
   scylla_data:
   redis_data:
   clickhouse_data:
+  tap_data:

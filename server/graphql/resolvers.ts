@@ -36,6 +36,7 @@ import { resolvers as routingRulesResolvers } from './modules/routingRule.js';
 import { resolvers as ruleResolvers } from './modules/rule.js';
 import { resolvers as signalResolvers } from './modules/signal.js';
 import { resolvers as spotTestResolvers } from './modules/spotTest.js';
+import { resolvers as tapResolvers } from './modules/tap.js';
 import { resolvers as textBankResolvers } from './modules/textBank.js';
 import { resolvers as userResolvers } from './modules/user.js';
 import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
@@ -270,6 +271,7 @@ export default mergeResolvers([
   ruleResolvers,
   signalResolvers,
   spotTestResolvers,
+  tapResolvers,
   textBankResolvers,
   userResolvers,
 ]);
