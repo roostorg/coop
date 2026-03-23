@@ -1,6 +1,5 @@
 import { App } from 'cdktf';
 
-import { KafkaStack } from './kafka/kafka';
 import { ScyllaStack } from './scylla/scylla';
 import { StateBackendStack } from './state-backend';
 import type { StackProps } from './types';
@@ -17,12 +16,6 @@ export type EnvironmentProps = StackProps & {
     nodeCount: number;
     nodeDiskSize: number;
   };
-  kafka: {
-    environmentName: string;
-    clusterName: string;
-    availability: string;
-    clusterType: 'basic' | 'standard';
-  };
   sourceBranch: string;
   lifecycle: {
     preventDestroy: boolean;
@@ -36,7 +29,6 @@ function deployEnvironment(props: EnvironmentProps) {
   new ScyllaStack(app, `${props.environment}-scylla`, {
     ...props,
   });
-  new KafkaStack(app, `${props.environment}-kafka`, props);
 }
 
 deployEnvironment({
@@ -53,12 +45,6 @@ deployEnvironment({
     nodeDiskSize: 60,
     scyllaVersion: '2024.1.4',
   },
-  kafka: {
-    clusterName: 'staging_cluster',
-    environmentName: 'Staging',
-    clusterType: 'basic',
-    availability: 'SINGLE_ZONE',
-  },
 });
 
 deployEnvironment({
@@ -74,12 +60,6 @@ deployEnvironment({
     scyllaVersion: '2024.1.4',
     nodeCount: 9,
     nodeDiskSize: 1250,
-  },
-  kafka: {
-    clusterName: 'prod_cluster',
-    environmentName: 'Prod',
-    clusterType: 'standard',
-    availability: 'MULTI_ZONE',
   },
 });
 

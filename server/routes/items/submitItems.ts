@@ -4,7 +4,7 @@ import { v1 as uuidv1 } from 'uuid';
 
 import {
   type Dependencies,
-  type ItemSubmissionKafkaMessageValue,
+  type ItemSubmissionMessageValue,
 } from '../../iocContainer/index.js';
 import { safeGetEnvVar } from '../../iocContainer/utils.js';
 import {
@@ -232,9 +232,9 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       return next(new AggregateError(errors));
     }
 
-    // Send 5% of traffic to the async processing queue, otherwise handle in
-    // the traditional way (in this process, immediately after returning 202 to
-    // the user)
+    // Send a configurable percentage of traffic to the async processing queue
+    // (BullMQ), otherwise handle inline (in this process, immediately after
+    // returning 202 to the user). Set to 1 to route all traffic through the queue.
     const trafficPercentage = Number(
       safeGetEnvVar('ITEM_QUEUE_TRAFFIC_PERCENTAGE'),
     );
@@ -243,8 +243,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       // valid Date, but due to legacy data the type returned, ItemSubmission, an
       // optional `submissionTime` property. this variable is used to convince
       // typescript that the value we subsequently pass to itemSubmissionQueueBulkWrite has
-      // a valid Date in the `submissionTime` property, which is specified in the
-      // schema for the kafka topic that item submissions get written to.
+      // a valid Date in the `submissionTime` property.
       const backupSubmissiontime = new Date();
       const submissionsToProcess = itemSubmissionsOrErrors.map((it) => {
         // We checked for errors earlier so this should never happen
@@ -290,7 +289,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
               // toItemSubmission specifies it is optional, as noted above
               it.itemSubmission.submissionTime ?? backupSubmissiontime,
           },
-        } satisfies ItemSubmissionKafkaMessageValue;
+        } satisfies ItemSubmissionMessageValue;
       });
 
       Meter.itemsEnqueued.add(submissionsToProcess.length);

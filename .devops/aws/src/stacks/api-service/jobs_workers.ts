@@ -6,8 +6,6 @@ import { Construct } from 'constructs';
 import _ from 'lodash';
 
 import {
-  KafkaSecretEnvVar,
-  kafkaSecretEnvVars,
   makeKubectlVersionProps,
   PgEnvVar,
   pgEnvVars,
@@ -16,7 +14,6 @@ import {
   repoRootDir,
   ScyllaEnvVars,
   scyllaEnvVars,
-  topicSchemaIds,
 } from '../../constants.js';
 import {
   clusterFromAttributes,
@@ -42,19 +39,12 @@ type WorkersStackProps = StackProps & {
     | PgEnvVar
     | RedisEnvVar
     | 'SENDGRID_API_KEY'
-    | KafkaSecretEnvVar
     | ScyllaEnvVars
-    | 'KAFKA_API_SERVICE_ACCOUNT_USERNAME'
-    | 'KAFKA_API_SERVICE_ACCOUNT_PASSWORD'
   >;
   stage: DeploymentEnvironmentName;
   provisionProdLevelsOfCompute: boolean;
   rdsReadOnlyClusterHost: string;
   bullmqTokenSecretArn?: string;
-  kafkaHosts: {
-    broker: string;
-    schemaRegistry: string;
-  };
   enableDatadog: boolean;
 };
 
@@ -71,7 +61,6 @@ export class JobsAndWorkersStack extends Stack {
       namespaceName,
       secrets,
       rdsReadOnlyClusterHost,
-      kafkaHosts,
       ...stackProps
     } = props;
     super(scope, id, stackProps);
@@ -139,104 +128,21 @@ export class JobsAndWorkersStack extends Stack {
         'ItemProcessingWorkerSecrets',
         {
           serviceAccount,
-          secrets: {
-            ..._.pick(secrets, [
-              ...kafkaSecretEnvVars,
-              ...scyllaEnvVars,
-              ...pgEnvVars,
-              ...redisEnvVars,
-              'OPEN_AI_API_KEY',
-            ]),
-            KAFKA_BROKER_USERNAME: secrets.KAFKA_API_SERVICE_ACCOUNT_USERNAME,
-            KAFKA_BROKER_PASSWORD: secrets.KAFKA_API_SERVICE_ACCOUNT_PASSWORD,
-          },
+          secrets: _.pick(secrets, [
+            ...scyllaEnvVars,
+            ...pgEnvVars,
+            ...redisEnvVars,
+            'OPEN_AI_API_KEY',
+          ]),
         },
       ),
       targetReplicas: props.provisionProdLevelsOfCompute ? 10 : 1,
       stage,
       env: {
-        KAFKA_BROKER_HOST: kafkaHosts.broker,
-        KAFKA_SCHEMA_REGISTRY_HOST: kafkaHosts.schemaRegistry,
         DATABASE_READ_ONLY_HOST: rdsReadOnlyClusterHost,
-        ..._.mapValues(topicSchemaIds[stage], String),
       },
       dependencies: [workerPodImage],
     }).addToCluster(cluster);
-
-    // new CoopCronJob(new Cdk8sApp(), 'run-user-rules-job', {
-    //   jobName: 'RunUserRulesJob',
-    //   imageUrl: workerPodImage.imageUri,
-    //   allowedNodeTypes: deployedIntelNodeTypes,
-    //   namespace: namespaceName,
-    //   concurrencyPolicy: 'Forbid',
-    //   schedule: '*/5 * * * *' as any,
-    //   resources: {
-    //     requests: {
-    //       cpu: Quantity.fromString('500m'),
-    //       memory: Quantity.fromString('1Gi'),
-    //     },
-    //     limits: {
-    //       cpu: Quantity.fromString('1'),
-    //       memory: Quantity.fromString('1Gi'),
-    //     },
-    //   },
-    //   secretsHandler: new KubernetesSecretsIntegration(
-    //     this,
-    //     'RunUserRulesJobSecrets',
-    //     {
-    //       serviceAccount,
-    //       secrets: {
-    //         ...omit(secrets, [
-    //           'KAFKA_API_SERVICE_ACCOUNT_USERNAME',
-    //           'KAFKA_API_SERVICE_ACCOUNT_PASSWORD',
-    //         ]),
-    //         KAFKA_BROKER_USERNAME: secrets.KAFKA_API_SERVICE_ACCOUNT_USERNAME,
-    //         KAFKA_BROKER_PASSWORD: secrets.KAFKA_API_SERVICE_ACCOUNT_PASSWORD,
-    //       },
-    //     },
-    //   ),
-    //   stage,
-    //   env: {
-    //     DATABASE_READ_ONLY_HOST: rdsReadOnlyClusterHost,
-    //     KAFKA_BROKER_HOST: kafkaHosts.broker,
-    //     KAFKA_SCHEMA_REGISTRY_HOST: kafkaHosts.schemaRegistry,
-    //     ..._.mapValues(topicSchemaIds[stage], String),
-    //   },
-    //   dependencies: [workerPodImage],
-    // }).addToCluster(cluster);
-
-    // new CoopCronJob(new Cdk8sApp(), 'refresh-user-scores-job', {
-    //   jobName: 'RefreshUserScoresCacheJob',
-    //   imageUrl: workerPodImage.imageUri,
-    //   allowedNodeTypes: deployedIntelNodeTypes,
-    //   namespace: namespaceName,
-    //   concurrencyPolicy: 'Forbid',
-    //   schedule: '*/5 * * * *' as any,
-    //   secretsHandler: new KubernetesSecretsIntegration(
-    //     this,
-    //     'RefreshUserScoresCacheJobSecrets',
-    //     { serviceAccount, secrets },
-    //   ),
-    //   stage,
-    //   env: {
-    //     DATABASE_READ_ONLY_HOST: rdsReadOnlyClusterHost,
-    //     ..._.mapValues(topicSchemaIds[stage], String),
-    //   },
-    //   dependencies: [workerPodImage],
-    //   resources: {
-    //     requests: {
-    //       cpu: Quantity.fromString('300m'),
-    //       memory: Quantity.fromString('756Mi'),
-    //     },
-    //     limits: {
-    //       cpu: Quantity.fromString('500m'),
-    //       memory: Quantity.fromString('756Mi'),
-    //     },
-    //   },
-    //   nodeJsMemoryOptions: {
-    //     nodeExternalMemoryPercent: 0.03,
-    //   },
-    // }).addToCluster(cluster);
 
     new CoopCronJob(
       new Cdk8sApp(),
@@ -294,7 +200,6 @@ export class JobsAndWorkersStack extends Stack {
       stage,
       env: {
         DATABASE_READ_ONLY_HOST: rdsReadOnlyClusterHost,
-        ..._.mapValues(topicSchemaIds[stage], String),
       },
       dependencies: [workerPodImage],
       resources: {
@@ -323,25 +228,17 @@ export class JobsAndWorkersStack extends Stack {
         'RetryFailedNcmecDecisions',
         {
           serviceAccount,
-          secrets: {
-            ..._.pick(secrets, [
-              ...kafkaSecretEnvVars,
-              ...scyllaEnvVars,
-              ...pgEnvVars,
-              ...redisEnvVars,
-              'OPEN_AI_API_KEY',
-            ]),
-            KAFKA_BROKER_USERNAME: secrets.KAFKA_API_SERVICE_ACCOUNT_USERNAME,
-            KAFKA_BROKER_PASSWORD: secrets.KAFKA_API_SERVICE_ACCOUNT_PASSWORD,
-          },
+          secrets: _.pick(secrets, [
+            ...scyllaEnvVars,
+            ...pgEnvVars,
+            ...redisEnvVars,
+            'OPEN_AI_API_KEY',
+          ]),
         },
       ),
       stage,
       env: {
         DATABASE_READ_ONLY_HOST: rdsReadOnlyClusterHost,
-        KAFKA_BROKER_HOST: kafkaHosts.broker,
-        KAFKA_SCHEMA_REGISTRY_HOST: kafkaHosts.schemaRegistry,
-        ..._.mapValues(topicSchemaIds[stage], String),
       },
       dependencies: [workerPodImage],
       resources: {
