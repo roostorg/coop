@@ -2,7 +2,7 @@
   "integrations": [
     {
       "package": "@roostorg/coop-integration-example",
-      "enabled": false
+      "enabled": true
     }
   ]
 }
