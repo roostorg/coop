@@ -2385,6 +2385,8 @@ export type GQLMutation = {
   readonly setPluginIntegrationConfig: GQLSetIntegrationConfigResponse;
   readonly signUp: GQLSignUpResponse;
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
+  readonly tapAddRepos?: Maybe<Scalars['Boolean']>;
+  readonly tapRemoveRepos?: Maybe<Scalars['Boolean']>;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAppealSettings: GQLAppealSettings;
@@ -2645,6 +2647,14 @@ export type GQLMutationSignUpArgs = {
 
 export type GQLMutationSubmitManualReviewDecisionArgs = {
   input: GQLSubmitDecisionInput;
+};
+
+export type GQLMutationTapAddReposArgs = {
+  dids: ReadonlyArray<Scalars['String']>;
+};
+
+export type GQLMutationTapRemoveReposArgs = {
+  dids: ReadonlyArray<Scalars['String']>;
 };
 
 export type GQLMutationUpdateAccountInfoArgs = {
@@ -3210,6 +3220,8 @@ export type GQLQuery = {
   readonly reportingRule?: Maybe<GQLReportingRule>;
   readonly rule?: Maybe<GQLRule>;
   readonly spotTestRule: GQLRuleExecutionResult;
+  readonly tapRepoInfo?: Maybe<GQLTapRepoInfo>;
+  readonly tapStats?: Maybe<GQLTapStats>;
   readonly textBank?: Maybe<GQLTextBank>;
   readonly threadHistory: ReadonlyArray<GQLItemSubmissions>;
   readonly topPolicyViolations: ReadonlyArray<GQLPolicyViolationsCount>;
@@ -3398,6 +3410,10 @@ export type GQLQueryRuleArgs = {
 export type GQLQuerySpotTestRuleArgs = {
   item: GQLSpotTestItemInput;
   ruleId: Scalars['ID'];
+};
+
+export type GQLQueryTapRepoInfoArgs = {
+  did: Scalars['String'];
 };
 
 export type GQLQueryTextBankArgs = {
@@ -4253,6 +4269,22 @@ export type GQLTableDecisionCount = {
   readonly queue_id?: Maybe<Scalars['String']>;
   readonly reviewer_id?: Maybe<Scalars['String']>;
   readonly type: GQLManualReviewDecisionType;
+};
+
+export type GQLTapRepoInfo = {
+  readonly __typename?: 'TapRepoInfo';
+  readonly did: Scalars['String'];
+  readonly handle?: Maybe<Scalars['String']>;
+  readonly isTracked: Scalars['Boolean'];
+  readonly recordCount?: Maybe<Scalars['Int']>;
+};
+
+export type GQLTapStats = {
+  readonly __typename?: 'TapStats';
+  readonly isConnected: Scalars['Boolean'];
+  readonly outboxBuffer: Scalars['Int'];
+  readonly recordCount: Scalars['Int'];
+  readonly repoCount: Scalars['Int'];
 };
 
 export type GQLTextBank = {
@@ -5745,6 +5777,8 @@ export type GQLResolversTypes = {
     | GQLResolversTypes['AllLanguages']
     | GQLResolversTypes['Languages'];
   TableDecisionCount: ResolverTypeWrapper<GQLTableDecisionCount>;
+  TapRepoInfo: ResolverTypeWrapper<GQLTapRepoInfo>;
+  TapStats: ResolverTypeWrapper<GQLTapStats>;
   TextBank: ResolverTypeWrapper<GQLTextBank>;
   TextBankType: GQLTextBankType;
   ThreadAppealManualReviewJobPayload: ResolverTypeWrapper<ThreadAppealReviewJobPayload>;
@@ -6533,6 +6567,8 @@ export type GQLResolversParentTypes = {
     | GQLResolversParentTypes['AllLanguages']
     | GQLResolversParentTypes['Languages'];
   TableDecisionCount: GQLTableDecisionCount;
+  TapRepoInfo: GQLTapRepoInfo;
+  TapStats: GQLTapStats;
   TextBank: GQLTextBank;
   ThreadAppealManualReviewJobPayload: ThreadAppealReviewJobPayload;
   ThreadItem: Omit<GQLThreadItem, 'type'> & {
@@ -10568,6 +10604,18 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationSubmitManualReviewDecisionArgs, 'input'>
   >;
+  tapAddRepos?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationTapAddReposArgs, 'dids'>
+  >;
+  tapRemoveRepos?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationTapRemoveReposArgs, 'dids'>
+  >;
   updateAccountInfo?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
     ParentType,
@@ -11831,6 +11879,17 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQuerySpotTestRuleArgs, 'item' | 'ruleId'>
+  >;
+  tapRepoInfo?: Resolver<
+    Maybe<GQLResolversTypes['TapRepoInfo']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLQueryTapRepoInfoArgs, 'did'>
+  >;
+  tapStats?: Resolver<
+    Maybe<GQLResolversTypes['TapStats']>,
+    ParentType,
+    ContextType
   >;
   textBank?: Resolver<
     Maybe<GQLResolversTypes['TextBank']>,
@@ -13216,6 +13275,38 @@ export type GQLTableDecisionCountResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLTapRepoInfoResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['TapRepoInfo'] = GQLResolversParentTypes['TapRepoInfo'],
+> = {
+  did?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  handle?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  isTracked?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  recordCount?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLTapStatsResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['TapStats'] = GQLResolversParentTypes['TapStats'],
+> = {
+  isConnected?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  outboxBuffer?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  recordCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  repoCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLTextBankResolvers<
   ContextType = Context,
   ParentType extends
@@ -14407,6 +14498,8 @@ export type GQLResolvers<ContextType = Context> = {
   SubmittedJobActionNotFoundError?: GQLSubmittedJobActionNotFoundErrorResolvers<ContextType>;
   SupportedLanguages?: GQLSupportedLanguagesResolvers<ContextType>;
   TableDecisionCount?: GQLTableDecisionCountResolvers<ContextType>;
+  TapRepoInfo?: GQLTapRepoInfoResolvers<ContextType>;
+  TapStats?: GQLTapStatsResolvers<ContextType>;
   TextBank?: GQLTextBankResolvers<ContextType>;
   ThreadAppealManualReviewJobPayload?: GQLThreadAppealManualReviewJobPayloadResolvers<ContextType>;
   ThreadItem?: GQLThreadItemResolvers<ContextType>;

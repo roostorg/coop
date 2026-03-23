@@ -2316,6 +2316,8 @@ export type GQLMutation = {
   readonly setPluginIntegrationConfig: GQLSetIntegrationConfigResponse;
   readonly signUp: GQLSignUpResponse;
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
+  readonly tapAddRepos?: Maybe<Scalars['Boolean']>;
+  readonly tapRemoveRepos?: Maybe<Scalars['Boolean']>;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAppealSettings: GQLAppealSettings;
@@ -2576,6 +2578,14 @@ export type GQLMutationSignUpArgs = {
 
 export type GQLMutationSubmitManualReviewDecisionArgs = {
   input: GQLSubmitDecisionInput;
+};
+
+export type GQLMutationTapAddReposArgs = {
+  dids: ReadonlyArray<Scalars['String']>;
+};
+
+export type GQLMutationTapRemoveReposArgs = {
+  dids: ReadonlyArray<Scalars['String']>;
 };
 
 export type GQLMutationUpdateAccountInfoArgs = {
@@ -3141,6 +3151,8 @@ export type GQLQuery = {
   readonly reportingRule?: Maybe<GQLReportingRule>;
   readonly rule?: Maybe<GQLRule>;
   readonly spotTestRule: GQLRuleExecutionResult;
+  readonly tapRepoInfo?: Maybe<GQLTapRepoInfo>;
+  readonly tapStats?: Maybe<GQLTapStats>;
   readonly textBank?: Maybe<GQLTextBank>;
   readonly threadHistory: ReadonlyArray<GQLItemSubmissions>;
   readonly topPolicyViolations: ReadonlyArray<GQLPolicyViolationsCount>;
@@ -3329,6 +3341,10 @@ export type GQLQueryRuleArgs = {
 export type GQLQuerySpotTestRuleArgs = {
   item: GQLSpotTestItemInput;
   ruleId: Scalars['ID'];
+};
+
+export type GQLQueryTapRepoInfoArgs = {
+  did: Scalars['String'];
 };
 
 export type GQLQueryTextBankArgs = {
@@ -4186,6 +4202,22 @@ export type GQLTableDecisionCount = {
   readonly type: GQLManualReviewDecisionType;
 };
 
+export type GQLTapRepoInfo = {
+  readonly __typename: 'TapRepoInfo';
+  readonly did: Scalars['String'];
+  readonly handle?: Maybe<Scalars['String']>;
+  readonly isTracked: Scalars['Boolean'];
+  readonly recordCount?: Maybe<Scalars['Int']>;
+};
+
+export type GQLTapStats = {
+  readonly __typename: 'TapStats';
+  readonly isConnected: Scalars['Boolean'];
+  readonly outboxBuffer: Scalars['Int'];
+  readonly recordCount: Scalars['Int'];
+  readonly repoCount: Scalars['Int'];
+};
+
 export type GQLTextBank = {
   readonly __typename: 'TextBank';
   readonly description?: Maybe<Scalars['String']>;
@@ -4977,6 +5009,52 @@ export type GQLDeleteHashBankMutationVariables = Exact<{
 export type GQLDeleteHashBankMutation = {
   readonly __typename: 'Mutation';
   readonly deleteHashBank: boolean;
+};
+
+export type GQLTapStatsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLTapStatsQuery = {
+  readonly __typename: 'Query';
+  readonly tapStats?: {
+    readonly __typename: 'TapStats';
+    readonly repoCount: number;
+    readonly recordCount: number;
+    readonly outboxBuffer: number;
+    readonly isConnected: boolean;
+  } | null;
+};
+
+export type GQLTapRepoInfoQueryVariables = Exact<{
+  did: Scalars['String'];
+}>;
+
+export type GQLTapRepoInfoQuery = {
+  readonly __typename: 'Query';
+  readonly tapRepoInfo?: {
+    readonly __typename: 'TapRepoInfo';
+    readonly did: string;
+    readonly handle?: string | null;
+    readonly recordCount?: number | null;
+    readonly isTracked: boolean;
+  } | null;
+};
+
+export type GQLTapAddReposMutationVariables = Exact<{
+  dids: ReadonlyArray<Scalars['String']> | Scalars['String'];
+}>;
+
+export type GQLTapAddReposMutation = {
+  readonly __typename: 'Mutation';
+  readonly tapAddRepos?: boolean | null;
+};
+
+export type GQLTapRemoveReposMutationVariables = Exact<{
+  dids: ReadonlyArray<Scalars['String']> | Scalars['String'];
+}>;
+
+export type GQLTapRemoveReposMutation = {
+  readonly __typename: 'Mutation';
+  readonly tapRemoveRepos?: boolean | null;
 };
 
 export type GQLUserAndOrgQueryVariables = Exact<{ [key: string]: never }>;
@@ -25427,6 +25505,221 @@ export type GQLDeleteHashBankMutationOptions = Apollo.BaseMutationOptions<
   GQLDeleteHashBankMutation,
   GQLDeleteHashBankMutationVariables
 >;
+export const GQLTapStatsDocument = gql`
+  query TapStats {
+    tapStats {
+      repoCount
+      recordCount
+      outboxBuffer
+      isConnected
+    }
+  }
+`;
+
+/**
+ * __useGQLTapStatsQuery__
+ *
+ * To run a query within a React component, call `useGQLTapStatsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLTapStatsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLTapStatsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLTapStatsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLTapStatsQuery,
+    GQLTapStatsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLTapStatsQuery, GQLTapStatsQueryVariables>(
+    GQLTapStatsDocument,
+    options,
+  );
+}
+export function useGQLTapStatsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLTapStatsQuery,
+    GQLTapStatsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<GQLTapStatsQuery, GQLTapStatsQueryVariables>(
+    GQLTapStatsDocument,
+    options,
+  );
+}
+export type GQLTapStatsQueryHookResult = ReturnType<typeof useGQLTapStatsQuery>;
+export type GQLTapStatsLazyQueryHookResult = ReturnType<
+  typeof useGQLTapStatsLazyQuery
+>;
+export type GQLTapStatsQueryResult = Apollo.QueryResult<
+  GQLTapStatsQuery,
+  GQLTapStatsQueryVariables
+>;
+export const GQLTapRepoInfoDocument = gql`
+  query TapRepoInfo($did: String!) {
+    tapRepoInfo(did: $did) {
+      did
+      handle
+      recordCount
+      isTracked
+    }
+  }
+`;
+
+/**
+ * __useGQLTapRepoInfoQuery__
+ *
+ * To run a query within a React component, call `useGQLTapRepoInfoQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLTapRepoInfoQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLTapRepoInfoQuery({
+ *   variables: {
+ *      did: // value for 'did'
+ *   },
+ * });
+ */
+export function useGQLTapRepoInfoQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLTapRepoInfoQuery,
+    GQLTapRepoInfoQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLTapRepoInfoQuery, GQLTapRepoInfoQueryVariables>(
+    GQLTapRepoInfoDocument,
+    options,
+  );
+}
+export function useGQLTapRepoInfoLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLTapRepoInfoQuery,
+    GQLTapRepoInfoQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<GQLTapRepoInfoQuery, GQLTapRepoInfoQueryVariables>(
+    GQLTapRepoInfoDocument,
+    options,
+  );
+}
+export type GQLTapRepoInfoQueryHookResult = ReturnType<
+  typeof useGQLTapRepoInfoQuery
+>;
+export type GQLTapRepoInfoLazyQueryHookResult = ReturnType<
+  typeof useGQLTapRepoInfoLazyQuery
+>;
+export type GQLTapRepoInfoQueryResult = Apollo.QueryResult<
+  GQLTapRepoInfoQuery,
+  GQLTapRepoInfoQueryVariables
+>;
+export const GQLTapAddReposDocument = gql`
+  mutation TapAddRepos($dids: [String!]!) {
+    tapAddRepos(dids: $dids)
+  }
+`;
+export type GQLTapAddReposMutationFn = Apollo.MutationFunction<
+  GQLTapAddReposMutation,
+  GQLTapAddReposMutationVariables
+>;
+
+/**
+ * __useGQLTapAddReposMutation__
+ *
+ * To run a mutation, you first call `useGQLTapAddReposMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLTapAddReposMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlTapAddReposMutation, { data, loading, error }] = useGQLTapAddReposMutation({
+ *   variables: {
+ *      dids: // value for 'dids'
+ *   },
+ * });
+ */
+export function useGQLTapAddReposMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLTapAddReposMutation,
+    GQLTapAddReposMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLTapAddReposMutation,
+    GQLTapAddReposMutationVariables
+  >(GQLTapAddReposDocument, options);
+}
+export type GQLTapAddReposMutationHookResult = ReturnType<
+  typeof useGQLTapAddReposMutation
+>;
+export type GQLTapAddReposMutationResult =
+  Apollo.MutationResult<GQLTapAddReposMutation>;
+export type GQLTapAddReposMutationOptions = Apollo.BaseMutationOptions<
+  GQLTapAddReposMutation,
+  GQLTapAddReposMutationVariables
+>;
+export const GQLTapRemoveReposDocument = gql`
+  mutation TapRemoveRepos($dids: [String!]!) {
+    tapRemoveRepos(dids: $dids)
+  }
+`;
+export type GQLTapRemoveReposMutationFn = Apollo.MutationFunction<
+  GQLTapRemoveReposMutation,
+  GQLTapRemoveReposMutationVariables
+>;
+
+/**
+ * __useGQLTapRemoveReposMutation__
+ *
+ * To run a mutation, you first call `useGQLTapRemoveReposMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLTapRemoveReposMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlTapRemoveReposMutation, { data, loading, error }] = useGQLTapRemoveReposMutation({
+ *   variables: {
+ *      dids: // value for 'dids'
+ *   },
+ * });
+ */
+export function useGQLTapRemoveReposMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLTapRemoveReposMutation,
+    GQLTapRemoveReposMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLTapRemoveReposMutation,
+    GQLTapRemoveReposMutationVariables
+  >(GQLTapRemoveReposDocument, options);
+}
+export type GQLTapRemoveReposMutationHookResult = ReturnType<
+  typeof useGQLTapRemoveReposMutation
+>;
+export type GQLTapRemoveReposMutationResult =
+  Apollo.MutationResult<GQLTapRemoveReposMutation>;
+export type GQLTapRemoveReposMutationOptions = Apollo.BaseMutationOptions<
+  GQLTapRemoveReposMutation,
+  GQLTapRemoveReposMutationVariables
+>;
 export const GQLUserAndOrgDocument = gql`
   query UserAndOrg {
     me {
@@ -37476,6 +37769,8 @@ export const namedOperations = {
     ApiAuth: 'ApiAuth',
     HashBanks: 'HashBanks',
     HashBankById: 'HashBankById',
+    TapStats: 'TapStats',
+    TapRepoInfo: 'TapRepoInfo',
     UserAndOrg: 'UserAndOrg',
     LoggedInUserForRoute: 'LoggedInUserForRoute',
     PermissionGatedRouteLoggedInUser: 'PermissionGatedRouteLoggedInUser',
@@ -37601,6 +37896,8 @@ export const namedOperations = {
     CreateHashBank: 'CreateHashBank',
     UpdateHashBank: 'UpdateHashBank',
     DeleteHashBank: 'DeleteHashBank',
+    TapAddRepos: 'TapAddRepos',
+    TapRemoveRepos: 'TapRemoveRepos',
     Login: 'Login',
     DeleteRejectedUser: 'DeleteRejectedUser',
     SignUp: 'SignUp',
