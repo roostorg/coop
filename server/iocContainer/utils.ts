@@ -3,6 +3,7 @@
 import type Bottle from '@ethanresnick/bottlejs';
 
 import { __throw } from '../utils/misc.js';
+import { jsonStringify } from '../utils/encoding.js';
 import { type Dependencies as Deps } from './index.js';
 
 const DEPENDENCIES = Symbol();
@@ -671,8 +672,9 @@ export function safeGetEnvInt(varName: string, defaultValue: number): number {
   if (raw === undefined) return defaultValue;
   const parsed = parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
+    // eslint-disable-next-line no-console
     console.error(
-      `Invalid env var ${varName}: expected a positive integer, got ${JSON.stringify(raw)}. Using default value ${defaultValue}.`,
+      `Invalid env var ${varName}: expected a positive integer, got ${jsonStringify(raw)}. Using default value ${defaultValue}.`,
     );
     return defaultValue;
   }
