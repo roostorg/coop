@@ -102,16 +102,20 @@ const client = new ApolloClient({
           [object.id, object.version, object.status].join(', '),
       },
       ContentItem: {
-        keyFields: ['submissionId'],
+        keyFields: (object: Readonly<StoreObject>) =>
+          object.submissionId ? `ContentItem:${object.submissionId}` : false,
       },
       ThreadItem: {
-        keyFields: ['submissionId'],
+        keyFields: (object: Readonly<StoreObject>) =>
+          object.submissionId ? `ThreadItem:${object.submissionId}` : false,
       },
       UserItem: {
-        keyFields: ['submissionId'],
+        keyFields: (object: Readonly<StoreObject>) =>
+          object.submissionId ? `UserItem:${object.submissionId}` : false,
       },
       ItemSubmission: {
-        keyFields: ['submissionId'],
+        keyFields: (object: Readonly<StoreObject>) =>
+          object.submissionId ? `ItemSubmission:${object.submissionId}` : false,
       },
       ContentItemType: {
         keyFields: (object: Readonly<StoreObject>, _: KeyFieldsContext) =>
