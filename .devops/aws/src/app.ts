@@ -140,22 +140,10 @@ async function main() {
     Prod: {
       datadogRedisSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/api/datadog-redis-5MVpFr',
-      datadogSnowflakeSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/api/datadog-snowflake-ChoHce',
       scyllaSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/Scylla-Ff5SYT',
-      snowflakeSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/Snowflake-GSbYPm',
       sessionSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/SessionSecret-pqjJMo',
-      snowpipeQueue:
-        'arn:aws:sqs:us-east-2:372912203759:sf-snowpipe-AIDAVNU2MU7XZEWHX4NYF-gDuL_ERzbUuPyF2CcnWj6A',
-      kafkaSchemaRegistrySecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/kafka/schema-registry-ngb9kf',
-      kafkaApiServiceAccountSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/kafka/api-service-account-2Ir1Vc',
-      kafkaSnowflakeWorkerServiceAccountSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/kafka/snowflake-ingest-worker-service-account-2ks9lG',
       redisSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/Redis-5wOZWr',
       graphqlOpaqueScalarSecret:
@@ -164,38 +152,20 @@ async function main() {
     Staging: {
       datadogRedisSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/api/datadog-redis-I4eNaY',
-      datadogSnowflakeSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/api/datadog-snowflake-Ogmcmb',
       scyllaSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/Api/Scylla-8qB2b6',
-      snowflakeSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/Api/Snowflake-NmQIg4',
       sessionSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/Api/SessionSecret-Hp8WsT',
-      kafkaSchemaRegistrySecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/kafka/schema-registry-tOpR2W',
-      kafkaApiServiceAccountSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/kafka/api-service-account-LzIZdE',
-      kafkaSnowflakeWorkerServiceAccountSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/kafka/snowflake-ingest-worker-service-account-a8CRYE',
       redisSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/Api/Redis-S4vd12',
       graphqlOpaqueScalarSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/Api/graphqlOpaqueScalar-8Ov3Hy',
-      snowpipeQueue:
-        'arn:aws:sqs:us-east-2:372912203759:sf-snowpipe-AIDAVNU2MU7XZEWHX4NYF-gDuL_ERzbUuPyF2CcnWj6A',
     },
     Demo: {
       datadogRedisSecret: '',
-      datadogSnowflakeSecret: '',
       scyllaSecret: '',
-      snowflakeSecret:
-        'arn:aws:secretsmanager:us-east-2:361188080279:secret:Demo/Api/Snowflake-CUtb5a',
       sessionSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:Demo/Api/SessionSecret-Vu2BpX',
-      kafkaSchemaRegistrySecret: 'RESET_ON_CLUSTER_RECREATE',
-      kafkaApiServiceAccountSecret: 'RESET_ON_CLUSTER_RECREATE',
-      kafkaSnowflakeWorkerServiceAccountSecret: 'RESET_ON_CLUSTER_RECREATE',
       redisSecret:
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:staging/Api/Redis-S4vd12',
       graphqlOpaqueScalarSecret: '',

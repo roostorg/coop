@@ -19,7 +19,6 @@ import {
   ApolloServerPluginLandingPageGraphQLPlayground,
 } from 'apollo-server-core';
 import { ApolloServer } from 'apollo-server-express';
-import bodyParser from 'body-parser';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
@@ -100,7 +99,25 @@ export default async function makeApiServer(deps: Dependencies) {
 
   app.use(cors());
 
-  app.use(helmet(env === 'production' ? {} : { contentSecurityPolicy: false }));
+  app.use(
+    helmet(
+      env === 'production'
+        ? {}
+        : {
+            contentSecurityPolicy: {
+              directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
+                connectSrc: ["'self'", 'ws:', 'wss:', 'https:', 'http:'],
+                fontSrc: ["'self'", 'data:', 'https:'],
+                frameSrc: ["'self'"],
+              },
+            },
+          },
+    ),
+  );
   app.use(express.json({ limit: '50mb' }));
 
   app.get('/ready', async (_req, res) => {
@@ -242,7 +259,7 @@ export default async function makeApiServer(deps: Dependencies) {
 
   app.post(
     `/saml/login/:orgId/callback`,
-    bodyParser.urlencoded({ extended: false }),
+    express.urlencoded({ extended: false }),
     passport.authenticate('saml', {
       failureRedirect: '/',
       failureFlash: true,

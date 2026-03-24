@@ -6,10 +6,6 @@ export type {
 } from './types.js';
 export { NoOpAnalyticsAdapter } from './examples/NoOpAnalyticsAdapter.js';
 export {
-  SnowflakeAnalyticsAdapter,
-  type SnowflakeAnalyticsAdapterOptions,
-} from './adapters/SnowflakeAnalyticsAdapter.js';
-export {
   ClickhouseAnalyticsAdapter,
   type ClickhouseAnalyticsAdapterOptions,
   type ClickhouseAnalyticsConnection,

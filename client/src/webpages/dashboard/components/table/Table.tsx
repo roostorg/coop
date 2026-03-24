@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-key */
-import { ReactComponent as SortAmountAsc } from '@/icons/lni/Text editor/sort-amount-asc.svg';
-import { ReactComponent as SortAmountDsc } from '@/icons/lni/Text editor/sort-amount-dsc.svg';
+import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
+import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Column, Row, useFilters, useSortBy, useTable } from 'react-table';

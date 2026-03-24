@@ -1,19 +1,19 @@
 import type { FilledIconProps } from '../types';
-import { ReactComponent as Cipher } from './cipher.svg';
-import { ReactComponent as Coinbase1 } from './coinbase-1.svg';
-import { ReactComponent as Dogecoin } from './dogecoin.svg';
-import { ReactComponent as Ethereum2 } from './ethereum-2.svg';
-import { ReactComponent as Litecoin } from './litecoin.svg';
-import { ReactComponent as Metaverse1 } from './metaverse-1.svg';
-import { ReactComponent as Metaverse2 } from './metaverse-2.svg';
-import { ReactComponent as Metaverse3 } from './metaverse-3.svg';
-import { ReactComponent as Metaverse4 } from './metaverse-4.svg';
-import { ReactComponent as Metaverse5 } from './metaverse-5.svg';
-import { ReactComponent as Metaverse6 } from './metaverse-6.svg';
-import { ReactComponent as Metaverse7 } from './metaverse-7.svg';
-import { ReactComponent as Swap } from './swap.svg';
-import { ReactComponent as Swap2 } from './swap2.svg';
-import { ReactComponent as Swap3 } from './swap3.svg';
+import Cipher from './cipher.svg?react';
+import Coinbase1 from './coinbase-1.svg?react';
+import Dogecoin from './dogecoin.svg?react';
+import Ethereum2 from './ethereum-2.svg?react';
+import Litecoin from './litecoin.svg?react';
+import Metaverse1 from './metaverse-1.svg?react';
+import Metaverse2 from './metaverse-2.svg?react';
+import Metaverse3 from './metaverse-3.svg?react';
+import Metaverse4 from './metaverse-4.svg?react';
+import Metaverse5 from './metaverse-5.svg?react';
+import Metaverse6 from './metaverse-6.svg?react';
+import Metaverse7 from './metaverse-7.svg?react';
+import Swap from './swap.svg?react';
+import Swap2 from './swap2.svg?react';
+import Swap3 from './swap3.svg?react';
 
 const CipherFilled = (props: FilledIconProps) => (
   <Cipher fill="currentColor" {...props} />

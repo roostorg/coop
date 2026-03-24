@@ -1,25 +1,25 @@
 import type { FilledIconProps } from '../types';
-import { ReactComponent as Bible } from './bible.svg';
-import { ReactComponent as ChristianCandle } from './christian-candle.svg';
-import { ReactComponent as Church } from './church.svg';
-import { ReactComponent as Cross } from './cross.svg';
-import { ReactComponent as Goblet } from './goblet.svg';
-import { ReactComponent as Islam } from './islam.svg';
-import { ReactComponent as IslamicBookAlt } from './islamic-book-alt.svg';
-import { ReactComponent as IslamicBook } from './islamic-book.svg';
-import { ReactComponent as IslamicFlag } from './islamic-flag.svg';
-import { ReactComponent as MoshjidLocation } from './moshjid-location.svg';
-import { ReactComponent as Mosque } from './mosque.svg';
-import { ReactComponent as MuslimSymbol } from './muslim-symbol.svg';
-import { ReactComponent as PrayerRug } from './prayer-rug.svg';
-import { ReactComponent as Prayer } from './prayer.svg';
-import { ReactComponent as StarOfDavid1 } from './star-of-david-1.svg';
-import { ReactComponent as StarOfDavid } from './star-of-david.svg';
-import { ReactComponent as Tombstone1 } from './tombstone-1.svg';
-import { ReactComponent as Tombstone } from './tombstone.svg';
-import { ReactComponent as ToriiGate } from './torii-gate.svg';
-import { ReactComponent as YinYang } from './yin-yang.svg';
-import { ReactComponent as Zen } from './zen.svg';
+import Bible from './bible.svg?react';
+import ChristianCandle from './christian-candle.svg?react';
+import Church from './church.svg?react';
+import Cross from './cross.svg?react';
+import Goblet from './goblet.svg?react';
+import Islam from './islam.svg?react';
+import IslamicBookAlt from './islamic-book-alt.svg?react';
+import IslamicBook from './islamic-book.svg?react';
+import IslamicFlag from './islamic-flag.svg?react';
+import MoshjidLocation from './moshjid-location.svg?react';
+import Mosque from './mosque.svg?react';
+import MuslimSymbol from './muslim-symbol.svg?react';
+import PrayerRug from './prayer-rug.svg?react';
+import Prayer from './prayer.svg?react';
+import StarOfDavid1 from './star-of-david-1.svg?react';
+import StarOfDavid from './star-of-david.svg?react';
+import Tombstone1 from './tombstone-1.svg?react';
+import Tombstone from './tombstone.svg?react';
+import ToriiGate from './torii-gate.svg?react';
+import YinYang from './yin-yang.svg?react';
+import Zen from './zen.svg?react';
 
 const BibleFilled = (props: FilledIconProps) => (
   <Bible fill="currentColor" {...props} />

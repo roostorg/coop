@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 
 const useDynamicLegacyCSS = (isUsingLegacyCSS: boolean) => {
-  const { pathname } = useLocation();
   const [cssLoaded, setCssLoaded] = useState(false);
 
   useEffect(() => {
@@ -21,7 +19,7 @@ const useDynamicLegacyCSS = (isUsingLegacyCSS: boolean) => {
     } else {
       setCssLoaded(true);
     }
-  }, [pathname, isUsingLegacyCSS]);
+  }, [isUsingLegacyCSS]);
 
   return cssLoaded;
 };

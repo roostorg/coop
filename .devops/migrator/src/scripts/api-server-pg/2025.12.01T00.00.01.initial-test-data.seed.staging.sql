@@ -404,12 +404,6 @@ INSERT INTO public.rules_history VALUES ('9800eb88a94', 'Delete Holocaust Denial
 
 
 --
--- Data for Name: snowflake_outbox; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-
-
---
 -- Data for Name: text_banks; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 

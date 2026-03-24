@@ -35,7 +35,7 @@ const makeGetRuleAnomalyDetectionaStatistics =
     }
 
     // For rule_id filtering, it'd be amazing if we could just do `rule_id in ?`,
-    // and then pass an array as the bind value, but the snowflake client
+    // and then pass an array as the bind value, but the warehouse client
     // doesn't support arrays as bind values. so, we use an array below for
     // conditions that need (or are forced) to have multiple bind values, and
     // then flatten below.
@@ -82,7 +82,7 @@ const makeGetRuleAnomalyDetectionaStatistics =
       // name is a reminder that JS may trim the precision on the Date here,
       // but that should be ok for our purposes.
       approxRuleVersion: new Date(result.RULE_VERSION),
-      // nb: the snowflake returned value for a timestamp is a JS Date, but with
+      // nb: the warehouse returned value for a timestamp is a JS Date, but with
       // some extra methods attached to it. These methods include toString, so
       // we cast back to a proper Date to avoid the string representation
       // changing (e.g., when serializing to JSON).

@@ -4,25 +4,15 @@
  * Lives in the registry (not graphql) so transport-agnostic code can import it.
  */
 
-const REQUIRED_SECTION_IDS = ['modelDetails', 'technicalIntegration'] as const;
+import {
+  assertModelCardHasRequiredSections,
+  type ModelCard,
+  type ModelCardField,
+  type ModelCardSection,
+  type ModelCardSubsection,
+} from '@roostorg/types';
 
-export type ModelCardField = Readonly<{ label: string; value: string }>;
-export type ModelCardSubsection = Readonly<{
-  title: string;
-  fields: readonly ModelCardField[];
-}>;
-export type ModelCardSection = Readonly<{
-  id: string;
-  title: string;
-  subsections?: readonly ModelCardSubsection[];
-  fields?: readonly ModelCardField[];
-}>;
-export type ModelCard = Readonly<{
-  modelName: string;
-  version: string;
-  releaseDate?: string;
-  sections?: readonly ModelCardSection[];
-}>;
+export type { ModelCard, ModelCardField, ModelCardSection, ModelCardSubsection };
 
 export type IntegrationManifestEntry = Readonly<{
   modelCard: ModelCard;
@@ -39,17 +29,6 @@ export type IntegrationManifestEntry = Readonly<{
   logoWithBackgroundUrl?: string;
 }>;
 
-function assertModelCardHasRequiredSections(card: ModelCard): void {
-  const sectionIds = new Set((card.sections ?? []).map((s) => s.id));
-  for (const requiredId of REQUIRED_SECTION_IDS) {
-    if (!sectionIds.has(requiredId)) {
-      throw new Error(
-        `Model card must include a section with id "${requiredId}".`,
-      );
-    }
-  }
-}
-
 const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
   modelCard: {
     modelName: 'Content Safety API',
@@ -57,44 +36,33 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
     releaseDate: 'Ongoing',
     sections: [
       {
-        id: 'modelDetails',
-        title: 'Model Details',
-        subsections: [
-          {
-            title: 'Basic Information',
-            fields: [
-              { label: 'Model Name', value: 'Content Safety API' },
-              { label: 'Developed By', value: 'Google' },
-              {
-                label: 'Documentation URL',
-                value: 'https://protectingchildren.google/tools-for-partners/',
-              },
-            ],
-          },
-          {
-            title: 'Intended Use',
-            fields: [
-              {
-                label: 'Primary Use Case',
-                value:
-                  'Child safety prioritization recommendations on user-generated content.',
-              },
-              {
-                label: 'Target Users',
-                value: 'Platforms and partners conducting content moderation.',
-              },
-              {
-                label: 'Important Note',
-                value:
-                  'Users must conduct their own manual review and comply with applicable reporting laws. The API does not replace human judgment.',
-              },
-            ],
-          },
-        ],
+        id: 'trainingData',
+        title: 'Training Data Sources',
+        fields: [{ label: 'Data Sources', value: 'TBD' }],
       },
       {
-        id: 'technicalIntegration',
-        title: 'Technical Integration',
+        id: 'policyAndTaxonomy',
+        title: 'Policy & Taxonomy Definitions',
+        fields: [{ label: 'Policies', value: 'TBD' }],
+      },
+      {
+        id: 'annotationMethodology',
+        title: 'Annotation Methodology',
+        fields: [{ label: 'Methodology', value: 'TBD' }],
+      },
+      {
+        id: 'performanceBenchmarks',
+        title: 'Performance Benchmarks',
+        fields: [{ label: 'Benchmarks', value: 'TBD' }],
+      },
+      {
+        id: 'biasAndLimitations',
+        title: 'Bias Documentation & Known Limits',
+        fields: [{ label: 'Known Limitations', value: 'TBD' }],
+      },
+      {
+        id: 'implementationGuidance',
+        title: 'Implementation Guidance',
         fields: [
           {
             label: 'Authentication',
@@ -104,6 +72,20 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
             label: 'Integration Points',
             value:
               'Coop sends content to the API and uses the returned prioritization in moderation workflows.',
+          },
+        ],
+      },
+      {
+        id: 'relevantLinks',
+        title: 'Relevant Links',
+        fields: [
+          {
+            label: 'Documentation',
+            value: 'https://protectingchildren.google/tools-for-partners/',
+          },
+          {
+            label: 'Model Cards',
+            value: 'https://modelcards.withgoogle.com/',
           },
         ],
       },
@@ -122,61 +104,44 @@ const OPENAI: IntegrationManifestEntry = {
     releaseDate: 'January 2026',
     sections: [
       {
-        id: 'modelDetails',
-        title: 'Model Details',
-        subsections: [
-          {
-            title: 'Basic Information',
-            fields: [
-              { label: 'Model Name', value: 'OpenAI' },
-              { label: 'Version', value: 'v0.0' },
-              { label: 'Release Date', value: 'January 2026' },
-              { label: 'License Type', value: 'API Access Only' },
-              {
-                label: 'Documentation URL',
-                value: 'https://platform.openai.com/docs',
-              },
-            ],
-          },
-          {
-            title: 'Model Architecture',
-            fields: [
-              { label: 'Base Architecture', value: 'Transformer-based' },
-              {
-                label: 'Input/output specifications',
-                value:
-                  'API-dependent; see OpenAI documentation for the specific model in use.',
-              },
-            ],
-          },
-          {
-            title: 'Intended Use',
-            fields: [
-              {
-                label: 'Primary Use Case',
-                value:
-                  'Content moderation and safety-related classification via OpenAI APIs.',
-              },
-              {
-                label: 'Target Users',
-                value: 'Platforms using Coop for moderation.',
-              },
-              {
-                label: 'Deployment Context',
-                value: 'Used within Coop to call OpenAI APIs with your API key.',
-              },
-            ],
-          },
-        ],
+        id: 'trainingData',
+        title: 'Training Data Sources',
+        fields: [{ label: 'Data Sources', value: 'TBD' }],
       },
       {
-        id: 'technicalIntegration',
-        title: 'Technical Integration',
+        id: 'policyAndTaxonomy',
+        title: 'Policy & Taxonomy Definitions',
+        fields: [{ label: 'Policies', value: 'TBD' }],
+      },
+      {
+        id: 'annotationMethodology',
+        title: 'Annotation Methodology',
+        fields: [{ label: 'Methodology', value: 'TBD' }],
+      },
+      {
+        id: 'performanceBenchmarks',
+        title: 'Performance Benchmarks',
+        fields: [{ label: 'Benchmarks', value: 'TBD' }],
+      },
+      {
+        id: 'biasAndLimitations',
+        title: 'Bias Documentation & Known Limits',
+        fields: [{ label: 'Known Limitations', value: 'TBD' }],
+      },
+      {
+        id: 'implementationGuidance',
+        title: 'Implementation Guidance',
         fields: [
           {
             label: 'Credentials',
             value: 'This integration requires one API Key.',
           },
+        ],
+      },
+      {
+        id: 'relevantLinks',
+        title: 'Relevant Links',
+        fields: [
           {
             label: 'Documentation',
             value: 'https://platform.openai.com/docs',
@@ -198,51 +163,49 @@ const ZENTROPI: IntegrationManifestEntry = {
     releaseDate: 'Ongoing',
     sections: [
       {
-        id: 'modelDetails',
-        title: 'Model Details',
-        subsections: [
-          {
-            title: 'Basic Information',
-            fields: [
-              { label: 'Model Name', value: 'Zentropi' },
-              { label: 'Developed By', value: 'Zentropi' },
-              {
-                label: 'Documentation URL',
-                value: 'https://docs.zentropi.ai',
-              },
-            ],
-          },
-          {
-            title: 'Intended Use',
-            fields: [
-              {
-                label: 'Primary Use Case',
-                value:
-                  'Content labeling and moderation via configurable labeler versions.',
-              },
-              {
-                label: 'Target Users',
-                value: 'Platforms using Coop with Zentropi labelers.',
-              },
-              {
-                label: 'Integration Points',
-                value:
-                  'API key plus optional labeler versions (id and label) for each model you use.',
-              },
-            ],
-          },
-        ],
+        id: 'trainingData',
+        title: 'Training Data Sources',
+        fields: [{ label: 'Data Sources', value: 'TBD' }],
       },
       {
-        id: 'technicalIntegration',
-        title: 'Technical Integration',
+        id: 'policyAndTaxonomy',
+        title: 'Policy & Taxonomy Definitions',
+        fields: [{ label: 'Policies', value: 'TBD' }],
+      },
+      {
+        id: 'annotationMethodology',
+        title: 'Annotation Methodology',
+        fields: [{ label: 'Methodology', value: 'TBD' }],
+      },
+      {
+        id: 'performanceBenchmarks',
+        title: 'Performance Benchmarks',
+        fields: [{ label: 'Benchmarks', value: 'TBD' }],
+      },
+      {
+        id: 'biasAndLimitations',
+        title: 'Bias Documentation & Known Limits',
+        fields: [{ label: 'Known Limitations', value: 'TBD' }],
+      },
+      {
+        id: 'implementationGuidance',
+        title: 'Implementation Guidance',
         fields: [
           {
             label: 'Credentials',
             value:
               'API Key plus optional Labeler Versions (id and label per version).',
           },
-          { label: 'Documentation', value: 'https://docs.zentropi.ai' },
+        ],
+      },
+      {
+        id: 'relevantLinks',
+        title: 'Relevant Links',
+        fields: [
+          {
+            label: 'Documentation',
+            value: 'https://docs.zentropi.ai',
+          },
         ],
       },
     ],

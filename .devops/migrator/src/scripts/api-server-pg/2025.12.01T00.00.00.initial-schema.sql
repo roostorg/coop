@@ -713,7 +713,7 @@ CREATE FUNCTION public.update_rule_versions_view() RETURNS void
   BEGIN
     -- NB: this refresh must _not_ be done `CONCURRENTLY`, as we want the view to
     -- be immediately consistent with the persisted rule definition, so that we
-    -- don't end up with rows in snowflake that specify an old rule version but
+    -- don't end up with rows in the data warehouse that specify an old rule version but
     -- ran with a newer rule definition. The view changes so rarely that the
     -- overhead here should be fine.
     --
@@ -2517,18 +2517,6 @@ CREATE TABLE public.signing_keys (
 ALTER TABLE public.signing_keys OWNER TO postgres;
 
 --
--- Name: snowflake_outbox; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.snowflake_outbox (
-    data text NOT NULL,
-    recorded_at timestamp with time zone DEFAULT now()
-);
-
-
-ALTER TABLE public.snowflake_outbox OWNER TO postgres;
-
---
 -- Name: text_banks; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -3717,13 +3705,6 @@ CREATE INDEX rule_versions_version_idx ON public.rule_versions USING btree (vers
 --
 
 CREATE INDEX rules_and_actions_rule_id_idx ON public.rules_and_actions USING btree (rule_id);
-
-
---
--- Name: snowflake_outbox_content_api_requests_recorded_at_idx; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX snowflake_outbox_content_api_requests_recorded_at_idx ON public.snowflake_outbox USING btree (recorded_at);
 
 
 --

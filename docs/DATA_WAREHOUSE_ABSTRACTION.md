@@ -2,7 +2,7 @@
 
 ## Overview
 
-The data warehouse abstraction allows you to use **any data warehouse** (Snowflake, Clickhouse, PostgreSQL, BigQuery, Redshift, Databricks, etc.) without changing application code. Define your warehouse settings by changing one environment variable.
+The data warehouse abstraction allows you to use **any data warehouse** (Clickhouse, PostgreSQL, BigQuery, Redshift, Databricks, etc.) without changing application code. Define your warehouse settings by changing one environment variable.
 
 ## Quick Start
 
@@ -28,20 +28,6 @@ export default inject(['DataWarehouse'], MyService);
 
 Select adapters with `WAREHOUSE_ADAPTER` and (optionally) `ANALYTICS_ADAPTER`.  
 Legacy deployments can keep using `DATA_WAREHOUSE_PROVIDER`; it is still accepted as a fallback.
-
-### Snowflake 
-```bash
-WAREHOUSE_ADAPTER=snowflake
-ANALYTICS_ADAPTER=snowflake
-# Legacy fallback:
-DATA_WAREHOUSE_PROVIDER=snowflake
-SNOWFLAKE_ACCOUNT=your_account
-SNOWFLAKE_USERNAME=user
-SNOWFLAKE_PASSWORD=pass
-SNOWFLAKE_DB_NAME=analytics
-SNOWFLAKE_WAREHOUSE=COMPUTE_WH
-SNOWFLAKE_SCHEMA=PUBLIC
-```
 
 ### PostgreSQL
 ```bash
@@ -120,42 +106,24 @@ export default inject(['DataWarehouseAnalytics'], RuleExecutionLogger);
 **What happens:**
 1. Service calls `logger.logRuleExecutions(data)`
 2. Logger calls `analytics.bulkWrite('RULE_EXECUTIONS', data)`
-3. For **Snowflake**: Buffers → Kafka → Worker → Snowflake (high-throughput)
-4. For **Clickhouse**: Chunked JSONEachRow inserts over HTTP (default batches of 500 rows)
-5. For **PostgreSQL**: Buffers → COPY or batch INSERT
+3. For **Clickhouse**: Chunked JSONEachRow inserts over HTTP (default batches of 500 rows)
+4. For **PostgreSQL**: Buffers → COPY or batch INSERT
 
 **No warehouse-specific code in loggers!** They just call `bulkWrite()`.
 
 ### Data Flow
 
-#### Snowflake (High-Throughput)
+#### Clickhouse / PostgreSQL (direct)
 ```
 RuleExecutionLogger
     ↓
 DataWarehouseAnalytics.bulkWrite()
     ↓
-SnowflakeAnalyticsAdapter
+ClickhouseAnalyticsAdapter / PostgresAnalyticsAdapter
     ↓
-DataLoader (batches 200 rows)
+HTTP JSONEachRow (Clickhouse) or batched INSERT (PostgreSQL)
     ↓
-Kafka Topic: DATA_WAREHOUSE_INGEST_EVENTS
-    ↓
-SnowflakeIngestionWorker
-    ↓
-Snowflake Tables
-```
-
-#### Clickhouse/PostgreSQL (Direct)
-```
-RuleExecutionLogger
-    ↓
-DataWarehouseAnalytics.bulkWrite()
-    ↓
-ClickhouseAnalyticsAdapter
-    ↓
-Chunk rows (default size 500)
-    ↓
-HTTP JSONEachRow INSERT into Clickhouse
+Analytics tables
 ```
 
 ## Required Tables
@@ -172,19 +140,6 @@ ClickHouse DDL lives alongside the rest of our migrations at
 `.devops/migrator/src/scripts/clickhouse/`. Add new files there when the schema evolves.
 
 **Migration examples:**
-
-### Snowflake
-```sql
-CREATE TABLE RULE_EXECUTIONS (
-  DS DATE,
-  TS NUMBER,
-  ORG_ID VARCHAR,
-  RULE_ID VARCHAR,
-  PASSED BOOLEAN,
-  RESULT VARIANT,  -- JSON
-  -- ... ~20 more fields, see IDataWarehouseAnalytics.ts
-);
-```
 
 ### Clickhouse
 ```sql
@@ -322,7 +277,7 @@ CREATE TABLE rule_executions (
   item_id VARCHAR,
   rule_id VARCHAR,
   passed BOOLEAN,
-  result JSON,  -- Or VARIANT, JSONB, String depending on warehouse
+  result JSON,  -- Or JSONB, String depending on warehouse
   -- ... see IDataWarehouseAnalytics.ts for all ~20 fields
 );
 ```
@@ -366,8 +321,7 @@ class UserHistoryQueries {
 export default inject(['DataWarehouseDialect'], UserHistoryQueries);
 ```
 
-**Works with any warehouse:**
-- Snowflake: Uses SnowflakeDialect
+**Works with any supported warehouse:**
 - Clickhouse: Uses ClickhouseDialect
 - PostgreSQL: Uses PostgresDialect
 
@@ -392,12 +346,10 @@ server/storage/dataWarehouse/
 └── index.ts
 
 server/plugins/warehouse/           # Pluggable warehouse adapters
-├── adapters/SnowflakeWarehouseAdapter.ts
 ├── examples/NoOpWarehouseAdapter.ts
 └── ...
 
 server/plugins/analytics/           # Pluggable analytics adapters
-├── adapters/SnowflakeAnalyticsAdapter.ts
 ├── examples/NoOpAnalyticsAdapter.ts
 └── ...
 
@@ -416,8 +368,7 @@ server/services/analyticsQueries/   # Warehouse-agnostic queries
 ## References
 
 - **Schema types:** `/server/storage/dataWarehouse/IDataWarehouseAnalytics.ts`
-- **Snowflake warehouse adapter:** `/server/plugins/warehouse/adapters/SnowflakeWarehouseAdapter.ts`
-- **Snowflake analytics adapter:** `/server/plugins/analytics/adapters/SnowflakeAnalyticsAdapter.ts`
-- **Migration setup:** `/.devops/migrator/src/configs/snowflake.ts`
+- **Clickhouse:** `server/plugins/warehouse` and `server/plugins/analytics` adapters
+- **PostgreSQL migrations:** `.devops/migrator/src/scripts/api-server-pg/` (app DB); analytics tables may live in a dedicated analytics database per deployment
 - **Loggers:** `/server/services/analyticsLoggers/`
 - **Queries:** `/server/services/analyticsQueries/`

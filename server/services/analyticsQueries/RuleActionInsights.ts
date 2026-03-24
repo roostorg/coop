@@ -23,12 +23,12 @@ import {
 import { getUtcDateOnlyString, YEAR_MS } from '../../utils/time.js';
 import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
-  sfDateToDate,
-  sfDateToDateOnlyString,
+  warehouseDateToDate,
+  warehouseDateToDateOnlyString,
   type RuleExecutionsRow,
-  type SfDate,
-  type SnowflakePublicSchema,
-} from '../../snowflake/types.js';
+  type WarehouseDate,
+  type DataWarehousePublicSchema,
+} from '../../storage/dataWarehouse/warehouseSchema.js';
 
 type RulePassSample = {
   date: Date;
@@ -81,7 +81,7 @@ class RuleActionInsights {
     private readonly contentApiRequestsAdapter: Dependencies['ContentApiRequestsAdapter'],
   ) {}
 
-  private get kyselySnowflake(): Kysely<SnowflakePublicSchema> {
+  private get kyselyWarehouse(): Kysely<DataWarehousePublicSchema> {
     return this.dialect.getKyselyInstance();
   }
 
@@ -132,12 +132,12 @@ class RuleActionInsights {
 
     // NB: action + submission counts here may cross rule versions,
     // but I think that's what we want?
-    const results = await this.kyselySnowflake
+    const results = await this.kyselyWarehouse
       .selectFrom('RULE_EXECUTION_STATISTICS')
       .select((eb) => [
         eb.fn.sum<number>('NUM_PASSES').as('totalMatches'),
         eb.fn.sum<number>('NUM_RUNS').as('totalRequests'),
-        eb.fn<SfDate>('date', ['TS_START_INCLUSIVE']).as('date'),
+        eb.fn<WarehouseDate>('date', ['TS_START_INCLUSIVE']).as('date'),
       ])
       .where('ORG_ID', '=', orgId)
       .where('RULE_ID', '=', ruleId)
@@ -153,10 +153,11 @@ class RuleActionInsights {
 
     return results.map((result) => ({
       ...result,
-      // NB: this cast is likely not correct, as I believe result.date is an
-      // SfDate, which means this toJSON method returns a non-standard string
-      // result, as SfDate overrides Date.prototype.toJSON(). However, we can't
-      // change this now without risking a backwards compatibility break.
+      // NB: this cast is likely not correct, as I believe result.date is a
+      // WarehouseDate, which means this toJSON method returns a non-standard
+      // string result, as WarehouseDate overrides Date.prototype.toJSON().
+      // However, we can't change this now without risking a backwards
+      // compatibility break.
       date: (result.date as Date).toJSON(),
     }));
   }
@@ -206,7 +207,7 @@ class RuleActionInsights {
     // of the rule's behavior. The only way to do that is to use the rule history
     // service. Note that, even if we wanted to just use the rule's latest
     // version, we'd have to use the history service (rather than reading the
-    // latest version from snowflake), b/c Snowflake is only eventually
+    // latest version from the data warehouse), b/c the warehouse is only eventually
     // consistent (i.e., after a rule update, it won't see the new version for
     // up to 5 minutes, so we'll show cleary outdated samples.)
     const history = await this.getRuleHistory(['conditionSet'], [ruleId]);
@@ -234,7 +235,7 @@ class RuleActionInsights {
 
     // Selects executions for this rule, verifying that this is the right org.
     // We'll filter by rule version below.
-    const baseQuery = this.kyselySnowflake
+    const baseQuery = this.kyselyWarehouse
       .selectFrom('RULE_EXECUTIONS')
       .select([
         'DS as date',
@@ -276,7 +277,7 @@ class RuleActionInsights {
             .where('RULE_VERSION', '>=', mostRecentVersion)
             // Find the date associated w/ the earliest relevant version (with a
             // maximum of 30 days), as passing that w/ the query will help
-            // snowflake prune a lot.
+            // the warehouse prune a lot.
             .where('DS', '>=', getUtcDateOnlyString(dateFilter))
             .orderBy('TS', 'desc')
         );
@@ -298,8 +299,8 @@ class RuleActionInsights {
 
     return (await finalQuery.$narrowType<ResultRow>().execute()).map((it) => ({
       ...it,
-      date: sfDateToDate(it.date),
-      ts: sfDateToDate(it.ts),
+      date: warehouseDateToDate(it.date),
+      ts: warehouseDateToDate(it.ts),
       result: it.result != null ? jsonParse(it.result) : undefined,
     }));
   }
@@ -441,7 +442,7 @@ class RuleActionInsights {
     }
 
     const startDateString = getUtcDateOnlyString(startAt);
-    const results = await this.kyselySnowflake
+    const results = await this.kyselyWarehouse
       .selectFrom('CONTENT_API_REQUESTS')
       .select([sql`COUNT(*)`.as('count'), 'DS'])
       .where('DS', '>', startDateString)
@@ -451,7 +452,7 @@ class RuleActionInsights {
       .execute();
 
     return results.map((result) => ({
-      date: sfDateToDateOnlyString(result.DS),
+      date: warehouseDateToDateOnlyString(result.DS),
       count: result.count,
     }));
   }

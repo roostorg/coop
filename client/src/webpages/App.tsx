@@ -17,17 +17,11 @@ import AwaitingApproval from './auth/AwaitingApproval';
 import RejectedByAdmin from './auth/RejectedByAdmin';
 import './dashboard/Dashboard.css';
 
-function lazyLoad(path: string) {
-  // we must do this interpolation here for lazy loading to work properly for
-  // some reason. See https://stackoverflow.com/a/73359606
-  return React.lazy(async () => import(`${path}`));
-}
-
-const Login = lazyLoad('./auth/Login');
-const ForgotPassword = lazyLoad('./auth/forgot_password/ForgotPassword');
-const ResetPassword = lazyLoad('./auth/forgot_password/ResetPassword');
-const SignUp = lazyLoad('./auth/SignUp');
-const LoginSSO = lazyLoad('./auth/LoginSSO');
+const Login = React.lazy(async () => import('./auth/Login'));
+const ForgotPassword = React.lazy(async () => import('./auth/forgot_password/ForgotPassword'));
+const ResetPassword = React.lazy(async () => import('./auth/forgot_password/ResetPassword'));
+const SignUp = React.lazy(async () => import('./auth/SignUp'));
+const LoginSSO = React.lazy(async () => import('./auth/LoginSSO'));
 /**
  * This is the container for the React app. All React
  * components that render an entire webpage should be

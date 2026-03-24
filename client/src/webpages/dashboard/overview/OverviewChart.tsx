@@ -16,7 +16,7 @@ import sortBy from 'lodash/sortBy';
 import sum from 'lodash/sum';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import moment from 'moment';
+import { format } from 'date-fns';
 import {
   useCallback,
   useEffect,
@@ -323,9 +323,7 @@ export default function OverviewChart(props: {
 
   const formattedData = countsPerMetricPerTimeUnit?.map((it) => {
     const obj: { [key: string]: string | number } = {
-      ds: moment(new Date(parseInt(it.time)))
-        .local()
-        .format(`YYYY-MM-DD${timeDivision === 'HOUR' ? ' HH:mm' : ''}`),
+      ds: format(new Date(parseInt(it.time)), timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd'),
     };
     obj[getLineNameFromCount(it)] = it.count;
     return obj;

@@ -1,17 +1,17 @@
 import type { FilledIconProps } from '../types';
-import { ReactComponent as Binocular } from './binocular.svg';
-import { ReactComponent as BowAndArrow } from './bow-and-arrow.svg';
-import { ReactComponent as ChessQueen } from './chess-queen.svg';
-import { ReactComponent as ComputerSpeaker } from './computer-speaker.svg';
-import { ReactComponent as CricketBat } from './cricket-bat.svg';
-import { ReactComponent as Dice } from './dice.svg';
-import { ReactComponent as DisplaySlash } from './display-slash.svg';
-import { ReactComponent as Ethernet } from './ethernet.svg';
-import { ReactComponent as Feather } from './feather.svg';
-import { ReactComponent as Football } from './football.svg';
-import { ReactComponent as Ghost } from './ghost.svg';
-import { ReactComponent as HandsHolding } from './hands-holding.svg';
-import { ReactComponent as TruckMonster } from './truck-monster.svg';
+import Binocular from './binocular.svg?react';
+import BowAndArrow from './bow-and-arrow.svg?react';
+import ChessQueen from './chess-queen.svg?react';
+import ComputerSpeaker from './computer-speaker.svg?react';
+import CricketBat from './cricket-bat.svg?react';
+import Dice from './dice.svg?react';
+import DisplaySlash from './display-slash.svg?react';
+import Ethernet from './ethernet.svg?react';
+import Feather from './feather.svg?react';
+import Football from './football.svg?react';
+import Ghost from './ghost.svg?react';
+import HandsHolding from './hands-holding.svg?react';
+import TruckMonster from './truck-monster.svg?react';
 
 const BinocularFilled = (props: FilledIconProps) => (
   <Binocular fill="currentColor" {...props} />

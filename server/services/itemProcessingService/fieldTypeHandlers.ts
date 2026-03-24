@@ -82,7 +82,7 @@ const scalarGetValues = <T>(value: T): [T] => [value];
 export const fieldTypeHandlers: Handlers = {
 // NB: for ids (including user ids), we accept numbers or strings for user
 // convenience, but we always coerce the value to a string so that we're not
-// mixing strings and numbers in the same json column in snowflake (which
+// mixing strings and numbers in the same json column in the data warehouse (which
 // could drastically reduce perf).
   [ScalarTypes.USER_ID]: {
     // TODO (COOP-745): USER_ID will be deprecated
@@ -281,9 +281,9 @@ function coerceMediaUrlInput(value: unknown) {
     ? null
     : isValidUrl(value)
     ? // NB: `value` here CANNOT be typed as a UrlString, because we have some
-      // legacy submissions in Snowflake where the string is not a valid URL.
+      // legacy submissions in the data warehouse where the string is not a valid URL.
       // (Usually, it's the empty string, which previously got through.)
-      // TODO: replace all those submissions in snowflake with `field: null`,
+      // TODO: replace all those submissions in the data warehouse with `field: null`,
       // and then update the type here/in ScalarTypeRuntimeType.
       { url: value }
     : err;

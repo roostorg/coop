@@ -1,8 +1,8 @@
 import { type ReportingRuleErrorType } from './ReportingRules.js';
 
 // Needs to be exported because it's used in the contract for
-// snowflakeEventualWrite.
-export { type ReportingServiceSnowflakeSchema } from './dbTypes.js';
+// warehouse eventual-write tables.
+export { type ReportingServiceWarehouseSchema } from './dbTypes.js';
 export {
   type ReportingService,
   default as makeReportingService,

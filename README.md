@@ -26,7 +26,7 @@ We're developing Coop in the open and want to hear from you! Whether you're test
 * **Frontend**: React-based client application, AntDesign, GraphQL, TailwindCSS  
 * **Infrastructure**: Docker, Kubernetes  
 * **Model Service:** Python-based machine learning services.  
-* **Databases**: PostgreSQL, Snowflake, Scylla  
+* **Databases**: PostgreSQL, ClickHouse, Scylla  
 * **Caching**: Redis  
 * **Utility Services**: Database migrators, instrumentation, and proxy layers.  
 
@@ -79,12 +79,13 @@ npm install \
    npm run create-org
 ```
    
-   Use the credentials provided to log in at `http://localhost:3000`.
+Use the credentials provided to log in at `http://localhost:3000`.
+Please note that the initial page load may take a while.
 
 
 ### **Database Structure and Migrations**
 
-All of the data around the database tables ( SQL/Schema ) exist under the `.devops/migrator/src/scripts` folder where there is a folder for each service. ( api, scylla, snowflake, model service )
+All of the data around the database tables ( SQL/Schema ) exist under the `.devops/migrator/src/scripts` folder where there is a folder for each service (for example `api-server-pg`, `clickhouse`, `scylla`).
 
 ### **Management Scripts**
 
@@ -164,4 +165,4 @@ Writing code is not the only way to help the project. Reviewing pull requests, a
   * General discussion channel \#general  
   * Development discussions \#coop  
 * Join our [newsletter](https://roost.tools/#get-started) for more announcements and information  
-* Follow us on [LinkedIn](https://www.linkedin.com/company/roost-tools/) or [Bluesky](https://bsky.app/profile/roost.tools) 
+* Follow us on [LinkedIn](https://www.linkedin.com/company/roost-tools/) or [Bluesky](https://bsky.app/profile/roost.tools)

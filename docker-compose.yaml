@@ -8,22 +8,13 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24-bullseye-slim
+    image: node:24.14.0-bullseye-slim
     command: bash -c 'set -e
                       npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
                       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
-      # when running migrations locally, you must set these to target your
-      # personal db, as in:
-      #
-      # docker compose run \
-      #   -e SNOWFLAKE_ROLE=ACCOUNTADMIN \
-      #   -e SNOWFLAKE_USERNAME=YOUR_USERNAME \
-      #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
-      #   -e SNOWFLAKE_DB_NAME=YOURDB \
-      # migrations
       - MIGRATOR_DB_NAME
       - CLICKHOUSE_DATABASE
     volumes:
@@ -37,20 +28,11 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24-bullseye-slim
+    image: node:24.14.0-bullseye-slim
     command: bash -c 'npm i && npm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
-      # when running migrations locally, you must set these to target your
-      # personal db, as in:
-      #
-      # docker compose run \
-      #   -e SNOWFLAKE_ROLE=ACCOUNTADMIN \
-      #   -e SNOWFLAKE_USERNAME=YOUR_USERNAME \
-      #   -e SNOWFLAKE_PASSWORD='YOURPASSWORD' \
-      #   -e SNOWFLAKE_DB_NAME=YOURDB \
-      # drop_dbs
       - CLICKHOUSE_DATABASE
       - MIGRATOR_DB_NAME
     volumes:
@@ -101,58 +83,12 @@ services:
       retries: 28
       start_period: 35s
 
-  zookeeper:
-    image: zookeeper:3.7.0
-    container_name: zookeeper
-    ports:
-      - '22181:2181'
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  kafka:
-    image: confluentinc/cp-kafka:8.1.0-1-ubi9
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - '29092:29092'
-    # https://github.com/confluentinc/kafka-images/issues/127#issuecomment-1152703071
-    user: root
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-
-  schema_registry:
-    image: confluentinc/cp-schema-registry
-    container_name: schema-registry
-    depends_on:
-      - kafka
-    ports:
-      - '8081:8081'
-    environment:
-      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
-      SCHEMA_REGISTRY_HOST_NAME: schema_registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
-    volumes:
-      - schema_registry_data:/var/lib/schema-registry
-
   # Runs the api server's tests
   test:
     build:
       context: .
       dockerfile: Dockerfile
       target: server_base
-      args:
-        - OMIT_SNOWFLAKE
     command: bash -c 'npm run test:ci'
     working_dir: /app
     volumes:
@@ -162,10 +98,6 @@ services:
       migrations:
         condition: service_completed_successfully
       redis:
-        condition: service_started
-      kafka:
-        condition: service_started
-      schema_registry:
         condition: service_started
 
 
@@ -232,6 +164,4 @@ volumes:
   pg_data:
   scylla_data:
   redis_data:
-  kafka_data:
-  schema_registry_data:
   clickhouse_data:

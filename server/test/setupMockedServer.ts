@@ -58,7 +58,7 @@ export async function getBottleContainerWithIOMocks() {
 
   const startMock = jest.fn(() => {}) as IDataWarehouse['start'];
   const closeMock = jest.fn(async () => {}) as IDataWarehouse['close'];
-  const getProviderMock = jest.fn(() => 'snowflake') as IDataWarehouse['getProvider'];
+  const getProviderMock = jest.fn(() => 'clickhouse') as IDataWarehouse['getProvider'];
 
   const dataWarehouseMock: IDataWarehouse = {
     query: queryMock,
@@ -83,13 +83,11 @@ export async function getBottleContainerWithIOMocks() {
     'DataWarehouseAnalytics',
     analyticsMock,
   );
-  bottle.value('Snowflake', dataWarehouseMock);
   bottle.value('Tracer', tracer);
   return bottle.container as unknown as Omit<
     Dependencies,
-    'Snowflake' | 'DataWarehouse' | 'DataWarehouseAnalytics'
+    'DataWarehouse' | 'DataWarehouseAnalytics'
   > & {
-    Snowflake: typeof dataWarehouseMock;
     DataWarehouse: typeof dataWarehouseMock;
     DataWarehouseAnalytics: typeof analyticsMock;
   };

@@ -412,20 +412,22 @@ export default function ItemInvestigation(props: {
         );
       case 'ThreadItem':
         return (
-          <ThreadInvestigation
-            threadItem={item as GQLThreadItem}
-            rules={allRules ?? []}
-            itemTypes={(allItemTypes as GQLItemType[] | undefined) ?? []}
-            allActions={allActions ?? []}
-            allPolicies={allPolicies ?? []}
-            relatedActions={[]}
-            onEnqueueActions={(action) => {}}
-            isActionable={false}
-            requirePolicySelectionToEnqueueAction={
-              requiresPolicyForDecisionsInMrt
-            }
-            allowMoreThanOnePolicySelection={allowMultiplePoliciesPerAction}
-          />
+          <div className="flex flex-col w-full mb-8">
+            <ThreadInvestigation
+              threadItem={item as GQLThreadItem}
+              rules={allRules ?? []}
+              itemTypes={(allItemTypes as GQLItemType[] | undefined) ?? []}
+              allActions={allActions ?? []}
+              allPolicies={allPolicies ?? []}
+              relatedActions={[]}
+              onEnqueueActions={(action) => {}}
+              isActionable={false}
+              requirePolicySelectionToEnqueueAction={
+                requiresPolicyForDecisionsInMrt
+              }
+              allowMoreThanOnePolicySelection={allowMultiplePoliciesPerAction}
+            />
+          </div>
         );
     }
   })();

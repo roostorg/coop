@@ -457,11 +457,11 @@ export default function IntegrationConfigForm() {
       </div>
 
       {hasModelCard && apiModelCard ? (
-        <div className="flex flex-col lg:flex-row gap-8 w-full max-w-5xl">
+        <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl">
           <div className="flex-1 min-w-0">
             <ModelCardView card={apiModelCard} />
           </div>
-          <div className="flex flex-col lg:w-80 shrink-0">
+          <div className="flex flex-col lg:w-96 shrink-0">
             {apiModelCardLearnMoreUrl != null && (
               <a
                 href={apiModelCardLearnMoreUrl}
@@ -473,9 +473,9 @@ export default function IntegrationConfigForm() {
                 <span>Learn more about how to read model cards</span>
               </a>
             )}
-            <div className="font-semibold text-zinc-800 mb-2">Credentials</div>
+            <div className="font-semibold text-zinc-800 mb-2">Configuration</div>
             <div className="text-sm text-zinc-600 mb-3">
-              Configure your credentials below.
+              Configure your integration settings below.
             </div>
             <IntegrationConfigApiCredentialsSection
               name={integrationName}
@@ -483,6 +483,7 @@ export default function IntegrationConfigForm() {
               setApiCredential={(cred: GQLIntegrationApiCredential) =>
                 setApiCredential(cred)
               }
+              compact
             />
             {saveButton}
           </div>
