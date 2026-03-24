@@ -10,7 +10,7 @@
       ]
     },
     {
-      "paths": [".devops/migrator/src/scripts/**"],
+      "paths": ["db/src/scripts/**"],
       "triggers": ["create table", "add column", "alter column"],
       "items": [
         "Are as many columns marked NOT NULL as possible? If some columns can sometimes be null, but _not_ when another column is filled in, have you considered normalizing the schema further (see https://www.guru99.com/database-normalization.html)? If that's not viable/desirable, are there adequate SQL CHECK constraints to capture the relationships between column values (e.g., which can be null together), and are these also captured using unions in the associated kysely types?"

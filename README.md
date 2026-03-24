@@ -42,14 +42,14 @@ and then follow the steps below:
 
    Make sure all backing services (`postgres`, `clickhouse`, `scylla`, etc.) are up and running. (Scylla is needed for user data.)
 
-2. Install dependencies for the root, `client`, `server`, and `.devops/migrator` packages:
+2. Install dependencies for the root, `client`, `server`, and `db` packages:
    ```bash
    npm install
    (cd client && npm install)
    (cd server && npm install)
-   (cd .devops/migrator && npm install)
+   (cd db && npm install)
    ```
-3. Make sure the `.env` files for `/server` and `.devops/migrator` are populated (including ClickHouse credentials). Run database migrations:
+3. Make sure the `.env` files for `/server` and `db` are populated (including ClickHouse credentials). Run database migrations:
    ```bash
    npm run db:update -- --env staging --db api-server-pg
    npm run db:update -- --env staging --db scylla
@@ -63,7 +63,7 @@ You can combine the dependency installation and database migrations into a singl
 npm install \
   && (cd client && npm install) \
   && (cd server && npm install) \
-  && (cd .devops/migrator && npm install) \
+  && (cd db && npm install) \
   && npm run db:update -- --env staging --db api-server-pg \
   && npm run db:update -- --env staging --db clickhouse
 ```
@@ -85,7 +85,7 @@ Please note that the initial page load may take a while.
 
 ### **Database Structure and Migrations**
 
-All of the data around the database tables ( SQL/Schema ) exist under the `.devops/migrator/src/scripts` folder where there is a folder for each service (for example `api-server-pg`, `clickhouse`, `scylla`).
+All of the data around the database tables ( SQL/Schema ) exist under the `db/src/scripts` folder where there is a folder for each service (for example `api-server-pg`, `clickhouse`, `scylla`).
 
 ### **Management Scripts**
 
@@ -138,6 +138,10 @@ Detailed analytics on moderation effectiveness, rule performance, and content tr
 
 ### Scalable Architecture
 Built on modern cloud infrastructure with horizontal scaling, caching, and performance optimization.
+
+## Deployment
+
+For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available on the [`0.1` branch](https://github.com/roostorg/coop/tree/0.1/.devops). That infrastructure code may have drifted from the current application architecture and is no longer maintained, but can serve as a reference for your own deployment.
 
 ## Documentation
 
