@@ -84,20 +84,29 @@ export class TapAdminApi {
   }
 
   async getStats(): Promise<TapStats> {
-    const response = await fetch(`${this.baseUrl}/stats`, {
-      headers: this.headers,
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Tap getStats failed: ${response.status} ${await response.text()}`,
-      );
-    }
-    const data = (await response.json()) as Record<string, unknown>;
+    // Tap exposes individual stat endpoints, not a combined /stats
+    const [repoRes, recordRes, bufferRes, healthy] = await Promise.all([
+      fetch(`${this.baseUrl}/stats/repo-count`, { headers: this.headers }),
+      fetch(`${this.baseUrl}/stats/record-count`, { headers: this.headers }),
+      fetch(`${this.baseUrl}/stats/outbox-buffer`, { headers: this.headers }),
+      this.checkHealth(),
+    ]);
+
+    const repoData = repoRes.ok
+      ? ((await repoRes.json()) as Record<string, unknown>)
+      : {};
+    const recordData = recordRes.ok
+      ? ((await recordRes.json()) as Record<string, unknown>)
+      : {};
+    const bufferData = bufferRes.ok
+      ? ((await bufferRes.json()) as Record<string, unknown>)
+      : {};
+
     return {
-      repoCount: (data.repoCount as number) ?? 0,
-      recordCount: (data.recordCount as number) ?? 0,
-      outboxBuffer: (data.outboxBuffer as number) ?? 0,
-      isConnected: (data.isConnected as boolean) ?? false,
+      repoCount: (repoData.repo_count as number) ?? 0,
+      recordCount: (recordData.record_count as number) ?? 0,
+      outboxBuffer: (bufferData.outbox_buffer as number) ?? 0,
+      isConnected: healthy,
     };
   }
 
