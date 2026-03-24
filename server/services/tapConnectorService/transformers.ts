@@ -64,17 +64,18 @@ export function transformPost(event: TapRecordEvent): RawItemSubmission {
     typeId: ATPROTO_POST_TYPE_ID,
     data: {
       text: record.text ?? '',
-      authorDid: did,
+      // RELATED_ITEM fields require {id, typeId} objects
+      authorDid: { id: did, typeId: ATPROTO_ACCOUNT_TYPE_ID },
       rkey,
       cid,
       createdAt: record.createdAt ?? new Date().toISOString(),
       atUri,
       ...(images.length > 0 ? { images } : {}),
       ...(record.reply?.parent?.uri
-        ? { replyParent: record.reply.parent.uri }
+        ? { replyParent: { id: record.reply.parent.uri, typeId: ATPROTO_POST_TYPE_ID } }
         : {}),
       ...(record.reply?.root?.uri
-        ? { replyRoot: record.reply.root.uri }
+        ? { replyRoot: { id: record.reply.root.uri, typeId: ATPROTO_POST_TYPE_ID } }
         : {}),
       ...(record.langs ? { langs: record.langs } : {}),
       isLive: event.record.live,

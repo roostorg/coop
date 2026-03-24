@@ -29,7 +29,7 @@ INSERT INTO public.item_types (
     '{"name": "rkey", "type": "STRING", "required": true, "container": null}'::jsonb,
     '{"name": "cid", "type": "STRING", "required": false, "container": null}'::jsonb,
     '{"name": "createdAt", "type": "DATETIME", "required": true, "container": null}'::jsonb,
-    '{"name": "atUri", "type": "URL", "required": true, "container": null}'::jsonb,
+    '{"name": "atUri", "type": "STRING", "required": true, "container": null}'::jsonb,
     '{"name": "images", "type": "ARRAY", "required": false, "container": {"containerType": "ARRAY", "keyScalarType": null, "valueScalarType": "IMAGE"}}'::jsonb,
     '{"name": "replyParent", "type": "RELATED_ITEM", "required": false, "container": null}'::jsonb,
     '{"name": "replyRoot", "type": "RELATED_ITEM", "required": false, "container": null}'::jsonb,

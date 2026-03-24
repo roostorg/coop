@@ -47,6 +47,7 @@ const MenuItemNames = makeEnumLike([
   'NCMEC Settings',
   'SSO',
   'Organization',
+  'AT Protocol',
 ]);
 
 type MenuItemName = keyof typeof MenuItemNames;
