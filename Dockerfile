@@ -10,14 +10,7 @@
 FROM node:24.14.0-bullseye-slim AS server_base
 WORKDIR /app
 
-# Append "--build-arg OMIT_SNOWFLAKE='true'" to your call to avoid installing
-# optional snowflake-promise dependency
-ARG OMIT_SNOWFLAKE
-
 COPY ["server/package.json", "server/package-lock.json", "./"]
-RUN if [ "$OMIT_SNOWFLAKE" = "true" ]; then \
-      npm pkg set overrides.snowflake-promise='npm:empty-module@^1.0.0'; \
-    fi
 RUN npm ci
 COPY ["server", "./"]
 

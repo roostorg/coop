@@ -1,4 +1,4 @@
--- Create ClickHouse databases mirroring Snowflake schemas
+-- Create ClickHouse databases mirroring data warehouse schemas
 CREATE DATABASE IF NOT EXISTS analytics;
 CREATE DATABASE IF NOT EXISTS ACTION_STATISTICS_SERVICE;
 CREATE DATABASE IF NOT EXISTS MANUAL_REVIEW_TOOL;

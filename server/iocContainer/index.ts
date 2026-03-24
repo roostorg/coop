@@ -1,13 +1,10 @@
 /* eslint-disable max-lines */
 import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
-import { SchemaType } from '@kafkajs/confluent-schema-registry';
 import opentelemetry from '@opentelemetry/api';
 import { makeDateString, type ItemIdentifier } from '@roostorg/types';
-import avro from 'avsc';
 import { types as scyllaTypes } from 'cassandra-driver';
 import IORedis, { type Cluster } from 'ioredis';
-import { logLevel } from 'kafkajs';
 import * as knexPkg from 'knex';
 import { type Knex } from 'knex';
 import {
@@ -22,13 +19,13 @@ import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
-import Kafka, { SchemaRegistry, type SchemaIdFor } from '../kafka/index.js';
-import {
-  makeItemQueueBulkWrite,
-  type ItemQueueBulkWrite,
-} from '../kafka/itemQueueBulkWrite.js';
-import logCreator from '../kafka/logger.js';
 import makeDb from '../models/index.js';
+import {
+  makeItemSubmissionBulkWrite,
+  type ItemSubmissionBulkWrite,
+  ITEM_SUBMISSION_QUEUE_NAME,
+  ITEM_SUBMISSION_DLQ_NAME,
+} from '../queues/itemSubmissionQueue.js';
 import { type PolicyActionPenalties } from '../models/OrgModel.js';
 import { type HashBank, HashBankService } from '../services/hmaService/index.js';
 import makeActionPublisher, {
@@ -188,10 +185,6 @@ import {
 } from '../services/userStatisticsService/index.js';
 import { UserStrikeService } from '../services/userStrikeService/index.js';
 import {
-  type DataWarehouseOutboxKafkaMessageKey,
-  type DataWarehouseOutboxKafkaMessageValue,
-} from '../snowflake/snowflake.js';
-import {
   makeActionExecutionLogger,
   makeContentApiLogger,
   makeItemModelScoreLogger,
@@ -223,15 +216,10 @@ import {
 import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import {
   ClickhouseActionStatisticsAdapter,
-  SnowflakeActionStatisticsAdapter,
   ClickhouseReportingAnalyticsAdapter,
-  SnowflakeReportingAnalyticsAdapter,
   ClickhouseActionExecutionsAdapter,
-  SnowflakeActionExecutionsAdapter,
   ClickhouseContentApiRequestsAdapter,
-  SnowflakeContentApiRequestsAdapter,
   ClickhouseOrgCreationAdapter,
-  SnowflakeOrgCreationAdapter,
 } from '../plugins/warehouse/queries/index.js';
 import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
 import type { IReportingAnalyticsAdapter } from '../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
@@ -264,15 +252,10 @@ const require = createRequire(import.meta.url);
 const { Client: ScyllaClient } = require('cassandra-driver');
 export type { DataSources } from './services/gqlDataSources.js';
 
-// All Kafka topics and their schemas should be referenced here. Currently, we
-// have to create schemas and topics manually, and manually keep them in sync
-// across environments, which is hard to do reliably. Eventually, we'll have
-// an IaC solution that lets us keep these schemas in code somewhere and view
-// them in the repo. Until then, talk to Ethan if you need a new topic or schema.
-export type ItemSubmissionKafkaMessageKey = {
+export type ItemSubmissionMessageKey = {
   syntheticThreadId: string;
 };
-export type ItemSubmissionKafkaMessageValue = {
+export type ItemSubmissionMessageValue = {
   metadata: {
     syntheticThreadId: string;
     requestId: CorrelationId<'post-items'>;
@@ -288,21 +271,6 @@ export type ItemSubmissionKafkaMessageValue = {
       version: string;
       schemaVariant: 'original' | 'partial';
     };
-  };
-};
-
-export type KafkaSchemaMap = {
-  ITEM_SUBMISSION_EVENTS: {
-    keySchema: SchemaIdFor<ItemSubmissionKafkaMessageKey>;
-    valueSchema: SchemaIdFor<ItemSubmissionKafkaMessageValue>;
-  };
-  ITEM_SUBMISSION_EVENTS_RETRY_0: {
-    keySchema: SchemaIdFor<ItemSubmissionKafkaMessageKey>;
-    valueSchema: SchemaIdFor<ItemSubmissionKafkaMessageValue>;
-  };
-  DATA_WAREHOUSE_INGEST_EVENTS: {
-    keySchema: SchemaIdFor<DataWarehouseOutboxKafkaMessageKey>;
-    valueSchema: SchemaIdFor<DataWarehouseOutboxKafkaMessageValue>;
   };
 };
 
@@ -363,25 +331,10 @@ export interface Dependencies {
   ContentApiRequestsAdapter: IContentApiRequestsAdapter;
   OrgCreationAdapter: IOrgCreationAdapter;
 
-  // Deprecated Snowflake aliases - use DataWarehouse/DataWarehouseDialect instead
-  // Kept for backward compatibility with services that haven't migrated yet
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Snowflake: IDataWarehouse;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  KyselySnowflake: Kysely<any>;
-  
-  itemSubmissionQueueBulkWrite: ItemQueueBulkWrite;
-  itemSubmissionRetryQueueBulkWrite: ItemQueueBulkWrite;
+  itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
+  itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
   Knex: Knex;
   IORedis: IORedis.Redis | Cluster;
-  // We register the services as Kafka<any> so that each service that depends
-  // on Kafka can type its arg more specifically, based on the topic that
-  // it's supposed to be able to "see". E.g., the Snowflake Ingestion Worker can type
-  // its argument as `Kafka<Pick<KafkaSchemaMap, 'ITEM_SUBMISSION_EVENTS'>>`, so that its code can only
-  // read messages from the topic with the intended schema, and the `Kafka`
-  // service will be assignable to that argument because of the `any`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Kafka: Kafka<any>;
 
   // Loggers
   RuleExecutionLogger: RuleExecutionLogger;
@@ -562,124 +515,23 @@ export default async function getBottle() {
             dnsLookup: (address, callback) => callback(null, address),
             redisOptions: {
               tls: {},
+              // Required by BullMQ: its workers use blocking Redis commands
+              // that would otherwise be misinterpreted as timed-out requests.
+              maxRetriesPerRequest: null,
               username: safeGetEnvVar('REDIS_USER'),
               password: safeGetEnvVar('REDIS_PASSWORD'),
             },
           },
         )
       : new IORedis.default({
+          // Required by BullMQ: its workers use blocking Redis commands
+          // that would otherwise be misinterpreted as timed-out requests.
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
         }),
   );
 
-  bottle.factory('Kafka', () => {
-    // TODO: think about shutdown logic. Right now, creating this instance
-    // doesn't open up any resources that need to be shutdown, so we're ok.
-    // However, when a producer/consumer are created from this instance and then
-    // they call .connect(), that opens a connection that we must terminate by
-    // manually calling .disconnect() on shutdown. Maybe there's a more
-    // elegant/robust way?
-    return new Kafka(
-      {
-        // NB: Confluent Cloud exposes only one endpoint URL that load balances
-        // between multiple brokers, so we don't need to worry about splitting
-        // this to an array.
-        brokers: [safeGetEnvVar('KAFKA_BROKER_HOST')],
-        ...(['CI', 'development'].includes(process.env.NODE_ENV ?? 'production') ? {} : {
-          ssl: true,
-          sasl: {
-            mechanism: 'plain',
-            username: safeGetEnvVar('KAFKA_BROKER_USERNAME'),
-            password: safeGetEnvVar('KAFKA_BROKER_PASSWORD'),
-          },
-        }),
-        // Found experimentally. Confluent docs seem to recommend setting at
-        // least some timeouts to a value above 10s, but they don't mention a
-        // specific value to use, and the setting described in those docs may
-        // not map 1:1 to a kafkajs setting. Nevertheless, the kafkajs default
-        // of 1s was giving timeout errors, so we had to bump this. See
-        // https://docs.confluent.io/cloud/current/cp-component/clients-cloud-config.html#prerequisitesq
-        connectionTimeout: 10_000,
-        // Default here is 30s but we set it to avoid long-running requests
-        // wait that long.
-        requestTimeout: 10_000,
-        // Set clientId to help with monitoring/observability.
-        // See https://kafka.js.org/docs/configuration#client-id
-        clientId: getEnvVarOrWarn('OTEL_SERVICE_NAME'),
-        logLevel: logLevel.WARN,
-        logCreator,
-      },
-      {
-        DATA_WAREHOUSE_INGEST_EVENTS: {
-          keySchema: parseInt(
-            safeGetEnvVar('KAFKA_TOPIC_KEY_SCHEMA_ID_DATA_WAREHOUSE_INGEST_EVENTS'),
-          ) as SchemaIdFor<DataWarehouseOutboxKafkaMessageKey>,
-          valueSchema: parseInt(
-            safeGetEnvVar(
-              'KAFKA_TOPIC_VALUE_SCHEMA_ID_DATA_WAREHOUSE_INGEST_EVENTS',
-            ),
-          ) as SchemaIdFor<DataWarehouseOutboxKafkaMessageValue>,
-        },
-        ITEM_SUBMISSION_EVENTS: {
-          keySchema: parseInt(
-            safeGetEnvVar('KAFKA_TOPIC_KEY_SCHEMA_ID_ITEM_SUBMISSION_EVENTS'),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageKey>,
-          valueSchema: parseInt(
-            safeGetEnvVar('KAFKA_TOPIC_VALUE_SCHEMA_ID_ITEM_SUBMISSION_EVENTS'),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageValue>,
-        },
-        ITEM_SUBMISSION_EVENTS_RETRY_0: {
-          keySchema: parseInt(
-            safeGetEnvVar(
-              'KAFKA_TOPIC_KEY_SCHEMA_ID_ITEM_SUBMISSION_EVENTS_RETRY_0',
-            ),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageKey>,
-          valueSchema: parseInt(
-            safeGetEnvVar(
-              'KAFKA_TOPIC_VALUE_SCHEMA_ID_ITEM_SUBMISSION_EVENTS_RETRY_0',
-            ),
-          ) as SchemaIdFor<ItemSubmissionKafkaMessageValue>,
-        },
-      },
-      new SchemaRegistry(
-        {
-          host: safeGetEnvVar('KAFKA_SCHEMA_REGISTRY_HOST'),
-          auth: {
-            username: safeGetEnvVar('KAFKA_SCHEMA_REGISTRY_USERNAME'),
-            password: safeGetEnvVar('KAFKA_SCHEMA_REGISTRY_PASSWORD'),
-          },
-        },
-        {
-          [SchemaType.AVRO]: {
-            logicalTypes: {
-              // Implementation copied from avsc docs.
-              // See https://gist.github.com/mtth/1aec40375fbcb077aee7#file-date-js
-              'timestamp-millis': class extends avro.types.LogicalType {
-                override _fromValue(val: string) {
-                  return new Date(val);
-                }
-                override _toValue(date: Date) {
-                  return date instanceof Date ? Number(date) : undefined;
-                }
-                override _resolve(type: unknown) {
-                  return avro.Type.isType(
-                    type,
-                    'long',
-                    'string',
-                    'logical:timestamp-millis',
-                  )
-                    ? this._fromValue
-                    : undefined;
-                }
-              },
-            },
-          },
-        },
-      ),
-    );
-  });
 
   bottle.factory('Sequelize', () => makeDb());
   bottle.factory('OrgModel', ({ Sequelize }) => Sequelize.Org);
@@ -718,141 +570,55 @@ export default async function getBottle() {
 
   bottle.factory('DataWarehouseAnalytics', (container) => {
     const config = DataWarehouseFactory.createConfigFromEnv();
-    const enhancedConfig = {
-      ...config,
-      kafka: config.provider === 'snowflake' ? container.Kafka : undefined,
-    };
     return DataWarehouseFactory.createAnalyticsAdapter(
-      enhancedConfig,
+      config,
       container.DataWarehouseDialect,
     );
   });
 
   bottle.factory('ActionStatisticsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseActionStatisticsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeActionStatisticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeActionStatisticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
+    return new ClickhouseActionStatisticsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('OrgCreationAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseOrgCreationAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeOrgCreationAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      default:
-        return new SnowflakeOrgCreationAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-    }
+    return new ClickhouseOrgCreationAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('ReportingAnalyticsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseReportingAnalyticsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeReportingAnalyticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeReportingAnalyticsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
+    return new ClickhouseReportingAnalyticsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('ActionExecutionsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseActionExecutionsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeActionExecutionsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeActionExecutionsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
+    return new ClickhouseActionExecutionsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('ContentApiRequestsAdapter', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    // eslint-disable-next-line switch-statement/require-appropriate-default-case
-    switch (config.provider) {
-      case 'clickhouse':
-        return new ClickhouseContentApiRequestsAdapter(
-          container.DataWarehouse,
-          container.Tracer,
-        );
-      case 'snowflake':
-        return new SnowflakeContentApiRequestsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-      default:
-        return new SnowflakeContentApiRequestsAdapter(
-          container.DataWarehouseDialect.getKyselyInstance(),
-        );
-    }
-  });
-
-  // Snowflake-specific utilities - delegate to abstraction
-  bottle.factory('Snowflake', (container) => {
-    return container.DataWarehouse;
-  });
-
-  bottle.factory('KyselySnowflake', (container) => {
-    return container.DataWarehouseDialect.getKyselyInstance();
+    return new ClickhouseContentApiRequestsAdapter(
+      container.DataWarehouse,
+      container.Tracer,
+    );
   });
 
   bottle.factory('itemSubmissionQueueBulkWrite', (container) =>
-    makeItemQueueBulkWrite(container.Kafka, 'ITEM_SUBMISSION_EVENTS'),
+    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_QUEUE_NAME),
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
-    makeItemQueueBulkWrite(container.Kafka, 'ITEM_SUBMISSION_EVENTS_RETRY_0'),
+    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
   );
 
   // Legacy service deprecated in favor of kysely.
-  // NB: for knex, we're using the pg dialect because it's the closest one to
-  // Snowflake, which knex doesn't support explicitly. The only difference
-  // should be, since Knex quotes all identifiers, that we have to make sure we
-  // pass in UPPER_CASE identifiers, as the canonical form of Snowflake
-  // identifiers (which is the form that must be provided in quoted identifier
-  // references) is usually uppercase.
   bottle.value(
     'Knex',
     knexPkg.default.knex({
@@ -1470,7 +1236,7 @@ export default async function getBottle() {
                     break;
                   case 'NCMEC':
                     // TODO: the NCMEC service is currently in charge of NCMEC job
-                    // enrichment, but once we replace the NCMEC snowflake job with
+                    // enrichment, but once we replace the NCMEC warehouse job with
                     // Scylla we should move it back into the MRT service
                     await container.NcmecService.enqueueForHumanReviewIfApplicable(
                       {
@@ -1744,7 +1510,7 @@ export default async function getBottle() {
   bottle.factory('closeSharedResourcesForShutdown', (container) => {
     // NB: we have to be careful that calling this shutdown function doesn't
     // _start up_ any of these shared services that it'd be shutting down (like
-    // a snowflake connection). Inadvertently starting up services when we're 
+    // a data warehouse connection). Inadvertently starting up services when we're
     // trying to shut down would be ironic, but it would also cause big crashes,
     // as some of these services won't start correctly
     // in some contexts (e.g., in a worker that doesn't have the required
@@ -1784,9 +1550,6 @@ export default async function getBottle() {
             | 'ItemTypeModel'
             | 'LocationBankModel'
             | 'LocationBankLocationModel'
-            // Deprecated services that delegate to DataWarehouse
-            | 'Snowflake'
-            | 'KyselySnowflake'
             // Services that don't need cleanup
             | 'UserStatisticsService'
             | 'HMAHashBankService'

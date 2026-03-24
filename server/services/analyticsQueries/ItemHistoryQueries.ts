@@ -5,9 +5,9 @@ import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { jsonParse } from '../../utils/encoding.js';
 import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import {
-  sfDateToDate,
-  sfDateToDateOnlyString,
-} from '../../snowflake/types.js';
+  warehouseDateToDate,
+  warehouseDateToDateOnlyString,
+} from '../../storage/dataWarehouse/warehouseSchema.js';
 
 type ItemHistoryQueryFilter = {
   passed?: boolean;
@@ -89,8 +89,8 @@ class ItemHistoryQueries {
         ruleName: it.ruleName,
         policies: it.policies,
         tags: it.tags,
-        date: sfDateToDateOnlyString(it.ds),
-        ts: sfDateToDate(it.ts),
+        date: warehouseDateToDateOnlyString(it.ds),
+        ts: warehouseDateToDate(it.ts),
         contentId: itemId,
       }));
     } catch (error) {

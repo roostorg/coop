@@ -6,7 +6,7 @@ import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
-import moment from 'moment';
+import { format } from 'date-fns';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Area,
@@ -177,7 +177,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
       return (
         <div className="flex flex-col bg-white rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-t-lg bg-primary">
-            {moment(label).format('MM/DD/YY')}
+            {format(new Date(label as string), 'MM/dd/yy')}
           </div>
           {data.length > 1 && (
             <div className="flex flex-col">

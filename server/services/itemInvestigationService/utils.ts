@@ -32,9 +32,9 @@ export function getSyntheticThreadId(
 }
 
 /**
- * TODO: Eventually this should handle rows from both snowflake and scylla more
- * naturally, but right now we're required to convert the snowflake shape into a
- * scylla-specific shape
+ * TODO: Eventually this should handle rows from both the data warehouse and Scylla more
+ * naturally, but right now we're required to convert the warehouse row shape into a
+ * Scylla-specific shape
  */
 export function dbRowToItemSubmissionWithItemTypeIdentifier(row: {
   submission_id: SubmissionId;

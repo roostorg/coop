@@ -1,8 +1,8 @@
 /**
  * Data Warehouse Storage Abstraction
- * 
+ *
  * This module provides an abstraction layer for data warehouse operations,
- * allowing easy switching between different providers (Snowflake, Clickhouse, etc.)
+ * allowing easy switching between different providers (Clickhouse, etc.)
  */
 
 export {
@@ -12,11 +12,6 @@ export {
   type DataWarehousePoolSettings,
   type TransactionFunction,
 } from './IDataWarehouse.js';
-
-export {
-  SnowflakeKyselyAdapter,
-  type SnowflakeConnectionSettings,
-} from './SnowflakeAdapter.js';
 
 export {
   ClickhouseKyselyAdapter,

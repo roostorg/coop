@@ -20,9 +20,7 @@ type ApiStackProps = StackProps & {
   datadogApiSecret: string; // currently unused
   stage: DeploymentEnvironmentName;
   datadogRedisSecret: string;
-  datadogSnowflakeSecret: string;
   scyllaSecret: string;
-  monitorSnowflakeAccountUsage: boolean; // we only want to do this in one environment
   tracingSamplingPercentage: string;
 };
 
@@ -90,11 +88,7 @@ export class DatadogStack extends Stack {
           'secretsmanager:GetSecretValue',
           'secretsmanager:DescribeSecret',
         ],
-        resources: [
-          props.datadogRedisSecret,
-          props.datadogSnowflakeSecret,
-          props.scyllaSecret,
-        ],
+        resources: [props.datadogRedisSecret, props.scyllaSecret],
       }),
     );
 
@@ -153,10 +147,6 @@ export class DatadogStack extends Stack {
 
     const secretVolumeName = 'secret-volume';
     const datadogSecretsProviderName = 'datadog-secret-provider';
-    const snowflakeUsernameFilename = 'snowflake-username';
-    const snowflakePasswordFilename = 'snowflake-password';
-    const snowflakeRoleFilename = 'snowflake-role';
-    const snowflakeAccountFilename = 'snowflake-account';
     const redisUsernameFilename = 'redis-username';
     const redisPasswordFilename = 'redis-password';
     const redisHostFilename = 'redis-host';
@@ -197,27 +187,6 @@ export class DatadogStack extends Stack {
                 ],
               },
               {
-                objectName: props.datadogSnowflakeSecret,
-                jmesPath: [
-                  {
-                    path: 'username',
-                    objectAlias: snowflakeUsernameFilename,
-                  },
-                  {
-                    path: 'password',
-                    objectAlias: snowflakePasswordFilename,
-                  },
-                  {
-                    path: 'account',
-                    objectAlias: snowflakeAccountFilename,
-                  },
-                  {
-                    path: 'role',
-                    objectAlias: snowflakeRoleFilename,
-                  },
-                ],
-              },
-              {
                 objectName: props.scyllaSecret,
                 jmesPath: [
                   {
@@ -233,18 +202,6 @@ export class DatadogStack extends Stack {
     );
 
     const secretsMountPath = '/etc/secrets';
-
-    const snowflakeInstances = [];
-
-    props.monitorSnowflakeAccountUsage &&
-      // this config is for monitoring account level usage and we only want to do that once (in prod)
-      snowflakeInstances.push({
-        account: `ENC[file@${secretsMountPath}/${snowflakeAccountFilename}]`,
-        username: `ENC[file@${secretsMountPath}/${snowflakeUsernameFilename}]`,
-        password: `ENC[file@${secretsMountPath}/${snowflakePasswordFilename}]`,
-        role: `ENC[file@${secretsMountPath}/${snowflakeRoleFilename}]`,
-        min_collection_interval: 3600,
-      });
 
     const datadogAgent = cluster.addHelmChart('DatadogAgent', {
       chart: 'datadog',
@@ -453,10 +410,6 @@ export class DatadogStack extends Stack {
                   ssl: true,
                 },
               ],
-            }),
-            'snowflake.yaml': jsonToPrettyYaml.stringify({
-              cluster_check: true,
-              instances: snowflakeInstances,
             }),
             'scylla.yaml': jsonToPrettyYaml.stringify({
               cluster_check: true,

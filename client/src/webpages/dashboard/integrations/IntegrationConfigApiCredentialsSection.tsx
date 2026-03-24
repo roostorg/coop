@@ -12,14 +12,16 @@ export default function IntegrationConfigApiCredentialsSection(props: {
   name: string;
   setApiCredential: (cred: GQLIntegrationApiCredential) => void;
   apiCredential: GQLIntegrationApiCredential;
+  compact?: boolean;
 }) {
-  const { setApiCredential, apiCredential } = props;
+  const { setApiCredential, apiCredential, compact } = props;
+  const inputWidthClass = compact ? 'w-full' : 'w-1/2';
 
   const renderGoogleContentSafetyApiCredential = (
     apiCredential: GQLGoogleContentSafetyApiIntegrationApiCredential,
   ) => {
     return (
-      <div className="flex flex-col w-1/2">
+      <div className={`flex flex-col ${inputWidthClass}`}>
         <div className="mb-1">API Key</div>
         <Input
           value={apiCredential.apiKey}
@@ -38,7 +40,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     apiCredential: GQLOpenAiIntegrationApiCredential,
   ) => {
     return (
-      <div className="flex flex-col w-1/2">
+      <div className={`flex flex-col ${inputWidthClass}`}>
         <div className="mb-1">API Key</div>
         <Input
           value={apiCredential.apiKey}
@@ -88,7 +90,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
 
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col w-1/2">
+        <div className={`flex flex-col ${inputWidthClass}`}>
           <div className="mb-1">API Key</div>
           <Input
             value={apiCredential.apiKey}
@@ -100,10 +102,13 @@ export default function IntegrationConfigApiCredentialsSection(props: {
             }
           />
         </div>
-        <div className="flex flex-col w-1/2">
+        <div className={`flex flex-col ${inputWidthClass}`}>
           <div className="mb-2 font-semibold">Labeler Versions</div>
           {labelerVersions.map((version, index) => (
-            <div key={index} className="flex items-center gap-2 mb-2">
+            <div
+              key={index}
+              className={`flex gap-2 mb-2 ${compact ? 'flex-col' : 'flex-row items-center'}`}
+            >
               <Input
                 placeholder="Version ID"
                 value={version.id}
@@ -125,14 +130,15 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 icon={<Trash2 size={14} />}
                 onClick={() => removeLabelerVersion(index)}
                 danger
+                className={compact ? 'self-end' : ''}
               />
             </div>
           ))}
           <Button
             type="dashed"
-            icon={<Plus size={14} />}
+            icon={<Plus size={14} className="inline-block" />}
             onClick={addLabelerVersion}
-            className="w-fit"
+            className={compact ? 'w-full' : 'w-fit'}
           >
             Add Labeler Version
           </Button>
@@ -159,7 +165,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     return (
       <div className="flex flex-col gap-4">
         {fieldsToShow.map(([key, value]) => (
-          <div key={key} className="flex flex-col w-1/2">
+          <div key={key} className={`flex flex-col ${inputWidthClass}`}>
             <div className="mb-1">
               {PLUGIN_FIELD_LABELS[key] ?? key}
             </div>

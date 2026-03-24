@@ -97,7 +97,7 @@ jobs:
           # the datestamp.
           #
           # NB: The filename will look something like:
-          # 2022.12.22T03.39.16.test_snowflake_migration.(cjs|sql|cql)
+          # 2022.12.22T03.39.16.example_migration.(cjs|sql|cql)
           datestamp() {
             echo $(basename $1 | rev | cut -d . -f3- | rev)
           }
@@ -153,8 +153,6 @@ jobs:
     if: needs.check_for_server_changes.outputs.result == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      SNOWFLAKE_DB_NAME: CI_DB_${{ github.run_id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

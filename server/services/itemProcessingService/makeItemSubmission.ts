@@ -74,7 +74,7 @@ export type ItemSubmission<Type extends ItemType = ItemType> = Opaque<
      * scheme.
      *
      * Submission time is optional because we'd have to do some semi-involved
-     * Snowflake migrations to populate it on existing submissions. However, the
+     * data warehouse migrations to populate it on existing submissions. However, the
      * intention is to store it for all new submissions going forward (although
      * that's unfortunately difficult to enforce). Submissions for the same item
      * without a `submissionTime` have undefined ordering.
@@ -131,7 +131,7 @@ export type ItemSubmission<Type extends ItemType = ItemType> = Opaque<
  *
  * It accepts creatorId and creatorTypeId as separate inputs in order to
  * populate the `ItemSubmission.creator` when creating an `ItemSubmission` from
- * legacy a Snowflake row. In those rows, the creator info is only stored in
+ * legacy a data warehouse row. In those rows, the creator info is only stored in
  * separate columns (i.e., it's not part of the item data). Once we add the
  * creator info to the data in these legacy submissions, we can remove creatorId
  * and creatorTypeId as explicit arguments. Until then, we make them required to
@@ -139,7 +139,7 @@ export type ItemSubmission<Type extends ItemType = ItemType> = Opaque<
  * to select those columns.
  *
  * When this is called with new records as it's input, where the data does hold
- * the creator (e.g., in the REPORTS snowflake table), creatorId and
+ * the creator (e.g., in the REPORTS warehouse table), creatorId and
  * creatorTypeId can be explicitly set null, and the function will look in the
  * data to try to fill in the creator.
  */
@@ -194,7 +194,7 @@ export async function submissionDataToItemSubmission(
  * first enters our system, as it assigns the submissionId and does validation.
  *
  * It's _not_ meant to be used when we're reconstituting an ItemSubmission from
- * stored data (e.g., in Snowflake), as we don't want to assign a new
+ * stored data (e.g., in the data warehouse), as we don't want to assign a new
  * SubmissionId in that case. For that, see {@link submissionDataToItemSubmission}.
  */
 export async function rawItemSubmissionToItemSubmission(
@@ -308,7 +308,7 @@ function getCreator(itemType: ItemType, itemData: NormalizedItemData) {
  *
  * To ensure uniqueness and unguessability, we now generate these as UUID v4s.
  * However, we previously used a mix of uuid v1 (our code's old default), uuid
- * v4 (when backfilling some rows in snowlfake), and (due to bugs) some strings
+ * v4 (when backfilling some rows in the data warehouse), and (due to bugs) some strings
  * that weren't uuids at all. Therefore, code consuming SubmissionIds can't
  * assume anything about it other than that it's a unique, opaque string.
  *

@@ -7,7 +7,7 @@
  * - Use Kysely with PostgreSQL dialect
  * - Use COPY for bulk inserts
  * - Use logical replication for CDC (Debezium/pglogical)
- * - See SnowflakeAnalyticsAdapter.ts for reference
+ * - See ClickhouseAnalyticsAdapter for a concrete analytics adapter reference
  * - See ../README.md for implementation guide
  */
 

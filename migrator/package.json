@@ -1,6 +1,6 @@
 {
   "name": "@roostorg/db-migrator",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "CLI tool for managing database migrations and seeding. Designed for modern scalable systems.",
   "type": "module",
   "scripts": {
@@ -15,6 +15,11 @@
   "files": [
     "build"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roostorg/coop",
+    "directory": "migrator"
+  },
   "author": "Roostorg",
   "license": "ISC",
   "dependencies": {

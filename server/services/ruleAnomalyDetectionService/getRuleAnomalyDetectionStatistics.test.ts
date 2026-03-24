@@ -5,7 +5,7 @@ import makeGetRuleAnomalyDetectionStatistics from './getRuleAnomalyDetectionStat
 /**
  * @fileoverview The testing strategy here is to just snapshot the queries
  * that our service function is generating, and run those manually to verify
- * that they work. If we update the snowflake structure, we can update the
+ * that they work. If we update the warehouse structure, we can update the
  * snapshots and manually re-run the new queries. But having these snapshots at
  * least makes sure we can't change inadvertently change the generated queries.
  */
@@ -35,7 +35,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
       transaction: jest.fn(),
       start: jest.fn(),
       close: jest.fn(),
-      getProvider: () => 'snowflake' as const,
+      getProvider: () => 'clickhouse' as const,
     };
 
     // Scope of this is just the test suite, so mutation should be ok.
@@ -53,7 +53,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
     queryMock.mockClear();
   });
 
-  test('should return the result from snowflake, properly formatted', async () => {
+  test('should return the result from the warehouse, properly formatted', async () => {
     const result = await getRulePassStatistics();
     expect(result).toEqual([
       {

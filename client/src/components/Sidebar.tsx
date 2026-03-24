@@ -270,7 +270,7 @@ export default function Sidebar(props: SidebarProps) {
     <div
       className={`relative flex flex-col justify-between bg-white ${
         collapsed ? '' : 'min-w-[250px]'
-      } text-[14px]`}
+      } text-[14px] leading-normal`}
     >
       <div className="flex flex-col p-[14px]">
         <div className="flex items-center justify-between mb-[24px]">

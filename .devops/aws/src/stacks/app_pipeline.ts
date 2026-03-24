@@ -57,15 +57,9 @@ export type AppPipelineStackProps = cdk.StackProps & {
 };
 
 type EnvSpecificArns = {
-  snowflakeSecret: string;
   sessionSecret: string;
   redisSecret: string;
-  kafkaSchemaRegistrySecret: string;
-  kafkaApiServiceAccountSecret: string;
-  kafkaSnowflakeWorkerServiceAccountSecret: string;
-  snowpipeQueue?: string;
   datadogRedisSecret: string;
-  datadogSnowflakeSecret: string;
   scyllaSecret: string;
   graphqlOpaqueScalarSecret: string;
 };
@@ -220,21 +214,11 @@ class DeploymentEnv extends Stage {
       clusterSecurityGroup: clusterStack.cluster.clusterSecurityGroup,
       kubernetesClusterAttributes: clusterAttributes,
       scyllaSecretArn: props.arns.scyllaSecret,
-      snowflakeSecretArn: props.arns.snowflakeSecret,
     });
 
     const rdsReadOnlyClusterHost = this.dbStack.rdsReadOnlyClusterHost;
 
     this.k8sOutputs = clusterStack.outputs;
-
-    const kafkaHosts = {
-      // TODO: wire this up more dynamically when we have IaC in place for Confluent.
-      // NB: it's intentional that the same url is used for all environments, as the
-      // staging and prod clusters we're using on Confluent Cloud both happen to be
-      // exposed through the same frontend endpoint on our current plan.
-      broker: 'pkc-ymrq7.us-east-2.aws.confluent.cloud:9092',
-      schemaRegistry: 'https://psrc-68gz8.us-east-2.aws.confluent.cloud',
-    };
 
     // Define all secrets here, using common env var names,
     // and then we can pick subsets to pass to each deployment w/i each stack.
@@ -273,37 +257,10 @@ class DeploymentEnv extends Stage {
       DATABASE_NAME: [this.dbStack.rdsConnectionSecretArn, 'dbname'],
       DATABASE_USER: [this.dbStack.rdsConnectionSecretArn, 'username'],
       DATABASE_PASSWORD: [this.dbStack.rdsConnectionSecretArn, 'password'],
-      SNOWFLAKE_USERNAME: [arns.snowflakeSecret, 'username'],
-      SNOWFLAKE_PASSWORD: [arns.snowflakeSecret, 'password'],
-      SNOWFLAKE_DB_NAME: [arns.snowflakeSecret, 'database'],
       GOOGLE_TRANSLATE_API_KEY: [
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/Api/GoogleTranslateApiKey-MCdqWJ',
       ],
       GRAPHQL_OPAQUE_SCALAR_SECRET: [arns.graphqlOpaqueScalarSecret],
-      KAFKA_API_SERVICE_ACCOUNT_USERNAME: [
-        arns.kafkaApiServiceAccountSecret,
-        'API_KEY',
-      ],
-      KAFKA_API_SERVICE_ACCOUNT_PASSWORD: [
-        arns.kafkaApiServiceAccountSecret,
-        'API_SECRET',
-      ],
-      KAFKA_SNOWFLAKE_INGEST_SERVICE_ACCOUNT_USERNAME: [
-        arns.kafkaSnowflakeWorkerServiceAccountSecret,
-        'API_KEY',
-      ],
-      KAFKA_SNOWFLAKE_INGEST_SERVICE_ACCOUNT_PASSWORD: [
-        arns.kafkaSnowflakeWorkerServiceAccountSecret,
-        'API_SECRET',
-      ],
-      KAFKA_SCHEMA_REGISTRY_USERNAME: [
-        arns.kafkaSchemaRegistrySecret,
-        'USERNAME',
-      ],
-      KAFKA_SCHEMA_REGISTRY_PASSWORD: [
-        arns.kafkaSchemaRegistrySecret,
-        'PASSWORD',
-      ],
       SLACK_APP_BEARER_TOKEN: [
         'arn:aws:secretsmanager:us-east-2:361188080279:secret:prod/SlackService-UH2lqy',
         'bearer_token',
@@ -320,9 +277,7 @@ class DeploymentEnv extends Stage {
           datadogApiSecret: globalArns.datadogSecret,
           stage: id,
           datadogRedisSecret: arns.datadogRedisSecret,
-          datadogSnowflakeSecret: arns.datadogSnowflakeSecret,
           scyllaSecret: arns.scyllaSecret,
-          monitorSnowflakeAccountUsage: id === 'Prod',
           tracingSamplingPercentage: props.tracingSamplingPercentage,
         })
       : undefined;
@@ -367,7 +322,6 @@ class DeploymentEnv extends Stage {
         dockerTagPrefix: `${id}-api-`,
       }),
       rdsReadOnlyClusterHost,
-      kafkaHosts,
       apiGateway: {
         apiName: `Coop ${id} API`,
         usagePlans: [
@@ -452,10 +406,7 @@ class DeploymentEnv extends Stage {
       }),
       clusterAttributes,
       secrets,
-      kafkaHosts,
-      snowpipeQueueArn: arns.snowpipeQueue,
       rdsReadOnlyClusterHost,
-      statefulResourceRemovalPolicy,
       provisionProdLevelsOfCompute,
       enableDatadog: props.enableDatadog,
     });

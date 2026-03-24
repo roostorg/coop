@@ -9,7 +9,7 @@ import { jsonStringifyUnstable } from '../../utils/encoding.js';
 import { getUtcDateOnlyString } from '../../utils/time.js';
 
 // NB: when an incoming POST /items/scores api request fails, the content submission
-// logged to snowflake might not be in a valid, processable shape (in fact, it
+// logged to the data warehouse might not be in a valid, processable shape (in fact, it
 // may be that the content api request failed _because_ the content submission
 // was invalid).
 export type ItemModelScoreLogEntry<HasFailure extends boolean> = {

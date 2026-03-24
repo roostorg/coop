@@ -11,7 +11,7 @@ import { getUtcDateOnlyString } from '../../utils/time.js';
 import { type RuleExecutionCorrelationId } from './ruleExecutionLoggingUtils.js';
 
 // NB: when an incoming POST /content api request fails, the content submission
-// logged to snowflake might not be in a valid, processable shape (in fact, it
+// logged to the data warehouse might not be in a valid, processable shape (in fact, it
 // may be that the content api request failed _because_ the content submission
 // was invalid).
 export type ContentApiRequestLogEntry<HasFailure extends boolean> = {

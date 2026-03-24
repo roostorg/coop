@@ -24,7 +24,7 @@ const logJsonSelector = 'CallExpression[callee.name="logJson"]';
 const logErrorJsonSelector = 'CallExpression[callee.name="logErrorJson"]';
 
 const unmanagedSequelizeTransactionSelector =
-  'CallExpression[arguments.length=0] > MemberExpression[property.name="transaction"][object.name!=/pgQuery|snowflake|kysely|pg/][object.object.type!="ThisExpression"]';
+  'CallExpression[arguments.length=0] > MemberExpression[property.name="transaction"][object.name!=/pgQuery|kysely|pg/][object.object.type!="ThisExpression"]';
 
 const badHttpClientsImportSelector =
   'ImportDeclaration[source.value=/^(axios|node-fetch)$/]';
@@ -327,7 +327,6 @@ const maintainabilityReadabilityRules = {
         {
           target: [
             './services',
-            './snowflake',
             './routes',
             './rule_engine',
             './workers_jobs',

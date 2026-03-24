@@ -55,8 +55,8 @@ exports[`No explicit any in client`] = {
       [81, 60, 3, "Unexpected any. Specify a different type.", "193409811"],
       [87, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/utils/time.ts:1295270482": [
-      [88, 26, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/utils/time.ts:1049738888": [
+      [102, 26, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/utils/tree.ts:941588075": [
       [24, 28, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -102,60 +102,60 @@ exports[`No explicit any in client`] = {
     "client/src/webpages/dashboard/investigation/ItemInvestigationRuleResults.tsx:3506874863": [
       [275, 36, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/mrt/ManualReviewQueueJobsPreview.tsx:3455366577": [
+    "client/src/webpages/dashboard/mrt/ManualReviewQueueJobsPreview.tsx:2445374732": [
       [220, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx:3836324260": [
       [180, 37, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:410454036": [
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:855557376": [
       [699, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [747, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+      [745, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/overview/OverviewChart.tsx:1863712875": [
-      [372, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/webpages/dashboard/overview/OverviewChart.tsx:3135116127": [
+      [370, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/dashboard/ReportingRulesDashboard.tsx:1325204439": [
       [146, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx:3586802679": [
+    "client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx:329939153": [
       [192, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2418477128": [
-      [309, 21, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [338, 19, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [397, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [410, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [422, 28, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [439, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [661, 20, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2980923118": [
+      [311, 21, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [340, 19, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [399, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [412, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [424, 28, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [441, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [663, 20, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:458867610": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:2709633326": [
       [198, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [246, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+      [244, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:1076126041": [
+    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:3492200963": [
       [122, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
       [135, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
       [147, 28, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:2418655797": [
+    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:1919031301": [
       [442, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
       [454, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1526952710": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1036947335": [
       [74, 20, 3, "Unexpected any. Specify a different type.", "193409811"],
       [75, 40, 3, "Unexpected any. Specify a different type.", "193409811"],
       [122, 12, 3, "Unexpected any. Specify a different type.", "193409811"],
       [122, 20, 3, "Unexpected any. Specify a different type.", "193409811"],
       [125, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [138, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [151, 52, 3, "Unexpected any. Specify a different type.", "193409811"]
+      [132, 52, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [145, 52, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:1132615281": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:3800335297": [
       [611, 25, 3, "Unexpected any. Specify a different type.", "193409811"],
       [623, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [747, 11, 3, "Unexpected any. Specify a different type.", "193409811"]
+      [748, 11, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
       [424, 38, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -164,14 +164,14 @@ exports[`No explicit any in client`] = {
     "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:2408070124": [
       [102, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
-      [904, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [925, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [952, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [972, 42, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
+      [903, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [924, 45, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [951, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [971, 42, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
-      [124, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:4088316860": [
+      [123, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:1402343162": [
       [197, 23, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -190,10 +190,10 @@ exports[`No explicit any in client`] = {
 
 exports[`No explicit any in server`] = {
   value: `{
-    "server/api.ts:1158999085": [
-      [201, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [223, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [312, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/api.ts:2797771380": [
+      [218, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [240, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [329, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/bin/run-worker-or-job.ts:3770444259": [
       [10, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -209,9 +209,9 @@ exports[`No explicit any in server`] = {
     "server/condition_evaluator/leafCondition.ts:2941598758": [
       [212, 47, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/graphql/datasources/RuleApi.ts:1193935640": [
-      [634, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [774, 28, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/graphql/datasources/RuleApi.ts:1256100272": [
+      [637, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [777, 28, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/graphql/datasources/UserApi.ts:3075210134": [
       [52, 22, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -253,26 +253,13 @@ exports[`No explicit any in server`] = {
       [65, 60, 3, "Unexpected any. Specify a different type.", "193409811"],
       [93, 58, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/plugins/analytics/adapters/SnowflakeAnalyticsAdapter.ts:2349964782": [
-      [20, 16, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [31, 40, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [32, 30, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [36, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [44, 34, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [45, 49, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [127, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [133, 41, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [181, 47, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [202, 32, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [202, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
     "server/routes/policies/PoliciesRoutes.ts:1959143587": [
       [14, 6, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/routes/user_scores/UserScoresRoutes.ts:2034443149": [
       [12, 6, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/services/analyticsLoggers/ContentApiLogger.ts:3455462510": [
+    "server/services/analyticsLoggers/ContentApiLogger.ts:2789161218": [
       [54, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/services/analyticsLoggers/ReportingRuleExecutionLogger.ts:3933888293": [
@@ -284,11 +271,11 @@ exports[`No explicit any in server`] = {
     "server/services/analyticsLoggers/RuleExecutionLogger.ts:3451952010": [
       [82, 13, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/services/analyticsQueries/ItemHistoryQueries.ts:548505533": [
+    "server/services/analyticsQueries/ItemHistoryQueries.ts:3675850369": [
       [21, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
       [78, 30, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/services/apiKeyService/apiKeyService.ts:2815362343": [
+    "server/services/apiKeyService/apiKeyService.ts:2712644109": [
       [198, 44, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/services/derivedFieldsService/helpers.test.ts:498634566": [
@@ -315,34 +302,19 @@ exports[`No explicit any in server`] = {
     "server/services/ruleAnomalyDetectionService/detectRulePassRateAnomaliesJob.test.ts:1982472616": [
       [127, 41, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/services/ruleAnomalyDetectionService/getRuleAnomalyDetectionStatistics.test.ts:796631016": [
+    "server/services/ruleAnomalyDetectionService/getRuleAnomalyDetectionStatistics.test.ts:3484414587": [
       [12, 50, 3, "Unexpected any. Specify a different type.", "193409811"],
       [29, 29, 3, "Unexpected any. Specify a different type.", "193409811"],
       [44, 12, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/services/ruleAnomalyDetectionService/getRuleAnomalyDetectionStatistics.ts:2630917365": [
+    "server/services/ruleAnomalyDetectionService/getRuleAnomalyDetectionStatistics.ts:2166176789": [
       [46, 51, 3, "Unexpected any. Specify a different type.", "193409811"],
       [79, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/services/userStatisticsService/userStatisticsService.test.ts:73360957": [
-      [43, 45, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/snowflake/KyselyDialect.mock.ts:2540496454": [
-      [6, 69, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/snowflake/handleTableChanges.test.ts:497427792": [
-      [18, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/snowflake/handleTableChanges.ts:326808195": [
-      [138, 53, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/storage/dataWarehouse/ClickhouseAdapter.ts:2426172355": [
       [94, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/storage/dataWarehouse/DataWarehouseFactory.ts:4242192062": [
-      [68, 14, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
-    "server/storage/dataWarehouse/PostgresAnalyticsAdapter.ts:2753509685": [
+    "server/storage/dataWarehouse/PostgresAnalyticsAdapter.ts:1762594001": [
       [28, 37, 3, "Unexpected any. Specify a different type.", "193409811"],
       [30, 46, 3, "Unexpected any. Specify a different type.", "193409811"],
       [92, 46, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -397,22 +369,22 @@ exports[`No Deprecated API usage`] = {
       [158, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [396, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
       [676, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [1014, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+      [1013, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:453078395": [
       [122, 25, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [124, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [126, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
-      [123, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [132, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [137, 54, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [141, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [191, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
-      [495, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:4088316860": [
+      [122, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [131, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [136, 54, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [140, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [190, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
+      [494, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:1402343162": [
       [22, 22, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
@@ -485,30 +457,30 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx:3836324260": [
       [204, 33, 16, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2813373547"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2418477128": [
-      [661, 16, 7, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2339939476"]
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2980923118": [
+      [663, 16, 7, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2339939476"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:2418655797": [
+    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:1919031301": [
       [239, 15, 18, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4144316489"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1526952710": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1036947335": [
       [75, 26, 17, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1029763998"],
       [122, 9, 6, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1412855912"],
       [122, 17, 6, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1449682699"],
       [125, 12, 15, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2927082151"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:1132615281": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:3800335297": [
       [404, 15, 18, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4144316489"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
-      [1011, 11, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "3776056839"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
+      [1010, 11, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "3776056839"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:195582564": [
-      [669, 5, 24, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1730074379"],
-      [669, 31, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2598073665"],
-      [678, 30, 36, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1752857791"]
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:4088316860": [
+      [668, 5, 24, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1730074379"],
+      [668, 31, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2598073665"],
+      [677, 30, 36, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1752857791"]
     ],
-    "client/src/webpages/dashboard/userStrikes/StrikeAnalyticsTab.tsx:547319036": [
+    "client/src/webpages/dashboard/userStrikes/StrikeAnalyticsTab.tsx:3835826593": [
       [147, 5, 27, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2278215421"]
     ],
     "client/src/webpages/settings/ManageUsers.tsx:2815106037": [
@@ -573,7 +545,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx:3177454971": [
       [5, 0, 66, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1801263448"]
     ],
-    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobCommentSection.tsx:97903294": [
+    "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobCommentSection.tsx:416304818": [
       [0, 0, 119, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1384379049"]
     ],
     "client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobEmptyQueue.tsx:3994965110": [
@@ -633,7 +605,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsCard.tsx:3195200435": [
       [0, 0, 98, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "525342022"]
     ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:410454036": [
+    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:855557376": [
       [1, 0, 193, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1459973405"]
     ],
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsFilterBy.tsx:1436988477": [
@@ -645,31 +617,31 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/mrt/visualization/TimeToActionChart.tsx:1046490420": [
       [0, 0, 112, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1122443910"]
     ],
-    "client/src/webpages/dashboard/ncmec/NcmecReportsDashboard.tsx:613426080": [
+    "client/src/webpages/dashboard/ncmec/NcmecReportsDashboard.tsx:1586911903": [
       [0, 0, 68, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2930178709"]
     ],
     "client/src/webpages/dashboard/rules/dashboard/ReportingRulesDashboard.tsx:1325204439": [
       [0, 0, 50, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2757428905"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx:3586802679": [
+    "client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx:329939153": [
       [8, 0, 76, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "4151994019"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2418477128": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2980923118": [
       [5, 0, 113, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3403673047"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:1076126041": [
+    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:3492200963": [
       [2, 0, 72, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "87078707"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:2418655797": [
+    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx:1919031301": [
       [0, 0, 92, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3155850297"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1526952710": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1036947335": [
       [3, 0, 72, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "87078707"]
     ],
     "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesPlayVideoButton.tsx:3799970987": [
       [0, 0, 53, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1828321615"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:1132615281": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx:3800335297": [
       [0, 0, 92, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3155850297"]
     ],
     "client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesVideoModal.tsx:2468150091": [
@@ -681,7 +653,7 @@ exports[`No new ant-design icon imports`] = {
     "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
       [2, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3206710238"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
       [4, 0, 75, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "2372850505"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormCondition.tsx:453078395": [
@@ -716,7 +688,7 @@ exports[`No new ant-design icon imports`] = {
 
 exports[`No new line-icon imports`] = {
   value: `{
-    "client/src/components/Sidebar.tsx:3442285422": [
+    "client/src/components/Sidebar.tsx:3176701436": [
       [2, 0, 64, "\'@/icons\' import is restricted from being used.", "2495069050"],
       [3, 0, 80, "\'@/icons/lni/Direction/angle-double-left.svg?react\' import is restricted from being used by a pattern.", "219512785"],
       [4, 0, 82, "\'@/icons/lni/Direction/angle-double-right.svg?react\' import is restricted from being used by a pattern.", "1905172657"]
@@ -731,7 +703,7 @@ exports[`No new line-icon imports`] = {
       [0, 0, 75, "\'@/icons/lni/Interface and Sign/checkmark.svg?react\' import is restricted from being used by a pattern.", "2106702889"],
       [1, 0, 72, "\'@/icons/lni/Interface and Sign/more-alt.svg?react\' import is restricted from being used by a pattern.", "4086154276"]
     ],
-    "client/src/webpages/dashboard/Dashboard.tsx:3332610256": [
+    "client/src/webpages/dashboard/Dashboard.tsx:3291402875": [
       [0, 0, 102, "\'@/icons\' import is restricted from being used.", "3871568653"]
     ],
     "client/src/webpages/dashboard/banks/MatchingBanksDashboard.tsx:3217201097": [
@@ -770,7 +742,7 @@ exports[`No new line-icon imports`] = {
       [1, 0, 73, "\'@/icons/lni/Direction/chevron-right.svg?react\' import is restricted from being used by a pattern.", "4174122716"],
       [2, 0, 80, "\'@/icons/lni/Interface and Sign/cross-circle.svg?react\' import is restricted from being used by a pattern.", "37409444"]
     ],
-    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisionsFilter.tsx:3253181685": [
+    "client/src/webpages/dashboard/mrt/ManualReviewRecentDecisionsFilter.tsx:3327447748": [
       [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
       [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
@@ -829,24 +801,24 @@ exports[`No new line-icon imports`] = {
       [0, 0, 71, "\'@/icons/lni/Direction/chevron-down.svg?react\' import is restricted from being used by a pattern.", "3704341756"],
       [1, 0, 67, "\'@/icons/lni/Direction/chevron-up.svg?react\' import is restricted from being used by a pattern.", "3710687196"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2418477128": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/RulesDashboardInsights.tsx:2980923118": [
       [3, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
-    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:458867610": [
+    "client/src/webpages/dashboard/rules/dashboard/visualization/rulesDashboardInsightsChart.tsx:2709633326": [
       [8, 0, 36, "\'@/icons\' import is restricted from being used.", "1234727599"],
       [9, 0, 73, "\'@/icons/lni/Web and Technology/download.svg?react\' import is restricted from being used by a pattern.", "3283715369"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:1076126041": [
+    "client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsActionsChart.tsx:3492200963": [
       [1, 0, 43, "\'@/icons\' import is restricted from being used.", "3049589739"]
     ],
-    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1526952710": [
+    "client/src/webpages/dashboard/rules/info/insights/RuleInsightsActionsChart.tsx:1036947335": [
       [1, 0, 62, "\'@/icons\' import is restricted from being used.", "469112768"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx:2940997571": [
       [0, 0, 72, "\'@/icons/lni/Web and Technology/copy-alt.svg?react\' import is restricted from being used by a pattern.", "3232224292"],
       [1, 0, 74, "\'@/icons/lni/Web and Technology/trash-can.svg?react\' import is restricted from being used by a pattern.", "615551076"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:3870253584": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
       [2, 0, 72, "\'@/icons/lni/Web and Technology/copy-alt.svg?react\' import is restricted from being used by a pattern.", "3232224292"],
       [3, 0, 74, "\'@/icons/lni/Web and Technology/trash-can.svg?react\' import is restricted from being used by a pattern.", "615551076"]
     ]

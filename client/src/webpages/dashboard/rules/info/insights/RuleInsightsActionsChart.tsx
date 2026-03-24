@@ -7,7 +7,7 @@ import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
-import moment from 'moment';
+import { format } from 'date-fns';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Bar,
@@ -123,17 +123,11 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
         (a: any, b: any) =>
           new Date(a.date).getTime() - new Date(b.date).getTime(),
       )
-      .map((actionData: any) => {
-        // change actionData.date format from YYYY-MM-DD to MM/DD
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const [year, month, date] = actionData.date.split('-');
-
-        return {
-          date: `${month}/${date}/${year.slice(-2)}`,
-          totalMatches: actionData.totalMatches,
-          totalRequests: actionData.totalRequests,
-        };
-      });
+      .map((actionData: any) => ({
+        date: format(new Date(actionData.date), 'MM/dd/yy'),
+        totalMatches: actionData.totalMatches,
+        totalRequests: actionData.totalRequests,
+      }));
   }, [filteredPassRateData]);
 
   const renderCustomXAxisTick = ({ x, y, payload }: any) => {
@@ -177,7 +171,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
       return (
         <div className="flex flex-col bg-white rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-t-lg bg-primary">
-            {moment(label).format('MM/DD/YY')}
+            {label}
           </div>
           {data.length > 1 && (
             <div className="flex flex-col">

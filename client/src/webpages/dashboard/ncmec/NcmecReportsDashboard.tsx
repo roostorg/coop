@@ -1,7 +1,7 @@
 import { AuditOutlined, DownloadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
-import moment from 'moment';
+import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -222,7 +222,7 @@ export default function NcmecReportsDashboard() {
       dataValues?.map((report) => {
         return {
           date: (
-            <div>{moment(report.date).local().format('MM/DD/YY h:mm a')}</div>
+            <div>{format(new Date(report.date), 'MM/dd/yy h:mm a')}</div>
           ),
           reviewer: <div className="whitespace-nowrap">{report.reviewer}</div>,
           reportId: (

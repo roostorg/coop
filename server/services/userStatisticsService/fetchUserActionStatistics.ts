@@ -3,8 +3,8 @@ import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { inject } from '../../iocContainer/index.js';
-import { type UserStatisticsServiceSnowflake } from './dbTypes.js';
+import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type UserStatisticsServiceWarehouse } from './dbTypes.js';
 
 export type UserActionStatistics = {
   userId: string;
@@ -21,16 +21,18 @@ const { chunk, uniqBy } = _;
 
 /**
  * This is an internal function for querying a batch of users' lifetime action
- * statistics from Snowflake. It's not called directly by consumers of the user
+ * statistics from the data warehouse. It's not called directly by consumers of the user
  * statistics service; instead, it's used by the service internally to freshen
  * the cache that serves consumers' requests.
  *
  * @internal
  */
 export const makeFetchUserActionStatistics = inject(
-  ['KyselySnowflake'],
-  (snowflake: Kysely<UserStatisticsServiceSnowflake>) =>
-    async (
+  ['DataWarehouseDialect'],
+  (dialect: Dependencies['DataWarehouseDialect']) => {
+    const warehouseKysely =
+      dialect.getKyselyInstance() as Kysely<UserStatisticsServiceWarehouse>;
+    return async (
       opts: ReadonlyDeep<{
         orgId: string;
         userItemIdentifiers: ItemIdentifier[];
@@ -38,11 +40,11 @@ export const makeFetchUserActionStatistics = inject(
     ): Promise<UserActionStatistics[]> => {
       const { orgId, userItemIdentifiers } = opts;
 
-      // Snowflake has a published limit of ~16,000 entries in a list expression
+      // The warehouse has a published limit of ~16,000 entries in a list expression
       // (like we use in our `USER_ID IN (...)` filter), so we have to chunk the
-      // user ids. Snowflake also has a published limit of 1MB for the total
+      // user ids. The warehouse also has a published limit of 1MB for the total
       // length of the query (which must also coopr the size bind parameter
-      // values). However, we were getting Snowflake errors in practice well
+      // values). However, we were getting warehouse errors in practice well
       // below these limits, for not-totally-clear reasons. So, we set the limit
       // here to the biggest chunk size that worked reliably.
       const uniqUserItemIdentifiers = uniqBy(
@@ -52,7 +54,7 @@ export const makeFetchUserActionStatistics = inject(
       const userItemIdentifierBatches = chunk(uniqUserItemIdentifiers, 1000);
 
       const makeQueryForBatch = (userItemIdentifiers: ItemIdentifier[]) =>
-        snowflake
+        warehouseKysely
           .selectFrom('USER_STATISTICS_SERVICE.LIFETIME_ACTION_STATS')
           .select([
             'USER_ID as userId',
@@ -84,5 +86,6 @@ export const makeFetchUserActionStatistics = inject(
       );
 
       return results.flat();
-    },
+    };
+  },
 );

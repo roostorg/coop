@@ -120,7 +120,7 @@ function makeReportingService(
         reported_item_type_id: reportedItem.itemType.id,
         reported_item_type_kind: reportedItem.itemType.kind,
         // nb: this is intentionally logged as a string not json, because it
-        // contains JSON nulls, which are not snowflake safe.
+        // contains JSON nulls, which are not safe for the data warehouse JSON columns.
         reported_item_type_schema: reportedItem.itemType.schema,
         reported_item_type_schema_variant:
           reportedItem.itemType.schemaVariant,
@@ -207,7 +207,7 @@ function makeReportingService(
         actioned_item_type_id: actionedItem.itemType.id,
         actioned_item_type_kind: actionedItem.itemType.kind,
         // nb: this is intentionally logged as a string not json, because it
-        // contains JSON nulls, which are not snowflake safe.
+        // contains JSON nulls, which are not safe for the data warehouse JSON columns.
         actioned_item_type_schema: actionedItem.itemType.schema,
         actioned_item_type_schema_variant:
           actionedItem.itemType.schemaVariant,
@@ -294,7 +294,7 @@ function makeReportingService(
       // of the rule's behavior. The only way to do that is to use the rule history
       // service. Note that, even if we wanted to just use the rule's latest
       // version, we'd have to use the history service (rather than reading the
-      // latest version from snowflake), b/c Snowflake is only eventually
+      // latest version from the data warehouse), b/c the warehouse is only eventually
       // consistent (i.e., after a rule update, it won't see the new version for
       // up to 5 minutes, so we'll show cleary outdated samples.)
       const history = await this.getReportingRuleHistory(

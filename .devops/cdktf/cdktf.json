@@ -4,8 +4,7 @@
   "projectId": "bc1246cb-e595-4291-b719-40dfb8e9b1c6",
   "sendCrashReports": "true",
   "terraformProviders": [
-    "scylladb/scylladbcloud@~> 1.6",
-    "confluentinc/confluent@~> 1.72"
+    "scylladb/scylladbcloud@~> 1.6"
   ],
   "terraformModules": [],
   "context": {},

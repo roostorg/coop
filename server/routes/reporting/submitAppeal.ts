@@ -75,7 +75,7 @@ export default function submitAppeal({
       );
 
       // Now that we've at least loaded the item type, we'll log successes and
-      // failures to snowflake from now on. This is the basic info we'll log.
+      // failures to the data warehouse from now on. This is the basic info we'll log.
       const appealReason = req.body.appealReason;
       const appealerIdentifier = {
         id: req.body.appealedBy.id,
@@ -227,7 +227,7 @@ export default function submitAppeal({
       await ReportingService.submitAppeal(appeal);
 
       // send response as soon as
-      // the report has successfully been written to snowflake
+      // the appeal has successfully been written to the data warehouse
       res.sendStatus(204);
 
       // Enqueue the Job to the BullMQ MRT job queue

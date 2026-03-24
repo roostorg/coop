@@ -17,7 +17,6 @@ This guide covers configuration details and troubleshooting for local developmen
 Copy `server/.env.example` to `server/.env`. The example file contains all available options with documentation. Key sections:
 
 - **Database connections**: PostgreSQL, ClickHouse, ScyllaDB, Redis
-- **Kafka**: Broker and schema registry settings
 - **External APIs**: OpenAI, SendGrid, Google APIs (optional)
 - **Security**: Session secrets, JWT signing keys
 
@@ -42,11 +41,8 @@ Service         | Port       | Notes
 PostgreSQL      | 5432       | Primary DB (with pgvector) 
 ClickHouse      | 8123, 9000 | Analytics warehouse 
 ScyllaDB        | 9042       | Item submission history 
-Redis           | 6379       | Caching and job queues 
-Kafka           | 29092      | Event streaming 
-Schema Registry | 8081       | Kafka schemas 
-Zookeeper       | 22181      | Kafka coordination 
-Jaeger          | 16686      | Tracing UI (opens automatically) 
+Redis           | 6379       | Caching and job queues
+Jaeger          | 16686      | Tracing UI (opens automatically)
 OTEL Collector  | 4317       | Telemetry collection 
 
 Check service health:
@@ -90,8 +86,7 @@ npm run db:drop     # Drop database
 .devops/migrator/src/scripts/
 ├── api-server-pg/    # PostgreSQL
 ├── clickhouse/       # ClickHouse
-├── scylla/           # ScyllaDB
-└── snowflake/        # Snowflake (optional)
+└── scylla/           # ScyllaDB
 ```
 
 ## Running the Application
@@ -115,6 +110,17 @@ npm run server:start
 # Terminal 3 (optional, for GraphQL schema changes)
 npm run generate:watch
 ```
+
+### Background Workers
+
+Item submissions are processed asynchronously via a BullMQ worker that consumes from Redis. To process items locally, run the worker in a separate terminal:
+
+```bash
+cd server
+npm run runWorkerOrJob ItemProcessingWorker
+```
+
+Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in `server/iocContainer/services/workersAndJobs.ts`.
 
 ### With Distributed Tracing
 

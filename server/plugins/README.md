@@ -7,7 +7,7 @@ any particular warehouse or analytics vendor.
 
 The goals of this layout are:
 
-- Allow first-party adapters (Snowflake, Clickhouse, Postgres, etc.) to live
+- Allow first-party adapters (Clickhouse, Postgres, etc.) to live
   alongside community-provided ones without touching core code
 - Make it trivial for deployers to publish and consume custom adapters via NPM
 - Keep the contracts minimal so the abstractions do not leak complex

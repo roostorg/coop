@@ -11,7 +11,7 @@ import {
 import { filterNullOrUndefined } from '@/utils/collections';
 import { getFieldValueForRole } from '@/utils/itemUtils';
 import { ExternalLink } from 'lucide-react';
-import moment from 'moment';
+import { format } from 'date-fns';
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -144,7 +144,7 @@ export default function ReportInfoComponent(props: {
                   {isAppeal ? 'Appeal ' : 'Report '}Received
                 </th>
                 <td className="py-1 align-top text-start text-slate-500">
-                  {moment(createdAt).format('MM/DD/YY hh:mm A')}
+                  {format(new Date(createdAt as string), 'MM/dd/yy hh:mm a')}
                 </td>
               </tr>
               <tr>

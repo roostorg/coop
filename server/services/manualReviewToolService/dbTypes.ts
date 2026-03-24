@@ -1,7 +1,10 @@
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
 import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
-import { type FilterableSfDate, type SfDate } from '../../snowflake/types.js';
+import {
+  type FilterableWarehouseDate,
+  type WarehouseDate,
+} from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
@@ -35,8 +38,8 @@ export type RoutingRuleExecutionsRow = {
   CORRELATION_ID: string | null;
   RESULT: ConditionSetWithResultAsLogged | null;
   PASSED: boolean;
-  TS: ColumnType<SfDate, number, never>;
-  DS: ColumnType<FilterableSfDate, string, never>;
+  TS: ColumnType<WarehouseDate, number, never>;
+  DS: ColumnType<FilterableWarehouseDate, string, never>;
   DESTINATION_QUEUE_ID: string;
   ITEM_ID: string;
   ITEM_TYPE_ID: string;
@@ -245,6 +248,6 @@ export type ManualReviewToolServicePg = {
   };
 };
 
-export type ManualReviewToolServiceSnowflakeSchema = {
+export type ManualReviewToolServiceWarehouseSchema = {
   'MANUAL_REVIEW_TOOL.ROUTING_RULE_EXECUTIONS': RoutingRuleExecutionsRow;
 };

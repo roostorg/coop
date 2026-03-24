@@ -4,9 +4,9 @@ import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
 import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { Button, DatePicker, Form, Input, Radio, Select, Tooltip } from 'antd';
+import { Button, Form, Input, Radio, Select, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import moment, { Moment } from 'moment';
+import { format } from 'date-fns';
 import { useMemo, useReducer } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -110,7 +110,7 @@ export const initialState = {
   unlimitedDailyActionsChecked: false,
   ruleMutationError: false,
   expirationEnabled: false,
-  expirationTime: null as Moment | null,
+  expirationTime: null as Date | null,
   lastVisibleSection: VisibleSections.BASIC_INFO,
   ruleType: RuleType.CONTENT,
 };
@@ -682,8 +682,7 @@ export default function RuleForm() {
           expirationEnabled: rule.expirationTime != null,
           expirationTime:
             rule.expirationTime != null
-              ? // moment.unix expects unixtime in seconds, not milliseconds
-                moment.unix(Number(rule.expirationTime) / 1000)
+              ? new Date(Number(rule.expirationTime))
               : null,
           ruleType:
             rule.__typename === 'ContentRule'
@@ -916,7 +915,7 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime?.format('YYYY-MM-DD hh:mm'),
+          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
         },
       },
       refetchQueries: [{ query: RULES_QUERY }],
@@ -940,7 +939,7 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime?.format('YYYY-MM-DD hh:mm'),
+          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
         },
       },
       refetchQueries: [
@@ -963,7 +962,7 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime?.format('YYYY-MM-DD hh:mm'),
+          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
         },
       },
       refetchQueries: [{ query: RULES_QUERY }],
@@ -986,7 +985,7 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime?.format('YYYY-MM-DD hh:mm'),
+          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
         },
       },
       refetchQueries: [
@@ -1615,7 +1614,7 @@ export default function RuleForm() {
           dispatch({
             type: RuleFormReducerActionType.UpdateExpirationTime,
             payload: {
-              time: moment.unix(unixtime / 1000),
+              time: new Date(unixtime),
             },
           })
         }
@@ -1646,26 +1645,18 @@ export default function RuleForm() {
           </div>
         }
       />
-      {/* Added extra padding when the Form.Item isn't rendered because Form.Item
-      has its own bottom padding */}
       {!state.expirationEnabled && <div style={{ height: '12px' }} />}
       {state.expirationEnabled && (
-        <Form.Item
-          className="flex mt-2"
-          name="expiration"
-          initialValue={state.expirationTime}
-          style={{ width: '80%' }}
-        >
-          <DatePicker
-            value={state.expirationTime}
-            className="mr-4 rounded-lg"
-            showTime={{ format: 'HH:mm' }}
-            format="YYYY-MM-DD HH:mm"
-            onOk={(value) =>
+        <div className="flex flex-wrap items-center mt-2 gap-1" style={{ width: '80%' }}>
+          <input
+            type="datetime-local"
+            value={state.expirationTime ? format(state.expirationTime, "yyyy-MM-dd'T'HH:mm") : ''}
+            className="mr-4 h-8 px-3 py-1 border border-solid border-slate-300 rounded-lg text-sm text-slate-700 focus:border-coop-blue focus:outline-none"
+            onChange={(e) =>
               dispatch({
                 type: RuleFormReducerActionType.UpdateExpirationTime,
                 payload: {
-                  time: value,
+                  time: e.target.value ? new Date(e.target.value) : null,
                 },
               })
             }
@@ -1677,7 +1668,7 @@ export default function RuleForm() {
           {expirationTimeButton('1 week', Date.now() + WEEK)}
           {expirationTimeButton('2 weeks', Date.now() + 2 * WEEK)}
           {expirationTimeButton('1 month', Date.now() + MONTH)}
-        </Form.Item>
+        </div>
       )}
     </div>
   );

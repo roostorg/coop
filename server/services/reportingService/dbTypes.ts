@@ -3,7 +3,10 @@ import { type ColumnType, type GeneratedAlways } from 'kysely';
 
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
-import { type FilterableSfDate, type SfDate } from '../../snowflake/types.js';
+import {
+  type FilterableWarehouseDate,
+  type WarehouseDate,
+} from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
 import {
   type ItemSubmissionWithTypeIdentifier,
@@ -43,10 +46,10 @@ export type ReportSubmissionsRow = {
   // (meaning it wasn't manually added to the reporting queue by a user)
   REPORTER_USER_ID: string | null;
   REPORTER_KIND: ReporterKind;
-  REPORTED_AT: ColumnType<SfDate, Date, never>;
+  REPORTED_AT: ColumnType<WarehouseDate, Date, never>;
   POLICY_ID: string | null;
   REPORTED_FOR_REASON: string | null;
-  TS: ColumnType<SfDate, Date, never>;
+  TS: ColumnType<WarehouseDate, Date, never>;
   REPORTER_USER_ITEM_TYPE_ID: string | null;
   REPORTED_ITEM_ID: string;
   REPORTED_ITEM_DATA: NormalizedItemData;
@@ -80,7 +83,7 @@ export type ReportSubmissionsRow = {
 );
 
 export type AppealSubmissionsRow = {
-  TS: ColumnType<SfDate, Date, never>;
+  TS: ColumnType<WarehouseDate, Date, never>;
   ORG_ID: string;
   REQUEST_ID: string;
   APPEAL_ID: string;
@@ -88,7 +91,7 @@ export type AppealSubmissionsRow = {
   // (meaning it wasn't manually added to the reporting queue by a user)
   APPEALED_BY_USER_ID: string | null;
   APPEALED_BY_USER_ITEM_TYPE_ID: string | null;
-  APPEALED_AT: ColumnType<SfDate, Date, never>;
+  APPEALED_AT: ColumnType<WarehouseDate, Date, never>;
   APPEAL_REASON: string | null;
   ACTIONS_TAKEN: string[];
   ACTIONED_ITEM_ID: string;
@@ -126,8 +129,8 @@ export type ReportingRuleExecutionsRow = {
   CORRELATION_ID: string;
   RESULT: ConditionSetWithResultAsLogged;
   PASSED: boolean;
-  TS: ColumnType<SfDate, number, never>;
-  DS: ColumnType<FilterableSfDate, string, never>;
+  TS: ColumnType<WarehouseDate, number, never>;
+  DS: ColumnType<FilterableWarehouseDate, string, never>;
   POLICY_NAMES: readonly string[];
   POLICY_IDS: readonly string[];
   ITEM_ID: string;
@@ -146,16 +149,16 @@ export type ReportingRuleExecutionsRow = {
 export type ReportingRuleExecutionStatisticsRow = {
   ORG_ID: string;
   RULE_ID: string;
-  RULE_VERSION: SfDate;
+  RULE_VERSION: WarehouseDate;
   NUM_PASSES: number;
   NUM_RUNS: number;
-  TS_START_INCLUSIVE: SfDate;
-  TS_END_EXCLUSIVE: SfDate;
+  TS_START_INCLUSIVE: WarehouseDate;
+  TS_END_EXCLUSIVE: WarehouseDate;
   RULE_ENVIRONMENT: string | null;
   RULE_POLICY_NAMES: string[] | null;
   RULE_POLICY_IDS: string[] | null;
 };
-export type ReportingServiceSnowflakeSchema = {
+export type ReportingServiceWarehouseSchema = {
   'REPORTING_SERVICE.REPORTS': ReportSubmissionsRow;
   'REPORTING_SERVICE.APPEALS': AppealSubmissionsRow;
   'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS': ReportingRuleExecutionsRow;
