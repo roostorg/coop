@@ -1,6 +1,19 @@
 import { AuthenticationError } from 'apollo-server-express';
 
+import { TapAdminApi } from '../../services/tapConnectorService/tapAdminApi.js';
 import { logErrorJson } from '../../utils/logging.js';
+
+/**
+ * Create a TapAdminApi client from env vars. This talks directly to the Tap
+ * HTTP API so the GraphQL server doesn't need the worker process to be
+ * running in the same process.
+ */
+function getTapAdminApi(): TapAdminApi | null {
+  const tapUrl = process.env.TAP_URL;
+  const tapEnabled = process.env.TAP_ENABLED === 'true';
+  if (!tapEnabled || !tapUrl) return null;
+  return new TapAdminApi(tapUrl, process.env.TAP_ADMIN_PASSWORD ?? '');
+}
 
 const typeDefs = /* GraphQL */ `
   type TapStats {
@@ -35,10 +48,7 @@ const Query: any = {
       throw new AuthenticationError('Authenticated user required');
     }
 
-    const tapWorker = context.services.TapConnectorWorker;
-    if (!tapWorker) return null;
-
-    const adminApi = tapWorker.getAdminApi();
+    const adminApi = getTapAdminApi();
     if (!adminApi) return null;
 
     try {
@@ -55,10 +65,7 @@ const Query: any = {
       throw new AuthenticationError('Authenticated user required');
     }
 
-    const tapWorker = context.services.TapConnectorWorker;
-    if (!tapWorker) return null;
-
-    const adminApi = tapWorker.getAdminApi();
+    const adminApi = getTapAdminApi();
     if (!adminApi) return null;
 
     try {
@@ -82,10 +89,7 @@ const Mutation: any = {
       );
     }
 
-    const tapWorker = context.services.TapConnectorWorker;
-    if (!tapWorker) return false;
-
-    const adminApi = tapWorker.getAdminApi();
+    const adminApi = getTapAdminApi();
     if (!adminApi) return false;
 
     try {
@@ -112,10 +116,7 @@ const Mutation: any = {
       );
     }
 
-    const tapWorker = context.services.TapConnectorWorker;
-    if (!tapWorker) return false;
-
-    const adminApi = tapWorker.getAdminApi();
+    const adminApi = getTapAdminApi();
     if (!adminApi) return false;
 
     try {

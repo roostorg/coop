@@ -668,6 +668,11 @@ export default function Dashboard() {
           urlPath: 'ncmec',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
+        {
+          title: 'AT Protocol' as const,
+          urlPath: 'tap',
+          requiredPermissions: [GQLUserPermission.ManageOrg],
+        },
       ]),
     },
   ] satisfies MenuItem[];

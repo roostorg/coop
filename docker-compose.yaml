@@ -153,7 +153,7 @@ services:
       TAP_DATABASE_URL: 'sqlite:///data/tap.db'
       TAP_RELAY_URL: 'https://relay1.us-east.bsky.network'
       TAP_COLLECTION_FILTERS: 'app.bsky.feed.post,app.bsky.actor.profile'
-      TAP_DISABLE_ACKS: 'false'
+      TAP_DISABLE_ACKS: 'true'
       TAP_BIND: ':2480'
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:2480/health']

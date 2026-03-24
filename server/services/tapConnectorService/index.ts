@@ -39,7 +39,7 @@ import { type Worker } from '../../workers_jobs/index.js';
 import { TapAdminApi, type TapStats, type TapRepoInfo } from './tapAdminApi.js';
 import { TapClient } from './tapClient.js';
 import { transformTapEvent } from './transformers.js';
-import { type TapEvent, type TapConnectorConfig } from './types.js';
+import { type TapConnectorConfig, type TapEvent } from './types.js';
 
 export { TapAdminApi, type TapStats, type TapRepoInfo } from './tapAdminApi.js';
 export { type TapConnectorConfig } from './types.js';
@@ -80,9 +80,35 @@ const makeTapConnectorWorker = inject(
   ): TapConnectorWorker => {
     let tapClient: TapClient | null = null;
     let tapAdminApi: TapAdminApi | null = null;
-    let batchBuffer: TapEvent[] = [];
-    let batchTimer: ReturnType<typeof setTimeout> | null = null;
     let shutdownRequested = false;
+    let submittedCount = 0;
+    const MAX_SUBMISSIONS = parseInt(
+      process.env.TAP_MAX_SUBMISSIONS ?? '1000',
+      10,
+    );
+
+    // Dedup: track recently seen item IDs to avoid duplicate reports.
+    // Key is the item ID (AT URI for posts, DID for accounts), value is
+    // the timestamp when first seen. Entries expire after 5 minutes.
+    const DEDUP_TTL_MS = 5 * 60 * 1000;
+    const seenItems = new Map<string, number>();
+
+    function isDuplicate(itemId: string): boolean {
+      const now = Date.now();
+      const seenAt = seenItems.get(itemId);
+      if (seenAt && now - seenAt < DEDUP_TTL_MS) {
+        return true;
+      }
+      seenItems.set(itemId, now);
+
+      // Periodic cleanup of expired entries
+      if (seenItems.size > 10_000) {
+        for (const [key, ts] of seenItems) {
+          if (now - ts > DEDUP_TTL_MS) seenItems.delete(key);
+        }
+      }
+      return false;
+    }
 
     const config: TapConnectorConfig = {
       tapUrl: process.env.TAP_URL ?? 'http://tap:2480',
@@ -128,19 +154,23 @@ const makeTapConnectorWorker = inject(
         // Non-fatal
       }
 
-      // Write to data warehouse via ReportingService
-      await reportingService.submitReport({
-        requestId,
-        orgId: config.orgId,
-        reporter: { kind: 'rule', id: 'tap-connector' },
-        reportedAt,
-        reportedForReason: undefined,
-        reportedItem: itemSubmission,
-        reportedItemThread: undefined,
-        reportedItemsInThread: undefined,
-        additionalItemSubmissions: [],
-        skipJobEnqueue: true,
-      });
+      // Write to data warehouse via ReportingService (non-fatal — ClickHouse may be down)
+      try {
+        await reportingService.submitReport({
+          requestId,
+          orgId: config.orgId,
+          reporter: { kind: 'rule', id: 'tap-connector' },
+          reportedAt,
+          reportedForReason: undefined,
+          reportedItem: itemSubmission,
+          reportedItemThread: undefined,
+          reportedItemsInThread: undefined,
+          additionalItemSubmissions: [],
+          skipJobEnqueue: true,
+        });
+      } catch {
+        // Non-fatal — ClickHouse write failure shouldn't block MRT enqueue
+      }
 
       // Run reporting rules
       try {
@@ -232,10 +262,13 @@ const makeTapConnectorWorker = inject(
     async function processBatch(events: TapEvent[]): Promise<void> {
       if (events.length === 0) return;
 
+      console.log(`[TapConnector] Processing batch of ${events.length} events`);
+
       const rawSubmissions = events
         .map(transformTapEvent)
         .filter((s): s is NonNullable<typeof s> => s != null);
 
+      console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events`);
       if (rawSubmissions.length === 0) return;
 
       const itemTypes = await moderationConfigService.getItemTypes({
@@ -243,17 +276,64 @@ const makeTapConnectorWorker = inject(
         directives: { maxAge: 10 },
       });
 
+      // Build a name→id map so we can resolve friendly type names
+      // (e.g. "ATproto-post") to actual DB IDs (e.g. "atp_post_e7c89")
+      const typeNameToId = new Map<string, string>();
+      for (const it of itemTypes) {
+        typeNameToId.set(it.name, it.id);
+      }
+
       const toItemSubmission = rawItemSubmissionToItemSubmission.bind(
         null,
         itemTypes,
         config.orgId,
-        async () => undefined,
+        // Look up by ID from the already-fetched list
+        async ({ typeSelector }: { orgId: string; typeSelector: { id: string } }) => {
+          return itemTypes.find((it) => it.id === typeSelector.id);
+        },
       );
 
       for (const rawSubmission of rawSubmissions) {
         try {
+          // Dedup: skip items we've seen recently
+          if (isDuplicate(rawSubmission.id)) {
+            continue;
+          }
+
+          // Resolve friendly type names to actual DB IDs — both the
+          // top-level typeId and any nested RELATED_ITEM typeId refs
+          if ('typeId' in rawSubmission) {
+            const resolvedId = typeNameToId.get(rawSubmission.typeId);
+            if (resolvedId) {
+              (rawSubmission as any).typeId = resolvedId;
+            }
+          }
+          // Resolve RELATED_ITEM typeIds in data fields
+          const data = rawSubmission.data as Record<string, unknown>;
+          for (const val of Object.values(data)) {
+            if (val && typeof val === 'object' && 'typeId' in (val as any)) {
+              const nested = val as { typeId: string };
+              const resolvedId = typeNameToId.get(nested.typeId);
+              if (resolvedId) {
+                nested.typeId = resolvedId;
+              }
+            }
+          }
+
           const result = await toItemSubmission(rawSubmission);
-          if (result.error || !result.itemSubmission) continue;
+          if (result.error || !result.itemSubmission) {
+            const errMsgs = result.error?.errors?.map((e: any) => e.message ?? e.title ?? String(e)).join('; ');
+            console.log(`[TapConnector] Rejected [${rawSubmission.id}]: ${errMsgs ?? 'no itemSubmission'}`);
+            continue;
+          }
+          // Enforce submission cap
+          if (submittedCount >= MAX_SUBMISSIONS) {
+            console.log(`[TapConnector] Reached cap of ${MAX_SUBMISSIONS} submissions, stopping`);
+            shutdownRequested = true;
+            return;
+          }
+          submittedCount++;
+          console.log(`[TapConnector] [${submittedCount}/${MAX_SUBMISSIONS}] Submitting ${rawSubmission.id}`);
 
           const itemSubmission = result.itemSubmission as ItemSubmission & {
             submissionTime: Date;
@@ -283,37 +363,6 @@ const makeTapConnectorWorker = inject(
         }
       }
 
-      // Ack the last event ID in the batch
-      const lastEvent = events[events.length - 1];
-      if (lastEvent && tapClient) {
-        tapClient.ack(lastEvent.id);
-      }
-    }
-
-    function flushBatch(): void {
-      const batch = batchBuffer;
-      batchBuffer = [];
-
-      if (batchTimer) {
-        clearTimeout(batchTimer);
-        batchTimer = null;
-      }
-
-      processBatch(batch).catch((err) => {
-        console.error('[TapConnector] Batch processing error:', err);
-      });
-    }
-
-    function onEvent(event: TapEvent): void {
-      if (shutdownRequested) return;
-
-      batchBuffer.push(event);
-
-      if (batchBuffer.length >= config.batchSize) {
-        flushBatch();
-      } else if (!batchTimer) {
-        batchTimer = setTimeout(flushBatch, config.batchIntervalMs);
-      }
     }
 
     return {
@@ -338,10 +387,12 @@ const makeTapConnectorWorker = inject(
 
         tapClient = new TapClient({
           tapUrl: config.tapUrl,
-          onEvent,
+          onEvents: (events) => processBatch(events),
           onError: (err) => {
             console.error('[TapConnector] Event error:', err.message);
           },
+          batchIntervalMs: config.batchIntervalMs,
+          batchSize: config.batchSize,
         });
 
         tapClient.connect();
@@ -362,21 +413,6 @@ const makeTapConnectorWorker = inject(
 
       async shutdown(): Promise<void> {
         shutdownRequested = true;
-
-        if (batchBuffer.length > 0) {
-          try {
-            await processBatch(batchBuffer);
-            batchBuffer = [];
-          } catch {
-            // Best-effort flush on shutdown
-          }
-        }
-
-        if (batchTimer) {
-          clearTimeout(batchTimer);
-          batchTimer = null;
-        }
-
         await tapClient?.close();
       },
 
