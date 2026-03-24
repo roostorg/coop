@@ -1,5 +1,4 @@
 import {
-  ArrowRightOutlined,
   CaretDownOutlined,
   CaretUpOutlined,
 } from '@ant-design/icons';
@@ -11,6 +10,7 @@ import {
   differenceInWeeks,
   differenceInYears,
 } from 'date-fns';
+import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -150,11 +150,11 @@ const ManualReviewDashboardInsightsCard = (
               </div>
             ) : 'link' in props ? (
               <Link
-                className="p-1 px-4 text-sm font-medium rounded cursor-pointer bg-coop-lightblue text-coop-blue hover:bg-coop-lightblue-hover w-fit"
+                className="inline-flex items-center gap-2 py-1 px-4 text-sm font-medium rounded-lg !no-underline !text-indigo-700 !bg-indigo-100 hover:!bg-indigo-200 w-fit"
                 to={props.link}
               >
                 {props.linkTitle}
-                <ArrowRightOutlined className="pl-2" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             ) : null}
           </div>
