@@ -17,4 +17,4 @@ Seeds are timestamped and run interspersed with migrations (not after). This ens
 
 ## Usage
 
-See `.devops/migrator/README.md` for CLI commands and setup instructions.
+See `db/README.md` for CLI commands and setup instructions.

@@ -22,4 +22,4 @@ Copy `.env.example` and configure your database connection settings. These match
   node --loader ts-node/esm index.ts generate:migration --db api-server-pg --name "add_users_table"
 ```
 
-See `migrator/README.md` for concepts on migrations vs seeds.
+See the root `migrator/README.md` for concepts on migrations vs seeds.

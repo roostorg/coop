@@ -83,7 +83,7 @@ npm run db:drop     # Drop database
 ### Migration Locations
 
 ```
-.devops/migrator/src/scripts/
+db/src/scripts/
 ├── api-server-pg/    # PostgreSQL
 ├── clickhouse/       # ClickHouse
 └── scylla/           # ScyllaDB

@@ -76,12 +76,12 @@ jobs:
           # this is needed to fetch the main branch
           ref: ${{ github.base_ref || 'main' }}
           fetch-depth: 1
-          sparse-checkout: '.devops/migrator/src/scripts'
+          sparse-checkout: 'db/src/scripts'
       - uses: actions/checkout@v4
         with:
           # this is needed to fetch the main branch
           fetch-depth: 1
-          sparse-checkout: '.devops/migrator/src/scripts'
+          sparse-checkout: 'db/src/scripts'
 
       - name: Check changed migration files
         id: check-changed-migration-files
@@ -115,7 +115,7 @@ jobs:
             fi
           }
 
-          SCRIPTS_DIR=".devops/migrator/src/scripts/"
+          SCRIPTS_DIR="db/src/scripts/"
 
           # Checkout main so that we're correctly identifying the existing migrations
           # in the loop below.

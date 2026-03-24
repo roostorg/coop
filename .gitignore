@@ -32,7 +32,7 @@ yarn-debug.log*
 yarn-error.log*
 
 .vscode/
-.devops/migrator/build
+db/build
 .idea/
 
 transpiled
