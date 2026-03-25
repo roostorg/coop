@@ -156,7 +156,7 @@ const ManualReviewDashboardInsightsCard = (
             ) : null}
           </div>
         ) : (
-          <div className="text-coop-alert-red">Error finding value</div>
+          <div className="text-sm text-slate-400">No data available.</div>
         )}
       </div>
       <div className="pl-2 rounded">{icon}</div>

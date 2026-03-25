@@ -368,30 +368,16 @@ export default function OverviewCard(props: {
     ? sum(previousManualActions.map((it) => it.count))
     : undefined;
 
-  if (
-    totalActionsError ||
-    previousTotalActionsError ||
-    jobsPendingError ||
-    violationsPerPolicyError ||
-    automatedVsManualError ||
-    previousAutomatedVsManualError ||
-    policiesError ||
-    rulesError ||
-    totalActionsByRuleError
-  ) {
-    throw (
-      totalActionsError ??
-      previousTotalActionsError ??
-      jobsPendingError ??
-      violationsPerPolicyError ??
-      automatedVsManualError ??
-      previousAutomatedVsManualError ??
-      policiesError ??
-      rulesError ??
-      // eslint-disable-next-line
-      totalActionsByRuleError!
-    );
-  }
+  const hasError =
+    totalActionsError ??
+    previousTotalActionsError ??
+    jobsPendingError ??
+    violationsPerPolicyError ??
+    automatedVsManualError ??
+    previousAutomatedVsManualError ??
+    policiesError ??
+    rulesError ??
+    totalActionsByRuleError;
 
   const loading =
     totalActionsLoading ||
@@ -534,7 +520,7 @@ export default function OverviewCard(props: {
   );
 
   const errorComponent = (
-    <div className="py-4 text-coop-alert-red">Error finding value</div>
+    <div className="py-4 text-sm text-slate-400">No data available.</div>
   );
 
   const component = useMemo(() => {
@@ -591,7 +577,11 @@ export default function OverviewCard(props: {
           <div className="text-base font-bold">{title}</div>
           <Icon className={`flex w-6 h-6 ${iconColor}`} />
         </div>
-        {loading ? (
+        {hasError ? (
+          <div className="py-4 text-sm text-slate-400">
+            Analytics data is temporarily unavailable.
+          </div>
+        ) : loading ? (
           <div className="self-start pt-4">
             <ComponentLoading />
           </div>

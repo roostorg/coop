@@ -523,6 +523,7 @@ function makeGqlServices(deps: Dependencies) {
   return {
     ...safePick(deps, [
       'ApiKeyService',
+      'DataWarehouse',
       'DerivedFieldsService',
       'getItemTypeEventuallyConsistent',
       'getEnabledRulesForItemTypeEventuallyConsistent',
@@ -538,6 +539,7 @@ function makeGqlServices(deps: Dependencies) {
       'Sequelize',
       'SignalsService',
       'SigningKeyPairService',
+      'Tracer',
       'UserManagementService',
       'UserStatisticsService',
       'UserHistoryQueries',

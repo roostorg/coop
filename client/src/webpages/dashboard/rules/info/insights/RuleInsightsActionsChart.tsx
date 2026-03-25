@@ -1,5 +1,6 @@
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { InvestmentFilled, PieChartAltFilled } from '@/icons';
+import { TriangleAlert } from 'lucide-react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import { BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
@@ -383,7 +384,15 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
   );
 
   if (error) {
-    return <div />;
+    return (
+      <div className="flex justify-between w-full p-4 bg-white border border-gray-200 border-solid rounded-lg text-start">
+        <RuleInsightsEmptyCard
+          icon={<TriangleAlert />}
+          title="Analytics Unavailable"
+          subtitle="We couldn't load the analytics data. The analytics service may be temporarily down. Other parts of Coop are unaffected."
+        />
+      </div>
+    );
   }
 
   return (

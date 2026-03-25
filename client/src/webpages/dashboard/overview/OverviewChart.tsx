@@ -180,7 +180,9 @@ export default function OverviewChart(props: {
 
   const emptyChart = (
     <div className="flex flex-col items-center justify-center gap-3 p-6 rounded bg-slate-100">
-      <div className="text-xl">We didn't find any results for this query</div>
+      <div className="text-sm text-slate-400">
+        No data available for the selected time period.
+      </div>
     </div>
   );
 
@@ -417,7 +419,21 @@ export default function OverviewChart(props: {
   ));
 
   if (error || decisionsError || actionStatsError) {
-    throw error ?? decisionsError ?? actionStatsError!;
+    return (
+      <div className="flex flex-col w-full p-6 bg-white border border-solid rounded-lg border-slate-200">
+        <div className="flex pb-6">
+          <div className="flex items-start gap-2">
+            <Icon className={`flex w-6 h-6 ${iconColor}`} />
+            <div className="pb-2 text-lg font-bold">{title}</div>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-3 p-6 rounded bg-slate-100">
+          <div className="text-sm text-slate-400">
+            Analytics data is temporarily unavailable.
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const loading = decisionsLoading || actionStatsLoading;

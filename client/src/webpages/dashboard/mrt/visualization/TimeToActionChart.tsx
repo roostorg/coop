@@ -219,7 +219,7 @@ export default function TimeToActionByQueueChart({
 
   const emptyChart = (
     <div className="flex flex-col items-center justify-center h-full gap-3 p-6 bg-indigo-100 rounded">
-      <div className="text-xl">We didn't find any results for this query.</div>
+      <div className="text-sm text-slate-400">No data available for the selected time period.</div>
       <CoopButton
         title="Reset Filters"
         onClick={() => getEmptyFilterState(timeWindow)}
