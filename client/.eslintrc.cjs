@@ -8,7 +8,7 @@ const restrictedSyntax = [
 ];
 
 module.exports = {
-  extends: ['react-app', 'react-app/jest', 'plugin:storybook/recommended'],
+  extends: ['react-app'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     project: ['./tsconfig.json'],

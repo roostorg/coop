@@ -40,6 +40,7 @@ generates:
         Date: Date | string
         DateTime: Date | string
         Cursor: string
+        JSON: JsonValue
         JSONObject: JsonObject
         CoopInputOrString: string
         StringOrFloat: string | number
@@ -77,6 +78,7 @@ generates:
         Date: Date | string
         DateTime: Date | string
         Cursor: JsonValue
+        JSON: JsonValue
         JSONObject: JsonObject
         CoopInputOrString: string
         StringOrFloat: string | number

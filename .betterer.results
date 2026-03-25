@@ -237,7 +237,7 @@ exports[`No explicit any in server`] = {
       [299, 11, 3, "Unexpected any. Specify a different type.", "193409811"],
       [362, 13, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/graphql/resolvers.ts:1780905787": [
+    "server/graphql/resolvers.ts:3046460183": [
       [104, 12, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/lib/cache/utils/TimerSet.ts:767817500": [
@@ -601,9 +601,6 @@ exports[`No new ant-design icon imports`] = {
     ],
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewCustomCharts.tsx:1220234216": [
       [0, 0, 49, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "3206710238"]
-    ],
-    "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsCard.tsx:2391841109": [
-      [0, 0, 98, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "525342022"]
     ],
     "client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsChart.tsx:646936726": [
       [1, 0, 193, "\'@ant-design/icons\' import is restricted from being used. AntDesign icons are now deprecated in our codebase. Please use line icons instead.", "1459973405"]

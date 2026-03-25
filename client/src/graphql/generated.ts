@@ -36,6 +36,8 @@ export type Scalars = {
    * fields.
    */
   DateTime: Date | string;
+  /** Represents any JSON value (object, array, string, number, boolean, null). */
+  JSON: JsonValue;
   /** Represents an arbitrary json object. */
   JSONObject: JsonObject;
   /** Represents a string that must be non-empty. */
@@ -682,6 +684,7 @@ export type GQLCreateContentRuleResponse =
 export type GQLCreateHashBankInput = {
   readonly description?: InputMaybe<Scalars['String']>;
   readonly enabled_ratio: Scalars['Float'];
+  readonly exchange?: InputMaybe<GQLExchangeConfigInput>;
   readonly name: Scalars['String'];
 };
 
@@ -1077,6 +1080,53 @@ export type GQLError = {
   readonly type: ReadonlyArray<Scalars['String']>;
 };
 
+export type GQLExchangeApiInfo = {
+  readonly __typename: 'ExchangeApiInfo';
+  readonly has_auth: Scalars['Boolean'];
+  readonly name: Scalars['String'];
+  readonly supports_auth: Scalars['Boolean'];
+};
+
+export type GQLExchangeApiSchema = {
+  readonly __typename: 'ExchangeApiSchema';
+  readonly config_schema: GQLExchangeSchemaSection;
+  readonly credentials_schema?: Maybe<GQLExchangeSchemaSection>;
+};
+
+export type GQLExchangeConfigInput = {
+  readonly api_name: Scalars['String'];
+  readonly config_json: Scalars['String'];
+  readonly credentials_json?: InputMaybe<Scalars['String']>;
+};
+
+export type GQLExchangeFieldDescriptor = {
+  readonly __typename: 'ExchangeFieldDescriptor';
+  readonly choices?: Maybe<ReadonlyArray<Scalars['String']>>;
+  readonly default?: Maybe<Scalars['JSON']>;
+  readonly help?: Maybe<Scalars['String']>;
+  readonly name: Scalars['String'];
+  readonly required: Scalars['Boolean'];
+  readonly type: Scalars['String'];
+};
+
+export type GQLExchangeInfo = {
+  readonly __typename: 'ExchangeInfo';
+  readonly api: Scalars['String'];
+  readonly enabled: Scalars['Boolean'];
+  readonly error?: Maybe<Scalars['String']>;
+  readonly fetched_items?: Maybe<Scalars['Int']>;
+  readonly has_auth: Scalars['Boolean'];
+  readonly is_fetching?: Maybe<Scalars['Boolean']>;
+  readonly last_fetch_succeeded?: Maybe<Scalars['Boolean']>;
+  readonly last_fetch_time?: Maybe<Scalars['String']>;
+  readonly up_to_date?: Maybe<Scalars['Boolean']>;
+};
+
+export type GQLExchangeSchemaSection = {
+  readonly __typename: 'ExchangeSchemaSection';
+  readonly fields: ReadonlyArray<GQLExchangeFieldDescriptor>;
+};
+
 export type GQLExecuteActionResponse = {
   readonly __typename: 'ExecuteActionResponse';
   readonly actionId: Scalars['String'];
@@ -1230,6 +1280,7 @@ export type GQLHashBank = {
   readonly __typename: 'HashBank';
   readonly description?: Maybe<Scalars['String']>;
   readonly enabled_ratio: Scalars['Float'];
+  readonly exchange?: Maybe<GQLExchangeInfo>;
   readonly hma_name: Scalars['String'];
   readonly id: Scalars['ID'];
   readonly name: Scalars['String'];
@@ -2198,6 +2249,7 @@ export type GQLMutateHashBankResponse =
 export type GQLMutateHashBankSuccessResponse = {
   readonly __typename: 'MutateHashBankSuccessResponse';
   readonly data: GQLHashBank;
+  readonly warning?: Maybe<Scalars['String']>;
 };
 
 export type GQLMutateLocationBankResponse =
@@ -2321,6 +2373,7 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
+  readonly updateExchangeCredentials: Scalars['Boolean'];
   readonly updateHashBank: GQLMutateHashBankResponse;
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
@@ -2597,6 +2650,11 @@ export type GQLMutationUpdateContentItemTypeArgs = {
 
 export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
+};
+
+export type GQLMutationUpdateExchangeCredentialsArgs = {
+  apiName: Scalars['String'];
+  credentialsJson: Scalars['String'];
 };
 
 export type GQLMutationUpdateHashBankArgs = {
@@ -3093,6 +3151,8 @@ export type GQLQuery = {
   readonly apiKey: Scalars['String'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
+  readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
+  readonly exchangeApis: ReadonlyArray<GQLExchangeApiInfo>;
   readonly getCommentsForJob: ReadonlyArray<GQLManualReviewJobComment>;
   readonly getDecidedJob?: Maybe<GQLManualReviewJob>;
   readonly getDecidedJobFromJobId?: Maybe<GQLManualReviewJobWithDecisions>;
@@ -3156,6 +3216,10 @@ export type GQLQueryActionArgs = {
 
 export type GQLQueryActionStatisticsArgs = {
   input: GQLActionStatisticsInput;
+};
+
+export type GQLQueryExchangeApiSchemaArgs = {
+  apiName: Scalars['String'];
 };
 
 export type GQLQueryGetCommentsForJobArgs = {
@@ -4908,6 +4972,65 @@ export type GQLHashBankByIdQuery = {
     readonly hma_name: string;
     readonly enabled_ratio: number;
     readonly org_id: string;
+    readonly exchange?: {
+      readonly __typename: 'ExchangeInfo';
+      readonly api: string;
+      readonly enabled: boolean;
+      readonly has_auth: boolean;
+      readonly error?: string | null;
+      readonly last_fetch_succeeded?: boolean | null;
+      readonly last_fetch_time?: string | null;
+      readonly up_to_date?: boolean | null;
+      readonly fetched_items?: number | null;
+      readonly is_fetching?: boolean | null;
+    } | null;
+  } | null;
+};
+
+export type GQLExchangeApisQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLExchangeApisQuery = {
+  readonly __typename: 'Query';
+  readonly exchangeApis: ReadonlyArray<{
+    readonly __typename: 'ExchangeApiInfo';
+    readonly name: string;
+    readonly supports_auth: boolean;
+    readonly has_auth: boolean;
+  }>;
+};
+
+export type GQLExchangeApiSchemaQueryVariables = Exact<{
+  apiName: Scalars['String'];
+}>;
+
+export type GQLExchangeApiSchemaQuery = {
+  readonly __typename: 'Query';
+  readonly exchangeApiSchema?: {
+    readonly __typename: 'ExchangeApiSchema';
+    readonly config_schema: {
+      readonly __typename: 'ExchangeSchemaSection';
+      readonly fields: ReadonlyArray<{
+        readonly __typename: 'ExchangeFieldDescriptor';
+        readonly name: string;
+        readonly type: string;
+        readonly required: boolean;
+        readonly default?: JsonValue | null;
+        readonly help?: string | null;
+        readonly choices?: ReadonlyArray<string> | null;
+      }>;
+    };
+    readonly credentials_schema?: {
+      readonly __typename: 'ExchangeSchemaSection';
+      readonly fields: ReadonlyArray<{
+        readonly __typename: 'ExchangeFieldDescriptor';
+        readonly name: string;
+        readonly type: string;
+        readonly required: boolean;
+        readonly default?: JsonValue | null;
+        readonly help?: string | null;
+        readonly choices?: ReadonlyArray<string> | null;
+      }>;
+    } | null;
   } | null;
 };
 
@@ -4929,6 +5052,7 @@ export type GQLCreateHashBankMutation = {
       }
     | {
         readonly __typename: 'MutateHashBankSuccessResponse';
+        readonly warning?: string | null;
         readonly data: {
           readonly __typename: 'HashBank';
           readonly id: string;
@@ -4978,6 +5102,16 @@ export type GQLDeleteHashBankMutationVariables = Exact<{
 export type GQLDeleteHashBankMutation = {
   readonly __typename: 'Mutation';
   readonly deleteHashBank: boolean;
+};
+
+export type GQLUpdateExchangeCredentialsMutationVariables = Exact<{
+  apiName: Scalars['String'];
+  credentialsJson: Scalars['String'];
+}>;
+
+export type GQLUpdateExchangeCredentialsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateExchangeCredentials: boolean;
 };
 
 export type GQLUserAndOrgQueryVariables = Exact<{ [key: string]: never }>;
@@ -25201,6 +25335,17 @@ export const GQLHashBankByIdDocument = gql`
       hma_name
       enabled_ratio
       org_id
+      exchange {
+        api
+        enabled
+        has_auth
+        error
+        last_fetch_succeeded
+        last_fetch_time
+        up_to_date
+        fetched_items
+        is_fetching
+      }
     }
   }
 `;
@@ -25255,6 +25400,142 @@ export type GQLHashBankByIdQueryResult = Apollo.QueryResult<
   GQLHashBankByIdQuery,
   GQLHashBankByIdQueryVariables
 >;
+export const GQLExchangeApisDocument = gql`
+  query ExchangeApis {
+    exchangeApis {
+      name
+      supports_auth
+      has_auth
+    }
+  }
+`;
+
+/**
+ * __useGQLExchangeApisQuery__
+ *
+ * To run a query within a React component, call `useGQLExchangeApisQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLExchangeApisQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLExchangeApisQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLExchangeApisQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLExchangeApisQuery,
+    GQLExchangeApisQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLExchangeApisQuery, GQLExchangeApisQueryVariables>(
+    GQLExchangeApisDocument,
+    options,
+  );
+}
+export function useGQLExchangeApisLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLExchangeApisQuery,
+    GQLExchangeApisQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLExchangeApisQuery,
+    GQLExchangeApisQueryVariables
+  >(GQLExchangeApisDocument, options);
+}
+export type GQLExchangeApisQueryHookResult = ReturnType<
+  typeof useGQLExchangeApisQuery
+>;
+export type GQLExchangeApisLazyQueryHookResult = ReturnType<
+  typeof useGQLExchangeApisLazyQuery
+>;
+export type GQLExchangeApisQueryResult = Apollo.QueryResult<
+  GQLExchangeApisQuery,
+  GQLExchangeApisQueryVariables
+>;
+export const GQLExchangeApiSchemaDocument = gql`
+  query ExchangeApiSchema($apiName: String!) {
+    exchangeApiSchema(apiName: $apiName) {
+      config_schema {
+        fields {
+          name
+          type
+          required
+          default
+          help
+          choices
+        }
+      }
+      credentials_schema {
+        fields {
+          name
+          type
+          required
+          default
+          help
+          choices
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLExchangeApiSchemaQuery__
+ *
+ * To run a query within a React component, call `useGQLExchangeApiSchemaQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLExchangeApiSchemaQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLExchangeApiSchemaQuery({
+ *   variables: {
+ *      apiName: // value for 'apiName'
+ *   },
+ * });
+ */
+export function useGQLExchangeApiSchemaQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLExchangeApiSchemaQuery,
+    GQLExchangeApiSchemaQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLExchangeApiSchemaQuery,
+    GQLExchangeApiSchemaQueryVariables
+  >(GQLExchangeApiSchemaDocument, options);
+}
+export function useGQLExchangeApiSchemaLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLExchangeApiSchemaQuery,
+    GQLExchangeApiSchemaQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLExchangeApiSchemaQuery,
+    GQLExchangeApiSchemaQueryVariables
+  >(GQLExchangeApiSchemaDocument, options);
+}
+export type GQLExchangeApiSchemaQueryHookResult = ReturnType<
+  typeof useGQLExchangeApiSchemaQuery
+>;
+export type GQLExchangeApiSchemaLazyQueryHookResult = ReturnType<
+  typeof useGQLExchangeApiSchemaLazyQuery
+>;
+export type GQLExchangeApiSchemaQueryResult = Apollo.QueryResult<
+  GQLExchangeApiSchemaQuery,
+  GQLExchangeApiSchemaQueryVariables
+>;
 export const GQLCreateHashBankDocument = gql`
   mutation CreateHashBank($input: CreateHashBankInput!) {
     createHashBank(input: $input) {
@@ -25267,6 +25548,7 @@ export const GQLCreateHashBankDocument = gql`
           enabled_ratio
           org_id
         }
+        warning
       }
       ... on MatchingBankNameExistsError {
         title
@@ -25437,6 +25719,62 @@ export type GQLDeleteHashBankMutationOptions = Apollo.BaseMutationOptions<
   GQLDeleteHashBankMutation,
   GQLDeleteHashBankMutationVariables
 >;
+export const GQLUpdateExchangeCredentialsDocument = gql`
+  mutation UpdateExchangeCredentials(
+    $apiName: String!
+    $credentialsJson: String!
+  ) {
+    updateExchangeCredentials(
+      apiName: $apiName
+      credentialsJson: $credentialsJson
+    )
+  }
+`;
+export type GQLUpdateExchangeCredentialsMutationFn = Apollo.MutationFunction<
+  GQLUpdateExchangeCredentialsMutation,
+  GQLUpdateExchangeCredentialsMutationVariables
+>;
+
+/**
+ * __useGQLUpdateExchangeCredentialsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateExchangeCredentialsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateExchangeCredentialsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateExchangeCredentialsMutation, { data, loading, error }] = useGQLUpdateExchangeCredentialsMutation({
+ *   variables: {
+ *      apiName: // value for 'apiName'
+ *      credentialsJson: // value for 'credentialsJson'
+ *   },
+ * });
+ */
+export function useGQLUpdateExchangeCredentialsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateExchangeCredentialsMutation,
+    GQLUpdateExchangeCredentialsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateExchangeCredentialsMutation,
+    GQLUpdateExchangeCredentialsMutationVariables
+  >(GQLUpdateExchangeCredentialsDocument, options);
+}
+export type GQLUpdateExchangeCredentialsMutationHookResult = ReturnType<
+  typeof useGQLUpdateExchangeCredentialsMutation
+>;
+export type GQLUpdateExchangeCredentialsMutationResult =
+  Apollo.MutationResult<GQLUpdateExchangeCredentialsMutation>;
+export type GQLUpdateExchangeCredentialsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateExchangeCredentialsMutation,
+    GQLUpdateExchangeCredentialsMutationVariables
+  >;
 export const GQLUserAndOrgDocument = gql`
   query UserAndOrg {
     me {
@@ -37541,6 +37879,8 @@ export const namedOperations = {
     ApiAuth: 'ApiAuth',
     HashBanks: 'HashBanks',
     HashBankById: 'HashBankById',
+    ExchangeApis: 'ExchangeApis',
+    ExchangeApiSchema: 'ExchangeApiSchema',
     UserAndOrg: 'UserAndOrg',
     LoggedInUserForRoute: 'LoggedInUserForRoute',
     PermissionGatedRouteLoggedInUser: 'PermissionGatedRouteLoggedInUser',
@@ -37667,6 +38007,7 @@ export const namedOperations = {
     CreateHashBank: 'CreateHashBank',
     UpdateHashBank: 'UpdateHashBank',
     DeleteHashBank: 'DeleteHashBank',
+    UpdateExchangeCredentials: 'UpdateExchangeCredentials',
     Login: 'Login',
     DeleteRejectedUser: 'DeleteRejectedUser',
     SignUp: 'SignUp',
