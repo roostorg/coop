@@ -1,8 +1,4 @@
-import {
-  ArrowRightOutlined,
-  CaretDownOutlined,
-  CaretUpOutlined,
-} from '@ant-design/icons';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import {
   differenceInDays,
   differenceInHours,
@@ -11,6 +7,7 @@ import {
   differenceInWeeks,
   differenceInYears,
 } from 'date-fns';
+import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -138,9 +135,9 @@ const ManualReviewDashboardInsightsCard = (
                   } p-1 rounded text-sm font-semibold flex items-center`}
                 >
                   {props.change === 0 ? null : props.change < 0 ? (
-                    <CaretDownOutlined />
+                    <ChevronDown className="w-4 h-4" />
                   ) : (
-                    <CaretUpOutlined />
+                    <ChevronUp className="w-4 h-4" />
                   )}
                   {formatNumber(props.change)}%
                 </div>
@@ -150,11 +147,11 @@ const ManualReviewDashboardInsightsCard = (
               </div>
             ) : 'link' in props ? (
               <Link
-                className="p-1 px-4 text-sm font-medium rounded cursor-pointer bg-coop-lightblue text-coop-blue hover:bg-coop-lightblue-hover w-fit"
+                className="inline-flex items-center gap-2 py-1 px-4 text-sm font-medium rounded-lg !no-underline !text-coop-blue !bg-coop-lightblue hover:!bg-coop-lightblue-hover w-fit"
                 to={props.link}
               >
                 {props.linkTitle}
-                <ArrowRightOutlined className="pl-2" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             ) : null}
           </div>
