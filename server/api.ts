@@ -29,9 +29,6 @@ import passport from 'passport';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
 import * as oidcClient from 'openid-client';
 
-function normalizeIssuerUrl(raw: string): string {
-  return `https://${raw.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
-}
 import {
   makeLoginIncorrectPasswordError,
   makeLoginSsoRequiredError,
@@ -100,6 +97,38 @@ async function getCPUUsage() {
   const endIdle = stats2.idle;
   const endTotal = stats2.total;
   return 1 - (endIdle - startIdle) / (endTotal - startTotal);
+}
+
+function normalizeIssuerUrl(raw: string): string {
+  return `https://${raw.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+}
+
+async function discoverOidcConfig(
+  issuerUrl: string,
+  clientId: string,
+  clientSecret: string,
+) {
+  const config = await oidcClient.discovery(
+    new URL(issuerUrl),
+    clientId,
+    clientSecret,
+  );
+
+  const supported = config.serverMetadata().token_endpoint_auth_methods_supported;
+
+  // Per OIDC spec, if token_endpoint_auth_methods_supported is absent the
+  // default is ["client_secret_basic"]. If the server explicitly lists methods
+  // and does NOT include client_secret_post, re-discover with ClientSecretBasic.
+  if (supported && !supported.includes('client_secret_post')) {
+    return oidcClient.discovery(
+      new URL(issuerUrl),
+      clientId,
+      clientSecret,
+      oidcClient.ClientSecretBasic(clientSecret),
+    );
+  }
+
+  return config;
 }
 
 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -307,12 +336,7 @@ export default async function makeApiServer(deps: Dependencies) {
       const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
 
       const { API_BASE_URL } = process.env;
-      const config = await oidcClient.discovery(
-        new URL(issuerUrl),
-        oidcSettings.client_id,
-        oidcSettings.client_secret,
-        oidcClient.ClientSecretBasic(oidcSettings.client_secret),
-      );
+      const config = await discoverOidcConfig(issuerUrl, oidcSettings.client_id, oidcSettings.client_secret);
 
       // Reconstruct callback URL with code/state from IdP redirect.
       // authorizationCodeGrant needs: base = registered redirect_uri, query = code+state from IdP.
@@ -372,12 +396,7 @@ export default async function makeApiServer(deps: Dependencies) {
       const callbackUrl = deps.SSOService.getSSOOidcCallbackUrl();
       const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
       
-      const config = await oidcClient.discovery(
-        new URL(issuerUrl),
-        oidcSettings.client_id,
-        oidcSettings.client_secret,
-        oidcClient.ClientSecretBasic(oidcSettings.client_secret),
-      );
+      const config = await discoverOidcConfig(issuerUrl, oidcSettings.client_id, oidcSettings.client_secret);
 
       const codeVerifier = oidcClient.randomPKCECodeVerifier();
       const codeChallenge = await oidcClient.calculatePKCECodeChallenge(codeVerifier);

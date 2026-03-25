@@ -255,7 +255,7 @@ export default function SSOSettings() {
       </Heading>
 
       <div className="flex items-center gap-2">
-        <Text size="SM">Current method:</Text>
+        <Text as="span" size="SM">Current method:</Text>
         <Badge variant={currentMethod === 'Password' ? 'secondary' : 'default'}>
           {currentMethod}
         </Badge>
