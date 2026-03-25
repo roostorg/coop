@@ -112,7 +112,9 @@ const Query: GQLQueryResolvers = {
         },
         orgId: user.orgId,
       });
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('actionStatistics: warehouse query failed:', (e as Error).message);
       return [];
     }
   },
@@ -137,7 +139,9 @@ const Query: GQLQueryResolvers = {
         count: it.count,
         policyId: it.policy_id,
       }));
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('topPolicyViolations: warehouse query failed:', (e as Error).message);
       return [];
     }
   },

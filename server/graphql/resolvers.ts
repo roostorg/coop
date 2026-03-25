@@ -103,7 +103,9 @@ const Query: GQLQueryResolvers = {
       return (await context.dataSources.ruleAPI.getAllRuleInsights(
         user.orgId,
       )) as any;
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('allRuleInsights: warehouse query failed:', (e as Error).message);
       return null;
     }
   },
@@ -114,7 +116,9 @@ const Query: GQLQueryResolvers = {
         context.services.Tracer,
       );
       return true;
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('isWarehouseAvailable: warehouse health check failed:', (e as Error).message);
       return false;
     }
   },
