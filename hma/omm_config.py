@@ -53,8 +53,6 @@ STORAGE_IFACE_INSTANCE = DefaultOMMStore(
     signal_types=[PdqSignal, VideoMD5Signal],
     content_types=[PhotoContent, VideoContent],
     exchange_types=[
-        StaticSampleSignalExchangeAPI,
-        InfiniteRandomExchange,  # type: ignore
         FBThreatExchangeSignalExchangeAPI,  # type: ignore
         NCMECSignalExchangeAPI,  # type: ignore
         StopNCIISignalExchangeAPI,

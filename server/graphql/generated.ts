@@ -105,6 +105,8 @@ export type Scalars = {
    * fields.
    */
   DateTime: Date | string;
+  /** Represents any JSON value (object, array, string, number, boolean, null). */
+  JSON: JsonValue;
   /** Represents an arbitrary json object. */
   JSONObject: JsonObject;
   /** Represents a string that must be non-empty. */
@@ -751,6 +753,7 @@ export type GQLCreateContentRuleResponse =
 export type GQLCreateHashBankInput = {
   readonly description?: InputMaybe<Scalars['String']>;
   readonly enabled_ratio: Scalars['Float'];
+  readonly exchange?: InputMaybe<GQLExchangeConfigInput>;
   readonly name: Scalars['String'];
 };
 
@@ -1146,6 +1149,53 @@ export type GQLError = {
   readonly type: ReadonlyArray<Scalars['String']>;
 };
 
+export type GQLExchangeApiInfo = {
+  readonly __typename?: 'ExchangeApiInfo';
+  readonly has_auth: Scalars['Boolean'];
+  readonly name: Scalars['String'];
+  readonly supports_auth: Scalars['Boolean'];
+};
+
+export type GQLExchangeApiSchema = {
+  readonly __typename?: 'ExchangeApiSchema';
+  readonly config_schema: GQLExchangeSchemaSection;
+  readonly credentials_schema?: Maybe<GQLExchangeSchemaSection>;
+};
+
+export type GQLExchangeConfigInput = {
+  readonly api_name: Scalars['String'];
+  readonly config_json: Scalars['String'];
+  readonly credentials_json?: InputMaybe<Scalars['String']>;
+};
+
+export type GQLExchangeFieldDescriptor = {
+  readonly __typename?: 'ExchangeFieldDescriptor';
+  readonly choices?: Maybe<ReadonlyArray<Scalars['String']>>;
+  readonly default?: Maybe<Scalars['JSON']>;
+  readonly help?: Maybe<Scalars['String']>;
+  readonly name: Scalars['String'];
+  readonly required: Scalars['Boolean'];
+  readonly type: Scalars['String'];
+};
+
+export type GQLExchangeInfo = {
+  readonly __typename?: 'ExchangeInfo';
+  readonly api: Scalars['String'];
+  readonly enabled: Scalars['Boolean'];
+  readonly error?: Maybe<Scalars['String']>;
+  readonly fetched_items?: Maybe<Scalars['Int']>;
+  readonly has_auth: Scalars['Boolean'];
+  readonly is_fetching?: Maybe<Scalars['Boolean']>;
+  readonly last_fetch_succeeded?: Maybe<Scalars['Boolean']>;
+  readonly last_fetch_time?: Maybe<Scalars['String']>;
+  readonly up_to_date?: Maybe<Scalars['Boolean']>;
+};
+
+export type GQLExchangeSchemaSection = {
+  readonly __typename?: 'ExchangeSchemaSection';
+  readonly fields: ReadonlyArray<GQLExchangeFieldDescriptor>;
+};
+
 export type GQLExecuteActionResponse = {
   readonly __typename?: 'ExecuteActionResponse';
   readonly actionId: Scalars['String'];
@@ -1299,6 +1349,7 @@ export type GQLHashBank = {
   readonly __typename?: 'HashBank';
   readonly description?: Maybe<Scalars['String']>;
   readonly enabled_ratio: Scalars['Float'];
+  readonly exchange?: Maybe<GQLExchangeInfo>;
   readonly hma_name: Scalars['String'];
   readonly id: Scalars['ID'];
   readonly name: Scalars['String'];
@@ -2267,6 +2318,7 @@ export type GQLMutateHashBankResponse =
 export type GQLMutateHashBankSuccessResponse = {
   readonly __typename?: 'MutateHashBankSuccessResponse';
   readonly data: GQLHashBank;
+  readonly warning?: Maybe<Scalars['String']>;
 };
 
 export type GQLMutateLocationBankResponse =
@@ -2390,6 +2442,7 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
+  readonly updateExchangeCredentials: Scalars['Boolean'];
   readonly updateHashBank: GQLMutateHashBankResponse;
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
@@ -2666,6 +2719,11 @@ export type GQLMutationUpdateContentItemTypeArgs = {
 
 export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
+};
+
+export type GQLMutationUpdateExchangeCredentialsArgs = {
+  apiName: Scalars['String'];
+  credentialsJson: Scalars['String'];
 };
 
 export type GQLMutationUpdateHashBankArgs = {
@@ -3162,6 +3220,8 @@ export type GQLQuery = {
   readonly apiKey: Scalars['String'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
+  readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
+  readonly exchangeApis: ReadonlyArray<GQLExchangeApiInfo>;
   readonly getCommentsForJob: ReadonlyArray<GQLManualReviewJobComment>;
   readonly getDecidedJob?: Maybe<GQLManualReviewJob>;
   readonly getDecidedJobFromJobId?: Maybe<GQLManualReviewJobWithDecisions>;
@@ -3224,6 +3284,10 @@ export type GQLQueryActionArgs = {
 
 export type GQLQueryActionStatisticsArgs = {
   input: GQLActionStatisticsInput;
+};
+
+export type GQLQueryExchangeApiSchemaArgs = {
+  apiName: Scalars['String'];
 };
 
 export type GQLQueryGetCommentsForJobArgs = {
@@ -5230,6 +5294,12 @@ export type GQLResolversTypes = {
     | GQLResolversTypes['RuleNameExistsError']
     | GQLResolversTypes['SignUpUserExistsError']
     | GQLResolversTypes['SubmittedJobActionNotFoundError'];
+  ExchangeApiInfo: ResolverTypeWrapper<GQLExchangeApiInfo>;
+  ExchangeApiSchema: ResolverTypeWrapper<GQLExchangeApiSchema>;
+  ExchangeConfigInput: GQLExchangeConfigInput;
+  ExchangeFieldDescriptor: ResolverTypeWrapper<GQLExchangeFieldDescriptor>;
+  ExchangeInfo: ResolverTypeWrapper<GQLExchangeInfo>;
+  ExchangeSchemaSection: ResolverTypeWrapper<GQLExchangeSchemaSection>;
   ExecuteActionResponse: ResolverTypeWrapper<GQLExecuteActionResponse>;
   ExecuteBulkActionInput: GQLExecuteBulkActionInput;
   ExecuteBulkActionResponse: ResolverTypeWrapper<GQLExecuteBulkActionResponse>;
@@ -5331,6 +5401,7 @@ export type GQLResolversTypes = {
       parents: ReadonlyArray<GQLResolversTypes['ItemSubmissions']>;
     }
   >;
+  JSON: ResolverTypeWrapper<Scalars['JSON']>;
   JSONObject: ResolverTypeWrapper<Scalars['JSONObject']>;
   JobCountFilterByInput: GQLJobCountFilterByInput;
   JobCountGroupByColumns: GQLJobCountGroupByColumns;
@@ -6086,6 +6157,12 @@ export type GQLResolversParentTypes = {
     | GQLResolversParentTypes['RuleNameExistsError']
     | GQLResolversParentTypes['SignUpUserExistsError']
     | GQLResolversParentTypes['SubmittedJobActionNotFoundError'];
+  ExchangeApiInfo: GQLExchangeApiInfo;
+  ExchangeApiSchema: GQLExchangeApiSchema;
+  ExchangeConfigInput: GQLExchangeConfigInput;
+  ExchangeFieldDescriptor: GQLExchangeFieldDescriptor;
+  ExchangeInfo: GQLExchangeInfo;
+  ExchangeSchemaSection: GQLExchangeSchemaSection;
   ExecuteActionResponse: GQLExecuteActionResponse;
   ExecuteBulkActionInput: GQLExecuteBulkActionInput;
   ExecuteBulkActionResponse: GQLExecuteBulkActionResponse;
@@ -6173,6 +6250,7 @@ export type GQLResolversParentTypes = {
     item: GQLResolversParentTypes['ItemSubmissions'];
     parents: ReadonlyArray<GQLResolversParentTypes['ItemSubmissions']>;
   };
+  JSON: Scalars['JSON'];
   JSONObject: Scalars['JSONObject'];
   JobCountFilterByInput: GQLJobCountFilterByInput;
   JobCreationCount: GQLJobCreationCount;
@@ -8358,6 +8436,107 @@ export type GQLErrorResolvers<
   >;
 };
 
+export type GQLExchangeApiInfoResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ExchangeApiInfo'] = GQLResolversParentTypes['ExchangeApiInfo'],
+> = {
+  has_auth?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  supports_auth?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLExchangeApiSchemaResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ExchangeApiSchema'] = GQLResolversParentTypes['ExchangeApiSchema'],
+> = {
+  config_schema?: Resolver<
+    GQLResolversTypes['ExchangeSchemaSection'],
+    ParentType,
+    ContextType
+  >;
+  credentials_schema?: Resolver<
+    Maybe<GQLResolversTypes['ExchangeSchemaSection']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLExchangeFieldDescriptorResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ExchangeFieldDescriptor'] = GQLResolversParentTypes['ExchangeFieldDescriptor'],
+> = {
+  choices?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['String']>>,
+    ParentType,
+    ContextType
+  >;
+  default?: Resolver<Maybe<GQLResolversTypes['JSON']>, ParentType, ContextType>;
+  help?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  required?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  type?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLExchangeInfoResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ExchangeInfo'] = GQLResolversParentTypes['ExchangeInfo'],
+> = {
+  api?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  enabled?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  error?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
+  fetched_items?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  has_auth?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  is_fetching?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
+  last_fetch_succeeded?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
+  last_fetch_time?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  up_to_date?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLExchangeSchemaSectionResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ExchangeSchemaSection'] = GQLResolversParentTypes['ExchangeSchemaSection'],
+> = {
+  fields?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ExchangeFieldDescriptor']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLExecuteActionResponseResolvers<
   ContextType = Context,
   ParentType extends
@@ -8512,6 +8691,11 @@ export type GQLHashBankResolvers<
     ContextType
   >;
   enabled_ratio?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
+  exchange?: Resolver<
+    Maybe<GQLResolversTypes['ExchangeInfo']>,
+    ParentType,
+    ContextType
+  >;
   hma_name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -9111,6 +9295,11 @@ export type GQLItemWithParentsResolvers<
   >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
+
+export interface GQLJsonScalarConfig
+  extends GraphQLScalarTypeConfig<GQLResolversTypes['JSON'], any> {
+  name: 'JSON';
+}
 
 export interface GQLJsonObjectScalarConfig
   extends GraphQLScalarTypeConfig<GQLResolversTypes['JSONObject'], any> {
@@ -10057,6 +10246,11 @@ export type GQLMutateHashBankSuccessResponseResolvers<
     GQLResolversParentTypes['MutateHashBankSuccessResponse'] = GQLResolversParentTypes['MutateHashBankSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['HashBank'], ParentType, ContextType>;
+  warning?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -10597,6 +10791,15 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationUpdateContentRuleArgs, 'input'>
+  >;
+  updateExchangeCredentials?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      GQLMutationUpdateExchangeCredentialsArgs,
+      'apiName' | 'credentialsJson'
+    >
   >;
   updateHashBank?: Resolver<
     GQLResolversTypes['MutateHashBankResponse'],
@@ -11556,6 +11759,17 @@ export type GQLQueryResolvers<
   >;
   availableIntegrations?: Resolver<
     ReadonlyArray<GQLResolversTypes['IntegrationMetadata']>,
+    ParentType,
+    ContextType
+  >;
+  exchangeApiSchema?: Resolver<
+    Maybe<GQLResolversTypes['ExchangeApiSchema']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLQueryExchangeApiSchemaArgs, 'apiName'>
+  >;
+  exchangeApis?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ExchangeApiInfo']>,
     ParentType,
     ContextType
   >;
@@ -14212,6 +14426,11 @@ export type GQLResolvers<ContextType = Context> = {
   EnqueueToNcmecAction?: GQLEnqueueToNcmecActionResolvers<ContextType>;
   EnumSignalOutputType?: GQLEnumSignalOutputTypeResolvers<ContextType>;
   Error?: GQLErrorResolvers<ContextType>;
+  ExchangeApiInfo?: GQLExchangeApiInfoResolvers<ContextType>;
+  ExchangeApiSchema?: GQLExchangeApiSchemaResolvers<ContextType>;
+  ExchangeFieldDescriptor?: GQLExchangeFieldDescriptorResolvers<ContextType>;
+  ExchangeInfo?: GQLExchangeInfoResolvers<ContextType>;
+  ExchangeSchemaSection?: GQLExchangeSchemaSectionResolvers<ContextType>;
   ExecuteActionResponse?: GQLExecuteActionResponseResolvers<ContextType>;
   ExecuteBulkActionResponse?: GQLExecuteBulkActionResponseResolvers<ContextType>;
   Field?: GQLFieldResolvers<ContextType>;
@@ -14252,6 +14471,7 @@ export type GQLResolvers<ContextType = Context> = {
   ItemTypeSchemaVariant?: GQLItemTypeSchemaVariantResolvers;
   ItemTypeSchemaVariantInput?: GQLItemTypeSchemaVariantInputResolvers;
   ItemWithParents?: GQLItemWithParentsResolvers<ContextType>;
+  JSON?: GraphQLScalarType;
   JSONObject?: GraphQLScalarType;
   JobCreationCount?: GQLJobCreationCountResolvers<ContextType>;
   JobCreationFilterBy?: GQLJobCreationFilterByResolvers<ContextType>;

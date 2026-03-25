@@ -32,6 +32,11 @@ const typeDefs = /* GraphQL */ `
   """
   scalar JSONObject
 
+  """
+  Represents any JSON value (object, array, string, number, boolean, null).
+  """
+  scalar JSON
+
   "Information about the current page in a connection."
   type PageInfo {
     "When paginating forwards, are there more items?"
@@ -92,6 +97,7 @@ const resolvers = {
   DateTime: scalars.GraphQLDateTime,
   Date: scalars.GraphQLDate,
   Cursor,
+  JSON: scalars.GraphQLJSON,
   JSONObject: scalars.GraphQLJSONObject,
   NonEmptyString,
 };
