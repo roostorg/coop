@@ -4,8 +4,6 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
-// openssl rand -base64 32
-// node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 function getEncryptionKey(): CipherKey {
   const key = process.env.SSO_ENCRYPTION_KEY;
   if (!key) {
