@@ -3158,7 +3158,7 @@ export type GQLQuery = {
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
   readonly allOrgs: ReadonlyArray<GQLOrg>;
-  readonly allRuleInsights: GQLAllRuleInsights;
+  readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
@@ -3186,6 +3186,7 @@ export type GQLQuery = {
   readonly hashBanks: ReadonlyArray<GQLHashBank>;
   readonly integrationConfig: GQLIntegrationConfigQueryResponse;
   readonly inviteUserToken: GQLInviteUserTokenResponse;
+  readonly isWarehouseAvailable: Scalars['Boolean'];
   readonly itemActionHistory: ReadonlyArray<GQLItemAction>;
   readonly itemSubmissions: ReadonlyArray<GQLItemSubmissions>;
   readonly itemType?: Maybe<GQLItemType>;
@@ -11544,7 +11545,7 @@ export type GQLQueryResolvers<
     ContextType
   >;
   allRuleInsights?: Resolver<
-    GQLResolversTypes['AllRuleInsights'],
+    Maybe<GQLResolversTypes['AllRuleInsights']>,
     ParentType,
     ContextType
   >;
@@ -11699,6 +11700,11 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQueryInviteUserTokenArgs, 'token'>
+  >;
+  isWarehouseAvailable?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
   >;
   itemActionHistory?: Resolver<
     ReadonlyArray<GQLResolversTypes['ItemAction']>,

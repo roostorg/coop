@@ -473,7 +473,8 @@ const typeDefs = /* GraphQL */ `
     myOrg: Org
     userFromToken(token: String!): ID
     inviteUserToken(token: String!): InviteUserTokenResponse! @publicResolver
-    allRuleInsights: AllRuleInsights!
+    allRuleInsights: AllRuleInsights
+    isWarehouseAvailable: Boolean!
   }
 
   type Mutation {

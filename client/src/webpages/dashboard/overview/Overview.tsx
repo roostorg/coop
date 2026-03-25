@@ -7,7 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/coop-ui/Select';
-import { useGQLDashboardOrgQuery } from '@/graphql/generated';
+import {
+  useGQLDashboardOrgQuery,
+  useGQLIsWarehouseAvailableQuery,
+} from '@/graphql/generated';
+import { WarningFilled } from '@/icons';
 import {
   FileExclamationFilled,
   FlowChartAltFilled,
@@ -16,6 +20,7 @@ import {
   UsersFilled,
 } from '@/icons';
 import { LookbackLength } from '@/utils/time';
+import { gql } from '@apollo/client';
 import { makeEnumLike } from '@roostorg/types';
 import { startOfHour, subDays } from 'date-fns';
 import { useState } from 'react';
@@ -44,8 +49,18 @@ export function getDisplayNameForTimeDivision(
   }
 }
 
+gql`
+  query IsWarehouseAvailable {
+    isWarehouseAvailable
+  }
+`;
+
 export default function Overview() {
   const { loading, error } = useGQLDashboardOrgQuery();
+  const { data: warehouseData } = useGQLIsWarehouseAvailableQuery({
+    fetchPolicy: 'cache-first',
+    pollInterval: 60_000,
+  });
   const [timeDivision, setTimeDivision] = useState<TimeDivisionOptions>('DAY');
   const [customTimeWindow, setCustomTimeWindow] = useState({
     start: startOfHour(subDays(new Date(), 7)),
@@ -197,6 +212,16 @@ export default function Overview() {
         <FullScreenLoading />
       ) : (
         <div className="flex flex-col w-full gap-4 mb-12">
+          {warehouseData?.isWarehouseAvailable === false && (
+            <div className="flex items-center gap-3 p-3 border border-solid rounded-lg bg-amber-50 border-amber-200 text-amber-800">
+              <WarningFilled className="w-5 h-5 text-amber-500 shrink-0" />
+              <span className="text-sm">
+                The analytics database is currently unavailable. Some charts and
+                statistics may show incomplete data until the service is
+                restored.
+              </span>
+            </div>
+          )}
           <div className="flex flex-col w-full gap-4 sm:flex-row">{cards}</div>
           <div className="flex w-full">
             <ErrorBoundary

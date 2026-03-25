@@ -3089,7 +3089,7 @@ export type GQLQuery = {
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
   readonly allOrgs: ReadonlyArray<GQLOrg>;
-  readonly allRuleInsights: GQLAllRuleInsights;
+  readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
@@ -3117,6 +3117,7 @@ export type GQLQuery = {
   readonly hashBanks: ReadonlyArray<GQLHashBank>;
   readonly integrationConfig: GQLIntegrationConfigQueryResponse;
   readonly inviteUserToken: GQLInviteUserTokenResponse;
+  readonly isWarehouseAvailable: Scalars['Boolean'];
   readonly itemActionHistory: ReadonlyArray<GQLItemAction>;
   readonly itemSubmissions: ReadonlyArray<GQLItemSubmissions>;
   readonly itemType?: Maybe<GQLItemType>;
@@ -18091,6 +18092,15 @@ export type GQLGetNcmecReportQuery = {
   } | null;
 };
 
+export type GQLIsWarehouseAvailableQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLIsWarehouseAvailableQuery = {
+  readonly __typename: 'Query';
+  readonly isWarehouseAvailable: boolean;
+};
+
 export type GQLTotalPendingJobsQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLTotalPendingJobsQuery = {
@@ -18962,7 +18972,7 @@ export type GQLRulesDashboardInsightsQueryVariables = Exact<{
 
 export type GQLRulesDashboardInsightsQuery = {
   readonly __typename: 'Query';
-  readonly allRuleInsights: {
+  readonly allRuleInsights?: {
     readonly __typename: 'AllRuleInsights';
     readonly actionedSubmissionsByPolicyByDay: ReadonlyArray<{
       readonly __typename: 'CountByPolicyByDay';
@@ -18999,7 +19009,7 @@ export type GQLRulesDashboardInsightsQuery = {
       readonly date: Date | string;
       readonly count: number;
     }>;
-  };
+  } | null;
 };
 
 export type GQLPolicyRollupDataQueryVariables = Exact<{ [key: string]: never }>;
@@ -19501,14 +19511,14 @@ export type GQLRulePassRateAnalyticsQuery = {
         };
       }
     | null;
-  readonly allRuleInsights: {
+  readonly allRuleInsights?: {
     readonly __typename: 'AllRuleInsights';
     readonly totalSubmissionsByDay: ReadonlyArray<{
       readonly __typename: 'CountByDay';
       readonly date: Date | string;
       readonly count: number;
     }>;
-  };
+  } | null;
 };
 
 export type GQLLeafConditionWithResultFieldsFragment = {
@@ -33384,6 +33394,61 @@ export type GQLGetNcmecReportQueryResult = Apollo.QueryResult<
   GQLGetNcmecReportQuery,
   GQLGetNcmecReportQueryVariables
 >;
+export const GQLIsWarehouseAvailableDocument = gql`
+  query IsWarehouseAvailable {
+    isWarehouseAvailable
+  }
+`;
+
+/**
+ * __useGQLIsWarehouseAvailableQuery__
+ *
+ * To run a query within a React component, call `useGQLIsWarehouseAvailableQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLIsWarehouseAvailableQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLIsWarehouseAvailableQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLIsWarehouseAvailableQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLIsWarehouseAvailableQuery,
+    GQLIsWarehouseAvailableQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLIsWarehouseAvailableQuery,
+    GQLIsWarehouseAvailableQueryVariables
+  >(GQLIsWarehouseAvailableDocument, options);
+}
+export function useGQLIsWarehouseAvailableLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLIsWarehouseAvailableQuery,
+    GQLIsWarehouseAvailableQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLIsWarehouseAvailableQuery,
+    GQLIsWarehouseAvailableQueryVariables
+  >(GQLIsWarehouseAvailableDocument, options);
+}
+export type GQLIsWarehouseAvailableQueryHookResult = ReturnType<
+  typeof useGQLIsWarehouseAvailableQuery
+>;
+export type GQLIsWarehouseAvailableLazyQueryHookResult = ReturnType<
+  typeof useGQLIsWarehouseAvailableLazyQuery
+>;
+export type GQLIsWarehouseAvailableQueryResult = Apollo.QueryResult<
+  GQLIsWarehouseAvailableQuery,
+  GQLIsWarehouseAvailableQueryVariables
+>;
 export const GQLTotalPendingJobsDocument = gql`
   query TotalPendingJobs {
     getTotalPendingJobsCount
@@ -37553,6 +37618,7 @@ export const namedOperations = {
     AllNCMECReports: 'AllNCMECReports',
     Permissions: 'Permissions',
     GetNCMECReport: 'GetNCMECReport',
+    IsWarehouseAvailable: 'IsWarehouseAvailable',
     TotalPendingJobs: 'TotalPendingJobs',
     RuleNamesAndIds: 'RuleNamesAndIds',
     DataForOverviewCharts: 'DataForOverviewCharts',
