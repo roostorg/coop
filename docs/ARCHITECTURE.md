@@ -623,7 +623,7 @@ Configuration (per org in org\_settings table):
 * oidc\_enabled: Boolean flag (mutually exclusive with saml\_enabled)
 * issuer\_url: OIDC provider's issuer domain (e.g., `your-tenant.auth0.com`)
 * client\_id: OIDC application client ID
-* client\_secret: OIDC application client secret (encrypted with AES-256-GCM)
+* client\_secret: OIDC application client secret (encrypted with AES-256-GCM using `SSO_ENCRYPTION_KEY`)
                                                                                   
   Files:
 `/server/api.ts (lines 285-404)`
