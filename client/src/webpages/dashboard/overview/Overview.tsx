@@ -11,7 +11,7 @@ import {
   useGQLDashboardOrgQuery,
   useGQLIsWarehouseAvailableQuery,
 } from '@/graphql/generated';
-import { WarningFilled } from '@/icons';
+import { TriangleAlert } from 'lucide-react';
 import {
   FileExclamationFilled,
   FlowChartAltFilled,
@@ -214,7 +214,7 @@ export default function Overview() {
         <div className="flex flex-col w-full gap-4 mb-12">
           {warehouseData?.isWarehouseAvailable === false && (
             <div className="flex items-center gap-3 p-3 border border-solid rounded-lg bg-amber-50 border-amber-200 text-amber-800">
-              <WarningFilled className="w-5 h-5 text-amber-500 shrink-0" />
+              <TriangleAlert className="w-5 h-5 text-amber-500 shrink-0" />
               <span className="text-sm">
                 The analytics database is currently unavailable. Some charts and
                 statistics may show incomplete data until the service is
