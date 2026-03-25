@@ -46,7 +46,7 @@ const getSliderColor = (value: number) => {
 };
 
 function isCollectionType(type: string): boolean {
-  return type.startsWith('set_of_') ?? type.startsWith('list_of_');
+  return type.startsWith('set_of_') || type.startsWith('list_of_');
 }
 
 function coerceFieldValue(field: SchemaField, raw: string): unknown {
