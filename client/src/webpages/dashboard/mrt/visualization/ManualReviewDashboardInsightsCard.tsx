@@ -1,7 +1,4 @@
-import {
-  CaretDownOutlined,
-  CaretUpOutlined,
-} from '@ant-design/icons';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import {
   differenceInDays,
   differenceInHours,
@@ -138,9 +135,9 @@ const ManualReviewDashboardInsightsCard = (
                   } p-1 rounded text-sm font-semibold flex items-center`}
                 >
                   {props.change === 0 ? null : props.change < 0 ? (
-                    <CaretDownOutlined />
+                    <ChevronDown className="w-4 h-4" />
                   ) : (
-                    <CaretUpOutlined />
+                    <ChevronUp className="w-4 h-4" />
                   )}
                   {formatNumber(props.change)}%
                 </div>
