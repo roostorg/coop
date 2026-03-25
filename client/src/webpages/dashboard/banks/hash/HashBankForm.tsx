@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Form, Input, Select, Slider, Switch, Tag } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { 
-  useGQLCreateHashBankMutation, 
+import {
+  useGQLCreateHashBankMutation,
   useGQLUpdateHashBankMutation,
   useGQLUpdateExchangeCredentialsMutation,
   useGQLHashBankByIdQuery,
@@ -25,8 +25,8 @@ type SchemaField = GQLExchangeApiSchemaQuery['exchangeApiSchema'] extends
   | null
   | undefined
   ? S extends { config_schema: { fields: ReadonlyArray<infer F> } }
-    ? F
-    : never
+  ? F
+  : never
   : never;
 
 const EXCHANGE_DISPLAY_NAMES: Record<string, string> = {
@@ -46,7 +46,7 @@ const getSliderColor = (value: number) => {
 };
 
 function isCollectionType(type: string): boolean {
-  return type.startsWith('set_of_') || type.startsWith('list_of_');
+  return type.startsWith('set_of_') ?? type.startsWith('list_of_');
 }
 
 function coerceFieldValue(field: SchemaField, raw: string): unknown {
@@ -381,15 +381,15 @@ export default function HashBankForm() {
     const exchangeInput =
       selectedExchangeApi && schema
         ? {
-            api_name: selectedExchangeApi,
-            config_json: JSON.stringify(exchangeConfigValues),
-            credentials_json:
-              schema.credentials_schema &&
+          api_name: selectedExchangeApi,
+          config_json: JSON.stringify(exchangeConfigValues),
+          credentials_json:
+            schema.credentials_schema &&
               selectedApiInfo &&
               !selectedApiInfo.has_auth
-                ? JSON.stringify(exchangeCredValues)
-                : undefined,
-          }
+              ? JSON.stringify(exchangeCredValues)
+              : undefined,
+        }
         : undefined;
 
     createHashBank({
@@ -608,9 +608,9 @@ export default function HashBankForm() {
         onChangeName={setBankName}
         onChangeDescription={setBankDescription}
       />
-      
+
       <div className="mt-5 divider mb-9" />
-      
+
       <div className="flex flex-col justify-start">
         <FormSectionHeader
           title="Enabled Ratio"
@@ -643,7 +643,7 @@ export default function HashBankForm() {
           0 = Fully disabled, 1 = Fully enabled
         </div>
       </div>
-      
+
       <div className="mt-5 divider mb-9" />
 
       {isCreating && (
@@ -714,7 +714,7 @@ export default function HashBankForm() {
           <div className="mt-5 divider mb-9" />
         </>
       )}
-      
+
       <CoopButton
         title={isCreating ? 'Create Hash Bank' : 'Save Changes'}
         loading={updateMutationParams.loading || createMutationParams.loading}
