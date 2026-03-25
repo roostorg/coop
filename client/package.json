@@ -103,6 +103,7 @@
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.4.7",
     "eslint": "^8.19.0",
+    "eslint-config-react-app": "^7.0.1",
     "eslint-plugin-custom-rules": "file:./eslint",
     "eslint-plugin-etc": "^2.0.3",
     "eslint-plugin-react": "^7.30.1",
