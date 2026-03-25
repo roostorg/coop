@@ -147,7 +147,7 @@ const ManualReviewDashboardInsightsCard = (
               </div>
             ) : 'link' in props ? (
               <Link
-                className="inline-flex items-center gap-2 py-1 px-4 text-sm font-medium rounded-lg !no-underline !text-indigo-700 !bg-indigo-100 hover:!bg-indigo-200 w-fit"
+                className="inline-flex items-center gap-2 py-1 px-4 text-sm font-medium rounded-lg !no-underline !text-coop-blue !bg-coop-lightblue hover:!bg-coop-lightblue-hover w-fit"
                 to={props.link}
               >
                 {props.linkTitle}
