@@ -468,7 +468,7 @@ export default function HashBankForm() {
           exchangeCredValues[f.name] === '')
     );
 
-  const isExchangeIncomplete = hasRequiredConfigMissing || hasRequiredCredsMissing;
+  const isExchangeIncomplete = Boolean(hasRequiredConfigMissing) || Boolean(hasRequiredCredsMissing);
 
   const modal = (
     <CoopModal
