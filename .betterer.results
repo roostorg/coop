@@ -31,9 +31,6 @@ exports[`No explicit any in client`] = {
     "client/src/components/common/GoogleTranslateButton.tsx:940489095": [
       [5, 12, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/coop-ui/Slider.test.tsx:3548334984": [
-      [14, 48, 3, "Unexpected any. Specify a different type.", "193409811"]
-    ],
     "client/src/graphql/inputHelpers.ts:514491218": [
       [45, 71, 3, "Unexpected any. Specify a different type.", "193409811"],
       [81, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -161,7 +158,7 @@ exports[`No explicit any in client`] = {
       [424, 38, 3, "Unexpected any. Specify a different type.", "193409811"],
       [442, 38, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:2408070124": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:1316234849": [
       [102, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
@@ -170,7 +167,7 @@ exports[`No explicit any in client`] = {
       [951, 42, 3, "Unexpected any. Specify a different type.", "193409811"],
       [971, 42, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:4088316860": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:2491938481": [
       [123, 27, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "client/src/webpages/dashboard/rules/rule_form/RuleFormUtils.test.ts:1402343162": [
@@ -190,10 +187,11 @@ exports[`No explicit any in client`] = {
 
 exports[`No explicit any in server`] = {
   value: `{
-    "server/api.ts:3876308530": [
-      [218, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [240, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
-      [329, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/api.ts:874522531": [
+      [233, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [255, 36, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [346, 24, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [464, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/bin/run-worker-or-job.ts:3770444259": [
       [10, 34, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -237,8 +235,12 @@ exports[`No explicit any in server`] = {
       [299, 11, 3, "Unexpected any. Specify a different type.", "193409811"],
       [362, 13, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
-    "server/graphql/resolvers.ts:3046460183": [
-      [104, 12, 3, "Unexpected any. Specify a different type.", "193409811"]
+    "server/graphql/modules/org.ts:864100261": [
+      [18, 28, 3, "Unexpected any. Specify a different type.", "193409811"],
+      [18, 43, 3, "Unexpected any. Specify a different type.", "193409811"]
+    ],
+    "server/graphql/resolvers.ts:1420958273": [
+      [105, 12, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/lib/cache/utils/TimerSet.ts:767817500": [
       [9, 31, 3, "Unexpected any. Specify a different type.", "193409811"],
@@ -258,6 +260,9 @@ exports[`No explicit any in server`] = {
     ],
     "server/routes/user_scores/UserScoresRoutes.ts:2034443149": [
       [12, 6, 3, "Unexpected any. Specify a different type.", "193409811"]
+    ],
+    "server/rule_engine/RuleEvaluator.ts:2485213977": [
+      [152, 47, 3, "Unexpected any. Specify a different type.", "193409811"]
     ],
     "server/services/analyticsLoggers/ContentApiLogger.ts:2789161218": [
       [54, 32, 3, "Unexpected any. Specify a different type.", "193409811"]
@@ -335,6 +340,12 @@ exports[`No explicit any in server`] = {
 
 exports[`No Deprecated API usage`] = {
   value: `{
+    "client/src/FrontendTracer.ts:2536702467": [
+      [18, 11, 16, "\\"addSpanProcessor\\" is deprecated: please use {@link TracerConfig} spanProcessors property Adds a new {@link SpanProcessor} to this tracer.", "2862616670"]
+    ],
+    "client/src/utils/useMapsApis.ts:1963920854": [
+      [29, 66, 4, "\\"load\\" is deprecated: , use importLibrary() instead.", "2087658595"]
+    ],
     "client/src/webpages/dashboard/mrt/queue_routing/ManualReviewQueueRoutingRule.tsx:2424450629": [
       [102, 20, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
@@ -353,7 +364,7 @@ exports[`No Deprecated API usage`] = {
     "client/src/webpages/dashboard/mrt/queue_routing/types.ts:1503142961": [
       [34, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/mrt/queue_routing/utils.ts:2033556121": [
+    "client/src/webpages/dashboard/mrt/queue_routing/utils.ts:3108559124": [
       [39, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [157, 23, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
@@ -361,7 +372,7 @@ exports[`No Deprecated API usage`] = {
       [284, 52, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [482, 50, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:2408070124": [
+    "client/src/webpages/dashboard/rules/rule_form/ReportingRuleFormReducers.tsx:1316234849": [
       [101, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [110, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [115, 54, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
@@ -378,7 +389,7 @@ exports[`No Deprecated API usage`] = {
       [124, 27, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [126, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:4088316860": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:2491938481": [
       [122, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [131, 29, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
       [136, 54, 10, "\\"CoreSignal\\" is deprecated: ", "2064075776"],
@@ -444,9 +455,6 @@ exports[`No Deprecated API usage`] = {
 
 exports[`No counterproductive type annotations`] = {
   value: `{
-    "client/src/coop-ui/Calendar.test.tsx:2174936412": [
-      [8, 26, 20, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1812269709"]
-    ],
     "client/src/webpages/dashboard/components/table/TableFilter.tsx:2480061365": [
       [169, 48, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "4083471778"]
     ],
@@ -475,7 +483,7 @@ exports[`No counterproductive type annotations`] = {
     "client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx:1051030766": [
       [1010, 11, 10, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "3776056839"]
     ],
-    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:4088316860": [
+    "client/src/webpages/dashboard/rules/rule_form/RuleFormReducers.tsx:2491938481": [
       [668, 5, 24, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1730074379"],
       [668, 31, 25, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "2598073665"],
       [677, 30, 36, "When a function \`x\` is written inline and passed as an argument, it\'s usually better not to write explicit type annotations on \`x\`\'s arguments because the argument types should be able to be inferred, and the inferred type will usually be more accurate than what you\'d write manually. Plus, the inferred type will automatically update.\\n\\nIf the type for x\'s arguments is not being correctly inferred, that suggests an issue with the type definition of the function that \`x\` is being passed to.", "1752857791"]
@@ -685,7 +693,7 @@ exports[`No new ant-design icon imports`] = {
 
 exports[`No new line-icon imports`] = {
   value: `{
-    "client/src/components/Sidebar.tsx:3176701436": [
+    "client/src/components/Sidebar.tsx:3104937753": [
       [2, 0, 64, "\'@/icons\' import is restricted from being used.", "2495069050"],
       [3, 0, 80, "\'@/icons/lni/Direction/angle-double-left.svg?react\' import is restricted from being used by a pattern.", "219512785"],
       [4, 0, 82, "\'@/icons/lni/Direction/angle-double-right.svg?react\' import is restricted from being used by a pattern.", "1905172657"]
@@ -700,7 +708,7 @@ exports[`No new line-icon imports`] = {
       [0, 0, 75, "\'@/icons/lni/Interface and Sign/checkmark.svg?react\' import is restricted from being used by a pattern.", "2106702889"],
       [1, 0, 72, "\'@/icons/lni/Interface and Sign/more-alt.svg?react\' import is restricted from being used by a pattern.", "4086154276"]
     ],
-    "client/src/webpages/dashboard/Dashboard.tsx:3291402875": [
+    "client/src/webpages/dashboard/Dashboard.tsx:727143739": [
       [0, 0, 102, "\'@/icons\' import is restricted from being used.", "3871568653"]
     ],
     "client/src/webpages/dashboard/banks/MatchingBanksDashboard.tsx:3217201097": [

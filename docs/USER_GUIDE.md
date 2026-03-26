@@ -117,9 +117,11 @@ Once you invite a new user to Coop, you can either configure an email service to
 
 ### SSO
 
-Learn how to configure SSO using Okta SAML.
+Learn how to configure SSO using SAML or OIDC.
 
-Coop only supports SSO through Okta SAML.
+Coop supports SSO through SAML and OIDC. Only one method can be active at a time.
+
+#### SAML
 
 **Prerequisites**
 
@@ -145,6 +147,37 @@ To configure Okta SAML SSO, you must:
 4. Copy the contents of the XML file. In Coop, go to **Settings → SSO** and paste the XML into the **Identity Provider Metadata** field.
 5. On the same page, enter `email` in the **Attributes** section.
 6. In your Okta app under **Assignments**, assign users or groups to your app.
+
+#### OIDC
+
+**Prerequisites**
+
+To configure OIDC SSO, you must:
+
+* Have admin permissions in Coop.
+* Have an OIDC-compliant identity provider (e.g., Okta, Auth0, Azure AD, Google Workspace).
+* Be able to create an application (or "client") in your identity provider and obtain a Client ID and Client Secret.
+
+**Configuration**
+
+1. In Coop, go to **Settings → SSO** and select the **OIDC** tab. Copy the **Redirect URI** displayed on the page (format: `<your-api-base-url>/api/v1/oidc/login/callback`).
+2. In your identity provider, create a new OIDC/OAuth 2.0 application (sometimes called a "Web Application" or "Regular Web App"). Use the following settings:
+
+   | Setting | Value |
+   | :------ | :---- |
+   | Application type | Web application |
+   | Grant type | Authorization Code |
+   | Redirect / Callback URI | The Redirect URI you copied from Coop in step 1 |
+   | Scopes | `openid email` |
+
+3. After creating the application, copy the **Client ID** and **Client Secret** from your identity provider.
+4. Back in Coop under **Settings → SSO → OIDC**, fill in the following fields:
+   - **Domain:** Your identity provider's issuer domain (e.g., `your-tenant.auth0.com`). Do not include `https://`.
+   - **Client ID:** The Client ID from step 3.
+   - **Client Secret:** The Client Secret from step 3. This value is stored encrypted and will be masked after saving.
+5. Click **Save** to enable OIDC.
+
+> **Note:** SAML and OIDC cannot be enabled at the same time. Enabling OIDC will disable SAML (and vice versa). Your previous credentials are preserved if you switch back.
 
 ### Wellness and Safety
 

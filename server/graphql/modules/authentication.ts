@@ -6,8 +6,8 @@ import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 const typeDefs = /* GraphQL */ `
   type Query {
     me: User @publicResolver
-    getSSORedirectUrl(emailAddress: String!): String
-      @publicResolver
+    getSSORedirectUrl(emailAddress: String!): String @publicResolver
+    getSSOOidcCallbackUrl: String
   }
 
   type Mutation {
@@ -67,6 +67,9 @@ const Query: ResolverMap = {
     return context.services.SSOService.getSSORedirectUrlForUserEmail(
       emailAddress,
     );
+  },
+  async getSSOOidcCallbackUrl(_: unknown, __: unknown, context) {
+    return context.services.SSOService.getSSOOidcCallbackUrl();
   },
 };
 
