@@ -1,3 +1,5 @@
+# Appeals
+
 When a user on your platform is unsatisfied with your decision and submits an appeal request, asking you to re-review your original decision, you should send that appeal request to Coop through this API.
 
 ## Implementation
