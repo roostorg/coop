@@ -419,8 +419,8 @@ export default function RuleDashboardInsightsChart(props: {
 
   const emptyChart = (
     <div className="flex flex-col items-center justify-center gap-3 p-6 rounded bg-slate-100">
-      <div className="text-xl">
-        We didn't find any results for this query. Try another one!
+      <div className="text-sm text-slate-400">
+        No data available for the selected time period.
       </div>
       <CoopButton
         title="Reset Filters"

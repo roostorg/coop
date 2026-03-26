@@ -116,6 +116,7 @@ services:
     volumes:
       - ./client/eslint:/app/eslint
       - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
+      - ./client/eslint.config.mjs:/app/eslint.config.mjs
 
   jaeger:
     image: jaegertracing/all-in-one:1.76.0

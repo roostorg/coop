@@ -10,7 +10,7 @@
 FROM node:24.14.0-bullseye-slim AS server_base
 WORKDIR /app
 
-COPY ["server/package.json", "server/package-lock.json", "./"]
+COPY ["server/package.json", "server/package-lock.json", "server/.npmrc", "./"]
 RUN npm ci
 COPY ["server", "./"]
 
@@ -21,7 +21,7 @@ RUN npm run build
 FROM node:24.14.0-bullseye-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install dumb-init
-COPY --from=build_backend ["/app/package.json", "/app/package-lock.json", "./"]
+COPY --from=build_backend ["/app/package.json", "/app/package-lock.json", "/app/.npmrc", "./"]
 RUN npm ci --omit=dev
 COPY --from=build_backend /app/transpiled ./
 

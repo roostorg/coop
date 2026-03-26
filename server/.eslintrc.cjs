@@ -289,6 +289,7 @@ const correctnessRules = {
     },
   ],
   'import/no-deprecated': ['off'],
+  '@typescript-eslint/no-deprecated': ['warn'],
   // Empty interfaces usually indicate a misunderstanding of TS (i.e., expecting
   // the interface to be nominal rather than structural.)
   '@typescript-eslint/no-empty-object-type': ['error', { allowObjectTypes: 'always' }],

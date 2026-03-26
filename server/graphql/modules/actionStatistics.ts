@@ -101,16 +101,22 @@ const Query: GQLQueryResolvers = {
     } as const;
     const sources = input.filterBy.sources.map((it) => a[it]);
 
-    return context.dataSources.ruleAPI.getActionStatistics({
-      ...input,
-      filterBy: {
-        ...input.filterBy,
-        sources,
-        startDate: new Date(input.filterBy.startDate),
-        endDate: new Date(input.filterBy.endDate),
-      },
-      orgId: user.orgId,
-    });
+    try {
+      return await context.dataSources.ruleAPI.getActionStatistics({
+        ...input,
+        filterBy: {
+          ...input.filterBy,
+          sources,
+          startDate: new Date(input.filterBy.startDate),
+          endDate: new Date(input.filterBy.endDate),
+        },
+        orgId: user.orgId,
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('actionStatistics: warehouse query failed:', (e as Error).message);
+      return [];
+    }
   },
 
   async topPolicyViolations(_, { input }, context) {
@@ -119,19 +125,25 @@ const Query: GQLQueryResolvers = {
       throw new AuthenticationError('Authenticated user required');
     }
 
-    const policyViolations =
-      await context.dataSources.ruleAPI.getPoliciesSortedByViolationCount({
-        filterBy: {
-          startDate: new Date(input.filterBy.startDate),
-          endDate: new Date(input.filterBy.endDate),
-        },
-        timeZone: input.timeZone,
-        orgId: user.orgId,
-      });
-    return policyViolations.map((it) => ({
-      count: it.count,
-      policyId: it.policy_id,
-    }));
+    try {
+      const policyViolations =
+        await context.dataSources.ruleAPI.getPoliciesSortedByViolationCount({
+          filterBy: {
+            startDate: new Date(input.filterBy.startDate),
+            endDate: new Date(input.filterBy.endDate),
+          },
+          timeZone: input.timeZone,
+          orgId: user.orgId,
+        });
+      return policyViolations.map((it) => ({
+        count: it.count,
+        policyId: it.policy_id,
+      }));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('topPolicyViolations: warehouse query failed:', (e as Error).message);
+      return [];
+    }
   },
 
   async recentUserStrikeActions(_, { input }, context) {

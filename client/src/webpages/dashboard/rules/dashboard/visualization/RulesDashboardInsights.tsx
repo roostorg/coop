@@ -2,6 +2,7 @@ import './recharts.css';
 
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { InvestmentFilled, PieChartAltFilled } from '@/icons';
+import { TriangleAlert } from 'lucide-react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import {
   BarChartOutlined,
@@ -880,7 +881,13 @@ export default function RulesDashboardInsights() {
   );
 
   if (error || policiesError) {
-    throw error ?? policiesError!;
+    return (
+      <RuleInsightsEmptyCard
+        icon={<TriangleAlert />}
+        title="Analytics Unavailable"
+        subtitle="We couldn't load the analytics data. The analytics service may be temporarily down. Other parts of Coop are unaffected."
+      />
+    );
   }
 
   return (

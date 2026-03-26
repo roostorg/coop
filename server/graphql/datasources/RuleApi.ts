@@ -574,13 +574,7 @@ class RuleAPI extends DataSource {
   }
 
   async getAllRuleInsights(orgId: string) {
-    const [
-      actionedSubmissionsByDay,
-      actionedSubmissionsByPolicyByDay,
-      actionedSubmissionsByTagByDay,
-      actionedSubmissionsByActionByDay,
-      totalSubmissionsByDay,
-    ] = await Promise.all([
+    const results = await Promise.allSettled([
       this.actionStats.getActionedSubmissionCountsByDay(orgId),
       this.actionStats.getActionedSubmissionCountsByPolicyByDay(orgId),
       this.actionStats.getActionedSubmissionCountsByTagByDay(orgId),
@@ -588,12 +582,17 @@ class RuleAPI extends DataSource {
       this.ruleInsights.getContentSubmissionCountsByDay(orgId),
     ]);
 
+    const valueOrEmpty = <T,>(r: PromiseSettledResult<readonly T[]>): readonly T[] =>
+      r.status === 'fulfilled' ? r.value : [];
+
     return {
-      actionedSubmissionsByDay,
-      actionedSubmissionsByPolicyByDay,
-      actionedSubmissionsByTagByDay,
-      actionedSubmissionsByActionByDay,
-      totalSubmissionsByDay,
+      actionedSubmissionsByDay: valueOrEmpty(results[0]),
+      actionedSubmissionsByPolicyByDay: valueOrEmpty(results[1]),
+      actionedSubmissionsByTagByDay: valueOrEmpty(results[2]),
+      actionedSubmissionsByActionByDay: valueOrEmpty(results[3]),
+      totalSubmissionsByDay: valueOrEmpty(
+        results[4] as PromiseSettledResult<readonly { date: string; count: number }[]>,
+      ),
     };
   }
 
