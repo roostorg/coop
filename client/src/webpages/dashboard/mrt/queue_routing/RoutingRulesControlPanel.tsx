@@ -245,11 +245,11 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
     reorderRoutingRules,
     { loading: reorderLoading, reset: reorderReset },
   ] = useGQLReorderRoutingRulesMutation({
-    onCompleted(data, clientOptions) {
+    onCompleted(_data, _clientOptions) {
       notificationApi.success({ message: 'Rules reordered successfully!' });
       reorderReset();
     },
-    onError(error) {
+    onError(_error) {
       notificationApi.error({
         message: 'Setting rule order failed. Please try again.',
       });
@@ -259,10 +259,10 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
   });
   const [deleteRule, { loading: deleteLoading, reset: deleteReset }] =
     useGQLDeleteRoutingRuleMutation({
-      onCompleted(data, clientOptions) {
+      onCompleted(_data, _clientOptions) {
         notificationApi.success({ message: 'Rule deleted successfully!' });
       },
-      onError(error) {
+      onError(_error) {
         notificationApi.error({
           message: 'Rule deletion failed. Please try again.',
         });

@@ -278,7 +278,7 @@ export default function ManualReviewQueueForm() {
   }, [queue, queue?.autoCloseJobs]);
 
   if (queueQueryError || error) {
-    // eslint-disable-next-line @typescript-eslint/no-throw-literal
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw queueQueryError ?? error;
   }
 

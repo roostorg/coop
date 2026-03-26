@@ -45,29 +45,6 @@ jobs:
             exit 1
           fi
 
-  run_betterer:
-    timeout-minutes: 4
-    needs: [check_for_client_changes, check_for_server_changes]
-    if: needs.check_for_server_changes.outputs.result == 'true' || needs.check_for_client_changes.outputs.result == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
-      - name: Install dependencies in root and client directory
-        run: |
-          npm ci
-          cd client
-          npm ci
-
-      - name: Run Betterer tests
-        run: npm run betterer
-        env:
-          NODE_OPTIONS: '--max-old-space-size=5250'
-
   check_migration_order:
     runs-on: ubuntu-latest
     steps:

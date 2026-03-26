@@ -32,7 +32,7 @@ export function vendorName(signal: CoreSignal) {
     : 'Plugin';
 }
 
-export function signalDisplayName(signal: CoreSignal, hideVendor = true) {
+export function signalDisplayName(signal: CoreSignal, _hideVendor = true) {
   const { integration, name } = signal;
   if (!integration) {
     return name;

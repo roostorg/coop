@@ -401,7 +401,7 @@ export default function ItemInvestigation(props: {
               allActions={allActions ?? []}
               allPolicies={allPolicies ?? []}
               relatedActions={[]}
-              onEnqueueActions={(action) => {}}
+              onEnqueueActions={(_action) => {}}
               isActionable={false}
               requirePolicySelectionToEnqueueAction={
                 requiresPolicyForDecisionsInMrt
@@ -420,7 +420,7 @@ export default function ItemInvestigation(props: {
               allActions={allActions ?? []}
               allPolicies={allPolicies ?? []}
               relatedActions={[]}
-              onEnqueueActions={(action) => {}}
+              onEnqueueActions={(_action) => {}}
               isActionable={false}
               requirePolicySelectionToEnqueueAction={
                 requiresPolicyForDecisionsInMrt

@@ -86,7 +86,7 @@ export default function LoginSSO() {
                     window.location.href = redirectUrl;
                   }
                 },
-                onError: (error) => {
+                onError: (_error) => {
                   setErrorModalVisible(true);
                 },
               });

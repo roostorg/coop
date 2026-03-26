@@ -32,11 +32,11 @@ declare global {
     // actually taking advantage of declaration merging (on Expect, Matchers,
     // and InverseAsymmetricMatchers) to make those interfaces, which are defined
     // elsewhere extend our CustomMatchers interface.
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface Expect extends CustomMatchers {}
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface Matchers<R> extends CustomMatchers<R> {}
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface InverseAsymmetricMatchers extends CustomMatchers {}
   }
 }

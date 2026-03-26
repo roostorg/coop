@@ -17,7 +17,7 @@ export function stringSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
   columnId: IdType<RowWithValues>,
-  desc?: boolean,
+  _desc?: boolean,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -37,7 +37,7 @@ export function integerSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
   columnId: IdType<RowWithValues>,
-  desc?: boolean,
+  _desc?: boolean,
 ) {
   // the values come formatted with commas, so we remove all
   // comma characters before doing any parsing or comparison
@@ -50,7 +50,7 @@ export function boolSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
   columnId: IdType<RowWithValues>,
-  desc?: boolean,
+  _desc?: boolean,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -196,8 +196,8 @@ export function dateSort(dateKey: string) {
   return (
     rowA: Row<RowWithValues>,
     rowB: Row<RowWithValues>,
-    columnId: IdType<RowWithValues>,
-    desc?: boolean,
+    _columnId: IdType<RowWithValues>,
+    _desc?: boolean,
   ) => {
     const a = (rowA.original as unknown as Record<string, unknown>)[dateKey];
     const b = (rowB.original as unknown as Record<string, unknown>)[dateKey];

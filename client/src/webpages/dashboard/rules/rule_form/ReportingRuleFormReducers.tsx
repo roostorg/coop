@@ -330,7 +330,7 @@ export function deleteCondition(
 
 function addConditionSet(
   state: ReportingRuleFormState,
-  action: ReportingRuleFormReducerAction,
+  _action: ReportingRuleFormReducerAction,
 ): ReportingRuleFormState {
   let newConditionSet = cloneDeep(state.conditionSet);
 

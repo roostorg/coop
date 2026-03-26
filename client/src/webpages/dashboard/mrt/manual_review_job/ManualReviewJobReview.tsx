@@ -710,7 +710,7 @@ function ManualReviewJobReviewImpl(props: {
   const [submitDecision, { loading: submissionLoading }] =
     useGQLSubmitManualReviewDecisionMutation({
       fetchPolicy: 'no-cache',
-      onError: (e) => {
+      onError: (_e) => {
         setModalInfo({
           visible: true,
           modalBody: 'Unknown error occured.',
