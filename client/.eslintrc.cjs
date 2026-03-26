@@ -164,6 +164,7 @@ module.exports = {
     'no-prototype-builtins': ['error'],
     'no-implicit-coercion': ['error'],
     '@typescript-eslint/no-explicit-any': ['warn'],
+    '@typescript-eslint/no-deprecated': ['warn'],
     '@typescript-eslint/no-extra-non-null-assertion': ['error'],
     '@typescript-eslint/no-unnecessary-type-assertion': ['error'],
     '@typescript-eslint/prefer-includes': ['error'],
