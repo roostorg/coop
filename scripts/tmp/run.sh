@@ -1,0 +1,1 @@
+curl -s -H "Content-Type: application/json" -H "x-api-key: 1b12a95a782cb94eedb59684a40ed6d16a7f9b0ad2eaf7a5384065866106e742" -d @/tmp/items_payload.json http://localhost:8080/api/v1/items/async/ 
