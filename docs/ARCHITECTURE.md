@@ -48,12 +48,11 @@ coop/
 │   ├── services/             # Business logic services including NCMEC
 │   └── workers_jobs/         # Background processing
 │
-├── .devops/
-│   └── migrator/             # Database migrations
-│       └── src/scripts/
-│           ├── api-server-pg/  # PostgreSQL
-│           ├── clickhouse/     # ClickHouse
-│           └── scylla/         # Scylla
+├── db/                        # Database migrations
+│   └── src/scripts/
+│       ├── api-server-pg/     # PostgreSQL
+│       ├── clickhouse/        # ClickHouse
+│       └── scylla/            # Scylla
 │
 └── docs/                      # Documentation
 ```

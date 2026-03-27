@@ -137,7 +137,7 @@ All warehouses need these tables. Schema types defined in `/server/storage/dataW
 - `CONTENT_API_REQUESTS` - API request logs
 
 ClickHouse DDL lives alongside the rest of our migrations at  
-`.devops/migrator/src/scripts/clickhouse/`. Add new files there when the schema evolves.
+`db/src/scripts/clickhouse/`. Add new files there when the schema evolves.
 
 **Migration examples:**
 
@@ -369,6 +369,6 @@ server/services/analyticsQueries/   # Warehouse-agnostic queries
 
 - **Schema types:** `/server/storage/dataWarehouse/IDataWarehouseAnalytics.ts`
 - **Clickhouse:** `server/plugins/warehouse` and `server/plugins/analytics` adapters
-- **PostgreSQL migrations:** `.devops/migrator/src/scripts/api-server-pg/` (app DB); analytics tables may live in a dedicated analytics database per deployment
+- **PostgreSQL migrations:** `db/src/scripts/api-server-pg/` (app DB); analytics tables may live in a dedicated analytics database per deployment
 - **Loggers:** `/server/services/analyticsLoggers/`
 - **Queries:** `/server/services/analyticsQueries/`

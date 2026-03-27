@@ -1,7 +1,7 @@
 import { Label } from '@/coop-ui/Label';
 import { Switch } from '@/coop-ui/Switch';
-import { ReactComponent as CopyAlt } from '@/icons/lni/Web and Technology/copy-alt.svg';
-import { ReactComponent as TrashCan } from '@/icons/lni/Web and Technology/trash-can.svg';
+import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
+import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
 import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Form, Input, Radio, Select, Tooltip } from 'antd';

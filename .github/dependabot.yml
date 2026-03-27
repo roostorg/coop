@@ -5,13 +5,6 @@
 
 version: 2
 updates:
-  # Enable version updates for npm
-  - package-ecosystem: 'npm' # See documentation for possible values
-    directories:
-      - '/.devops/aws' # Location of package manifests
-    schedule:
-      interval: 'weekly'
-
   # Enable version updates for Docker
   - package-ecosystem: "docker"
     directory: "/"

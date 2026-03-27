@@ -1,6 +1,6 @@
+import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
+import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
-import { ReactComponent as ChevronDown } from '@/icons/lni/Direction/chevron-down.svg';
-import { ReactComponent as ChevronUp } from '@/icons/lni/Direction/chevron-up.svg';
 import { Select } from 'antd';
 import without from 'lodash/without';
 import { useRef, useState } from 'react';
@@ -43,20 +43,20 @@ export type RecentDecisionsFilterInput = Omit<
 
 export type DecisionOrAction =
   | {
-      type: 'CUSTOM_ACTION';
-      actionId: string;
-    }
+    type: 'CUSTOM_ACTION';
+    actionId: string;
+  }
   | {
-      type: 'REJECT_APPEAL' | 'ACCEPT_APPEAL';
-      appealId: string;
-      actionIds: string[];
-    }
+    type: 'REJECT_APPEAL' | 'ACCEPT_APPEAL';
+    appealId: string;
+    actionIds: string[];
+  }
   | {
-      type: Exclude<
-        GQLManualReviewDecisionType,
-        'CUSTOM_ACTION' | 'RELATED_ACTION' | 'REJECT_APPEAL' | 'ACCEPT_APPEAL'
-      >;
-    };
+    type: Exclude<
+      GQLManualReviewDecisionType,
+      'CUSTOM_ACTION' | 'RELATED_ACTION' | 'REJECT_APPEAL' | 'ACCEPT_APPEAL'
+    >;
+  };
 
 const decisionFilterByColumns = [
   'decisions',
@@ -167,9 +167,9 @@ export default function ManualReviewRecentDecisionsFilter(props: {
               it === 'RELATED_ACTION' || it === 'CUSTOM_ACTION'
                 ? undefined
                 : {
-                    id: jsonStringify({ type: it }),
-                    name: getReadableNameFromDecisionType(it),
-                  },
+                  id: jsonStringify({ type: it }),
+                  name: getReadableNameFromDecisionType(it),
+                },
             ),
           ].flat(),
         );
@@ -254,14 +254,12 @@ export default function ManualReviewRecentDecisionsFilter(props: {
             something to do with dynamically choosing whether to render each icon because when
             we render both and just hide one of them, componentRef.current.contains() works. */}
           <ChevronUp
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${
-              filterByMenuVisible ? '' : 'hidden'
-            }`}
+            className={`ml-2 w-3 fill-slate-400 flex items-center ${filterByMenuVisible ? '' : 'hidden'
+              }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${
-              filterByMenuVisible ? 'hidden' : ''
-            }`}
+            className={`ml-2 w-3 fill-slate-400 flex items-center ${filterByMenuVisible ? 'hidden' : ''
+              }`}
           />
         </div>
         {filterByMenuVisible && (
@@ -297,9 +295,8 @@ export default function ManualReviewRecentDecisionsFilter(props: {
                   );
                 return (
                   <div
-                    className={`flex flex-col ${
-                      isExpanded ? 'bg-gray-100' : ''
-                    }`}
+                    className={`flex flex-col ${isExpanded ? 'bg-gray-100' : ''
+                      }`}
                     key={column}
                   >
                     <div
@@ -318,14 +315,12 @@ export default function ManualReviewRecentDecisionsFilter(props: {
                         something to do with dynamically choosing whether to render each icon because when
                         we render both and just hide one of them, componentRef.current.contains() works. */}
                       <ChevronUp
-                        className={`font-bold w-3 fill-slate-400 ${
-                          isExpanded ? '' : 'hidden'
-                        }`}
+                        className={`font-bold w-3 fill-slate-400 ${isExpanded ? '' : 'hidden'
+                          }`}
                       />
                       <ChevronDown
-                        className={`font-bold w-3 fill-slate-400 ${
-                          isExpanded ? 'hidden' : ''
-                        }`}
+                        className={`font-bold w-3 fill-slate-400 ${isExpanded ? 'hidden' : ''
+                          }`}
                       />
                     </div>
                     {isExpanded && (

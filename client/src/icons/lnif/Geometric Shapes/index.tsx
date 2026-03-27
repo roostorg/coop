@@ -1,21 +1,21 @@
 import type { FilledIconProps } from '../types';
-import { ReactComponent as CircleAlt } from './circle-alt.svg';
-import { ReactComponent as Dots } from './dots.svg';
-import { ReactComponent as Hexagons1 } from './hexagons-1.svg';
-import { ReactComponent as Hexagons } from './hexagons.svg';
-import { ReactComponent as Rhombus } from './rhombus.svg';
-import { ReactComponent as Squares1 } from './squares-1.svg';
-import { ReactComponent as Squares3 } from './squares-3.svg';
-import { ReactComponent as Squares } from './squares.svg';
-import { ReactComponent as Triangle3 } from './triangle-3.svg';
-import { ReactComponent as Triangle4 } from './triangle-4.svg';
-import { ReactComponent as Triangle5 } from './triangle-5.svg';
-import { ReactComponent as Triangle6 } from './triangle-6.svg';
-import { ReactComponent as Triangle7 } from './triangle-7.svg';
-import { ReactComponent as Triangle8 } from './triangle-8.svg';
-import { ReactComponent as Triangle9 } from './triangle-9.svg';
-import { ReactComponent as TriangleAlt } from './triangle-alt.svg';
-import { ReactComponent as Triangles } from './triangles.svg';
+import CircleAlt from './circle-alt.svg?react';
+import Dots from './dots.svg?react';
+import Hexagons1 from './hexagons-1.svg?react';
+import Hexagons from './hexagons.svg?react';
+import Rhombus from './rhombus.svg?react';
+import Squares1 from './squares-1.svg?react';
+import Squares3 from './squares-3.svg?react';
+import Squares from './squares.svg?react';
+import Triangle3 from './triangle-3.svg?react';
+import Triangle4 from './triangle-4.svg?react';
+import Triangle5 from './triangle-5.svg?react';
+import Triangle6 from './triangle-6.svg?react';
+import Triangle7 from './triangle-7.svg?react';
+import Triangle8 from './triangle-8.svg?react';
+import Triangle9 from './triangle-9.svg?react';
+import TriangleAlt from './triangle-alt.svg?react';
+import Triangles from './triangles.svg?react';
 
 const CircleAltFilled = (props: FilledIconProps) => (
   <CircleAlt fill="currentColor" {...props} />

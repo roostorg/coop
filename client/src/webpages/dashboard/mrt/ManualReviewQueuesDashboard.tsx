@@ -1,7 +1,7 @@
 import { StarFilled, TapFilled } from '@/icons';
-import { ReactComponent as AngleDoubleRight } from '@/icons/lni/Direction/angle-double-right.svg';
-import { ReactComponent as GridAlt } from '@/icons/lnif/Design/grid-alt.svg';
-import { ReactComponent as Star } from '@/icons/lni/Web and Technology/star.svg';
+import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
+import Star from '@/icons/lni/Web and Technology/star.svg?react';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';

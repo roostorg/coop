@@ -1,4 +1,4 @@
-import { ReactComponent as UserAlt4 } from '@/icons/lni/User/user-alt-4.svg';
+import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/types';
 import uniqBy from 'lodash/uniqBy';

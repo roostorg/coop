@@ -1,5 +1,5 @@
-import { ReactComponent as Sparkles } from '@/icons/lni/Weather/sparkles.svg';
-import { ReactComponent as CopyAlt } from '@/icons/lni/Web and Technology/copy-alt.svg';
+import Sparkles from '@/icons/lni/Weather/sparkles.svg?react';
+import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import { ReadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/types';
@@ -197,7 +197,7 @@ export default function ItemTypesDashboard() {
     }
 
     if (
-      process.env.NODE_ENV === 'development' &&
+      import.meta.env.MODE === 'development' &&
       !itemTypes
         ?.find((it) => it.id === id)
         ?.baseFields?.some((it) =>
@@ -506,7 +506,7 @@ function ItemTypeGeneratorModal(props: {
   const { itemType, visible, onClose } = props;
   const [numItems, setNumItems] = useState(5);
 
-  if (process.env.NODE_ENV !== 'development' || !itemType) {
+  if (import.meta.env.MODE !== 'development' || !itemType) {
     return undefined;
   }
 

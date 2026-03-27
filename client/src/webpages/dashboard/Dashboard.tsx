@@ -68,7 +68,6 @@ import NCMECSettings from '../settings/NCMECSettings';
 import SSOSettings from '../settings/SSOSettings';
 import TapSettings from '../settings/TapSettings';
 import MatchingBanksDashboard from './banks/MatchingBanksDashboard';
-import Layout from './Layout';
 import ManualReviewAppealSettings from './mrt/ManualReviewAppealSettings';
 import Overview from './overview/Overview';
 import PolicyForm from './policies/PolicyForm';
@@ -718,58 +717,61 @@ export default function Dashboard() {
     return <FullScreenLoading />;
   }
 
-  if (isUsingLegacyCSS) {
-    return (
-      <div className="flex w-full h-screen">
-        <Helmet>
-          <title>Home</title>
-        </Helmet>
-        <Sidebar
-          menuItems={menuItems}
-          settingsMenuItems={settingsMenuItems}
-          selectedMenuItem={selectedMenuItem}
-          setSelectedMenuItem={setSelectedMenuItem}
-          permissions={permissions}
-          logout={async () => logout()}
-          isDemoOrg={isDemoOrg}
-        />
-        <div className="w-px h-full bg-[#e5e7eb]" />
-        <div className="flex justify-center w-full px-12 py-8 overflow-scroll scrollbar-hide">
-          <ErrorBoundary
-            key={pathname}
-            containedInLayout
-            buttonTitle={
-              currentRouteHandle?.error?.buttonTitle ?? 'Return to dashboard'
-            }
-            buttonLinkPath={
-              currentRouteHandle?.error?.buttonLinkPath
-                ? `/dashboard/${currentRouteHandle.error.buttonLinkPath}`
-                : '/dashboard'
-            }
-          >
-            <div className="w-full max-w-[1280px]">
-              {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
-            </div>
-          </ErrorBoundary>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <Layout
-      sidebarSlot={
-        <Sidebar
-          menuItems={menuItems}
-          settingsMenuItems={settingsMenuItems}
-          selectedMenuItem={selectedMenuItem}
-          setSelectedMenuItem={setSelectedMenuItem}
-          permissions={permissions}
-          logout={async () => logout()}
-          isDemoOrg={isDemoOrg}
-        />
-      }
-    />
+    <div
+      className={`flex w-full h-screen${isUsingLegacyCSS ? '' : ' bg-slate-50'}`}
+    >
+      <Helmet>
+        <title>Home</title>
+      </Helmet>
+      <Sidebar
+        menuItems={menuItems}
+        settingsMenuItems={settingsMenuItems}
+        selectedMenuItem={selectedMenuItem}
+        setSelectedMenuItem={setSelectedMenuItem}
+        permissions={permissions}
+        logout={async () => logout()}
+        isDemoOrg={isDemoOrg}
+      />
+      {isUsingLegacyCSS ? (
+        <>
+          <div className="w-px h-full bg-[#e5e7eb]" />
+          <div className="flex justify-center w-full px-12 py-8 overflow-scroll scrollbar-hide">
+            <ErrorBoundary
+              key={pathname}
+              containedInLayout
+              buttonTitle={
+                currentRouteHandle?.error?.buttonTitle ?? 'Return to dashboard'
+              }
+              buttonLinkPath={
+                currentRouteHandle?.error?.buttonLinkPath
+                  ? `/dashboard/${currentRouteHandle.error.buttonLinkPath}`
+                  : '/dashboard'
+              }
+            >
+              <div className="w-full max-w-[1280px]">
+                {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
+              </div>
+            </ErrorBoundary>
+          </div>
+        </>
+      ) : (
+        <main className="flex flex-col flex-grow overflow-y-auto min-h-0">
+          <div className="p-10">
+            <ErrorBoundary
+              key={pathname}
+              containedInLayout
+              buttonTitle={currentRouteHandle?.error?.buttonTitle}
+              buttonLinkPath={currentRouteHandle?.error?.buttonLinkPath}
+            >
+              <div className="w-full max-w-[1280px]">
+                <Outlet />
+              </div>
+            </ErrorBoundary>
+          </div>
+        </main>
+      )}
+    </div>
   );
 }
 

@@ -1,18 +1,18 @@
 import type { FilledIconProps } from '../types';
-import { ReactComponent as Hourglass } from './hourglass.svg';
-import { ReactComponent as Spinner1 } from './spinner-1.svg';
-import { ReactComponent as Spinner2 } from './spinner-2.svg';
-import { ReactComponent as Spinner3 } from './spinner-3.svg';
-import { ReactComponent as Spinner4 } from './spinner-4.svg';
-import { ReactComponent as Spinner5 } from './spinner-5.svg';
-import { ReactComponent as Spinner6 } from './spinner-6.svg';
-import { ReactComponent as Spinner7 } from './spinner-7.svg';
-import { ReactComponent as Spinner8 } from './spinner-8.svg';
-import { ReactComponent as Spinner9 } from './spinner-9.svg';
-import { ReactComponent as Spinner10 } from './spinner-10.svg';
-import { ReactComponent as Spinner11 } from './spinner-11.svg';
-import { ReactComponent as SpinnerArrow } from './spinner-arrow.svg';
-import { ReactComponent as SpinnerSolid } from './spinner-solid.svg';
+import Hourglass from './hourglass.svg?react';
+import Spinner1 from './spinner-1.svg?react';
+import Spinner2 from './spinner-2.svg?react';
+import Spinner3 from './spinner-3.svg?react';
+import Spinner4 from './spinner-4.svg?react';
+import Spinner5 from './spinner-5.svg?react';
+import Spinner6 from './spinner-6.svg?react';
+import Spinner7 from './spinner-7.svg?react';
+import Spinner8 from './spinner-8.svg?react';
+import Spinner9 from './spinner-9.svg?react';
+import Spinner10 from './spinner-10.svg?react';
+import Spinner11 from './spinner-11.svg?react';
+import SpinnerArrow from './spinner-arrow.svg?react';
+import SpinnerSolid from './spinner-solid.svg?react';
 
 const HourglassFilled = (props: FilledIconProps) => (
   <Hourglass fill="currentColor" {...props} />

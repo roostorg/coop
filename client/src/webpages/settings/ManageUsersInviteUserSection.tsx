@@ -78,7 +78,7 @@ export default function ManageUsersInviteUserSection() {
 
   const copyInviteLink = () => {
     if (inviteToken) {
-      const uiUrl = process.env.REACT_APP_UI_URL ?? window.location.origin;
+      const uiUrl = import.meta.env.VITE_UI_URL ?? window.location.origin;
       const signupUrl = `${uiUrl}/signup/${inviteToken}`;
       navigator.clipboard.writeText(signupUrl);
       setCopySuccess(true);
@@ -119,7 +119,7 @@ export default function ManageUsersInviteUserSection() {
                   type="text"
                   readOnly
                   value={`${
-                    process.env.REACT_APP_UI_URL ?? window.location.origin
+                    import.meta.env.VITE_UI_URL ?? window.location.origin
                   }/signup/${inviteToken}`}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono bg-gray-50"
                   onClick={(e) => e.currentTarget.select()}
