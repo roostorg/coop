@@ -10,8 +10,8 @@ fi
 BASE_URL="http://localhost:8080"
 ITEM_TYPE="atp_post_e7c89"
 USER_TYPE="502ec98c7e"
-ACTION_ID="c879170f4ab"
-POLICY_ID="79170f4abe4"
+ACTION_ID="8481310e8c4"
+POLICY_ID="08dec618f8e"
 
 echo "=== Submitting 100 items ==="
 python3 -c "
@@ -50,7 +50,14 @@ appeal = {
     'actionedItem': {
         'id': 'appealed-item-$i',
         'typeId': '$ITEM_TYPE',
-        'data': {'text': 'Appealed post $i - user contests moderation decision'}
+        'data': {
+            'text': 'Appealed post $i - user contests moderation decision',
+            'authorDid': {'id': 'did:plc:appealer-$i', 'typeId': '$USER_TYPE'},
+            'rkey': 'appeal-rkey-$i',
+            'createdAt': '2026-03-26T12:00:00Z',
+            'atUri': 'at://did:plc:appealer-$i/app.bsky.feed.post/appeal-rkey-$i',
+            'isLive': True
+        }
     },
     'actionsTaken': ['$ACTION_ID'],
     'appealReason': 'This content does not violate any policies and should be restored',
