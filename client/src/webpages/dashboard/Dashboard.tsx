@@ -725,7 +725,7 @@ export default function Dashboard() {
       {isUsingLegacyCSS ? (
         <>
           <div className="w-px h-full bg-[#e5e7eb]" />
-          <div className="flex justify-center w-full px-12 py-8 overflow-scroll scrollbar-hide">
+          <div className="flex justify-center w-full px-12 py-8 overflow-auto">
             <ErrorBoundary
               key={pathname}
               containedInLayout
@@ -738,7 +738,7 @@ export default function Dashboard() {
                   : '/dashboard'
               }
             >
-              <div className="w-full max-w-[1280px]">
+              <div className="w-full max-w-[1800px]">
                 {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
               </div>
             </ErrorBoundary>
@@ -753,7 +753,7 @@ export default function Dashboard() {
               buttonTitle={currentRouteHandle?.error?.buttonTitle}
               buttonLinkPath={currentRouteHandle?.error?.buttonLinkPath}
             >
-              <div className="w-full max-w-[1280px]">
+              <div className="w-full max-w-[1800px]">
                 <Outlet />
               </div>
             </ErrorBoundary>
