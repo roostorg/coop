@@ -295,7 +295,7 @@ export default function ActionForm() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         action. See the{' '}
-        <Link href="https://docs.getcoop.com/docs/action-api">
+        <Link href="https://roostorg.github.io/coop/CONCEPTS.html#actions">
           documentation
         </Link>{' '}
         for more information.
