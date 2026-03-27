@@ -1,0 +1,4 @@
+#!/bin/bash                                                                                                                                                                   
+  KEY="1b12a95a782cb94eedb59684a40ed6d16a7f9b0ad2eaf7a5384065866106e742"                                                                                                        
+  echo '{"items":[{"id":"test-99","typeId":"atp_post_e7c89","data":{"text":"test post","authorDid":{"id":"did:plc:testuser","typeId":"502ec98c7e"},"rkey":"rk99","createdAt":"2026-03-27T12:00:00Z","atUri":"at://did:plc:testuser/app.bsky.feed.post/rk99","isLive":true}}]}' > /tmp/payload.json                                                            
+  curl -s -H "Content-Type: application/json" -H "x-api-key: $KEY" -d @/tmp/payload.json http://localhost:8080/api/v1/items/async/  
