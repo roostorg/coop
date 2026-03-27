@@ -44,10 +44,7 @@ gql`
 `;
 
 const httpLink = new HttpLink({
-  uri:
-    import.meta.env.MODE === 'production'
-      ? '/api/v1/graphql'
-      : 'http://localhost:3000/api/v1/graphql',
+  uri: '/api/v1/graphql',
 });
 
 const retryLink = new RetryLink({
