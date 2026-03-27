@@ -84,7 +84,7 @@ export default class SkipOperations {
     // Skips aren't a decision or are associated with policies, so just skip
     // the query
     if (
-      (policyIds && policyIds.length > 0) ??
+      (policyIds && policyIds.length > 0) ||
       (decisions && decisions.length > 0)
     ) {
       return [];
@@ -128,6 +128,7 @@ export default class SkipOperations {
           ]),
         ),
       )
+      .limit(1000)
       .execute();
   }
 }

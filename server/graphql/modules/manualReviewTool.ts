@@ -42,7 +42,7 @@ import { formatItemSubmissionForGQL } from '../types.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 
-const { omit, sum, sumBy } = _;
+const { omit, sumBy } = _;
 
 const typeDefs = /* GraphQL */ `
   type ManualReviewQueue {
@@ -51,7 +51,7 @@ const typeDefs = /* GraphQL */ `
     description: String
     orgId: ID!
     isDefaultQueue: Boolean!
-    jobs(ids: [ID!]): [ManualReviewJob!]!
+    jobs(ids: [ID!], limit: Int): [ManualReviewJob!]!
     pendingJobCount: Int!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
@@ -1632,13 +1632,14 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
 };
 
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
-  async jobs(queue, { ids: jobIds }, context) {
+  async jobs(queue, { ids: jobIds, limit }, context) {
     const { orgId, id: queueId } = queue;
 
     if (!jobIds) {
       return context.services.ManualReviewToolService.getAllJobsForQueue({
         orgId,
         queueId,
+        limit: limit ?? undefined,
       });
     } else {
       return context.services.ManualReviewToolService.getJobsForQueue({
@@ -1923,15 +1924,10 @@ const Query: GQLQueryResolvers = {
         { orgId: user.orgId },
       );
 
-    const jobsPerQueue = await Promise.all(
-      allQueues.map(async (queue) =>
-        context.services.ManualReviewToolService.getPendingJobCount({
-          orgId: user.orgId,
-          queueId: queue.id,
-        }),
-      ),
+    return context.services.ManualReviewToolService.getTotalPendingJobCountForQueues(
+      user.orgId,
+      allQueues.map((q) => q.id),
     );
-    return sum(jobsPerQueue);
   },
 
   async getRecentDecisions(_: unknown, { input }, context) {
