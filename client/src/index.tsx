@@ -42,10 +42,7 @@ gql`
 
 // Apollo Client
 const client = new ApolloClient({
-  uri:
-    process.env.NODE_ENV === 'production'
-      ? '/api/v1/graphql'
-      : 'http://localhost:3000/api/v1/graphql',
+  uri: '/api/v1/graphql',
   cache: new InMemoryCache({
     typePolicies: {
       ConditionInputField: {
