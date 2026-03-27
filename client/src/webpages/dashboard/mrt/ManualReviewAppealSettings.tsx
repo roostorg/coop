@@ -117,7 +117,7 @@ export default function ManualReviewAppealSettings() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         appeal. See the{' '}
-        <Link href="https://docs.getcoop.com/docs/appeal-api">
+        <Link href="https://roostorg.github.io/coop/CONCEPTS.html#appeals">
           documentation
         </Link>{' '}
         for more information.
