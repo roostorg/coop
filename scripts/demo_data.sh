@@ -17,7 +17,7 @@ echo "=== Submitting 100 items ==="
 ITEMS="["
 for i in $(seq 1 100); do
   if [ $i -gt 1 ]; then ITEMS="$ITEMS,"; fi
-  ITEMS="${ITEMS}{\"id\":\"demo-item-${i}\",\"typeId\":\"${ITEM_TYPE}\",\"data\":{\"text\":\"Demo post number ${i} for conference demo\",\"authorDid\":\"did:plc:demo-user-${i}\",\"rkey\":\"demo-rkey-${i}\",\"createdAt\":\"2026-03-26T12:00:00Z\",\"atUri\":\"at://did:plc:demo-user-${i}/app.bsky.feed.post/demo-rkey-${i}\",\"isLive\":true}}"
+  ITEMS="${ITEMS}{\"id\":\"demo-item-${i}\",\"typeId\":\"${ITEM_TYPE}\",\"data\":{\"text\":\"Demo post number ${i} for conference demo\",\"authorDid\":{\"id\":\"did:plc:demo-user-${i}\",\"typeId\":\"${USER_TYPE}\"},\"rkey\":\"demo-rkey-${i}\",\"createdAt\":\"2026-03-26T12:00:00Z\",\"atUri\":\"at://did:plc:demo-user-${i}/app.bsky.feed.post/demo-rkey-${i}\",\"isLive\":true}}"
 done
 ITEMS="$ITEMS]"
 
