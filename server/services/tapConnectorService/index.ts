@@ -264,11 +264,17 @@ const makeTapConnectorWorker = inject(
 
       console.log(`[TapConnector] Processing batch of ${events.length} events`);
 
+      const hashtagFilter = process.env.TAP_HASHTAG_FILTER?.toLowerCase();
       const rawSubmissions = events
         .map(transformTapEvent)
-        .filter((s): s is NonNullable<typeof s> => s != null);
+        .filter((s): s is NonNullable<typeof s> => s != null)
+        .filter((s) => {
+          if (!hashtagFilter) return true;
+          const text = (s.data?.text as string) ?? '';
+          return text.toLowerCase().includes(hashtagFilter);
+        });
 
-      console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events`);
+      console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
       if (rawSubmissions.length === 0) return;
 
       const itemTypes = await moderationConfigService.getItemTypes({
