@@ -428,7 +428,7 @@ export function deleteCondition(
 
 function addConditionSet(
   state: RuleFormState,
-  action: RuleFormReducerAction,
+  _action: RuleFormReducerAction,
 ): RuleFormState {
   let newConditionSet = cloneDeep(state.conditionSet);
 

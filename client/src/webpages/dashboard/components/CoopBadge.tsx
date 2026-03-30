@@ -1,5 +1,6 @@
 // Add new color variants to this list as needed. See
 // https://preline.co/docs/badge.html for available variants.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- tuple value consumed only via `typeof` for BadgeColorVariant
 const BadgeColorVariants = [
   'soft-green',
   'soft-red',
@@ -9,6 +10,7 @@ const BadgeColorVariants = [
 ] as const;
 export type BadgeColorVariant = (typeof BadgeColorVariants)[number];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- tuple value consumed only via `typeof` for BadgeShapeVariant
 const BadgeShapeVariants = ['pill', 'rounded'] as const;
 type BadgeShapeVariant = (typeof BadgeShapeVariants)[number];
 

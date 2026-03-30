@@ -92,7 +92,7 @@ export default function TextBankForm() {
   };
 
   const [createTextBank, createMutationParams] = useGQLCreateTextBankMutation({
-    onError: (e) => {
+    onError: (_e) => {
       setModalInfo({
         title: 'Error Creating Text Bank',
         body: 'We encountered an error trying to create your Text Bank. Please try again.',
@@ -127,7 +127,7 @@ export default function TextBankForm() {
   });
 
   const [updateTextBank, updateMutationParams] = useGQLUpdateTextBankMutation({
-    onError: (e) => {
+    onError: (_e) => {
       setModalInfo({
         title: 'Error Updating Text Bank',
         body: 'We encountered an error trying to update your Text Bank. Please try again.',

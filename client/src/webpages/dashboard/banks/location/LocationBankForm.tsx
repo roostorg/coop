@@ -208,7 +208,7 @@ export default function LocationBankForm() {
   }, [bank]);
 
   if (bankQueryError || bankFormQueryError) {
-    // eslint-disable-next-line @typescript-eslint/no-throw-literal
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw bankQueryError ?? bankFormQueryError;
   }
 

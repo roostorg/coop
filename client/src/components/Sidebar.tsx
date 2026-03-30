@@ -18,6 +18,7 @@ import DashboardMenuButton from '@/webpages/dashboard/components/DashboardMenuBu
 
 import LogoAndWordmarkPurple from '../images/LogoAndWordmarkPurple.png';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- value consumed only via `typeof` for MenuItemName
 const MenuItemNames = makeEnumLike([
   'Overview',
   'Automated Enforcement',

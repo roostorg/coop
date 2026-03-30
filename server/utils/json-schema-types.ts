@@ -66,7 +66,7 @@ type UncheckedJSONSchemaType<T, IsPartial extends boolean> = (
         : T extends string
         ? StringKeywords
         : T extends boolean
-        ? // eslint-disable-next-line @typescript-eslint/ban-types
+        ? // eslint-disable-next-line @typescript-eslint/no-restricted-types
           {}
         : never
     >)

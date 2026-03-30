@@ -783,7 +783,7 @@ export default function RuleForm() {
   };
 
   const [createContentRule] = useGQLCreateContentRuleMutation({
-    onError: (error) => {
+    onError: (_error) => {
       showRuleMutationError(false);
     },
     onCompleted: (result) => {
@@ -805,7 +805,7 @@ export default function RuleForm() {
   });
 
   const [updateContentRule] = useGQLUpdateContentRuleMutation({
-    onError: (error) => {
+    onError: (_error) => {
       showRuleMutationError(true);
     },
     onCompleted: (result) => {
@@ -829,7 +829,7 @@ export default function RuleForm() {
   });
 
   const [createUserRule] = useGQLCreateUserRuleMutation({
-    onError: (error) => {
+    onError: (_error) => {
       showRuleMutationError(false);
     },
     onCompleted: (result) => {
@@ -851,7 +851,7 @@ export default function RuleForm() {
   });
 
   const [updateUserRule] = useGQLUpdateUserRuleMutation({
-    onError: (error) => {
+    onError: (_error) => {
       showRuleMutationError(true);
     },
     onCompleted: (result) => {

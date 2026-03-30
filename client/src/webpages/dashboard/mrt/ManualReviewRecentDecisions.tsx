@@ -319,7 +319,7 @@ export default function ManualReviewRecentDecisions() {
   const getDecisionColorNamePairs = useCallback(
     (
       decision: RecentDecision,
-      isSelected: boolean,
+      _isSelected: boolean,
     ): { name: string; colorVariant: BadgeColorVariant }[] => {
       switch (decision.__typename) {
         case 'IgnoreDecisionComponent':
@@ -424,7 +424,7 @@ export default function ManualReviewRecentDecisions() {
           .map((decision) => getDecisionColorNamePairs(decision, isSelected))
           .flat(),
         policies: decisionData.decisions
-          // eslint-disable-next-line array-callback-return
+           
           .flatMap((decision) => getPoliciesFromDecision(decision)),
         reviewer: getReviewerName(decisionData.reviewerId),
         queue: getQueueName(decisionData.queueId),
@@ -654,7 +654,7 @@ export default function ManualReviewRecentDecisions() {
         queueIds: input.queueIds,
         startTime: input.dateRange?.startDate,
         endTime: input.dateRange?.endDate,
-        // eslint-disable-next-line array-callback-return
+         
         decisions: decisionOrActions?.map((it) => {
           switch (it.type) {
             case 'CUSTOM_ACTION':

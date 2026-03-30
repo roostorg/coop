@@ -97,7 +97,7 @@ function toCachedFetcher<T extends ReadonlyDeep<JSON>, U extends unknown>(
   const finalFetcher = async (k: T) => {
     const res = await cachedFetcher(k);
     if (res.fromRejection) {
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw res.value;
     }
     return res.value;

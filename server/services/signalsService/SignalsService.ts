@@ -26,6 +26,7 @@ import {
   type SignalDisabledInfo,
 } from './signals/SignalBase.js';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only via typeof for type derivation
 const publicSignalProps = [
   'id',
   'type',

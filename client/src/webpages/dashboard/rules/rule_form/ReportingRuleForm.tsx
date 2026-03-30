@@ -364,7 +364,7 @@ export default function RuleForm() {
   };
 
   const [createRule] = useGQLCreateReportingRuleMutation({
-    onError: (error) => {
+    onError: (_error) => {
       showRuleMutationError(false);
     },
     onCompleted: (result) => {
@@ -386,7 +386,7 @@ export default function RuleForm() {
   });
 
   const [updateRule] = useGQLUpdateReportingRuleMutation({
-    onError: (error) => {
+    onError: (_error) => {
       showRuleMutationError(true);
     },
     onCompleted: (result) => {

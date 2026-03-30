@@ -40,7 +40,7 @@ import { resolvers as textBankResolvers } from './modules/textBank.js';
 import { resolvers as userResolvers } from './modules/user.js';
 import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export type Context = PassportContext<User, {}> & {
   dataSources: DataSources;
   services: GQLServices;

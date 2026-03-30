@@ -376,7 +376,7 @@ export default function ItemTypeForm() {
   }, [itemType]);
 
   if (itemTypeQueryError ?? userQueryError) {
-    // eslint-disable-next-line @typescript-eslint/no-throw-literal
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw itemTypeQueryError ?? userQueryError;
   }
   if (itemTypeQueryLoading || userQueryLoading || orgQueryLoading) {

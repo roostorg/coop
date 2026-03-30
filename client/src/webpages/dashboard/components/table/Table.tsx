@@ -89,7 +89,7 @@ export default function Table(
         >
           <table {...getTableProps()} className="w-full">
             <thead className="sticky top-0 z-10 bg-slate-50">
-              {headerGroups.map((headerGroup, i) => (
+              {headerGroups.map((headerGroup, _i) => (
                 <tr {...headerGroup.getHeaderGroupProps()}>
                   {isCollapsed && collapsedColumnTitle ? (
                     <th className="p-4 text-base font-bold text-gray-500 rounded-t-md text-start align-center">

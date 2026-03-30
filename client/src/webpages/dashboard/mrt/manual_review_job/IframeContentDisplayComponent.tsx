@@ -165,7 +165,7 @@ export default function IframeContentDisplayComponent(props: {
             setIsIframeLoading(false);
             setIframeError(null);
           }}
-          onError={(e) => {
+          onError={(_e) => {
             setIsIframeLoading(false);
             setIframeError('Failed to load content');
           }}

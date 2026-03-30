@@ -253,7 +253,7 @@ export function ManualReviewJobThreadComponent(props: {
       )
     : undefined;
 
-  const threadComponent = [...newMessages].map((message, i) => {
+  const threadComponent = [...newMessages].map((message, _i) => {
     const messageCreator = getFieldValueForRole(message, 'creatorId');
     const messageCreatorType = allItemTypesData?.myOrg?.itemTypes.find(
       (it) => it.id === messageCreator?.typeId,

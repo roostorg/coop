@@ -164,7 +164,7 @@ export function ManualReviewJobOtherItemsComponent(props: {
       )
     : undefined;
 
-  const messagesComponent = [...otherItems].map((message, i) => {
+  const messagesComponent = [...otherItems].map((message, _i) => {
     const messageCreator = getFieldValueForRole(message, 'creatorId');
     const messageCreatorType = allItemTypesData?.myOrg?.itemTypes.find(
       (it) => it.id === messageCreator?.typeId,
