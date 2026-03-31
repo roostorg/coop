@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@babel/preset-env": "^7.24.5",
-    "axios": "^1.7.7",
+    "axios": "1.14.0",
     "babel-jest": "^29.7.0",
     "cheerio": "^1.0.0",
     "express": "^4.20.0",
@@ -32,5 +32,11 @@
     "ts-node": "^10.9.2",
     "tsc-watch": "^6.2.0",
     "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "axios": "1.14.0"
+  },
+  "resolutions": {
+    "axios": "1.14.0"
   }
 }
