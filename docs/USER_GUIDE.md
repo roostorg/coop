@@ -53,7 +53,6 @@ Coop comes with pre-built integrations to common software used for online safety
 
 Coop uses role-based access controls to make sure the right people can access and view the right data. You can use the UI to invite more users and either copy the link for them to sign up with an account, or set up an email service to email the link to the invited user.   
 
-
 ### User Roles
 
 Coop comes with 7 predefined roles that can be further customized:
@@ -67,34 +66,32 @@ Coop comes with 7 predefined roles that can be further customized:
 | Moderator | Yes | No | No | No | No | No |
 | External Moderator | Yes | No | No | No | No | No |
 
+**Admin**
+Admins manage their entire organizations. They have full control over all of the organization's resources and settings within Coop.
+
+**Analyst**
+Analysts can view metrics for all Rules, create or edit Draft and Background Rules, and run Backtests. They cannot create or edit Live Rules, run Retroaction on Live rules, or edit any other resources (Actions, Content Types, Signals, other Users, etc.). In short, they can experiment with Background Rules and view Rule metrics, but cannot affect any Live Rules or other features that actually mutate your data.
+
+**Child Safety Moderator**
+Child Safety Moderators have the same permissions as Moderators, but they are also able to review Child Safety jobs and can see previous Child Safety decisions.
+
+**External Moderator**
+External Moderators can only review jobs in the Manual Review tool. They cannot see any decisions or use any other tooling
+
+**Moderator**
+Moderators can view the Manual Review tool, but are only able to review jobs from queues that they've been given permission to see. They can also view overall Manual Review metrics. They cannot see any Child Safety-related jobs or decisions.
+
+**Moderator Manager**
+Moderator managers can view and edit queues within the Manual Review Tool. They have full control over the permissions that moderators have, and the Routing Rules that determine how to route each incoming job to the right queue.
+
+**Rules Manager**
+Rules Managers can create, edit, and deploy Rules, and they can view all metrics related to Rules. They cannot create, edit, or delete other organization-level settings, including Actions, Item Types, Manual Review Queues, or other Users in the organization.
+
+Once you invite a new user to Coop, you can either configure an email service to send the link to that person or copy the invite link and share it directly with them.
 
 ### NCMEC Reporting Settings
 
 If your organization submits reports to the NCMEC CyberTipline, configure NCMEC reporting under **Settings → NCMEC** (or `/dashboard/settings/ncmec`). See [NCMEC Reporting](NCMEC.md#ncmec-settings) for the full list of settings and how to configure them.
-
-**Admin**  
-Admins manage their entire organizations. They have full control over all of the organization's resources and settings within Coop.
-
-**Analyst**  
-Analysts can view metrics for all Rules, create or edit Draft and Background Rules, and run Backtests. They cannot create or edit Live Rules, run Retroaction on Live rules, or edit any other resources (Actions, Content Types, Signals, other Users, etc.). In short, they can experiment with Background Rules and view Rule metrics, but cannot affect any Live Rules or other features that actually mutate your data.
-
-**Child Safety Moderator**  
-Child Safety Moderators have the same permissions as Moderators, but they are also able to review Child Safety jobs and can see previous Child Safety decisions.
-
-**External Moderator**  
-External Moderators can only review jobs in the Manual Review tool. They cannot see any decisions or use any other tooling
-
-**Moderator**  
-Moderators can view the Manual Review tool, but are only able to review jobs from queues that they've been given permission to see. They can also view overall Manual Review metrics. They cannot see any Child Safety-related jobs or decisions.
-
-**Moderator Manager**  
-Moderator managers can view and edit queues within the Manual Review Tool. They have full control over the permissions that moderators have, and the Routing Rules that determine how to route each incoming job to the right queue.
-
-**Rules Manager**  
-Rules Managers can create, edit, and deploy Rules, and they can view all metrics related to Rules. They cannot create, edit, or delete other organization-level settings, including Actions, Item Types, Manual Review Queues, or other Users in the organization.
-
-
-Once you invite a new user to Coop, you can either configure an email service to send the link to that person or copy the invite link and share it directly with them.
 
 ### SSO
 
