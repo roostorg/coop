@@ -1,4 +1,3 @@
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 import express, { Request, Response } from 'express';
 import { chromium } from 'playwright';
@@ -322,10 +321,11 @@ app.get('/_assets/*.css', async (req: Request, res: Response) => {
   const assetUrl = `${CONTENT_BASE_URL}${req.originalUrl}`;
 
   try {
-    const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
+    const response = await fetch(assetUrl);
+    const buffer = await response.arrayBuffer();
 
     res.set('Content-Type', 'text/css');
-    return res.send(response.data);
+    return res.send(Buffer.from(buffer));
   } catch (error: any) {
     return res.status(500).send('Error fetching CSS asset');
   }
@@ -359,7 +359,8 @@ app.get('/_assets/*', async (req: Request, res: Response) => {
   const assetUrl = `${CONTENT_BASE_URL}${req.originalUrl}`;
 
   try {
-    const response = await axios.get(assetUrl, { responseType: 'arraybuffer' });
+    const response = await fetch(assetUrl);
+    const buffer = await response.arrayBuffer();
 
     // Determine content type based on the file extension
     const extension = assetUrl.split('.').pop()?.toLowerCase();
@@ -368,7 +369,7 @@ app.get('/_assets/*', async (req: Request, res: Response) => {
       : extensionContentTypeMap.default;
 
     res.set('Content-Type', contentType);
-    return res.send(response.data);
+    return res.send(Buffer.from(buffer));
   } catch (error: any) {
     return res.status(500).send('Error fetching asset');
   }
