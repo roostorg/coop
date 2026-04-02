@@ -18,3 +18,70 @@ updates:
     ignore:
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
+
+  # Enable version updates for npm
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/db'
+    schedule:
+      interval: 'weekly'
+    groups:
+      prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/migrator'
+    schedule:
+      interval: 'weekly'
+    groups:
+      prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/server'
+    schedule:
+      interval: 'weekly'
+    groups:
+      prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/client'
+    schedule:
+      interval: 'weekly'
+    groups:
+      prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/nodejs-instrumentation'
+    schedule:
+      interval: 'weekly'
+    groups:
+      prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
