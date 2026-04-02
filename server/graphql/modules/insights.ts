@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server-core';
+import { GraphQLError } from 'graphql';
 // because graphql args are sometimes imported wiht _, we use
 // lodash as opposed to _ to avoid overloading
 import lodash from 'lodash';
@@ -123,7 +123,7 @@ const RuleExecutionResult: GQLRuleExecutionResultResolvers = {
   async signalResults(ruleExecutionResult, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const fullResults = ruleExecutionResult.result;
@@ -139,7 +139,7 @@ const ReportingRuleExecutionResult: GQLReportingRuleExecutionResultResolvers = {
   async signalResults(reportingRuleExecutionResult, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const fullResults = reportingRuleExecutionResult.result;
@@ -155,7 +155,7 @@ const RuleInsights: GQLRuleInsightsResolvers = {
   async passRateData(rule, args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.dataSources.ruleAPI.ruleInsights.getRulePassRateData(
@@ -167,7 +167,7 @@ const RuleInsights: GQLRuleInsightsResolvers = {
   async latestVersionSamples(rule, _args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const samples =
@@ -197,7 +197,7 @@ const RuleInsights: GQLRuleInsightsResolvers = {
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const samples =
@@ -230,7 +230,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
   async passRateData(rule, args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     return context.dataSources.ruleAPI.ruleInsights.getRulePassRateData(
@@ -242,7 +242,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
   async latestVersionSamples(rule, _args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const samples =
@@ -272,7 +272,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const samples =
@@ -305,7 +305,7 @@ const Query: GQLQueryResolvers = {
   async getUserStrikeCountDistribution(_, __, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const allUserStrikeCounts =
@@ -324,7 +324,7 @@ const Query: GQLQueryResolvers = {
   async getFullRuleResultForItem(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
     }
     const { ruleId, item, date, lookback } = input;
     try {

@@ -1,12 +1,11 @@
-import { UserInputError } from 'apollo-server-express';
-import { Kind, type GraphQLScalarType } from 'graphql';
+import { GraphQLError, Kind, type GraphQLScalarType } from 'graphql';
 import jwt from 'jsonwebtoken';
 
 const parseOpaqueScalarValue =
   <T>(jwtSigningKey: string) =>
   (inputValue: unknown) => {
     if (typeof inputValue !== 'string') {
-      throw new UserInputError('OpaqueScalar values must be strings.');
+      throw new GraphQLError('OpaqueScalar values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
 
     return jwt.verify(inputValue, jwtSigningKey) as T;
@@ -50,7 +49,7 @@ export default <T extends object>(
   parseValue: parseOpaqueScalarValue<T>(jwtSigningKey),
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new UserInputError('OpaqueScalar values must be strings.');
+      throw new GraphQLError('OpaqueScalar values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return parseOpaqueScalarValue<T>(jwtSigningKey)(ast.value);
   },

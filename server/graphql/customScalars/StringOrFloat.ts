@@ -1,5 +1,4 @@
-import { UserInputError } from 'apollo-server-express';
-import { GraphQLScalarType, Kind } from 'graphql';
+import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 
 /**
  * This scalar is needed for values that can be represented either
@@ -10,7 +9,7 @@ export default new GraphQLScalarType<string | number, string | number>({
   description: 'Either an arbitrary string or a float.',
   serialize(value) {
     if (typeof value !== 'string' && typeof value !== 'number') {
-      throw new UserInputError('Expected a string or float.');
+      throw new GraphQLError('Expected a string or float.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return value;
   },
@@ -21,7 +20,7 @@ export default new GraphQLScalarType<string | number, string | number>({
       ast.kind !== Kind.FLOAT &&
       ast.kind !== Kind.INT
     ) {
-      throw new UserInputError('StringOrFloat must be a string or number.');
+      throw new GraphQLError('StringOrFloat must be a string or number.', { extensions: { code: 'BAD_USER_INPUT' } });
     }
     return parseStringOrFloatValue(ast.value);
   },
@@ -29,8 +28,9 @@ export default new GraphQLScalarType<string | number, string | number>({
 
 function parseStringOrFloatValue(value: unknown) {
   if (typeof value !== 'string' && typeof value !== 'number') {
-    throw new UserInputError(
+    throw new GraphQLError(
       'StringOrFloat must be a string or number when passed to the server.',
+      { extensions: { code: 'BAD_USER_INPUT' } },
     );
   }
 
