@@ -7,7 +7,7 @@ BASE_URL="${3:-http://localhost:3000}"
 
 if [ -z "$API_KEY" ]; then
   echo "Usage: bash load_test_reports.sh API_KEY [COUNT] [BASE_URL]"
-  echo "  COUNT defaults to 500, BASE_URL defaults to http://localhost:3000"
+  echo "  COUNT defaults to 5000, BASE_URL defaults to http://localhost:3000"
   exit 1
 fi
 
