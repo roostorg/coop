@@ -31,7 +31,7 @@
     "@graphql-codegen/typescript-react-apollo": "^3.2.16",
     "@graphql-codegen/typescript-resolvers": "^2.7.7",
     "concurrently": "^6.5.1",
-    "lint-staged": "^15.2.10",
+    "lint-staged": "^15.5.2",
     "node-worker-threads-pool": "^1.5.1",
     "pg": "^8.5.1",
     "sequelize-cli": "^6.2.0"
