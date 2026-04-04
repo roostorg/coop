@@ -7,6 +7,14 @@ version: 2
 updates:
   # Enable version updates for Docker
   - package-ecosystem: "docker"
-    directory: "/"
+    directories:
+      - "/"
+      - "/client"
+      - "/db"
+      - "/hma"
+      - "/nodejs-instrumentation"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
