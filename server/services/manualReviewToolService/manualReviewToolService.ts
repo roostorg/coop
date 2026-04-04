@@ -951,12 +951,23 @@ export class ManualReviewToolService {
         });
   }
 
-  async getAllJobsForQueue(opts: { orgId: string; queueId: string }) {
+  async getAllJobsForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    limit?: number;
+  }) {
     return this.queueOps.getAllJobsForQueue(opts);
   }
 
   async getPendingJobCount(opts: { orgId: string; queueId: string }) {
     return this.queueOps.getPendingJobCount(opts);
+  }
+
+  async getTotalPendingJobCountForQueues(
+    orgId: string,
+    queueIds: string[],
+  ) {
+    return this.queueOps.getTotalPendingJobCountForQueues(orgId, queueIds);
   }
 
   async getOldestJobCreatedAt(opts: {
