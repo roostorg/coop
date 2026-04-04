@@ -26,7 +26,7 @@
     "@total-typescript/ts-reset": "^0.5.1",
     "@types/yargs": "^17.0.24",
     "cassandra-driver": "^4.8.0",
-    "sequelize": "^6.32.1",
+    "sequelize": "^6.37.8",
     "umzug": "^3.0.0",
     "yargs": "^16.2.0"
   },
