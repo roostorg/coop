@@ -22,6 +22,7 @@ import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { isNonEmptyArray } from '../../utils/typescript-types.js';
 import {
+  type GQLContentItemTypeResolvers,
   type GQLFieldInput,
   type GQLItemBaseResolvers,
   type GQLItemResolvers,
@@ -29,6 +30,7 @@ import {
   type GQLItemTypeResolvers,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
+  type GQLThreadItemTypeResolvers,
   type GQLUserItemResolvers,
   type GQLUserItemTypeResolvers,
 } from '../generated.js';
@@ -542,23 +544,10 @@ const UserItem: GQLUserItemResolvers = {
   },
 };
 
-const ItemTypeBase: GQLItemTypeBaseResolvers = {
-  async __resolveType(it, context) {
-    const itemType = await getItemTypeFromItemTypeOrSelector(it, context);
-    switch (itemType.kind) {
-      case 'CONTENT': {
-        return 'ContentItemType';
-      }
-      case 'USER': {
-        return 'UserItemType';
-      }
-      case 'THREAD': {
-        return 'ThreadItemType';
-      }
-      default:
-        assertUnreachable(itemType);
-    }
-  },
+const itemTypeBaseFieldResolvers: Omit<
+  GQLContentItemTypeResolvers,
+  '__isTypeOf' | 'schemaFieldRoles'
+> = {
   async baseFields(it, _, context) {
     const user = context.getUser();
     if (!user) {
@@ -639,12 +628,31 @@ const ItemTypeBase: GQLItemTypeBaseResolvers = {
   },
 };
 
-const ContentItemType = {
-  ...ItemTypeBase,
+const ItemTypeBase: GQLItemTypeBaseResolvers = {
+  async __resolveType(it, context) {
+    const itemType = await getItemTypeFromItemTypeOrSelector(it, context);
+    switch (itemType.kind) {
+      case 'CONTENT': {
+        return 'ContentItemType';
+      }
+      case 'USER': {
+        return 'UserItemType';
+      }
+      case 'THREAD': {
+        return 'ThreadItemType';
+      }
+      default:
+        assertUnreachable(itemType);
+    }
+  },
+};
+
+const ContentItemType: GQLContentItemTypeResolvers = {
+  ...itemTypeBaseFieldResolvers,
 };
 
 const UserItemType: GQLUserItemTypeResolvers = {
-  ...ItemTypeBase,
+  ...itemTypeBaseFieldResolvers,
   async isDefaultUserType(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
@@ -659,8 +667,8 @@ const UserItemType: GQLUserItemTypeResolvers = {
   },
 };
 
-const ThreadItemType = {
-  ...ItemTypeBase,
+const ThreadItemType: GQLThreadItemTypeResolvers = {
+  ...itemTypeBaseFieldResolvers,
 };
 
 const Query: GQLQueryResolvers = {
