@@ -16,7 +16,7 @@
   "author": "Roostorg",
   "license": "ISC",
   "dependencies": {
-    "@apollo/client": "^3.3.21",
+    "@apollo/client": "^3.14.1",
     "@googlemaps/js-api-loader": "^1.14.1",
     "@kojodesign/tailwindkit": "^0.0.1-rc4",
     "@opentelemetry/auto-instrumentations-web": "^0.41.0",
