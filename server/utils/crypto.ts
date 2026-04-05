@@ -21,7 +21,7 @@ function getEncryptionKey(): CipherKey {
 
 /**
  * Encrypts a plaintext string using AES-256-GCM.
- * Returns a base64 string in the format: iv:ciphertext:authTag
+ * Returns a string in the format: coop:v1:iv:ciphertext:authTag (all base64)
  */
 export function encrypt(plaintext: string): string {
   const key = getEncryptionKey();
@@ -31,7 +31,7 @@ export function encrypt(plaintext: string): string {
   });
   const encrypted = Buffer.concat([new Uint8Array(cipher.update(plaintext, 'utf8')), new Uint8Array(cipher.final())]);
   const authTag = cipher.getAuthTag();
-  return `${iv.toString('base64')}:${encrypted.toString('base64')}:${authTag.toString('base64')}`;
+  return `coop:v1:${iv.toString('base64')}:${encrypted.toString('base64')}:${authTag.toString('base64')}`;
 }
 
 /**
@@ -40,19 +40,20 @@ export function encrypt(plaintext: string): string {
  * backwards compatibility with pre-encryption plaintext values).
  */
 export function decrypt(encryptedValue: string): string {
-  const parts = encryptedValue.split(':');
-  if (parts.length !== 3) {
-    // Not in encrypted format — return as-is for backwards compatibility
-    // with secrets stored before encryption was enabled
-    return encryptedValue;
+  if (!encryptedValue.startsWith('coop:')) {
+    return encryptedValue; // legacy plaintext
   }
-  const key = getEncryptionKey();
-  const iv = Buffer.from(parts[0], 'base64');
-  const encrypted = Buffer.from(parts[1], 'base64');
-  const authTag = Buffer.from(parts[2], 'base64');
-  const decipher = createDecipheriv(ALGORITHM, key, new Uint8Array(iv), {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
-  decipher.setAuthTag(new Uint8Array(authTag));
-  return decipher.update(new Uint8Array(encrypted), undefined, 'utf8') + decipher.final('utf8');
+  const [_ns, version, ivB64, ciphertextB64, authTagB64] = encryptedValue.split(':');
+  if (version === 'v1') {
+    const key = getEncryptionKey();
+    const iv = Buffer.from(ivB64, 'base64');
+    const encrypted = Buffer.from(ciphertextB64, 'base64');
+    const authTag = Buffer.from(authTagB64, 'base64');
+    const decipher = createDecipheriv(ALGORITHM, key, new Uint8Array(iv), {
+      authTagLength: AUTH_TAG_LENGTH,
+    });
+    decipher.setAuthTag(new Uint8Array(authTag));
+    return decipher.update(new Uint8Array(encrypted), undefined, 'utf8') + decipher.final('utf8');
+  }
+  throw new Error(`Unknown encryption version: ${version}`);
 }

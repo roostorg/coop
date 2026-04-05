@@ -328,7 +328,7 @@ export default async function makeApiServer(deps: Dependencies) {
 
       const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
       if (!oidcSettings || !oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
-        return res.redirect('/');
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
       }
 
       const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
