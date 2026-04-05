@@ -3,7 +3,7 @@ ALTER TABLE public.org_settings
 ADD COLUMN IF NOT EXISTS oidc_enabled boolean DEFAULT false NOT NULL,
 ADD COLUMN IF NOT EXISTS issuer_url character varying(255),
 ADD COLUMN IF NOT EXISTS client_id character varying(255),
-ADD COLUMN IF NOT EXISTS client_secret character varying(255);
+ADD COLUMN IF NOT EXISTS client_secret text;;
 
 -- Add OIDC settings constraint
 ALTER TABLE public.org_settings
