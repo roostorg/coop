@@ -1,8 +1,11 @@
 /* eslint-disable max-lines */
 
+import {
+  discoverOidcConfig,
+  normalizeIssuerUrl,
+} from '../../services/SSOService/index.js';
 import { GraphQLError } from 'graphql';
 import { type JsonObject } from 'type-fest';
-
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
@@ -989,6 +992,11 @@ const Mutation: GQLMutationResolvers = {
 
     if (samlSettings?.saml_enabled && input.oidcEnabled) {
       throw new Error('OIDC cannot enabled as SAML is enabled.');
+    }
+
+    if (input.issuerUrl && input.clientId && input.clientSecret) {
+      const issuerUrl = normalizeIssuerUrl(input.issuerUrl);
+      await discoverOidcConfig(issuerUrl, input.clientId, input.clientSecret);
     }
 
     return context.services.OrgSettingsService.updateOidcSettings({
