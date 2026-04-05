@@ -24,7 +24,7 @@ Coop is built as a monorepo with a React frontend, Node.js backend, and multi-da
 | **Databases** | PostgreSQL, Scylla(5.2), ClickHouse, Redis |
 | **Messaging** | BullMQ (Redis) |
 | **ORM** | Sequelize, Kysely |
-| **Auth** | Passport.js, express-session, SAML (SSO) |
+| **Auth** | Passport.js, express-session, SSO |
 | **Observability** | OpenTelemetry |
 
 ## **Directory Structure**
@@ -583,9 +583,11 @@ Session configuration:
 * Session secret: process.env.SESSION_SECRET                                                                                                                                                  
   Files: `/server/api.ts`   
 
-### SAML/SSO Authentication                                                                                         
+### SSO Authentication  
 
-Enterprise SSO uses SAML with per-organization configuration.                                                     
+#### SAML
+
+Enterprise SSO can use SAML with per-organization configuration.
                                                                                                       
   1. User navigates to /saml/login/{orgId}
   2. Passport's MultiSamlStrategy retrieves org-specific SAML settings                                              
@@ -600,6 +602,29 @@ Configuration (per org in org\_settings table):
 * cert: Certificate for validation                                                                              
                                                                                                                     
   Files:                                                                                                            
-`/server/api.ts (lines 142-227)`                                                                                  
+`/server/api.ts (lines 176-283)`                                                                                  
 `/server/services/SSOService/SSOService.ts`
 
+
+#### OIDC
+
+Enterprise SSO can use OIDC with per-organization configuration. Uses Authorization Code + PKCE flow via the `openid-client` library.
+
+  1. User navigates to /oidc/login/{orgId}
+  2. Coop retrieves org-specific OIDC settings and discovers provider endpoints via OIDC Discovery
+  3. Coop generates PKCE code verifier/challenge and redirects user to provider's authorization endpoint (scopes: `openid email`)
+  4. Provider authenticates user and redirects back to Coop's callback URL with an authorization code
+  5. Coop exchanges the code for tokens using PKCE verification
+  6. User email extracted from ID token claims (or UserInfo endpoint)
+  7. User record looked up and session created
+
+Configuration (per org in org\_settings table):
+
+* oidc\_enabled: Boolean flag (mutually exclusive with saml\_enabled)
+* issuer\_url: OIDC provider's issuer domain (e.g., `your-tenant.auth0.com`)
+* client\_id: OIDC application client ID
+* client\_secret: OIDC application client secret (encrypted with AES-256-GCM using `SSO_ENCRYPTION_KEY`)
+                                                                                  
+  Files:
+`/server/api.ts (lines 285-404)`
+`/server/services/SSOService/SSOService.ts`

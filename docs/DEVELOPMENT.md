@@ -18,7 +18,7 @@ Copy `server/.env.example` to `server/.env`. The example file contains all avail
 
 - **Database connections**: PostgreSQL, ClickHouse, ScyllaDB, Redis
 - **External APIs**: OpenAI, SendGrid, Google APIs (optional)
-- **Security**: Session secrets, JWT signing keys
+- **Security**: Session secrets, JWT signing keys, SSO encryption key (`SSO_ENCRYPTION_KEY`)
 
 The default values work with Docker Compose services out of the box.
 

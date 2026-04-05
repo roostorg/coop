@@ -662,6 +662,11 @@ export default function Dashboard() {
           urlPath: 'ncmec',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
+        {
+          title: 'SSO Settings' as const,
+          urlPath: 'sso',
+          requiredPermissions: [GQLUserPermission.ManageOrg],
+        },
       ]),
     },
   ] satisfies MenuItem[];
