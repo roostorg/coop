@@ -199,7 +199,7 @@ const ZENTROPI: IntegrationManifestEntry = {
           {
             label: 'Input Format',
             value:
-              'Use Zentropi to create and test labeling policies. Zentropi generates structured policies that include: (1) Overview of policy subject, (2) Definition of Terms (precise definitions of words/phrases), (3) Interpretation of Language (guidance on ambiguous language), (4) Definition of Labels with Includes/Excludes criteria. CoPE-A then returns binary classification (0/1) indicating if content matches any policy labels.',
+              'Use Zentropi to create and test labeling policies and classifiers. The input format should include: (1) Overview of policy subject, (2) Definition of Terms (precise definitions of words/phrases), (3) Interpretation of Language (guidance on ambiguous language), (4) Definition of Labels with Includes/Excludes criteria. CoPE-A then returns binary classification (0/1) indicating if content matches any policy labels.',
           },
         ],
       },
@@ -227,7 +227,7 @@ const ZENTROPI: IntegrationManifestEntry = {
       },
     ],
   },
-  modelCardLearnMoreUrl: 'https://huggingface.co/zentropi-ai/cope-a-9b',
+  modelCardLearnMoreUrl: 'https://modelcards.withgoogle.com/',
   title: 'Zentropi',
   docsUrl: 'https://docs.zentropi.ai',
   requiresConfig: true,
