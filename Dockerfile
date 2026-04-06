@@ -7,7 +7,7 @@
 # Docker's cache will let us skip installs when the dependencies haven't changed.
 # We build on debian because it has fewer dependency issues than Alpine for our
 # native modules, and we don't really care about the larger image size.
-FROM node:24.14.0-bullseye-slim AS server_base
+FROM node:24.14.1-bullseye-slim AS server_base
 WORKDIR /app
 
 COPY ["server/package.json", "server/package-lock.json", "./"]
@@ -18,7 +18,7 @@ FROM server_base AS build_backend
 RUN npm run build
 
 # make a shared layer that can be the base for worker and api images.
-FROM node:24.14.0-bullseye-slim AS backend_base
+FROM node:24.14.1-bullseye-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install dumb-init
 COPY --from=build_backend ["/app/package.json", "/app/package-lock.json", "./"]
