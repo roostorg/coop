@@ -1,7 +1,6 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import jestSnapshot from 'jest-snapshot';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import jsonPath from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import lodash from 'lodash';
 
 const { toMatchSnapshot } = jestSnapshot;
@@ -55,9 +54,12 @@ expect.extend({
       if (isJsonPath(k)) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete generatedPropertyMatchers[key];
-        jsonPath.paths(received, k).forEach((path) => {
-          set(generatedPropertyMatchers, path.slice(1), propertyMatchers[key]);
-        });
+        JSONPath({ path: k, json: received, resultType: 'path' }).forEach(
+          (pathStr: string) => {
+            const path = JSONPath.toPathArray(pathStr).slice(1);
+            set(generatedPropertyMatchers, path, propertyMatchers[key]);
+          },
+        );
       }
     });
 
