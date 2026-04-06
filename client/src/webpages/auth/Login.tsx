@@ -52,7 +52,7 @@ export default function Login() {
 
   const [login, { client, loading }] = useGQLLoginMutation({
     onError: (e) => {
-      if (e.graphQLErrors[0].extensions.name === 'LoginSsoRequiredError') {
+      if (e.graphQLErrors[0]?.extensions?.name === 'LoginSsoRequiredError') {
         setErrorMessage(
           `Your Organization requires login via Single Sign-On.
           Please use the Single Sign-On button below to log in`,
