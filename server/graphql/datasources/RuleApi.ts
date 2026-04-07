@@ -2,7 +2,7 @@
 
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
-import { GraphQLError } from 'graphql';
+
 import { sql, type Kysely } from 'kysely';
 import Sequelize from 'sequelize';
 import { uid } from 'uid';
@@ -67,6 +67,7 @@ import {
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 import { type CursorInfo, type Edge } from '../utils/paginationHandler.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const { Op, Transaction } = Sequelize;
 const SortOrder = makeEnumLike(['ASC', 'DESC']);
@@ -284,10 +285,7 @@ class RuleAPI {
   async getGraphQLRuleFromId(id: string, orgId: string) {
     const rule = await this.models.Rule.findByPk(id, { rejectOnEmpty: true });
     if (rule.orgId !== orgId) {
-      throw new GraphQLError(
-        'User not authenticated to fetch this rule',
-        { extensions: { code: 'UNAUTHENTICATED' } },
-      );
+      throw unauthenticatedError('User not authenticated to fetch this rule');
     }
 
     return rule;

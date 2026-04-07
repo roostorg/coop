@@ -1,10 +1,10 @@
-import { GraphQLError } from 'graphql';
 import { uid } from 'uid';
 
 import { RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { rawItemSubmissionToItemSubmission } from '../../services/itemProcessingService/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import type { GQLQueryResolvers } from '../generated.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   extend type Query {
@@ -21,7 +21,7 @@ const Query: GQLQueryResolvers = {
   async spotTestRule(_, { ruleId, item }, { services, dataSources, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const [itemTypes, rule] = await Promise.all([

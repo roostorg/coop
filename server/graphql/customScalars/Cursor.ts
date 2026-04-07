@@ -1,4 +1,4 @@
-import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
+import { GraphQLScalarType, Kind } from 'graphql';
 
 import {
   b64Decode,
@@ -9,6 +9,8 @@ import {
   type JsonOf,
 } from '../../utils/encoding.js';
 import { type JSON } from '../../utils/json-schema-types.js';
+
+import { userInputError } from '../utils/errors.js';
 
 /**
  * A cursor is a pointer into a particular place in an ordered collection.
@@ -32,7 +34,7 @@ export default new GraphQLScalarType<JSON, B64Of<JsonOf<JSON>>>({
   parseValue: parseCursorValue,
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new GraphQLError('Cursor values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw userInputError('Cursor values must be strings.');
     }
     return parseCursorValue(ast.value);
   },
@@ -40,7 +42,7 @@ export default new GraphQLScalarType<JSON, B64Of<JsonOf<JSON>>>({
 
 function parseCursorValue(value: unknown) {
   if (typeof value !== 'string') {
-    throw new GraphQLError('Cursor values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
+    throw userInputError('Cursor values must be strings.');
   }
 
   try {
@@ -48,6 +50,6 @@ function parseCursorValue(value: unknown) {
     const jsonString = b64Decode(value as B64Of<JsonOf<JSON>>);
     return jsonParse(jsonString);
   } catch {
-    throw new GraphQLError('Invalid cursor value', { extensions: { code: 'BAD_USER_INPUT' } });
+    throw userInputError('Invalid cursor value');
   }
 }

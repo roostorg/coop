@@ -1,5 +1,3 @@
-import { GraphQLError } from 'graphql';
-
 import { type LocationBank as TLocationBank } from '../../models/banks/LocationBankModel.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
@@ -8,6 +6,7 @@ import {
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -132,7 +131,7 @@ const Query: GQLQueryResolvers = {
   async locationBank(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.dataSources.locationBankAPI.getGraphQLLocationBankFromId({
@@ -147,7 +146,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('User required.');
       }
 
       const bank = await context.dataSources.locationBankAPI.createLocationBank(
@@ -170,7 +169,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('User required.');
       }
 
       const bank = context.dataSources.locationBankAPI.updateLocationBank(
@@ -192,7 +191,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteLocationBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.dataSources.locationBankAPI.deleteLocationBank({

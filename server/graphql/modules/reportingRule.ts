@@ -1,5 +1,3 @@
-import { GraphQLError } from 'graphql';
-
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   isNonEmptyArray,
@@ -14,6 +12,7 @@ import {
   type GQLReportingRuleResolvers,
 } from '../generated.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum ReportingRuleStatus {
@@ -99,7 +98,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async creator(reportingRule, _, { dataSources, getUser }) {
     const user = getUser();
     if (!user || user.orgId !== reportingRule.orgId) {
-      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required');
     }
     if (!reportingRule.creatorId) {
       return null;
@@ -114,7 +113,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async itemTypes(reportingRule, _, { services, getUser }) {
     const user = getUser();
     if (!user || user.orgId !== reportingRule.orgId) {
-      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required');
     }
 
     const itemTypes = await services.ModerationConfigService.getItemTypes({
@@ -128,7 +127,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async actions(reportingRule, _, { dataSources, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return dataSources.actionAPI.getGraphQLActionsFromIds(
@@ -139,7 +138,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
   async policies(reportingRule, _, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
     const { orgId } = user;
 
@@ -159,7 +158,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
     // insights resolver. But verify the rule is owned by the user's org
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required');
     }
 
     if (rule.orgId !== user.orgId) {
@@ -174,7 +173,7 @@ const Query: GQLQueryResolvers = {
   async reportingRule(_, { id }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const reportingRules = await services.ReportingService.getReportingRules({
@@ -189,7 +188,7 @@ const Mutation: GQLMutationResolvers = {
   async createReportingRule(_, { input }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const { itemTypeIds, actionIds } = input;
@@ -228,7 +227,7 @@ const Mutation: GQLMutationResolvers = {
   async updateReportingRule(_, { input }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
     const { id, name, description, status, conditionSet, policyIds } = input;
 
@@ -283,7 +282,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteReportingRule(_, { id }, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return services.ReportingService.deleteReportingRule({

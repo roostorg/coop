@@ -1,5 +1,3 @@
-import { GraphQLError } from 'graphql';
-
 import { type Backtest } from '../../models/rules/BacktestModel.js';
 import {
   hasPermission,
@@ -12,6 +10,7 @@ import {
   makeConnectionResolver,
   type ConnectionArguments,
 } from '../utils/paginationHandler.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum BacktestStatus {
@@ -119,11 +118,11 @@ const resolvers = {
       );
 
       if (user == null) {
-        throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('Authenticated user required');
       } else if (!hasPermission(UserPermission.RUN_BACKTEST, user.role)) {
-        throw new GraphQLError('User not authorized to create backtests.', { extensions: { code: 'FORBIDDEN' } });
+        throw forbiddenError('User not authorized to create backtests.');
       } else if (!rule || user.orgId !== rule.orgId) {
-        throw new GraphQLError('Invalid rule.', { extensions: { code: 'FORBIDDEN' } });
+        throw forbiddenError('Invalid rule.');
       }
 
       return {

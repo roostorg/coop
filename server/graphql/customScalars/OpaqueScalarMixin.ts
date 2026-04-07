@@ -1,11 +1,12 @@
-import { GraphQLError, Kind, type GraphQLScalarType } from 'graphql';
+import { Kind, type GraphQLScalarType } from 'graphql';
 import jwt from 'jsonwebtoken';
+import { userInputError } from '../utils/errors.js';
 
 const parseOpaqueScalarValue =
   <T>(jwtSigningKey: string) =>
   (inputValue: unknown) => {
     if (typeof inputValue !== 'string') {
-      throw new GraphQLError('OpaqueScalar values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw userInputError('OpaqueScalar values must be strings.');
     }
 
     return jwt.verify(inputValue, jwtSigningKey) as T;
@@ -49,7 +50,7 @@ export default <T extends object>(
   parseValue: parseOpaqueScalarValue<T>(jwtSigningKey),
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new GraphQLError('OpaqueScalar values must be strings.', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw userInputError('OpaqueScalar values must be strings.');
     }
     return parseOpaqueScalarValue<T>(jwtSigningKey)(ast.value);
   },

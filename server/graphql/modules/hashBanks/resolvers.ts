@@ -1,8 +1,8 @@
-import { GraphQLError } from 'graphql';
 import { isCoopErrorOfType } from '../../../utils/errors.js';
 import type { Context } from '../../resolvers.js';
 import type { GQLMutationResolvers, GQLQueryResolvers } from '../../generated.js';
 import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
+import { unauthenticatedError } from '../../utils/errors.js';
 
 interface ExchangeConfigInput {
   api_name: string;
@@ -14,7 +14,7 @@ const Query: GQLQueryResolvers<Context> = {
   async hashBanks(_: unknown, __: unknown, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.HMAHashBankService.listBanks(user.orgId);
@@ -23,7 +23,7 @@ const Query: GQLQueryResolvers<Context> = {
   async hashBank(_: unknown, { name }: { name: string }, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     try {
@@ -39,7 +39,7 @@ const Query: GQLQueryResolvers<Context> = {
   async hashBankById(_: unknown, { id }: { id: string }, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     try {
@@ -55,7 +55,7 @@ const Query: GQLQueryResolvers<Context> = {
   async exchangeApis(_: unknown, __: unknown, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.HMAHashBankService.getExchangeApis();
@@ -64,7 +64,7 @@ const Query: GQLQueryResolvers<Context> = {
   async exchangeApiSchema(_: unknown, { apiName }: { apiName: string }, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.HMAHashBankService.getExchangeApiSchema(apiName);
@@ -84,7 +84,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     try {
@@ -136,7 +136,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     try {
@@ -165,7 +165,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     await context.services.HMAHashBankService.deleteBank(user.orgId, id);
@@ -179,7 +179,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     // eslint-disable-next-line no-restricted-syntax

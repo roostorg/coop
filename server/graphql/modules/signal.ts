@@ -1,5 +1,5 @@
 import { type SignalSubcategory } from '@roostorg/types';
-import { GraphQLError } from 'graphql';
+
 import { type ReadonlyDeep } from 'type-fest';
 
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
@@ -16,6 +16,7 @@ import {
   type GQLSupportedLanguagesResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum SignalPricingStructureType {
@@ -228,10 +229,7 @@ const Signal: GQLSignalResolvers = {
     const user = context.getUser();
 
     if (!user) {
-      throw new GraphQLError(
-        'User required to load signal disabledInfo.',
-        { extensions: { code: 'UNAUTHENTICATED' } },
-      );
+      throw unauthenticatedError('User required to load signal disabledInfo.');
     }
 
     // Non-null assertion below is safe because, if this resolver ran, it means

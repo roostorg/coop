@@ -1,4 +1,6 @@
-import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
+import { GraphQLScalarType, Kind } from 'graphql';
+
+import { userInputError } from '../utils/errors.js';
 
 /**
  * This scalar is needed for values that can be represented either
@@ -9,7 +11,7 @@ export default new GraphQLScalarType<string | number, string | number>({
   description: 'Either an arbitrary string or a float.',
   serialize(value) {
     if (typeof value !== 'string' && typeof value !== 'number') {
-      throw new GraphQLError('Expected a string or float.', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw userInputError('Expected a string or float.');
     }
     return value;
   },
@@ -20,7 +22,7 @@ export default new GraphQLScalarType<string | number, string | number>({
       ast.kind !== Kind.FLOAT &&
       ast.kind !== Kind.INT
     ) {
-      throw new GraphQLError('StringOrFloat must be a string or number.', { extensions: { code: 'BAD_USER_INPUT' } });
+      throw userInputError('StringOrFloat must be a string or number.');
     }
     return parseStringOrFloatValue(ast.value);
   },
@@ -28,10 +30,7 @@ export default new GraphQLScalarType<string | number, string | number>({
 
 function parseStringOrFloatValue(value: unknown) {
   if (typeof value !== 'string' && typeof value !== 'number') {
-    throw new GraphQLError(
-      'StringOrFloat must be a string or number when passed to the server.',
-      { extensions: { code: 'BAD_USER_INPUT' } },
-    );
+    throw userInputError('StringOrFloat must be a string or number when passed to the server.');
   }
 
   // NB: Number('') returns 0, so we have to check for the empty string

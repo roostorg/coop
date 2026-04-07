@@ -1,5 +1,3 @@
-import { GraphQLError } from 'graphql';
-
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
@@ -15,6 +13,7 @@ import {
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum Integration {
@@ -225,7 +224,7 @@ const Query: GQLQueryResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('Unauthenticated User');
       }
 
       if (!getIntegrationRegistry().has(name)) {
@@ -257,7 +256,7 @@ const Query: GQLQueryResolvers = {
   async availableIntegrations(_, __, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Unauthenticated User');
     }
     return context.dataSources.integrationAPI.getAvailableIntegrations() as GQLIntegrationMetadata[];
   },
@@ -274,7 +273,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('Unauthenticated User');
       }
       const newConfig = await context.dataSources.integrationAPI.setConfig(
         params.input,
@@ -303,7 +302,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new GraphQLError('Unauthenticated User', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('Unauthenticated User');
       }
       const newConfig =
         await context.dataSources.integrationAPI.setConfigByIntegrationId(

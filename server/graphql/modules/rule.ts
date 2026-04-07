@@ -1,5 +1,4 @@
 /* eslint-disable max-lines */
-import { GraphQLError } from 'graphql';
 
 import { isConditionSet } from '../../condition_evaluator/condition.js';
 import {
@@ -28,6 +27,7 @@ import {
 } from '../generated.js';
 import { type Context, type ResolverMap } from '../resolvers.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -437,8 +437,6 @@ const typeDefs = /* GraphQL */ `
     type: AggregationType!
   }
 
-
-
   type RuleHasRunningBacktestsError implements Error {
     title: String!
     status: Int!
@@ -481,7 +479,7 @@ const Query: GQLQueryResolvers = {
   async rule(_, { id }, { dataSources, getUser }) {
     const user = await getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return dataSources.ruleAPI.getGraphQLRuleFromId(id, user.orgId);
@@ -492,7 +490,7 @@ const Mutation: GQLMutationResolvers = {
   async createContentRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     try {
@@ -518,7 +516,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('Authenticated user required');
       }
 
       const rule = await context.dataSources.ruleAPI.updateContentRule({
@@ -548,7 +546,7 @@ const Mutation: GQLMutationResolvers = {
   async createUserRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     try {
@@ -570,7 +568,7 @@ const Mutation: GQLMutationResolvers = {
   async updateUserRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     try {
@@ -598,7 +596,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteRule(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.dataSources.ruleAPI.deleteRule({
@@ -612,7 +610,7 @@ const ConditionInputField: ResolverMap<ConditionInput> = {
   async name(conditionInputField, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (conditionInputField.type !== 'CONTENT_DERIVED_FIELD') {
@@ -640,7 +638,7 @@ const ContentRule: GQLContentRuleResolvers = {
   async creator(rule, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return rule.getCreator();
@@ -648,7 +646,7 @@ const ContentRule: GQLContentRuleResolvers = {
   async itemTypes(rule, _, { services, getUser }) {
     const user = getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
     return services.ModerationConfigService.getItemTypesForRule({
       orgId: user.orgId,
@@ -658,7 +656,7 @@ const ContentRule: GQLContentRuleResolvers = {
   async actions(rule, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return rule.getActions();
@@ -666,7 +664,7 @@ const ContentRule: GQLContentRuleResolvers = {
   async policies(rule, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return rule.getPolicies();
@@ -674,7 +672,7 @@ const ContentRule: GQLContentRuleResolvers = {
   async backtests(rule, args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const { ids } = args;
@@ -685,7 +683,7 @@ const ContentRule: GQLContentRuleResolvers = {
     // insights resolver. But verify the rule is owned by the user's org
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('User required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required');
     }
 
     if (rule.orgId !== user.orgId) {
@@ -700,7 +698,7 @@ const UserRule: GQLUserRuleResolvers = {
   async creator(rule, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return rule.getCreator();
@@ -708,7 +706,7 @@ const UserRule: GQLUserRuleResolvers = {
   async actions(rule, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return rule.getActions();
@@ -716,7 +714,7 @@ const UserRule: GQLUserRuleResolvers = {
   async policies(rule, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return rule.getPolicies();
@@ -724,7 +722,7 @@ const UserRule: GQLUserRuleResolvers = {
   async backtests(rule, args, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const { ids } = args;
@@ -735,7 +733,7 @@ const UserRule: GQLUserRuleResolvers = {
     // insights resolver. But verify the rule is owned by the user's org
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (rule.orgId !== user.orgId) {

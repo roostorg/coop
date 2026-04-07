@@ -1,10 +1,9 @@
-import { GraphQLError } from 'graphql';
-
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum TextBankType {
@@ -55,7 +54,7 @@ const Query: GQLQueryResolvers = {
   async textBank(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     try {
@@ -79,7 +78,7 @@ const Mutation: GQLMutationResolvers = {
   async createTextBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     const { name, description, type, strings } = params.input;
@@ -107,7 +106,7 @@ const Mutation: GQLMutationResolvers = {
   async updateTextBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('User required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('User required.');
     }
 
     const { id, name, description, type, strings } = params.input;
@@ -135,7 +134,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteTextBank(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     try {

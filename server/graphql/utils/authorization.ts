@@ -1,6 +1,5 @@
 import { getDirective } from '@graphql-tools/utils';
 import {
-  GraphQLError,
   defaultFieldResolver,
   type GraphQLFieldConfig,
   type GraphQLResolveInfo,
@@ -8,6 +7,8 @@ import {
 } from 'graphql';
 
 import type { Context } from '../resolvers.js';
+
+import { unauthenticatedError } from './errors.js';
 
 export function shouldSkipAuth(
   schema: GraphQLSchema,
@@ -34,7 +35,7 @@ export function authSchemaWrapper(
           info: GraphQLResolveInfo,
         ) {
           if (!context.getUser()) {
-            throw new GraphQLError('No user in context.', { extensions: { code: 'UNAUTHENTICATED' } });
+            throw unauthenticatedError('No user in context.');
           }
           return originalResolver(source, args, context, info);
         },

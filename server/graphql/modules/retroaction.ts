@@ -1,11 +1,10 @@
-import { GraphQLError } from 'graphql';
-
 import {
   hasPermission,
   UserPermission,
 } from '../../models/types/permissioning.js';
 import { type GQLMutationRunRetroactionArgs } from '../generated.js';
 import { type Context } from '../resolvers.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   type Mutation {
@@ -46,11 +45,11 @@ const resolvers = {
       );
 
       if (user == null) {
-        throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+        throw unauthenticatedError('Authenticated user required');
       } else if (!hasPermission(UserPermission.RUN_RETROACTION, user.role)) {
-        throw new GraphQLError('User not authorized to create backtests.', { extensions: { code: 'FORBIDDEN' } });
+        throw forbiddenError('User not authorized to create backtests.');
       } else if (!rule || user.orgId !== rule.orgId) {
-        throw new GraphQLError('Invalid rule.', { extensions: { code: 'FORBIDDEN' } });
+        throw forbiddenError('Invalid rule.');
       }
 
       return context.dataSources.ruleAPI.runRetroaction(params.input, user);

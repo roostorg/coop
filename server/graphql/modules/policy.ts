@@ -1,4 +1,3 @@
-import { GraphQLError } from 'graphql';
 import _ from 'lodash';
 
 import { type Policy } from '../../models/PolicyModel.js';
@@ -11,6 +10,7 @@ import {
   type GQLUpdatePolicyResponseResolvers,
 } from '../generated.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const { partition } = _;
 
@@ -101,7 +101,7 @@ const Query: GQLQueryResolvers = {
   async policy(_: unknown, { id }: GQLQueryPolicyArgs, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.services.ModerationConfigService.getPolicy({
@@ -115,7 +115,7 @@ const Mutation: GQLMutationResolvers = {
   async addPolicies(_: unknown, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required.');
     }
 
     const { policies } = params;
@@ -160,7 +160,7 @@ const Mutation: GQLMutationResolvers = {
   async updatePolicy(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required.', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required.');
     }
     try {
       const {
@@ -206,7 +206,7 @@ const Mutation: GQLMutationResolvers = {
   async deletePolicy(_: unknown, params: GQLMutationDeletePolicyArgs, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new GraphQLError('Authenticated user required', { extensions: { code: 'UNAUTHENTICATED' } });
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.services.ModerationConfigService.deletePolicy({
