@@ -427,77 +427,77 @@ export default async function makeApiServer(deps: Dependencies) {
   );
 
   Object.entries(controllers).forEach(([_k, controller]) => {
-      controller.routes.forEach((it) => {
-        const handler = it.handler(deps);
-        app[it.method](
-          path.join(controller.pathPrefix, it.path),
-          ...(Array.isArray(handler) ? handler : [handler]),
-        );
-      });
-    });
-
-    // catch 404 and forward to error handler
-    app.use(function (_req, _res, next) {
-      next(
-        makeNotFoundError('Requested route not found.', {
-          shouldErrorSpan: true,
-        }),
+    controller.routes.forEach((it) => {
+      const handler = it.handler(deps);
+      app[it.method](
+        path.join(controller.pathPrefix, it.path),
+        ...(Array.isArray(handler) ? handler : [handler]),
       );
     });
+  });
 
-    // error handler
-    app.use(async function (err, _req, res, _next) {
-      await deps.Tracer.addActiveSpan(
-        { resource: 'app', operation: 'handleError' },
-        async (span) => {
-          span.recordException(err);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+  // catch 404 and forward to error handler
+  app.use(function (_req, _res, next) {
+    next(
+      makeNotFoundError('Requested route not found.', {
+        shouldErrorSpan: true,
+      }),
+    );
+  });
 
-          // I don't know if these attributes are necessary, with recordException
-          span.setAttribute(SEMATTRS_EXCEPTION_MESSAGE, err.message);
-          if (err.stack) {
-            span.setAttribute(SEMATTRS_EXCEPTION_STACKTRACE, err.stack);
+  // error handler
+  app.use(async function (err, _req, res, _next) {
+    await deps.Tracer.addActiveSpan(
+      { resource: 'app', operation: 'handleError' },
+      async (span) => {
+        span.recordException(err);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+
+        // I don't know if these attributes are necessary, with recordException
+        span.setAttribute(SEMATTRS_EXCEPTION_MESSAGE, err.message);
+        if (err.stack) {
+          span.setAttribute(SEMATTRS_EXCEPTION_STACKTRACE, err.stack);
+        }
+        span.setAttribute(SEMATTRS_EXCEPTION_TYPE, err.name);
+
+        const errors = (() => {
+          if (err instanceof AggregateError) {
+            const extractedErrors = getErrorsFromAggregateError(err);
+            return isNonEmptyArray(extractedErrors) ? extractedErrors : [err];
+          } else {
+            return [err];
           }
-          span.setAttribute(SEMATTRS_EXCEPTION_TYPE, err.name);
+        })() satisfies NonEmptyArray<unknown>;
 
-          const errors = (() => {
-            if (err instanceof AggregateError) {
-              const extractedErrors = getErrorsFromAggregateError(err);
-              return isNonEmptyArray(extractedErrors) ? extractedErrors : [err];
-            } else {
-              return [err];
-            }
-          })() satisfies NonEmptyArray<unknown>;
+        // If we had any nested errors (from an AggregateError),
+        // attach those to the span too.
+        if (errors.length > 1 || errors[0] !== err) {
+          span.setAttribute(
+            'errors',
+            jsonStringify(
+              errors.map((it) => safePick(it, ['name', 'message', 'stack'])),
+            ),
+          );
+        }
 
-          // If we had any nested errors (from an AggregateError),
-          // attach those to the span too.
-          if (errors.length > 1 || errors[0] !== err) {
-            span.setAttribute(
-              'errors',
-              jsonStringify(
-                errors.map((it) => safePick(it, ['name', 'message', 'stack'])),
-              ),
-            );
-          }
+        // If we've already sent response headers or the response status code,
+        // we can't actually send a different status code here: it's an error
+        // in HTTP to send the headers portion of a response twice. So, we
+        // need to skip this step.
+        //
+        // This can happen, e.g., if we have a request handler that
+        // immediately responds with a 202/204 but then continues to do some
+        // processing work in the background, and that work errors.
+        if (!res.headersSent) {
+          const safeErrors = errors.map((it) =>
+            sanitizeError(it),
+          ) satisfies SerializableError[] as NonEmptyArray<SerializableError>;
 
-          // If we've already sent response headers or the response status code,
-          // we can't actually send a different status code here: it's an error
-          // in HTTP to send the headers portion of a response twice. So, we
-          // need to skip this step.
-          //
-          // This can happen, e.g., if we have a request handler that
-          // immediately responds with a 202/204 but then continues to do some
-          // processing work in the background, and that work errors.
-          if (!res.headersSent) {
-            const safeErrors = errors.map((it) =>
-              sanitizeError(it),
-            ) satisfies SerializableError[] as NonEmptyArray<SerializableError>;
-
-            res.status(pickStatus(safeErrors)).json({ errors: safeErrors });
-          }
-        },
-      );
-    } as ErrorRequestHandler);
+          res.status(pickStatus(safeErrors)).json({ errors: safeErrors });
+        }
+      },
+    );
+  } as ErrorRequestHandler);
 
   return {
     app,
