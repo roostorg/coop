@@ -408,7 +408,7 @@ export default async function makeApiServer(deps: Dependencies) {
         // Then, this is info from the sanitized version of the actual thrown error.
         message: sanitizedErrorTitle,
         extensions,
-      } as unknown as GraphQLFormattedError;
+      } as GraphQLFormattedError;
     },
   });
 
