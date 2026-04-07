@@ -163,9 +163,6 @@
     "@types/restify": "npm:pino@8.6.0",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
-    },
-    "apollo-server-express": {
-      "@types/express": "npm:@types/express@4.17.17"
     }
   }
 }
