@@ -1,0 +1,13 @@
+diff --git a/index.js b/index.js
+index 1234567..abcdefg 100644
+--- a/index.js
++++ b/index.js
+@@ -69,6 +69,9 @@ function determineDepth(node, fragments, depthSoFar, maxDepth, context, operatio
+       ))
+     case Kind.FRAGMENT_SPREAD:
++      if (!fragments[node.name.value]) {
++        return 0
++      }
+       return determineDepth(fragments[node.name.value], fragments, depthSoFar, maxDepth, context, operationName, options)
+     case Kind.INLINE_FRAGMENT:
+     case Kind.FRAGMENT_DEFINITION:
