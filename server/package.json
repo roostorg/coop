@@ -157,9 +157,8 @@
     "classNameTemplate": "{classname}",
     "titleTemplate": "{title}"
   },
-  "//": "Use an override to remove the @types/restify dependency, b/c it conflicts w/ pino-http. And a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
+  "//": "Use an override for a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
   "overrides": {
-    "@types/restify": "npm:pino@8.6.0",
     "@types/express": "$@types/express",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
