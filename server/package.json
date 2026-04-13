@@ -162,6 +162,10 @@
     "@types/express": "$@types/express",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
-    }
+    },
+    "axios": "^1.15.0"
+  },
+  "resolutions": {
+    "axios": "^1.15.0"
   }
 }
