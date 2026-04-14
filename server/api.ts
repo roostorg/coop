@@ -382,7 +382,7 @@ export default async function makeApiServer(deps: Dependencies) {
       );
       const { title: sanitizedErrorTitle, ...extensions } = sanitizedError;
 
-      return {
+      const result: GraphQLFormattedError = {
         // When graphql-js wraps the resolver-thrown error in a GraphQLError,
         // it automatically tracks some metadata about where the error was thrown
         // from. That can be useful to clients, in a way that's a bit different
@@ -398,17 +398,19 @@ export default async function makeApiServer(deps: Dependencies) {
         // for the error, though, will be in the `type` key, just like when
         // sending errors in REST responses (though, for GQL, this lives under
         // `extensions`).
-        code: extensions.type.includes(ErrorType.Unauthenticated)
-          ? 'UNAUTHENTICATED'
-          : extensions.type.includes(ErrorType.Unauthorized)
-          ? 'FORBIDDEN'
-          : extensions.type.includes(ErrorType.InvalidUserInput)
-          ? 'BAD_USER_INPUT'
-          : 'INTERNAL_SERVER_ERROR',
-        // Then, this is info from the sanitized version of the actual thrown error.
+        extensions: {
+          ...extensions,
+          code: extensions.type.includes(ErrorType.Unauthenticated)
+            ? 'UNAUTHENTICATED'
+            : extensions.type.includes(ErrorType.Unauthorized)
+            ? 'FORBIDDEN'
+            : extensions.type.includes(ErrorType.InvalidUserInput)
+            ? 'BAD_USER_INPUT'
+            : 'INTERNAL_SERVER_ERROR',
+        },
         message: sanitizedErrorTitle,
-        extensions,
-      } as GraphQLFormattedError;
+      };
+      return result;
     },
   });
 
