@@ -21,7 +21,6 @@ import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExe
 import {
   warehouseDateToDate,
   warehouseDateToDateOnlyString,
-  type RuleExecutionsRow,
   type WarehouseDate,
   type DataWarehousePublicSchema,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
