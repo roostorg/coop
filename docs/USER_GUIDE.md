@@ -283,7 +283,7 @@ Coop logs all actions taken in a Recent Decisions Log that includes basic inform
 
 ## NCMEC Review and Reporting
 
-Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. Head to [NCMEC.md](/docs/NCMEC.md) for more information.
+Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. Head to [NCMEC Reporting](NCMEC.md) for more information.
 
 ![Coop's NCMEC settings page where you populate your organization's ESP username, password, name of org, and legal URL.](./images/coop-ncmec-settings.png) 
 

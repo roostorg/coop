@@ -158,34 +158,34 @@ const OPENAI: IntegrationManifestEntry = {
 
 const ZENTROPI: IntegrationManifestEntry = {
   modelCard: {
-    modelName: 'Zentropi',
+    modelName: 'Zentropi: CoPE-A-9B',
     version: '1.x',
-    releaseDate: 'Ongoing',
+    releaseDate: 'July 20, 2025',
     sections: [
       {
         id: 'trainingData',
         title: 'Training Data Sources',
-        fields: [{ label: 'Data Sources', value: 'TBD' }],
+        fields: [{ label: 'Data Sources', value: "CoPE-A's dataset includes ~60,000 labels across unique policy/content pairs using policy texts created by CoPE team and content from publicly-accessible internet forums. The CoPE team used a mix of automated and manual annotation to create golden labels. The training data includes but is not limited to hate speech, sexual content, self-harm, harassment, toxicity." }],
       },
       {
         id: 'policyAndTaxonomy',
         title: 'Policy & Taxonomy Definitions',
-        fields: [{ label: 'Policies', value: 'TBD' }],
+        fields: [{ label: 'Policies', value: "No fixed taxonomy. CoPE-A is policy-adaptive and steerable by users who define custom criteria for their specific use case. Trained for generalizable policy understanding across diverse policy formulations." }],
       },
       {
         id: 'annotationMethodology',
         title: 'Annotation Methodology',
-        fields: [{ label: 'Methodology', value: 'TBD' }],
+        fields: [{ label: 'Methodology', value: 'CoPE-A was trained using a novel training methodology that moves beyond policy memorization to achieve true policy interpretation. Trained across conflicting policy formulations with focus on generalizable policy understanding and interpretation consistency. Combined automated and manual labeling processes for quality assurance.' }],
       },
       {
         id: 'performanceBenchmarks',
         title: 'Performance Benchmarks',
-        fields: [{ label: 'Benchmarks', value: 'TBD' }],
+        fields: [{ label: 'Benchmarks', value: 'Tested on policies and content never seen during training. High accuracy across all content types: Hate Speech 91% accurate (internal test), 84% accurate (public Ethos test); Inappropriate Sexual Content 89%; Toxic Speech 90%; Self-Harm 88%; Harassment 73%. Outperforms comparable models including GPT-4o, Llama-3.1-8B, LlamaGuard3-8B, and ShieldGemma-9B across most categories.' }],
       },
       {
         id: 'biasAndLimitations',
         title: 'Bias Documentation & Known Limits',
-        fields: [{ label: 'Known Limitations', value: 'TBD' }],
+        fields: [{ label: 'Known Limitations', value: 'Text processing is limited to 8K tokens. Optimized for US English only; performance degrades for other languages/locales. Binary classification only (label present/absent). Cannot classify content requiring external verification unless explicitly defined in policy. Requires careful policy design to mitigate potential biases. Users should monitor classification patterns across demographic groups and audit decisions regularly.' }],
       },
       {
         id: 'implementationGuidance',
@@ -194,7 +194,12 @@ const ZENTROPI: IntegrationManifestEntry = {
           {
             label: 'Credentials',
             value:
-              'API Key plus optional Labeler Versions (id and label per version).',
+              'API Key plus optional Labeler Versions (id and label per version) created by the user.',
+          },
+          {
+            label: 'Input Format',
+            value:
+              'Use Zentropi to create and test labeling policies and classifiers. The input format should include: (1) Overview of policy subject, (2) Definition of Terms (precise definitions of words/phrases), (3) Interpretation of Language (guidance on ambiguous language), (4) Definition of Labels with Includes/Excludes criteria. CoPE-A then returns binary classification (0/1) indicating if content matches any policy labels.',
           },
         ],
       },
@@ -203,8 +208,20 @@ const ZENTROPI: IntegrationManifestEntry = {
         title: 'Relevant Links',
         fields: [
           {
+            label: 'HuggingFace Model Card',
+            value: 'https://huggingface.co/zentropi-ai/cope-a-9b',
+          },
+          {
             label: 'Documentation',
             value: 'https://docs.zentropi.ai',
+          },
+          {
+            label: 'Research Talk',
+            value: 'https://www.youtube.com/live/JMq49FZ5qmY?si=Q6qpHNeTo-Bc6t9a&t=1',
+          },
+          {
+            label: 'Sample Code Notebook',
+            value: 'https://colab.research.google.com/drive/1LBmQ3d0OVrq2EpVP0tc03POalf3sDpjl?usp=sharing',
           },
         ],
       },

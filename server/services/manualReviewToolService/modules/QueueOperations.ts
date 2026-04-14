@@ -794,19 +794,21 @@ export default class QueueOperations {
     return filterNullOrUndefined(jobs).map((job) => job.data);
   }
 
-  /**
-   * This is currently only being used for testing, and should be
-   * deleted after we rework the list view.
-   */
-  async getAllJobsForQueue(opts: { orgId: string; queueId: string }) {
-    const limit = pLimit(10);
+  async getAllJobsForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    limit?: number;
+  }) {
+    const concurrencyLimit = pLimit(10);
     const { orgId, queueId } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
-    // Get up to 50 jobs per queue.
-    const legacyJobs = await queue.getJobs(undefined, 0, 50);
+    const maxJobs = Math.max(0, Math.min(opts.limit ?? 50, 50));
+    const legacyJobs = await queue.getJobs(undefined, 0, maxJobs);
     const jobs = await Promise.all(
       // eslint-disable-next-line @typescript-eslint/promise-function-async
-      legacyJobs.map((job) => limit(() => this.legacyJobToJob(job, orgId))),
+      legacyJobs.map((job) =>
+        concurrencyLimit(async () => this.legacyJobToJob(job, orgId)),
+      ),
     );
     return filterNullOrUndefined(jobs).map((job) => job.data);
   }
@@ -1242,6 +1244,27 @@ export default class QueueOperations {
     // Returns the number of waiting or delayed jobs
     // https://api.docs.bullmq.io/classes/Queue.html#count
     return queue.count();
+  }
+
+  /**
+   * Batched variant that skips per-queue existence checks. The caller
+   * must have already verified the queues exist (e.g. via
+   * getAllQueuesForOrgAndDangerouslyBypassPermissioning).
+   */
+  async getTotalPendingJobCountForQueues(
+    orgId: string,
+    queueIds: string[],
+  ): Promise<number> {
+    const concurrencyLimit = pLimit(10);
+    const counts = await Promise.all(
+      queueIds.map(async (queueId) =>
+        concurrencyLimit(async () => {
+          const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+          return queue.count();
+        }),
+      ),
+    );
+    return counts.reduce((sum, count) => sum + count, 0);
   }
 
   async getOldestJobCreatedAt(opts: {

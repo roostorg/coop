@@ -23,6 +23,7 @@ import {
   useGQLGetDecidedJobLazyQuery,
   useGQLGetRecentDecisionsLazyQuery,
   useGQLGetSkipsForRecentDecisionsLazyQuery,
+  useGQLOrgLookupDataQuery,
 } from '../../../graphql/generated';
 import { assertUnreachable } from '../../../utils/misc';
 import {
@@ -71,27 +72,7 @@ gql`
     }
   }
 
-  query GetRecentDecisions($input: RecentDecisionsInput!) {
-    getRecentDecisions(input: $input) {
-      id
-      jobId
-      queueId
-      reviewerId
-      itemId
-      itemTypeId
-      decisions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      relatedActions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      createdAt
-      decisionReason
-    }
+  query OrgLookupData {
     myOrg {
       id
       actions {
@@ -113,6 +94,29 @@ gql`
         id
         name
       }
+    }
+  }
+
+  query GetRecentDecisions($input: RecentDecisionsInput!) {
+    getRecentDecisions(input: $input) {
+      id
+      jobId
+      queueId
+      reviewerId
+      itemId
+      itemTypeId
+      decisions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      relatedActions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      createdAt
+      decisionReason
     }
   }
 
@@ -149,6 +153,10 @@ export default function ManualReviewRecentDecisions() {
   const [unsavedFilterValue, setUnsavedFilterValue] = useState<
     RecentDecisionsFilterInput | undefined
   >(undefined);
+
+  const { data: orgLookupData } = useGQLOrgLookupDataQuery({
+    fetchPolicy: 'cache-and-network',
+  });
 
   const { data: decidedJobFromJobIdData } = useGQLGetDecidedJobFromJobIdQuery({
     variables: { id: jobId! },
@@ -285,35 +293,35 @@ export default function ManualReviewRecentDecisions() {
       if (!reviewerId) {
         return 'Automatic';
       }
-      const reviewer = allDecisionsData?.myOrg?.users.find(
+      const reviewer = orgLookupData?.myOrg?.users.find(
         (user) => user.id === reviewerId,
       );
       return reviewer
         ? `${reviewer.firstName} ${reviewer.lastName}`
         : 'Unknown';
     },
-    [allDecisionsData?.myOrg?.users],
+    [orgLookupData?.myOrg?.users],
   );
 
   const getQueueName = useCallback(
     (queueId: string) =>
-      allDecisionsData?.myOrg?.mrtQueues.find((queue) => queue.id === queueId)
+      orgLookupData?.myOrg?.mrtQueues.find((queue) => queue.id === queueId)
         ?.name ?? 'Unknown',
-    [allDecisionsData?.myOrg],
+    [orgLookupData?.myOrg],
   );
 
   const getActionName = useCallback(
     (actionId: string) =>
-      allDecisionsData?.myOrg?.actions.find((action) => action.id === actionId)
+      orgLookupData?.myOrg?.actions.find((action) => action.id === actionId)
         ?.name ?? 'Unknown',
-    [allDecisionsData?.myOrg],
+    [orgLookupData?.myOrg],
   );
 
   const getPolicyName = useCallback(
     (policyId: string) =>
-      allDecisionsData?.myOrg?.policies.find((policy) => policy.id === policyId)
+      orgLookupData?.myOrg?.policies.find((policy) => policy.id === policyId)
         ?.name ?? 'Unknown',
-    [allDecisionsData?.myOrg],
+    [orgLookupData?.myOrg],
   );
 
   const getDecisionColorNamePairs = useCallback(
@@ -399,7 +407,7 @@ export default function ManualReviewRecentDecisions() {
   );
 
   const dataValues = useMemo(() => {
-    if (!allDecisionsData || !allDecisionsData.myOrg) {
+    if (!allDecisionsData || !orgLookupData?.myOrg) {
       return undefined;
     }
     const allDecisions = [
@@ -435,6 +443,7 @@ export default function ManualReviewRecentDecisions() {
     });
   }, [
     allDecisionsData,
+    orgLookupData?.myOrg,
     decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision,
     getDecisionColorNamePairs,
     getPoliciesFromDecision,
