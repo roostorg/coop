@@ -2119,6 +2119,7 @@ export type GQLManualReviewQueue = {
 
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
