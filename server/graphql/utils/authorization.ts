@@ -1,5 +1,4 @@
 import { getDirective } from '@graphql-tools/utils';
-import { AuthenticationError } from 'apollo-server-express';
 import {
   defaultFieldResolver,
   type GraphQLFieldConfig,
@@ -8,6 +7,8 @@ import {
 } from 'graphql';
 
 import type { Context } from '../resolvers.js';
+
+import { unauthenticatedError } from './errors.js';
 
 export function shouldSkipAuth(
   schema: GraphQLSchema,
@@ -34,7 +35,7 @@ export function authSchemaWrapper(
           info: GraphQLResolveInfo,
         ) {
           if (!context.getUser()) {
-            throw new AuthenticationError('No user in context.');
+            throw unauthenticatedError('No user in context.');
           }
           return originalResolver(source, args, context, info);
         },

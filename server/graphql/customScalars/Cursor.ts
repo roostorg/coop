@@ -1,4 +1,3 @@
-import { UserInputError } from 'apollo-server-express';
 import { GraphQLScalarType, Kind } from 'graphql';
 
 import {
@@ -10,6 +9,8 @@ import {
   type JsonOf,
 } from '../../utils/encoding.js';
 import { type JSON } from '../../utils/json-schema-types.js';
+
+import { userInputError } from '../utils/errors.js';
 
 /**
  * A cursor is a pointer into a particular place in an ordered collection.
@@ -33,7 +34,7 @@ export default new GraphQLScalarType<JSON, B64Of<JsonOf<JSON>>>({
   parseValue: parseCursorValue,
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new UserInputError('Cursor values must be strings.');
+      throw userInputError('Cursor values must be strings.');
     }
     return parseCursorValue(ast.value);
   },
@@ -41,7 +42,7 @@ export default new GraphQLScalarType<JSON, B64Of<JsonOf<JSON>>>({
 
 function parseCursorValue(value: unknown) {
   if (typeof value !== 'string') {
-    throw new UserInputError('Cursor values must be strings.');
+    throw userInputError('Cursor values must be strings.');
   }
 
   try {
@@ -49,6 +50,6 @@ function parseCursorValue(value: unknown) {
     const jsonString = b64Decode(value as B64Of<JsonOf<JSON>>);
     return jsonParse(jsonString);
   } catch {
-    throw new UserInputError('Invalid cursor value');
+    throw userInputError('Invalid cursor value');
   }
 }

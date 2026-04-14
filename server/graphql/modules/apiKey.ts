@@ -1,8 +1,7 @@
-import { AuthenticationError } from 'apollo-server-express';
-
 import { ErrorType, CoopError } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { forbiddenError } from '../utils/errors.js';
 
 /** Context shape required by rotateWebhookSigningKey (avoids importing resolvers). */
 type RotateWebhookSigningKeyContext = {
@@ -78,7 +77,7 @@ const Query: any = {
   async apiKey(_: any, __: any, context: any) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User must be authenticated');
+      throw forbiddenError('User does not have permission to check if key exists');
     }
 
     const apiKeyRecord = await context.services.ApiKeyService.getActiveApiKeyForOrg(user.orgId);
@@ -94,12 +93,10 @@ const Mutation: any = {
   async rotateApiKey(_: any, { input }: any, context: any) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User must be authenticated');
+      throw forbiddenError('User does not have permission to rotate the API key');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to rotate the API key',
-      );
+      throw forbiddenError('User does not have permission to rotate the API key');
     }
 
     try {
@@ -148,12 +145,10 @@ const Mutation: any = {
   ) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User must be authenticated');
+      throw forbiddenError('User does not have permission to rotate the webhook signing key');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to rotate the webhook signing key',
-      );
+      throw forbiddenError('User does not have permission to rotate the webhook signing key');
     }
 
     try {

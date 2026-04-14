@@ -1,5 +1,3 @@
-import { AuthenticationError } from 'apollo-server-express';
-
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import {
@@ -12,6 +10,7 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   interface ActionBase {
@@ -183,7 +182,7 @@ const CustomAction: GQLCustomActionResolvers = {
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ModerationConfigService.getItemTypesForAction({
       orgId: user.orgId,
@@ -196,7 +195,7 @@ const EnqueueAuthorToMrtAction: GQLEnqueueAuthorToMrtActionResolvers = {
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ModerationConfigService.getItemTypesForAction({
       orgId: user.orgId,
@@ -209,7 +208,7 @@ const EnqueueToMrtAction: GQLEnqueueToMrtActionResolvers = {
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ModerationConfigService.getItemTypesForAction({
       orgId: user.orgId,
@@ -222,7 +221,7 @@ const EnqueueToNcmecAction: GQLEnqueueToNcmecActionResolvers = {
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ModerationConfigService.getItemTypesForAction({
       orgId: user.orgId,
@@ -235,7 +234,7 @@ const Query: GQLQueryResolvers = {
   async action(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return context.dataSources.actionAPI.getGraphQLActionFromId({
@@ -250,7 +249,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('User required.');
+        throw unauthenticatedError('User required.');
       }
       const action = await context.dataSources.actionAPI.createAction(
         params.input,
@@ -269,7 +268,7 @@ const Mutation: GQLMutationResolvers = {
     try {
       const user = context.getUser();
       if (user == null) {
-        throw new AuthenticationError('User required.');
+        throw unauthenticatedError('User required.');
       }
       const { orgId } = user;
       const action = await context.dataSources.actionAPI.updateAction(
@@ -288,7 +287,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteAction(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const { orgId } = user;
     return context.dataSources.actionAPI.deleteAction(orgId, params.id);
@@ -296,7 +295,7 @@ const Mutation: GQLMutationResolvers = {
   async bulkExecuteActions(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { orgId, id, email } = user;

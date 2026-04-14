@@ -57,7 +57,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.1.7",
-    "graphql": "^16.2.0",
+    "graphql": "^16.13.2",
     "jsonpointer": "^5.0.1",
     "latlon-geohash": "^2.0.0",
     "lodash": "^4.18.1",
