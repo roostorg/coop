@@ -181,7 +181,7 @@ const columnLabels: Record<ColumnId, string> = {
 };
 
 export default function ManualReviewQueuesDashboard() {
-  const { loading, data, refetch } = useGQLManualReviewQueuesQuery({
+  const { loading, error, data, refetch } = useGQLManualReviewQueuesQuery({
     fetchPolicy: 'no-cache',
     pollInterval: 5000,
   });
@@ -682,6 +682,9 @@ export default function ManualReviewQueuesDashboard() {
         }),
     [dataValues, onAddFavoriteQueue, onRemoveFavoriteQueue],
   );
+  if (error) {
+    throw error;
+  }
   if (loading) {
     return <FullScreenLoading />;
   }
