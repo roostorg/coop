@@ -80,6 +80,7 @@ export type ModerationConfigServicePg = {
     // service, the db doesn't actually enforce that.
     callback_url_headers: JsonObject | null;
     callback_url_body: JsonObject | null;
+    custom_mrt_api_params: JsonObject | null;
     // TODO: when we move updates to the moderation config service, figure out
     // whether to set `updated_at` on update or whether to just drop the column,
     // given the challenge of inerpreting the `updated_at` column on an entity

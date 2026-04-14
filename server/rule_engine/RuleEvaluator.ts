@@ -57,7 +57,7 @@ type RuleEvaluationContextImpl = Readonly<{
 
 export type RuleEvaluationContext = Opaque<
   RuleEvaluationContextImpl,
-  RuleEvaluationContextImpl
+  'RuleEvaluationContext'
 >;
 
 export type RuleExecutionResult = {

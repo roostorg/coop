@@ -213,7 +213,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
           // If the body isn't already an ArrayBuffer, we need to encode the body
           // as an ArrayBuffer, so we first coerce it to a string from a `string |
           // URLSearchParams` type, and then encode it with TextEncoder
-          const bodyBuffer =
+          const bodyBuffer: ArrayBuffer =
             castBody instanceof ArrayBuffer
               ? castBody
               : new TextEncoder().encode(
@@ -221,7 +221,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
                   // necessarily just call toString, won't get accidentally
                   // handled incorrectly
                   (castBody satisfies string | URLSearchParams).toString(),
-                );
+                ).buffer as ArrayBuffer;
 
           const { signature } = await query.signWith(bodyBuffer);
           return b64EncodeArrayBuffer(signature);

@@ -22,6 +22,7 @@ const actionDbSelection = [
   'callback_url as callbackUrl',
   'callback_url_headers as callbackUrlHeaders',
   'callback_url_body as callbackUrlBody',
+  'custom_mrt_api_params as customMrtApiParams',
   'org_id as orgId',
   'penalty',
   'action_type as actionType',
@@ -123,6 +124,7 @@ export default class ActionOperations {
               callbackUrl: it.callbackUrl,
               callbackUrlBody: it.callbackUrlBody,
               callbackUrlHeaders: it.callbackUrlHeaders,
+              customMrtApiParams: it.customMrtApiParams,
             };
           case 'ENQUEUE_TO_MRT':
           case 'ENQUEUE_TO_NCMEC':
