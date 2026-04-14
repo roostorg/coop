@@ -2,6 +2,9 @@ packages:
   - client
   - server
   - types
+  - db
+  - migrator
+  - nodejs-instrumentation
 
 # clone-or-copy: use copy-on-write cloning from the pnpm store (fastest on APFS/macOS),
 # fall back to copying on Linux CI where CoW may not be available.
