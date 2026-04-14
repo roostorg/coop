@@ -3,6 +3,7 @@
 import type Bottle from '@ethanresnick/bottlejs';
 
 import { __throw } from '../utils/misc.js';
+import { jsonStringify } from '../utils/encoding.js';
 import { type Dependencies as Deps } from './index.js';
 
 const DEPENDENCIES = Symbol();
@@ -660,4 +661,22 @@ export function safeGetEnvVar(varName: string): string {
   return (
     process.env[varName] ?? __throw(new Error(`Missing env var ${varName}`))
   );
+}
+
+/**
+ * Gets an env var and parses it as a positive integer. Returns `defaultValue`
+ * if the variable is unset or invalid, logging an error on misconfiguration.
+ */
+export function safeGetEnvInt(varName: string, defaultValue: number): number {
+  const raw = process.env[varName];
+  if (raw === undefined) return defaultValue;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Invalid env var ${varName}: expected a positive integer, got ${jsonStringify(raw)}. Using default value ${defaultValue}.`,
+    );
+    return defaultValue;
+  }
+  return parsed;
 }

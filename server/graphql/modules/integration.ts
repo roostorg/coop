@@ -18,14 +18,8 @@ import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   enum Integration {
-    AKISMET
     GOOGLE_CONTENT_SAFETY_API
-    L1GHT
-    MICROSOFT_AZURE_CONTENT_MODERATOR
-    OOPSPAM
     OPEN_AI
-    SIGHT_ENGINE
-    TWO_HAT
     ZENTROPI
   }
 

@@ -26,6 +26,7 @@ generates:
       nonOptionalTypename: true
       useTypeImports: true
       enumsAsConst: true
+      generateSuspenseQuery: false
       # NB: on the client side, we can't use the built-in prefixing, since it
       # only supports types + document variables + fragments (e.g., there's no
       # option for prefixing hook names.

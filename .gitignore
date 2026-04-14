@@ -44,3 +44,4 @@ build/
 
 # NCMEC report XML files (contain sensitive data)
 ncmec-reports/
+.devops/backups/

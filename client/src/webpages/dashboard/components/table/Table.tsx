@@ -81,9 +81,9 @@ export default function Table(
         )}
         {topRightComponent}
       </div>
-      <div className="w-full border border-gray-200 border-solid rounded-md scrollbar-hide">
+      <div className="w-full border border-gray-200 border-solid rounded-md">
         <div
-          className={`overflow-x-auto overflow-y-scroll rounded-md scrollbar-hide ${
+          className={`overflow-x-auto overflow-y-auto rounded-md ${
             customMaxHeight ?? 'max-h-[1200px]'
           }`}
         >
@@ -219,7 +219,7 @@ export default function Table(
                           {cell.render('Cell')}
                         </Link>
                       ) : (
-                        <div className="flex items-center max-w-3xl px-4 py-2 overflow-scroll text-black hover:text-black scrollbar-hide">
+                        <div className="flex items-center max-w-3xl px-4 py-2 overflow-hidden text-ellipsis text-black hover:text-black">
                           {cell.render('Cell')}
                         </div>
                       );
