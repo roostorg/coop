@@ -18,7 +18,6 @@ describe('GET policies', () => {
     ApiKeyService: Dependencies['ApiKeyService'];
 
   beforeAll(async () => {
-    // eslint-disable-next-line better-mutation/no-mutation
     ({
       request,
       shutdown,
@@ -26,8 +25,13 @@ describe('GET policies', () => {
     } = await makeMockedServer());
 
     const { Org } = models;
-    // eslint-disable-next-line better-mutation/no-mutation
-    ({ apiKey } = await createOrg({ Org }, ModerationConfigService, ApiKeyService, orgId));
+
+    ({ apiKey } = await createOrg(
+      { Org },
+      ModerationConfigService,
+      ApiKeyService,
+      orgId,
+    ));
   });
 
   afterAll(async () => {

@@ -8,6 +8,7 @@ import {
   rawItemSubmissionToItemSubmission,
   type ItemSubmission,
 } from '../../services/itemProcessingService/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   fromCorrelationId,
   toCorrelationId,
@@ -19,7 +20,6 @@ import {
 import { withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   type AppealItemInput,
   type AppealItemOutput,
@@ -61,7 +61,7 @@ export default function submitAppeal({
           }),
         );
       }
-      
+
       const { orgId } = req;
 
       const toItemSubmission = rawItemSubmissionToItemSubmission.bind(
@@ -137,7 +137,6 @@ export default function submitAppeal({
 
       if (
         submittedItemIsInvalid ||
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         threadOrAdditionalItemsHadInvalidOrIllegalItems ||
         hasAdditionalItemsOnThreadSubmission ||
         isInvalidAppealedAtDate ||

@@ -10,7 +10,13 @@ import makeGetRuleAnomalyDetectionStatistics from './getRuleAnomalyDetectionStat
  * least makes sure we can't change inadvertently change the generated queries.
  */
 describe('getRuleAnomalyDetectionStatistics', () => {
-  let queryMock: MockedFn<(query: string, tracer: any, binds?: readonly unknown[]) => Promise<unknown[]>>;
+  let queryMock: MockedFn<
+    (
+      query: string,
+      tracer: any,
+      binds?: readonly unknown[],
+    ) => Promise<unknown[]>
+  >;
   let getRulePassStatistics: Dependencies['getRuleAnomalyDetectionStatistics'];
 
   beforeAll(() => {
@@ -26,7 +32,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
     ];
 
     // Scope of this is just the test suite, so mutation should be ok.
-    // eslint-disable-next-line better-mutation/no-mutation
+
     queryMock = jest.fn() as any;
     queryMock.mockResolvedValue(queryResult);
 
@@ -39,7 +45,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
     };
 
     // Scope of this is just the test suite, so mutation should be ok.
-    // eslint-disable-next-line better-mutation/no-mutation
+
     getRulePassStatistics = makeGetRuleAnomalyDetectionStatistics(
       dataWarehouseMock,
       {} as any,

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { makeDateString } from '@roostorg/types';
 import _ from 'lodash';
 import { v1 as uuidv1 } from 'uuid';
@@ -163,7 +162,7 @@ export default inject(
             threads: submitNcmecReportDecisionComponent.reportedMessages,
             // Use the stored incidentType if available, otherwise default to the most common one
             // The type says it's required, but old decisions in the DB won't have it
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
             incidentType:
               submitNcmecReportDecisionComponent.incidentType ||
               'Child Pornography (possession, manufacture, and distribution)',
@@ -216,7 +215,11 @@ export default inject(
                 correlationId,
                 targetItem: {
                   itemId,
-                  itemType: { id: itemType.id, kind: itemType.kind, name: itemType.name },
+                  itemType: {
+                    id: itemType.id,
+                    kind: itemType.kind,
+                    name: itemType.name,
+                  },
                 },
                 actorId: row.reviewer_id,
                 actorEmail: user?.email,
@@ -241,57 +244,59 @@ export default inject(
     return {
       type: 'Job' as const,
       async run() {
-      // One month before now
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      // End date is 1 hour before now, to give currently running decisions time to finish.
-      const endDate = new Date(Date.now() - 60 * 60 * 1000);
-      const ncmecDecisions = await manualReviewToolService.getNcmecDecisions({
-        startDate,
-        endDate,
-      });
-      const usersWithReports = await ncmecService.getUsersWithNcmecDecision({
-        startDate,
-      });
-      if (ncmecDecisions.length === 0) {
-        return;
-      }
-      const previousErrors = await ncmecService.getNcmecErrorsForJobIds(
-        ncmecDecisions.map((it) => it.job_payload.id),
-      );
-      // Only retry decisions that don't have an applicable NCMEC decision and
-      // decisions that don't already have a permanent error or a retry count of
-      // 10 or more.
-      const decisionsToRetry = ncmecDecisions.filter((it) => {
-        return (
-          !usersWithReports.some(
-            (usersWithReports) =>
-              usersWithReports.userId === it.job_payload.payload.item.itemId &&
-              usersWithReports.userItemTypeId ===
-                it.job_payload.payload.item.itemTypeIdentifier.id &&
-              usersWithReports.orgId === it.org_id,
-          ) &&
-          !previousErrors.some(
-            (error) =>
-              (error.job_id === it.job_payload.id && error.retry_count >= 10) ||
-              (error.job_id === it.job_payload.id &&
-                error.status === 'PERMANENT_ERROR'),
-          )
+        // One month before now
+        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        // End date is 1 hour before now, to give currently running decisions time to finish.
+        const endDate = new Date(Date.now() - 60 * 60 * 1000);
+        const ncmecDecisions = await manualReviewToolService.getNcmecDecisions({
+          startDate,
+          endDate,
+        });
+        const usersWithReports = await ncmecService.getUsersWithNcmecDecision({
+          startDate,
+        });
+        if (ncmecDecisions.length === 0) {
+          return;
+        }
+        const previousErrors = await ncmecService.getNcmecErrorsForJobIds(
+          ncmecDecisions.map((it) => it.job_payload.id),
         );
-      });
-      const usersByOrg: {
-        [key: string]: {
-          id: string;
-          email: string;
-          firstName: string;
-          lastName: string;
-          role: string;
-        }[];
-      } = {};
-      // Run this sequentially to avoid overloading external systems
-      for (const row of decisionsToRetry) {
-        await processDecisionRetry(row, usersByOrg);
-      }
-    },
+        // Only retry decisions that don't have an applicable NCMEC decision and
+        // decisions that don't already have a permanent error or a retry count of
+        // 10 or more.
+        const decisionsToRetry = ncmecDecisions.filter((it) => {
+          return (
+            !usersWithReports.some(
+              (usersWithReports) =>
+                usersWithReports.userId ===
+                  it.job_payload.payload.item.itemId &&
+                usersWithReports.userItemTypeId ===
+                  it.job_payload.payload.item.itemTypeIdentifier.id &&
+                usersWithReports.orgId === it.org_id,
+            ) &&
+            !previousErrors.some(
+              (error) =>
+                (error.job_id === it.job_payload.id &&
+                  error.retry_count >= 10) ||
+                (error.job_id === it.job_payload.id &&
+                  error.status === 'PERMANENT_ERROR'),
+            )
+          );
+        });
+        const usersByOrg: {
+          [key: string]: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            role: string;
+          }[];
+        } = {};
+        // Run this sequentially to avoid overloading external systems
+        for (const row of decisionsToRetry) {
+          await processDecisionRetry(row, usersByOrg);
+        }
+      },
       async shutdown() {
         await closeSharedResourcesForShutdown();
       },

@@ -167,7 +167,7 @@ export default class JobDecisioning {
     // if there's a decision to discriminate between these cases, but that's
     // overkill. (Because we're not doing that, the NoJobWithIdInQueueError
     // error case is unused currently/for now.)
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
     if ((job as typeof job | undefined) == null) {
       throw makeJobHasAlreadyBeenSubmittedError({
         detail: `Job ${jobId} has already been acted on (or this job never existed).`,

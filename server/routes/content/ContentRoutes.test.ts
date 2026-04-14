@@ -26,7 +26,6 @@ describe('POST Content', () => {
     analytics: Dependencies['DataWarehouseAnalytics'];
 
   beforeAll(async () => {
-    // eslint-disable-next-line better-mutation/no-mutation
     ({
       request,
       shutdown,
@@ -39,9 +38,14 @@ describe('POST Content', () => {
     } = await makeMockedServer());
 
     const { User, Org } = models;
-    // eslint-disable-next-line better-mutation/no-mutation
-    ({ apiKey } = await createOrg({ Org }, ModerationConfigService, ApiKeyService, orgId));
-    // eslint-disable-next-line better-mutation/no-mutation
+
+    ({ apiKey } = await createOrg(
+      { Org },
+      ModerationConfigService,
+      ApiKeyService,
+      orgId,
+    ));
+
     contentType1 = await ModerationConfigService.createContentType(orgId, {
       name: 'test',
       description: faker.datatype.string(),
@@ -62,7 +66,6 @@ describe('POST Content', () => {
       schemaFieldRoles: {},
     });
 
-    // eslint-disable-next-line better-mutation/no-mutation
     contentType2 = await ModerationConfigService.createContentType(orgId, {
       name: 'tes333t',
       description: faker.datatype.string(),

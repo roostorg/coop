@@ -99,7 +99,7 @@ export default function ItemTypeRequestCodeSamples(props: {
           }}
           style={{
             ...atelierSulphurpoolLight,
-            // eslint-disable-next-line id-denylist
+
             'hljs-string': {
               color: '#75787B',
             },

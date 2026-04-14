@@ -20,14 +20,25 @@ import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import makeDb from '../models/index.js';
+import { type PolicyActionPenalties } from '../models/OrgModel.js';
+import type { IActionExecutionsAdapter } from '../plugins/warehouse/queries/IActionExecutionsAdapter.js';
+import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
+import type { IContentApiRequestsAdapter } from '../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
 import {
+  ClickhouseActionExecutionsAdapter,
+  ClickhouseActionStatisticsAdapter,
+  ClickhouseContentApiRequestsAdapter,
+  ClickhouseOrgCreationAdapter,
+  ClickhouseReportingAnalyticsAdapter,
+} from '../plugins/warehouse/queries/index.js';
+import type { IOrgCreationAdapter } from '../plugins/warehouse/queries/IOrgCreationAdapter.js';
+import type { IReportingAnalyticsAdapter } from '../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
+import {
+  ITEM_SUBMISSION_DLQ_NAME,
+  ITEM_SUBMISSION_QUEUE_NAME,
   makeItemSubmissionBulkWrite,
   type ItemSubmissionBulkWrite,
-  ITEM_SUBMISSION_QUEUE_NAME,
-  ITEM_SUBMISSION_DLQ_NAME,
 } from '../queues/itemSubmissionQueue.js';
-import { type PolicyActionPenalties } from '../models/OrgModel.js';
-import { type HashBank, HashBankService } from '../services/hmaService/index.js';
 import makeActionPublisher, {
   type ActionPublisher,
   type ActionTargetItem,
@@ -66,15 +77,42 @@ import {
   type StringNumberKeyValueStore,
 } from '../services/aggregationsService/index.js';
 import {
+  makeActionExecutionLogger,
+  makeContentApiLogger,
+  makeItemModelScoreLogger,
+  makeOrgCreationLogger,
+  makeReportingRuleExecutionLogger,
+  makeRoutingRuleExecutionLogger,
+  makeRuleExecutionLogger,
+  type ActionExecutionLogger,
+  type ContentApiLogger,
+  type ItemModelScoreLogger,
+  type OrgCreationLogger,
+  type ReportingRuleExecutionLogger,
+  type RoutingRuleExecutionLogger,
+  type RuleExecutionLogger,
+} from '../services/analyticsLoggers/index.js';
+import {
+  makeItemHistoryQueries,
+  makeRuleActionInsights,
+  makeUserHistoryQueries,
+  type ItemHistoryQueries,
+  type RuleActionInsights,
+  type UserHistoryQueries,
+} from '../services/analyticsQueries/index.js';
+import {
   makeApiKeyService,
   type ApiKeyService,
 } from '../services/apiKeyService/index.js';
-import makeHmaService from '../services/hmaService/index.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
 import {
   makeDerivedFieldsService,
   type DerivedFieldsService,
 } from '../services/derivedFieldsService/index.js';
+import makeHmaService, {
+  HashBankService,
+  type HashBank,
+} from '../services/hmaService/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
   getFieldValueForRole,
@@ -158,7 +196,6 @@ import makeSendEmail, {
 } from '../services/sendEmailService/index.js';
 import {
   makeSignalAuthService,
-
   type SignalAuthService,
 } from '../services/signalAuthService/index.js';
 import {
@@ -184,54 +221,18 @@ import {
   type UserScore,
 } from '../services/userStatisticsService/index.js';
 import { UserStrikeService } from '../services/userStrikeService/index.js';
-import {
-  makeActionExecutionLogger,
-  makeContentApiLogger,
-  makeItemModelScoreLogger,
-  makeOrgCreationLogger,
-  makeReportingRuleExecutionLogger,
-  makeRoutingRuleExecutionLogger,
-  makeRuleExecutionLogger,
-  type ActionExecutionLogger,
-  type ContentApiLogger,
-  type ItemModelScoreLogger,
-  type OrgCreationLogger,
-  type ReportingRuleExecutionLogger,
-  type RoutingRuleExecutionLogger,
-  type RuleExecutionLogger,
-} from '../services/analyticsLoggers/index.js';
-import {
-  makeItemHistoryQueries,
-  makeRuleActionInsights,
-  makeUserHistoryQueries,
-  type ItemHistoryQueries,
-  type RuleActionInsights,
-  type UserHistoryQueries,
-} from '../services/analyticsQueries/index.js';
+import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import {
   DataWarehouseFactory,
   type IDataWarehouse,
   type IDataWarehouseDialect,
 } from '../storage/dataWarehouse/index.js';
-import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
-import {
-  ClickhouseActionStatisticsAdapter,
-  ClickhouseReportingAnalyticsAdapter,
-  ClickhouseActionExecutionsAdapter,
-  ClickhouseContentApiRequestsAdapter,
-  ClickhouseOrgCreationAdapter,
-} from '../plugins/warehouse/queries/index.js';
-import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
-import type { IReportingAnalyticsAdapter } from '../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
-import type { IActionExecutionsAdapter } from '../plugins/warehouse/queries/IActionExecutionsAdapter.js';
-import type { IContentApiRequestsAdapter } from '../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
-import type { IOrgCreationAdapter } from '../plugins/warehouse/queries/IOrgCreationAdapter.js';
 import { cached, type Cached } from '../utils/caching.js';
+import { CoopMeter } from '../utils/CoopMeter.js';
 import {
   toCorrelationId,
   type CorrelationId,
 } from '../utils/correlationIds.js';
-import { CoopMeter } from '../utils/CoopMeter.js';
 import { getUsableCoreCount } from '../utils/cpu-helpers.js';
 import { jsonStringify, type JsonOf } from '../utils/encoding.js';
 import { __throw, assertUnreachable } from '../utils/misc.js';
@@ -532,7 +533,6 @@ export default async function getBottle() {
         }),
   );
 
-
   bottle.factory('Sequelize', () => makeDb());
   bottle.factory('OrgModel', ({ Sequelize }) => Sequelize.Org);
   bottle.factory('RuleModel', ({ Sequelize }) => Sequelize.Rule);
@@ -554,7 +554,7 @@ export default async function getBottle() {
   // Switch warehouse providers via WAREHOUSE_ADAPTER.
   //
   // - 'DataWarehouse' - Core queries and transactions
-  // - 'DataWarehouseDialect' - Type-safe Kysely queries  
+  // - 'DataWarehouseDialect' - Type-safe Kysely queries
   // - 'DataWarehouseAnalytics' - Bulk writes, CDC, logging
   bottle.factory('DataWarehouse', () => {
     const config = DataWarehouseFactory.createConfigFromEnv();
@@ -987,7 +987,7 @@ export default async function getBottle() {
                     // could provide that would have security implications when blindly fed
                     // in here -- like something that would somehow lead fetch to do something
                     // unexpected.
-                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
                     ...((appealHeaders as JsonObject | undefined) ?? undefined),
                     // Put this header last so customHeaders can't override it, which I
                     // think makes sense, since there's no way for users to effect the
@@ -1029,7 +1029,6 @@ export default async function getBottle() {
                     // API is in place
                     const additionalPayload = job.payload.reportedForReasons
                       ? {
-                          // eslint-disable-next-line no-restricted-syntax
                           reportHistory: job.payload.reportedForReasons.map(
                             (it) => ({
                               reason: it.reason,
@@ -1153,7 +1152,10 @@ export default async function getBottle() {
                     incidentType: decision.incidentType,
                     ...(decision.escalateToHighPriority != null &&
                     decision.escalateToHighPriority.trim() !== ''
-                      ? { escalateToHighPriority: decision.escalateToHighPriority.trim() }
+                      ? {
+                          escalateToHighPriority:
+                            decision.escalateToHighPriority.trim(),
+                        }
                       : {}),
                   },
                   isTest,
@@ -1354,30 +1356,26 @@ export default async function getBottle() {
     },
   );
 
-  bottle.factory(
-    'getImageBankEventuallyConsistent',
-    (container) => {
-      const kyselyPg = container.KyselyPg;
-      const hashBankService = new HashBankService(kyselyPg);
+  bottle.factory('getImageBankEventuallyConsistent', (container) => {
+    const kyselyPg = container.KyselyPg;
+    const hashBankService = new HashBankService(kyselyPg);
 
-      return cached({
-        async producer({ orgId, bankId }) {
-          // bankId could be either database ID or bank name
-          // Check if bankId is numeric (database ID)
-          const numericBankId = parseInt(bankId);
-          if (!isNaN(numericBankId)) {
-            // Get by database ID
-            return hashBankService.findById(numericBankId, orgId);
-          } else {
-            // Get by name
-            return hashBankService.findByName(bankId, orgId);
-          }
-        },
-        directives: { freshUntilAge: 300 }, // 5 minutes cache for image banks
-      });
-    },
-  );
-
+    return cached({
+      async producer({ orgId, bankId }) {
+        // bankId could be either database ID or bank name
+        // Check if bankId is numeric (database ID)
+        const numericBankId = parseInt(bankId);
+        if (!isNaN(numericBankId)) {
+          // Get by database ID
+          return hashBankService.findById(numericBankId, orgId);
+        } else {
+          // Get by name
+          return hashBankService.findByName(bankId, orgId);
+        }
+      },
+      directives: { freshUntilAge: 300 }, // 5 minutes cache for image banks
+    });
+  });
 
   bottle.factory('getUserStrikeTTLInDaysEventuallyConsistent', (container) => {
     return cached({
@@ -1622,11 +1620,17 @@ export default async function getBottle() {
                 async () => {
                   if ('close' in it && typeof it.close === 'function') {
                     await it.close();
-                  } else if ('destroy' in it && typeof it.destroy === 'function') {
+                  } else if (
+                    'destroy' in it &&
+                    typeof it.destroy === 'function'
+                  ) {
                     await it.destroy();
                   } else if ('quit' in it && typeof it.quit === 'function') {
                     await it.quit();
-                  } else if ('flushPendingWrites' in it && typeof it.flushPendingWrites === 'function') {
+                  } else if (
+                    'flushPendingWrites' in it &&
+                    typeof it.flushPendingWrites === 'function'
+                  ) {
                     await it.flushPendingWrites();
                   }
                 },

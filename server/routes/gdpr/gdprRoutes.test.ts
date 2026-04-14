@@ -19,7 +19,6 @@ describe('POST /gdrp/delete', () => {
 
   beforeAll(async () => {
     try {
-      // eslint-disable-next-line better-mutation/no-mutation
       ({
         request,
         shutdown,
@@ -27,9 +26,14 @@ describe('POST /gdrp/delete', () => {
       } = await makeMockedServer());
 
       const { Org } = models;
-      // eslint-disable-next-line better-mutation/no-mutation
-      ({ apiKey } = await createOrg({ Org }, ModerationConfigService, ApiKeyService, orgId));
-      // eslint-disable-next-line better-mutation/no-mutation
+
+      ({ apiKey } = await createOrg(
+        { Org },
+        ModerationConfigService,
+        ApiKeyService,
+        orgId,
+      ));
+
       contentType = await ModerationConfigService.createContentType(orgId, {
         name: 'TestUser',
         description: 'user type',

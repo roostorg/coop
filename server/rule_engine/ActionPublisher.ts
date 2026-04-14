@@ -6,6 +6,12 @@ import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
 import {
+  type ActionExecutionCorrelationId,
+  type ActionExecutionSourceType,
+  type MatchingRule,
+  type Policy,
+} from '../services/analyticsLoggers/index.js';
+import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
   type ItemSubmission,
@@ -15,12 +21,6 @@ import {
   type Action,
   type ItemType,
 } from '../services/moderationConfigService/index.js';
-import {
-  type ActionExecutionCorrelationId,
-  type ActionExecutionSourceType,
-  type MatchingRule,
-  type Policy,
-} from '../services/analyticsLoggers/index.js';
 import { asyncIterableToArray } from '../utils/collections.js';
 import { getSourceType, type CorrelationId } from '../utils/correlationIds.js';
 import { jsonStringify } from '../utils/encoding.js';
@@ -229,7 +229,12 @@ class ActionPublisher {
                 matchingRules,
                 ruleEnvironment,
                 policies: policies.map((policy) =>
-                  safePick(policy, ['id', 'name', 'userStrikeCount', 'penalty']),
+                  safePick(policy, [
+                    'id',
+                    'name',
+                    'userStrikeCount',
+                    'penalty',
+                  ]),
                 ),
                 orgId,
                 targetItem,
@@ -305,7 +310,6 @@ class ActionPublisher {
                 ...customMrtApiParamDecisionPayload,
               };
 
-
               const body = {
                 item: {
                   id: targetItem.itemId,
@@ -329,7 +333,7 @@ class ActionPublisher {
                   // could provide that would have security implications when blindly fed
                   // in here -- like something that would somehow lead fetch to do something
                   // unexpected.
-                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
                   ...((customHeaders as JsonObject | undefined) ?? undefined),
                   // Put this header last so customHeaders can't override it, which I
                   // think makes sense, since there's no way for users to effect the

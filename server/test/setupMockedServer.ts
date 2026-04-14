@@ -7,16 +7,16 @@ import * as superTest from 'supertest';
 
 import getBottle, { type Dependencies } from '../iocContainer/index.js';
 import makeServer from '../server.js';
-import SafeTracer from '../utils/SafeTracer.js';
 import { type IDataWarehouse } from '../storage/dataWarehouse/IDataWarehouse.js';
 import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
+import SafeTracer from '../utils/SafeTracer.js';
 
 /**
  * Occassionally, we make a request that's supposed to error, so this function
  * lets us temporarily suppress console messages, to keep our output a bit nicer.
  */
 export function disableConsoleLogging() {
-  /* eslint-disable better-mutation/no-mutation */
+  /* eslint-disable functional/immutable-data */
   const noop = () => {};
   const { log, error } = console;
   console.log = noop;
@@ -25,7 +25,7 @@ export function disableConsoleLogging() {
     console.log = log;
     console.error = error;
   };
-  /* eslint-enable better-mutation/no-mutation */
+  /* eslint-enable functional/immutable-data */
 }
 
 export async function makeMockedServer() {
@@ -40,15 +40,14 @@ export async function getBottleContainerWithIOMocks() {
 
   // The mutation rule below is a false positive, as we're just doing
   // initial setup on this mock object before exposing it.
-  /* eslint-disable better-mutation/no-mutation */
-  const tracer = new SafeTracer(new otel.ProxyTracerProvider().getTracer('noop'));
+
+  const tracer = new SafeTracer(
+    new otel.ProxyTracerProvider().getTracer('noop'),
+  );
 
   const queryMock = jest.fn(
-    async (
-      _query: string,
-      _tracer: SafeTracer,
-      _binds?: readonly unknown[],
-    ) => [] as unknown[],
+    async (_query: string, _tracer: SafeTracer, _binds?: readonly unknown[]) =>
+      [] as unknown[],
   ) as jest.MockedFunction<IDataWarehouse['query']>;
 
   const transactionImpl: IDataWarehouse['transaction'] = async (fn) =>
@@ -58,7 +57,9 @@ export async function getBottleContainerWithIOMocks() {
 
   const startMock = jest.fn(() => {}) as IDataWarehouse['start'];
   const closeMock = jest.fn(async () => {}) as IDataWarehouse['close'];
-  const getProviderMock = jest.fn(() => 'clickhouse') as IDataWarehouse['getProvider'];
+  const getProviderMock = jest.fn(
+    () => 'clickhouse',
+  ) as IDataWarehouse['getProvider'];
 
   const dataWarehouseMock: IDataWarehouse = {
     query: queryMock,
@@ -76,13 +77,9 @@ export async function getBottleContainerWithIOMocks() {
     flushPendingWrites: jest.fn(async () => {}),
     close: jest.fn(async () => {}),
   } as unknown as jest.Mocked<IDataWarehouseAnalytics>;
-  /* eslint-enable better-mutation/no-mutation */
 
   bottle.value('DataWarehouse', dataWarehouseMock);
-  bottle.value(
-    'DataWarehouseAnalytics',
-    analyticsMock,
-  );
+  bottle.value('DataWarehouseAnalytics', analyticsMock);
   bottle.value('Tracer', tracer);
   return bottle.container as unknown as Omit<
     Dependencies,

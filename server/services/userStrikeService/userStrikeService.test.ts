@@ -10,10 +10,9 @@ describe('Item Investigation Service', () => {
   beforeAll(async () => {
     // The mutation should be ok here since this is initial setup in a
     // beforeAll; it doesn't involve reset state for each test in the suite
-    /* eslint-disable better-mutation/no-mutation */
+
     ({ container } = await getBottle());
     userStrikeService = container.UserStrikeService;
-    /* eslint-enable better-mutation/no-mutation */
   });
   afterAll(async () => {
     await container.closeSharedResourcesForShutdown();

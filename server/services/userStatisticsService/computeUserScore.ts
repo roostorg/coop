@@ -72,7 +72,6 @@ export function computeUserScore(
       const { itemSubmissionIds, actionId, policyId } = stats;
 
       for (const submissionId of itemSubmissionIds) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         res[submissionId] = (res[submissionId] ?? []).concat(
           getPenaltyKey({ actionId, policyId }),
         );
@@ -106,7 +105,6 @@ export function computeUserScore(
     .concat(itemSubmissionMostSeverePenaltyKeys.map((it) => [it, 1] as const))
     .reduce(
       (acc, [penaltyKey, count]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         acc[penaltyKey] = (acc[penaltyKey] ?? 0) + count;
         return acc;
       },

@@ -12,7 +12,7 @@ describe('RuleHistory Service', () => {
       const deps = await getBottle();
 
       // Scope of this is just the test suite, so reassignment should be ok.
-      // eslint-disable-next-line better-mutation/no-mutation
+
       db = deps.container.KyselyPg;
     });
 

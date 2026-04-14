@@ -1,5 +1,4 @@
 /* eslint-disable max-lines */
-/* eslint-disable better-mutation/no-mutation */
 import { ScalarTypes } from '@roostorg/types';
 import { uid } from 'uid';
 
@@ -444,11 +443,10 @@ describe('JobRouting tests', () => {
         orgId: org.id,
         queueId: defaultQueue.id,
       });
-      const initialAnother =
-        await manualReviewToolService.getPendingJobCount({
-          orgId: org.id,
-          queueId: anotherQueue.id,
-        });
+      const initialAnother = await manualReviewToolService.getPendingJobCount({
+        orgId: org.id,
+        queueId: anotherQueue.id,
+      });
 
       const normalizedDataOrError = toNormalizedItemDataOrErrors(
         [itemType.id],
@@ -497,9 +495,11 @@ describe('JobRouting tests', () => {
         anotherQueue.id,
       );
 
-      const defaultQueueCount = await manualReviewToolService.getPendingJobCount(
-        { orgId: org.id, queueId: defaultQueue.id },
-      );
+      const defaultQueueCount =
+        await manualReviewToolService.getPendingJobCount({
+          orgId: org.id,
+          queueId: defaultQueue.id,
+        });
       const anotherQueueCount =
         await manualReviewToolService.getPendingJobCount({
           orgId: org.id,

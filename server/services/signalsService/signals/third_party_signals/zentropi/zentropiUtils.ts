@@ -13,10 +13,7 @@ export interface ZentropiResponse {
   explanation?: string;
 }
 
-export type FetchZentropiScores = Bind1<
-  typeof getZentropiScores,
-  FetchHTTP
->;
+export type FetchZentropiScores = Bind1<typeof getZentropiScores, FetchHTTP>;
 
 export async function getZentropiScores(
   fetchHTTP: FetchHTTP,
@@ -66,7 +63,7 @@ export async function runZentropiLabelerImpl(
   const { value, orgId, subcategory } = input;
 
   const credential = await getZentropiCredentials(orgId);
-  // eslint-disable-next-line security/detect-possible-timing-attacks
+
   if (!credential?.apiKey) {
     throw new Error('Missing Zentropi API credentials');
   }
@@ -96,4 +93,3 @@ export async function runZentropiLabelerImpl(
     outputType: { scalarType: ScalarTypes.NUMBER },
   };
 }
-

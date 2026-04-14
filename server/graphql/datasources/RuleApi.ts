@@ -16,13 +16,14 @@ import {
 import { type User } from '../../models/UserModel.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
+import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import {
   RuleType,
   type Condition,
   type ConditionInput,
   type ConditionSet,
-  type LeafCondition,
   type CoopInput,
+  type LeafCondition,
   type RuleStatus,
 } from '../../services/moderationConfigService/index.js';
 import {
@@ -38,7 +39,6 @@ import {
   signalIsExternal,
   type SignalId,
 } from '../../services/signalsService/index.js';
-import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import { type DataWarehousePublicSchema } from '../../storage/dataWarehouse/warehouseSchema.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
 import {
@@ -172,7 +172,6 @@ function transformLeafConditionForDB(
               subcategory,
             };
 
-            // eslint-disable-next-line switch-statement/require-appropriate-default-case
             switch (type) {
               case 'AGGREGATION':
                 const aggregationClauseInput =
@@ -280,7 +279,8 @@ class RuleAPI extends DataSource {
     private readonly signalsService: Dependencies['SignalsService'],
   ) {
     super();
-    this.warehouse = dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
+    this.warehouse =
+      dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
   }
 
   async getGraphQLRuleFromId(id: string, orgId: string) {
@@ -496,12 +496,12 @@ class RuleAPI extends DataSource {
 
     // Validate that signals used in automated rules are allowed
     // Check if the rule will have actions meaning automated rule.
-    // This ensures we don't allow creating automated rules with signals 
+    // This ensures we don't allow creating automated rules with signals
     // that are restricted to routing rules only.
-    const willHaveActions = actionIds 
-      ? actionIds.length > 0 
+    const willHaveActions = actionIds
+      ? actionIds.length > 0
       : (await rule.getActions()).length > 0;
-    
+
     if (willHaveActions && conditionSet) {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
@@ -582,8 +582,9 @@ class RuleAPI extends DataSource {
       this.ruleInsights.getContentSubmissionCountsByDay(orgId),
     ]);
 
-    const valueOrEmpty = <T,>(r: PromiseSettledResult<readonly T[]>): readonly T[] =>
-      r.status === 'fulfilled' ? r.value : [];
+    const valueOrEmpty = <T>(
+      r: PromiseSettledResult<readonly T[]>,
+    ): readonly T[] => (r.status === 'fulfilled' ? r.value : []);
 
     return {
       actionedSubmissionsByDay: valueOrEmpty(results[0]),
@@ -591,7 +592,9 @@ class RuleAPI extends DataSource {
       actionedSubmissionsByTagByDay: valueOrEmpty(results[2]),
       actionedSubmissionsByActionByDay: valueOrEmpty(results[3]),
       totalSubmissionsByDay: valueOrEmpty(
-        results[4] as PromiseSettledResult<readonly { date: string; count: number }[]>,
+        results[4] as PromiseSettledResult<
+          readonly { date: string; count: number }[]
+        >,
       ),
     };
   }
@@ -851,17 +854,17 @@ class RuleAPI extends DataSource {
     orgId: string,
   ): Promise<void> {
     const signalIds = this.extractSignalIdsFromConditionSet(conditionSet);
-    
+
     for (const signalId of signalIds) {
       const signal = await this.signalsService.getSignal({
         signalId,
         orgId,
       });
-      
+
       if (signal && !signal.allowedInAutomatedRules) {
         throw new Error(
           `Signal "${signal.displayName}" cannot be used in automated rules with actions. ` +
-          `This signal is restricted to routing rules only.`
+            `This signal is restricted to routing rules only.`,
         );
       }
     }
@@ -953,4 +956,3 @@ type ValidatedGQLLeafConditionInput = Omit<
   'conditions' | 'conjunction'
 > &
   RequiredWithoutNull<Pick<GQLConditionInput, 'input'>>;
-

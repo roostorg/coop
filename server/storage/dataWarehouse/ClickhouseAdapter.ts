@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import {
   Kysely,
@@ -17,8 +16,8 @@ import {
 
 import { formatClickhouseQuery } from '../../plugins/warehouse/utils/clickhouseSql.js';
 import type {
-  IDataWarehouseDialect,
   DataWarehousePoolSettings,
+  IDataWarehouseDialect,
 } from './IDataWarehouse.js';
 
 export interface ClickhouseConnectionSettings {
@@ -31,8 +30,13 @@ export interface ClickhouseConnectionSettings {
 }
 
 function createConnection(client: ClickHouseClient): DatabaseConnection {
-  const execute = async <R>(compiledQuery: CompiledQuery): Promise<QueryResult<R>> => {
-    const statement = formatClickhouseQuery(compiledQuery.sql, compiledQuery.parameters);
+  const execute = async <R>(
+    compiledQuery: CompiledQuery,
+  ): Promise<QueryResult<R>> => {
+    const statement = formatClickhouseQuery(
+      compiledQuery.sql,
+      compiledQuery.parameters,
+    );
     const result = await client.query({
       query: statement,
       format: 'JSONEachRow',
@@ -45,7 +49,9 @@ function createConnection(client: ClickHouseClient): DatabaseConnection {
   return {
     executeQuery: execute,
     streamQuery<R>(compiledQuery: CompiledQuery) {
-      return (async function* iterator(): AsyncIterableIterator<QueryResult<R>> {
+      return (async function* iterator(): AsyncIterableIterator<
+        QueryResult<R>
+      > {
         yield await execute<R>(compiledQuery);
       })();
     },
@@ -64,13 +70,19 @@ function createDriver(client: ClickHouseClient): Driver {
       _connection: DatabaseConnection,
       _settings: TransactionSettings,
     ) {
-      throw new Error('ClickHouse does not support multi-statement transactions');
+      throw new Error(
+        'ClickHouse does not support multi-statement transactions',
+      );
     },
     async commitTransaction() {
-      throw new Error('ClickHouse does not support multi-statement transactions');
+      throw new Error(
+        'ClickHouse does not support multi-statement transactions',
+      );
     },
     async rollbackTransaction() {
-      throw new Error('ClickHouse does not support multi-statement transactions');
+      throw new Error(
+        'ClickHouse does not support multi-statement transactions',
+      );
     },
     async releaseConnection(_connection: DatabaseConnection) {
       // Nothing to release; HTTP client pools internally.
@@ -112,7 +124,8 @@ export class ClickhouseKyselyAdapter implements IDataWarehouseDialect {
 
     const url = `${protocol}://${connectionSettings.host}:${port}`;
     const rawPassword = connectionSettings.password;
-    const password = rawPassword && rawPassword.length > 0 ? rawPassword : undefined;
+    const password =
+      rawPassword && rawPassword.length > 0 ? rawPassword : undefined;
     this.client = createClient({
       url,
       username: connectionSettings.username,
@@ -137,4 +150,3 @@ export class ClickhouseKyselyAdapter implements IDataWarehouseDialect {
     await this.kysely.destroy();
   }
 }
-

@@ -1,15 +1,12 @@
-/* eslint-disable max-lines */
 import { inject } from '../../iocContainer/utils.js';
 import {
-  type IActionStatisticsAdapter,
   type ActionCountsInput,
+  type IActionStatisticsAdapter,
 } from '../../plugins/warehouse/queries/IActionStatisticsAdapter.js';
 import { YEAR_MS } from '../../utils/time.js';
 
 class ActionStatisticsService {
-  constructor(
-    private readonly adapter: IActionStatisticsAdapter,
-  ) {}
+  constructor(private readonly adapter: IActionStatisticsAdapter) {}
 
   /**
    * Returns the total number of content submissions actioned on each day,
@@ -33,10 +30,7 @@ class ActionStatisticsService {
     orgId: string,
     startAt: Date = new Date(Date.now() - YEAR_MS),
   ) {
-    return this.adapter.getActionedSubmissionCountsByTagByDay(
-      orgId,
-      startAt,
-    );
+    return this.adapter.getActionedSubmissionCountsByTagByDay(orgId, startAt);
   }
 
   async getActionedSubmissionCountsByPolicyByDay(

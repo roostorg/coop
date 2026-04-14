@@ -46,17 +46,17 @@ describe('AggregationSignal', () => {
 
     // Spy on aggregation service functions.
     const aggregationsServiceSpy = AggregationsService;
-    // eslint-disable-next-line better-mutation/no-mutation
+    // eslint-disable-next-line functional/immutable-data
     aggregationsServiceSpy.updateAggregation = jest.fn(
       aggregationsServiceSpy.updateAggregation.bind(aggregationsServiceSpy),
     );
-    // eslint-disable-next-line better-mutation/no-mutation
+    // eslint-disable-next-line functional/immutable-data
     aggregationsServiceSpy.evaluateAggregation = jest.fn(
       aggregationsServiceSpy.evaluateAggregation.bind(aggregationsServiceSpy),
     );
 
     const dateProvider = new TestDateProvider();
-    // eslint-disable-next-line better-mutation/no-mutation
+    // eslint-disable-next-line functional/immutable-data
     deps['ActionPublisher'].publishAction = jest.fn().mockReturnValue(true);
 
     const rule = await RuleAPIDataSource.createContentRule(
@@ -148,7 +148,7 @@ describe('AggregationSignal', () => {
     async ({ itemType, org, dateProvider, deps }) => {
       // Clear Redis to ensure clean state for aggregation counters
       await deps.IORedis.flushdb();
-      
+
       const creatorId = 'some-creator-id';
       const creatorTypeId = 'some-creator-type-id';
 
@@ -236,7 +236,7 @@ describe('AggregationSignal', () => {
           creatorTypeId,
         },
       );
-      
+
       const ruleResultsAfter2 = await deps.RuleEngine.runEnabledRules(
         itemSubmission2,
         toCorrelationId({
@@ -262,7 +262,7 @@ describe('AggregationSignal', () => {
           creatorTypeId,
         },
       );
-      
+
       const ruleResultsAnotherUser = await deps.RuleEngine.runEnabledRules(
         itemSubmissionAnotherUser,
         toCorrelationId({
@@ -292,7 +292,7 @@ describe('AggregationSignal', () => {
           creatorTypeId,
         },
       );
-      
+
       const ruleResultsFailCondition = await deps.RuleEngine.runEnabledRules(
         itemSubmissionFailCondition,
         toCorrelationId({
@@ -319,7 +319,7 @@ describe('AggregationSignal', () => {
           creatorTypeId,
         },
       );
-      
+
       const ruleResultsAfter3 = await deps.RuleEngine.runEnabledRules(
         itemSubmission3,
         toCorrelationId({
@@ -345,7 +345,7 @@ describe('AggregationSignal', () => {
           creatorTypeId,
         },
       );
-      
+
       const actionsTriggeredAfter4 = await (
         await deps.RuleEngine.runEnabledRules(
           itemSubmission4,

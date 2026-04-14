@@ -38,19 +38,18 @@ describe('Iterable utils', () => {
 describe('chunkAsyncIterableByKey', () => {
   it('should chunk numbers based on even and odd', async () => {
     async function* sampleStream() {
-      // eslint-disable-next-line better-mutation/no-mutation
       for (let i = 1; i <= 5; i++) {
         yield i;
         yield i;
       }
     }
 
-    const result: number[][] = [];
+    let result: number[][] = [];
     for await (const chunk of chunkAsyncIterableByKey(
       sampleStream(),
       (item) => item % 2 === 0,
     )) {
-      result.push(chunk);
+      result = [...result, chunk];
     }
 
     expect(result).toEqual([
@@ -65,12 +64,12 @@ describe('chunkAsyncIterableByKey', () => {
   it('should handle an empty stream', async () => {
     async function* emptyStream() {}
 
-    const result: number[][] = [];
+    let result: number[][] = [];
     for await (const chunk of chunkAsyncIterableByKey(
       emptyStream(),
       (it) => it,
     )) {
-      result.push(chunk);
+      result = [...result, chunk];
     }
 
     expect(result).toEqual([]);
@@ -85,12 +84,12 @@ describe('chunkAsyncIterableByKey', () => {
 
     const chunkKey = (item: number | undefined) => item;
 
-    const result: (number | undefined)[][] = [];
+    let result: (number | undefined)[][] = [];
     for await (const chunk of chunkAsyncIterableByKey(
       sampleStream(),
       chunkKey,
     )) {
-      result.push(chunk);
+      result = [...result, chunk];
     }
 
     expect(result).toEqual([[1], [undefined], [1]]);

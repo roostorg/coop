@@ -1,8 +1,7 @@
-/* eslint-disable max-lines */
-import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { isTaggedItemData } from '../../models/rules/item-type-fields.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { CoopError, ErrorType, makeNotFoundError } from '../../utils/errors.js';
@@ -60,12 +59,7 @@ const publicSignalProps = [
  */
 export type Signal = Simplify<
   Pick<
-    SignalBase<
-      SignalInputType,
-      SignalOutputType,
-      unknown,
-      SignalType | string
-    >,
+    SignalBase<SignalInputType, SignalOutputType, unknown, SignalType | string>,
     (typeof publicSignalProps)[number]
   >
 >;
@@ -138,10 +132,7 @@ export class SignalsService {
     const cachedCredentialGetters =
       makeCachedCredentialGetters(signalAuthService);
 
-    const cachedFetchers = makeCachedFetchers(
-      fetchHTTP,
-      tracer,
-    );
+    const cachedFetchers = makeCachedFetchers(fetchHTTP, tracer);
 
     this.builtInSignalsByType = instantiateBuiltInSignals(
       cachedCredentialGetters,
@@ -156,7 +147,9 @@ export class SignalsService {
     const pluginEntries = getIntegrationRegistry().getPluginEntries();
     const pluginSignals = loadPluginSignals(pluginEntries, signalAuthService);
     const builtInIds = new Set(Object.keys(this.builtInSignalsByType));
-    const collision = Object.keys(pluginSignals).find((id) => builtInIds.has(id));
+    const collision = Object.keys(pluginSignals).find((id) =>
+      builtInIds.has(id),
+    );
     if (collision != null) {
       throw new Error(
         `Plugin signal type "${collision}" collides with a built-in signal; use a different signalTypeId.`,
@@ -334,7 +327,12 @@ export class SignalsService {
 
   #signalInstanceToPublicSignal(
     it: ReadonlyDeep<
-      SignalBase<SignalInputType, SignalOutputType, unknown, SignalType | string>
+      SignalBase<
+        SignalInputType,
+        SignalOutputType,
+        unknown,
+        SignalType | string
+      >
     >,
   ) {
     // This used to be implemented as simply `safePick(it, publicSignalProps)`,

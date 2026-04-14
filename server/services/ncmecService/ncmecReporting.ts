@@ -390,7 +390,8 @@ export function buildInternetDetailsFromOrgSetting(
   if (!defaultInternetDetailType?.trim()) {
     return undefined;
   }
-  const type = defaultInternetDetailType.trim() as NcmecInternetDetailTypeSetting;
+  const type =
+    defaultInternetDetailType.trim() as NcmecInternetDetailTypeSetting;
   if (!NCMEC_INTERNET_DETAIL_TYPES.includes(type)) {
     return undefined;
   }
@@ -794,7 +795,11 @@ export default class NcmecReporting {
     return ncmecOrgSettings?.org_id != null;
   }
 
-  async getNCMECConfig(orgId: string): Promise<NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined>  {
+  async getNCMECConfig(
+    orgId: string,
+  ): Promise<
+    NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined
+  > {
     const row = await this.pgQuery
       .selectFrom('ncmec_reporting.ncmec_org_settings')
       .where('org_id', '=', orgId)
@@ -899,7 +904,7 @@ export default class NcmecReporting {
     const additionalInfoEndpoint = await this.ncmecAdditionalInfoEndpoint(
       orgId,
     );
-    
+
     // If no additional info endpoint is configured, return minimal default data
     if (!additionalInfoEndpoint) {
       return {
@@ -919,7 +924,7 @@ export default class NcmecReporting {
         })),
       };
     }
-    
+
     const response = await this.fetchHTTP({
       url: additionalInfoEndpoint,
       method: 'post',
@@ -1081,7 +1086,9 @@ export default class NcmecReporting {
     );
 
     if (ncmecPreservationEndpoint == null) {
-      throw new Error('Organization does not have a NCMEC preservation endpoint');
+      throw new Error(
+        'Organization does not have a NCMEC preservation endpoint',
+      );
     }
 
     const fetchWithRetries = withRetries(
@@ -1173,13 +1180,13 @@ export default class NcmecReporting {
           // they should be able to click "Send to NCMEC" in the UI, but no
           // NCMEC report should actually be created.
           const testOrgs = ['4def6a77d6a', 'acc701627cb'];
-          
+
           if (!(await this.hasNCMECReportingEnabled(reportParams.orgId))) {
             throw new Error(
               `NCMEC reports are not enabled for org ${reportParams.orgId}`,
             );
           }
-          
+
           if (testOrgs.includes(reportParams.orgId)) {
             return 'UNSUPPORTED_ORG';
           }
@@ -1270,7 +1277,8 @@ export default class NcmecReporting {
           const ncmecConfig = await this.getNCMECConfig(reportParams.orgId);
 
           // Use the incident type from the report params
-          const incidentType = NCMECIncidentType[reportParams.incidentType as NCMECIncidentType];
+          const incidentType =
+            NCMECIncidentType[reportParams.incidentType as NCMECIncidentType];
 
           const escalateToHighPriority =
             reportParams.escalateToHighPriority != null
@@ -1278,7 +1286,8 @@ export default class NcmecReporting {
               : undefined;
           if (
             escalateToHighPriority !== undefined &&
-            (escalateToHighPriority === '' || escalateToHighPriority.length > 3000)
+            (escalateToHighPriority === '' ||
+              escalateToHighPriority.length > 3000)
           ) {
             throw new Error(
               'escalateToHighPriority must be non-blank when supplied and at most 3000 characters',
@@ -1295,14 +1304,14 @@ export default class NcmecReporting {
               incidentSummary: {
                 incidentType,
                 incidentDateTime: maxCreatedAt,
-                ...(escalateToHighPriority
-                  ? { escalateToHighPriority }
-                  : {}),
+                ...(escalateToHighPriority ? { escalateToHighPriority } : {}),
               },
               ...(internetDetails ? { internetDetails } : {}),
               reporter: {
                 reportingPerson: {
-                  email: [emailStringToNCMECEmail(ncmecConfig?.contact_email ?? '')],
+                  email: [
+                    emailStringToNCMECEmail(ncmecConfig?.contact_email ?? ''),
+                  ],
                 },
                 companyTemplate: queryResponse.companyTemplate,
                 legalURL: queryResponse.legalURL,
@@ -1312,11 +1321,11 @@ export default class NcmecReporting {
                   ? { termsOfService: queryResponse.termsOfService.trim() }
                   : {}),
                 // Use || so we only add contactPerson when at least one field is non-empty (?? would use first non-null even if empty)
-                /* eslint-disable @typescript-eslint/prefer-nullish-coalescing -- intentional: treat empty string as absent */
-                ...((queryResponse.contactPersonEmail?.trim() ||
-                  queryResponse.contactPersonFirstName?.trim() ||
-                  queryResponse.contactPersonLastName?.trim() ||
-                  queryResponse.contactPersonPhone?.trim())
+
+                ...(queryResponse.contactPersonEmail?.trim() ||
+                queryResponse.contactPersonFirstName?.trim() ||
+                queryResponse.contactPersonLastName?.trim() ||
+                queryResponse.contactPersonPhone?.trim()
                   ? {
                       contactPerson: {
                         ...(queryResponse.contactPersonEmail?.trim()
@@ -1330,12 +1339,14 @@ export default class NcmecReporting {
                           : {}),
                         ...(queryResponse.contactPersonFirstName?.trim()
                           ? {
-                              firstName: queryResponse.contactPersonFirstName.trim(),
+                              firstName:
+                                queryResponse.contactPersonFirstName.trim(),
                             }
                           : {}),
                         ...(queryResponse.contactPersonLastName?.trim()
                           ? {
-                              lastName: queryResponse.contactPersonLastName.trim(),
+                              lastName:
+                                queryResponse.contactPersonLastName.trim(),
                             }
                           : {}),
                         ...(queryResponse.contactPersonPhone?.trim()
@@ -1348,7 +1359,6 @@ export default class NcmecReporting {
                       },
                     }
                   : {}),
-                /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
               },
               personOrUserReported: {
                 personOrUserReportedPerson: {
@@ -1476,7 +1486,7 @@ export default class NcmecReporting {
           // safeTracer's logging because those logs are sampled in DD. For
           // NCMEC submission errors we need to record all failures and be
           // able to see the logs
-          
+
           // eslint-disable-next-line no-console
           console.error('[NCMEC] ❌ Error during report submission:', e);
           // eslint-disable-next-line no-console
@@ -1484,7 +1494,7 @@ export default class NcmecReporting {
             message: e instanceof Error ? e.message : String(e),
             stack: e instanceof Error ? e.stack : undefined,
           });
-          
+
           // eslint-disable-next-line no-restricted-syntax
           logErrorJson({
             error: e,
@@ -1578,31 +1588,30 @@ export default class NcmecReporting {
     isTest: boolean,
   ) {
     const reportXML = js2xml(report, { compact: true });
-    
+
     // Save XML to file for review (development only)
     if (process.env.NODE_ENV === 'development') {
       try {
         const fs = await import('fs/promises');
         const path = await import('path');
-        
+
         // Create ncmec-reports directory if it doesn't exist
         const reportsDir = path.join(process.cwd(), 'ncmec-reports');
         await fs.mkdir(reportsDir, { recursive: true });
-        
+
         // Generate filename with timestamp and test indicator
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const testPrefix = isTest ? 'TEST-' : 'PROD-';
         const filename = `${testPrefix}${timestamp}.xml`;
         const filepath = path.join(reportsDir, filename);
-        
+
         // Write XML to file
         await fs.writeFile(filepath, reportXML, 'utf-8');
-        
       } catch (e) {
         // Silent fail - don't let file saving break the submission
       }
     }
-    
+
     const response = await this.#sendCyberTipRequest({
       cybertipAuthenticationCredentials,
       body: reportXML,
@@ -1614,10 +1623,13 @@ export default class NcmecReporting {
     if (responseJson.reportResponse.responseCode._text !== '0') {
       throw new Error('NCMEC report submission failed.');
     }
-    
+
     // eslint-disable-next-line no-console
-    console.log('[NCMEC] ✅ Report submitted successfully! Report ID:', responseJson.reportResponse.reportId._text);
-    
+    console.log(
+      '[NCMEC] ✅ Report submitted successfully! Report ID:',
+      responseJson.reportResponse.reportId._text,
+    );
+
     return {
       reportId: responseJson.reportResponse.reportId._text,
       xml: reportXML,

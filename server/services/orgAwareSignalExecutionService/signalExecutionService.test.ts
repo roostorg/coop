@@ -14,14 +14,25 @@ describe('Signal Execution Service', () => {
     bankId === '1' ? ['a', 'b', 'c'] : bankId === '2' ? ['d', 'e', 'f'] : [],
   );
   const mockGetImageBank = jest.fn(async ({ bankId }) =>
-    bankId === 'test-bank' ? { id: 1, name: 'test-bank', hma_name: 'org_test-bank', description: null, enabled_ratio: 1.0, org_id: 'test-org', created_at: new Date(), updated_at: new Date() } : null,
+    bankId === 'test-bank'
+      ? {
+          id: 1,
+          name: 'test-bank',
+          hma_name: 'org_test-bank',
+          description: null,
+          enabled_ratio: 1.0,
+          org_id: 'test-org',
+          created_at: new Date(),
+          updated_at: new Date(),
+        }
+      : null,
   );
 
-  // eslint-disable-next-line better-mutation/no-mutation
+  // eslint-disable-next-line functional/immutable-data
   mockLocationsLoader.close = jest.fn();
-  // eslint-disable-next-line better-mutation/no-mutation
+  // eslint-disable-next-line functional/immutable-data
   (mockTextBankStringsLoader as any).close = jest.fn();
-  // eslint-disable-next-line better-mutation/no-mutation, @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line functional/immutable-data, @typescript-eslint/no-explicit-any
   (mockGetImageBank as any).close = jest.fn();
 
   describe('getTransientRunSignalWithCache', () => {
@@ -31,12 +42,11 @@ describe('Signal Execution Service', () => {
       // `let` vars to defer the work until the test suite is actually running
       // (so we don't bother w/ it if this test suite is skipped, e.g., in which
       // case cleanup wouldn't happen).
-      /* eslint-disable better-mutation/no-mutation */
+
       container = await getBottleContainerWithIOMocks();
       signalsService = container.SignalsService;
       getPolicyActionPenalties =
         container.getPolicyActionPenaltiesEventuallyConsistent;
-      /* eslint-enable better-mutation/no-mutation */
     });
 
     afterAll(async () => {
@@ -123,7 +133,7 @@ describe('Signal Execution Service', () => {
       // signals don't hit the network. (The point of the mock is just so we can
       // spy on how many times runSignal was called.)
       const signalsServiceSpy = (await getBottle()).container.SignalsService;
-      // eslint-disable-next-line better-mutation/no-mutation
+      // eslint-disable-next-line functional/immutable-data
       signalsServiceSpy.runSignal = jest.fn(
         signalsServiceSpy.runSignal.bind(signalsServiceSpy),
       ) as any;

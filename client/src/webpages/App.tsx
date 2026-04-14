@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-key */
 import React, { Suspense } from 'react';
 import {
   createBrowserRouter,
@@ -15,11 +14,16 @@ import { useGQLUserAndOrgQuery } from '../graphql/generated';
 import { RequireAuth, RequireLoggedOut } from '../routing/auth';
 import AwaitingApproval from './auth/AwaitingApproval';
 import RejectedByAdmin from './auth/RejectedByAdmin';
+
 import './dashboard/Dashboard.css';
 
 const Login = React.lazy(async () => import('./auth/Login'));
-const ForgotPassword = React.lazy(async () => import('./auth/forgot_password/ForgotPassword'));
-const ResetPassword = React.lazy(async () => import('./auth/forgot_password/ResetPassword'));
+const ForgotPassword = React.lazy(
+  async () => import('./auth/forgot_password/ForgotPassword'),
+);
+const ResetPassword = React.lazy(
+  async () => import('./auth/forgot_password/ResetPassword'),
+);
 const SignUp = React.lazy(async () => import('./auth/SignUp'));
 const LoginSSO = React.lazy(async () => import('./auth/LoginSSO'));
 /**
@@ -37,16 +41,16 @@ const LoginSSO = React.lazy(async () => import('./auth/LoginSSO'));
 
 function RootRedirect() {
   const { loading, data } = useGQLUserAndOrgQuery();
-  
+
   if (loading) {
     return <FullScreenLoading />;
   }
-  
+
   // If user is logged in, redirect to dashboard, otherwise to login
   if (data?.me) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <Navigate to="/login" replace />;
 }
 

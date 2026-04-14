@@ -13,7 +13,7 @@ const withNavigate =
   };
 
 // This is used twice so it has to be extracted into an interface
-// eslint-disable-next-line no-restricted-syntax
+
 interface ErrorBoundaryProps {
   children: React.ReactNode;
   buttonTitle?: string;

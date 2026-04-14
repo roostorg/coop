@@ -1,5 +1,3 @@
-/* eslint-disable max-classes-per-file */
-
 import { type Exception } from '@opentelemetry/api';
 import { DataSource } from 'apollo-datasource';
 import { type PassportContext } from 'graphql-passport';
@@ -177,10 +175,11 @@ class UserAPI extends DataSource {
       });
     }
 
-    const isCurrentPasswordValid = await this.sequelize.User.passwordMatchesHash(
-      currentPassword,
-      user.password,
-    );
+    const isCurrentPasswordValid =
+      await this.sequelize.User.passwordMatchesHash(
+        currentPassword,
+        user.password,
+      );
 
     if (!isCurrentPasswordValid) {
       throw makeChangePasswordIncorrectPasswordError({
@@ -218,7 +217,7 @@ class UserAPI extends DataSource {
     const user = await this.sequelize.User.findByPk(id, {
       rejectOnEmpty: true,
     });
-    
+
     // Security check: ensure admin can only approve users in their own org
     if (user.orgId !== invokerOrgId) {
       throw makeUnauthorizedError(
@@ -226,7 +225,7 @@ class UserAPI extends DataSource {
         { shouldErrorSpan: true },
       );
     }
-    
+
     user.approvedByAdmin = true;
     await user.save();
     return true;
@@ -236,7 +235,7 @@ class UserAPI extends DataSource {
     const user = await this.sequelize.User.findByPk(id, {
       rejectOnEmpty: true,
     });
-    
+
     // Security check: ensure admin can only reject users in their own org
     if (user.orgId !== invokerOrgId) {
       throw makeUnauthorizedError(
@@ -244,7 +243,7 @@ class UserAPI extends DataSource {
         { shouldErrorSpan: true },
       );
     }
-    
+
     user.rejectedByAdmin = true;
     await user.save();
     return true;

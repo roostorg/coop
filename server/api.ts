@@ -2,11 +2,12 @@
 // In this case, we want to rely on apollo-server-express bundling a
 // corresponding version of apollo-server-core, rather than picking an
 // apollo-server-core version in package.json
-// eslint-disable-next-line import/no-extraneous-dependencies
+
 import os from 'node:os';
 import path from 'path';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
+import { MultiSamlStrategy } from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   SEMATTRS_EXCEPTION_MESSAGE,
@@ -23,11 +24,10 @@ import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
-import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import depthLimit from 'graphql-depth-limit';
+import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
-import { MultiSamlStrategy } from '@node-saml/passport-saml';
 
 import {
   makeLoginIncorrectPasswordError,
