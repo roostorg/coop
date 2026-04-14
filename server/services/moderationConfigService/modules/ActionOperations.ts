@@ -9,7 +9,7 @@ import {
 } from '../../../utils/errors.js';
 import {
   type FixKyselyRowCorrelation,
-  type FixSingleTableReturnedRowType,
+
 } from '../../../utils/kysely.js';
 import { assertUnreachable } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
@@ -76,9 +76,7 @@ export default class ActionOperations {
       // eslint-disable-next-line no-useless-catch
       try {
         const actionRow =
-          (await query.executeTakeFirstOrThrow()) as FixSingleTableReturnedRowType<
-            typeof query
-          >;
+          (await query.executeTakeFirstOrThrow()) as ActionDbResult;
 
         return this.#dbResultToAction(actionRow);
       } catch (e) {
@@ -102,9 +100,7 @@ export default class ActionOperations {
       .where('org_id', '=', orgId)
       .$if(ids !== undefined, (qb) => qb.where('id', 'in', ids!));
 
-    const results = (await query.execute()) as FixSingleTableReturnedRowType<
-      typeof query
-    >[];
+    const results = (await query.execute()) as ActionDbResult[];
 
     return results.map((it) => this.#dbResultToAction(it));
   }

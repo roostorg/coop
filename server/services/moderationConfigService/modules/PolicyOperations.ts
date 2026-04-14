@@ -15,7 +15,7 @@ import {
 import {
   isUniqueViolationError,
   type FixKyselyRowCorrelation,
-  type FixSingleTableReturnedRowType,
+
 } from '../../../utils/kysely.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
@@ -61,9 +61,7 @@ export default class PolicyOperations {
       .selectFrom('public.policies')
       .select(policyDbSelection)
       .where('org_id', '=', orgId);
-    const results = (await query.execute()) as FixSingleTableReturnedRowType<
-      typeof query
-    >[];
+    const results = (await query.execute()) as PolicyDbResult[];
 
     return results.map((it) => this.#dbResultToPolicy(it));
   }
@@ -81,9 +79,7 @@ export default class PolicyOperations {
       .where('org_id', '=', orgId)
       .where('id', '=', policyId);
     const result =
-      (await query.executeTakeFirst()) as FixSingleTableReturnedRowType<
-        typeof query
-      >;
+      (await query.executeTakeFirst()) as PolicyDbResult;
 
     return this.#dbResultToPolicy(result);
   }

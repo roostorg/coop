@@ -15,7 +15,7 @@
     "@roostorg/db-migrator": "^1.0.9",
     "cassandra-driver": "^4.8.0",
     "csv-parse": "^5.0.4",
-    "kysely": "^0.26.3",
+    "kysely": "^0.28.16",
     "latlon-geohash": "^1.1.0",
     "lodash": "^4.18.1",
     "pg": "^8.7.1",

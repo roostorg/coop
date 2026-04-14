@@ -84,12 +84,13 @@ class WarehouseDialectForTests implements Dialect {
 
   createAdapter() {
     return {
+      supportsCreateIfNotExists: false,
       supportsTransactionalDdl: false,
       supportsReturning: false,
-      acquireMigrationLock(_db: Kysely<unknown>) {
+      async acquireMigrationLock(): Promise<void> {
         throw new Error('Migrations with kysely not supported in test dialect.');
       },
-      releaseMigrationLock(_db: Kysely<unknown>) {
+      async releaseMigrationLock(): Promise<void> {
         throw new Error('Migrations with kysely not supported in test dialect.');
       },
     };
