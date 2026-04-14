@@ -40,7 +40,7 @@ import {
 import { formatItemSubmissionForGQL } from '../types.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const { omit, sumBy } = _;
 
@@ -2278,11 +2278,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async updateManualReviewQueue(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
+    if (user == null) {
       throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     const {
@@ -2322,11 +2322,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async deleteManualReviewQueue(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
+    if (user == null) {
       throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     return context.services.ManualReviewToolService.deleteManualReviewQueue(
@@ -2336,11 +2336,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async addAccessibleQueuesToUser(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
+    if (user == null) {
       throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     await context.services.ManualReviewToolService.addAccessibleQueuesForUser(
@@ -2356,11 +2356,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async removeAccessibleQueuesToUser(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
+    if (user == null) {
       throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     await context.services.ManualReviewToolService.removeAccessibleQueuesForUser(

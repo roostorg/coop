@@ -10,8 +10,9 @@ import {
   type GQLPendingInvite,
   type GQLQueryResolvers,
 } from '../generated.js';
+import { GraphQLError } from 'graphql';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   type Org {
@@ -237,7 +238,7 @@ const Org: GQLOrgResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw unauthenticatedError('User does not have permission to view pending invites');
+      throw forbiddenError('User does not have permission to view pending invites');
     }
 
     const invites =
@@ -315,7 +316,7 @@ const Org: GQLOrgResolvers = {
     if (!apiKey) {
       return process.env.NODE_ENV !== 'production'
         ? ''
-        : __throw(unauthenticatedError('API Key not found'));
+        : __throw(new GraphQLError('API Key not found'));
     }
 
     return apiKey.key;
@@ -491,7 +492,7 @@ const Org: GQLOrgResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw unauthenticatedError('User does not have permission to manage SSO settings');
+      throw forbiddenError('User does not have permission to manage SSO settings');
     }
 
     const settings = await context.services.OrgSettingsService.getSamlSettings(
@@ -511,7 +512,7 @@ const Org: GQLOrgResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw unauthenticatedError('User does not have permission to manage SSO settings');
+      throw forbiddenError('User does not have permission to manage SSO settings');
     }
 
     const settings = await context.services.OrgSettingsService.getSamlSettings(
@@ -651,7 +652,7 @@ const Mutation: GQLMutationResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw unauthenticatedError('User does not have permission to manage org info');
+      throw forbiddenError('User does not have permission to manage org info');
     }
 
     await context.dataSources.orgAPI.updateOrgInfo(user.orgId, input);
