@@ -18,24 +18,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Check and publish types
         run: |
           cd types
           VERSION=$(node -p "require('./package.json').version")
           echo "Checking @roostorg/types@$VERSION..."
-          
-          if npm view "@roostorg/types@$VERSION" version >/dev/null 2>&1; then
+
+          if pnpm view "@roostorg/types@$VERSION" version >/dev/null 2>&1; then
             echo "⚠️  Version $VERSION of @roostorg/types already exists on npm - skipping"
           else
             echo "✅ Publishing @roostorg/types@$VERSION..."
-            npm ci
-            npm run build
-            npm publish
+            pnpm run build
+            pnpm publish
           fi

@@ -29,14 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
-      - run: npm ci
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
       - name: Generate graphql
         run: |
-          npm run generate
+          pnpm run generate
           if [[ -z "$(git status --porcelain)" ]]; then
             echo "Generated GraphQL is up to date."
           else
