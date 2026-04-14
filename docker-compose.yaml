@@ -23,8 +23,9 @@ services:
   migrations:
     image: node:24.14.1-bullseye-slim
     command: bash -c 'set -e
-      npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
-      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
+      && corepack enable
+      && pnpm install && ( [ "$CI" = "true" ] && pnpm run db:clean -- --env staging || true )
+      && for db in api-server-pg scylla clickhouse; do pnpm run db:create -- --db "$$db" --env staging; pnpm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -42,7 +43,7 @@ services:
 
   drop_dbs:
     image: node:24.14.1-bullseye-slim
-    command: bash -c 'npm i && npm run db:drop -- --env staging'
+    command: bash -c 'corepack enable && pnpm install && pnpm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -106,10 +107,10 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
-    command: bash -c 'npm run test:ci'
-    working_dir: /app
+    command: bash -c 'pnpm run test:ci'
+    working_dir: /app/server
     volumes:
-      - ./server/reports:/app/reports
+      - ./server/reports:/app/server/reports
     env_file: ./.env.githubci
     depends_on:
       migrations:
@@ -128,8 +129,8 @@ services:
     working_dir: /src
     command: bash -c 'set -e
       && git config --global --add safe.directory /src
-      && npm ci
-      && npm run generate
+      && pnpm install --filter coop --filter server --frozen-lockfile
+      && pnpm run generate
       && [[ -z "$(git status --porcelain)" ]]'
     volumes:
       - .:/src
@@ -140,15 +141,19 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
+    command: pnpm run lint
 
   client:
     build:
-      context: client
+      context: .
+      dockerfile: client/Dockerfile
       target: client_base
+    command: pnpm run lint
+    working_dir: /app/client
     volumes:
-      - ./client/eslint:/app/eslint
-      - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
-      - ./client/eslint.config.mjs:/app/eslint.config.mjs
+      - ./client/eslint:/app/client/eslint
+      - ./client/.eslintrc.cjs:/app/client/.eslintrc.cjs
+      - ./client/eslint.config.mjs:/app/client/eslint.config.mjs
 
   jaeger:
     image: jaegertracing/all-in-one:1.76.0
