@@ -167,7 +167,11 @@ export function makeTestWithFixture<T extends Record<string, unknown>>(
 
 function _makeTestWithFixture<T extends Record<string, unknown>>(
   makeSetupTeardown: () => Promise<Fixture<T>> | Fixture<T>,
-  jestFn = it,
+  jestFn: (
+    name: string,
+    fn?: jest.ProvidesCallback,
+    timeout?: number,
+  ) => void = it,
 ) {
   return (
     name: string,

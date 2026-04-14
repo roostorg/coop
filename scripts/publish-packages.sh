@@ -8,14 +8,14 @@ set -e
 echo "🚀 Publishing packages to @roostorg scope..."
 
 # Check if user is logged in to npm
-if ! npm whoami > /dev/null 2>&1; then
+if ! pnpm whoami > /dev/null 2>&1; then
     echo "❌ Not logged in to npm. Please run:"
-    echo "   npm login"
+    echo "   pnpm login"
     echo "   Use your npm username and password/token"
     exit 1
 fi
 
-echo "✅ Logged in to npm as: $(npm whoami)"
+echo "✅ Logged in to npm as: $(pnpm whoami)"
 
 # Check if OTP is provided
 if [ -z "$NPM_OTP" ]; then
@@ -33,7 +33,7 @@ check_version_exists() {
     local package_name=$1
     local version=$2
     
-    if npm view "$package_name@$version" version >/dev/null 2>&1; then
+    if pnpm view "$package_name@$version" version >/dev/null 2>&1; then
         echo "⚠️  Version $version of $package_name already exists on npm"
         return 0
     else
@@ -61,9 +61,9 @@ publish_if_needed() {
     fi
     
     echo "📦 Publishing $package_name@$version..."
-    npm install
-    npm run build
-    npm publish --otp=$NPM_OTP
+    pnpm install
+    pnpm run build
+    pnpm publish --otp=$NPM_OTP
     cd ..
 }
 
@@ -74,5 +74,5 @@ publish_if_needed "migrator" "@roostorg/db-migrator"
 echo "✅ All packages published successfully!"
 echo ""
 echo "Next steps:"
-echo "1. Run 'npm install' in server/ and client/ directories to update dependencies"
+echo "1. Run 'pnpm install' in server/ and client/ directories to update dependencies"
 echo "2. The GitHub Action will automatically publish future changes when you push to main/OSS branches"

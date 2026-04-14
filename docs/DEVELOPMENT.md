@@ -6,7 +6,7 @@ This guide covers configuration details and troubleshooting for local developmen
 
 - **Operating System**: macOS, Linux, or Windows with WSL2
 - **Node.js 24** (use `nvm install && nvm use` so local matches `.nvmrc`)
-- **npm** (included with Node.js)
+- **pnpm 10** (`npm install -g pnpm@10` or `corepack enable`)
 - **Docker and Docker Compose**
 - **16 GB RAM** or more recommended
 
@@ -31,7 +31,7 @@ Copy `client/.env.example` to `client/.env`. Defaults work for local development
 Start all backing services:
 
 ```bash
-npm run up
+pnpm run up
 ```
 
 This starts:
@@ -55,7 +55,7 @@ docker logs <container-name>
 Stop services:
 
 ```bash
-npm run down
+pnpm run down
 ```
 
 ## Database Operations
@@ -63,21 +63,21 @@ npm run down
 ### Running Migrations
 
 ```bash
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db clickhouse
+pnpm run db:update -- --env staging --db api-server-pg
+pnpm run db:update -- --env staging --db clickhouse
 #Creating keyspace
-npm run db:create -- --env staging --db scylla
+pnpm run db:create -- --env staging --db scylla
 #Running migrations
-npm run db:update -- --env staging --db scylla
+pnpm run db:update -- --env staging --db scylla
 ```
 
 ### Other Commands
 
 ```bash
-npm run db:add -- --name <migration-name> --db api-server-pg
-npm run db:clean    # Drop and recreate (destructive)
-npm run db:create   # Create database
-npm run db:drop     # Drop database
+pnpm run db:add -- --name <migration-name> --db api-server-pg
+pnpm run db:clean    # Drop and recreate (destructive)
+pnpm run db:create   # Create database
+pnpm run db:drop     # Drop database
 ```
 
 ### Migration Locations
@@ -94,21 +94,21 @@ db/src/scripts/
 ### All Services Together
 
 ```bash
-npm run start       # Client + server + GraphQL codegen (opens browser)
-npm run compile     # Same, without opening browser
+pnpm run start       # Client + server + GraphQL codegen (opens browser)
+pnpm run compile     # Same, without opening browser
 ```
 
 ### Individual Services (Recommended for Debugging)
 
 ```bash
 # Terminal 1
-npm run client:start
+pnpm run client:start
 
 # Terminal 2
-npm run server:start
+pnpm run server:start
 
 # Terminal 3 (optional, for GraphQL schema changes)
-npm run generate:watch
+pnpm run generate:watch
 ```
 
 ### Background Workers
@@ -117,7 +117,7 @@ Item submissions are processed asynchronously via a BullMQ worker that consumes 
 
 ```bash
 cd server
-npm run runWorkerOrJob ItemProcessingWorker
+pnpm run runWorkerOrJob ItemProcessingWorker
 ```
 
 Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in `server/iocContainer/services/workersAndJobs.ts`.
@@ -125,7 +125,7 @@ Without this running, submitted items will be enqueued in Redis but not processe
 ### With Distributed Tracing
 
 ```bash
-cd server && npm run start:trace
+cd server && pnpm run start:trace
 ```
 
 View traces at http://localhost:16686
@@ -144,17 +144,17 @@ Jaeger UI  | http://localhost:16686
 ```bash
 # Server
 cd server
-npm run test              # Watch mode
-npm run test:prepush      # Single run
-npm run test:integ        # Integration tests
+pnpm run test              # Watch mode
+pnpm run test:prepush      # Single run
+pnpm run test:integ        # Integration tests
 
 # Client
 cd client
-npm run test              # Watch mode
-npm run test:prepush      # Single run
+pnpm run test              # Watch mode
+pnpm run test:prepush      # Single run
 
 # Full validation (run before pushing)
-npm run check:prepush
+pnpm run check:prepush
 ```
 
 ## GraphQL Development
@@ -162,8 +162,8 @@ npm run check:prepush
 Coop uses schema-first GraphQL with bidirectional code generation.
 
 ```bash
-npm run generate          # One-time
-npm run generate:watch    # Watch mode
+pnpm run generate          # One-time
+pnpm run generate:watch    # Watch mode
 ```
 
 Generated files:
@@ -173,7 +173,7 @@ Generated files:
 Schema changes trigger recompilation of both client and server. If you experience regeneration loops, stop watch mode and run manually.
 
 ## HMA Development
-HMA is not started automatically with `npm run up`. Start it separately if you're doing hash matching: `docker compose up --build -d hma`
+HMA is not started automatically with `pnpm run up`. Start it separately if you're doing hash matching: `docker compose up --build -d hma`
 
 HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:9876`. No additional environment setup is needed for local development.
 
@@ -191,7 +191,7 @@ Then use `host.docker.internal:<port>` in image URLs when submitting items. This
 
 ### ScyllaDB Not Ready
 
-ScyllaDB takes 30-60 seconds to initialize. If migrations fail immediately after `npm run up`, wait and retry.
+ScyllaDB takes 30-60 seconds to initialize. If migrations fail immediately after `pnpm run up`, wait and retry.
 
 ### ClickHouse Migration Fails
 
@@ -208,12 +208,12 @@ lsof -i :5432    # PostgreSQL
 ### Reset Everything
 
 ```bash
-npm run down
+pnpm run down
 docker volume prune    # Warning: removes all Docker volumes
-npm run up
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db clickhouse
-npm run create-org
+pnpm run up
+pnpm run db:update -- --env staging --db api-server-pg
+pnpm run db:update -- --env staging --db clickhouse
+pnpm run create-org
 ```
 
 ### Connecting to Databases Directly
@@ -233,7 +233,7 @@ redis-cli
 ## Code Quality
 
 ```bash
-npm run lint       # ESLint
-npm run format     # Prettier
-npm run check:prepush    # Run before pushing
+pnpm run lint       # ESLint across all workspace packages
+pnpm run format     # Prettier
+pnpm run check:prepush    # Run before pushing
 ```

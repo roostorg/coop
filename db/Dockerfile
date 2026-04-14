@@ -2,16 +2,18 @@ FROM node:24.14.0-bullseye-slim AS builder
 
 WORKDIR /app
 
-COPY package*.json .
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --ignore-workspace
 
 COPY . .
 
-RUN npm run build
+RUN pnpm run build
 
-RUN npm prune --omit=dev
+RUN pnpm prune --prod
 
 FROM node:24.14.0-bullseye-slim AS base
 

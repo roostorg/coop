@@ -1,6 +1,5 @@
 /* eslint-disable max-lines */
 import { sql, type Kysely } from 'kysely';
-import { match } from 'ts-pattern';
 import { type JsonObject } from 'type-fest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
@@ -314,16 +313,15 @@ export default class JobDecisioning {
 
       return {
         newDecisionStored: logDecisionStatus === 'SUCCESS',
-        error: match([logDecisionStatus, removeJobStatus] as const)
-          // Case 1, happy path.
-          .with(['SUCCESS', 'SUCCESS'], () => undefined)
-          // Case 2, decision logged but job not deleted.
-          .with(['SUCCESS', 'FAILED'], () => decisioningFailedError)
-          // Case 3, client retrying after failed job deletion; deletion worked now.
-          .with(['ALREADY_LOGGED', 'SUCCESS'], () => jobAlreadySubmittedError)
-          // Case 4, client retrying after failed job deletion; deletion failed again.
-          .with(['ALREADY_LOGGED', 'FAILED'], () => decisioningFailedError)
-          .exhaustive(),
+        // Case 1: happy path. Case 2: logged but job not deleted. Case 3/4: retrying.
+        error:
+          logDecisionStatus === 'SUCCESS' && removeJobStatus === 'SUCCESS'
+            ? undefined
+            : logDecisionStatus === 'SUCCESS'
+              ? decisioningFailedError
+              : removeJobStatus === 'SUCCESS'
+                ? jobAlreadySubmittedError
+                : decisioningFailedError,
       };
     })();
 

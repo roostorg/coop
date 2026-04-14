@@ -5,13 +5,16 @@ services:
       - redis_data:/data
     ports:
       - '6379:6379'
+    networks:
+      - coop
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24.14.0-bullseye-slim
+    image: node:24-bullseye-slim
     command: bash -c 'set -e
-                      npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
-                      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
+                      corepack enable
+                      pnpm install && ( [ "$CI" = "true" ] && pnpm run db:clean -- --env staging || true )
+                      && for db in api-server-pg scylla clickhouse; do pnpm run db:create -- --db "$$db" --env staging; pnpm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -19,6 +22,9 @@ services:
       - CLICKHOUSE_DATABASE
     volumes:
       - .:/src
+    networks:
+      - coop
+      - migrations_net
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,8 +34,8 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24.14.0-bullseye-slim
-    command: bash -c 'npm i && npm run db:drop -- --env staging'
+    image: node:24-bullseye-slim
+    command: bash -c 'corepack enable && pnpm install && pnpm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -41,10 +47,9 @@ services:
       - postgres
 
   postgres:
-    image: ankane/pgvector:v0.5.1
-    # image: postgres:15.3
+    image: pgvector/pgvector:pg18-trixie
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
     ports:
       - '5432:5432'
     healthcheck:
@@ -55,23 +60,27 @@ services:
       POSTGRES_PASSWORD: postgres123
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
+    networks:
+      - coop
 
-  hma:
-    build:
-      context: ./hma
-      dockerfile: Dockerfile
-    environment:
-      - POSTGRES_PASSWORD=postgres123
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=postgres
-      - POSTGRES_HOST=postgres
-    ports:
-      - '9876:9876'
-    depends_on:
-      - postgres
+  # hma:
+  #   build:
+  #     context: ./hma
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - POSTGRES_PASSWORD=postgres123
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_DB=postgres
+  #     - POSTGRES_HOST=postgres
+  #   ports:
+  #     - '9876:9876'
+  #   depends_on:
+  #     - postgres
+
 
   scylla:
     image: scylladb/scylla:5.2
+    # upgrade to scylla 6.2
     volumes:
       - scylla_data:/var/lib/scylla
     ports:
@@ -82,6 +91,8 @@ services:
       timeout: 5s
       retries: 28
       start_period: 35s
+    networks:
+      - coop
 
   # Runs the api server's tests
   test:
@@ -89,7 +100,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
-    command: bash -c 'npm run test:ci'
+    command: bash -c 'pnpm run test:ci'
     working_dir: /app
     volumes:
       - ./server/reports:/app/reports
@@ -106,46 +117,45 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
-    command: npm run lint
+    command: pnpm run lint
 
   lint-client:
     build:
       context: client
       target: client_base
-    command: npm run lint
+    command: pnpm run lint
     volumes:
       - ./client/eslint:/app/eslint
       - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
       - ./client/eslint.config.mjs:/app/eslint.config.mjs
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.76.0
-    ports:
-      - '16686:16686'
-      - '14268'
-      - '14250'
-    environment:
-      - LOG_LEVEL=info
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.76.0
+  #   ports:
+  #     - '16686:16686'
+  #     - '14268'
+  #     - '14250'
+  #   environment:
+  #     - LOG_LEVEL=info
 
-  otel-collector:
-    # We have to pin to this version of the collector, because versions beyond
-    # this do not support the Jaeger exporter. See here for details:
-    # https://github.com/open-telemetry/opentelemetry-specification/pull/2858
-    image: otel/opentelemetry-collector-contrib:0.71.0
-    volumes:
-      - ./otel-collector.yaml:/etc/otel-collector.yaml
-    command: ['--config=/etc/otel-collector.yaml']
-    ports:
-      - '1888:1888' # pprof extension
-      - '13133:13133' # health_check extension
-      - '4317:4317' # OTLP gRPC receiver
-      - '55670:55679' # zpages extension
-    depends_on:
-      - jaeger
+  # otel-collector:
+  #   # We have to pin to this version of the collector, because versions beyond
+  #   # this do not support the Jaeger exporter. See here for details:
+  #   # https://github.com/open-telemetry/opentelemetry-specification/pull/2858
+  #   image: otel/opentelemetry-collector-contrib:0.71.0
+  #   volumes:
+  #     - ./otel-collector.yaml:/etc/otel-collector.yaml
+  #   command: ['--config=/etc/otel-collector.yaml']
+  #   ports:
+  #     - '1888:1888' # pprof extension
+  #     - '13133:13133' # health_check extension
+  #     - '4317:4317' # OTLP gRPC receiver
+  #     - '55670:55679' # zpages extension
+  #   depends_on:
+  #     - jaeger
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
-    container_name: clickhouse
     ports:
       - '8123:8123' # HTTP interface
       - '9000:9000' # Native TCP interface
@@ -160,9 +170,42 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - coop
+
+  coop-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build_server
+      args:
+        - OMIT_SNOWFLAKE=true
+    init: true
+    networks:
+      - coop
+    env_file: ./.env
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_READ_ONLY_HOST=postgres
+      - REDIS_HOST=redis
+      - CLICKHOUSE_HOST=clickhouse
+      - SCYLLA_HOSTS=scylla:9042
+    depends_on:
+      - postgres
+      - redis
+      - scylla
+      - clickhouse
 
 volumes:
   pg_data:
   scylla_data:
   redis_data:
   clickhouse_data:
+
+networks:
+  coop:
+  migrations_net:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:1::/80

@@ -1,0 +1,39 @@
+packages:
+  - client
+  - server
+  - types
+  - db
+  - migrator
+  - nodejs-instrumentation
+
+# clone-or-copy: use copy-on-write cloning from the pnpm store (fastest on APFS/macOS),
+# fall back to copying on Linux CI where CoW may not be available.
+# Avoids hardlinks, which can cause confusing behaviour when editing node_modules locally.
+packageImportMethod: clone-or-copy
+
+# Resolve @roostorg/types from the local workspace rather than the npm registry,
+# even if a newer published version exists. Without this, a stale published version
+# could be silently resolved instead of local changes.
+preferWorkspacePackages: true
+
+ignoredBuiltDependencies:
+  - '@apollo/protobufjs'
+  - '@parcel/watcher'
+  - core-js
+  - core-js-pure
+  - esbuild
+  - msgpackr-extract
+  - nice-napi
+  - protobufjs
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@mongodb-js/zstd'
+
+# Refuse to install packages published less than 7 days ago (10080 minutes).
+# Mitigates "publish-and-immediately-compromise" supply chain attacks.
+minimumReleaseAge: 10080
+
+# Block transitive dependencies from resolving via git repos or tarball URLs.
+# Ensures all deps come from the official registry, not arbitrary remote sources.
+blockExoticSubdeps: true

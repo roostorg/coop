@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublishOnly": "rm -rf ./build && npm run build && cp -r script-templates build/script-templates"
+    "prepublishOnly": "rm -rf ./build && pnpm run build && cp -r script-templates build/script-templates"
   },
   "exports": {
     ".": "./build/index.js",

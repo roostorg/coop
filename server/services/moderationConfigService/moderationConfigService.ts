@@ -47,13 +47,34 @@ export type ModerationConfigErrorType =
   | LocationBankErrorType
   | MatchingBankErrorType;
 
+export type UserStrikeThreshold = {
+  id: string;
+  orgId: string;
+  threshold: number;
+  actions: string[];
+};
+
+export type TextBank = {
+  id: string;
+  name: string;
+  description: string | null;
+  type: 'STRING' | 'REGEX';
+  strings: string[];
+  orgId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  ownerId: string | null;
+};
+
 // By having the ModerationConfigService `implement` this type, TS will check
 // for us that every ModerationConfigService method returns one of our public
 // types.
 type ReturnsModerationConfigTypes = {
   [K in keyof ModerationConfigService]: ReturnType<
     ModerationConfigService[K]
-  > extends ArrayOrPromiseOf<void | ItemType | Action | Policy | boolean>
+  > extends ArrayOrPromiseOf<
+    void | ItemType | Action | Policy | boolean | UserStrikeThreshold | TextBank
+  >
     ? ModerationConfigService[K]
     : never;
 };

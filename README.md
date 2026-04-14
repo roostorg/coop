@@ -35,48 +35,43 @@ For development on Coop it is recommended to:
 
 - use a machine with 16 GiB RAM or more
 - use Node 24 (run `nvm install && nvm use` so local matches `.nvmrc`)
+- install pnpm 10 (`npm install -g pnpm@10` or `corepack enable`)
 
 and then follow the steps below:
 
-1. On the root directory run command `npm run up` afterwards you want to have 3 different terminals open. 
+1. On the root directory run command `pnpm run up` afterwards you want to have 3 different terminals open. 
 
    Make sure all backing services (`postgres`, `clickhouse`, `scylla`, etc.) are up and running. (Scylla is needed for user data.)
 
-2. Install dependencies for the root, `client`, `server`, and `db` packages:
+2. Install all dependencies from the repo root (pnpm workspaces handles `client`, `server`, and `types` automatically):
    ```bash
-   npm install
-   (cd client && npm install)
-   (cd server && npm install)
-   (cd db && npm install)
+   pnpm install
    ```
 3. Make sure the `.env` files for `/server` and `db` are populated (including ClickHouse credentials). Run database migrations:
    ```bash
-   npm run db:update -- --env staging --db api-server-pg
-   npm run db:update -- --env staging --db scylla
-   npm run db:update -- --env staging --db clickhouse
+   pnpm run db:update -- --env staging --db api-server-pg
+   pnpm run db:update -- --env staging --db scylla
+   pnpm run db:update -- --env staging --db clickhouse
    ```
 ### Alternative: Single Command for Steps 2-3
 
 You can combine the dependency installation and database migrations into a single command:
 
 ```bash
-npm install \
-  && (cd client && npm install) \
-  && (cd server && npm install) \
-  && (cd db && npm install) \
-  && npm run db:update -- --env staging --db api-server-pg \
-  && npm run db:update -- --env staging --db clickhouse
+pnpm install \
+  && pnpm run db:update -- --env staging --db api-server-pg \
+  && pnpm run db:update -- --env staging --db clickhouse
 ```
 
 4. On the terminals you want to run on each the following commands:
-   1. `npm run client:start`  
-   2. `npm run server:start`  
-   3. `npm run generate:watch` — Optional for GraphQL changes, but good to keep track as you make them  
+   1. `pnpm run client:start`  
+   2. `pnpm run server:start`  
+   3. `pnpm run generate:watch` — Optional for GraphQL changes, but good to keep track as you make them  
    This will help keep the logs for each of them separate for easy debugging.
 
 5. Create an organization and admin user:
 ```bash
-   npm run create-org
+   pnpm run create-org
 ```
    
 Use the credentials provided to log in at `http://localhost:3000`.
@@ -91,8 +86,8 @@ All of the data around the database tables ( SQL/Schema ) exist under the `db/sr
 
 The `server/bin` folder contains utility scripts for managing the Coop server:
 
-- **Create Organization**: Use `npm run create-org` to create a new organization with an admin user and API key.
-- **Get Invite Token**: Use `npm run get-invite` to retrieve the signup link for a user invited from the UI.
+- **Create Organization**: Use `pnpm run create-org` to create a new organization with an admin user and API key.
+- **Get Invite Token**: Use `pnpm run get-invite` to retrieve the signup link for a user invited from the UI.
 
 See `server/bin/README.md` for detailed usage instructions and examples.
 
@@ -112,7 +107,7 @@ Backend primarily works using dependency injection using [BottleJS](https://gith
 
 ## GraphQL
 
-GraphQL is used for communication between front-end and back-end services. The code is generated in both places as changes to mutations, resolvers, and types are done. To ensure the code is generated you want to run `npm run generate` on the root of the repository or keep the watch option running.
+GraphQL is used for communication between front-end and back-end services. The code is generated in both places as changes to mutations, resolvers, and types are done. To ensure the code is generated you want to run `pnpm run generate` on the root of the repository or keep the watch option running.
 
 > [!NOTE]
 > Careful around this as each change will generate code for both which will in turn trigger the recompile of both front-end and back-end.
