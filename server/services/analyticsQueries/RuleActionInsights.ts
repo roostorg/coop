@@ -33,6 +33,7 @@ type RulePassSample = {
   itemTypeName: string;
   itemTypeId: string;
   userId: string | null;
+  userTypeId: string | null;
   content: JsonOf<NormalizedItemData> | undefined;
   environment: RuleEnvironment;
   policyIds: readonly string[];
@@ -294,14 +295,13 @@ class RuleActionInsights {
       itemTypeName: string;
       itemTypeId: string;
       userId: string | null;
+      userTypeId: string | null;
       content: JsonOf<NormalizedItemData>;
       environment: RuleEnvironment;
       policyIds: readonly string[];
     };
 
-    return (
-      (await finalQuery.execute()) as unknown as ResultRow[]
-    ).map((it) => ({
+    return (await finalQuery.$castTo<ResultRow>().execute()).map((it) => ({
       ...it,
       date: warehouseDateToDate(it.date),
       ts: warehouseDateToDate(it.ts),
