@@ -162,9 +162,6 @@
     "@types/restify": "npm:pino@8.6.0",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
-    },
-    "eslint-plugin-better-mutation": {
-      "lodash": "^4.18.1"
     }
   }
 }
