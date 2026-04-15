@@ -103,7 +103,7 @@ const Mutation: any = {
       const { apiKey, record } = await context.services.ApiKeyService.rotateApiKey(
         user.orgId,
         input.name,
-        input.description || null,
+        input.description ?? null,
         user.id
       );
 
@@ -116,7 +116,7 @@ const Mutation: any = {
             description: record.description,
             isActive: record.isActive,
             createdAt: record.createdAt.toISOString(),
-            lastUsedAt: record.lastUsedAt?.toISOString() || null,
+            lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
             createdBy: record.createdBy,
           },
         },
