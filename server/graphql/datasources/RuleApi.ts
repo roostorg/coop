@@ -2,8 +2,7 @@
 
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
-import { DataSource } from 'apollo-datasource';
-import { AuthenticationError } from 'apollo-server-express';
+
 import { sql, type Kysely } from 'kysely';
 import Sequelize from 'sequelize';
 import { uid } from 'uid';
@@ -68,6 +67,7 @@ import {
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 import { type CursorInfo, type Edge } from '../utils/paginationHandler.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 const { Op, Transaction } = Sequelize;
 const SortOrder = makeEnumLike(['ASC', 'DESC']);
@@ -266,7 +266,7 @@ function parseAggregationClauseInput(
 /**
  * GraphQL Object for a Rule
  */
-class RuleAPI extends DataSource {
+class RuleAPI {
   private readonly warehouse: Kysely<DataWarehousePublicSchema>;
 
   constructor(
@@ -278,17 +278,13 @@ class RuleAPI extends DataSource {
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
   ) {
-    super();
-    this.warehouse =
-      dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
+    this.warehouse = dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
   }
 
   async getGraphQLRuleFromId(id: string, orgId: string) {
     const rule = await this.models.Rule.findByPk(id, { rejectOnEmpty: true });
     if (rule.orgId !== orgId) {
-      throw new AuthenticationError(
-        'User not authenticated to fetch this rule',
-      );
+      throw unauthenticatedError('User not authenticated to fetch this rule');
     }
 
     return rule;

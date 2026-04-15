@@ -1,5 +1,4 @@
 /* eslint-disable max-lines */
-import { AuthenticationError } from 'apollo-server-core';
 import _ from 'lodash';
 
 import {
@@ -41,6 +40,7 @@ import {
 import { formatItemSubmissionForGQL } from '../types.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const { omit, sumBy } = _;
 
@@ -998,7 +998,6 @@ const ManualReviewJobPayload: GQLManualReviewJobPayloadResolvers = {
   },
 };
 
-
 const ContentManualReviewJobPayload: GQLContentManualReviewJobPayloadResolvers =
   {
     async item(it, _, context) {
@@ -1668,7 +1667,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   async explicitlyAssignedReviewers(queue, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const { id: userId, orgId } = user;
 
@@ -1684,7 +1683,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   async hiddenActionIds(queue, _, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const { orgId } = user;
     const { id: queueId } = queue;
@@ -1746,7 +1745,7 @@ const Query: GQLQueryResolvers = {
   async getDecisionCounts(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     return context.services.ManualReviewToolService.getDecisionCounts({
       ...input,
@@ -1766,7 +1765,7 @@ const Query: GQLQueryResolvers = {
   async getJobCreationCounts(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const result =
       await context.services.ManualReviewToolService.getJobCreationCounts({
@@ -1794,7 +1793,7 @@ const Query: GQLQueryResolvers = {
   async getResolvedJobCounts(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const result =
       await context.services.ManualReviewToolService.getResolvedJobCounts({
@@ -1819,7 +1818,7 @@ const Query: GQLQueryResolvers = {
   async getSkippedJobCounts(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const result =
       await context.services.ManualReviewToolService.getSkippedJobCounts({
@@ -1845,7 +1844,7 @@ const Query: GQLQueryResolvers = {
   async getResolvedJobsForUser(_: unknown, { timeZone }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const counts =
@@ -1871,7 +1870,7 @@ const Query: GQLQueryResolvers = {
   async getSkippedJobsForUser(_: unknown, { timeZone }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const counts =
@@ -1897,7 +1896,7 @@ const Query: GQLQueryResolvers = {
   async getTimeToAction(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const result =
       await context.services.ManualReviewToolService.getDecisionTimeToAction({
@@ -1917,7 +1916,7 @@ const Query: GQLQueryResolvers = {
   async getTotalPendingJobsCount(_: unknown, __: unknown, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const allQueues =
       await context.services.ManualReviewToolService.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
@@ -1933,7 +1932,7 @@ const Query: GQLQueryResolvers = {
   async getRecentDecisions(_: unknown, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const permissions = user.getPermissions();
     const { filter, page } = input;
@@ -1982,7 +1981,7 @@ const Query: GQLQueryResolvers = {
   async getDecidedJob(_: unknown, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.services.ManualReviewToolService.getDecidedJob({
@@ -1993,7 +1992,7 @@ const Query: GQLQueryResolvers = {
   async getDecidedJobFromJobId(_: unknown, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.services.ManualReviewToolService.getDecidedJobFromJobId({
@@ -2009,7 +2008,7 @@ const Query: GQLQueryResolvers = {
   ) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const queue =
@@ -2021,7 +2020,7 @@ const Query: GQLQueryResolvers = {
   async getCommentsForJob(_: unknown, { jobId }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ManualReviewToolService.getJobComments({
       orgId: user.orgId,
@@ -2031,7 +2030,7 @@ const Query: GQLQueryResolvers = {
   async getExistingJobsForItem(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.services.ManualReviewToolService.getExistingJobsForItem({
@@ -2043,7 +2042,7 @@ const Query: GQLQueryResolvers = {
   async getDecisionsTable(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.services.ManualReviewToolService.getDecisionCountsTable({
@@ -2060,7 +2059,7 @@ const Query: GQLQueryResolvers = {
   async getSkipsForRecentDecisions(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const filter = input.filter;
 
@@ -2108,7 +2107,7 @@ const Mutation: GQLMutationResolvers = {
   async dequeueManualReviewJob(_, { queueId }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id: userId, orgId } = user;
@@ -2135,7 +2134,7 @@ const Mutation: GQLMutationResolvers = {
   async submitManualReviewDecision(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id: userId, orgId, email: userEmail } = user;
@@ -2237,7 +2236,7 @@ const Mutation: GQLMutationResolvers = {
   async createManualReviewQueue(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const {
@@ -2279,11 +2278,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async updateManualReviewQueue(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
-      throw new AuthenticationError('Authenticated user required');
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     const {
@@ -2323,11 +2322,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async deleteManualReviewQueue(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
-      throw new AuthenticationError('Authenticated user required');
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     return context.services.ManualReviewToolService.deleteManualReviewQueue(
@@ -2337,11 +2336,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async addAccessibleQueuesToUser(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
-      throw new AuthenticationError('Authenticated user required');
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     await context.services.ManualReviewToolService.addAccessibleQueuesForUser(
@@ -2357,11 +2356,11 @@ const Mutation: GQLMutationResolvers = {
   },
   async removeAccessibleQueuesToUser(_, params, context) {
     const user = context.getUser();
-    if (
-      user == null ||
-      !user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)
-    ) {
-      throw new AuthenticationError('Authenticated user required');
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
     await context.services.ManualReviewToolService.removeAccessibleQueuesForUser(
@@ -2381,7 +2380,7 @@ const Mutation: GQLMutationResolvers = {
     // that are being deleted
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     try {
       await context.services.ManualReviewToolService.deleteAllJobsFromQueue({
@@ -2404,7 +2403,7 @@ const Mutation: GQLMutationResolvers = {
   async createManualReviewJobComment(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     try {
@@ -2432,7 +2431,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteManualReviewJobComment(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const { id: userId, orgId } = user;
@@ -2452,7 +2451,7 @@ const Mutation: GQLMutationResolvers = {
   async logSkip(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     try {
       await context.services.ManualReviewToolService.logSkip({
@@ -2469,7 +2468,7 @@ const Mutation: GQLMutationResolvers = {
   async releaseJobLock(_, { input }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     try {
       await context.services.ManualReviewToolService.releaseJobLock({

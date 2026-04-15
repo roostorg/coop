@@ -1,5 +1,4 @@
 import { mergeResolvers } from '@graphql-tools/merge';
-import { AuthenticationError } from 'apollo-server-core';
 import { type GraphQLFieldResolver } from 'graphql';
 import { type PassportContext } from 'graphql-passport';
 
@@ -39,6 +38,7 @@ import { resolvers as spotTestResolvers } from './modules/spotTest.js';
 import { resolvers as textBankResolvers } from './modules/textBank.js';
 import { resolvers as userResolvers } from './modules/user.js';
 import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
+import { forbiddenError, unauthenticatedError } from './utils/errors.js';
 
 // eslint-disable-next-line @typescript-eslint/no-restricted-types
 export type Context = PassportContext<User, {}> & {
@@ -166,13 +166,11 @@ const Mutation: GQLMutationResolvers = {
   async generatePasswordResetToken(_, { userId }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to generate password reset tokens',
-      );
+      throw forbiddenError('User does not have permission to generate password reset tokens');
     }
 
     const token =
@@ -184,7 +182,7 @@ const Mutation: GQLMutationResolvers = {
   async updateRole(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     await context.services.UserManagementService.updateUserRole({
@@ -203,13 +201,11 @@ const Mutation: GQLMutationResolvers = {
   async inviteUser(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to invite users',
-      );
+      throw forbiddenError('User does not have permission to invite users');
     }
 
     const token = await context.dataSources.orgAPI.inviteUser(
@@ -221,13 +217,11 @@ const Mutation: GQLMutationResolvers = {
   async deleteInvite(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to delete invites',
-      );
+      throw forbiddenError('User does not have permission to delete invites');
     }
 
     return context.services.UserManagementService.deleteInvite(id, user.orgId);
@@ -235,13 +229,11 @@ const Mutation: GQLMutationResolvers = {
   async approveUser(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to approve users',
-      );
+      throw forbiddenError('User does not have permission to approve users');
     }
 
     return context.dataSources.userAPI.approveUser(id, user.orgId);
@@ -249,13 +241,11 @@ const Mutation: GQLMutationResolvers = {
   async rejectUser(_, { id }, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to reject users',
-      );
+      throw forbiddenError('User does not have permission to reject users');
     }
 
     return context.dataSources.userAPI.rejectUser(id, user.orgId);

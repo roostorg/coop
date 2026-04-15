@@ -1,5 +1,3 @@
-import { AuthenticationError, ForbiddenError } from 'apollo-server-express';
-
 import { type Backtest } from '../../models/rules/BacktestModel.js';
 import {
   hasPermission,
@@ -12,6 +10,7 @@ import {
   makeConnectionResolver,
   type ConnectionArguments,
 } from '../utils/paginationHandler.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum BacktestStatus {
@@ -119,11 +118,11 @@ const resolvers = {
       );
 
       if (user == null) {
-        throw new AuthenticationError('Authenticated user required');
+        throw unauthenticatedError('Authenticated user required');
       } else if (!hasPermission(UserPermission.RUN_BACKTEST, user.role)) {
-        throw new ForbiddenError('User not authorized to create backtests.');
+        throw forbiddenError('User not authorized to create backtests.');
       } else if (!rule || user.orgId !== rule.orgId) {
-        throw new ForbiddenError('Invalid rule.');
+        throw forbiddenError('Invalid rule.');
       }
 
       return {

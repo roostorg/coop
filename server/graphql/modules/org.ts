@@ -1,5 +1,4 @@
 /* eslint-disable max-lines */
-import { AuthenticationError } from 'apollo-server-express';
 
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { __throw } from '../../utils/misc.js';
@@ -11,7 +10,9 @@ import {
   type GQLPendingInvite,
   type GQLQueryResolvers,
 } from '../generated.js';
+import { GraphQLError } from 'graphql';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   type Org {
@@ -172,7 +173,7 @@ const Query: GQLQueryResolvers = {
   async org(_, { id }, context) {
     const user = context.getUser();
     if (user == null || user.orgId !== id) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     return context.dataSources.orgAPI.getGraphQLOrgFromId(id);
@@ -186,7 +187,7 @@ const Query: GQLQueryResolvers = {
   async appealSettings(_, __, context) {
     const user = context.getUser();
     if (user == null || !user.orgId) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     const settings =
       await context.services.OrgSettingsService.getAppealSettings(user.orgId);
@@ -202,7 +203,7 @@ const Org: GQLOrgResolvers = {
   async actions(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return org.getActions();
@@ -210,14 +211,14 @@ const Org: GQLOrgResolvers = {
   async contentTypes(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return org.getContentTypes();
   },
   async itemTypes(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ModerationConfigService.getItemTypes({
       orgId: org.id,
@@ -226,20 +227,18 @@ const Org: GQLOrgResolvers = {
   async users(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return org.getUsers();
   },
   async pendingInvites(org, _, context): Promise<GQLPendingInvite[]> {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to view pending invites',
-      );
+      throw forbiddenError('User does not have permission to view pending invites');
     }
 
     const invites =
@@ -249,14 +248,14 @@ const Org: GQLOrgResolvers = {
   async rules(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return org.getRules();
   },
   async routingRules(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required');
+      throw unauthenticatedError('User required');
     }
 
     return context.services.ManualReviewToolService.getRoutingRules({
@@ -269,7 +268,7 @@ const Org: GQLOrgResolvers = {
   async appealsRoutingRules(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required');
+      throw unauthenticatedError('User required');
     }
 
     return context.services.ManualReviewToolService.getAppealsRoutingRules({
@@ -282,7 +281,7 @@ const Org: GQLOrgResolvers = {
   async reportingRules(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required');
+      throw unauthenticatedError('User required');
     }
 
     return context.services.ReportingService.getReportingRules({
@@ -295,7 +294,7 @@ const Org: GQLOrgResolvers = {
   async mrtQueues(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required');
+      throw unauthenticatedError('User required');
     }
     return context.services.ManualReviewToolService.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
       {
@@ -306,7 +305,7 @@ const Org: GQLOrgResolvers = {
   async apiKey(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const apiKey = await context.dataSources.orgAPI.getActivatedApiKeyForOrg(
       org.id,
@@ -317,7 +316,7 @@ const Org: GQLOrgResolvers = {
     if (!apiKey) {
       return process.env.NODE_ENV !== 'production'
         ? ''
-        : __throw(new AuthenticationError('API Key not found'));
+        : __throw(new GraphQLError('API Key not found'));
     }
 
     return apiKey.key;
@@ -325,7 +324,7 @@ const Org: GQLOrgResolvers = {
   async integrationConfigs(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return context.dataSources.integrationAPI.getAllIntegrationConfigs(
@@ -336,7 +335,7 @@ const Org: GQLOrgResolvers = {
   async signals(org, { customOnly }, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return customOnly
@@ -346,7 +345,7 @@ const Org: GQLOrgResolvers = {
   async userStrikeThresholds(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.ModerationConfigService.getUserStrikeThresholdsForOrg(
@@ -356,7 +355,7 @@ const Org: GQLOrgResolvers = {
   async policies(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.ModerationConfigService.getPolicies({
@@ -367,49 +366,49 @@ const Org: GQLOrgResolvers = {
   async banks(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return org;
   },
   async hasReportingRulesEnabled(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.OrgSettingsService.hasReportingRulesEnabled(org.id);
   },
   async hasAppealsEnabled(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.OrgSettingsService.hasAppealsEnabled(org.id);
   },
   async userStrikeTTL(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.OrgSettingsService.userStrikeTTLInDays(org.id);
   },
   async publicSigningKey(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.dataSources.orgAPI.getPublicSigningKeyPem(org.id);
   },
   async hasNCMECReportingEnabled(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.NcmecService.hasNCMECReportingEnabled(org.id);
   },
   async ncmecReports(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const reports = await context.services.NcmecService.getNcmecReports({
       orgId: user.orgId,
@@ -489,13 +488,11 @@ const Org: GQLOrgResolvers = {
   async ssoUrl(org, _, context) {
     const user = context.getUser();
     if (user == null || user.orgId !== org.id) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to manage SSO settings',
-      );
+      throw forbiddenError('User does not have permission to manage SSO settings');
     }
 
     const settings = await context.services.OrgSettingsService.getSamlSettings(
@@ -511,13 +508,11 @@ const Org: GQLOrgResolvers = {
   async ssoCert(org, _, context) {
     const user = context.getUser();
     if (user == null || user.orgId !== org.id) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to manage SSO settings',
-      );
+      throw forbiddenError('User does not have permission to manage SSO settings');
     }
 
     const settings = await context.services.OrgSettingsService.getSamlSettings(
@@ -543,7 +538,7 @@ const MatchingBanks: GQLMatchingBanksResolvers = {
   async textBanks(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.ModerationConfigService.getTextBanks({
       orgId: org.id,
@@ -552,7 +547,7 @@ const MatchingBanks: GQLMatchingBanksResolvers = {
   async locationBanks(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.dataSources.locationBankAPI.getGraphQLLocationBanksForOrg(
       org.id,
@@ -561,7 +556,7 @@ const MatchingBanks: GQLMatchingBanksResolvers = {
   async hashBanks(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     return context.services.HMAHashBankService.listBanks(org.id);
   },
@@ -588,7 +583,7 @@ const Mutation: GQLMutationResolvers = {
   async updateAppealSettings(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const settings =
       await context.services.OrgSettingsService.updateAppealSettings({
@@ -603,7 +598,7 @@ const Mutation: GQLMutationResolvers = {
   async setOrgDefaultSafetySettings(_, params, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     await context.services.UserManagementService.upsertOrgDefaultUserInterfaceSettings(
       {
@@ -617,7 +612,7 @@ const Mutation: GQLMutationResolvers = {
   async setAllUserStrikeThresholds(_, params, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     await context.services.ModerationConfigService.setAllUserStrikeThresholds({
@@ -630,7 +625,7 @@ const Mutation: GQLMutationResolvers = {
   async updateUserStrikeTTL(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     await context.services.OrgSettingsService.updateUserStrikeTTL({
       orgId: user.orgId,
@@ -641,7 +636,7 @@ const Mutation: GQLMutationResolvers = {
   async updateSSOCredentials(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.OrgSettingsService.updateSamlSettings({
@@ -653,13 +648,11 @@ const Mutation: GQLMutationResolvers = {
   async updateOrgInfo(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
-        'User does not have permission to manage org info',
-      );
+      throw forbiddenError('User does not have permission to manage org info');
     }
 
     await context.dataSources.orgAPI.updateOrgInfo(user.orgId, input);
