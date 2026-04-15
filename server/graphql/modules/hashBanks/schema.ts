@@ -1,6 +1,4 @@
-import { gql } from 'apollo-server-express';
-
-export const typeDefs = gql`
+export const typeDefs = /* GraphQL */ `
   type ExchangeInfo {
     api: String!
     enabled: Boolean!

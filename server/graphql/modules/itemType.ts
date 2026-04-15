@@ -7,7 +7,6 @@ import {
   type FieldType,
   type ScalarType,
 } from '@roostorg/types';
-import { AuthenticationError } from 'apollo-server-core';
 
 import {
   type ContentItemType as ContentItemTypeT,
@@ -37,6 +36,7 @@ import {
 import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { unauthenticatedError } from '../utils/errors.js';
 
 export type ItemTypeResolversParentType = ItemTypeT | ItemTypeSelector;
 export type ThreadItemTypeResolversParentType =
@@ -533,7 +533,7 @@ const UserItem: GQLUserItemResolvers = {
   async userScore(userItem, __, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id, type } = userItem;
@@ -551,7 +551,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async baseFields(it, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(it, context);
     return itemType.schema;
@@ -559,7 +559,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async derivedFields(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(
       itemTypeOrSelector,
@@ -574,7 +574,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async name(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(
       itemTypeOrSelector,
@@ -585,7 +585,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async description(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(
       itemTypeOrSelector,
@@ -596,7 +596,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async version(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(
       itemTypeOrSelector,
@@ -607,7 +607,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async schemaVariant(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(
       itemTypeOrSelector,
@@ -618,7 +618,7 @@ const itemTypeBaseFieldResolvers: Omit<
   async hiddenFields(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return context.services.ManualReviewToolService.getHiddenFieldsForItemType({
@@ -656,7 +656,7 @@ const UserItemType: GQLUserItemTypeResolvers = {
   async isDefaultUserType(itemTypeOrSelector, _, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     const itemType = await getItemTypeFromItemTypeOrSelector(
       itemTypeOrSelector,
@@ -675,7 +675,7 @@ const Query: GQLQueryResolvers = {
   async itemType(_, { id, version }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return (
@@ -691,7 +691,7 @@ const Query: GQLQueryResolvers = {
   async itemTypes(_, { identifiers }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     return filterNullOrUndefined(
@@ -713,7 +713,7 @@ const Query: GQLQueryResolvers = {
     try {
       const user = context.getUser();
       if (!user) {
-        throw new AuthenticationError('User required.');
+        throw unauthenticatedError('User required.');
       }
 
       const partialItemSubmissions =
@@ -746,7 +746,7 @@ const Mutation: GQLMutationResolvers = {
   async createContentItemType(__, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { fields, hiddenFields, fieldRoles } = params.input;
@@ -784,7 +784,7 @@ const Mutation: GQLMutationResolvers = {
   async updateContentItemType(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id, name, description, fields, hiddenFields, fieldRoles } =
@@ -830,7 +830,7 @@ const Mutation: GQLMutationResolvers = {
   async createThreadItemType(__, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { fields, hiddenFields, fieldRoles } = params.input;
@@ -866,7 +866,7 @@ const Mutation: GQLMutationResolvers = {
   async updateThreadItemType(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id, name, description, fields, hiddenFields, fieldRoles } =
@@ -910,7 +910,7 @@ const Mutation: GQLMutationResolvers = {
   async createUserItemType(__, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { fields, hiddenFields, fieldRoles } = params.input;
@@ -949,7 +949,7 @@ const Mutation: GQLMutationResolvers = {
   async updateUserItemType(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id, name, description, fields, hiddenFields, fieldRoles } =
@@ -991,7 +991,7 @@ const Mutation: GQLMutationResolvers = {
   async deleteItemType(_, params, context) {
     const user = context.getUser();
     if (user == null) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const { id } = params;
@@ -1026,7 +1026,7 @@ export const getItemTypeFromItemTypeOrSelector = async (
 ) => {
   const user = context.getUser();
   if (user == null) {
-    throw new AuthenticationError('User required.');
+    throw unauthenticatedError('User required.');
   }
   if ('name' in itemTypeOrSelector) {
     return itemTypeOrSelector;

@@ -1,7 +1,6 @@
 /* eslint-disable max-classes-per-file */
 
 import { type Exception } from '@opentelemetry/api';
-import { DataSource } from 'apollo-datasource';
 import { type PassportContext } from 'graphql-passport';
 import { uid } from 'uid';
 
@@ -23,13 +22,12 @@ import { WEEK_MS } from '../../utils/time.js';
 /**
  * GraphQL Object for a User
  */
-class UserAPI extends DataSource {
+class UserAPI {
   constructor(
     private readonly sequelize: Dependencies['Sequelize'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly userManagementService: Dependencies['UserManagementService'],
   ) {
-    super();
   }
 
   async getGraphQLUserFromId(opts: { id: string; orgId: string }) {

@@ -1,11 +1,10 @@
-import { AuthenticationError, ForbiddenError } from 'apollo-server-express';
-
 import {
   hasPermission,
   UserPermission,
 } from '../../models/types/permissioning.js';
 import { type GQLMutationRunRetroactionArgs } from '../generated.js';
 import { type Context } from '../resolvers.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   type Mutation {
@@ -46,11 +45,11 @@ const resolvers = {
       );
 
       if (user == null) {
-        throw new AuthenticationError('Authenticated user required');
+        throw unauthenticatedError('Authenticated user required');
       } else if (!hasPermission(UserPermission.RUN_RETROACTION, user.role)) {
-        throw new ForbiddenError('User not authorized to create backtests.');
+        throw forbiddenError('User not authorized to create backtests.');
       } else if (!rule || user.orgId !== rule.orgId) {
-        throw new ForbiddenError('Invalid rule.');
+        throw forbiddenError('Invalid rule.');
       }
 
       return context.dataSources.ruleAPI.runRetroaction(params.input, user);

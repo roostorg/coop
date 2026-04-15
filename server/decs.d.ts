@@ -8,17 +8,6 @@ declare interface String {
   toLowerCase<T extends string>(this: T): Lowercase<T>;
 }
 
-// Workaround for https://github.com/apollographql/apollo-server/issues/6868
-// At some point, we should just upgrade to Apollo Server 4, but that's a big lift.
-//
-// We also have to fork + override retry-axios, which we don't depend on
-// directly, but it's a dependency of the google maps sdk. However, the version
-// of retry-axios used by the SDK isn't compatible with moduleResolution=nodeNext,
-// so we were getting a type error. Forking the SDK to update retry-axios isn't
-// feasible, because the new version of retry-axios uses a newer axios version,
-// which contains some breaking changes (to param serialization; see
-// https://github.com/axios/axios/pull/4734), which would be hard to update the
-// SDK to account for.
 declare module '@graphql-tools/schema' {
   import { GraphQLSchema } from 'graphql';
 

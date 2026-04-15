@@ -1,4 +1,3 @@
-import { DataSource } from 'apollo-datasource';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import '../../services/signalAuthService/index.js';
@@ -62,11 +61,10 @@ function mergeManifest(
 /**
  * TODO: this whole class should probably be merged into the signal auth service.
  */
-class IntegrationAPI extends DataSource {
+class IntegrationAPI {
   constructor(
     private readonly signalAuthService: Dependencies['SignalAuthService'],
   ) {
-    super();
   }
 
   async setConfig(

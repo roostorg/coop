@@ -1,10 +1,11 @@
-import { UserInputError } from 'apollo-server-express';
 import { GraphQLScalarType, Kind } from 'graphql';
 
 import {
   tryParseNonEmptyString,
   type NonEmptyString,
 } from '../../utils/typescript-types.js';
+
+import { userInputError } from '../utils/errors.js';
 
 /**
  * This scalar is needed for values that must be non-empty strings. This
@@ -16,14 +17,14 @@ export default new GraphQLScalarType<NonEmptyString, NonEmptyString>({
   description: 'A string that must be non-empty.',
   serialize(value) {
     if (typeof value !== 'string') {
-      throw new UserInputError('Expected a string.');
+      throw userInputError('Expected a string.');
     }
     return tryParseNonEmptyString(value);
   },
   parseValue: tryParseNonEmptyString,
   parseLiteral(ast) {
     if (ast.kind !== Kind.STRING) {
-      throw new UserInputError('NonEmptyString must be a string.');
+      throw userInputError('NonEmptyString must be a string.');
     }
     return tryParseNonEmptyString(ast.value);
   },
