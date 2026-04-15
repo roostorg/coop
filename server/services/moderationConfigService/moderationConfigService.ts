@@ -24,6 +24,7 @@ import MatchingBankOperations, {
 import PolicyOperations, {
   type PolicyErrorType,
 } from './modules/PolicyOperations.js';
+import RuleReadOperations from './modules/RuleReadOperations.js';
 import UserStrikeOperations, {
   type UserStrikeThresholdErrorType,
 } from './modules/UserStrikeOperations.js';
@@ -37,6 +38,7 @@ import {
   type UserItemType,
 } from './types/itemTypes.js';
 import type { PolicyType } from './types/policies.js';
+import { type PlainRuleWithLatestVersion } from '../../models/rules/ruleTypes.js';
 
 export type ModerationConfigErrorType =
   | 'AttemptingToDeleteDefaultUserType'
@@ -80,6 +82,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly itemTypeOps: ItemTypeOperations;
   private readonly userStrikeOps: UserStrikeOperations;
   private readonly matchingBankOps: MatchingBankOperations;
+  private readonly ruleReadOps: RuleReadOperations;
 
   constructor(
     pgQuery: Kysely<ModerationConfigServicePg>,
@@ -96,9 +99,9 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       onDeletePolicyId,
     );
     this.itemTypeOps = new ItemTypeOperations(pgQuery, pgQueryReplica);
-    // TODO: Remove Rule API and replace with kysely
     this.userStrikeOps = new UserStrikeOperations(pgQuery, pgQueryReplica);
     this.matchingBankOps = new MatchingBankOperations(pgQuery, pgQueryReplica);
+    this.ruleReadOps = new RuleReadOperations(pgQuery, pgQueryReplica);
   }
 
   async getItemTypes(opts: {
@@ -285,6 +288,28 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     readFromReplica?: boolean;
   }) {
     return this.actionOps.getActions(opts);
+  }
+
+  async getActionsForRuleId(ruleId: string) {
+    return this.actionOps.getActionsForRuleId({
+      ruleId,
+      readFromReplica: true,
+    });
+  }
+
+  async getPoliciesByRuleIds(ruleIds: readonly string[]) {
+    return this.policyOps.getPoliciesByRuleIds({
+      ruleIds,
+      readFromReplica: true,
+    });
+  }
+
+  async getEnabledRulesForItemType(itemTypeId: string) {
+    return this.ruleReadOps.getEnabledRulesForItemType(itemTypeId);
+  }
+
+  async findEnabledUserRules(): Promise<PlainRuleWithLatestVersion[]> {
+    return this.ruleReadOps.findEnabledUserRules();
   }
 
   async getPolicies(opts: { orgId: string; readFromReplica?: boolean }) {

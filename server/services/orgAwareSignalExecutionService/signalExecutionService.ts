@@ -4,7 +4,7 @@ import stringify from 'safe-stable-stringify';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
-import { type PolicyActionPenalties } from '../../models/OrgModel.js';
+import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { type MatchingValues } from '../../models/rules/matchingValues.js';
 import { type LocationArea } from '../../models/types/locationArea.js';
 import { jsonStringify } from '../../utils/encoding.js';

@@ -26,7 +26,10 @@ import {
   ITEM_SUBMISSION_QUEUE_NAME,
   ITEM_SUBMISSION_DLQ_NAME,
 } from '../queues/itemSubmissionQueue.js';
-import { type PolicyActionPenalties } from '../models/OrgModel.js';
+import {
+  getPolicyActionPenaltiesForOrg,
+  type PolicyActionPenalties,
+} from '../services/policyActionPenalties.js';
 import { type HashBank, HashBankService } from '../services/hmaService/index.js';
 import makeActionPublisher, {
   type ActionPublisher,
@@ -39,7 +42,6 @@ import {
   makeGetItemTypesForOrgEventuallyConsistent,
   makeGetLocationBankLocationsEventuallyConsistent,
   makeGetPoliciesForRulesEventuallyConsistent,
-  makeGetSequelizeItemTypeEventuallyConsistent,
   makeGetTextBankStringsEventuallyConsistent,
   makeRecordRuleActionLimitUsage,
   type GetActionsForRuleEventuallyConsistent,
@@ -47,7 +49,6 @@ import {
   type GetItemTypesForOrgEventuallyConsistent,
   type GetLocationBankLocationsBankEventuallyConsistent,
   type GetPoliciesForRulesEventuallyConsistent,
-  type GetSequelizeItemTypeEventuallyConsistent,
   type GetTextBankStringsEventuallyConsistent,
   type RecordRuleActionLimitUsage,
 } from '../rule_engine/ruleEngineQueries.js';
@@ -396,7 +397,6 @@ export interface Dependencies {
     (input: { orgId: string; bankId: string }) => Promise<HashBank | null>
   >;
 
-  getSequelizeItemTypeEventuallyConsistent: GetSequelizeItemTypeEventuallyConsistent;
   getItemTypesForOrgEventuallyConsistent: GetItemTypesForOrgEventuallyConsistent;
   getItemTypeEventuallyConsistent: GetItemTypeEventuallyConsistent;
   getEnabledRulesForItemTypeEventuallyConsistent: GetEnabledRulesForItemTypeEventuallyConsistent;
@@ -1343,11 +1343,14 @@ export default async function getBottle() {
   bottle.factory(
     'getPolicyActionPenaltiesEventuallyConsistent',
     (container) => {
-      const Org = container.OrgModel;
+      const moderationConfigService = container.ModerationConfigService;
 
       return cached({
         async producer(orgId) {
-          return Org.getPolicyActionPenaltiesEventuallyConsistent(orgId);
+          return getPolicyActionPenaltiesForOrg(
+            moderationConfigService,
+            orgId,
+          );
         },
         directives: { freshUntilAge: 60 },
       });
@@ -1394,12 +1397,6 @@ export default async function getBottle() {
       directives: { freshUntilAge: 600 },
     });
   });
-
-  register(
-    bottle,
-    'getSequelizeItemTypeEventuallyConsistent',
-    makeGetSequelizeItemTypeEventuallyConsistent,
-  );
 
   register(
     bottle,
@@ -1578,7 +1575,6 @@ export default async function getBottle() {
             'ReportingAnalyticsAdapter',
             'KyselyPg',
             'KyselyPgReadReplica',
-            'getSequelizeItemTypeEventuallyConsistent',
             'getEnabledRulesForItemTypeEventuallyConsistent',
             'getPoliciesForRulesEventuallyConsistent',
             'getActionsForRuleEventuallyConsistent',

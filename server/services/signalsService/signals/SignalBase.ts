@@ -6,7 +6,7 @@ import {
 } from '@roostorg/types';
 import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
-import { type PolicyActionPenalties } from '../../../models/OrgModel.js';
+import { type PolicyActionPenalties } from '../../policyActionPenalties.js';
 import { type TaggedItemData } from '../../../models/rules/item-type-fields.js';
 import { type CoopError } from '../../../utils/errors.js';
 import { type Language } from '../../../utils/language.js';

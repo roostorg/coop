@@ -11,15 +11,21 @@ export default inject(
     'RuleEngine',
     'UserStatisticsService',
     'closeSharedResourcesForShutdown',
-    'RuleModel',
+    'ModerationConfigService',
     'getItemTypeEventuallyConsistent',
   ],
-  (RuleEngine, userStatisticsService, sharedResourceShutdown, Rule, getItemTypeEventuallyConsistent) => ({
+  (
+    RuleEngine,
+    userStatisticsService,
+    sharedResourceShutdown,
+    moderationConfigService,
+    getItemTypeEventuallyConsistent,
+  ) => ({
     type: 'Job' as const,
     async run() {
       // TODO: we may have to do only some orgs per job run at some point.
       // For now, though, this is fine.
-      const userRules = await Rule.findEnabledUserRules();
+      const userRules = await moderationConfigService.findEnabledUserRules();
 
       if (!userRules.length) {
         return;
