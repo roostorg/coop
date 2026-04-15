@@ -1,8 +1,8 @@
 import { type Kysely } from 'kysely';
 
 import { makeTestWithFixture } from '../../test/utils.js';
-import UserManagementService from './userManagementService.js';
 import type { UserManagementPg } from './index.js';
+import UserManagementService from './userManagementService.js';
 
 // Mock dependencies
 const mockDb = {
@@ -15,6 +15,7 @@ const mockSendEmail = jest.fn();
 
 const mockConfigService = {
   uiUrl: 'http://localhost:3000',
+  apiUrl: 'http://localhost:8080',
 };
 
 describe('UserManagementService', () => {
