@@ -29,14 +29,14 @@ import { gqlSuccessResult } from '../utils/gqlResult.js';
 async function resolveOidcField(
   org: { id: string },
   context: { getUser: () => any; services: any },
-  field: 'client_id' | 'client_secret' | 'issuer_url',
+  field: 'client_id' | 'issuer_url',
 ) {
   const user = context.getUser();
   if (user == null || user.orgId !== org.id) {
-    throw new AuthenticationError('Authenticated user required');
+    throw unauthenticatedError('Authenticated user required');
   }
   if (!user.getPermissions().includes('MANAGE_ORG')) {
-    throw new AuthenticationError(
+    throw forbiddenError(
       'User does not have permission to manage SSO settings',
     );
   }
@@ -112,8 +112,6 @@ const typeDefs = /* GraphQL */ `
     oidcEnabled: Boolean!
     issuerUrl: String
     clientId: String
-    clientSecret: String
-    oidcCallbackUrl: String
     hasPartialItemsEndpoint: Boolean!
     partialItemsEndpoint: String
     partialItemsRequestHeaders: JSONObject
@@ -786,12 +784,12 @@ const Org: GQLOrgResolvers = {
 
     return settings.cert;
   },
-
   async clientSecret(org, _, context) {
     // Never expose the real client secret — return masked value if set
     const value = await resolveOidcField(org, context, 'client_secret');
     return value ? '••••••••' : null;
   },
+  
   async issuerUrl(org, _, context) {
     return resolveOidcField(org, context, 'issuer_url');
   },
@@ -948,7 +946,7 @@ const Mutation: GQLMutationResolvers = {
       await context.services.OrgSettingsService.getOidcSettings(user.orgId);
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
     }
@@ -956,7 +954,7 @@ const Mutation: GQLMutationResolvers = {
       await context.services.OrgSettingsService.getOidcSettings(user.orgId);
 
     if (oidcSettings?.oidc_enabled && input.samlEnabled) {
-      throw new Error('SAML cannot enabled as OIDC is enabled.');
+      throw new Error('SAML cannot be enabled as OIDC is enabled.');
     }
 
     if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
@@ -975,14 +973,14 @@ const Mutation: GQLMutationResolvers = {
   async updateSSOOidcCredentials(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
 
     const samlSettings =
       await context.services.OrgSettingsService.getSamlSettings(user.orgId);
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
     }
@@ -991,7 +989,7 @@ const Mutation: GQLMutationResolvers = {
       await context.services.OrgSettingsService.getSamlSettings(user.orgId);
 
     if (samlSettings?.saml_enabled && input.oidcEnabled) {
-      throw new Error('OIDC cannot enabled as SAML is enabled.');
+      throw new Error('OIDC cannot be enabled as SAML is enabled.');
     }
 
     if (input.issuerUrl && input.clientId && input.clientSecret) {
@@ -1010,10 +1008,10 @@ const Mutation: GQLMutationResolvers = {
   async switchSSOMethod(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('User required.');
+      throw unauthenticatedError('User required.');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
     }

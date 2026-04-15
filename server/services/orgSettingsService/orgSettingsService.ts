@@ -236,7 +236,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       oidcEnabled: boolean;
       issuerUrl: string;
       clientId: string;
-      clientSecret: string;
+      clientSecret?: string;
     }) {
       await pgQuery
         .updateTable('public.org_settings')
@@ -245,7 +245,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
           oidc_enabled: input.oidcEnabled,
           issuer_url: input.issuerUrl,
           client_id: input.clientId,
-          client_secret: encrypt(input.clientSecret),
+          ...(input.clientSecret ? { client_secret: encrypt(input.clientSecret) } : {}),
         })
         .executeTakeFirst();
       return true;

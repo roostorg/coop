@@ -226,7 +226,12 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user);
+          if (!user.loginMethods.includes('saml')) {
+            user.loginMethods = [...user.loginMethods, 'saml'];
+            await user.save();
+          }
+
+          return done(null, user as any);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -249,7 +254,12 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user);
+          if (!user.loginMethods.includes('saml')) {
+            user.loginMethods = [...user.loginMethods, 'saml'];
+            await user.save();
+          }
+
+          return done(null, user as any);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -284,11 +294,11 @@ export default async function makeApiServer(deps: Dependencies) {
     }
     try {
       const sessionData = req.session['oidc'] as
-        | { code_verifier: string; state?: string; org_id: string }
+        | { code_verifier: string; state: string; org_id: string }
         | undefined;
 
-      if (!sessionData || !sessionData.code_verifier || !sessionData.org_id) {
-        return res.redirect('/');
+      if (!sessionData || !sessionData.code_verifier || !sessionData.state || !sessionData.org_id) {
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=session_expired`);
       }
 
       const { code_verifier: codeVerifier, state, org_id: orgId } = sessionData;
@@ -297,23 +307,23 @@ export default async function makeApiServer(deps: Dependencies) {
 
       const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
       if (!oidcSettings || !oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] Missing or incomplete OIDC settings for org', orgId);
         return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
       }
 
       const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
 
-      const { API_BASE_URL } = process.env;
       const config = await discoverOidcConfig(issuerUrl, oidcSettings.client_id, oidcSettings.client_secret);
 
       // Reconstruct callback URL with code/state from IdP redirect.
       // authorizationCodeGrant needs: base = registered redirect_uri, query = code+state from IdP.
-      const currentUrl = new URL(`${API_BASE_URL}/api/v1/oidc/login/callback`);
+      const currentUrl = new URL(`${deps.ConfigService.apiUrl}/api/v1/oidc/login/callback`);
       for (const [k, v] of new URLSearchParams(req.url.includes('?') ? req.url.split('?')[1] : '')) {
         currentUrl.searchParams.set(k, v);
       }
 
-      const checks: { pkceCodeVerifier: string; expectedState?: string } = { pkceCodeVerifier: codeVerifier };
-      if (state) checks.expectedState = state;
+      const checks = { pkceCodeVerifier: codeVerifier, expectedState: state };
 
       const tokens = await oidcClient.authorizationCodeGrant(config, currentUrl, checks);
 
@@ -326,13 +336,22 @@ export default async function makeApiServer(deps: Dependencies) {
       }
 
       if (!email) {
-        return res.redirect('/');
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] No email in token claims or userinfo');
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=no_email`);
       }
 
       const user = await User.findOne({ where: { email: String(email) } });
 
       if (!user || user.orgId !== orgId) {
-        return res.redirect('/');
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] User not found or org mismatch', { email, orgId, userOrgId: user?.orgId });
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=user_not_found`);
+      }
+
+      if (!user.loginMethods.includes('oidc')) {
+        user.loginMethods = [...user.loginMethods, 'oidc'];
+        await user.save();
       }
 
       req.login(user as any, (err) => {
@@ -350,16 +369,14 @@ export default async function makeApiServer(deps: Dependencies) {
       const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
 
       if (!oidcSettings || oidcSettings.oidc_enabled !== true) {
-        return next(makeBadRequestError('OIDC not enabled for this organization.', { shouldErrorSpan: true }));
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=oidc_not_enabled`);
       }
       if (!oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
-        return next(makeInternalServerError('Missing OIDC credentials for org.', { shouldErrorSpan: true }));
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] Missing credentials for org', orgId, { hasClientId: Boolean(oidcSettings.client_id), hasSecret: Boolean(oidcSettings.client_secret), hasIssuer: Boolean(oidcSettings.issuer_url) });
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=oidc_misconfigured`);
       }
 
-      const { API_BASE_URL } = process.env;
-      if (!API_BASE_URL) {
-        return next(makeInternalServerError('API_BASE_URL not configured.', { shouldErrorSpan: true }));
-      }
       const callbackUrl = deps.SSOService.getSSOOidcCallbackUrl();
       const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
 
@@ -383,7 +400,13 @@ export default async function makeApiServer(deps: Dependencies) {
       // Store PKCE data + orgId in session for callback
       req.session.oidc = { code_verifier: codeVerifier, state, org_id: orgId };
 
-      res.redirect(redirectTo.href);
+      // Explicitly save before redirecting — with saveUninitialized:false and an
+      // async store (connect-pg-simple), the redirect can reach the browser before
+      // the session row is committed, causing the callback to find an empty session.
+      req.session.save((err) => {
+        if (err) return next(err);
+        res.redirect(redirectTo.href);
+      });
     } catch (e) {
       next(e);
     }
