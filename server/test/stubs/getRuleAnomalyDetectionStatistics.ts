@@ -1,6 +1,5 @@
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import yaml from 'js-yaml';
 
 import { type GetRuleAnomalyDetectionStatistics } from '../../services/ruleAnomalyDetectionService/index.js';

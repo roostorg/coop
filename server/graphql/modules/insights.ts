@@ -351,7 +351,7 @@ const Query: GQLQueryResolvers = {
         // here, meaning that graphql queries would throw an exception if asking for
         // those fields. To provide them, we'll have to update (and add better
         // typings for) getRulePassingContentSamples.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
         {
           ...result,
           itemId: result.contentId,

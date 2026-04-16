@@ -202,7 +202,6 @@ export function patchInPlace<T extends object>(object: T, patch: Partial<T>) {
 }
 
 export function removeUndefinedKeys<T extends object>(object: T) {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return _.pickBy(object, (v) => v !== undefined);
 }
 

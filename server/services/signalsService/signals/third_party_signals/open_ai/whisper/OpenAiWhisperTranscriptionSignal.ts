@@ -186,7 +186,6 @@ export default class OpenAiWhisperTranscriptionSignal extends SignalBase<
     const { value } = input;
     const credential = await this.getOpenAiCredentials(input.orgId);
 
-    // eslint-disable-next-line security/detect-possible-timing-attacks
     if (!credential || !credential.apiKey) {
       throw new Error('Missing API credentials');
     }

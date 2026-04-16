@@ -141,6 +141,7 @@ export default class ActionOperations {
       name: it.name,
       orgId: it.orgId,
       applyUserStrikes: it.applyUserStrikes,
+      penalty: it.penalty,
       ...(() => {
         switch (it.actionType) {
           case 'CUSTOM_ACTION':

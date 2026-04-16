@@ -6,7 +6,6 @@ describe('URL Tests', () => {
       // This absolutely is unsafe mutation of a global that'll be visible
       // across test suites. However, this env var should only be relied upon
       // by this module, so it should be ok.
-      // eslint-disable-next-line better-mutation/no-mutation
       process.env.ALLOW_USER_INPUT_LOCALHOST_URIS = 'false';
     });
 
@@ -24,7 +23,6 @@ describe('URL Tests', () => {
       // This absolutely is unsafe mutation of a global that'll be visible
       // across test suites. However, this env var should only be relied upon
       // by this module, so it should be ok.
-      // eslint-disable-next-line better-mutation/no-mutation
       process.env.ALLOW_USER_INPUT_LOCALHOST_URIS = 'false';
 
       expect(() => validateUrl('https://localhost:3000')).toThrow();
@@ -37,7 +35,6 @@ describe('URL Tests', () => {
       // This absolutely is unsafe mutation of a global that'll be visible
       // across test suites. However, this env var should only be relied upon
       // by this module, so it should be ok.
-      // eslint-disable-next-line better-mutation/no-mutation
       process.env.ALLOW_USER_INPUT_LOCALHOST_URIS = 'true';
     });
 

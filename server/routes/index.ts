@@ -19,7 +19,6 @@ export type Controller = {
   routes: ControllerRouteList;
 };
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 export default {
   Items: ItemRoutes,
   Content: ContentRoutes,

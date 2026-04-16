@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { GQLScalarType } from '../../../../../../graphql/generated';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
 import RuleFormConditionLocationMatchingValues from './RuleFormConditionLocationMatchingValues';
@@ -14,7 +13,13 @@ export default function RuleFormConditionMatchingValues(props: {
   ) => void;
   allConditions?: RuleFormLeafCondition[];
 }) {
-  const { condition, location, inputScalarType, onUpdateMatchingValues, allConditions = [] } = props;
+  const {
+    condition,
+    location,
+    inputScalarType,
+    onUpdateMatchingValues,
+    allConditions = [],
+  } = props;
 
   if (
     !condition.input ||

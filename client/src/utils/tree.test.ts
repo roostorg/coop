@@ -43,7 +43,7 @@ describe('Tree tests', () => {
     const filteredTree = tree.filterTree((node) => node.includes(filterString));
 
     expect(filteredTree).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
     const filteredTreeValues = convertTreeToList(filteredTree!);
     expect(
       filteredTreeValues

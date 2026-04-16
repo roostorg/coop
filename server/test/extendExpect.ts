@@ -52,7 +52,7 @@ expect.extend({
         keyof typeof propertyMatchers;
 
       if (isJsonPath(k)) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete, functional/immutable-data -- derived snapshot matchers
         delete generatedPropertyMatchers[key];
         JSONPath({ path: k, json: received, resultType: 'path' }).forEach(
           (pathStr: string) => {

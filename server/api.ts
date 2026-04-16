@@ -7,6 +7,7 @@ import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/dis
 import { expressMiddleware } from '@as-integrations/express4';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
+import { MultiSamlStrategy } from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   SEMATTRS_EXCEPTION_MESSAGE,
@@ -18,11 +19,10 @@ import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
-import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import depthLimit from 'graphql-depth-limit';
+import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
-import { MultiSamlStrategy } from '@node-saml/passport-saml';
 
 import {
   makeLoginIncorrectPasswordError,

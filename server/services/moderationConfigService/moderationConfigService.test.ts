@@ -34,20 +34,23 @@ describe('ModerationConfigService', () => {
   // overkill), we have to track entities added in each write test, by adding
   // them to the variables below, so that we can assert on the results when
   // reading.
+  let allCreatedItemTypes = [] as ItemType[];
   const createdItemTypes = {
-    ALL: [] as ItemType[],
+    get ALL() {
+      return allCreatedItemTypes;
+    },
     get USER() {
-      return this.ALL.filter((it) => it.kind === 'USER');
+      return allCreatedItemTypes.filter((it) => it.kind === 'USER');
     },
     get CONTENT() {
-      return this.ALL.filter((it) => it.kind === 'CONTENT');
+      return allCreatedItemTypes.filter((it) => it.kind === 'CONTENT');
     },
     get THREAD() {
-      return this.ALL.filter((it) => it.kind === 'THREAD');
+      return allCreatedItemTypes.filter((it) => it.kind === 'THREAD');
     },
   };
 
-  const createdActions = [] as Action[];
+  let createdActions = [] as Action[];
 
   const createdPolicies = [
     {
@@ -81,7 +84,6 @@ describe('ModerationConfigService', () => {
   // underlying db tables, which makes the tests more brittle/harder to maintain
   // than I'd like if the service is refactored.
   beforeAll(async () => {
-    // eslint-disable-next-line better-mutation/no-mutation
     container = (await getBottle()).container;
 
     // An instance of kysely that will throw if any queries are run through it;
@@ -97,14 +99,13 @@ describe('ModerationConfigService', () => {
     // In order to test that the correct db is queried (i.e., replicas vs the
     // primary), we'll just use different instances of the service, where each
     // only has access to the db we expect to be hit.
-    // eslint-disable-next-line better-mutation/no-mutation
+
     sutWithPrimary = new ModerationConfigService(
       container.KyselyPg,
       kyselyShouldBeUnused,
       async () => {},
     );
 
-    // eslint-disable-next-line better-mutation/no-mutation
     sutWithReadReplica = new ModerationConfigService(
       kyselyShouldBeUnused,
       container.KyselyPgReadReplica,
@@ -118,9 +119,8 @@ describe('ModerationConfigService', () => {
       dummyOrgId,
     );
 
-    // eslint-disable-next-line better-mutation/no-mutation
     defaultUserItemType = createOrgResult.defaultUserItemType;
-    createdItemTypes.ALL.push(defaultUserItemType);
+    allCreatedItemTypes = [...allCreatedItemTypes, defaultUserItemType];
   });
 
   afterAll(async () => {
@@ -228,7 +228,7 @@ describe('ModerationConfigService', () => {
           );
           expect(saved.orgId).toBe(dummyOrgId);
           expect(saved).toEqual(fetched);
-          createdItemTypes.ALL.push(saved);
+          allCreatedItemTypes = [...allCreatedItemTypes, saved];
         });
       });
 
@@ -278,7 +278,7 @@ describe('ModerationConfigService', () => {
           );
           expect(saved.orgId).toBe(dummyOrgId);
           expect(saved).toEqual(fetched);
-          createdItemTypes.ALL.push(saved);
+          allCreatedItemTypes = [...allCreatedItemTypes, saved];
         });
       });
 
@@ -330,7 +330,7 @@ describe('ModerationConfigService', () => {
           );
           expect(saved.orgId).toBe(dummyOrgId);
           expect(saved).toEqual(fetched);
-          createdItemTypes.ALL.push(saved);
+          allCreatedItemTypes = [...allCreatedItemTypes, saved];
         });
       });
     });
@@ -457,7 +457,7 @@ describe('ModerationConfigService', () => {
           );
           expect(saved.orgId).toBe(dummyOrgId);
           expect(saved).toEqual(fetched);
-          createdActions.push(saved);
+          createdActions = [...createdActions, saved];
         });
       });
     });
@@ -669,7 +669,7 @@ describe('ModerationConfigService', () => {
     });
   });
   describe('TextBank-returning methods', () => {
-    const createdTextBanks = [] as {
+    let createdTextBanks = [] as {
       id: string;
       orgId: string;
       name: string;
@@ -706,7 +706,7 @@ describe('ModerationConfigService', () => {
           );
 
           expect(textBank.orgId).toBe(dummyOrgId);
-          createdTextBanks.push(textBank);
+          createdTextBanks = [...createdTextBanks, textBank];
         });
       });
     });

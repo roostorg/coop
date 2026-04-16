@@ -114,7 +114,10 @@ const Query: GQLQueryResolvers = {
       });
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('actionStatistics: warehouse query failed:', (e as Error).message);
+      console.error(
+        'actionStatistics: warehouse query failed:',
+        (e as Error).message,
+      );
       return [];
     }
   },
@@ -141,7 +144,10 @@ const Query: GQLQueryResolvers = {
       }));
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('topPolicyViolations: warehouse query failed:', (e as Error).message);
+      console.error(
+        'topPolicyViolations: warehouse query failed:',
+        (e as Error).message,
+      );
       return [];
     }
   },

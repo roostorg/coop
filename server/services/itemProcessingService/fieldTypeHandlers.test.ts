@@ -28,7 +28,6 @@ describe('Content type schemas', () => {
           ) as fc.Arbitrary<Field<ContainerType>>;
 
           fc.assert(
-            // eslint-disable-next-line no-loop-func
             fc.property(dummyContainerFieldArb, (containerField) => {
               expect(
                 (handlers as (typeof fieldTypeHandlers)[ContainerType]).coerce(

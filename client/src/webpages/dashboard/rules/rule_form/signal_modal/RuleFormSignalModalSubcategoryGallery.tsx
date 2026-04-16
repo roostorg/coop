@@ -47,20 +47,21 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
   // So we need to allow a search term like "snake case" match against the subcategory
   // "snake_case". To do this, we add a snake case search term.
   const snakeCaseSearchTerm = searchTerm.replaceAll('_', ' ');
-  const eligibleSubcategories =
-    rebuildSubcategoryTreeFromGraphQLResponse(stripped)
-      // First filter out subcategories that don't include the search term.
-      // eslint-disable-next-line array-callback-return
-      .filter(
-        (subcategory) =>
-          subcategory.id.includes(searchTerm) ||
-          subcategory.id.includes(snakeCaseSearchTerm) ||
-          subcategory.label.includes(searchTerm) ||
-          subcategory.label.includes(snakeCaseSearchTerm) ||
-          (subcategory.description &&
-            (subcategory.description.includes(searchTerm) ||
-              subcategory.description.includes(snakeCaseSearchTerm))),
-      );
+  const eligibleSubcategories = rebuildSubcategoryTreeFromGraphQLResponse(
+    stripped,
+  )
+    // First filter out subcategories that don't include the search term.
+
+    .filter(
+      (subcategory) =>
+        subcategory.id.includes(searchTerm) ||
+        subcategory.id.includes(snakeCaseSearchTerm) ||
+        subcategory.label.includes(searchTerm) ||
+        subcategory.label.includes(snakeCaseSearchTerm) ||
+        (subcategory.description &&
+          (subcategory.description.includes(searchTerm) ||
+            subcategory.description.includes(snakeCaseSearchTerm))),
+    );
 
   return (
     <div className="flex flex-col">

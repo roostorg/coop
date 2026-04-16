@@ -21,7 +21,6 @@ describe('POST Items', () => {
     analytics: Dependencies['DataWarehouseAnalytics'];
 
   beforeAll(async () => {
-    // eslint-disable-next-line better-mutation/no-mutation
     ({
       request,
       shutdown,
@@ -34,9 +33,14 @@ describe('POST Items', () => {
     } = await makeMockedServer());
 
     const { User, Org } = models;
-    // eslint-disable-next-line better-mutation/no-mutation
-    ({ apiKey } = await createOrg({ Org }, ModerationConfigService, ApiKeyService, orgId));
-    // eslint-disable-next-line better-mutation/no-mutation
+
+    ({ apiKey } = await createOrg(
+      { Org },
+      ModerationConfigService,
+      ApiKeyService,
+      orgId,
+    ));
+
     contentType = await ModerationConfigService.createContentType(orgId, {
       name: 'test',
       description: faker.datatype.string(),

@@ -121,20 +121,18 @@ export async function getConditionSetResults(
         ? await getConditionSetResults(condition, evaluationContext, tracer)
         : {
             ...condition,
-            result: await runLeafCondition(
-              condition,
-              evaluationContext,
-              // eslint-disable-next-line no-loop-func
-            ).catch((e) => {
-              // If evaluating a condition fails, we're eventually going to want
-              // to retry before we give up but, for now, we just mark the result
-              // as failed and move on.
-              const activeSpan = tracer.getActiveSpan();
-              if (activeSpan?.isRecording()) {
-                activeSpan.recordException(e);
-              }
-              return { outcome: ConditionFailureOutcome.ERRORED };
-            }),
+            result: await runLeafCondition(condition, evaluationContext).catch(
+              (e) => {
+                // If evaluating a condition fails, we're eventually going to want
+                // to retry before we give up but, for now, we just mark the result
+                // as failed and move on.
+                const activeSpan = tracer.getActiveSpan();
+                if (activeSpan?.isRecording()) {
+                  activeSpan.recordException(e);
+                }
+                return { outcome: ConditionFailureOutcome.ERRORED };
+              },
+            ),
           };
 
     result.conditions.push(conditionWithResult as any);
@@ -266,8 +264,7 @@ export function getAllAggregationsInConditionSet(
       return getAllAggregationsInConditionSet(condition);
     }
     const sig = condition.signal;
-    const args =
-      sig?.type === 'AGGREGATION' ? sig.args : undefined;
+    const args = sig?.type === 'AGGREGATION' ? sig.args : undefined;
     return args != null ? [args.aggregationClause] : [];
   });
 }

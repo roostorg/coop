@@ -6,6 +6,8 @@ import { type JsonObject, type ReadonlyDeep, type Simplify } from 'type-fest';
 
 import { type TaggedUnionFromCases } from '../../../utils/typescript-types.js';
 
+import { type UserPenaltySeverity } from './shared.js';
+
 export const ActionType = makeEnumLike([
   'CUSTOM_ACTION',
   'ENQUEUE_TO_MRT',
@@ -28,6 +30,7 @@ type AnyAction = ReadonlyDeep<
       orgId: string;
       name: string;
       applyUserStrikes: boolean;
+      penalty: UserPenaltySeverity;
     } & TaggedUnionFromCases<
       { actionType: ActionType },
       {

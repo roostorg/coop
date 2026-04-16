@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto';
 import { Kysely, type CompiledQuery, type QueryResult } from 'kysely';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
+import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { safePick } from '../../utils/misc.js';
 import { makeFetchUserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
 
@@ -17,13 +17,13 @@ describe('fetchUserSubmissionStatistics', () => {
     // This mutation is safe (while we're not running tests concurrently) as
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
-    // eslint-disable-next-line better-mutation/no-mutation
+
     warehouseMock = jest.fn(async (_it) => Promise.resolve({ rows: [] }));
 
     // This mutation is safe (while we're not running tests concurrently) as
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
-    // eslint-disable-next-line better-mutation/no-mutation
+
     const kysely = new Kysely({
       dialect: makeMockWarehouseDialect(warehouseMock),
     });
@@ -32,7 +32,6 @@ describe('fetchUserSubmissionStatistics', () => {
       destroy: jest.fn(async () => {}),
     };
 
-    // eslint-disable-next-line better-mutation/no-mutation
     sut = makeFetchUserSubmissionStatistics(dialectMock);
   });
 

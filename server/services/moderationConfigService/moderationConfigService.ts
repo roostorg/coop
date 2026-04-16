@@ -1,10 +1,8 @@
-/* eslint-disable max-lines */
-import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
-// eslint-disable-next-line import/no-restricted-paths
+import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../../models/types/permissioning.js';
 import {
   CoopError,

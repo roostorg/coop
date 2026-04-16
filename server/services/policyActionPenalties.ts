@@ -30,13 +30,6 @@ export function computeActionPolicyPenalty(
     : penaltySeverityMap[actionPenalty] + penaltySeverityMap[policyPenalty];
 }
 
-/** DB rows carry `penalty` but the public `Action` / `Policy` unions omit it in TS. */
-type PenaltyRow = { penalty?: UserPenaltySeverity };
-
-function userPenalty(row: PenaltyRow): UserPenaltySeverity {
-  return row.penalty ?? UserPenaltySeverity.NONE;
-}
-
 export async function getPolicyActionPenaltiesForOrg(
   moderationConfigService: ModerationConfigService,
   orgId: string,
@@ -47,16 +40,12 @@ export async function getPolicyActionPenaltiesForOrg(
   ]);
 
   return policies.flatMap((policy) =>
-    actions.map((action) => {
-      const actionPenalty = userPenalty(action as PenaltyRow);
-      const policyPenalty = userPenalty(policy as PenaltyRow);
-      return {
-        actionId: action.id,
-        policyId: policy.id,
-        penalties: [
-          computeActionPolicyPenalty(actionPenalty, policyPenalty),
-        ],
-      };
-    }),
+    actions.map((action) => ({
+      actionId: action.id,
+      policyId: policy.id,
+      penalties: [
+        computeActionPolicyPenalty(action.penalty, policy.penalty),
+      ],
+    })),
   );
 }

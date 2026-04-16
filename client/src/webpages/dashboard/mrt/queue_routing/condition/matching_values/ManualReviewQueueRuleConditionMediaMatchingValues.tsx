@@ -1,8 +1,8 @@
-/* eslint-disable no-console */
 import { Select } from 'antd';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
+
 import { useGQLHashBanksQuery } from '../../../../../../graphql/generated';
 import { RuleFormLeafCondition } from '../../../../rules/types';
 import { ManualReviewQueueRoutingStaticTokenField } from '../../ManualReviewQueueRoutingStaticField';
@@ -15,7 +15,12 @@ export default function ManualReviewQueueRuleConditionMediaMatchingValues(props:
   onUpdateSelectedBankIds(imageBankIds: readonly string[]): void;
   allConditions?: RuleFormLeafCondition[];
 }) {
-  const { condition, editing, onUpdateSelectedBankIds, allConditions = [] } = props;
+  const {
+    condition,
+    editing,
+    onUpdateSelectedBankIds,
+    allConditions = [],
+  } = props;
 
   const { loading, error, data } = useGQLHashBanksQuery();
   const hashBanks = data?.hashBanks ?? [];
@@ -24,7 +29,7 @@ export default function ManualReviewQueueRuleConditionMediaMatchingValues(props:
   const selectedBankIds = new Set(
     allConditions
       .filter((c) => c !== condition) // Exclude current condition by reference
-      .flatMap((c) => c.matchingValues?.imageBankIds ?? [])
+      .flatMap((c) => c.matchingValues?.imageBankIds ?? []),
   );
 
   if (loading) {
@@ -48,9 +53,9 @@ export default function ManualReviewQueueRuleConditionMediaMatchingValues(props:
           dropdownMatchSelectWidth={false}
         >
           {hashBanks.map((bank) => (
-            <Option 
-              key={bank.id} 
-              value={bank.id} 
+            <Option
+              key={bank.id}
+              value={bank.id}
               label={bank.name}
               disabled={selectedBankIds.has(bank.id)}
             >
@@ -60,9 +65,11 @@ export default function ManualReviewQueueRuleConditionMediaMatchingValues(props:
         </Select>
       ) : (
         <ManualReviewQueueRoutingStaticTokenField
-          tokens={condition.matchingValues?.imageBankIds?.map(id => 
-            hashBanks.find(bank => bank.id === id)?.name ?? id
-          ) ?? []}
+          tokens={
+            condition.matchingValues?.imageBankIds?.map(
+              (id) => hashBanks.find((bank) => bank.id === id)?.name ?? id,
+            ) ?? []
+          }
         />
       )}
     </div>

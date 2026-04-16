@@ -77,7 +77,7 @@ class ItemModelScoreLogger {
                 model_score: data.model.score,
               }
             : {}),
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
           ...(failureReason != null
             ? {
                 event: 'REQUEST_FAILED' as const,

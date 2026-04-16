@@ -25,13 +25,10 @@ describe('POST Report', () => {
     >;
 
   beforeAll(async () => {
-    // eslint-disable-next-line better-mutation/no-mutation
     ({ deps, request, shutdown } = await makeMockedServer());
 
-    // eslint-disable-next-line better-mutation/no-mutation
     models = deps.Sequelize;
 
-    // eslint-disable-next-line better-mutation/no-mutation
     ({ apiKey } = await createOrg(
       models,
       deps.ModerationConfigService,
@@ -103,11 +100,11 @@ describe('POST Report', () => {
         schemaFieldRoles: {},
       },
     );
-    // eslint-disable-next-line better-mutation/no-mutation
+
     contentTypeId = contentType.id;
-    // eslint-disable-next-line better-mutation/no-mutation
+
     userTypeId = userType.id;
-    // eslint-disable-next-line better-mutation/no-mutation
+
     threadTypeId = threadType.id;
 
     await models.User.create({
