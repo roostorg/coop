@@ -44,6 +44,7 @@ import {
 } from '../../storage/dataWarehouse/warehouseSchema.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
 import {
+  type JsonOf,
   jsonParse,
   jsonStringify,
   tryJsonParse,
@@ -87,7 +88,7 @@ export type RuleExecutionResult = {
   userId?: string;
   userTypeId?: string;
   content: string;
-  result: ConditionSetWithResultAsLogged;
+  result: ConditionSetWithResultAsLogged | null;
   environment: RuleStatus;
   passed: boolean;
   ruleId: string;
@@ -722,15 +723,20 @@ class RuleAPI {
     let filteredResultsQuery = this.warehouse
       .selectFrom('RULE_EXECUTIONS')
       .select([
-        // Aliasing each column to the corresponding object key so we do fewer
-        // renames from the warehouse ALL_CAPS_SNAKE_CASE when we return results.
         'DS as date',
         'TS as ts',
         'ITEM_ID as contentId',
-        'ITEM_TYPE_NAME as contentType',
+        'ITEM_TYPE_NAME as itemTypeName',
+        'ITEM_TYPE_ID as itemTypeId',
         'ITEM_CREATOR_ID as userId',
+        'ITEM_CREATOR_TYPE_ID as userTypeId',
         'ITEM_DATA as content',
         'RESULT as result',
+        'ENVIRONMENT as environment',
+        'PASSED as passed',
+        'RULE_ID as ruleId',
+        'RULE as ruleName',
+        'TAGS as tags',
       ])
       .where('CORRELATION_ID', '=', correlationId);
 
@@ -764,13 +770,29 @@ class RuleAPI {
 
     const results = await finalQuery.execute();
 
-    return results.map((it) => ({
+    return results.map<Edge<RuleExecutionResult, { ts: number }>>((it) => ({
       node: {
-        ...it,
-        result: it.result ? jsonParse(it.result as never) : null,
+        date: warehouseDateToDate(it.date).toISOString(),
+        ts: warehouseDateToDate(it.ts).toISOString(),
+        contentId: it.contentId,
+        itemTypeName: it.itemTypeName ?? '',
+        itemTypeId: it.itemTypeId,
+        userId: it.userId ?? undefined,
+        userTypeId: it.userTypeId ?? undefined,
+        content: (it.content ?? '') as string,
+        result: it.result
+          ? jsonParse(
+              it.result as JsonOf<ConditionSetWithResultAsLogged>,
+            )
+          : null,
+        environment: it.environment as RuleStatus,
+        passed: it.passed,
+        ruleId: it.ruleId,
+        ruleName: it.ruleName ?? '',
+        tags: [...it.tags],
       },
       cursor: { ts: warehouseDateToDate(it.ts).valueOf() },
-    })) as unknown as Edge<RuleExecutionResult, { ts: number }>[];
+    }));
   }
 
   async getBacktestsForRule(
