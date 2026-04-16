@@ -29,10 +29,7 @@ import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
-  // TODO: delete the import below when we move the rule mutation logic into the
-  // moderation config service, which is where it should be.
-  // eslint-disable-next-line import/no-restricted-paths
-} from '../../services/moderationConfigService/moderationConfigService.js';
+} from '../../services/moderationConfigService/errors.js';
 import {
   isSignalId,
   signalIsExternal,
