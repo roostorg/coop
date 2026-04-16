@@ -28,7 +28,7 @@
     "cassandra-driver": "^4.8.0",
     "sequelize": "^6.37.8",
     "umzug": "^3.0.0",
-    "yargs": "^16.2.0"
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
