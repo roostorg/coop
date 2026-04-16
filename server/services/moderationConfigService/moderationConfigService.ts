@@ -4,12 +4,7 @@ import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../../models/types/permissioning.js';
-import {
-  CoopError,
-  ErrorType,
-  type ErrorInstanceData,
-} from '../../utils/errors.js';
-import { __throw } from '../../utils/misc.js';
+import { type RuleErrorType, type LocationBankErrorType } from './errors.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import { type Action, type Policy } from './index.js';
 import ActionOperations, {
@@ -22,6 +17,7 @@ import MatchingBankOperations, {
 import PolicyOperations, {
   type PolicyErrorType,
 } from './modules/PolicyOperations.js';
+import RuleReadOperations from './modules/RuleReadOperations.js';
 import UserStrikeOperations, {
   type UserStrikeThresholdErrorType,
 } from './modules/UserStrikeOperations.js';
@@ -35,6 +31,7 @@ import {
   type UserItemType,
 } from './types/itemTypes.js';
 import type { PolicyType } from './types/policies.js';
+import { type PlainRuleWithLatestVersion } from '../../models/rules/ruleTypes.js';
 
 export type ModerationConfigErrorType =
   | 'AttemptingToDeleteDefaultUserType'
@@ -78,6 +75,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly itemTypeOps: ItemTypeOperations;
   private readonly userStrikeOps: UserStrikeOperations;
   private readonly matchingBankOps: MatchingBankOperations;
+  private readonly ruleReadOps: RuleReadOperations;
 
   constructor(
     pgQuery: Kysely<ModerationConfigServicePg>,
@@ -94,9 +92,9 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       onDeletePolicyId,
     );
     this.itemTypeOps = new ItemTypeOperations(pgQuery, pgQueryReplica);
-    // TODO: Remove Rule API and replace with kysely
     this.userStrikeOps = new UserStrikeOperations(pgQuery, pgQueryReplica);
     this.matchingBankOps = new MatchingBankOperations(pgQuery, pgQueryReplica);
+    this.ruleReadOps = new RuleReadOperations(pgQuery, pgQueryReplica);
   }
 
   async getItemTypes(opts: {
@@ -285,6 +283,28 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.actionOps.getActions(opts);
   }
 
+  async getActionsForRuleId(ruleId: string) {
+    return this.actionOps.getActionsForRuleId({
+      ruleId,
+      readFromReplica: true,
+    });
+  }
+
+  async getPoliciesByRuleIds(ruleIds: readonly string[]) {
+    return this.policyOps.getPoliciesByRuleIds({
+      ruleIds,
+      readFromReplica: true,
+    });
+  }
+
+  async getEnabledRulesForItemType(itemTypeId: string) {
+    return this.ruleReadOps.getEnabledRulesForItemType(itemTypeId);
+  }
+
+  async findEnabledUserRules(): Promise<PlainRuleWithLatestVersion[]> {
+    return this.ruleReadOps.findEnabledUserRules();
+  }
+
   async getPolicies(opts: { orgId: string; readFromReplica?: boolean }) {
     return this.policyOps.getPolicies(opts);
   }
@@ -429,50 +449,3 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   }
 }
 
-type RuleErrorType =
-  | 'RuleNameExistsError'
-  | 'RuleHasRunningBacktestsError'
-  | 'RuleIsMissingContentTypeError';
-
-// TODO: throw this error as appropriate on failed rule creation/update.
-export const makeRuleNameExistsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.UniqueViolation],
-    title: 'A rule with that name already exists in this organization.',
-    name: 'RuleNameExistsError',
-    ...data,
-  });
-
-// TODO: throw this error as appropriate on failed rule creation/update.
-export const makeRuleIsMissingContentTypeError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 400,
-    type: [ErrorType.InvalidUserInput],
-    title: 'This rule must contain a content type on which to operate.',
-    name: 'RuleIsMissingContentTypeError',
-    ...data,
-  });
-
-// TODO: throw this error as appropriate on failed rule creation/update.
-export const makeRuleHasRunningBacktestsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.AttemptingToMutateActiveRule],
-    title:
-      "This rule cannot be updated while it has running backtests, which are using the rule's current conditions.",
-    name: 'RuleHasRunningBacktestsError',
-    ...data,
-  });
-
-type LocationBankErrorType = 'LocationBankNameExistsError';
-
-// TODO: throw this error as appropriate on failed bank creation/update.
-export const makeLocationBankNameExistsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.UniqueViolation],
-    title: 'A location bank with this name already exists',
-    name: 'LocationBankNameExistsError',
-    ...data,
-  });

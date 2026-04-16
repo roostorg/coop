@@ -5,7 +5,7 @@ import type { WarehouseQueryResult, WarehouseTransactionFn } from './types.js';
  *
  * Adapters power operational workloads (transactions, point queries, etc.).
  * The interface intentionally mirrors a typical SQL client without enforcing
- * a specific library (Kysely, Knex, pg, etc.).
+ * a specific library (Kysely, pg, etc.).
  */
 export interface IWarehouseAdapter {
   /** Human friendly provider name for logging / diagnostics. */

@@ -452,6 +452,7 @@ describe('ModerationConfigService', () => {
               "id": Any<String>,
               "name": "Test Action",
               "orgId": Any<String>,
+              "penalty": "NONE",
             }
           `,
           );

@@ -4,36 +4,25 @@
  * the signal execution service) to enable those services to make the queries
  * they need to run a rule. Having these queries defined separately + injected
  * into the consumers gives us a cleaner place to add optimizations to the query
- * logic (i.e., run the queries against replicas, add caching, etc) and makes
+ * logic (i.e. run the queries against replicas, add caching, etc) and makes
  * the consumers much more unit testable.
  */
-import { Op } from 'sequelize';
+import { sql, type Kysely } from 'kysely';
 
 import { inject } from '../iocContainer/index.js';
 import { type LocationArea } from '../models/types/locationArea.js';
-import { type Action } from '../services/moderationConfigService/index.js';
+import { type CombinedPg } from '../services/combinedDbTypes.js';
 import { cached } from '../utils/caching.js';
 import { jsonParse, jsonStringify } from '../utils/encoding.js';
+import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
 import { getUtcDateOnlyString } from '../utils/time.js';
 
 export const makeGetEnabledRulesForItemTypeEventuallyConsistent = inject(
-  ['getSequelizeItemTypeEventuallyConsistent'],
-  function (getSequelizeItemTypeEventuallyConsistent) {
+  ['ModerationConfigService'],
+  function (moderationConfigService) {
     return cached({
       async producer(itemTypeId: string) {
-        // Getting the enabledRules is currently coupled to sequelize, so,
-        // annoyingly, we first have to convert the contentTypeId into a full
-        // contentType model object. However, we don't want to incur too much
-        // overhead for that, so we use a cached lookup. (Note: we can't just
-        // take a model object as the argument because our caching library
-        // requires the cache key to be a string; further, even if we could just
-        // accept the model object, we wouldn't want to, because we want to move
-        // away from this coupling to sequelize.)
-        const itemType = await getSequelizeItemTypeEventuallyConsistent({
-          id: itemTypeId,
-        });
-
-        return itemType ? itemType.getEnabledRules() : null;
+        return moderationConfigService.getEnabledRulesForItemType(itemTypeId);
       },
       directives: { freshUntilAge: 20 },
     });
@@ -42,24 +31,6 @@ export const makeGetEnabledRulesForItemTypeEventuallyConsistent = inject(
 
 export type GetEnabledRulesForItemTypeEventuallyConsistent = ReturnType<
   typeof makeGetEnabledRulesForItemTypeEventuallyConsistent
->;
-
-export const makeGetSequelizeItemTypeEventuallyConsistent = inject(
-  ['ItemTypeModel'],
-  (ItemType) => {
-    return cached({
-      async producer(key: { id: string } | { name: string; orgId: string }) {
-        return 'id' in key
-          ? ItemType.findByPk(key.id)
-          : ItemType.findOne({ where: { name: key.name, orgId: key.orgId } });
-      },
-      directives: { freshUntilAge: 10, maxStale: [0, 2, 2] },
-    });
-  },
-);
-
-export type GetSequelizeItemTypeEventuallyConsistent = ReturnType<
-  typeof makeGetSequelizeItemTypeEventuallyConsistent
 >;
 
 export const makeGetItemTypesForOrgEventuallyConsistent = inject(
@@ -74,18 +45,16 @@ export type GetItemTypesForOrgEventuallyConsistent = ReturnType<
   typeof makeGetItemTypesForOrgEventuallyConsistent
 >;
 
-// TODO: this could probably be improved to increase cache hit rates, since
-// rn the cache will only be used if all the ids have previously been fetched.
 export const makeGetPoliciesForRulesEventuallyConsistent = inject(
-  ['PolicyModel'],
-  function (Policy) {
+  ['ModerationConfigService'],
+  function (moderationConfigService) {
     return cached({
       keyGeneration: {
         toString: (ids: readonly string[]) => jsonStringify([...ids].sort()),
         fromString: (it) => jsonParse(it),
       },
-      async producer(key) {
-        return Policy.getPoliciesForRuleIds(key);
+      async producer(key: readonly string[]) {
+        return moderationConfigService.getPoliciesByRuleIds(key);
       },
       directives: { freshUntilAge: 120 },
     });
@@ -97,21 +66,11 @@ export type GetPoliciesForRulesEventuallyConsistent = ReturnType<
 >;
 
 export const makeGetActionsForRuleEventuallyConsistent = inject(
-  ['ActionModel'],
-  (Action) => {
+  ['ModerationConfigService'],
+  (moderationConfigService) => {
     return cached({
       async producer(ruleId: string) {
-        // This generates a pretty slow/overly-complex query, but I think it's
-        // the best we can do with Sequelize. Eventually, we want to move off of
-        // Sequelize, so we don't fetch full model instances + we cast the
-        // result to be a plain data object, so that the rest of the code can't
-        // depend on getting an Action model instance back, as that won't always
-        // be the case.
-        return Action.findAll({
-          where: { '$rules.id$': ruleId },
-          include: [{ association: 'rules', attributes: ['id'] }],
-          raw: true,
-        }) as Promise<Action[]>;
+        return moderationConfigService.getActionsForRuleId(ruleId);
       },
       directives: { freshUntilAge: 30 },
     });
@@ -123,24 +82,25 @@ export type GetActionsForRuleEventuallyConsistent = ReturnType<
 >;
 
 export const makeGetLocationBankLocationsEventuallyConsistent = inject(
-  ['LocationBankLocationModel'],
-  (LocationBankLocation) => {
+  ['KyselyPgReadReplica'],
+  (db) => {
     return cached({
       async producer(bankId: string) {
-        // NB: we use `raw: true` to get back plain JS objects, rather than
-        // sequelize model instances. We do that because, with model instances,
-        // every proprety access runs some extra getter code; see
-        // https://github.com/sequelize/sequelize/blob/e77dcf78b341b62c97dbb29f16ce7a23f46ddc53/src/model.js#L42
-        // This ends up killing the performance of our hot-path code that checks
-        // whether a location is in each of these location areas.
-        //
-        // Meanwhile, we have to cast to LocationArea[] because findAll is still
-        // typed (incorrectly) to return the model instance, even when `raw:
-        // true` is provided.
-        return LocationBankLocation.findAll({
-          where: { bankId },
-          raw: true,
-        }) as Promise<LocationArea[]>;
+        const rows = await db
+          .selectFrom('public.location_bank_locations')
+          .selectAll()
+          .where('bank_id', '=', bankId)
+          .execute();
+        return rows.map(
+          (r) =>
+            ({
+              id: r.id,
+              name: r.name ?? undefined,
+              geometry: r.geometry as LocationArea['geometry'],
+              bounds: r.bounds as LocationArea['bounds'],
+              googlePlaceInfo: r.google_place_info as LocationArea['googlePlaceInfo'],
+            }) satisfies LocationArea,
+        );
       },
       directives(locations) {
         const numLocations = locations.length;
@@ -197,40 +157,42 @@ export type GetImageBankEventuallyConsistent = ReturnType<
 >;
 
 export const makeRecordRuleActionLimitUsage = inject(
-  ['Sequelize', 'Tracer'],
+  ['KyselyPg', 'Tracer'],
   (db, tracer) => {
-    /**
-     * Record that each of the rules given by ruleIds has used up one of its
-     * daily action runs, against its maxDailyActions.
-     */
+    const transactionWithRetry = makeKyselyTransactionWithRetry(
+      db as Kysely<CombinedPg>,
+    );
+
     async function recordRuleActionLimitUsage(ruleIds: readonly string[]) {
       if (ruleIds.length === 0) {
         return;
       }
 
-      const today = getUtcDateOnlyString();
-      await db.transactionWithRetry(async () => {
-        // Using two queries like this isn't as efficient as, e.g.,
-        // UPDATE `rules`
-        //   SET `daily_actions_run` =
-        //     IF(last_action_date != $1, 1, daily_actions_run + 1)
-        //   SET `last_action_date` = $1
-        //   WHERE `id` IN (...);
-        // But it lets us keep the code in Sequelize, which is probably worth it.
-        await db.Rule.increment(
-          { dailyActionsRun: 1 },
-          { where: { id: { [Op.in]: ruleIds }, lastActionDate: today } },
-        );
+      const today = String(getUtcDateOnlyString());
+      await transactionWithRetry(async (trx) => {
+        await trx
+          .updateTable('public.rules')
+          .set({
+            daily_actions_run: sql`daily_actions_run + 1`,
+          })
+          .where('id', 'in', [...ruleIds])
+          .where('last_action_date', '=', today)
+          .execute();
 
-        await db.Rule.update(
-          { dailyActionsRun: 1, lastActionDate: today },
-          {
-            where: {
-              id: { [Op.in]: ruleIds },
-              lastActionDate: { [Op.ne]: today },
-            },
-          },
-        );
+        await trx
+          .updateTable('public.rules')
+          .set({
+            daily_actions_run: 1,
+            last_action_date: today,
+          })
+          .where('id', 'in', [...ruleIds])
+          .where((eb) =>
+            eb.or([
+              eb('last_action_date', 'is', null),
+              eb('last_action_date', '!=', today),
+            ]),
+          )
+          .execute();
       });
     }
 

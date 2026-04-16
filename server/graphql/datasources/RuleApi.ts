@@ -3,7 +3,7 @@
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
 
-import { sql, type Kysely } from 'kysely';
+import { type Kysely } from 'kysely';
 import Sequelize from 'sequelize';
 import { uid } from 'uid';
 
@@ -29,18 +29,19 @@ import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
-  // TODO: delete the import below when we move the rule mutation logic into the
-  // moderation config service, which is where it should be.
-  // eslint-disable-next-line import/no-restricted-paths
-} from '../../services/moderationConfigService/moderationConfigService.js';
+} from '../../services/moderationConfigService/index.js';
 import {
   isSignalId,
   signalIsExternal,
   type SignalId,
 } from '../../services/signalsService/index.js';
-import { type DataWarehousePublicSchema } from '../../storage/dataWarehouse/warehouseSchema.js';
+import {
+  type DataWarehousePublicSchema,
+  warehouseDateToDate,
+} from '../../storage/dataWarehouse/warehouseSchema.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
 import {
+  type JsonOf,
   jsonParse,
   jsonStringify,
   tryJsonParse,
@@ -84,7 +85,7 @@ export type RuleExecutionResult = {
   userId?: string;
   userTypeId?: string;
   content: string;
-  result: ConditionSetWithResultAsLogged;
+  result: ConditionSetWithResultAsLogged | null;
   environment: RuleStatus;
   passed: boolean;
   ruleId: string;
@@ -270,7 +271,6 @@ class RuleAPI {
   private readonly warehouse: Kysely<DataWarehousePublicSchema>;
 
   constructor(
-    private readonly knex: Dependencies['Knex'],
     dialect: Dependencies['DataWarehouseDialect'],
     public readonly ruleInsights: Dependencies['RuleActionInsights'],
     private readonly actionStats: Dependencies['ActionStatisticsService'],
@@ -714,45 +714,41 @@ class RuleAPI {
     // (no cursor, after cursor, before cursor) x (sort asc, desc).
     // But our pagination helpers let us handle reasonably simply, in steps.
     // First, we must define the result query if we weren't doing any pagination:
-    const allResultsQuery = this.knex('RULE_EXECUTIONS')
-      .select({
-        // This select is aliasing each column to the corresponding object key,
-        // so we have to do fewer renames from the warehouse ALL_CAPS_SNAKE_CASE
-        // when we return the final result.
-        date: 'DS',
-        ts: 'TS',
-        contentId: 'ITEM_ID',
-        contentType: 'ITEM_TYPE_NAME',
-        userId: 'ITEM_CREATOR_ID',
-        content: 'ITEM_DATA',
-        result: 'RESULT',
-      })
-      .where(
-        'CORRELATION_ID',
-        toCorrelationId({ type: 'backtest', id: backtestId }),
-      );
+    const correlationId = toCorrelationId({
+      type: 'backtest',
+      id: backtestId,
+    });
 
-    // Now, we can filter down the results to those that satisfy
-    // the cursor's before/after requirements, if there is a cursor.
-    // Note that how we do this filtering depends on how the results are sorted,
-    // because the sorting conceptually happens "before" pagination, and it
-    // effects what's "before" and what's "after" a given cursor.
-    //
-    // Specifically, if the results are sorted descending and we're looking for
-    // values _after_ the cursor, then we're looking for timestamp values that
-    // are less than the cursor. Similarly, if we're sorting ascending and
-    // looking for items before the cursor, then those items must have ts values
-    // less than the cursor. In the other cases, it's the opposite.
-    const filteredResultsQuery = !cursor
-      ? allResultsQuery
-      : allResultsQuery.andWhere(
-          'TS',
-          (sortByTs === SortOrder.DESC && cursor.direction === 'after') ||
-            (sortByTs === SortOrder.ASC && cursor.direction === 'before')
-            ? '<'
-            : '>',
-          new Date(cursor.value.ts),
-        );
+    let filteredResultsQuery = this.warehouse
+      .selectFrom('RULE_EXECUTIONS')
+      .select([
+        'DS as date',
+        'TS as ts',
+        'ITEM_ID as contentId',
+        'ITEM_TYPE_NAME as itemTypeName',
+        'ITEM_TYPE_ID as itemTypeId',
+        'ITEM_CREATOR_ID as userId',
+        'ITEM_CREATOR_TYPE_ID as userTypeId',
+        'ITEM_DATA as content',
+        'RESULT as result',
+        'ENVIRONMENT as environment',
+        'PASSED as passed',
+        'RULE_ID as ruleId',
+        'RULE as ruleName',
+        'TAGS as tags',
+      ])
+      .where('CORRELATION_ID', '=', correlationId);
+
+    if (cursor) {
+      filteredResultsQuery = filteredResultsQuery.where(
+        'TS',
+        (sortByTs === SortOrder.DESC && cursor.direction === 'after') ||
+          (sortByTs === SortOrder.ASC && cursor.direction === 'before')
+          ? '<'
+          : '>',
+        new Date(cursor.value.ts),
+      );
+    }
 
     const desiredSort = {
       column: 'ts',
@@ -766,16 +762,35 @@ class RuleAPI {
     // have to use our helper that implements "takeLast" in SQL.
     const finalQuery =
       takeFrom === 'start'
-        ? filteredResultsQuery.orderBy([desiredSort]).limit(count)
-        : takeLast(filteredResultsQuery, [desiredSort], count);
+        ? filteredResultsQuery
+            .orderBy('ts', desiredSort.order)
+            .limit(count)
+        : takeLast(this.warehouse, filteredResultsQuery, [desiredSort], count);
 
-    const results = (
-      await sql`${sql.raw(finalQuery.toString())}`.execute(this.warehouse)
-    ).rows;
+    const results = await finalQuery.execute();
 
-    return results.map((it: any) => ({
-      node: { ...it, result: it.result ? jsonParse(it.result) : null },
-      cursor: { ts: new Date(it.ts).valueOf() },
+    return results.map<Edge<RuleExecutionResult, { ts: number }>>((it) => ({
+      node: {
+        date: warehouseDateToDate(it.date).toISOString(),
+        ts: warehouseDateToDate(it.ts).toISOString(),
+        contentId: it.contentId,
+        itemTypeName: it.itemTypeName ?? '',
+        itemTypeId: it.itemTypeId,
+        userId: it.userId ?? undefined,
+        userTypeId: it.userTypeId ?? undefined,
+        content: (it.content ?? '') as string,
+        result: it.result
+          ? jsonParse(
+              it.result as JsonOf<ConditionSetWithResultAsLogged>,
+            )
+          : null,
+        environment: it.environment as RuleStatus,
+        passed: it.passed,
+        ruleId: it.ruleId,
+        ruleName: it.ruleName ?? '',
+        tags: [...it.tags],
+      },
+      cursor: { ts: warehouseDateToDate(it.ts).valueOf() },
     }));
   }
 
@@ -910,7 +925,6 @@ class RuleAPI {
 
 export default inject(
   [
-    'Knex',
     'DataWarehouseDialect',
     'RuleActionInsights',
     'ActionStatisticsService',

@@ -29,6 +29,20 @@ const actionDbSelection = [
   'apply_user_strikes as applyUserStrikes',
 ] as const;
 
+const actionJoinDbSelection = [
+  'a.id',
+  'a.name',
+  'a.description',
+  'a.callback_url as callbackUrl',
+  'a.callback_url_headers as callbackUrlHeaders',
+  'a.callback_url_body as callbackUrlBody',
+  'a.org_id as orgId',
+  'a.penalty',
+  'a.action_type as actionType',
+  'a.applies_to_all_items_of_kind as appliesToAllItemsOfKind',
+  'a.apply_user_strikes as applyUserStrikes',
+] as const;
+
 type ActionDbResult = FixKyselyRowCorrelation<
   ModerationConfigServicePg['public.actions'],
   typeof actionDbSelection
@@ -105,12 +119,29 @@ export default class ActionOperations {
     return results.map((it) => this.#dbResultToAction(it));
   }
 
+  async getActionsForRuleId(opts: {
+    ruleId: string;
+    readFromReplica?: boolean;
+  }) {
+    const { ruleId, readFromReplica } = opts;
+    const pgQuery = this.#getPgQuery(readFromReplica ?? true);
+    const results = (await pgQuery
+      .selectFrom('public.rules_and_actions as raa')
+      .innerJoin('public.actions as a', 'a.id', 'raa.action_id')
+      .select(actionJoinDbSelection)
+      .where('raa.rule_id', '=', ruleId)
+      .execute()) as ActionDbResult[];
+
+    return results.map((it) => this.#dbResultToAction(it));
+  }
+
   #dbResultToAction(it: ActionDbResult) {
     return {
       id: it.id,
       name: it.name,
       orgId: it.orgId,
       applyUserStrikes: it.applyUserStrikes,
+      penalty: it.penalty,
       ...(() => {
         switch (it.actionType) {
           case 'CUSTOM_ACTION':

@@ -36,7 +36,25 @@ const policyDbSelection = [
   'semantic_version as semanticVersion',
   'user_strike_count as userStrikeCount',
   'apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
-  'penalty', // TODO: remove
+  'penalty',
+] as const;
+
+const policyJoinDbSelection = [
+  'rap.rule_id as ruleId',
+  'p.id',
+  'p.name',
+  'p.org_id as orgId',
+  'p.parent_id as parentId',
+  'p.created_at as createdAt',
+  'p.updated_at as updatedAt',
+  'p.policy_text as policyText',
+  'p.enforcement_guidelines as enforcementGuidelines',
+  'p.sys_period as sysPeriod',
+  'p.policy_type as policyType',
+  'p.semantic_version as semanticVersion',
+  'p.user_strike_count as userStrikeCount',
+  'p.apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
+  'p.penalty',
 ] as const;
 
 type PolicyDbResult = FixKyselyRowCorrelation<
@@ -64,6 +82,32 @@ export default class PolicyOperations {
     const results = (await query.execute()) as PolicyDbResult[];
 
     return results.map((it) => this.#dbResultToPolicy(it));
+  }
+
+  async getPoliciesByRuleIds(opts: {
+    ruleIds: readonly string[];
+    readFromReplica?: boolean;
+  }): Promise<Record<string, Policy[]>> {
+    const { ruleIds, readFromReplica } = opts;
+    if (ruleIds.length === 0) {
+      return {};
+    }
+    const pgQuery = this.#getPgQuery(readFromReplica ?? true);
+    type Row = PolicyDbResult & { ruleId: string };
+    const rows = (await pgQuery
+      .selectFrom('public.rules_and_policies as rap')
+      .innerJoin('public.policies as p', 'p.id', 'rap.policy_id')
+      .select(policyJoinDbSelection)
+      .where('rap.rule_id', 'in', [...ruleIds])
+      .execute()) as Row[];
+
+    const out: Record<string, Policy[]> = {};
+    for (const row of rows) {
+      const { ruleId, ...policyFields } = row;
+      const policy = this.#dbResultToPolicy(policyFields as PolicyDbResult);
+      (out[ruleId] ??= []).push(policy);
+    }
+    return out;
   }
 
   async getPolicy(opts: {

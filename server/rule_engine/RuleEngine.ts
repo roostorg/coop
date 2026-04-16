@@ -7,11 +7,8 @@ import {
 } from '../condition_evaluator/conditionSet.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
-import {
-  ConditionCompletionOutcome,
-  type RuleWithLatestVersion,
-  type Rule as TRule,
-} from '../models/rules/RuleModel.js';
+import { ConditionCompletionOutcome } from '../models/rules/RuleModel.js';
+import { type PlainRuleWithLatestVersion } from '../models/rules/ruleTypes.js';
 import { evaluateAggregationRuntimeArgsForItem } from '../services/aggregationsService/index.js';
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
 import {
@@ -182,13 +179,16 @@ class RuleEngine {
    * @param sync - whether the request should run synchronously
    */
   async runRuleSet(
-    rules: ReadonlyDeep<RuleWithLatestVersion[]>,
+    rules: ReadonlyDeep<PlainRuleWithLatestVersion[]>,
     evaluationContext: RuleEvaluationContext,
     environment: RuleEnvironment,
     executionsCorrelationId: RuleExecutionCorrelationId,
     sync?: boolean,
   ): Promise<{
-    rulesToResults: Map<ReadonlyDeep<TRule>, RuleExecutionResult>;
+    rulesToResults: Map<
+      ReadonlyDeep<PlainRuleWithLatestVersion>,
+      RuleExecutionResult
+    >;
     actions: readonly Action[];
   }> {
     if (!rules.length) {

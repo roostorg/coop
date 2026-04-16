@@ -59,7 +59,7 @@ export type UserManagementPg = {
   'public.users': {
     id: GeneratedAlways<string>;
     email: string;
-    password: string;
+    password: string | null;
     first_name: string;
     last_name: string;
     role: UserRole;
@@ -68,6 +68,7 @@ export type UserManagementPg = {
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
     org_id: string;
+    login_methods: ('password' | 'saml')[];
   };
   'public.invite_user_tokens': {
     id: GeneratedAlways<string>;

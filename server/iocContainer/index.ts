@@ -5,8 +5,6 @@ import opentelemetry from '@opentelemetry/api';
 import { makeDateString, type ItemIdentifier } from '@roostorg/types';
 import { types as scyllaTypes } from 'cassandra-driver';
 import IORedis, { type Cluster } from 'ioredis';
-import * as knexPkg from 'knex';
-import { type Knex } from 'knex';
 import {
   Kysely,
   PostgresDialect,
@@ -20,7 +18,6 @@ import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import makeDb from '../models/index.js';
-import { type PolicyActionPenalties } from '../models/OrgModel.js';
 import type { IActionExecutionsAdapter } from '../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
 import type { IContentApiRequestsAdapter } from '../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
@@ -39,6 +36,10 @@ import {
   makeItemSubmissionBulkWrite,
   type ItemSubmissionBulkWrite,
 } from '../queues/itemSubmissionQueue.js';
+import {
+  getPolicyActionPenaltiesForOrg,
+  type PolicyActionPenalties,
+} from '../services/policyActionPenalties.js';
 import makeActionPublisher, {
   type ActionPublisher,
   type ActionTargetItem,
@@ -50,7 +51,6 @@ import {
   makeGetItemTypesForOrgEventuallyConsistent,
   makeGetLocationBankLocationsEventuallyConsistent,
   makeGetPoliciesForRulesEventuallyConsistent,
-  makeGetSequelizeItemTypeEventuallyConsistent,
   makeGetTextBankStringsEventuallyConsistent,
   makeRecordRuleActionLimitUsage,
   type GetActionsForRuleEventuallyConsistent,
@@ -58,7 +58,6 @@ import {
   type GetItemTypesForOrgEventuallyConsistent,
   type GetLocationBankLocationsBankEventuallyConsistent,
   type GetPoliciesForRulesEventuallyConsistent,
-  type GetSequelizeItemTypeEventuallyConsistent,
   type GetTextBankStringsEventuallyConsistent,
   type RecordRuleActionLimitUsage,
 } from '../rule_engine/ruleEngineQueries.js';
@@ -334,7 +333,6 @@ export interface Dependencies {
 
   itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
-  Knex: Knex;
   IORedis: IORedis.Redis | Cluster;
 
   // Loggers
@@ -397,7 +395,6 @@ export interface Dependencies {
     (input: { orgId: string; bankId: string }) => Promise<HashBank | null>
   >;
 
-  getSequelizeItemTypeEventuallyConsistent: GetSequelizeItemTypeEventuallyConsistent;
   getItemTypesForOrgEventuallyConsistent: GetItemTypesForOrgEventuallyConsistent;
   getItemTypeEventuallyConsistent: GetItemTypeEventuallyConsistent;
   getEnabledRulesForItemTypeEventuallyConsistent: GetEnabledRulesForItemTypeEventuallyConsistent;
@@ -467,9 +464,7 @@ export default async function getBottle() {
   //
   // - 'KyselyPg' is for issuing raw pg queries w/o sequelize (e.g., the queries
   //   that some of the our "services" issue to pg, to the non-public schemas).
-  //   These queries go to our primary db, which accepts writes. Using knex for
-  //   query building is deprecated in favor of kysely, because the latter offers
-  //   better typings.
+  //   These queries go to our primary db, which accepts writes.
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
@@ -616,15 +611,6 @@ export default async function getBottle() {
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
-  );
-
-  // Legacy service deprecated in favor of kysely.
-  bottle.value(
-    'Knex',
-    knexPkg.default.knex({
-      client: 'pg',
-      connection: getPgMasterConnectionInfo,
-    }),
   );
 
   // Loggers
@@ -1345,11 +1331,14 @@ export default async function getBottle() {
   bottle.factory(
     'getPolicyActionPenaltiesEventuallyConsistent',
     (container) => {
-      const Org = container.OrgModel;
+      const moderationConfigService = container.ModerationConfigService;
 
       return cached({
         async producer(orgId) {
-          return Org.getPolicyActionPenaltiesEventuallyConsistent(orgId);
+          return getPolicyActionPenaltiesForOrg(
+            moderationConfigService,
+            orgId,
+          );
         },
         directives: { freshUntilAge: 60 },
       });
@@ -1392,12 +1381,6 @@ export default async function getBottle() {
       directives: { freshUntilAge: 600 },
     });
   });
-
-  register(
-    bottle,
-    'getSequelizeItemTypeEventuallyConsistent',
-    makeGetSequelizeItemTypeEventuallyConsistent,
-  );
 
   register(
     bottle,
@@ -1567,7 +1550,6 @@ export default async function getBottle() {
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
             'Sequelize',
-            'Knex',
             'IORedis',
             // Storage abstractions
             'DataWarehouse',
@@ -1576,7 +1558,6 @@ export default async function getBottle() {
             'ReportingAnalyticsAdapter',
             'KyselyPg',
             'KyselyPgReadReplica',
-            'getSequelizeItemTypeEventuallyConsistent',
             'getEnabledRulesForItemTypeEventuallyConsistent',
             'getPoliciesForRulesEventuallyConsistent',
             'getActionsForRuleEventuallyConsistent',

@@ -62,6 +62,20 @@ export type ModerationConfigServicePg = {
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
   };
+  'public.rules_and_actions': {
+    action_id: string;
+    rule_id: string;
+    created_at: GeneratedAlways<Date>;
+    updated_at: GeneratedAlways<Date>;
+    sys_period: GeneratedAlways<unknown>;
+  };
+  'public.rules_and_policies': {
+    policy_id: string;
+    rule_id: string;
+    created_at: Date;
+    updated_at: Date;
+    sys_period: GeneratedAlways<unknown>;
+  };
   'public.actions_and_item_types': {
     action_id: string;
     item_type_id: string;
@@ -100,9 +114,14 @@ export type ModerationConfigServicePg = {
       ACCEPT_APPEAL: { callback_url: null };
     }
   >;
+  'public.rules_latest_versions': {
+    rule_id: string;
+    version: string;
+  };
   'public.rules': {
     id: string;
     name: string;
+    description: string | null;
     status_if_unexpired: RuleStatus;
     tags: string[];
     max_daily_actions: number | null;
@@ -117,6 +136,7 @@ export type ModerationConfigServicePg = {
     alarm_status: Generated<RuleAlarmStatus>;
     alarm_status_set_at: Generated<Date>;
     rule_type: RuleType;
+    parent_id: string | null;
   };
   'public.policies': {
     id: string;
