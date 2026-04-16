@@ -1,4 +1,3 @@
-import { type ScalarType, type TaggedScalar } from '@roostorg/types';
 import _ from 'lodash';
 import sequelize, {
   Sequelize,
@@ -16,19 +15,24 @@ import {
   RuleStatus,
   RuleType,
   type ConditionSet,
-  type LeafCondition,
 } from '../../services/moderationConfigService/index.js';
-import { type SerializableError } from '../../utils/errors.js';
 import { getUtcDateOnlyString } from '../../utils/time.js';
-import {
-  type NonEmptyArray,
-  type WithUndefined,
-} from '../../utils/typescript-types.js';
 import { type DataTypes } from '../index.js';
 import { type User } from '../UserModel.js';
 import { type SequelizeAction } from './ActionModel.js';
-import { type TaggedItemData } from './item-type-fields.js';
 import { type RuleLatestVersion } from './RuleLatestVersionModel.js';
+
+export {
+  ConditionCompletionOutcome,
+  ConditionFailureOutcome,
+  type ConditionOutcome,
+  type ConditionCompletionMetadata,
+  type ConditionFailureMetadata,
+  type ConditionResult,
+  type ConditionWithResult,
+  type ConditionSetWithResult,
+  type LeafConditionWithResult,
+} from './ruleTypes.js';
 
 const { Model, Op } = sequelize;
 const { without } = _;
@@ -36,78 +40,6 @@ const { without } = _;
 export type Rule = InstanceType<ReturnType<typeof makeRuleModel>>;
 export type RuleWithLatestVersion = Rule &
   Required<Pick<Rule, 'latestVersion'>>;
-
-export enum ConditionCompletionOutcome {
-  PASSED = 'PASSED',
-  FAILED = 'FAILED',
-  INAPPLICABLE = 'INAPPLICABLE',
-}
-
-// We might add more kinds of errors here later...
-export enum ConditionFailureOutcome {
-  ERRORED = 'ERRORED',
-}
-
-export type ConditionOutcome =
-  | ConditionCompletionOutcome
-  | ConditionFailureOutcome;
-
-// NB: For legacy reasons, score is stored as a string and matchingValue holds
-// only a single string value. In the future, its easy to imagine condition
-// completions having much richer metadata, which could vary by signal type.
-export type ConditionCompletionMetadata = {
-  score?: string;
-  matchedValue?: string;
-};
-
-export type ConditionFailureMetadata = {
-  error?: SerializableError;
-};
-
-type ConditionResultCommonMetadata = {
-  signalInputValues?: (TaggedScalar<ScalarType> | TaggedItemData)[];
-};
-
-// A completion outcome can have optional metadata about the signal's score etc,
-// while a failure outcome can have an error. In a completion outcome, the
-// failure metadata must be undefined (except in IS_UNAVAILABLE comparisons),
-// and vice-versa.
-// prettier-ignore
-export type ConditionResult =
-  | ({ outcome: ConditionCompletionOutcome }
-        & ConditionCompletionMetadata
-        // Conditions that completed successfully can optionally have
-        // some of the failure metadata (for now just the `error`) if the
-        // condition used a signal result IS_UNAVAILABLE comparison.
-        & Partial<Pick<ConditionFailureMetadata, 'error'>>
-        & ConditionResultCommonMetadata)
-  | ({ outcome: ConditionFailureOutcome; }
-        & ConditionFailureMetadata
-        // Failed condition must not have completion data
-        & WithUndefined<ConditionCompletionMetadata>
-        & ConditionResultCommonMetadata)
-
-export type ConditionWithResult =
-  | LeafConditionWithResult
-  | ConditionSetWithResult;
-
-export type ConditionSetWithResult = Omit<ConditionSet, 'conditions'> & {
-  conditions:
-    | NonEmptyArray<LeafConditionWithResult>
-    | NonEmptyArray<ConditionSetWithResult>;
-  result?: ConditionResult;
-};
-
-// A useful type for logging. Gives us the result of the condition,
-// with the context (i.e., the Condition definition) to interpret that result.
-// The result is still optional because the conditions execution can be skipped
-// if the result of a parent condition can be determined without running the
-// child condition. Just leaving out the result property in that case is a very
-// nice way to model "skipped", because it means that the original condition
-// object can be used as a ConditionWithResult in that case.
-export type LeafConditionWithResult = LeafCondition & {
-  result?: ConditionResult;
-};
 
 /**
  * Data Model for Rules. Rules are comprised of
