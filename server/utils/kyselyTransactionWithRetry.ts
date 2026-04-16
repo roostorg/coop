@@ -14,6 +14,7 @@ export function makeKyselyTransactionWithRetry<T>(kysely: Kysely<T>) {
     callback: (trx: Kysely<T>) => Promise<R>,
   ): Promise<R> {
     let remainingTries = 3;
+    let lastError: unknown;
     while (remainingTries > 0) {
       remainingTries -= 1;
       try {
@@ -22,10 +23,11 @@ export function makeKyselyTransactionWithRetry<T>(kysely: Kysely<T>) {
         if (!isSerializationFailure(e)) {
           throw e;
         }
+        lastError = e;
       }
     }
 
-    throw new Error('Retry limit exceeded.');
+    throw lastError;
   };
 }
 
