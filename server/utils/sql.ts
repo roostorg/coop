@@ -1,7 +1,4 @@
-import * as knexPkg from 'knex';
-import type { Knex } from 'knex';
-
-const { knex } = knexPkg.default;
+import type { Kysely, SelectQueryBuilder } from 'kysely';
 
 /**
  * When paginating backwards (i.e., the user's on page 5 and asks for page 4
@@ -17,10 +14,10 @@ const { knex } = knexPkg.default;
  * last 2" generically, you need to sort the items in reverse order, apply a
  * LIMIT, then reverse the result.
  *
- * To do that generically, we need to use a query builder that'll let us build
- * queries programmatically/work with them as data structures, so we use knex.
- * This function, then implements the "take last n" operation given an unsorted
- * knex select query and some sort criteria.
+ * This function implements that pattern on a Kysely select query.
+ *
+ * @param db Kysely instance used only to build the outer `select * from (…)`.
+ *   It must use the same dialect as `unsortedSelectQuery`.
  *
  * @param unsortedSelectQuery The query that selects the set of items (without
  *   them being sorted) from which we want to take the last n, after sorting.
@@ -29,56 +26,47 @@ const { knex } = knexPkg.default;
  *   returned by unsortedSelectQuery, before we can take the last n items.
  *   NB: the column names provided here must refer to one of the columns
  *   selected by `unsortedSelectQuery`, under that column's final alias. E.g.,
- *   if unsortedSelectQuery is `SELECT a as "hello" from table`, then you can
- *   only provide "hello" as the sort criteria; not "a", and not some unselected
- *   column "b".
+ *   if the select is `DS as date`, then sort criteria must use `date`, not
+ *   `DS`.
  *
  * @param size How many items to take.
  *
- * @param client The name of the knex client to use. This effects the
- *   SQL-dialect-specific settings that knex might apply to the generated query.
- *   NB: these dialect-specific settings potentially include data escaping rules
- *   that could be relevant for SQL injection.
- *
- * @param subqueryAlias Internally, this query generates a subquery, and SQL
- *   mandates that that subquery be given an alias. In theory, there's maybe
- *   some risk of that alias
- *
- * @returns A new knex query that selects the last n items, after sorting.
+ * @returns A Kysely query that selects the last n items, after sorting.
  */
-export function takeLast<T extends object>(
-  unsortedSelectQuery: Knex.QueryBuilder<T>,
-  sortCriteria: {
-    column: (keyof T & string) | Knex.Raw;
-    order: 'desc' | 'asc';
-  }[],
+const SUBQUERY_ALIAS = 'dc2d41a9-082e-48b0-a66f-345a22696b02';
+
+export function takeLast<
+  DB,
+  TB extends keyof DB,
+  O extends Record<string, unknown>,
+>(
+  db: Kysely<DB>,
+  unsortedSelectQuery: SelectQueryBuilder<DB, TB, O>,
+  sortCriteria: readonly { column: keyof O & string; order: 'desc' | 'asc' }[],
   size: number,
-  client: string = 'pg',
 ) {
-  // SQL requires that the subquery we create have an alias. I don't _think_
-  // there's risk of that name causing a naming conflict, but I haven't thought
-  // too hard about all the scoping implications, so, to be safe, we give this
-  // alias a very-unlikely-to-conflict name.
-  const subqueryAlias = 'dc2d41a9-082e-48b0-a66f-345a22696b02';
-
-  const inner = unsortedSelectQuery
-    .clone()
-    .orderBy(
-      sortCriteria.map((it) => ({
-        // Cast here is because I think the knex typings are just wrong.
-        // They suggest that `column` has to be a string, but, actually,
-        // we can sort on arbitrary expressesions contained in a `knex.raw`.
-        column: it.column as keyof T & string,
-        order: it.order === 'desc' ? ('asc' as const) : ('desc' as const),
-      })),
-    )
-    .limit(size);
-
-  return knex({ client })
-    .select('*')
-    .from<T>(inner.as(subqueryAlias))
-    .orderBy(
-      // Cast here is same as above.
-      sortCriteria as ((typeof sortCriteria)[number] & { column: string })[],
+  let inner = unsortedSelectQuery.clearOrderBy();
+  for (const it of sortCriteria) {
+    inner = inner.orderBy(
+      it.column,
+      it.order === 'desc' ? 'asc' : 'desc',
     );
+  }
+  inner = inner.limit(size);
+
+  // Chaining `orderBy` in a loop widens `outer` to an incompatible union; the
+  // builder is still the same concrete Kysely select at runtime.
+  let outer = db.selectFrom(inner.as(SUBQUERY_ALIAS)).selectAll() as SelectQueryBuilder<
+    DB & { [K in typeof SUBQUERY_ALIAS]: O },
+    typeof SUBQUERY_ALIAS,
+    O
+  >;
+  for (const it of sortCriteria) {
+    outer = outer.orderBy(it.column, it.order) as typeof outer;
+  }
+  return outer as SelectQueryBuilder<
+    DB & { [K in typeof SUBQUERY_ALIAS]: O },
+    typeof SUBQUERY_ALIAS,
+    O
+  >;
 }

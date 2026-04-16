@@ -5,8 +5,6 @@ import opentelemetry from '@opentelemetry/api';
 import { makeDateString, type ItemIdentifier } from '@roostorg/types';
 import { types as scyllaTypes } from 'cassandra-driver';
 import IORedis, { type Cluster } from 'ioredis';
-import * as knexPkg from 'knex';
-import { type Knex } from 'knex';
 import {
   Kysely,
   PostgresDialect,
@@ -335,7 +333,6 @@ export interface Dependencies {
 
   itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
-  Knex: Knex;
   IORedis: IORedis.Redis | Cluster;
 
   // Loggers
@@ -467,9 +464,7 @@ export default async function getBottle() {
   //
   // - 'KyselyPg' is for issuing raw pg queries w/o sequelize (e.g., the queries
   //   that some of the our "services" issue to pg, to the non-public schemas).
-  //   These queries go to our primary db, which accepts writes. Using knex for
-  //   query building is deprecated in favor of kysely, because the latter offers
-  //   better typings.
+  //   These queries go to our primary db, which accepts writes.
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
@@ -616,15 +611,6 @@ export default async function getBottle() {
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
-  );
-
-  // Legacy service deprecated in favor of kysely.
-  bottle.value(
-    'Knex',
-    knexPkg.default.knex({
-      client: 'pg',
-      connection: getPgMasterConnectionInfo,
-    }),
   );
 
   // Loggers
@@ -1564,7 +1550,6 @@ export default async function getBottle() {
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
             'Sequelize',
-            'Knex',
             'IORedis',
             // Storage abstractions
             'DataWarehouse',
