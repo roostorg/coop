@@ -29,7 +29,7 @@ import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
-} from '../../services/moderationConfigService/errors.js';
+} from '../../services/moderationConfigService/index.js';
 import {
   isSignalId,
   signalIsExternal,

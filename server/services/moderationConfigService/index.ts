@@ -44,3 +44,10 @@ export {
   ModerationConfigService,
   ModerationConfigErrorType,
 } from './moderationConfigService.js';
+
+export {
+  makeRuleNameExistsError,
+  makeRuleIsMissingContentTypeError,
+  makeRuleHasRunningBacktestsError,
+  makeLocationBankNameExistsError,
+} from './errors.js';
