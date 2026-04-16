@@ -76,7 +76,7 @@ export default class GoogleContentSafetyImageSignal extends SignalBase<
 
   override async getDisabledInfo(orgId: string) {
     const credential = await this.getGoogleContentSafetyCredentials(orgId);
-    // eslint-disable-next-line security/detect-possible-timing-attacks
+
     return !credential?.apiKey
       ? {
           disabled: true as const,

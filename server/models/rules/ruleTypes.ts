@@ -6,16 +6,14 @@ import {
   type RuleType,
   type ConditionSet,
   type LeafCondition,
+  type Action,
+  type Policy,
 } from '../../services/moderationConfigService/index.js';
 import { type SerializableError } from '../../utils/errors.js';
 import {
   type NonEmptyArray,
   type WithUndefined,
 } from '../../utils/typescript-types.js';
-import {
-  type Action,
-  type Policy,
-} from '../../services/moderationConfigService/index.js';
 import { type User } from '../UserModel.js';
 import { type TaggedItemData } from './item-type-fields.js';
 
@@ -122,4 +120,5 @@ export type RuleGraphqlMethods = {
 /** GraphQL parent for Rule / ContentRule / UserRule / RuleInsights. */
 export type Rule = PlainRuleWithLatestVersion & RuleGraphqlMethods;
 
+/** @deprecated Use {@link PlainRuleWithLatestVersion} directly. Remove after Kysely migration. */
 export type RuleWithLatestVersion = PlainRuleWithLatestVersion;

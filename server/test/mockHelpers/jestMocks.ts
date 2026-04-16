@@ -40,7 +40,7 @@ export function mocked<T extends object, Keys extends FunctionKeys<T>>(
   // instanceof checks still work.
   const mock = Object.create(obj);
   for (const k of keys) {
-    // eslint-disable-next-line better-mutation/no-mutation
+    // eslint-disable-next-line functional/immutable-data
     mock[k] = jest.fn((obj[k] as AnyFn).bind(obj));
   }
 

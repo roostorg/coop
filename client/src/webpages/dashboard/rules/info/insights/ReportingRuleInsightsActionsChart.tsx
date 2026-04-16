@@ -2,11 +2,11 @@ import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { InvestmentFilled } from '@/icons';
 import { BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
+import { format } from 'date-fns';
 import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
-import { format } from 'date-fns';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Area,
@@ -109,7 +109,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map((actionData) => {
         // change actionData.date format from YYYY-MM-DD to MM/DD
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
         const [year, month, date] = actionData.date.split('-');
 
         return {

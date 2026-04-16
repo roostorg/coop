@@ -8,6 +8,7 @@ import {
   rawItemSubmissionToItemSubmission,
   type ItemSubmission,
 } from '../../services/itemProcessingService/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   fromCorrelationId,
   toCorrelationId,
@@ -16,7 +17,6 @@ import {
   makeBadRequestError,
   makeInternalServerError,
 } from '../../utils/errors.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
@@ -67,7 +67,7 @@ export default function submitReport({
           }),
         );
       }
-      
+
       const { orgId } = req;
 
       const toItemSubmission = rawItemSubmissionToItemSubmission.bind(
@@ -102,11 +102,11 @@ export default function submitReport({
       ) {
         try {
           const images = reportedItem.data.images as string[];
-          
+
           // Get all hash banks for this org once
           const allBanks = await HMAHashBankService.listBanks(orgId);
-          const allBankNames = allBanks.map(bank => bank.hma_name);
-          
+          const allBankNames = allBanks.map((bank) => bank.hma_name);
+
           const imageHashes = await Promise.all(
             images.map(async (url) => {
               if (typeof url === 'string' && url) {
@@ -120,53 +120,67 @@ export default function submitReport({
                     },
                     async () => {
                       return HMAHashBankService.hashContentFromUrl(url);
-                    }
+                    },
                   );
                   const hashes = await hmaHashWithRetries();
-                  
+
                   // Check which banks match this image
                   const matchedBankNames: string[] = [];
-                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                  if (hashes && Object.keys(hashes).length > 0 && allBankNames.length > 0) {
+                   
+                  if (
+                    hashes &&
+                    Object.keys(hashes).length > 0 &&
+                    allBankNames.length > 0
+                  ) {
                     const matchResults = await Promise.all(
                       Object.entries(hashes).map(async ([signalType, hash]) =>
-                        HMAHashBankService.checkImageMatchWithDetails(allBankNames, signalType, hash)
-                      )
+                        HMAHashBankService.checkImageMatchWithDetails(
+                          allBankNames,
+                          signalType,
+                          hash,
+                        ),
+                      ),
                     );
-                    
+
                     // Collect all matched banks
                     const allMatchedHmaBanks = new Set<string>();
-                    matchResults.forEach(result => {
-                      result.matchedBanks.forEach(bank => allMatchedHmaBanks.add(bank));
+                    matchResults.forEach((result) => {
+                      result.matchedBanks.forEach((bank) =>
+                        allMatchedHmaBanks.add(bank),
+                      );
                     });
-                    
+
                     // Map HMA bank names to user-friendly names
-                    allMatchedHmaBanks.forEach(hmaName => {
-                      const bank = allBanks.find(b => b.hma_name === hmaName);
+                    allMatchedHmaBanks.forEach((hmaName) => {
+                      const bank = allBanks.find((b) => b.hma_name === hmaName);
                       if (bank) {
                         matchedBankNames.push(bank.name);
                       }
                     });
                   }
-                  
+
                   return {
                     url,
                     hashes,
-                    matchedBanks: matchedBankNames.length > 0 ? matchedBankNames : undefined
+                    matchedBanks:
+                      matchedBankNames.length > 0
+                        ? matchedBankNames
+                        : undefined,
                   };
                 } catch (e) {
                   return {
                     url,
-                    hashes: {}
+                    hashes: {},
                   };
                 }
               }
               return null;
-            })
+            }),
           );
           // Attach the hashes array to the item submission data
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (reportedItemSubmission.itemSubmission.data as any).images = imageHashes;
+          (reportedItemSubmission.itemSubmission.data as any).images =
+            imageHashes;
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Failed to get HMA hashes for images:', error);
@@ -213,7 +227,6 @@ export default function submitReport({
       // analysis.
       const threadOrAdditionalItemsHadInvalidOrIllegalItems =
         (reportedThreadSubmission &&
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           !isAllValidContentItems(reportedThreadSubmission)) ||
         (additionalItemSubmissions &&
           !isAllValidContentItems(additionalItemSubmissions));
@@ -223,7 +236,6 @@ export default function submitReport({
       );
       if (
         submittedItemIsInvalid ||
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         threadOrAdditionalItemsHadInvalidOrIllegalItems ||
         hasAdditionalItemsOnThreadSubmission ||
         isInvalidReportedAtDate
@@ -371,9 +383,7 @@ export default function submitReport({
                     ? [reportedForReason.policyId]
                     : [],
                 };
-                if (
-                  req.body.reportedForReason?.csam
-                ) {
+                if (req.body.reportedForReason?.csam) {
                   await NcmecService.enqueueForHumanReviewIfApplicable({
                     ...commonEnqueueInput,
                     item,

@@ -69,11 +69,14 @@ export default inject(
             it.alarm_status === RuleAlarmStatus.ALARM ||
             newAlarmStatusByRule[it.id].status === RuleAlarmStatus.ALARM,
         )
-        .map((rule) => {
+        .flatMap((rule) => {
           const ruleNowInAlarm =
             newAlarmStatusByRule[rule.id].status === RuleAlarmStatus.ALARM;
 
           const orgRow = orgsForChangedRules[rule.org_id];
+          if (!orgRow) {
+            return [];
+          }
 
           return {
             type: ruleNowInAlarm

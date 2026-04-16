@@ -7,10 +7,7 @@ import { type LocationBank as TLocationBank } from '../../models/banks/LocationB
 import { isUniqueConstraintError } from '../../models/errors.js';
 import { type LocationArea } from '../../models/types/locationArea.js';
 import { type User } from '../../models/UserModel.js';
-// TODO: delete the import below when we move the location bank mutation logic
-// into the moderation config service, which is where it should be.
-// eslint-disable-next-line import/no-restricted-paths
-import { makeLocationBankNameExistsError } from '../../services/moderationConfigService/moderationConfigService.js';
+import { makeLocationBankNameExistsError } from '../../services/moderationConfigService/index.js';
 import { type PlacesApiService } from '../../services/placesApiService/index.js';
 import { patchInPlace, safePick } from '../../utils/misc.js';
 import {

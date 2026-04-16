@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { type ItemIdentifier } from '@roostorg/types';
 
 import type { AggregationsService } from '../../aggregationsService/index.js';

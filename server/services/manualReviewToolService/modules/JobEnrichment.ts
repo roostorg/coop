@@ -1,9 +1,9 @@
 import { type ItemIdentifier } from '@roostorg/types';
 
-import { type ActionExecutionCorrelationId } from '../../analyticsLoggers/ActionExecutionLogger.js';
-import { type RuleExecutionCorrelationId } from '../../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { assertUnreachable } from '../../../utils/misc.js';
 import { type Satisfies } from '../../../utils/typescript-types.js';
+import { type ActionExecutionCorrelationId } from '../../analyticsLoggers/ActionExecutionLogger.js';
+import { type RuleExecutionCorrelationId } from '../../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -171,7 +171,6 @@ export default class JobEnrichment {
     return commonPayload;
   }
 
-  // eslint-disable-next-line complexity
   async #genericEnrichJobPayload(
     input: ManualReviewJobInput,
     type: ItemType,

@@ -36,7 +36,7 @@ const policyDbSelection = [
   'semantic_version as semanticVersion',
   'user_strike_count as userStrikeCount',
   'apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
-  'penalty', // TODO: remove
+  'penalty',
 ] as const;
 
 const policyJoinDbSelection = [

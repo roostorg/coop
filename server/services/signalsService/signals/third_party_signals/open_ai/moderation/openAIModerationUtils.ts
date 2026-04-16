@@ -85,7 +85,6 @@ export async function runOpenAiModerationImpl(
   const { value, orgId } = input;
   const credential = await getOpenAiCredentials(orgId);
 
-  // eslint-disable-next-line security/detect-possible-timing-attacks
   if (!credential?.apiKey) {
     throw new Error('Missing API credentials');
   }

@@ -89,7 +89,7 @@ export class Tree<T extends any> {
 
   size() {
     let size = 0;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     for (const _ of this.preOrderTraversal()) {
       size++;
     }

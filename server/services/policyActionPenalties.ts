@@ -11,7 +11,29 @@ export type PolicyActionPenalties = {
 
 /**
  * Computes the severity of the penalty we should apply for a given
- * (action, policy) pair. See legacy OrgModel documentation.
+ * (action, policy) pair. The general idea is to make the penalties
+ * increase exponentially as severity levels increase, but the rate
+ * of increase can't be so high that a (severe, severe) penalty is
+ * 50x higher than a (high, high) penalty.
+ *
+ * The easiest way to achieve this exponential behavior is at the individual
+ * severity levels, rather than trying to multiply the action penalty
+ * by the severity penalty to compound their magnitudes. So the severity
+ * levels apply penalty magnitudes as follows:
+ *
+ * NONE = 0
+ * LOW = 1
+ * MEDIUM = 3
+ * HIGH = 9
+ * SEVERE = 27
+ *
+ * To get the penalty value for an (action, policy) pair, we just add the
+ * penalty values of the action and policy because the exponential nature
+ * of these penalties has already been taken into account.
+ *
+ * If the action has no penalty (e.g., "Send to Moderation", "Restore
+ * Content"), we never apply any penalty, regardless of the policy penalty.
+ * Otherwise, the penalty accounts for both the action + policy penalties.
  */
 export function computeActionPolicyPenalty(
   actionPenalty: UserPenaltySeverity,
@@ -30,13 +52,6 @@ export function computeActionPolicyPenalty(
     : penaltySeverityMap[actionPenalty] + penaltySeverityMap[policyPenalty];
 }
 
-/** DB rows carry `penalty` but the public `Action` / `Policy` unions omit it in TS. */
-type PenaltyRow = { penalty?: UserPenaltySeverity };
-
-function userPenalty(row: PenaltyRow): UserPenaltySeverity {
-  return row.penalty ?? UserPenaltySeverity.NONE;
-}
-
 export async function getPolicyActionPenaltiesForOrg(
   moderationConfigService: ModerationConfigService,
   orgId: string,
@@ -47,16 +62,12 @@ export async function getPolicyActionPenaltiesForOrg(
   ]);
 
   return policies.flatMap((policy) =>
-    actions.map((action) => {
-      const actionPenalty = userPenalty(action as PenaltyRow);
-      const policyPenalty = userPenalty(policy as PenaltyRow);
-      return {
-        actionId: action.id,
-        policyId: policy.id,
-        penalties: [
-          computeActionPolicyPenalty(actionPenalty, policyPenalty),
-        ],
-      };
-    }),
+    actions.map((action) => ({
+      actionId: action.id,
+      policyId: policy.id,
+      penalties: [
+        computeActionPolicyPenalty(action.penalty, policy.penalty),
+      ],
+    })),
   );
 }

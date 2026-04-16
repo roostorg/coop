@@ -19,10 +19,9 @@ describe('Manual Review Tool Service', () => {
   beforeAll(async () => {
     // The mutation should be ok here since this is initial setup in a
     // beforeAll; it doesn't involve reset state for each test in the suite
-    /* eslint-disable better-mutation/no-mutation */
+
     ({ container } = await getBottle());
     mrtService = container.ManualReviewToolService;
-    /* eslint-enable better-mutation/no-mutation */
   });
 
   afterAll(async () => {

@@ -51,7 +51,6 @@ export function b64EncodeArrayBuffer<T extends ArrayBuffer>(it: T) {
  * @param it The value to stringify.
  */
 export function jsonStringify<T>(it: T) {
-  // eslint-disable-next-line no-restricted-syntax
   return stringify(it) as JsonOf<T>;
 }
 

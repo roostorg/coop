@@ -88,7 +88,7 @@ export class GoogleContentSafetyClient {
         url,
         {
           method: 'post',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: jsonStringify(reqBody),
         },
         this.timeoutMs,
@@ -130,7 +130,6 @@ export async function runGoogleContentSafetyImageImpl(
   const { value, orgId } = input;
   const credential = await getGoogleContentSafetyCredentials(orgId);
 
-  // eslint-disable-next-line security/detect-possible-timing-attacks
   if (!credential?.apiKey) {
     throw new Error('Missing API credentials');
   }
@@ -174,11 +173,7 @@ export async function getGoogleContentSafetyScores(
 
   let imageBuffer: Buffer;
   try {
-    imageBuffer = await fetchImage(
-      fetchHTTP,
-      imageUrl,
-      IMAGE_FETCH_TIMEOUT_MS,
-    );
+    imageBuffer = await fetchImage(fetchHTTP, imageUrl, IMAGE_FETCH_TIMEOUT_MS);
   } catch (e) {
     if (safeGet(e, ['name']) === 'ResponseExceededMaxSizeError') {
       throw makeSignalPermanentError('Response too large', {

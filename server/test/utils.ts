@@ -156,11 +156,11 @@ export function makeTestWithFixture<T extends Record<string, unknown>>(
     skip: JestItCall;
     todo: JestItCall;
   };
-  // eslint-disable-next-line better-mutation/no-mutation
+  // eslint-disable-next-line functional/immutable-data
   fn.only = _makeTestWithFixture(makeSetupTeardown, it.only);
-  // eslint-disable-next-line better-mutation/no-mutation
+  // eslint-disable-next-line functional/immutable-data
   fn.skip = _makeTestWithFixture(makeSetupTeardown, it.skip);
-  // eslint-disable-next-line better-mutation/no-mutation
+  // eslint-disable-next-line functional/immutable-data
   fn.todo = _makeTestWithFixture(makeSetupTeardown, it.todo);
   return fn;
 }
@@ -229,7 +229,7 @@ function continueWith<T, U>(
 ): Awaited<U> | Promise<Awaited<U>> | void | Promise<void> {
   try {
     const res = getValue();
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     if (res && typeof res === 'object' && 'then' in res) {
       return res.then(then, catcher) as Promise<Awaited<U>> | Promise<void>;
     } else {

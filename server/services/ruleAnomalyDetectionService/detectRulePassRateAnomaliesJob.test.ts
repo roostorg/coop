@@ -85,14 +85,22 @@ describe('Detect Rule Anomalies', () => {
       >;
 
     beforeAll(async () => {
-      /* eslint-disable better-mutation/no-mutation */
+      /* eslint-disable functional/immutable-data */
       const {
         Sequelize: models,
         ModerationConfigService,
         ApiKeyService,
       } = (await getBottle()).container;
 
-      const { org } = await createOrg(models, ModerationConfigService, ApiKeyService);
+      // make some fake rules (w/ stable ids so we can match them in a snapshot)
+      // in different initial alarm statuses, to test all 9 combinations [i.e.,
+      // starting and ending at one of (OK, ALARM, or INSUFFICENT_DATA), where
+      // the start and end states can be the same].
+      const { org } = await createOrg(
+        models,
+        ModerationConfigService,
+        ApiKeyService,
+      );
       const { org: org2 } = await createOrg(
         models,
         ModerationConfigService,
@@ -203,7 +211,7 @@ describe('Detect Rule Anomalies', () => {
         await Promise.all([org.destroy(), org2.destroy()]);
         await models.sequelize.close();
       };
-      /* eslint-enable better-mutation/no-mutation */
+      /* eslint-enable functional/immutable-data */
     });
 
     afterAll(async () => {

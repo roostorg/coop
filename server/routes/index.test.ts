@@ -5,7 +5,6 @@ describe('404 Handling', () => {
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'];
 
   beforeAll(async () => {
-    // eslint-disable-next-line better-mutation/no-mutation
     ({ request, shutdown } = await makeMockedServer());
   });
 
@@ -51,8 +50,18 @@ describe('Error handling', () => {
     // express adds automatically (to parse query params, create the request
     // object, and (iiuc) normalize trailing path slashes), but before all our
     // handlers.
-    const newlyAddedErrorRoute = server._router.stack.pop();
-    (server._router.stack as unknown[]).splice(3, 0, newlyAddedErrorRoute);
+    const stack = server._router.stack as unknown[];
+    const newlyAddedErrorRoute = stack.at(-1);
+    if (newlyAddedErrorRoute === undefined) {
+      throw new Error('expected route on stack');
+    }
+    const withoutLast = stack.slice(0, -1);
+    // eslint-disable-next-line functional/immutable-data -- express test-only router reordering
+    server._router.stack = [
+      ...withoutLast.slice(0, 3),
+      newlyAddedErrorRoute,
+      ...withoutLast.slice(3),
+    ] as typeof server._router.stack;
 
     try {
       const resp = await request.get('/api/v1/error');

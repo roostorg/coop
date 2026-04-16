@@ -7,22 +7,21 @@ import {
 import { match } from 'ts-pattern';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
-import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { asyncIterableToArray } from '../../utils/collections.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { __throw, safePick, withRetries } from '../../utils/misc.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
+import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
+import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { RETURN_UNLIMITED_RESULTS_AND_POTENTIALLY_HANG_DB } from '../itemInvestigationService/index.js';
 import {
   getFieldValueForRole,
   getValuesFromFields,
 } from '../itemProcessingService/extractItemDataValues.js';
-import { 
+import {
   type ItemSubmission,
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
-import { type ItemType } from '../moderationConfigService/types/itemTypes.js';
 import {
   itemSubmissionToItemSubmissionWithTypeIdentifier,
   itemSubmissionWithTypeIdentifierToItemSubmission,
@@ -36,7 +35,7 @@ import {
   type ReportEnqueueSourceInfo,
   type RuleExecutionEnqueueSourceInfo,
 } from '../manualReviewToolService/manualReviewToolService.js';
-
+import { type ItemType } from '../moderationConfigService/types/itemTypes.js';
 import type NcmecReporting from './ncmecReporting.js';
 
 export default class NcmecEnqueueToMrt {
@@ -83,7 +82,7 @@ export default class NcmecEnqueueToMrt {
     ),
   ) {
     const { orgId, createdAt } = input;
-    
+
     // Fetch as much info about the reported user as we can get from
     // the organization's partial items endpoint, and if the reported item is
     // content, then convert it to the user who created the content because
@@ -177,7 +176,7 @@ export default class NcmecEnqueueToMrt {
       input.item,
       reportedItemType,
     );
-    
+
     if (allMediaItems.length === 0) {
       return { status: 'SKIPPED' };
     }
@@ -196,7 +195,9 @@ export default class NcmecEnqueueToMrt {
         policyIds: [],
         payload: {
           kind: 'NCMEC',
-          item: itemSubmissionToItemSubmissionWithTypeIdentifier(userSubmission),
+          item: itemSubmissionToItemSubmissionWithTypeIdentifier(
+            userSubmission,
+          ),
           allMediaItems,
           reportHistory: [],
         },
@@ -222,22 +223,24 @@ export default class NcmecEnqueueToMrt {
     const mediaFields = reportedItemType.schema.filter((field) =>
       isMediaType(getScalarType(field)),
     );
-    
+
     if (mediaFields.length === 0) {
       return [];
     }
-    
+
     const mediaValues = getValuesFromFields(reportedItem.data, mediaFields);
-    
+
     if (mediaValues.length === 0) {
       return [];
     }
-    
-    return [{
-      contentItem: reportedItem,
-      isConfirmedCSAM: false,
-      isReported: true,
-    }];
+
+    return [
+      {
+        contentItem: reportedItem,
+        isConfirmedCSAM: false,
+        isReported: true,
+      },
+    ];
   }
 
   async #getAllMediaForUser(
@@ -251,7 +254,7 @@ export default class NcmecEnqueueToMrt {
       latestSubmission: ItemSubmission;
       priorSubmissions?: ItemSubmission[];
     }> = [];
-    
+
     try {
       itemsWithPossibleMedia = await asyncIterableToArray(
         this.itemInvestigationService.getItemSubmissionsByCreator({
@@ -265,7 +268,10 @@ export default class NcmecEnqueueToMrt {
       // Database not available (e.g., local dev without Cassandra/Scylla)
       // Use the reported item directly
       if (reportedItemSubmission && reportedItemType) {
-        return await this.#getMediaFromReportedItem(reportedItemSubmission, reportedItemType);
+        return this.#getMediaFromReportedItem(
+          reportedItemSubmission,
+          reportedItemType,
+        );
       }
     }
 
@@ -286,12 +292,13 @@ export default class NcmecEnqueueToMrt {
             orgId,
             itemTypeSelector: { id: reportedItemIdentifier.typeId },
           });
-          
+
           if (itemType) {
-            const reportedItemAsSubmission = itemSubmissionWithTypeIdentifierToItemSubmission(
-              reportedItemSubmission,
-              itemType,
-            );
+            const reportedItemAsSubmission =
+              itemSubmissionWithTypeIdentifierToItemSubmission(
+                reportedItemSubmission,
+                itemType,
+              );
             latestItems = [reportedItemAsSubmission, ...latestItems];
           }
         } else {
@@ -363,7 +370,9 @@ export default class NcmecEnqueueToMrt {
       | { itemSubmission: ItemSubmission; userIdentifier?: undefined }
       | { itemSubmission?: undefined; userIdentifier: ItemIdentifier }
     ),
-  ): Promise<{ success: true; submission: ItemSubmission } | { success: false }> {
+  ): Promise<
+    { success: true; submission: ItemSubmission } | { success: false }
+  > {
     const { orgId, itemSubmission, userIdentifier } = opts;
 
     const userItem = await (async (): Promise<ItemSubmission | null> => {
@@ -399,7 +408,7 @@ export default class NcmecEnqueueToMrt {
         orgId,
         userItemId,
       );
-      
+
       // If partial items endpoint is not available, try fallbacks
       if (!fetchedUser) {
         // Fallback: Check item investigation service for previously submitted user data
@@ -409,16 +418,16 @@ export default class NcmecEnqueueToMrt {
             itemIdentifier: userItemId,
             latestSubmissionOnly: true,
           });
-        
+
         if (investigatedUserResult?.latestSubmission) {
           // The adapter already returns ItemSubmission, not ItemSubmissionWithTypeIdentifier
           return investigatedUserResult.latestSubmission;
         }
-        
+
         // User data not available from any source
         return null;
       }
-      
+
       return fetchedUser;
     })();
 
@@ -435,12 +444,12 @@ export default class NcmecEnqueueToMrt {
     reportedItem: ItemSubmission;
   }): Promise<ItemSubmission> {
     const { orgId, reportedItemType, reportedItem } = opts;
-    
+
     // If the reported item is already a USER, use it
     if (reportedItemType.kind === 'USER') {
       return reportedItem;
     }
-    
+
     // For CONTENT, try to extract the creator ID
     if (reportedItemType.kind === 'CONTENT') {
       const creatorId = getFieldValueForRole(
@@ -449,38 +458,38 @@ export default class NcmecEnqueueToMrt {
         'creatorId',
         reportedItem.data,
       );
-      
+
       if (!creatorId) {
         throw new Error(
           'Cannot create NCMEC job: Content item does not have a creatorId field configured. ' +
-          'Please add the creatorId role to the owner/creator field in your item type schema.',
+            'Please add the creatorId role to the owner/creator field in your item type schema.',
         );
       }
-      
+
       // Get the user item type
       const userItemType = await this.moderationConfigService.getItemType({
         orgId,
         itemTypeSelector: { id: creatorId.typeId },
       });
-      
+
       if (!userItemType) {
         throw new Error(
           `Cannot create NCMEC job: User item type ${creatorId.typeId} not found.`,
         );
       }
-      
+
       if (userItemType.kind !== 'USER') {
         throw new Error(
           `Cannot create NCMEC job: Item type ${creatorId.typeId} is not a USER type (it's ${userItemType.kind}).`,
         );
       }
-      
+
       // Create a minimal user submission with just the ID
       // The human reviewer will need to manually add more info
       const minimalData: Record<string, unknown> = {
         userId: creatorId.id,
       };
-      
+
       return instantiateOpaqueType<ItemSubmission>({
         itemId: creatorId.id,
         itemType: userItemType,
@@ -490,11 +499,11 @@ export default class NcmecEnqueueToMrt {
         creator: undefined,
       });
     }
-    
+
     // For THREAD or other types, we can't determine the user
     throw new Error(
       `Cannot create NCMEC job: Cannot determine user from item type ${reportedItemType.kind}. ` +
-      'Please report the USER directly.',
+        'Please report the USER directly.',
     );
   }
 

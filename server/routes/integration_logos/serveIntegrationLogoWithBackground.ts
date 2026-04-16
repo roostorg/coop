@@ -17,8 +17,11 @@ export default function serveIntegrationLogoWithBackground(
         makeNotFoundError('Missing integration id.', { shouldErrorSpan: true }),
       );
     }
-    const filePath = getIntegrationRegistry().getPluginLogoWithBackgroundFilePath(integrationId);
-    if (filePath === undefined) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- runtime guard for missing plugin logo
+    const filePath =
+      getIntegrationRegistry().getPluginLogoWithBackgroundFilePath(
+        integrationId,
+      );
+    if (filePath === undefined) {
       return next(
         makeNotFoundError('Integration logo (with-background) not found.', {
           shouldErrorSpan: true,
@@ -27,7 +30,8 @@ export default function serveIntegrationLogoWithBackground(
     }
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.sendFile(filePath, (err) => {
-      if (err != null && !res.headersSent) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- sendFile callback err is Error | null per types
+      if (err != null && !res.headersSent) {
+         
         next(err);
       }
     });

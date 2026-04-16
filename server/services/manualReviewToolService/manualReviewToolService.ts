@@ -1,13 +1,13 @@
 /* eslint-disable max-lines */
 
 import { SpanStatusCode } from '@opentelemetry/api';
-import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { type ItemIdentifier } from '@roostorg/types';
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import {
   type Invoker,
   type UserPermission,
@@ -461,7 +461,6 @@ export class ManualReviewToolService {
                   },
                 });
 
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!job) {
               // this means that we tried to update a job that was deleted
               // between when we looked up the existing job and did the update.
@@ -684,14 +683,15 @@ export class ManualReviewToolService {
     if (newJob.kind === 'DEFAULT' && existingJob.kind === 'DEFAULT') {
       // Merge itemThreadContentItems (conversation context)
       const mergedThreadItems =
-        ('itemThreadContentItems' in newJob || 'itemThreadContentItems' in existingJob)
+        'itemThreadContentItems' in newJob ||
+        'itemThreadContentItems' in existingJob
           ? _.uniqBy(
               [
                 ...('itemThreadContentItems' in newJob
-                  ? (newJob.itemThreadContentItems ?? [])
+                  ? newJob.itemThreadContentItems ?? []
                   : []),
                 ...('itemThreadContentItems' in existingJob
-                  ? (existingJob.itemThreadContentItems ?? [])
+                  ? existingJob.itemThreadContentItems ?? []
                   : []),
               ],
               (it) => jsonStringify([it.itemId, it.itemTypeIdentifier.id]),
@@ -700,12 +700,14 @@ export class ManualReviewToolService {
 
       // Merge reportedItems (list of items reported by users)
       const mergedReportedItems =
-        ('reportedItems' in newJob || 'reportedItems' in existingJob)
+        'reportedItems' in newJob || 'reportedItems' in existingJob
           ? _.uniqBy(
               [
-                ...('reportedItems' in newJob ? (newJob.reportedItems ?? []) : []),
+                ...('reportedItems' in newJob
+                  ? newJob.reportedItems ?? []
+                  : []),
                 ...('reportedItems' in existingJob
-                  ? (existingJob.reportedItems ?? [])
+                  ? existingJob.reportedItems ?? []
                   : []),
               ],
               (it) => jsonStringify([it.id, it.typeId]),
@@ -963,10 +965,7 @@ export class ManualReviewToolService {
     return this.queueOps.getPendingJobCount(opts);
   }
 
-  async getTotalPendingJobCountForQueues(
-    orgId: string,
-    queueIds: string[],
-  ) {
+  async getTotalPendingJobCountForQueues(orgId: string, queueIds: string[]) {
     return this.queueOps.getTotalPendingJobCountForQueues(orgId, queueIds);
   }
 
@@ -1252,12 +1251,14 @@ export class ManualReviewToolService {
   }) {
     // As releaseJobLock is a public method, we assume the passed in jobId is an
     // external id (which are the only kind that should leave the mrt service).
-    await this.queueOps.releaseJobLock(opts as {
-      orgId: string;
-      queueId: string;
-      jobId: JobId;
-      lockToken: string;
-    });
+    await this.queueOps.releaseJobLock(
+      opts as {
+        orgId: string;
+        queueId: string;
+        jobId: JobId;
+        lockToken: string;
+      },
+    );
   }
 
   async close() {

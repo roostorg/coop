@@ -4,13 +4,26 @@
 
 /* eslint-disable max-classes-per-file */
 import {
+  ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
+  NoOpAnalyticsAdapter,
+  type AnalyticsEventInput,
+  type IAnalyticsAdapter,
+} from '../../plugins/analytics/index.js';
+import {
+  ClickhouseWarehouseAdapter,
+  NoOpWarehouseAdapter,
+  type IWarehouseAdapter,
+} from '../../plugins/warehouse/index.js';
+import { assertUnreachable } from '../../utils/misc.js';
+import type SafeTracer from '../../utils/SafeTracer.js';
+import {
   ClickhouseKyselyAdapter,
   type ClickhouseConnectionSettings,
 } from './ClickhouseAdapter.js';
 import {
+  type DataWarehousePoolSettings,
   type IDataWarehouse,
   type IDataWarehouseDialect,
-  type DataWarehousePoolSettings,
   type DataWarehouseProvider as IDataWarehouseProvider,
   type TransactionFunction,
 } from './IDataWarehouse.js';
@@ -22,33 +35,14 @@ import type {
   IDataWarehouseAnalytics,
 } from './IDataWarehouseAnalytics.js';
 import { PostgresAnalyticsAdapter } from './PostgresAnalyticsAdapter.js';
-import {
-  ClickhouseWarehouseAdapter,
-  NoOpWarehouseAdapter,
-  type IWarehouseAdapter,
-} from '../../plugins/warehouse/index.js';
-import {
-  ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
-  NoOpAnalyticsAdapter,
-  type IAnalyticsAdapter,
-  type AnalyticsEventInput,
-} from '../../plugins/analytics/index.js';
-import { assertUnreachable } from '../../utils/misc.js';
-import type SafeTracer from '../../utils/SafeTracer.js';
 
 /**
  * Concrete data warehouse providers
  * Extend this type to add new warehouse implementations
  */
-export type DataWarehouseProvider =
-  | 'clickhouse'
-  | 'postgresql'
-  | 'noop';
+export type DataWarehouseProvider = 'clickhouse' | 'postgresql' | 'noop';
 
-export type AnalyticsProvider =
-  | 'clickhouse'
-  | 'postgresql'
-  | 'noop';
+export type AnalyticsProvider = 'clickhouse' | 'postgresql' | 'noop';
 
 // Re-export the interface provider type for external use
 export type { IDataWarehouseProvider };
@@ -94,7 +88,10 @@ class WarehouseAdapterBridge implements IDataWarehouse {
     };
 
     return tracer.addActiveSpan(
-      { resource: `${this.provider}.client`, operation: `${this.provider}.query` },
+      {
+        resource: `${this.provider}.client`,
+        operation: `${this.provider}.query`,
+      },
       runQuery,
     );
   }
@@ -125,9 +122,7 @@ class WarehouseAdapterBridge implements IDataWarehouse {
   }
 }
 
-class AnalyticsAdapterBridge
-  implements IDataWarehouseAnalytics
-{
+class AnalyticsAdapterBridge implements IDataWarehouseAnalytics {
   constructor(
     private readonly provider: DataWarehouseProvider,
     private readonly adapter: IAnalyticsAdapter,
@@ -195,10 +190,7 @@ export class DataWarehouseFactory {
   static createDataWarehouse(config: DataWarehouseConfig): IDataWarehouse {
     switch (config.provider) {
       case 'noop':
-        return new WarehouseAdapterBridge(
-          'noop',
-          new NoOpWarehouseAdapter(),
-        );
+        return new WarehouseAdapterBridge('noop', new NoOpWarehouseAdapter());
       case 'clickhouse':
         return new WarehouseAdapterBridge(
           'clickhouse',
@@ -207,11 +199,16 @@ export class DataWarehouseFactory {
           }),
         );
       case 'postgresql':
-        return new WarehouseAdapterBridge('postgresql', new NoOpWarehouseAdapter());
+        return new WarehouseAdapterBridge(
+          'postgresql',
+          new NoOpWarehouseAdapter(),
+        );
       default:
         return assertUnreachable(
           config,
-          `Unknown data warehouse provider: ${(config as DataWarehouseConfig).provider}`,
+          `Unknown data warehouse provider: ${
+            (config as DataWarehouseConfig).provider
+          }`,
         );
     }
   }
@@ -232,7 +229,9 @@ export class DataWarehouseFactory {
       default:
         return assertUnreachable(
           config,
-          `Unknown data warehouse provider: ${(config as DataWarehouseConfig).provider}`,
+          `Unknown data warehouse provider: ${
+            (config as DataWarehouseConfig).provider
+          }`,
         );
     }
   }
@@ -281,7 +280,7 @@ export class DataWarehouseFactory {
   /**
    * Create configuration from environment variables
    */
-  // eslint-disable-next-line complexity
+
   static createConfigFromEnv(): DataWarehouseConfig {
     const provider = (process.env.WAREHOUSE_ADAPTER ??
       process.env.DATA_WAREHOUSE_PROVIDER ??
@@ -307,7 +306,9 @@ export class DataWarehouseFactory {
             username: process.env.CLICKHOUSE_USERNAME ?? 'default',
             password: process.env.CLICKHOUSE_PASSWORD ?? '',
             database: process.env.CLICKHOUSE_DATABASE ?? 'default',
-            protocol: (process.env.CLICKHOUSE_PROTOCOL ?? 'http') as 'http' | 'https',
+            protocol: (process.env.CLICKHOUSE_PROTOCOL ?? 'http') as
+              | 'http'
+              | 'https',
           },
           pool: {
             max: process.env.CLICKHOUSE_POOL_SIZE
@@ -337,4 +338,3 @@ export class DataWarehouseFactory {
     }
   }
 }
-

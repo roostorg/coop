@@ -50,6 +50,7 @@ type RuleRow = {
   creatorId: string;
   expirationTime: Date | null;
   conditionSet: ConditionSet;
+  // Kysely returns the Postgres enum as a plain string; cast in rowToPlainRuleWithLatest.
   alarmStatus: string;
   alarmStatusSetAt: Date;
   ruleType: RuleType;

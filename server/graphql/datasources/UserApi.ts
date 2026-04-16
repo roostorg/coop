@@ -1,5 +1,3 @@
-/* eslint-disable max-classes-per-file */
-
 import { type Exception } from '@opentelemetry/api';
 import { type PassportContext } from 'graphql-passport';
 import { uid } from 'uid';
@@ -175,10 +173,11 @@ class UserAPI {
       });
     }
 
-    const isCurrentPasswordValid = await this.sequelize.User.passwordMatchesHash(
-      currentPassword,
-      user.password,
-    );
+    const isCurrentPasswordValid =
+      await this.sequelize.User.passwordMatchesHash(
+        currentPassword,
+        user.password,
+      );
 
     if (!isCurrentPasswordValid) {
       throw makeChangePasswordIncorrectPasswordError({
@@ -216,7 +215,7 @@ class UserAPI {
     const user = await this.sequelize.User.findByPk(id, {
       rejectOnEmpty: true,
     });
-    
+
     // Security check: ensure admin can only approve users in their own org
     if (user.orgId !== invokerOrgId) {
       throw makeUnauthorizedError(
@@ -224,7 +223,7 @@ class UserAPI {
         { shouldErrorSpan: true },
       );
     }
-    
+
     user.approvedByAdmin = true;
     await user.save();
     return true;
@@ -234,7 +233,7 @@ class UserAPI {
     const user = await this.sequelize.User.findByPk(id, {
       rejectOnEmpty: true,
     });
-    
+
     // Security check: ensure admin can only reject users in their own org
     if (user.orgId !== invokerOrgId) {
       throw makeUnauthorizedError(
@@ -242,7 +241,7 @@ class UserAPI {
         { shouldErrorSpan: true },
       );
     }
-    
+
     user.rejectedByAdmin = true;
     await user.save();
     return true;

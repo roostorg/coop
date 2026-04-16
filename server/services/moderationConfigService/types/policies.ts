@@ -1,5 +1,7 @@
 import { makeEnumLike } from '@roostorg/types';
 
+import { type UserPenaltySeverity } from './shared.js';
+
 export const PolicyType = makeEnumLike([
   'HATE',
   'VIOLENCE',
@@ -30,5 +32,5 @@ export type Policy = {
   semanticVersion: number;
   userStrikeCount: number;
   applyUserStrikeCountConfigToChildren: boolean;
-  penalty: string; // TODO: remove
+  penalty: UserPenaltySeverity;
 };

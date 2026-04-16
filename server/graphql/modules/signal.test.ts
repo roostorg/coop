@@ -9,7 +9,6 @@ describe('flattenSubcategories', () => {
         id: 'Hate Groups',
         label: 'Hate Groups',
         children: [
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           {
             id: 'yes_nazi' as const,
             label: 'Nazi Content',

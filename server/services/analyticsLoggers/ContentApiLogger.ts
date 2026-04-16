@@ -75,7 +75,7 @@ class ContentApiLogger {
           org_id: data.orgId,
           request_id: fromCorrelationId(data.requestId),
           submission_id: itemSubmission.submissionId,
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
           ...(failureReason != null
             ? {
                 event: 'REQUEST_FAILED' as const,

@@ -1,10 +1,8 @@
-/* eslint-disable max-lines */
 import { type Kysely } from 'kysely';
 
 import { inject } from '../../iocContainer/utils.js';
 import { type Cached } from '../../utils/caching.js';
-import { type JsonOf } from '../../utils/encoding.js';
-import { jsonParse, jsonStringify } from '../../utils/encoding.js';
+import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
 import { type SignalAuthServicePg } from './dbTypes.js';
@@ -136,7 +134,9 @@ class SignalAuthService {
     }
     if (integrationId === Integration.ZENTROPI) {
       const c = await this.get(Integration.ZENTROPI, orgId);
-      return c != null ? { apiKey: c.apiKey, labelerVersions: c.labelerVersions } : undefined;
+      return c != null
+        ? { apiKey: c.apiKey, labelerVersions: c.labelerVersions }
+        : undefined;
     }
     const row = await this.pg
       .selectFrom('signal_auth_service.integration_configs')
@@ -277,8 +277,8 @@ function makeImplementations(
           labelerVersions: Array.isArray(labelerVersions)
             ? (labelerVersions as ZentropiLabelerVersion[])
             : typeof labelerVersions === 'string'
-              ? (jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>))
-              : [],
+            ? jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>)
+            : [],
         };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
@@ -308,8 +308,8 @@ function makeImplementations(
           labelerVersions: Array.isArray(returnedVersions)
             ? (returnedVersions as ZentropiLabelerVersion[])
             : typeof returnedVersions === 'string'
-              ? (jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>))
-              : [],
+            ? jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>)
+            : [],
         };
       },
       delete: async (orgId: string) => {
