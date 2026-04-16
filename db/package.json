@@ -25,6 +25,9 @@
     "umzug": "^3.0.0",
     "uuid": "^8.3.2"
   },
+  "overrides": {
+    "ajv": "~8.18.0"
+  },
   "devDependencies": {
     "@types/pg": "^8.10.2",
     "dotenv": "^16.0.0",
