@@ -30,7 +30,7 @@
     "@graphql-codegen/typescript-operations": "^5.0.9",
     "@graphql-codegen/typescript-react-apollo": "^4.4.1",
     "@graphql-codegen/typescript-resolvers": "^5.1.7",
-    "concurrently": "^6.5.1",
+    "concurrently": "^9.2.1",
     "lint-staged": "^15.5.2",
     "node-worker-threads-pool": "^1.5.1",
     "pg": "^8.5.1",
