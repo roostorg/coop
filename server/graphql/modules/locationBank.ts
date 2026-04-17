@@ -1,5 +1,5 @@
-import { type LocationBank as TLocationBank } from '../../models/banks/LocationBankModel.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
+import { type LocationBankWithoutFullPlacesAPIResponse } from '../datasources/LocationBankApi.js';
 import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
@@ -121,7 +121,7 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
-const LocationBank: ResolverMap<TLocationBank> = {
+const LocationBank: ResolverMap<LocationBankWithoutFullPlacesAPIResponse> = {
   async locations(locationBank, _, __) {
     return locationBank.getLocations();
   },
@@ -172,7 +172,7 @@ const Mutation: GQLMutationResolvers = {
         throw unauthenticatedError('User required.');
       }
 
-      const bank = context.dataSources.locationBankAPI.updateLocationBank(
+      const bank = await context.dataSources.locationBankAPI.updateLocationBank(
         params.input,
         user.orgId,
       );
