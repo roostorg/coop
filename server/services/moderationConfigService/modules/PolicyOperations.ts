@@ -84,6 +84,26 @@ export default class PolicyOperations {
     return results.map((it) => this.#dbResultToPolicy(it));
   }
 
+  async getPoliciesByIds(opts: {
+    orgId: string;
+    ids: readonly string[];
+    readFromReplica?: boolean;
+  }): Promise<Policy[]> {
+    const { orgId, ids, readFromReplica } = opts;
+    if (ids.length === 0) {
+      return [];
+    }
+    const pgQuery = this.#getPgQuery(readFromReplica ?? true);
+    const results = (await pgQuery
+      .selectFrom('public.policies')
+      .select(policyDbSelection)
+      .where('org_id', '=', orgId)
+      .where('id', 'in', [...ids])
+      .execute()) as PolicyDbResult[];
+
+    return results.map((it) => this.#dbResultToPolicy(it));
+  }
+
   async getPoliciesByRuleIds(opts: {
     ruleIds: readonly string[];
     readFromReplica?: boolean;
