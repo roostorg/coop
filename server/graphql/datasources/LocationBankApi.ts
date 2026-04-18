@@ -238,6 +238,17 @@ class LocationBankAPI {
 
     try {
       const result = await this.db.transaction().execute(async (trx) => {
+        const bank = await trx
+          .selectFrom('public.location_banks')
+          .select('id')
+          .where('id', '=', id)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+
+        if (!bank) {
+          return { numDeletedRows: BigInt(0) };
+        }
+
         await trx
           .deleteFrom('public.location_bank_locations')
           .where('bank_id', '=', id)
