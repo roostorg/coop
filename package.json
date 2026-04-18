@@ -24,7 +24,7 @@
   "dependencies": {
     "@graphiql/create-fetcher": "^0.1.0",
     "@graphql-codegen/add": "^6.0.0",
-    "@graphql-codegen/cli": "^6.2.1",
+    "@graphql-codegen/cli": "^6.3.0",
     "@graphql-codegen/named-operations-object": "^4.0.0",
     "@graphql-codegen/typescript": "^5.0.9",
     "@graphql-codegen/typescript-operations": "^5.0.9",
