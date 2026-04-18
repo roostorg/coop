@@ -2,7 +2,7 @@ import { inject } from '../../iocContainer/index.js';
 import { cached } from '../../utils/caching.js';
 import { jsonParse, jsonStringify } from '../../utils/encoding.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
-import { type Action } from '../moderationConfigService/index.js';
+import { type Action, type Policy } from '../moderationConfigService/index.js';
 
 type ActionKey = { ids: readonly string[]; orgId: string };
 
@@ -45,6 +45,9 @@ export const makeGetPoliciesByIdEventuallyConsistent = inject(
         fromString: (it) => jsonParse(it),
       },
       async producer(key: PolicyKey) {
+        if (key.ids.length === 0) {
+          return [] as Policy[];
+        }
         return moderationConfigService.getPoliciesByIds({
           orgId: key.orgId,
           ids: key.ids,
