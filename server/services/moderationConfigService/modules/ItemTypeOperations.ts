@@ -119,6 +119,12 @@ export default class ItemTypeOperations {
     });
   }
 
+  /** Drop cached latest item types for this org after a DB write (MV + in-memory cache can disagree). */
+  private async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
+    // `cached()` always attaches invalidate; the type keeps it optional for other producers.
+    await this.latestItemTypesCache.invalidate!(orgId);
+  }
+
   async getItemTypes(opts: {
     orgId: string;
     directives?: ConsumerDirectives;
@@ -236,6 +242,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<UserItemType> =>
         it.kind === 'USER' && it.id === userItemTypeId,
@@ -277,6 +284,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<ContentItemType> =>
         it.kind === 'CONTENT' && it.id === contentItemTypeId,
@@ -332,6 +340,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<ContentItemType> =>
         it.kind === 'CONTENT' && it.id === contentItemTypeId,
@@ -369,6 +378,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<ThreadItemType> =>
         it.kind === 'THREAD' && it.id === threadItemTypeId,
@@ -416,6 +426,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<ThreadItemType> =>
         it.kind === 'THREAD' && it.id === threadItemTypeId,
@@ -455,6 +466,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<UserItemType> =>
         it.kind === 'USER' && it.id === userItemTypeId,
@@ -506,6 +518,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
+    await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
       (it): it is ReadonlyDeep<UserItemType> =>
         it.kind === 'USER' && it.id === userItemTypeId,
@@ -554,7 +567,7 @@ export default class ItemTypeOperations {
           .executeTakeFirst();
       });
 
-    // Refetch item types to evict deleted item from the cache
+    await this.invalidateLatestItemTypesCache(orgId);
     await this.latestItemTypesCache(orgId, { maxAge: 0 });
 
     return res.numDeletedRows === 1n;

@@ -119,6 +119,33 @@ export default class RuleReadOperations {
     return rows.map(rowToPlainRuleWithLatest);
   }
 
+  /**
+   * Loads a single rule (with latest version row) scoped to an org.
+   * Used for GraphQL rule parents and permission checks without Sequelize.
+   *
+   * @param opts.readFromReplica — When false, reads from the primary (e.g. immediately after writes).
+   */
+  async getRuleByIdAndOrg(
+    ruleId: string,
+    orgId: string,
+    opts?: { readFromReplica?: boolean },
+  ): Promise<PlainRuleWithLatestVersion | null> {
+    const readFromReplica = opts?.readFromReplica ?? true;
+    const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
+    const row = (await pg
+      .selectFrom('public.rules as r')
+      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
+      .select(ruleSelect)
+      .where('r.id', '=', ruleId)
+      .where('r.org_id', '=', orgId)
+      .executeTakeFirst()) as RuleRow | undefined;
+
+    if (row == null) {
+      return null;
+    }
+    return rowToPlainRuleWithLatest(row);
+  }
+
   async findEnabledUserRules() {
     const today = String(getUtcDateOnlyString());
     const rows = (await this.pgQueryReplica

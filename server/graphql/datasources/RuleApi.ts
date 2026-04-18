@@ -4,18 +4,14 @@ import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
 
 import { type Kysely } from 'kysely';
-import Sequelize from 'sequelize';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import {
-  isEmptyResultSetError,
-  isUniqueConstraintError,
-} from '../../models/errors.js';
 import { type User } from '../../models/UserModel.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
+import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   RuleType,
   type Condition,
@@ -40,17 +36,11 @@ import {
   warehouseDateToDate,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
-import {
-  type JsonOf,
-  jsonParse,
-  jsonStringify,
-  tryJsonParse,
-} from '../../utils/encoding.js';
+import { jsonParse, jsonStringify, tryJsonParse } from '../../utils/encoding.js';
 import { makeNotFoundError } from '../../utils/errors.js';
-import { assertUnreachable, patchInPlace } from '../../utils/misc.js';
+import { assertUnreachable } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
 import {
-  type Mutable,
   type NonEmptyString,
   type RequiredWithoutNull,
 } from '../../utils/typescript-types.js';
@@ -67,10 +57,39 @@ import {
 } from '../generated.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 import { type CursorInfo, type Edge } from '../utils/paginationHandler.js';
+import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
+import {
+  isPostgresUniqueViolation,
+  kyselyCancelRunningBacktestsForRule,
+  kyselyCreateRule,
+  kyselyDeleteRule,
+  kyselyHasRunningBacktestsForRule,
+  kyselyListBacktestsForRule,
+  kyselyUpdateRule,
+} from './ruleKyselyPersistence.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../utils/kyselyTransactionWithRetry.js';
 
-const { Op, Transaction } = Sequelize;
+/**
+ * Normalize the GraphQL `expirationTime` input scalar into a shape our
+ * persistence layer can apply partially:
+ *
+ * - `undefined` → don't touch the column on update.
+ * - `null`      → clear the expiration.
+ * - otherwise   → coerce the scalar (string or Date) into a `Date`.
+ */
+function normalizeExpirationInput(
+  value: string | Date | null | undefined,
+): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return new Date(value);
+}
+
 const SortOrder = makeEnumLike(['ASC', 'DESC']);
 type SortOrder = (typeof SortOrder)[keyof typeof SortOrder];
 
@@ -269,25 +288,45 @@ function parseAggregationClauseInput(
  */
 class RuleAPI {
   private readonly warehouse: Kysely<DataWarehousePublicSchema>;
+  private readonly kysely: Kysely<CombinedPg>;
+  private readonly kyselyTransactionWithRetry: KyselyTransactionWithRetry<CombinedPg>;
+
+  private readonly graphQlRuleParentDeps: Parameters<
+    typeof buildGraphqlRuleParent
+  >[1];
 
   constructor(
     dialect: Dependencies['DataWarehouseDialect'],
     public readonly ruleInsights: Dependencies['RuleActionInsights'],
     private readonly actionStats: Dependencies['ActionStatisticsService'],
+    private readonly kyselyPg: Dependencies['KyselyPg'],
     private readonly models: Dependencies['Sequelize'],
+    private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
   ) {
-    this.warehouse = dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
+    this.warehouse =
+      dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
+    this.kysely = this.kyselyPg as Kysely<CombinedPg>;
+    this.kyselyTransactionWithRetry = makeKyselyTransactionWithRetry(
+      this.kysely,
+    );
+    this.graphQlRuleParentDeps = {
+      moderationConfigService: this.moderationConfigService,
+      // TODO(Kysely migration): replace with a ModerationConfigService /
+      // user-service-backed lookup once users are migrated off Sequelize.
+      findUserByIdAndOrg: async (opts) =>
+        this.models.User.findOne({ where: opts.where }),
+    };
   }
 
   async getGraphQLRuleFromId(id: string, orgId: string) {
-    const rule = await this.models.Rule.findByPk(id, { rejectOnEmpty: true });
-    if (rule.orgId !== orgId) {
+    const plain = await this.moderationConfigService.getRuleByIdAndOrg(id, orgId);
+    if (plain == null) {
       throw unauthenticatedError('User not authenticated to fetch this rule');
     }
 
-    return rule;
+    return buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps);
   }
 
   async createContentRule(
@@ -335,7 +374,9 @@ class RuleAPI {
       parentId,
     } = input;
 
-    if (ruleType === RuleType.CONTENT && input.contentTypeIds.length === 0) {
+    const contentTypeIds: readonly string[] =
+      input.ruleType === RuleType.CONTENT ? input.contentTypeIds : [];
+    if (ruleType === RuleType.CONTENT && contentTypeIds.length === 0) {
       throw makeRuleIsMissingContentTypeError({ shouldErrorSpan: true });
     }
 
@@ -345,47 +386,43 @@ class RuleAPI {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
 
-    const rule = this.models.Rule.build({
-      id: uid(),
-      name,
-      description,
-      tags: tags.slice(),
-      status,
-      conditionSet: transformConditionForDB(conditionSet),
-      maxDailyActions,
-      expirationTime: (expirationTime as Date | null | undefined) ?? undefined,
-      creatorId: userId,
-      orgId,
-      ruleType,
-      parentId,
-    });
+    const ruleId = uid();
 
     try {
-      await this.models.transactionWithRetry(async () => {
-        // Save rule to 'rules' table before adding assocs, to give it
-        // a record for foreign keys to reference and test name uniqueness.
-        await rule.save();
-
-        if (ruleType === RuleType.CONTENT) {
-          await rule.setContentTypes(
-            input.contentTypeIds as Mutable<typeof input.contentTypeIds>,
-          );
-        }
-
-        // The Mutable casts are used to work around a sequelize typings bug.
-        await rule.setActions(actionIds as Mutable<typeof actionIds>);
-        await rule.setPolicies(policyIds as Mutable<typeof policyIds>);
-
-        // TODO: is this needed?
-        await rule.save();
+      await this.kyselyTransactionWithRetry(async (trx) => {
+        await kyselyCreateRule(trx, {
+          id: ruleId,
+          name,
+          description: description ?? null,
+          status,
+          conditionSet: transformConditionForDB(conditionSet),
+          tags: tags.slice(),
+          maxDailyActions: maxDailyActions ?? null,
+          expirationTime: normalizeExpirationInput(expirationTime),
+          creatorId: userId,
+          orgId,
+          ruleType,
+          parentId,
+          actionIds,
+          policyIds,
+          contentTypeIds,
+        });
       });
     } catch (e) {
-      throw isUniqueConstraintError(e)
+      throw isPostgresUniqueViolation(e)
         ? makeRuleNameExistsError({ shouldErrorSpan: true })
         : e;
     }
 
-    return rule;
+    const plain = await this.moderationConfigService.getRuleByIdAndOrg(
+      ruleId,
+      orgId,
+      { readFromReplica: false },
+    );
+    if (plain == null) {
+      throw new Error('Rule was created but could not be reloaded');
+    }
+    return buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps);
   }
 
   async updateContentRule(opts: {
@@ -407,7 +444,6 @@ class RuleAPI {
     });
   }
 
-  // eslint-disable-next-line complexity
   private async updateRule(opts: {
     input:
       | (GQLUpdateContentRuleInput & { ruleType: typeof RuleType.CONTENT })
@@ -431,63 +467,30 @@ class RuleAPI {
       parentId,
     } = input;
 
-    const rule = await this.models.Rule.findOne({
-      where: { id, orgId },
-      rejectOnEmpty: true,
-    }).catch((e) => {
-      throw isEmptyResultSetError(e)
-        ? makeNotFoundError('Rule not found', {
-            detail: `Could not find rule with id ${id}`,
-            shouldErrorSpan: true,
-          })
-        : e;
-    });
+    const existing = await this.moderationConfigService.getRuleByIdAndOrg(
+      id,
+      orgId,
+      { readFromReplica: false },
+    );
+    if (existing == null) {
+      throw makeNotFoundError('Rule not found', {
+        detail: `Could not find rule with id ${id}`,
+        shouldErrorSpan: true,
+      });
+    }
 
     if (conditionSet != null && !conditionInputIsValid(conditionSet)) {
       throw new Error('Invalid condition set input');
     }
 
-    // In the case of a content rule update, it's okay if the contentTypeIds isn't
-    // provided, since that will just be a no-op via the patchInPlace, but if it
-    // is provided, we need to check to make sure there are actually content type
-    // IDs present, since an empty list is invalid for content rules.
-    if (
-      ruleType === 'CONTENT' &&
-      input.contentTypeIds &&
-      input.contentTypeIds.length === 0
-    ) {
+    // In the case of a content rule update, it's okay if the contentTypeIds
+    // isn't provided, since that will be a no-op in persistence. But if it
+    // *is* provided, we need to check there are actually content type IDs
+    // present, since an empty list is invalid for content rules.
+    const contentTypeIds =
+      input.ruleType === RuleType.CONTENT ? input.contentTypeIds : undefined;
+    if (contentTypeIds != null && contentTypeIds.length === 0) {
       throw makeRuleIsMissingContentTypeError({ shouldErrorSpan: true });
-    }
-
-    patchInPlace(rule, {
-      name: name ?? undefined,
-      description,
-      conditionSet:
-        conditionSet == null
-          ? undefined
-          : transformConditionForDB(conditionSet),
-      tags: tags?.slice() ?? undefined,
-      ruleType,
-    });
-
-    if (status && rule.status !== status) {
-      rule.status = status;
-    }
-
-    if (rule.maxDailyActions !== maxDailyActions) {
-      // If maxDailyActions is undefined, it needs to be explicitly converted
-      // to null because postgres doesn't understand undefined
-      rule.maxDailyActions = maxDailyActions ?? null;
-    }
-
-    if (rule.expirationTime !== expirationTime) {
-      // If expirationTime is undefined, it needs to be explicitly converted
-      // to null because postgres doesn't understand undefined
-      rule.expirationTime = (expirationTime as Date | null | undefined) ?? null;
-    }
-
-    if (rule.parentId !== parentId) {
-      rule.parentId = parentId ?? null;
     }
 
     // Validate that signals used in automated rules are allowed
@@ -496,7 +499,7 @@ class RuleAPI {
     // that are restricted to routing rules only.
     const willHaveActions = actionIds
       ? actionIds.length > 0
-      : (await rule.getActions()).length > 0;
+      : (await this.moderationConfigService.getActionsForRuleId(id)).length > 0;
 
     if (willHaveActions && conditionSet) {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
@@ -507,7 +510,7 @@ class RuleAPI {
     // active backtests for this rule because, if there are, we should fail the
     // update unless the user's asked to cancel the backtests explicitly.
     if (!cancelRunningBacktests) {
-      if (await this.models.Backtest.hasRunningBacktestsForRule(rule.id)) {
+      if (await kyselyHasRunningBacktestsForRule(this.kysely, id)) {
         throw makeRuleHasRunningBacktestsError({ shouldErrorSpan: true });
       }
     }
@@ -518,47 +521,55 @@ class RuleAPI {
     // use SERIALIZABLE to make the update + backtest cancelation logically
     // linearizable w/r/t concurrently started backtests, but that's overkill.
     try {
-      await this.models.sequelize.transaction(
-        { isolationLevel: Transaction.ISOLATION_LEVELS.REPEATABLE_READ },
-        async () => {
-          if (ruleType === 'CONTENT' && input.contentTypeIds) {
-            await rule.setContentTypes(
-              input.contentTypeIds as Mutable<typeof input.contentTypeIds>,
-            );
-          }
-
-          // TODO: this is not safe. Let's one org link to a different org's
-          // policies/actions.
-          if (actionIds) {
-            await rule.setActions(actionIds as Mutable<typeof actionIds>);
-          }
-          if (policyIds) {
-            await rule.setPolicies(policyIds as Mutable<typeof policyIds>);
-          }
-
-          await rule.save();
-
-          // Finally, if the user asked to delete any running backtests, do it.
+      await this.kysely
+        .transaction()
+        .setIsolationLevel('repeatable read')
+        .execute(async (trx) => {
+          await kyselyUpdateRule(trx, {
+            id,
+            orgId,
+            name,
+            description,
+            conditionSet:
+              conditionSet == null
+                ? undefined
+                : transformConditionForDB(conditionSet),
+            tags: tags?.slice(),
+            ruleType,
+            status: status ?? undefined,
+            maxDailyActions,
+            expirationTime: normalizeExpirationInput(expirationTime),
+            parentId,
+            actionIds: actionIds ?? undefined,
+            policyIds: policyIds ?? undefined,
+            contentTypeIds: contentTypeIds ?? undefined,
+          });
           if (cancelRunningBacktests) {
-            await this.models.Backtest.cancelRunningBacktestsForRule(rule.id);
+            await kyselyCancelRunningBacktestsForRule(trx, id);
           }
-        },
-      );
+        });
     } catch (e) {
-      throw isUniqueConstraintError(e)
+      throw isPostgresUniqueViolation(e)
         ? makeRuleNameExistsError({ shouldErrorSpan: true })
         : e;
     }
 
-    return rule;
+    const plain = await this.moderationConfigService.getRuleByIdAndOrg(id, orgId, {
+      readFromReplica: false,
+    });
+    if (plain == null) {
+      throw new Error('Rule was updated but could not be reloaded');
+    }
+    return buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps);
   }
 
   async deleteRule(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
 
     try {
-      const rule = await this.models.Rule.findOne({ where: { id, orgId } });
-      await rule?.destroy();
+      await this.kysely.transaction().execute(async (trx) => {
+        await kyselyDeleteRule(trx, id, orgId);
+      });
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
@@ -633,7 +644,7 @@ class RuleAPI {
     }
   }
 
-  async createBacktest(_input: any, _user: User) {
+  async createBacktest(_input: unknown, _user: User) {
     throw new Error('Not Implemented');
 
     // const id = uid();
@@ -779,15 +790,11 @@ class RuleAPI {
         userId: it.userId ?? undefined,
         userTypeId: it.userTypeId ?? undefined,
         content: (it.content ?? '') as string,
-        result: it.result
-          ? jsonParse(
-              it.result as JsonOf<ConditionSetWithResultAsLogged>,
-            )
-          : null,
+        result: it.result ? jsonParse(it.result) : null,
         environment: it.environment as RuleStatus,
         passed: it.passed,
         ruleId: it.ruleId,
-        ruleName: it.ruleName ?? '',
+        ruleName: it.ruleName,
         tags: [...it.tags],
       },
       cursor: { ts: warehouseDateToDate(it.ts).valueOf() },
@@ -798,12 +805,7 @@ class RuleAPI {
     ruleId: string,
     backtestIds?: readonly string[] | null,
   ) {
-    return this.models.Backtest.findAll({
-      where: {
-        ruleId,
-        ...(backtestIds ? { id: { [Op.in]: backtestIds } } : {}),
-      },
-    });
+    return kyselyListBacktestsForRule(this.kysely, ruleId, backtestIds);
   }
 
   /**
@@ -928,7 +930,9 @@ export default inject(
     'DataWarehouseDialect',
     'RuleActionInsights',
     'ActionStatisticsService',
+    'KyselyPg',
     'Sequelize',
+    'ModerationConfigService',
     'Tracer',
     'SignalsService',
   ],
