@@ -14,7 +14,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.50.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.53.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.214.0",
-    "@opentelemetry/propagator-aws-xray": "^1.26.0",
+    "@opentelemetry/propagator-aws-xray": "^2.2.0",
     "@opentelemetry/resource-detector-aws": "^1.6.1",
     "@opentelemetry/resource-detector-container": "^0.8.5",
     "@opentelemetry/resources": "^1.26.0",
