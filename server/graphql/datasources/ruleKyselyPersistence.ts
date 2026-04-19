@@ -1,4 +1,4 @@
-import { type Kysely, type Updateable, sql } from 'kysely';
+import { type Insertable, type Kysely, type Updateable, sql } from 'kysely';
 
 import { computeRuleStatusFromRow } from '../../models/rules/ruleTypes.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
@@ -9,16 +9,11 @@ import {
   RuleType,
   type ConditionSet,
 } from '../../services/moderationConfigService/index.js';
-import { safeGet } from '../../utils/misc.js';
 import { type Backtest } from '../../models/rules/BacktestModel.js';
 
 /** Matches `public.backtests.status` when generated value is RUNNING. */
 const backtestRunningPredicate = sql<boolean>`cancelation_date is null
   and (sampling_complete = false or content_items_processed < sample_actual_size)`;
-
-export function isPostgresUniqueViolation(error: unknown): boolean {
-  return safeGet(error, ['code']) === '23505';
-}
 
 /**
  * Applies the legacy `status` virtual-setter semantics from the Sequelize Rule
@@ -134,29 +129,36 @@ export async function kyselyCreateRule(
 
   // `public.rules.created_at` / `updated_at` are NOT NULL in Postgres; Kysely
   // `dbTypes` mark them `GeneratedAlways` so they are omitted from
-  // `Insertable`, but inserts must still supply values at runtime.
+  // `Insertable`, but inserts must still supply values at runtime. Build the
+  // values against an `Insertable & { created_at; updated_at }` so every
+  // column is still type-checked, then narrow back to `Insertable` at the
+  // call site (a safe widening, not a `never` escape hatch).
+  const ruleValues: Insertable<CombinedPg['public.rules']> & {
+    created_at: Date;
+    updated_at: Date;
+  } = {
+    id: input.id,
+    name: input.name,
+    description: input.description,
+    status_if_unexpired,
+    tags: [...input.tags],
+    max_daily_actions: input.maxDailyActions,
+    daily_actions_run: 0,
+    last_action_date: null,
+    org_id: input.orgId,
+    creator_id: input.creatorId,
+    expiration_time,
+    condition_set: input.conditionSet,
+    alarm_status: RuleAlarmStatus.INSUFFICIENT_DATA,
+    alarm_status_set_at: now,
+    rule_type: input.ruleType,
+    parent_id: input.parentId ?? null,
+    created_at: now,
+    updated_at: now,
+  };
   await trx
     .insertInto('public.rules')
-    .values({
-      id: input.id,
-      name: input.name,
-      description: input.description,
-      status_if_unexpired,
-      tags: [...input.tags],
-      max_daily_actions: input.maxDailyActions,
-      daily_actions_run: 0,
-      last_action_date: null,
-      org_id: input.orgId,
-      creator_id: input.creatorId,
-      expiration_time,
-      condition_set: input.conditionSet,
-      alarm_status: RuleAlarmStatus.INSUFFICIENT_DATA,
-      alarm_status_set_at: now,
-      rule_type: input.ruleType,
-      parent_id: input.parentId ?? null,
-      created_at: now,
-      updated_at: now,
-    } as never)
+    .values(ruleValues as Insertable<CombinedPg['public.rules']>)
     .execute();
 
   await replaceRuleActions(trx, input.id, input.actionIds);

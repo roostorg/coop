@@ -59,7 +59,6 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 import { type CursorInfo, type Edge } from '../utils/paginationHandler.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
 import {
-  isPostgresUniqueViolation,
   kyselyCancelRunningBacktestsForRule,
   kyselyCreateRule,
   kyselyDeleteRule,
@@ -69,6 +68,7 @@ import {
 } from './ruleKyselyPersistence.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { isUniqueViolationError } from '../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
@@ -409,7 +409,7 @@ class RuleAPI {
         });
       });
     } catch (e) {
-      throw isPostgresUniqueViolation(e)
+      throw isUniqueViolationError(e)
         ? makeRuleNameExistsError({ shouldErrorSpan: true })
         : e;
     }
@@ -549,7 +549,7 @@ class RuleAPI {
           }
         });
     } catch (e) {
-      throw isPostgresUniqueViolation(e)
+      throw isUniqueViolationError(e)
         ? makeRuleNameExistsError({ shouldErrorSpan: true })
         : e;
     }
