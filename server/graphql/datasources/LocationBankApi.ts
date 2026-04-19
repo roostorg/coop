@@ -63,7 +63,7 @@ class LocationBankAPI {
       description: row.description,
       orgId: row.org_id,
       ownerId: row.owner_id,
-      getLocations: () => this.#loadLocationsForBank(row.id),
+      getLocations: async () => this.#loadLocationsForBank(row.id),
     };
   }
 
