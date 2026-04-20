@@ -318,16 +318,18 @@ export default class ActionOperations {
   }
 
   async getActionsForRuleId(opts: {
+    orgId: string;
     ruleId: string;
     readFromReplica?: boolean;
   }) {
-    const { ruleId, readFromReplica } = opts;
+    const { orgId, ruleId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica ?? true);
     const results = (await pgQuery
       .selectFrom('public.rules_and_actions as raa')
       .innerJoin('public.actions as a', 'a.id', 'raa.action_id')
       .select(actionJoinDbSelection)
       .where('raa.rule_id', '=', ruleId)
+      .where('a.org_id', '=', orgId)
       .execute()) as ActionDbResult[];
 
     return results.map((it) => this.#dbResultToAction(it));
