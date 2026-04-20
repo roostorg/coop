@@ -1,6 +1,6 @@
 import { type ItemTypeKind } from '@roostorg/types';
 import { type Generated, type GeneratedAlways } from 'kysely';
-import { type JsonObject } from 'type-fest';
+import { type JsonObject, type JsonValue } from 'type-fest';
 
 import { type TaggedUnionFromCases } from '../../utils/typescript-types.js';
 import { type ActionType } from './types/actions.js';
@@ -103,6 +103,7 @@ export type ModerationConfigServicePg = {
     updated_at: Generated<Date>;
     applies_to_all_items_of_kind: Generated<ItemTypeKind[]>;
     apply_user_strikes: boolean;
+    custom_mrt_api_params: JsonValue[] | null;
   } & TaggedUnionFromCases<
     { action_type: ActionType },
     {

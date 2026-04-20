@@ -6,7 +6,7 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../../models/types/permissioning.js';
 import { type RuleErrorType, type LocationBankErrorType } from './errors.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
-import { type Action, type Policy } from './index.js';
+import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
 } from './modules/ActionOperations.js';
@@ -268,11 +268,33 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       callbackUrl: string;
       callbackUrlHeaders: JsonObject | null;
       callbackUrlBody: JsonObject | null;
-      // TODO: linking specific item types not yet supported.
       applyUserStrikes?: boolean;
+      itemTypeIds?: readonly string[];
     },
-  ) {
+  ): Promise<CustomAction> {
     return this.actionOps.createAction(orgId, input);
+  }
+
+  async updateCustomAction(
+    orgId: string,
+    opts: {
+      actionId: string;
+      patch: {
+        name?: string;
+        description?: string | null;
+        callbackUrl?: string;
+        callbackUrlHeaders?: JsonObject | null;
+        callbackUrlBody?: JsonObject | null;
+        applyUserStrikes?: boolean;
+      };
+      itemTypeIds?: readonly string[] | undefined;
+    },
+  ): Promise<CustomAction> {
+    return this.actionOps.updateCustomAction({ orgId, ...opts });
+  }
+
+  async deleteCustomAction(opts: { orgId: string; actionId: string }) {
+    return this.actionOps.deleteCustomAction(opts);
   }
 
   async getActions(opts: {
@@ -281,6 +303,15 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     readFromReplica?: boolean;
   }) {
     return this.actionOps.getActions(opts);
+  }
+
+  async getActionsForItemType(opts: {
+    orgId: string;
+    itemTypeId: string;
+    itemTypeKind: ItemTypeKind;
+    readFromReplica?: boolean;
+  }) {
+    return this.actionOps.getActionsForItemType(opts);
   }
 
   async getActionsForRuleId(ruleId: string) {

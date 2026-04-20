@@ -18,12 +18,6 @@ import type {
 import type { ReportingInsights } from '../graphql/modules/reporting.js';
 import type { HashBank } from '../models/HashBankModel.js';
 import type { Org } from '../models/OrgModel.js';
-import type {
-  CustomAction,
-  EnqueueAuthorToMrtAction,
-  EnqueueToMrtAction,
-  EnqueueToNcmecAction,
-} from '../models/rules/ActionModel.js';
 import type { Backtest } from '../models/rules/BacktestModel.js';
 import type { ItemType } from '../models/rules/ItemTypeModel.js';
 import type {
@@ -54,6 +48,12 @@ import type {
   ConditionSet,
   LeafCondition,
 } from '../services/moderationConfigService/index.js';
+import type {
+  CustomAction,
+  EnqueueAuthorToMrtAction,
+  EnqueueToMrtAction,
+  EnqueueToNcmecAction,
+} from '../services/moderationConfigService/types/actions.js';
 import type { Notification } from '../services/notificationsService/notificationsService.js';
 import type { ReportingRuleWithoutVersion } from '../services/reportingService/ReportingRules.js';
 import type { Signal } from '../services/signalsService/index.js';

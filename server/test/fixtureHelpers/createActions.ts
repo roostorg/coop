@@ -27,7 +27,7 @@ export default async function (opts: {
     actions,
     async cleanup() {
       await Promise.all(
-        actions.map(async (it) => actionAPI.deleteAction(it.id, orgId)),
+        actions.map(async (it) => actionAPI.deleteAction(orgId, it.id)),
       );
     },
   };

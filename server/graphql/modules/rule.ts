@@ -659,7 +659,9 @@ const ContentRule: GQLContentRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return rule.getActions();
+    return context.services.ModerationConfigService.getActionsForRuleId(
+      rule.id,
+    );
   },
   async policies(rule, _, context) {
     const user = context.getUser();
@@ -709,7 +711,9 @@ const UserRule: GQLUserRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return rule.getActions();
+    return context.services.ModerationConfigService.getActionsForRuleId(
+      rule.id,
+    );
   },
   async policies(rule, _, context) {
     const user = context.getUser();

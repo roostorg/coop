@@ -3,6 +3,7 @@ import { assertUnreachable } from '../../utils/misc.js';
 import {
   type GQLActionResolvers,
   type GQLCustomActionResolvers,
+  type GQLCustomMrtApiParamSpec,
   type GQLEnqueueAuthorToMrtActionResolvers,
   type GQLEnqueueToMrtActionResolvers,
   type GQLEnqueueToNcmecActionResolvers,
@@ -179,6 +180,11 @@ const Action: GQLActionResolvers = {
 };
 
 const CustomAction: GQLCustomActionResolvers = {
+  customMrtApiParams(parent) {
+    return Array.isArray(parent.customMrtApiParams)
+      ? (parent.customMrtApiParams as readonly GQLCustomMrtApiParamSpec[])
+      : [];
+  },
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {

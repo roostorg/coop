@@ -449,6 +449,7 @@ describe('ModerationConfigService', () => {
               "callbackUrl": "https://example.com",
               "callbackUrlBody": null,
               "callbackUrlHeaders": null,
+              "customMrtApiParams": null,
               "id": Any<String>,
               "name": "Test Action",
               "orgId": Any<String>,

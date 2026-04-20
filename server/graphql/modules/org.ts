@@ -206,7 +206,10 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    return org.getActions();
+    return context.services.ModerationConfigService.getActions({
+      orgId: org.id,
+      readFromReplica: true,
+    });
   },
   async contentTypes(org, _, context) {
     const user = context.getUser();

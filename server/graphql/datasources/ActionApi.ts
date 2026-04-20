@@ -1,26 +1,10 @@
 import { type Exception } from '@opentelemetry/api';
 import pLimit from 'p-limit';
-import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { isUniqueConstraintError } from '../../models/errors.js';
-import {
-  type CollapsedSequelizeAction,
-  type CustomAction,
-  type SequelizeAction,
-} from '../../models/rules/ActionModel.js';
-import {
-  ActionType,
-  type Action,
-} from '../../services/moderationConfigService/index.js';
-// TODO: delete the import below when we move the action mutation logic into the
-// moderation config service, which is where it should be.
-// eslint-disable-next-line import/no-restricted-paths
-import { makeActionNameExistsError } from '../../services/moderationConfigService/modules/ActionOperations.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
-import { patchInPlace } from '../../utils/misc.js';
-import { type CollapseCases } from '../../utils/typescript-types.js';
+import { makeNotFoundError } from '../../utils/errors.js';
 import {
   type GQLCreateActionInput,
   type GQLUpdateActionInput,
@@ -32,27 +16,35 @@ import {
 class ActionAPI {
   constructor(
     private readonly actionPublisher: Dependencies['ActionPublisher'],
-    private readonly sequelize: Dependencies['Sequelize'],
+    private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly itemInvestigationService: Dependencies['ItemInvestigationService'],
     private readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
-  ) {
-  }
+  ) {}
 
   async getGraphQLActionFromId(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
-    const action = await this.sequelize.Action.findOne({
-      where: { id, orgId },
-      rejectOnEmpty: true,
+    const actions = await this.moderationConfigService.getActions({
+      orgId,
+      ids: [id],
+      readFromReplica: false,
     });
-
-    return action satisfies CollapsedSequelizeAction as SequelizeAction;
+    const action = actions.at(0);
+    if (action === undefined) {
+      throw makeNotFoundError('Action not found', { shouldErrorSpan: true });
+    }
+    return action;
   }
 
   async getGraphQLActionsFromIds(orgId: string, ids: readonly string[]) {
-    return (await this.sequelize.Action.findAll({
-      where: { orgId, id: ids },
-    })) satisfies CollapsedSequelizeAction[] as SequelizeAction[];
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.moderationConfigService.getActions({
+      orgId,
+      ids,
+      readFromReplica: false,
+    });
   }
 
   async createAction(input: GQLCreateActionInput, orgId: string) {
@@ -65,33 +57,17 @@ class ActionAPI {
       callbackUrlBody,
       applyUserStrikes,
     } = input;
-    const action = this.sequelize.Action.build({
-      id: uid(),
+
+    return this.moderationConfigService.createAction(orgId, {
       name,
-      description,
+      description: description ?? null,
+      type: 'CUSTOM_ACTION',
       callbackUrl,
-      callbackUrlHeaders,
-      callbackUrlBody,
-      orgId,
-      penalty: 'NONE',
-      applyUserStrikes: applyUserStrikes ?? false,
-      actionType: ActionType.CUSTOM_ACTION,
-      appliesToAllItemsOfKind: [],
-    }) as CustomAction;
-
-    try {
-      await this.sequelize.transactionWithRetry(async () => {
-        await action.save();
-        await action.addContentTypes([...itemTypeIds]);
-        await action.save();
-      });
-    } catch (e: unknown) {
-      throw isUniqueConstraintError(e)
-        ? makeActionNameExistsError({ shouldErrorSpan: true })
-        : e;
-    }
-
-    return action;
+      callbackUrlHeaders: callbackUrlHeaders ?? null,
+      callbackUrlBody: callbackUrlBody ?? null,
+      applyUserStrikes: applyUserStrikes ?? undefined,
+      itemTypeIds,
+    });
   }
 
   async updateAction(input: GQLUpdateActionInput, orgId: string) {
@@ -106,41 +82,26 @@ class ActionAPI {
       applyUserStrikes,
     } = input;
 
-    const action = (await this.sequelize.Action.findOne({
-      where: { id, orgId, actionType: ActionType.CUSTOM_ACTION },
-      rejectOnEmpty: true,
-    })) as CustomAction;
-    patchInPlace(action, {
-      name: name ?? undefined,
-      description,
-      callbackUrl: callbackUrl ?? undefined,
-      callbackUrlHeaders,
-      callbackUrlBody,
-      applyUserStrikes: applyUserStrikes ?? undefined,
+    return this.moderationConfigService.updateCustomAction(orgId, {
+      actionId: id,
+      patch: {
+        name: name ?? undefined,
+        description,
+        callbackUrl: callbackUrl ?? undefined,
+        callbackUrlHeaders,
+        callbackUrlBody,
+        applyUserStrikes: applyUserStrikes ?? undefined,
+      },
+      itemTypeIds: itemTypeIds ?? undefined,
     });
-
-    try {
-      await this.sequelize.transactionWithRetry(async () => {
-        if (itemTypeIds) {
-          await action.setContentTypes([...itemTypeIds]);
-        }
-        await action.save();
-      });
-    } catch (e: unknown) {
-      throw isUniqueConstraintError(e)
-        ? makeActionNameExistsError({ shouldErrorSpan: true })
-        : e;
-    }
-
-    return action;
   }
 
   async deleteAction(orgId: string, id: string) {
     try {
-      const action = await this.sequelize.Action.findOne({
-        where: { id, orgId, actionType: ActionType.CUSTOM_ACTION },
+      return await this.moderationConfigService.deleteCustomAction({
+        orgId,
+        actionId: id,
       });
-      await action?.destroy();
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
@@ -149,7 +110,6 @@ class ActionAPI {
 
       return false;
     }
-    return true;
   }
 
   async bulkExecuteActions(
@@ -162,10 +122,16 @@ class ActionAPI {
     actorEmail: string,
   ) {
     const [actions, policies, itemType] = await Promise.all([
-      this.sequelize.Action.findAll({
-        where: { id: actionIds, orgId },
-      }) satisfies Promise<CollapseCases<Action>[]> as Promise<Action[]>,
-      this.sequelize.Policy.findAll({ where: { id: policyIds, orgId } }),
+      this.moderationConfigService.getActions({
+        orgId,
+        ids: actionIds,
+        readFromReplica: false,
+      }),
+      this.moderationConfigService.getPoliciesByIds({
+        orgId,
+        ids: policyIds,
+        readFromReplica: false,
+      }),
       this.getItemTypeEventuallyConsistent({
         orgId,
         typeSelector: { id: itemTypeId },
@@ -246,7 +212,7 @@ class ActionAPI {
 export default inject(
   [
     'ActionPublisher',
-    'Sequelize',
+    'ModerationConfigService',
     'Tracer',
     'ItemInvestigationService',
     'getItemTypeEventuallyConsistent',
