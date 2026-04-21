@@ -287,7 +287,10 @@ export async function rawItemSubmissionToItemSubmission(
   };
 }
 
-function getCreator(itemType: ItemType, itemData: NormalizedItemData) {
+export function getCreator(
+  itemType: ItemType,
+  itemData: NormalizedItemData,
+) {
   switch (itemType.kind) {
     case 'USER':
       return undefined;
