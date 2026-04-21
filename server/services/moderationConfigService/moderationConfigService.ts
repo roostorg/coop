@@ -59,6 +59,27 @@ type ArrayOrPromiseOf<T> =
   | Promise<readonly ReadonlyDeep<T>[]>
   | Promise<ReadonlyDeep<T>>;
 
+type ContentTypeSchemaFieldRoles = {
+  creatorId?: string | null;
+  threadId?: string | null;
+  parentId?: string | null;
+  createdAt?: string | null;
+  displayName?: string | null;
+};
+
+type ThreadTypeSchemaFieldRoles = {
+  createdAt?: string | null;
+  displayName?: string | null;
+  creatorId?: string | null;
+};
+
+type UserTypeSchemaFieldRoles = {
+  profileIcon?: string | null;
+  backgroundImage?: string | null;
+  createdAt?: string | null;
+  displayName?: string | null;
+};
+
 /**
  * This service will eventually manage all CRUD operations on entities that are
  * part of an organization's defined moderation policy, including: rules,
@@ -137,13 +158,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        creatorId?: string | null;
-        threadId?: string | null;
-        parentId?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: ContentTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ContentItemType>> {
     return this.itemTypeOps.createContentType(orgId, input);
@@ -156,13 +171,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        creatorId?: string | null;
-        threadId?: string | null;
-        parentId?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: ContentTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ContentItemType>> {
     return this.itemTypeOps.updateContentType(orgId, input);
@@ -174,11 +183,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        createdAt?: string | null;
-        displayName?: string | null;
-        creatorId?: string | null;
-      };
+      schemaFieldRoles: ThreadTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ThreadItemType>> {
     return this.itemTypeOps.createThreadType(orgId, input);
@@ -191,11 +196,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        createdAt?: string | null;
-        displayName?: string | null;
-        creatorId?: string | null;
-      };
+      schemaFieldRoles: ThreadTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ThreadItemType>> {
     return this.itemTypeOps.updateThreadType(orgId, input);
@@ -207,12 +208,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        profileIcon?: string | null;
-        backgroundImage?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: UserTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<UserItemType>> {
     return this.itemTypeOps.createUserType(orgId, input);
@@ -225,12 +221,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        profileIcon?: string | null;
-        backgroundImage?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: UserTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<UserItemType>> {
     return this.itemTypeOps.updateUserType(orgId, input);
