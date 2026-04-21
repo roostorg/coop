@@ -16689,7 +16689,35 @@ export type GQLGetLatestUserSubmittedItemsQuery = {
             };
           };
         }
-      | { readonly __typename: 'ThreadItem' }
+      | {
+          readonly __typename: 'ThreadItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ThreadItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly type: GQLFieldType;
+              readonly required: boolean;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ThreadSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+            };
+          };
+        }
       | { readonly __typename: 'UserItem' };
   }>;
 };
@@ -35093,6 +35121,30 @@ export const GQLGetLatestUserSubmittedItemsDocument = gql`
               displayName
               parentId
               threadId
+              createdAt
+              creatorId
+            }
+          }
+        }
+        ... on ThreadItem {
+          id
+          submissionId
+          data
+          type {
+            id
+            name
+            baseFields {
+              name
+              type
+              required
+              container {
+                containerType
+                keyScalarType
+                valueScalarType
+              }
+            }
+            schemaFieldRoles {
+              displayName
               createdAt
               creatorId
             }

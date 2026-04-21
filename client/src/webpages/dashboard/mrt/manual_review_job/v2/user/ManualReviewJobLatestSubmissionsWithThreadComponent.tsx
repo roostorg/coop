@@ -58,6 +58,30 @@ gql`
             }
           }
         }
+        ... on ThreadItem {
+          id
+          submissionId
+          data
+          type {
+            id
+            name
+            baseFields {
+              name
+              type
+              required
+              container {
+                containerType
+                keyScalarType
+                valueScalarType
+              }
+            }
+            schemaFieldRoles {
+              displayName
+              createdAt
+              creatorId
+            }
+          }
+        }
       }
     }
   }
@@ -105,28 +129,40 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
 
   const dataValues = useMemo(() => {
     return data?.latestItemsCreatedBy.map((itemSubmission) => {
-      if (itemSubmission.latest.__typename !== 'ContentItem') {
-        return undefined;
+      const item = itemSubmission.latest;
+      if (item.__typename === 'ContentItem') {
+        const createdAt = getFieldValueForRole(item, 'createdAt');
+        const threadId = getFieldValueForRole(item, 'threadId');
+        const creatorId = getFieldValueForRole(item, 'creatorId');
+        return {
+          itemId: item.id,
+          itemData: item.data,
+          itemTypeId: item.type.id,
+          itemTypeName: item.type.name,
+          itemTypeFields: item.type.baseFields,
+          dateCreated: createdAt,
+          threadId,
+          creatorId,
+        };
       }
-      const createdAt = getFieldValueForRole(
-        itemSubmission.latest,
-        'createdAt',
-      );
-      const threadId = getFieldValueForRole(itemSubmission.latest, 'threadId');
-      const creatorId = getFieldValueForRole(
-        itemSubmission.latest,
-        'creatorId',
-      );
-      return {
-        itemId: itemSubmission.latest.id,
-        itemData: itemSubmission.latest.data,
-        itemTypeId: itemSubmission.latest.type.id,
-        itemTypeName: itemSubmission.latest.type.name,
-        itemTypeFields: itemSubmission.latest.type.baseFields,
-        dateCreated: createdAt,
-        threadId,
-        creatorId,
-      };
+      // For Thread-kind items, the item itself is the thread (it's the
+      // top-level post, with replies/comments as child Content items pointing
+      // back at it via their `threadId` role).
+      if (item.__typename === 'ThreadItem') {
+        const createdAt = getFieldValueForRole(item, 'createdAt');
+        const creatorId = getFieldValueForRole(item, 'creatorId');
+        return {
+          itemId: item.id,
+          itemData: item.data,
+          itemTypeId: item.type.id,
+          itemTypeName: item.type.name,
+          itemTypeFields: item.type.baseFields,
+          dateCreated: createdAt,
+          threadId: { id: item.id, typeId: item.type.id },
+          creatorId,
+        };
+      }
+      return undefined;
     });
   }, [data]);
 
