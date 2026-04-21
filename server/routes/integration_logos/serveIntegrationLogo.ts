@@ -12,7 +12,9 @@ export default function serveIntegrationLogo(
   _deps: Dependencies,
 ): RequestHandlerWithBodies<Record<string, never>, undefined> {
   return (req, res, next) => {
-    const integrationId = req.params['integrationId'];
+    const rawIntegrationId = req.params['integrationId'];
+    const integrationId =
+      typeof rawIntegrationId === 'string' ? rawIntegrationId : undefined;
     if (!integrationId || integrationId.length === 0) {
       return next(
         makeNotFoundError('Missing integration id.', { shouldErrorSpan: true }),
