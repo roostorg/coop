@@ -118,6 +118,7 @@
     "@faker-js/faker": "^7.5.0",
     "@types/cls-hooked": "^4.3.3",
     "@types/cors": "^2.8.19",
+    "@types/express-serve-static-core": "^5.1.1",
     "@types/graphql-depth-limit": "^1.1.6",
     "@types/jest": "^29.2.4",
     "@types/js-yaml": "^4.0.5",
