@@ -1,4 +1,5 @@
 import {
+  namedOperations,
   useGQLBulkActionExecutionMutation,
   useGQLBulkActionsFormDataQuery,
 } from '@/graphql/generated';
@@ -23,6 +24,10 @@ export default function ItemAction(props: {
 
   const { data: queryData } = useGQLBulkActionsFormDataQuery();
   const [bulkAction, { loading }] = useGQLBulkActionExecutionMutation({
+    refetchQueries: [
+      namedOperations.Query.ItemActionHistory,
+      namedOperations.Query.GetRecentDecisions,
+    ],
     onCompleted: (data) => {
       const results = data?.bulkExecuteActions?.results ?? [];
       const anyFailed = results.some((r) => r.success === false);
