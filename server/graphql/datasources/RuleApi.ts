@@ -7,10 +7,16 @@ import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Backtest } from '../../models/rules/BacktestModel.js';
+import { type PlainRuleWithLatestVersion } from '../../models/rules/ruleTypes.js';
 import { type User } from '../../models/UserModel.js';
+import { RuleEnvironment, type RuleEngine } from '../../rule_engine/RuleEngine.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
-import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
+import {
+  type ConditionSetWithResultAsLogged,
+  type RuleExecutionCorrelationId,
+} from '../../services/analyticsLoggers/index.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   RuleType,
@@ -26,6 +32,10 @@ import {
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
 } from '../../services/moderationConfigService/index.js';
+import {
+  submissionDataToItemSubmission,
+  type NormalizedItemData,
+} from '../../services/itemProcessingService/index.js';
 import {
   isSignalId,
   signalIsExternal,
@@ -49,6 +59,7 @@ import {
   type GQLConditionInput,
   type GQLConditionInputFieldInput,
   type GQLConditionSetInput,
+  type GQLCreateBacktestInput,
   type GQLCreateContentRuleInput,
   type GQLCreateUserRuleInput,
   type GQLRunRetroactionInput,
@@ -63,7 +74,9 @@ import {
   kyselyCreateRule,
   kyselyDeleteRule,
   kyselyHasRunningBacktestsForRule,
+  kyselyInsertBacktestRow,
   kyselyListBacktestsForRule,
+  kyselyUpdateBacktestSamplingOutcome,
   kyselyUpdateRule,
 } from './ruleKyselyPersistence.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
@@ -304,6 +317,8 @@ class RuleAPI {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
+    private readonly ruleEngine: RuleEngine,
+    private readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {
     this.warehouse =
       dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
@@ -644,74 +659,60 @@ class RuleAPI {
     }
   }
 
-  async createBacktest(_input: unknown, _user: User) {
-    throw new Error('Not Implemented');
+  async createBacktest(input: GQLCreateBacktestInput, user: User): Promise<Backtest> {
+    const rule = await this.moderationConfigService.getRuleByIdAndOrg(
+      input.ruleId,
+      user.orgId,
+      { readFromReplica: false },
+    );
+    if (rule == null) {
+      throw makeNotFoundError('Rule not found', {
+        detail: `Could not find rule with id ${input.ruleId}`,
+        shouldErrorSpan: true,
+      });
+    }
+    if (rule.ruleType !== RuleType.CONTENT) {
+      throw new Error('Backtests are only supported for content rules.');
+    }
 
-    // const id = uid();
-    // const rule = await this.models.Rule.findByPk(input.ruleId, {
-    //   rejectOnEmpty: true,
-    // });
-    // const ruleContentTypes = await rule.getContentTypes();
+    const itemTypeIds = await this.getContentItemTypeIdsForRule(input.ruleId, user.orgId);
+    if (itemTypeIds.length === 0) {
+      throw new Error(
+        "Rule is not attached to any content types, so we're " +
+          'unable to select content to use for the backtest.',
+      );
+    }
 
-    // if (!ruleContentTypes.length) {
-    //   throw new Error(
-    //     "Rule is not attached to any content types, so we're " +
-    //       'unable to select content to use for the backtest.',
-    //   );
-    // }
+    const id = uid();
+    const startAt = new Date(input.sampleStartAt);
+    const endAt = new Date(input.sampleEndAt);
+    const backtest = await kyselyInsertBacktestRow(this.kysely, {
+      id,
+      rule_id: input.ruleId,
+      creator_id: user.id,
+      sample_desired_size: input.sampleDesiredSize,
+      sample_start_at: startAt,
+      sample_end_at: endAt,
+    });
 
-    // const backest = this.models.Backtest.build({
-    //   id,
-    //   ruleId: input.ruleId,
-    //   sampleDesiredSize: input.sampleDesiredSize,
-    //   sampleStartAt: new Date(input.sampleStartAt),
-    //   sampleEndAt: new Date(input.sampleEndAt),
-    //   creatorId: user.id,
-    // });
+    const correlationId = toCorrelationId({ type: 'backtest', id });
+    this.runSampledRuleExecutions({
+      mode: 'backtest',
+      backtestId: id,
+      orgId: user.orgId,
+      rule,
+      itemTypeIds,
+      startAt,
+      endAt,
+      maxRows: input.sampleDesiredSize,
+      order: 'newest-first',
+      correlationId,
+      environment: RuleEnvironment.BACKTEST,
+    }).catch((e: unknown) => {
+      this.tracer.getActiveSpan()?.recordException(e as Exception);
+    });
 
-    // await backest.save();
-
-    // // Start sampling and enqueueing the sampled items, but do this without
-    // // awaiting so that we can return to the frontend immediately.
-    // //
-    // // Our query ignores legacy submissions that didn't store their content type
-    // // schema at the time of submission, as we can't interpret those reliably
-    // // when backtesting. This also has the effect of excluding all rows which
-    // // didn't log their submission id or item type id (which is what we want,
-    // // since those fields are required, and we started logging them before
-    // // logging `schema`). The use of FixSingleTableSelectRowType gets the types
-    // // to be aware of all our WHERE clause filters and their implications for
-    // // the other columns.
-    // // prettier-ignore
-    // this.getItemSubmissionsFromWarehouse({
-    //   orgId: user.orgId,
-    //   randomSample: true,
-    //   numRows: input.sampleDesiredSize,
-    //   startAt: new Date(input.sampleStartAt),
-    //   endAt: new Date(input.sampleEndAt),
-    //   itemTypeIds: ruleContentTypes.map(ct => ct.id),
-    // }).then(async (submissions) => {
-    //     const ruleSetExecutionJobs = submissions.map((it) => ({
-    //       orgId: user.orgId,
-    //       ruleIds: [input.ruleId],
-    //       itemSubmission: it,
-    //       environment: RuleEnvironment.BACKTEST,
-    //       correlationId: toCorrelationId({ type: 'backtest', id }),
-    //     }));
-
-    //     const { failures } = await this.ruleScheduler.enqueueRuleSetExecutions(
-    //       ruleSetExecutionJobs,
-    //     );
-
-    //     const sampleActualSize = submissions.length - failures.length;
-    //     await backest.update({ sampleActualSize, samplingComplete: true });
-    //   })
-    //   .catch((e) => {
-    //     const span = this.tracer.getActiveSpan();
-    //     span?.recordException(e);
-    //   });
-
-    // return backest;
+    return backtest;
   }
 
   async getBacktestResults(
@@ -815,47 +816,190 @@ class RuleAPI {
    * turning this on and overloading our node servers, and is sufficient
    * for the Slack demo.
    */
-  async runRetroaction(_input: GQLRunRetroactionInput, _user: User) {
-    throw new Error('Not Implemented');
+  async runRetroaction(
+    input: GQLRunRetroactionInput,
+    user: User,
+  ): Promise<{ _: boolean }> {
+    const { orgId } = user;
+    const rule = await this.moderationConfigService.getRuleByIdAndOrg(
+      input.ruleId,
+      orgId,
+      { readFromReplica: false },
+    );
+    if (rule == null) {
+      throw makeNotFoundError('Rule not found', {
+        detail: `Could not find rule with id ${input.ruleId}`,
+        shouldErrorSpan: true,
+      });
+    }
+    if (rule.ruleType !== RuleType.CONTENT) {
+      throw new Error('Retroaction is only supported for content rules.');
+    }
 
-    // const rule = await this.models.Rule.findByPk(input.ruleId, {
-    //   rejectOnEmpty: true,
-    // });
-    // const ruleContentTypes = await rule.getContentTypes();
+    const itemTypeIds = await this.getContentItemTypeIdsForRule(input.ruleId, orgId);
+    if (itemTypeIds.length === 0) {
+      throw new Error(
+        "Rule is not attached to any content types, so we're " +
+          'unable to select content to use for retroaction.',
+      );
+    }
 
-    // if (!ruleContentTypes.length) {
-    //   throw new Error(
-    //     "Rule is not attached to any content types, so we're " +
-    //       'unable to select content to use for the backtest.',
-    //   );
-    // }
+    const correlationId = toCorrelationId({ type: 'retroaction', id: uid() });
+    const startAt = new Date(input.startAt);
+    const endAt = new Date(input.endAt);
 
-    // const id = uid();
-    // const submissions = await this.getItemSubmissionsFromWarehouse({
-    //   orgId: user.orgId,
-    //   itemTypeIds: ruleContentTypes.map((ct) => ct.id),
-    //   randomSample: false,
-    //   numRows: 100, // TODO: Remove the limit, and instead batch this query
-    //   startAt: new Date(input.startAt),
-    //   endAt: new Date(input.endAt),
-    // });
+    this.runSampledRuleExecutions({
+      mode: 'retroaction',
+      backtestId: null,
+      orgId,
+      rule,
+      itemTypeIds,
+      startAt,
+      endAt,
+      maxRows: 100,
+      order: 'oldest-first',
+      correlationId,
+      environment: RuleEnvironment.RETROACTION,
+    }).catch((e: unknown) => {
+      this.tracer.getActiveSpan()?.recordException(e as Exception);
+    });
 
-    // try {
-    // const { failures } = await this.ruleScheduler.enqueueRuleSetExecutions(
-    //   submissions.map((it) => ({
-    //     orgId: user.orgId,
-    //     ruleIds: [input.ruleId],
-    //     itemSubmission: it,
-    //     environment: RuleEnvironment.RETROACTION,
-    //     correlationId: toCorrelationId({ type: 'retroaction', id }),
-    //   })),
-    // );
+    return { _: true };
+  }
 
-    // return { _: !failures.length };
-    // } catch (e) {
-    //   this.tracer.getActiveSpan()?.recordException(e as Exception);
-    //   return { _: false };
-    // }
+  private async getContentItemTypeIdsForRule(
+    ruleId: string,
+    orgId: string,
+  ): Promise<readonly string[]> {
+    const rows = await this.kysely
+      .selectFrom('public.rules as r')
+      .innerJoin('public.rules_and_item_types as rit', 'rit.rule_id', 'r.id')
+      .select('rit.item_type_id')
+      .where('r.id', '=', ruleId)
+      .where('r.org_id', '=', orgId)
+      .execute();
+    return rows.map((r) => r.item_type_id);
+  }
+
+  private async runSampledRuleExecutions(opts: {
+    mode: 'backtest' | 'retroaction';
+    backtestId: string | null;
+    orgId: string;
+    rule: PlainRuleWithLatestVersion;
+    itemTypeIds: readonly string[];
+    startAt: Date;
+    endAt: Date;
+    maxRows: number;
+    order: 'newest-first' | 'oldest-first';
+    correlationId: RuleExecutionCorrelationId;
+    environment: typeof RuleEnvironment.BACKTEST | typeof RuleEnvironment.RETROACTION;
+  }): Promise<void> {
+    const rows = await this.queryWarehouseSubmissionsForRule({
+      orgId: opts.orgId,
+      itemTypeIds: opts.itemTypeIds,
+      startAt: opts.startAt,
+      endAt: opts.endAt,
+      limit: opts.maxRows,
+      order: opts.order,
+    });
+
+    let processed = 0;
+    let matched = 0;
+    let built = 0;
+
+    for (const row of rows) {
+      let submission;
+      try {
+        submission = await submissionDataToItemSubmission(
+          this.getItemTypeEventuallyConsistent,
+          {
+            orgId: opts.orgId,
+            submissionId: row.SUBMISSION_ID,
+            submissionTime: warehouseDateToDate(row.TS),
+            itemId: row.ITEM_ID,
+            itemTypeId: row.ITEM_TYPE_ID,
+            itemTypeVersion: row.ITEM_TYPE_VERSION,
+            itemTypeSchemaVariant: row.ITEM_TYPE_SCHEMA_VARIANT,
+            data: row.ITEM_DATA as unknown as NormalizedItemData,
+            ...(row.ITEM_CREATOR_ID != null && row.ITEM_CREATOR_TYPE_ID != null
+              ? {
+                  creatorId: row.ITEM_CREATOR_ID,
+                  creatorTypeId: row.ITEM_CREATOR_TYPE_ID,
+                }
+              : { creatorId: null, creatorTypeId: null }),
+          },
+        );
+      } catch {
+        continue;
+      }
+      built += 1;
+
+      try {
+        const { rulesToResults } = await this.ruleEngine.runRuleSet(
+          [opts.rule],
+          this.ruleEngine.makeRuleExecutionContext({
+            orgId: opts.orgId,
+            input: submission,
+          }),
+          opts.environment,
+          opts.correlationId,
+        );
+        processed += 1;
+        const result = rulesToResults.get(opts.rule);
+        if (result?.passed) {
+          matched += 1;
+        }
+      } catch {
+        // Count as processed attempt without incrementing matched.
+        processed += 1;
+      }
+    }
+
+    if (opts.mode === 'backtest' && opts.backtestId != null) {
+      await kyselyUpdateBacktestSamplingOutcome(this.kysely, opts.backtestId, {
+        sample_actual_size: built,
+        sampling_complete: true,
+        content_items_processed: processed,
+        content_items_matched: matched,
+      });
+    }
+  }
+
+  private async queryWarehouseSubmissionsForRule(opts: {
+    orgId: string;
+    itemTypeIds: readonly string[];
+    startAt: Date;
+    endAt: Date;
+    limit: number;
+    order: 'newest-first' | 'oldest-first';
+  }) {
+    let q = this.warehouse
+      .selectFrom('CONTENT_API_REQUESTS')
+      .select([
+        'SUBMISSION_ID',
+        'ITEM_ID',
+        'ITEM_TYPE_ID',
+        'ITEM_TYPE_VERSION',
+        'ITEM_TYPE_SCHEMA_VARIANT',
+        'ITEM_DATA',
+        'ITEM_CREATOR_ID',
+        'ITEM_CREATOR_TYPE_ID',
+        'TS',
+      ])
+      .where('ORG_ID', '=', opts.orgId)
+      .where('EVENT', '=', 'REQUEST_SUCCEEDED')
+      .where('ITEM_TYPE_ID', 'in', [...opts.itemTypeIds])
+      .where('ITEM_TYPE_KIND', '=', 'CONTENT')
+      .where('TS', '>=', opts.startAt)
+      .where('TS', '<=', opts.endAt)
+      .where((eb) => eb('ITEM_TYPE_SCHEMA', 'is not', null));
+
+    q =
+      opts.order === 'newest-first'
+        ? q.orderBy('TS', 'desc')
+        : q.orderBy('TS', 'asc');
+
+    return q.limit(opts.limit).execute();
   }
 
   /**
@@ -935,6 +1079,8 @@ export default inject(
     'ModerationConfigService',
     'Tracer',
     'SignalsService',
+    'RuleEngine',
+    'getItemTypeEventuallyConsistent',
   ],
   RuleAPI,
 );
