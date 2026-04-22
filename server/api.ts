@@ -4,7 +4,7 @@ import path from 'path';
 import { ApolloServer } from '@apollo/server';
 import { unwrapResolverError } from '@apollo/server/errors';
 import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled';
-import { expressMiddleware } from '@as-integrations/express4';
+import { expressMiddleware } from '@as-integrations/express5';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
@@ -160,8 +160,9 @@ export default async function makeApiServer(deps: Dependencies) {
       {
         passReqToCallback: true,
         async getSamlOptions(req, done) {
-          // orgId path param should be set in the /saml/* route handlers
-          const orgId = req.params['orgId'];
+          // orgId path param should be set in the /saml/* route handlers.
+          const rawOrgId = req.params['orgId'];
+          const orgId = typeof rawOrgId === 'string' ? rawOrgId : undefined;
 
           if (!orgId) {
             return done(
@@ -254,7 +255,7 @@ export default async function makeApiServer(deps: Dependencies) {
 
   app.post(
     `/saml/login/:orgId/callback`,
-    express.urlencoded({ extended: false }),
+    express.urlencoded(),
     passport.authenticate('saml', {
       failureRedirect: '/',
       failureFlash: true,

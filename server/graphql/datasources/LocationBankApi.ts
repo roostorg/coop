@@ -1,88 +1,158 @@
 import { type Exception } from '@opentelemetry/api';
+import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidV1 } from 'uuid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { type LocationBank as TLocationBank } from '../../models/banks/LocationBankModel.js';
-import { isUniqueConstraintError } from '../../models/errors.js';
 import { type LocationArea } from '../../models/types/locationArea.js';
-import { type User } from '../../models/UserModel.js';
+import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { makeLocationBankNameExistsError } from '../../services/moderationConfigService/index.js';
 import { type PlacesApiService } from '../../services/placesApiService/index.js';
-import { patchInPlace, safePick } from '../../utils/misc.js';
+import { isUniqueViolationError } from '../../utils/kysely.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
+import { makeNotFoundError } from '../../utils/errors.js';
+import { safePick } from '../../utils/misc.js';
 import {
   type GQLCreateLocationBankInput,
   type GQLLocationAreaInput,
   type GQLUpdateLocationBankInput,
 } from '../generated.js';
 
-// NB: this is the type that our GQL resolvers for a location bank rely on
-// getting as the parent object. (I.e., we don't promise the location bank field
-// resolvers that they'll be able to see the fullPlacesApiResponse).
-export type LocationBankWithoutFullPlacesAPIResponse = Omit<
-  TLocationBank,
-  'fullPlacesApiResponse'
->;
+type LocationBankRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  org_id: string;
+  owner_id: string;
+};
+
+/**
+ * GraphQL parent for `LocationBank` (no Sequelize, no `fullPlacesApiResponse`).
+ * Resolvers use {@link LocationBankWithoutFullPlacesAPIResponse.getLocations}.
+ */
+export type LocationBankWithoutFullPlacesAPIResponse = {
+  id: string;
+  name: string;
+  description: string | null;
+  orgId: string;
+  ownerId: string;
+  getLocations: () => Promise<LocationArea[]>;
+};
 
 class LocationBankAPI {
   private lookupPlaceId: PlacesApiService['lookupPlaceId'];
+  private readonly db: Kysely<CombinedPg>;
+  private readonly transactionWithRetry: ReturnType<
+    typeof makeKyselyTransactionWithRetry<CombinedPg>
+  >;
+
   constructor(
     placesApiService: PlacesApiService,
-    private readonly sequelize: Dependencies['Sequelize'],
+    db: Dependencies['KyselyPg'],
     private readonly tracer: Dependencies['Tracer'],
   ) {
     this.lookupPlaceId = placesApiService.lookupPlaceId.bind(placesApiService);
+    this.db = db as Kysely<CombinedPg>;
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.db);
+  }
+
+  #rowToParent(row: LocationBankRow): LocationBankWithoutFullPlacesAPIResponse {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      orgId: row.org_id,
+      ownerId: row.owner_id,
+      getLocations: async () => this.#loadLocationsForBank(row.id),
+    };
+  }
+
+  async #loadLocationsForBank(bankId: string): Promise<LocationArea[]> {
+    const rows = await this.db
+      .selectFrom('public.location_bank_locations')
+      .selectAll()
+      .where('bank_id', '=', bankId)
+      .execute();
+    return rows.map(locationRowToLocationArea);
   }
 
   async getGraphQLLocationBankFromId(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
-    return this.sequelize.LocationBank.findOne({
-      where: { id, orgId },
-      rejectOnEmpty: true,
-      attributes: { exclude: ['fullPlacesApiResponses'] },
-    }) as Promise<LocationBankWithoutFullPlacesAPIResponse>;
+    const row = (await this.db
+      .selectFrom('public.location_banks')
+      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
+      .where('id', '=', id)
+      .where('org_id', '=', orgId)
+      .executeTakeFirst()) as LocationBankRow | undefined;
+
+    if (row == null) {
+      throw makeNotFoundError('Location bank not found', {
+        shouldErrorSpan: true,
+      });
+    }
+
+    return this.#rowToParent(row);
   }
 
   async getGraphQLLocationBanksForOrg(orgId: string) {
-    return this.sequelize.LocationBank.findAll({
-      where: { orgId },
-      attributes: { exclude: ['fullPlacesApiResponses'] },
-    }) as Promise<LocationBankWithoutFullPlacesAPIResponse[]>;
+    const rows = (await this.db
+      .selectFrom('public.location_banks')
+      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
+      .where('org_id', '=', orgId)
+      .execute()) as LocationBankRow[];
+
+    return rows.map((r) => this.#rowToParent(r));
   }
 
-  async createLocationBank(input: GQLCreateLocationBankInput, user: User) {
+  async createLocationBank(
+    input: GQLCreateLocationBankInput,
+    user: { id: string; orgId: string },
+  ) {
     const { name, description, locations: locationInputs } = input;
     const { orgId, id: ownerId } = user;
 
     const newBankId = uid();
-    const locations = this.sequelize.LocationBankLocation.bulkBuild(
-      await this.expandLocationAreaInputs(newBankId, locationInputs),
+    const expandedLocations = await this.expandLocationAreaInputs(
+      newBankId,
+      locationInputs,
     );
 
     try {
-      return await this.sequelize.transactionWithRetry(async () => {
-        const bank = this.sequelize.LocationBank.build(
-          {
+      return await this.transactionWithRetry(async (trx) => {
+        await trx
+          .insertInto('public.location_banks')
+          .values({
             id: newBankId,
             name,
-            description,
-            ownerId,
-            orgId,
-            locations,
-          },
-          {
-            include: [
-              { model: this.sequelize.LocationBankLocation, as: 'locations' },
-            ],
-          },
-        );
+            description: description ?? null,
+            org_id: orgId,
+            owner_id: ownerId,
+            updated_at: new Date(),
+            full_places_api_responses: [],
+          })
+          .execute();
 
-        await bank.save();
+        if (expandedLocations.length > 0) {
+          await trx
+            .insertInto('public.location_bank_locations')
+            .values(
+              expandedLocations.map((loc) =>
+                locationAreaToLocationInsertRow(loc.bankId, loc),
+              ),
+            )
+            .execute();
+        }
 
-        return bank;
+        return this.#rowToParent({
+          id: newBankId,
+          name,
+          description: description ?? null,
+          org_id: orgId,
+          owner_id: ownerId,
+        });
       });
     } catch (e: unknown) {
-      throw isUniqueConstraintError(e)
+      throw isUniqueViolationError(e)
         ? makeLocationBankNameExistsError({ shouldErrorSpan: true })
         : e;
     }
@@ -95,45 +165,69 @@ class LocationBankAPI {
       ? await this.expandLocationAreaInputs(id, locationsToAdd)
       : undefined;
 
-    const bank = await this.sequelize.LocationBank.findOne({
-      where: { id, orgId },
-      rejectOnEmpty: true,
-    });
+    const row = (await this.db
+      .selectFrom('public.location_banks')
+      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
+      .where('id', '=', id)
+      .where('org_id', '=', orgId)
+      .executeTakeFirst()) as LocationBankRow | undefined;
 
-    // Name can be missing in the input object (in which case it'll be
-    // undefined), but it can't be present + null (which would normally have the
-    // semantic of trying to unset the name, which is invalid b/c name is
-    // required).
+    if (row == null) {
+      throw makeNotFoundError('Location bank not found', {
+        shouldErrorSpan: true,
+      });
+    }
+
     if (name === null) {
       throw new Error('Cannot clear bank name.');
     }
 
-    patchInPlace(bank, {
-      name,
-      description: description ?? undefined,
-    });
+    const nextName = name ?? row.name;
+    const nextDescription =
+      description !== undefined ? description ?? null : row.description;
 
     try {
-      return await this.sequelize.transactionWithRetry(async () => {
-        await bank.save();
-        await Promise.all([
-          locationsToDelete?.length &&
-            this.sequelize.LocationBankLocation.destroy({
-              where: {
-                id: locationsToDelete,
-                bankId: bank.id,
-              },
-            }),
-          expandedLocationsToAdd
-            ? this.sequelize.LocationBankLocation.bulkCreate(
-                expandedLocationsToAdd,
-              )
-            : null,
-        ]);
-        return bank;
+      return await this.transactionWithRetry(async (trx) => {
+        await trx
+          .updateTable('public.location_banks')
+          .set({
+            name: nextName,
+            description: nextDescription,
+            updated_at: new Date(),
+          })
+          .where('id', '=', id)
+          .where('org_id', '=', orgId)
+          .execute();
+
+        if (locationsToDelete?.length) {
+          await trx
+            .deleteFrom('public.location_bank_locations')
+            .where('bank_id', '=', id)
+            .where('id', 'in', [...locationsToDelete])
+            .execute();
+        }
+
+        if (expandedLocationsToAdd?.length) {
+          await trx
+            .insertInto('public.location_bank_locations')
+            .values(
+              expandedLocationsToAdd.map((loc) =>
+                locationAreaToLocationInsertRow(loc.bankId, loc),
+              ),
+            )
+            .execute();
+        }
+
+        return this.#rowToParent({
+          id: row.id,
+          name: nextName,
+          description: nextDescription,
+          org_id: row.org_id,
+          owner_id: row.owner_id,
+        });
       });
     } catch (e: unknown) {
-      throw isUniqueConstraintError(e)
+      throw isUniqueViolationError(e)
         ? makeLocationBankNameExistsError({ shouldErrorSpan: true })
         : e;
     }
@@ -143,10 +237,32 @@ class LocationBankAPI {
     const { id, orgId } = opts;
 
     try {
-      const bank = await this.sequelize.LocationBank.findOne({
-        where: { id, orgId },
+      const result = await this.db.transaction().execute(async (trx) => {
+        const bank = await trx
+          .selectFrom('public.location_banks')
+          .select('id')
+          .where('id', '=', id)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+
+        if (!bank) {
+          return { numDeletedRows: BigInt(0) };
+        }
+
+        await trx
+          .deleteFrom('public.location_bank_locations')
+          .where('bank_id', '=', id)
+          .execute();
+        return trx
+          .deleteFrom('public.location_banks')
+          .where('id', '=', id)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
       });
-      await bank?.destroy();
+
+      if (!result.numDeletedRows) {
+        return false;
+      }
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
@@ -184,8 +300,41 @@ class LocationBankAPI {
   }
 }
 
+function locationRowToLocationArea(
+  r: Record<string, unknown> & {
+    id: string;
+    bank_id: string;
+    geometry: unknown;
+    bounds: unknown | null;
+    name: string | null;
+    google_place_info: unknown | null;
+  },
+): LocationArea {
+  return {
+    id: r.id,
+    name: r.name ?? undefined,
+    geometry: r.geometry as LocationArea['geometry'],
+    bounds: (r.bounds as LocationArea['bounds']) ?? undefined,
+    googlePlaceInfo: r.google_place_info as LocationArea['googlePlaceInfo'],
+  };
+}
+
+function locationAreaToLocationInsertRow(
+  bankId: string,
+  area: LocationArea & { bankId?: string },
+) {
+  return {
+    id: area.id,
+    bank_id: bankId,
+    geometry: area.geometry,
+    bounds: area.bounds ?? null,
+    name: area.name ?? null,
+    google_place_info: area.googlePlaceInfo ?? null,
+  };
+}
+
 export default inject(
-  ['PlacesApiService', 'Sequelize', 'Tracer'],
+  ['PlacesApiService', 'KyselyPg', 'Tracer'],
   LocationBankAPI,
 );
 export type { LocationBankAPI };

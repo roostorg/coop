@@ -45,23 +45,25 @@ describe('Error handling', () => {
       next(new Error('error after send.'));
     });
 
-    // We have to move this new route to be before the catch all 404 route,
-    // which makes it tricky. So we put it right after the three handlers that
-    // express adds automatically (to parse query params, create the request
-    // object, and (iiuc) normalize trailing path slashes), but before all our
-    // handlers.
-    const stack = server._router.stack as unknown[];
+    // Move the new route before the `/api/v1` sub-app mount, otherwise
+    // requests to `/api/v1/error` fall through to the sub-app's 404 handler.
+    type Layer = { name: string };
+    const stack = server.router.stack as Layer[];
     const newlyAddedErrorRoute = stack.at(-1);
     if (newlyAddedErrorRoute === undefined) {
       throw new Error('expected route on stack');
     }
+    const apiMountIdx = stack.findIndex((l) => l.name === 'mounted_app');
+    if (apiMountIdx === -1) {
+      throw new Error('expected /api/v1 sub-app mount on stack');
+    }
     const withoutLast = stack.slice(0, -1);
     // eslint-disable-next-line functional/immutable-data -- express test-only router reordering
-    server._router.stack = [
-      ...withoutLast.slice(0, 3),
+    server.router.stack = [
+      ...withoutLast.slice(0, apiMountIdx),
       newlyAddedErrorRoute,
-      ...withoutLast.slice(3),
-    ] as typeof server._router.stack;
+      ...withoutLast.slice(apiMountIdx),
+    ] as typeof server.router.stack;
 
     try {
       const resp = await request.get('/api/v1/error');

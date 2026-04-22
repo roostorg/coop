@@ -1,6 +1,6 @@
 {
   "name": "@roostorg/db-migrator",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "CLI tool for managing database migrations and seeding. Designed for modern scalable systems.",
   "type": "module",
   "scripts": {
@@ -23,16 +23,19 @@
   "author": "Roostorg",
   "license": "ISC",
   "dependencies": {
-    "@total-typescript/ts-reset": "^0.5.1",
+    "@total-typescript/ts-reset": "^0.6.1",
     "@types/yargs": "^17.0.24",
     "cassandra-driver": "^4.8.0",
     "sequelize": "^6.37.8",
     "umzug": "^3.0.0",
-    "yargs": "^16.2.0"
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "typescript": "^5.2.2"
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "ajv": "~8.18.0"
   },
   "publishConfig": {
     "access": "public"

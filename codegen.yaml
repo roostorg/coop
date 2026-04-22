@@ -107,6 +107,12 @@ generates:
         MatchingBanks: ../models/OrgModel.js#Org
         User: ../models/UserModel.js#User
         LocationBank: ./datasources/LocationBankApi.js#LocationBankWithoutFullPlacesAPIResponse
+        # TODO(Kysely migration): these parents will flip to
+        # `../models/rules/ruleTypes.js#Rule` once the Action/Policy resolvers
+        # and the remaining Sequelize-backed callers of `org.getRules()` /
+        # `user.getFavoriteRules()` are migrated off Sequelize. Until then the
+        # GraphQL Rule parent is the Sequelize instance type, and
+        # `buildGraphqlRuleParent` casts to it at the boundary.
         Rule: ../models/rules/RuleModel.js#Rule
         Condition: ../services/moderationConfigService/index.js#Condition
         ConditionWithResult: ../models/rules/RuleModel.js#ConditionWithResult

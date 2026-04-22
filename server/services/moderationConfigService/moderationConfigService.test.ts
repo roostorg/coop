@@ -17,7 +17,11 @@ import { type Satisfies } from '../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   type Action,
+  type ConditionSet,
   type ItemType,
+  RuleAlarmStatus,
+  RuleStatus,
+  RuleType,
   type Policy,
   type UserItemType,
 } from './index.js';
@@ -174,6 +178,93 @@ describe('ModerationConfigService', () => {
     await sutWithPrimary[method]({ ...filters, readFromReplica: false });
     await sutWithReadReplica[method]({ ...filters, readFromReplica: true });
   }
+
+  const minimalRuleConditionSet = {
+    conjunction: 'AND' as const,
+    conditions: [
+      {
+        input: { type: 'FULL_ITEM' as const },
+        comparator: 'IS_NOT_PROVIDED' as const,
+      },
+    ],
+  } satisfies ConditionSet;
+
+  describe('#getRuleByIdAndOrg', () => {
+    const testWithRuleRow = makeTestWithFixture(async () => {
+      const { org, cleanup: orgCleanup } = await createOrg(
+        { Org: container.Sequelize.Org },
+        container.ModerationConfigService,
+        container.ApiKeyService,
+        uid(),
+      );
+      const { user, cleanup: userCleanup } = await createUser(
+        container.Sequelize,
+        org.id,
+      );
+      const ruleId = uid();
+      await container.Sequelize.Rule.create({
+        id: ruleId,
+        orgId: org.id,
+        creatorId: user.id,
+        name: 'getRuleByIdAndOrg fixture rule',
+        description: null,
+        status: RuleStatus.DRAFT,
+        statusIfUnexpired: RuleStatus.DRAFT,
+        tags: [],
+        conditionSet: minimalRuleConditionSet,
+        ruleType: RuleType.USER,
+        alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
+      });
+
+      return {
+        org,
+        user,
+        ruleId,
+        async cleanup() {
+          await container.Sequelize.Rule.destroy({
+            where: { id: ruleId },
+            force: true,
+          });
+          await userCleanup();
+          await orgCleanup();
+        },
+      };
+    });
+
+    testWithRuleRow(
+      'returns the rule when the org id matches the rule row',
+      async ({ org, ruleId }) => {
+        const row = await sutWithPrimary.getRuleByIdAndOrg(ruleId, org.id, {
+          readFromReplica: false,
+        });
+        expect(row).not.toBeNull();
+        expect(row!.id).toBe(ruleId);
+        expect(row!.orgId).toBe(org.id);
+      },
+    );
+
+    testWithRuleRow(
+      'returns null when the org id does not match (IDOR guard)',
+      async ({ ruleId }) => {
+        const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
+          { Org: container.Sequelize.Org },
+          container.ModerationConfigService,
+          container.ApiKeyService,
+          uid(),
+        );
+        try {
+          const row = await sutWithPrimary.getRuleByIdAndOrg(
+            ruleId,
+            otherOrg.id,
+            { readFromReplica: false },
+          );
+          expect(row).toBeNull();
+        } finally {
+          await otherOrgCleanup();
+        }
+      },
+    );
+  });
 
   // NB: there is an ordering dependency between these tests, as the creation
   // tests run first and then the read tests assert on the presence of their
