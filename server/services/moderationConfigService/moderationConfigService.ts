@@ -310,11 +310,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     ruleId: string;
     readFromReplica?: boolean;
   }) {
-    return this.actionOps.getActionsForRuleId({
-      orgId: opts.orgId,
-      ruleId: opts.ruleId,
-      readFromReplica: opts.readFromReplica ?? true,
-    });
+    return this.actionOps.getActionsForRuleId(opts);
   }
 
   async getPoliciesByRuleIds(ruleIds: readonly string[]) {

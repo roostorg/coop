@@ -78,6 +78,7 @@ export const makeGetActionsForRuleEventuallyConsistent = inject(
         return moderationConfigService.getActionsForRuleId({
           orgId: key.orgId,
           ruleId: key.ruleId,
+          readFromReplica: true,
         });
       },
       directives: { freshUntilAge: 30 },

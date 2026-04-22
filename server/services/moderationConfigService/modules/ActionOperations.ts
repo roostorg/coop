@@ -269,7 +269,7 @@ export default class ActionOperations {
     readFromReplica?: boolean;
   }) {
     const { orgId, itemTypeId, itemTypeKind, readFromReplica } = opts;
-    const pgQuery = this.#getPgQuery(readFromReplica ?? true);
+    const pgQuery = this.#getPgQuery(readFromReplica);
 
     const [viaJunction, viaAppliesAll] = await Promise.all([
       pgQuery
@@ -323,7 +323,7 @@ export default class ActionOperations {
     readFromReplica?: boolean;
   }) {
     const { orgId, ruleId, readFromReplica } = opts;
-    const pgQuery = this.#getPgQuery(readFromReplica ?? true);
+    const pgQuery = this.#getPgQuery(readFromReplica);
     const results = (await pgQuery
       .selectFrom('public.rules_and_actions as raa')
       .innerJoin('public.actions as a', 'a.id', 'raa.action_id')
@@ -348,6 +348,7 @@ export default class ActionOperations {
     return {
       id: it.id,
       name: it.name,
+      description: it.description,
       orgId: it.orgId,
       applyUserStrikes: it.applyUserStrikes,
       penalty: it.penalty,

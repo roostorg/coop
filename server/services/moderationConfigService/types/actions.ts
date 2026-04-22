@@ -34,6 +34,7 @@ type AnyAction = ReadonlyDeep<
       id: string;
       orgId: string;
       name: string;
+      description: string | null;
       applyUserStrikes: boolean;
       penalty: UserPenaltySeverity;
     } & TaggedUnionFromCases<

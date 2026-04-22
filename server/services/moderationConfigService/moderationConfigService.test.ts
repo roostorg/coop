@@ -451,6 +451,7 @@ describe('ModerationConfigService', () => {
               "callbackUrlBody": null,
               "callbackUrlHeaders": null,
               "customMrtApiParams": null,
+              "description": "Test description",
               "id": Any<String>,
               "name": "Test Action",
               "orgId": Any<String>,
@@ -567,6 +568,7 @@ describe('ModerationConfigService', () => {
             );
 
             expect(updated.actionType).toBe('CUSTOM_ACTION');
+            expect(updated.description).toBe('after');
             expect(updated.callbackUrl).toBe('https://after.example.com');
             expect(updated.applyUserStrikes).toBe(true);
 

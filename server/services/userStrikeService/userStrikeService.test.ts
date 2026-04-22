@@ -63,6 +63,7 @@ describe('Item Investigation Service', () => {
         action: {
           id: 'fakeActionId1',
           name: 'testAction1',
+          description: null,
           applyUserStrikes: true,
           orgId: 'fakeOrgId',
           penalty: 'NONE' as const,
@@ -105,6 +106,7 @@ describe('Item Investigation Service', () => {
         action: {
           id: 'fakeActionId1',
           name: 'testAction1',
+          description: null,
           applyUserStrikes: false,
           orgId: 'fakeOrgId',
           penalty: 'NONE' as const,
@@ -137,6 +139,7 @@ describe('Item Investigation Service', () => {
         action: {
           id: 'fakeActionId1',
           name: 'testAction1',
+          description: null,
           applyUserStrikes: false,
           orgId: 'fakeOrgId',
           penalty: 'NONE' as const,
