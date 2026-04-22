@@ -8,15 +8,10 @@ import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type Backtest } from '../../models/rules/BacktestModel.js';
-import { type PlainRuleWithLatestVersion } from '../../models/rules/ruleTypes.js';
 import { type User } from '../../models/UserModel.js';
-import { RuleEnvironment, type RuleEngine } from '../../rule_engine/RuleEngine.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
-import {
-  type ConditionSetWithResultAsLogged,
-  type RuleExecutionCorrelationId,
-} from '../../services/analyticsLoggers/index.js';
+import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   RuleType,
@@ -32,10 +27,6 @@ import {
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
 } from '../../services/moderationConfigService/index.js';
-import {
-  submissionDataToItemSubmission,
-  type NormalizedItemData,
-} from '../../services/itemProcessingService/index.js';
 import {
   isSignalId,
   signalIsExternal,
@@ -74,9 +65,7 @@ import {
   kyselyCreateRule,
   kyselyDeleteRule,
   kyselyHasRunningBacktestsForRule,
-  kyselyInsertBacktestRow,
   kyselyListBacktestsForRule,
-  kyselyUpdateBacktestSamplingOutcome,
   kyselyUpdateRule,
 } from './ruleKyselyPersistence.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
@@ -317,8 +306,6 @@ class RuleAPI {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
-    private readonly ruleEngine: RuleEngine,
-    private readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {
     this.warehouse =
       dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
@@ -659,60 +646,18 @@ class RuleAPI {
     }
   }
 
-  async createBacktest(input: GQLCreateBacktestInput, user: User): Promise<Backtest> {
-    const rule = await this.moderationConfigService.getRuleByIdAndOrg(
-      input.ruleId,
-      user.orgId,
-      { readFromReplica: false },
+  /**
+   * TODO(BACKTEST_RETROACTION): Re-enable the Kysely + warehouse + RuleEngine flow when product UI
+   * exposes backtests again and we can routinely validate against real CONTENT_API_REQUESTS data and
+   * RULE_EXECUTIONS logging in dev/staging. Restore `RuleEngine` + `getItemTypeEventuallyConsistent`
+   * on this class, `kyselyInsertBacktestRow` / `kyselyUpdateBacktestSamplingOutcome` in
+   * `ruleKyselyPersistence.ts`, and the deleted private helpers (`getContentItemTypeIdsForRule`,
+   * `runSampledRuleExecutions`, `queryWarehouseSubmissionsForRule`).
+   */
+  async createBacktest(_input: GQLCreateBacktestInput, _user: User): Promise<Backtest> {
+    throw new Error(
+      'createBacktest is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
     );
-    if (rule == null) {
-      throw makeNotFoundError('Rule not found', {
-        detail: `Could not find rule with id ${input.ruleId}`,
-        shouldErrorSpan: true,
-      });
-    }
-    if (rule.ruleType !== RuleType.CONTENT) {
-      throw new Error('Backtests are only supported for content rules.');
-    }
-
-    const itemTypeIds = await this.getContentItemTypeIdsForRule(input.ruleId, user.orgId);
-    if (itemTypeIds.length === 0) {
-      throw new Error(
-        "Rule is not attached to any content types, so we're " +
-          'unable to select content to use for the backtest.',
-      );
-    }
-
-    const id = uid();
-    const startAt = new Date(input.sampleStartAt);
-    const endAt = new Date(input.sampleEndAt);
-    const backtest = await kyselyInsertBacktestRow(this.kysely, {
-      id,
-      rule_id: input.ruleId,
-      creator_id: user.id,
-      sample_desired_size: input.sampleDesiredSize,
-      sample_start_at: startAt,
-      sample_end_at: endAt,
-    });
-
-    const correlationId = toCorrelationId({ type: 'backtest', id });
-    this.runSampledRuleExecutions({
-      mode: 'backtest',
-      backtestId: id,
-      orgId: user.orgId,
-      rule,
-      itemTypeIds,
-      startAt,
-      endAt,
-      maxRows: input.sampleDesiredSize,
-      order: 'newest-first',
-      correlationId,
-      environment: RuleEnvironment.BACKTEST,
-    }).catch((e: unknown) => {
-      this.tracer.getActiveSpan()?.recordException(e as Exception);
-    });
-
-    return backtest;
   }
 
   async getBacktestResults(
@@ -815,191 +760,14 @@ class RuleAPI {
    * of content on which it will run. That prevents us from accidentally
    * turning this on and overloading our node servers, and is sufficient
    * for the Slack demo.
+   *
+   * TODO(BACKTEST_RETROACTION): Same as `createBacktest` — re-enable when UI and env
+   * support validation.
    */
-  async runRetroaction(
-    input: GQLRunRetroactionInput,
-    user: User,
-  ): Promise<{ _: boolean }> {
-    const { orgId } = user;
-    const rule = await this.moderationConfigService.getRuleByIdAndOrg(
-      input.ruleId,
-      orgId,
-      { readFromReplica: false },
+  async runRetroaction(_input: GQLRunRetroactionInput, _user: User): Promise<{ _: boolean }> {
+    throw new Error(
+      'runRetroaction is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
     );
-    if (rule == null) {
-      throw makeNotFoundError('Rule not found', {
-        detail: `Could not find rule with id ${input.ruleId}`,
-        shouldErrorSpan: true,
-      });
-    }
-    if (rule.ruleType !== RuleType.CONTENT) {
-      throw new Error('Retroaction is only supported for content rules.');
-    }
-
-    const itemTypeIds = await this.getContentItemTypeIdsForRule(input.ruleId, orgId);
-    if (itemTypeIds.length === 0) {
-      throw new Error(
-        "Rule is not attached to any content types, so we're " +
-          'unable to select content to use for retroaction.',
-      );
-    }
-
-    const correlationId = toCorrelationId({ type: 'retroaction', id: uid() });
-    const startAt = new Date(input.startAt);
-    const endAt = new Date(input.endAt);
-
-    this.runSampledRuleExecutions({
-      mode: 'retroaction',
-      backtestId: null,
-      orgId,
-      rule,
-      itemTypeIds,
-      startAt,
-      endAt,
-      maxRows: 100,
-      order: 'oldest-first',
-      correlationId,
-      environment: RuleEnvironment.RETROACTION,
-    }).catch((e: unknown) => {
-      this.tracer.getActiveSpan()?.recordException(e as Exception);
-    });
-
-    return { _: true };
-  }
-
-  private async getContentItemTypeIdsForRule(
-    ruleId: string,
-    orgId: string,
-  ): Promise<readonly string[]> {
-    const rows = await this.kysely
-      .selectFrom('public.rules as r')
-      .innerJoin('public.rules_and_item_types as rit', 'rit.rule_id', 'r.id')
-      .select('rit.item_type_id')
-      .where('r.id', '=', ruleId)
-      .where('r.org_id', '=', orgId)
-      .execute();
-    return rows.map((r) => r.item_type_id);
-  }
-
-  private async runSampledRuleExecutions(opts: {
-    mode: 'backtest' | 'retroaction';
-    backtestId: string | null;
-    orgId: string;
-    rule: PlainRuleWithLatestVersion;
-    itemTypeIds: readonly string[];
-    startAt: Date;
-    endAt: Date;
-    maxRows: number;
-    order: 'newest-first' | 'oldest-first';
-    correlationId: RuleExecutionCorrelationId;
-    environment: typeof RuleEnvironment.BACKTEST | typeof RuleEnvironment.RETROACTION;
-  }): Promise<void> {
-    const rows = await this.queryWarehouseSubmissionsForRule({
-      orgId: opts.orgId,
-      itemTypeIds: opts.itemTypeIds,
-      startAt: opts.startAt,
-      endAt: opts.endAt,
-      limit: opts.maxRows,
-      order: opts.order,
-    });
-
-    let processed = 0;
-    let matched = 0;
-    let built = 0;
-
-    for (const row of rows) {
-      let submission;
-      try {
-        submission = await submissionDataToItemSubmission(
-          this.getItemTypeEventuallyConsistent,
-          {
-            orgId: opts.orgId,
-            submissionId: row.SUBMISSION_ID,
-            submissionTime: warehouseDateToDate(row.TS),
-            itemId: row.ITEM_ID,
-            itemTypeId: row.ITEM_TYPE_ID,
-            itemTypeVersion: row.ITEM_TYPE_VERSION,
-            itemTypeSchemaVariant: row.ITEM_TYPE_SCHEMA_VARIANT,
-            data: row.ITEM_DATA as unknown as NormalizedItemData,
-            ...(row.ITEM_CREATOR_ID != null && row.ITEM_CREATOR_TYPE_ID != null
-              ? {
-                  creatorId: row.ITEM_CREATOR_ID,
-                  creatorTypeId: row.ITEM_CREATOR_TYPE_ID,
-                }
-              : { creatorId: null, creatorTypeId: null }),
-          },
-        );
-      } catch {
-        continue;
-      }
-      built += 1;
-
-      try {
-        const { rulesToResults } = await this.ruleEngine.runRuleSet(
-          [opts.rule],
-          this.ruleEngine.makeRuleExecutionContext({
-            orgId: opts.orgId,
-            input: submission,
-          }),
-          opts.environment,
-          opts.correlationId,
-        );
-        processed += 1;
-        const result = rulesToResults.get(opts.rule);
-        if (result?.passed) {
-          matched += 1;
-        }
-      } catch {
-        // Count as processed attempt without incrementing matched.
-        processed += 1;
-      }
-    }
-
-    if (opts.mode === 'backtest' && opts.backtestId != null) {
-      await kyselyUpdateBacktestSamplingOutcome(this.kysely, opts.backtestId, {
-        sample_actual_size: built,
-        sampling_complete: true,
-        content_items_processed: processed,
-        content_items_matched: matched,
-      });
-    }
-  }
-
-  private async queryWarehouseSubmissionsForRule(opts: {
-    orgId: string;
-    itemTypeIds: readonly string[];
-    startAt: Date;
-    endAt: Date;
-    limit: number;
-    order: 'newest-first' | 'oldest-first';
-  }) {
-    let q = this.warehouse
-      .selectFrom('CONTENT_API_REQUESTS')
-      .select([
-        'SUBMISSION_ID',
-        'ITEM_ID',
-        'ITEM_TYPE_ID',
-        'ITEM_TYPE_VERSION',
-        'ITEM_TYPE_SCHEMA_VARIANT',
-        'ITEM_DATA',
-        'ITEM_CREATOR_ID',
-        'ITEM_CREATOR_TYPE_ID',
-        'TS',
-      ])
-      .where('ORG_ID', '=', opts.orgId)
-      .where('EVENT', '=', 'REQUEST_SUCCEEDED')
-      .where('ITEM_TYPE_ID', 'in', [...opts.itemTypeIds])
-      .where('ITEM_TYPE_KIND', '=', 'CONTENT')
-      .where('TS', '>=', opts.startAt)
-      .where('TS', '<=', opts.endAt)
-      .where((eb) => eb('ITEM_TYPE_SCHEMA', 'is not', null));
-
-    q =
-      opts.order === 'newest-first'
-        ? q.orderBy('TS', 'desc')
-        : q.orderBy('TS', 'asc');
-
-    return q.limit(opts.limit).execute();
   }
 
   /**
@@ -1079,8 +847,6 @@ export default inject(
     'ModerationConfigService',
     'Tracer',
     'SignalsService',
-    'RuleEngine',
-    'getItemTypeEventuallyConsistent',
   ],
   RuleAPI,
 );

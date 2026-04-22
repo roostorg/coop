@@ -356,62 +356,6 @@ export async function kyselyListBacktestsForRule(
   return rows.map((r) => mapBacktestRowToGqlParent(r)) as unknown as Backtest[];
 }
 
-export async function kyselyInsertBacktestRow(
-  kysely: Kysely<CombinedPg>,
-  row: {
-    id: string;
-    rule_id: string;
-    creator_id: string;
-    sample_desired_size: number;
-    sample_start_at: Date;
-    sample_end_at: Date;
-  },
-): Promise<Backtest> {
-  const now = new Date();
-  await kysely
-    .insertInto('public.backtests')
-    .values({
-      id: row.id,
-      rule_id: row.rule_id,
-      creator_id: row.creator_id,
-      sample_desired_size: row.sample_desired_size,
-      sample_start_at: row.sample_start_at,
-      sample_end_at: row.sample_end_at,
-      updated_at: now,
-    })
-    .execute();
-  const inserted = await kysely
-    .selectFrom('public.backtests')
-    .selectAll()
-    .where('id', '=', row.id)
-    .executeTakeFirstOrThrow();
-  return mapBacktestRowToGqlParent(inserted) as unknown as Backtest;
-}
-
-export async function kyselyUpdateBacktestSamplingOutcome(
-  kysely: Kysely<CombinedPg>,
-  backtestId: string,
-  fields: {
-    sample_actual_size: number;
-    sampling_complete: boolean;
-    content_items_processed: number;
-    content_items_matched: number;
-  },
-): Promise<void> {
-  const now = new Date();
-  await kysely
-    .updateTable('public.backtests')
-    .set({
-      sample_actual_size: fields.sample_actual_size,
-      sampling_complete: fields.sampling_complete,
-      content_items_processed: fields.content_items_processed,
-      content_items_matched: fields.content_items_matched,
-      updated_at: now,
-    })
-    .where('id', '=', backtestId)
-    .execute();
-}
-
 function mapBacktestRowToGqlParent(r: {
   id: string;
   rule_id: string;
