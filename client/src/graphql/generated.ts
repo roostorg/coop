@@ -2119,6 +2119,7 @@ export type GQLManualReviewQueue = {
 
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
@@ -4135,7 +4136,6 @@ export type GQLSignalSubcategoryOptionInput = {
 
 export const GQLSignalType = {
   Aggregation: 'AGGREGATION',
-  BenignModel: 'BENIGN_MODEL',
   Custom: 'CUSTOM',
   GeoContainedWithin: 'GEO_CONTAINED_WITHIN',
   GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
@@ -10218,6 +10218,54 @@ export type GQLManualReviewDecisionComponentFieldsFragment =
   | GQLManualReviewDecisionComponentFieldsTransformJobAndRecreateInQueueDecisionComponentFragment
   | GQLManualReviewDecisionComponentFieldsUserOrRelatedActionDecisionComponentFragment;
 
+export type GQLOrgLookupDataQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLOrgLookupDataQuery = {
+  readonly __typename: 'Query';
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly actions: ReadonlyArray<
+      | {
+          readonly __typename: 'CustomAction';
+          readonly id: string;
+          readonly name: string;
+        }
+      | {
+          readonly __typename: 'EnqueueAuthorToMrtAction';
+          readonly id: string;
+          readonly name: string;
+        }
+      | {
+          readonly __typename: 'EnqueueToMrtAction';
+          readonly id: string;
+          readonly name: string;
+        }
+      | {
+          readonly __typename: 'EnqueueToNcmecAction';
+          readonly id: string;
+          readonly name: string;
+        }
+    >;
+    readonly policies: ReadonlyArray<{
+      readonly __typename: 'Policy';
+      readonly id: string;
+      readonly name: string;
+    }>;
+    readonly users: ReadonlyArray<{
+      readonly __typename: 'User';
+      readonly id: string;
+      readonly firstName: string;
+      readonly lastName: string;
+    }>;
+    readonly mrtQueues: ReadonlyArray<{
+      readonly __typename: 'ManualReviewQueue';
+      readonly id: string;
+      readonly name: string;
+    }>;
+  } | null;
+};
+
 export type GQLGetRecentDecisionsQueryVariables = Exact<{
   input: GQLRecentDecisionsInput;
 }>;
@@ -10327,48 +10375,6 @@ export type GQLGetRecentDecisionsQuery = {
         }
     >;
   }>;
-  readonly myOrg?: {
-    readonly __typename: 'Org';
-    readonly id: string;
-    readonly actions: ReadonlyArray<
-      | {
-          readonly __typename: 'CustomAction';
-          readonly id: string;
-          readonly name: string;
-        }
-      | {
-          readonly __typename: 'EnqueueAuthorToMrtAction';
-          readonly id: string;
-          readonly name: string;
-        }
-      | {
-          readonly __typename: 'EnqueueToMrtAction';
-          readonly id: string;
-          readonly name: string;
-        }
-      | {
-          readonly __typename: 'EnqueueToNcmecAction';
-          readonly id: string;
-          readonly name: string;
-        }
-    >;
-    readonly policies: ReadonlyArray<{
-      readonly __typename: 'Policy';
-      readonly id: string;
-      readonly name: string;
-    }>;
-    readonly users: ReadonlyArray<{
-      readonly __typename: 'User';
-      readonly id: string;
-      readonly firstName: string;
-      readonly lastName: string;
-    }>;
-    readonly mrtQueues: ReadonlyArray<{
-      readonly __typename: 'ManualReviewQueue';
-      readonly id: string;
-      readonly name: string;
-    }>;
-  } | null;
 };
 
 export type GQLGetSkipsForRecentDecisionsQueryVariables = Exact<{
@@ -16760,7 +16766,35 @@ export type GQLGetLatestUserSubmittedItemsQuery = {
             };
           };
         }
-      | { readonly __typename: 'ThreadItem' }
+      | {
+          readonly __typename: 'ThreadItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ThreadItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly type: GQLFieldType;
+              readonly required: boolean;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ThreadSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+            };
+          };
+        }
       | { readonly __typename: 'UserItem' };
   }>;
 };
@@ -33072,28 +33106,8 @@ export type GQLRecentDecisionsSummaryDataQueryResult = Apollo.QueryResult<
   GQLRecentDecisionsSummaryDataQuery,
   GQLRecentDecisionsSummaryDataQueryVariables
 >;
-export const GQLGetRecentDecisionsDocument = gql`
-  query GetRecentDecisions($input: RecentDecisionsInput!) {
-    getRecentDecisions(input: $input) {
-      id
-      jobId
-      queueId
-      reviewerId
-      itemId
-      itemTypeId
-      decisions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      relatedActions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      createdAt
-      decisionReason
-    }
+export const GQLOrgLookupDataDocument = gql`
+  query OrgLookupData {
     myOrg {
       id
       actions {
@@ -33115,6 +33129,121 @@ export const GQLGetRecentDecisionsDocument = gql`
         id
         name
       }
+    }
+  }
+`;
+
+/**
+ * __useGQLOrgLookupDataQuery__
+ *
+ * To run a query within a React component, call `useGQLOrgLookupDataQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLOrgLookupDataQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLOrgLookupDataQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLOrgLookupDataQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLOrgLookupDataQuery,
+    GQLOrgLookupDataQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLOrgLookupDataQuery, GQLOrgLookupDataQueryVariables>(
+    GQLOrgLookupDataDocument,
+    options,
+  );
+}
+export function useGQLOrgLookupDataLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLOrgLookupDataQuery,
+    GQLOrgLookupDataQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLOrgLookupDataQuery,
+    GQLOrgLookupDataQueryVariables
+  >(GQLOrgLookupDataDocument, options);
+}
+// @ts-ignore
+export function useGQLOrgLookupDataSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLOrgLookupDataQuery,
+    GQLOrgLookupDataQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLOrgLookupDataQuery,
+  GQLOrgLookupDataQueryVariables
+>;
+export function useGQLOrgLookupDataSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLOrgLookupDataQuery,
+        GQLOrgLookupDataQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLOrgLookupDataQuery | undefined,
+  GQLOrgLookupDataQueryVariables
+>;
+export function useGQLOrgLookupDataSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLOrgLookupDataQuery,
+        GQLOrgLookupDataQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLOrgLookupDataQuery,
+    GQLOrgLookupDataQueryVariables
+  >(GQLOrgLookupDataDocument, options);
+}
+export type GQLOrgLookupDataQueryHookResult = ReturnType<
+  typeof useGQLOrgLookupDataQuery
+>;
+export type GQLOrgLookupDataLazyQueryHookResult = ReturnType<
+  typeof useGQLOrgLookupDataLazyQuery
+>;
+export type GQLOrgLookupDataSuspenseQueryHookResult = ReturnType<
+  typeof useGQLOrgLookupDataSuspenseQuery
+>;
+export type GQLOrgLookupDataQueryResult = Apollo.QueryResult<
+  GQLOrgLookupDataQuery,
+  GQLOrgLookupDataQueryVariables
+>;
+export const GQLGetRecentDecisionsDocument = gql`
+  query GetRecentDecisions($input: RecentDecisionsInput!) {
+    getRecentDecisions(input: $input) {
+      id
+      jobId
+      queueId
+      reviewerId
+      itemId
+      itemTypeId
+      decisions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      relatedActions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      createdAt
+      decisionReason
     }
   }
   ${GQLManualReviewDecisionComponentFieldsFragmentDoc}
@@ -35367,6 +35496,30 @@ export const GQLGetLatestUserSubmittedItemsDocument = gql`
               displayName
               parentId
               threadId
+              createdAt
+              creatorId
+            }
+          }
+        }
+        ... on ThreadItem {
+          id
+          submissionId
+          data
+          type {
+            id
+            name
+            baseFields {
+              name
+              type
+              required
+              container {
+                containerType
+                keyScalarType
+                valueScalarType
+              }
+            }
+            schemaFieldRoles {
+              displayName
               createdAt
               creatorId
             }
@@ -43370,6 +43523,7 @@ export const namedOperations = {
     getResolvedJobsForUser: 'getResolvedJobsForUser',
     getSkippedJobsForUser: 'getSkippedJobsForUser',
     RecentDecisionsSummaryData: 'RecentDecisionsSummaryData',
+    OrgLookupData: 'OrgLookupData',
     GetRecentDecisions: 'GetRecentDecisions',
     getSkipsForRecentDecisions: 'getSkipsForRecentDecisions',
     GetDecidedJob: 'GetDecidedJob',
