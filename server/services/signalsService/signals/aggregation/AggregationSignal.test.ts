@@ -2,6 +2,7 @@ import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
 import { TestDateProvider } from '../../../../test/dateProvider.js';
+import createActions from '../../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../../test/fixtureHelpers/createUser.js';
@@ -24,6 +25,7 @@ describe('AggregationSignal', () => {
       ModerationConfigService,
       AggregationsService,
       RuleAPIDataSource,
+      ActionAPIDataSource,
       ApiKeyService,
     } = deps;
 
@@ -43,6 +45,12 @@ describe('AggregationSignal', () => {
         includeCreator: true,
         extra: {},
       });
+
+    const { actions, cleanup: actionsCleanup } = await createActions({
+      actionAPI: ActionAPIDataSource,
+      itemTypeIds: [itemTypes[0].id],
+      orgId: org.id,
+    });
 
     // Spy on aggregation service functions.
     const aggregationsServiceSpy = AggregationsService;
@@ -117,7 +125,7 @@ describe('AggregationSignal', () => {
             },
           ],
         },
-        actionIds: ['73b2f15cc91'],
+        actionIds: [actions[0].id],
         policyIds: [],
         tags: [],
         maxDailyActions: null,
@@ -135,6 +143,7 @@ describe('AggregationSignal', () => {
       dateProvider,
       async cleanup() {
         await RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
+        await actionsCleanup();
         await itemTypesCleanup();
         await userCleanup();
         await orgCleanup();
