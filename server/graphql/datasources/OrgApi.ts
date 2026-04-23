@@ -20,7 +20,6 @@ import {
   type GQLRequestDemoInput,
 } from '../generated.js';
 import {
-  kyselyOrgDeleteById,
   kyselyOrgFindAll,
   kyselyOrgFindByEmail,
   kyselyOrgFindById,
