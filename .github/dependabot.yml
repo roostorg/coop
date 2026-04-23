@@ -20,6 +20,7 @@ updates:
         update-types: ["version-update:semver-major"]
 
   # Enable version updates for npm
+  # Cover / directory dependencies
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
@@ -32,6 +33,29 @@ updates:
           - '*'
 
   - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      root-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      root-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Cover /db directory dependencies
+  - package-ecosystem: 'npm'
     directory: '/db'
     schedule:
       interval: 'weekly'
@@ -42,6 +66,29 @@ updates:
         patterns:
           - '*'
 
+  - package-ecosystem: 'npm'
+    directory: '/db'
+    schedule:
+      interval: 'weekly'
+    groups:
+      db-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/db'
+    schedule:
+      interval: 'weekly'
+    groups:
+      db-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Cover /migrator directory dependencies
   - package-ecosystem: 'npm'
     directory: '/migrator'
     schedule:
@@ -54,6 +101,29 @@ updates:
           - '*'
 
   - package-ecosystem: 'npm'
+    directory: '/migrator'
+    schedule:
+      interval: 'weekly'
+    groups:
+      migrator-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/migrator'
+    schedule:
+      interval: 'weekly'
+    groups:
+      migrator-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Cover /server directory dependencies
+  - package-ecosystem: 'npm'
     directory: '/server'
     schedule:
       interval: 'weekly'
@@ -64,6 +134,29 @@ updates:
         patterns:
           - '*'
 
+  - package-ecosystem: 'npm'
+    directory: '/server'
+    schedule:
+      interval: 'weekly'
+    groups:
+      server-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/server'
+    schedule:
+      interval: 'weekly'
+    groups:
+      server-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Cover /client directory dependencies
   - package-ecosystem: 'npm'
     directory: '/client'
     schedule:
@@ -76,6 +169,29 @@ updates:
           - '*'
 
   - package-ecosystem: 'npm'
+    directory: '/client'
+    schedule:
+      interval: 'weekly'
+    groups:
+      client-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/client'
+    schedule:
+      interval: 'weekly'
+    groups:
+      client-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Cover /nodejs-instrumentation directory dependencies
+  - package-ecosystem: 'npm'
     directory: '/nodejs-instrumentation'
     schedule:
       interval: 'weekly'
@@ -83,5 +199,27 @@ updates:
       nodejs-instrumentation-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/nodejs-instrumentation'
+    schedule:
+      interval: 'weekly'
+    groups:
+      nodejs-instrumentation-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  - package-ecosystem: 'npm'
+    directory: '/nodejs-instrumentation'
+    schedule:
+      interval: 'weekly'
+    groups:
+      nodejs-instrumentation-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
         patterns:
           - '*'
