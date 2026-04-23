@@ -1,4 +1,3 @@
-import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import getBottle, {
   type Dependencies,
   type PublicInterface,
@@ -98,12 +97,12 @@ describe('Detect Rule Anomalies', () => {
       // in different initial alarm statuses, to test all 9 combinations [i.e.,
       // starting and ending at one of (OK, ALARM, or INSUFFICENT_DATA), where
       // the start and end states can be the same].
-      const { org } = await createOrg({
+      const { org, cleanup: orgCleanup } = await createOrg({
         KyselyPg,
         ModerationConfigService,
         ApiKeyService,
       });
-      const { org: org2 } = await createOrg(
+      const { org: org2, cleanup: org2Cleanup } = await createOrg(
         {
           KyselyPg,
           ModerationConfigService,
@@ -212,8 +211,8 @@ describe('Detect Rule Anomalies', () => {
       deleteMockData = async () => {
         await Promise.all(fakeRules.map(async (it) => it.destroy()));
         await Promise.all([ruleOwner.destroy(), ruleOwner2.destroy()]);
-        await kyselyOrgDeleteById(KyselyPg, org.id);
-        await kyselyOrgDeleteById(KyselyPg, org2.id);
+        await orgCleanup();
+        await org2Cleanup();
         await models.sequelize.close();
       };
       /* eslint-enable functional/immutable-data */

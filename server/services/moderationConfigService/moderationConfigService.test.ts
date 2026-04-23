@@ -4,7 +4,6 @@ import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
 
-import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import getBottle from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -75,6 +74,7 @@ describe('ModerationConfigService', () => {
   ] satisfies Policy[];
 
   const dummyOrgId = uid();
+  let dummyOrgCleanup: () => Promise<void>;
   const dummySchema = [
     { name: 'fakeField', type: 'STRING', required: false, container: null },
   ] as const;
@@ -127,12 +127,13 @@ describe('ModerationConfigService', () => {
     );
 
     defaultUserItemType = createOrgResult.defaultUserItemType;
+    dummyOrgCleanup = createOrgResult.cleanup;
     allCreatedItemTypes = [...allCreatedItemTypes, defaultUserItemType];
   });
 
   afterAll(async () => {
     const { Sequelize: models } = (await getBottle()).container;
-    await kyselyOrgDeleteById(container.KyselyPg, dummyOrgId);
+    await dummyOrgCleanup();
 
     await Promise.all([
       container.KyselyPg.destroy(),
