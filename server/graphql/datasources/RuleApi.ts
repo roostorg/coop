@@ -7,6 +7,7 @@ import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Backtest } from '../../models/rules/BacktestModel.js';
 import { type User } from '../../models/UserModel.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
@@ -49,6 +50,7 @@ import {
   type GQLConditionInput,
   type GQLConditionInputFieldInput,
   type GQLConditionSetInput,
+  type GQLCreateBacktestInput,
   type GQLCreateContentRuleInput,
   type GQLCreateUserRuleInput,
   type GQLRunRetroactionInput,
@@ -652,74 +654,18 @@ class RuleAPI {
     }
   }
 
-  async createBacktest(_input: unknown, _user: User) {
-    throw new Error('Not Implemented');
-
-    // const id = uid();
-    // const rule = await this.models.Rule.findByPk(input.ruleId, {
-    //   rejectOnEmpty: true,
-    // });
-    // const ruleContentTypes = await rule.getContentTypes();
-
-    // if (!ruleContentTypes.length) {
-    //   throw new Error(
-    //     "Rule is not attached to any content types, so we're " +
-    //       'unable to select content to use for the backtest.',
-    //   );
-    // }
-
-    // const backest = this.models.Backtest.build({
-    //   id,
-    //   ruleId: input.ruleId,
-    //   sampleDesiredSize: input.sampleDesiredSize,
-    //   sampleStartAt: new Date(input.sampleStartAt),
-    //   sampleEndAt: new Date(input.sampleEndAt),
-    //   creatorId: user.id,
-    // });
-
-    // await backest.save();
-
-    // // Start sampling and enqueueing the sampled items, but do this without
-    // // awaiting so that we can return to the frontend immediately.
-    // //
-    // // Our query ignores legacy submissions that didn't store their content type
-    // // schema at the time of submission, as we can't interpret those reliably
-    // // when backtesting. This also has the effect of excluding all rows which
-    // // didn't log their submission id or item type id (which is what we want,
-    // // since those fields are required, and we started logging them before
-    // // logging `schema`). The use of FixSingleTableSelectRowType gets the types
-    // // to be aware of all our WHERE clause filters and their implications for
-    // // the other columns.
-    // // prettier-ignore
-    // this.getItemSubmissionsFromWarehouse({
-    //   orgId: user.orgId,
-    //   randomSample: true,
-    //   numRows: input.sampleDesiredSize,
-    //   startAt: new Date(input.sampleStartAt),
-    //   endAt: new Date(input.sampleEndAt),
-    //   itemTypeIds: ruleContentTypes.map(ct => ct.id),
-    // }).then(async (submissions) => {
-    //     const ruleSetExecutionJobs = submissions.map((it) => ({
-    //       orgId: user.orgId,
-    //       ruleIds: [input.ruleId],
-    //       itemSubmission: it,
-    //       environment: RuleEnvironment.BACKTEST,
-    //       correlationId: toCorrelationId({ type: 'backtest', id }),
-    //     }));
-
-    //     const { failures } = await this.ruleScheduler.enqueueRuleSetExecutions(
-    //       ruleSetExecutionJobs,
-    //     );
-
-    //     const sampleActualSize = submissions.length - failures.length;
-    //     await backest.update({ sampleActualSize, samplingComplete: true });
-    //   })
-    //   .catch((e) => {
-    //     const span = this.tracer.getActiveSpan();
-    //     span?.recordException(e);
-    //   });
-
-    // return backest;
+  /**
+   * TODO(BACKTEST_RETROACTION): Re-enable the Kysely + warehouse + RuleEngine flow when product UI
+   * exposes backtests again and we can routinely validate against real CONTENT_API_REQUESTS data and
+   * RULE_EXECUTIONS logging in dev/staging. Restore `RuleEngine` + `getItemTypeEventuallyConsistent`
+   * on this class, `kyselyInsertBacktestRow` / `kyselyUpdateBacktestSamplingOutcome` in
+   * `ruleKyselyPersistence.ts`, and the deleted private helpers (`getContentItemTypeIdsForRule`,
+   * `runSampledRuleExecutions`, `queryWarehouseSubmissionsForRule`).
+   */
+  async createBacktest(_input: GQLCreateBacktestInput, _user: User): Promise<Backtest> {
+    throw new Error(
+      'createBacktest is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
+    );
   }
 
   async getBacktestResults(
@@ -822,48 +768,14 @@ class RuleAPI {
    * of content on which it will run. That prevents us from accidentally
    * turning this on and overloading our node servers, and is sufficient
    * for the Slack demo.
+   *
+   * TODO(BACKTEST_RETROACTION): Same as `createBacktest` — re-enable when UI and env
+   * support validation.
    */
-  async runRetroaction(_input: GQLRunRetroactionInput, _user: User) {
-    throw new Error('Not Implemented');
-
-    // const rule = await this.models.Rule.findByPk(input.ruleId, {
-    //   rejectOnEmpty: true,
-    // });
-    // const ruleContentTypes = await rule.getContentTypes();
-
-    // if (!ruleContentTypes.length) {
-    //   throw new Error(
-    //     "Rule is not attached to any content types, so we're " +
-    //       'unable to select content to use for the backtest.',
-    //   );
-    // }
-
-    // const id = uid();
-    // const submissions = await this.getItemSubmissionsFromWarehouse({
-    //   orgId: user.orgId,
-    //   itemTypeIds: ruleContentTypes.map((ct) => ct.id),
-    //   randomSample: false,
-    //   numRows: 100, // TODO: Remove the limit, and instead batch this query
-    //   startAt: new Date(input.startAt),
-    //   endAt: new Date(input.endAt),
-    // });
-
-    // try {
-    // const { failures } = await this.ruleScheduler.enqueueRuleSetExecutions(
-    //   submissions.map((it) => ({
-    //     orgId: user.orgId,
-    //     ruleIds: [input.ruleId],
-    //     itemSubmission: it,
-    //     environment: RuleEnvironment.RETROACTION,
-    //     correlationId: toCorrelationId({ type: 'retroaction', id }),
-    //   })),
-    // );
-
-    // return { _: !failures.length };
-    // } catch (e) {
-    //   this.tracer.getActiveSpan()?.recordException(e as Exception);
-    //   return { _: false };
-    // }
+  async runRetroaction(_input: GQLRunRetroactionInput, _user: User): Promise<{ _: boolean }> {
+    throw new Error(
+      'runRetroaction is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
+    );
   }
 
   /**

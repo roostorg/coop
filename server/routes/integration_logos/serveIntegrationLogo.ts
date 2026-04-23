@@ -31,6 +31,10 @@ export default function serveIntegrationLogo(
     }
     // Path was validated at plugin load (under package root); safe to send.
     res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Public plugin asset; opt out of helmet's strict same-origin CORP default
+    // so the SPA can load it via <img src> when deployed on a different origin
+    // than the API.
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.sendFile(filePath, (err) => {
       if (err != null && !res.headersSent) {
          

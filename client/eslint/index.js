@@ -5,7 +5,7 @@ const ruleFiles = fs
   .readdirSync(__dirname)
   .filter((file) => {
     const fullPath = path.join(__dirname, file);
-    return !fs.statSync(fullPath).isDirectory() && file !== "index.js" && !file.endsWith("test.js");
+    return !fs.statSync(fullPath).isDirectory() && file.endsWith(".js") && file !== "index.js" && !file.endsWith("test.js");
   });
 
 const rules = Object.fromEntries(
