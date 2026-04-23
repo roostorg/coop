@@ -324,6 +324,14 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.ruleReadOps.getEnabledRulesForItemType(itemTypeId);
   }
 
+  async getRuleByIdAndOrg(
+    ruleId: string,
+    orgId: string,
+    opts?: { readFromReplica?: boolean },
+  ): Promise<PlainRuleWithLatestVersion | null> {
+    return this.ruleReadOps.getRuleByIdAndOrg(ruleId, orgId, opts);
+  }
+
   async findEnabledUserRules(): Promise<PlainRuleWithLatestVersion[]> {
     return this.ruleReadOps.findEnabledUserRules();
   }

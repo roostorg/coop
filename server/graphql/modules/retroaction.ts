@@ -40,15 +40,19 @@ const resolvers = {
       // TODO: figure out an architecture/patterns for permission checks
       // and this type of validation. Make our error handling consistent.
       const user = context.getUser();
-      const rule = await context.services.Sequelize.Rule.findByPk(
-        params.input.ruleId,
-      );
-
       if (user == null) {
         throw unauthenticatedError('Authenticated user required');
-      } else if (!hasPermission(UserPermission.RUN_RETROACTION, user.role)) {
-        throw forbiddenError('User not authorized to create backtests.');
-      } else if (!rule || user.orgId !== rule.orgId) {
+      }
+      if (!hasPermission(UserPermission.RUN_RETROACTION, user.role)) {
+        throw forbiddenError('User not authorized to run retroaction.');
+      }
+
+      const rule =
+        await context.services.ModerationConfigService.getRuleByIdAndOrg(
+          params.input.ruleId,
+          user.orgId,
+        );
+      if (rule == null) {
         throw forbiddenError('Invalid rule.');
       }
 

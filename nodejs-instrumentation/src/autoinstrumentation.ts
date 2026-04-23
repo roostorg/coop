@@ -28,11 +28,12 @@ import { AWSXRayPropagator } from '@opentelemetry/propagator-aws-xray';
 import { awsEc2Detector } from '@opentelemetry/resource-detector-aws';
 import { containerDetector } from '@opentelemetry/resource-detector-container';
 import {
+  defaultResource,
   envDetector,
   hostDetector,
   osDetector,
   processDetector,
-  Resource,
+  resourceFromAttributes,
 } from '@opentelemetry/resources';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -95,8 +96,8 @@ const sdk = new NodeSDK({
   metricReader: new PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter(),
   }),
-  resource: Resource.default().merge(
-    new Resource({
+  resource: defaultResource().merge(
+    resourceFromAttributes({
       [ATTR_SERVICE_NAME]: serviceName,
       [ATTR_SERVICE_VERSION]: process.env.GIT_COMMIT_SHA,
       'git.commit.sha': process.env.GIT_COMMIT_SHA,

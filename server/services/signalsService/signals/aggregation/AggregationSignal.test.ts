@@ -134,7 +134,7 @@ describe('AggregationSignal', () => {
       org,
       dateProvider,
       async cleanup() {
-        await rule.destroy();
+        await RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
         await itemTypesCleanup();
         await userCleanup();
         await orgCleanup();
