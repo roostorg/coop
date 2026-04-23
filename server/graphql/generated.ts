@@ -4189,7 +4189,6 @@ export type GQLSignalSubcategoryOptionInput = {
 
 export const GQLSignalType = {
   Aggregation: 'AGGREGATION',
-  BenignModel: 'BENIGN_MODEL',
   Custom: 'CUSTOM',
   GeoContainedWithin: 'GEO_CONTAINED_WITHIN',
   GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',

@@ -6,7 +6,6 @@ import type { GetPoliciesByIdEventuallyConsistent } from '../../manualReviewTool
 import { type UserScore } from '../../userStatisticsService/userStatisticsService.js';
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
-import CoopRiskModelSignal from '../signals/CoopRiskModelSignal.js';
 import GeoContainedWithinSignal from '../signals/GeoContainedWithinSignal.js';
 import ImageExactMatchSignal from '../signals/ImageExactMatchSignal.js';
 import ImageSimilarityDoesNotMatchSignal from '../signals/ImageSimilarityDoesNotMatch.js';
@@ -125,7 +124,6 @@ export function instantiateBuiltInSignals(
     ),
     [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]:
       new GoogleCloudTranslationAPISignal(),
-    [SignalType.BENIGN_MODEL]: new CoopRiskModelSignal(),
     [SignalType.AGGREGATION]: new AggregationSignal(aggregationsService),
     [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
       credentialGetters.ZENTROPI,

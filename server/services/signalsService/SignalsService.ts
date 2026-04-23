@@ -239,7 +239,7 @@ export class SignalsService {
    * `type` given in `opts.signal.type`. I.e., the type of the signal id and the
    * type of the `input` must be correlated. The type signature used here _does_
    * capture that, and will work very well if `T` is instantiated with a single
-   * signal type. Eg, `runSignal<"BENIGN_MODEL">(..)` gives very good inferred
+   * signal type. Eg, `runSignal<"USER_SCORE">(..)` gives very good inferred
    * argument types. However, when `T` is not known precisely at compile time at
    * the call site, this argument type is gonna be very hard to satisfy (and
    * rightfully so -- the call probably isn't type safe), so the caller will

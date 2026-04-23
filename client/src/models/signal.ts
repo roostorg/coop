@@ -80,7 +80,6 @@ export function integrationForSignalType(type: string) {
     case 'TEXT_SIMILARITY_SCORE':
     case 'USER_SCORE':
     case 'USER_STRIKE_VALUE':
-    case 'BENIGN_MODEL':
       return null;
     default:
       // Plugin signal types (e.g. RANDOM_SIGNAL_SELECTION) or unknown: no built-in integration

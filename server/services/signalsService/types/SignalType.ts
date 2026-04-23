@@ -38,7 +38,6 @@ export const BuiltInExternalSignalType = makeEnumLike([
 ]);
 
 export const BuiltInThirdPartySignalType = makeEnumLike([
-  'BENIGN_MODEL',
   'GOOGLE_CONTENT_SAFETY_API_IMAGE',
   'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   'OPEN_AI_HATE_TEXT_MODEL',
@@ -117,7 +116,6 @@ export function integrationForSignalType(type: SignalType | string) {
     case 'TEXT_SIMILARITY_SCORE':
     case 'USER_SCORE':
     case 'USER_STRIKE_VALUE':
-    case 'BENIGN_MODEL':
       return null;
     default:
       // Plugin signal types (e.g. RANDOM_SIGNAL_SELECTION): no built-in integration
