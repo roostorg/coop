@@ -1,7 +1,6 @@
 /* eslint-disable max-lines */
 import { faker } from '@faker-js/faker';
 
-import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
@@ -18,7 +17,8 @@ describe('POST Report', () => {
     deps: Awaited<ReturnType<typeof makeMockedServer>>['deps'],
     request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
-    apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'];
+    apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
+    orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'];
 
   const getBulkWriteMock = () =>
     deps.DataWarehouseAnalytics.bulkWrite as jest.MockedFunction<
@@ -30,7 +30,7 @@ describe('POST Report', () => {
 
     models = deps.Sequelize;
 
-    ({ apiKey } = await createOrg(
+    ({ apiKey, cleanup: orgCleanup } = await createOrg(
       {
         KyselyPg: deps.KyselyPg,
         ModerationConfigService: deps.ModerationConfigService,
@@ -123,7 +123,7 @@ describe('POST Report', () => {
 
   afterAll(async () => {
     const { User, ItemType } = models;
-    await kyselyOrgDeleteById(deps.KyselyPg, orgId);
+    await orgCleanup();
     await ItemType.destroy({ where: { id: contentTypeId } });
     await ItemType.destroy({ where: { id: userTypeId } });
     await ItemType.destroy({ where: { id: threadTypeId } });

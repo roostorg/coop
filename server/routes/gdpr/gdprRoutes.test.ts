@@ -1,7 +1,6 @@
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
-import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ContentItemType } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -14,6 +13,7 @@ describe('POST /gdrp/delete', () => {
   let request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
     apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
+    orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
     ApiKeyService: Dependencies['ApiKeyService'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     KyselyPg: Dependencies['KyselyPg'];
@@ -26,7 +26,7 @@ describe('POST /gdrp/delete', () => {
         deps: { ModerationConfigService, ApiKeyService, KyselyPg },
       } = await makeMockedServer());
 
-      ({ apiKey } = await createOrg(
+      ({ apiKey, cleanup: orgCleanup } = await createOrg(
         { KyselyPg, ModerationConfigService, ApiKeyService },
         orgId,
       ));
@@ -51,7 +51,7 @@ describe('POST /gdrp/delete', () => {
   });
 
   afterAll(async () => {
-    await kyselyOrgDeleteById(KyselyPg, orgId);
+    await orgCleanup();
     await shutdown();
   });
 

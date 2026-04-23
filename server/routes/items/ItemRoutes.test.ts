@@ -2,7 +2,6 @@ import { faker } from '@faker-js/faker';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
-import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ContentItemType } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -16,6 +15,7 @@ describe('POST Items', () => {
   let request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
     apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
+    orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
     models: Dependencies['Sequelize'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     ApiKeyService: Dependencies['ApiKeyService'],
@@ -37,7 +37,7 @@ describe('POST Items', () => {
 
     const { User } = models;
 
-    ({ apiKey } = await createOrg(
+    ({ apiKey, cleanup: orgCleanup } = await createOrg(
       { KyselyPg, ModerationConfigService, ApiKeyService },
       orgId,
     ));
@@ -75,7 +75,7 @@ describe('POST Items', () => {
 
   afterAll(async () => {
     const { User } = models;
-    await kyselyOrgDeleteById(KyselyPg, orgId);
+    await orgCleanup();
     await ModerationConfigService.deleteItemType({
       orgId,
       itemTypeId: contentType.id,

@@ -1,6 +1,5 @@
 import { uid } from 'uid';
 
-import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createPolicy from '../../test/fixtureHelpers/createPolicy.js';
@@ -14,6 +13,7 @@ describe('GET policies', () => {
   let request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
     apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
+    orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
     models: Dependencies['Sequelize'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     ApiKeyService: Dependencies['ApiKeyService'],
@@ -31,7 +31,7 @@ describe('GET policies', () => {
       },
     } = await makeMockedServer());
 
-    ({ apiKey } = await createOrg(
+    ({ apiKey, cleanup: orgCleanup } = await createOrg(
       { KyselyPg, ModerationConfigService, ApiKeyService },
       orgId,
     ));
@@ -41,7 +41,7 @@ describe('GET policies', () => {
     const { Policy } = models;
     await Policy.destroy({ where: { id: policyId1 } });
     await Policy.destroy({ where: { id: policyId2 } });
-    await kyselyOrgDeleteById(KyselyPg, orgId);
+    await orgCleanup();
     await shutdown();
   });
 
