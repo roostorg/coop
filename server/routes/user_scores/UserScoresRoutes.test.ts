@@ -11,13 +11,11 @@ describe('GET policies', () => {
       const {
         request,
         shutdown,
-        deps: { Sequelize: models, ModerationConfigService, ApiKeyService },
+        deps: { ModerationConfigService, ApiKeyService, KyselyPg },
       } = await makeMockedServer();
 
       const { org, apiKey, cleanup: orgCleanup } = await createOrg(
-        models,
-        ModerationConfigService,
-        ApiKeyService,
+        { KyselyPg, ModerationConfigService, ApiKeyService },
         uid(),
       );
       const { itemTypes, cleanup } = await createUserItemTypes({

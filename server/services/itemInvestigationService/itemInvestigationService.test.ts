@@ -42,9 +42,11 @@ describe('Item Investigation Service', () => {
     const dummyOrgId = uid();
 
     await createOrg(
-      { Org: container.Sequelize.Org },
-      container.ModerationConfigService,
-      container.ApiKeyService,
+      {
+        KyselyPg: container.KyselyPg,
+        ModerationConfigService: container.ModerationConfigService,
+        ApiKeyService: container.ApiKeyService,
+      },
       dummyOrgId,
     );
 
@@ -123,9 +125,11 @@ describe('Item Investigation Service', () => {
     const dummyOrgId = uid();
 
     await createOrg(
-      { Org: container.Sequelize.Org },
-      container.ModerationConfigService,
-      container.ApiKeyService,
+      {
+        KyselyPg: container.KyselyPg,
+        ModerationConfigService: container.ModerationConfigService,
+        ApiKeyService: container.ApiKeyService,
+      },
       dummyOrgId,
     );
 

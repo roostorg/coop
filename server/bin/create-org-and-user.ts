@@ -17,6 +17,7 @@ import { uid } from 'uid';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
+import { kyselyOrgInsert } from '../graphql/datasources/orgKyselyPersistence.js';
 import getBottle from '../iocContainer/index.js';
 import { hashPassword } from '../services/userManagementService/index.js';
 
@@ -64,19 +65,11 @@ async function createOrgAndUser() {
     const orgId = uid();
     const userId = uid();
 
-    // Create the organization
-    const org = await container.Sequelize.Org.create({
-      id: orgId,
-      email: argv.email,
-      name: argv.name,
-      websiteUrl: argv.website,
-    });
-
-    // Create signing keys 
+    // Create signing keys
     await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);
 
-    // Create API key 
-    const { apiKey: rawApiKey, record: apiKeyRecord } = 
+    // Create API key
+    const { apiKey: rawApiKey, record: apiKeyRecord } =
       await container.ApiKeyService.createApiKey(
         orgId,
         'Main API Key',
@@ -84,9 +77,14 @@ async function createOrgAndUser() {
         null,
       );
 
-    // Update the org with the API key ID
-    org.apiKeyId = apiKeyRecord.id;
-    await org.save();
+    const org = await kyselyOrgInsert({
+      db: container.KyselyPg,
+      id: orgId,
+      email: argv.email,
+      name: argv.name,
+      websiteUrl: argv.website,
+      apiKeyId: apiKeyRecord.id,
+    });
 
     // Initialize org settings
     await Promise.all([

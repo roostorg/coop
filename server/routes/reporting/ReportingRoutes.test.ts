@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 import { faker } from '@faker-js/faker';
 
+import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
@@ -30,9 +31,11 @@ describe('POST Report', () => {
     models = deps.Sequelize;
 
     ({ apiKey } = await createOrg(
-      models,
-      deps.ModerationConfigService,
-      deps.ApiKeyService,
+      {
+        KyselyPg: deps.KyselyPg,
+        ModerationConfigService: deps.ModerationConfigService,
+        ApiKeyService: deps.ApiKeyService,
+      },
       orgId,
     ));
     const userType = await deps.ModerationConfigService.createUserType(orgId, {
@@ -119,8 +122,8 @@ describe('POST Report', () => {
   });
 
   afterAll(async () => {
-    const { Org, User, ItemType } = models;
-    await Org.destroy({ where: { id: orgId } });
+    const { User, ItemType } = models;
+    await kyselyOrgDeleteById(deps.KyselyPg, orgId);
     await ItemType.destroy({ where: { id: contentTypeId } });
     await ItemType.destroy({ where: { id: userTypeId } });
     await ItemType.destroy({ where: { id: threadTypeId } });

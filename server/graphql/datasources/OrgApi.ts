@@ -4,6 +4,7 @@ import { type Exception } from '@opentelemetry/api';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type SequelizeAction } from '../../models/rules/ActionModel.js';
 import { CoopEmailAddress } from '../../services/sendEmailService/index.js';
 import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {
@@ -18,13 +19,22 @@ import {
   type GQLMutationCreateOrgArgs,
   type GQLRequestDemoInput,
 } from '../generated.js';
+import {
+  kyselyOrgDeleteById,
+  kyselyOrgFindAll,
+  kyselyOrgFindByEmail,
+  kyselyOrgFindById,
+  kyselyOrgFindByName,
+  kyselyOrgInsert,
+  kyselyOrgUpdate,
+  type GraphQLOrgParent,
+} from './orgKyselyPersistence.js';
 
 class OrgAPI {
   constructor(
     private readonly orgCreationLogger: Dependencies['OrgCreationLogger'],
     private readonly apiKeyService: Dependencies['ApiKeyService'],
     private readonly sendEmail: Dependencies['sendEmail'],
-    private readonly sequelize: Dependencies['Sequelize'],
     private readonly signingKeyPairService: Dependencies['SigningKeyPairService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
@@ -32,20 +42,17 @@ class OrgAPI {
     private readonly config: Dependencies['ConfigService'],
     private readonly orgSettingsService: Dependencies['OrgSettingsService'],
     private readonly manualReviewToolService: Dependencies['ManualReviewToolService'],
-  ) {
-  }
+    private readonly kysely: Dependencies['KyselyPg'],
+    private readonly sequelize: Dependencies['Sequelize'],
+  ) {}
 
   async createOrg(params: GQLMutationCreateOrgArgs) {
     const { email, name, website } = params.input;
-    const existingOrgByName = await this.sequelize.Org.findOne({
-      where: { name },
-    });
+    const existingOrgByName = await kyselyOrgFindByName(this.kysely, name);
     if (existingOrgByName != null) {
       throw makeOrgNameExistsError({ shouldErrorSpan: true });
     }
-    const existingOrgByEmail = await this.sequelize.Org.findOne({
-      where: { email },
-    });
+    const existingOrgByEmail = await kyselyOrgFindByEmail(this.kysely, email);
 
     if (existingOrgByEmail != null) {
       throw makeOrgEmailExistsError({ shouldErrorSpan: true });
@@ -67,7 +74,8 @@ class OrgAPI {
     await this.signingKeyPairService.createAndStoreSigningKeys(id);
 
     try {
-      const org = await this.sequelize.Org.create({
+      const org = await kyselyOrgInsert({
+        db: this.kysely,
         id,
         email,
         name,
@@ -100,9 +108,10 @@ class OrgAPI {
   // Create invite token and optionally send email
   async inviteUser(input: GQLInviteUserInput, orgId: string) {
     const { email, role } = input;
-    const org = await this.sequelize.Org.findByPk(orgId, {
-      rejectOnEmpty: true,
-    });
+    const org = await kyselyOrgFindById(this.kysely, orgId);
+    if (org == null) {
+      throw new Error(`Organization not found: ${orgId}`);
+    }
 
     const token = await this.userManagementService.createInviteUserToken({
       email,
@@ -171,12 +180,16 @@ class OrgAPI {
     return true;
   }
 
-  async getGraphQLOrgFromId(id: string) {
-    return this.sequelize.Org.findByPk(id, { rejectOnEmpty: true });
+  async getGraphQLOrgFromId(id: string): Promise<GraphQLOrgParent> {
+    const org = await kyselyOrgFindById(this.kysely, id);
+    if (org == null) {
+      throw new Error(`Organization not found: ${id}`);
+    }
+    return org;
   }
 
-  async getAllGraphQLOrgs() {
-    return this.sequelize.Org.findAll();
+  async getAllGraphQLOrgs(): Promise<GraphQLOrgParent[]> {
+    return kyselyOrgFindAll(this.kysely);
   }
 
   async updateOrgInfo(
@@ -187,28 +200,47 @@ class OrgAPI {
       websiteUrl?: string | null;
       onCallAlertEmail?: string | null;
     },
-  ) {
-    const org = await this.sequelize.Org.findByPk(orgId);
-    if (!org) {
+  ): Promise<GraphQLOrgParent> {
+    const updated = await kyselyOrgUpdate(this.kysely, orgId, {
+      name: input.name ?? undefined,
+      email: input.email ?? undefined,
+      websiteUrl: input.websiteUrl ?? undefined,
+      onCallAlertEmail: input.onCallAlertEmail,
+    });
+    if (updated == null) {
       throw new Error('Organization not found');
     }
 
-    if (input.name != null) {
-      org.name = input.name;
-    }
-    if (input.email != null) {
-      org.email = input.email;
-    }
-    if (input.websiteUrl != null && input.websiteUrl !== '') {
-      org.websiteUrl = input.websiteUrl;
-    }
-    if (input.onCallAlertEmail !== undefined) {
-      org.onCallAlertEmail = input.onCallAlertEmail ?? undefined;
-    }
+    return updated;
+  }
 
-    await org.save();
+  /**
+   * Legacy GraphQL `ContentType` parents still use Sequelize `getActions` on
+   * item types; load them from the ORM until item types are fully migrated.
+   */
+  async getSequelizeContentTypesForOrg(orgId: string) {
+    return this.sequelize.ItemType.findAll({
+      where: { orgId },
+    });
+  }
 
-    return org;
+  /** GraphQL `Org.users` / permission filters still use Sequelize `User` models. */
+  async getOrgUsersForGraphQL(orgId: string) {
+    return this.sequelize.User.findAll({ where: { orgId } });
+  }
+
+  /**
+   * GraphQL `Action` union members are still mapped to Sequelize action
+   * subtypes (see `codegen.yaml`), so `Org.actions` resolves with Sequelize
+   * instances. `ModerationConfigService.getActions` returns plain shapes that
+   * are NOT structurally assignable to those subtypes, so we keep a Sequelize
+   * lookup here until the Action GraphQL parents are migrated. The narrowing
+   * cast mirrors the typing on `OrgModel.getActions` (which returns
+   * `SequelizeAction[]` via the Sequelize association mixin).
+   */
+  async getSequelizeActionsForOrg(orgId: string): Promise<SequelizeAction[]> {
+    const rows = await this.sequelize.Action.findAll({ where: { orgId } });
+    return rows as SequelizeAction[];
   }
 
   // TODO: ApiKeyService should maybe be its own dataSource,
@@ -308,7 +340,6 @@ export default inject(
     'OrgCreationLogger',
     'ApiKeyService',
     'sendEmail',
-    'Sequelize',
     'SigningKeyPairService',
     'Tracer',
     'ModerationConfigService',
@@ -316,6 +347,8 @@ export default inject(
     'ConfigService',
     'OrgSettingsService',
     'ManualReviewToolService',
+    'KyselyPg',
+    'Sequelize',
   ],
   OrgAPI,
 );

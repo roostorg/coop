@@ -1102,17 +1102,16 @@ const ContentManualReviewJobPayload: GQLContentManualReviewJobPayloadResolvers =
         case 'REPORT':
         case 'POST_ACTIONS':
           return { kind: enqueueSourceInfo.kind };
-        case 'RULE_EXECUTION':
-          const org = await context.dataSources.orgAPI.getGraphQLOrgFromId(
-            user.orgId,
-          );
-          const rules = await org.getRules();
+        case 'RULE_EXECUTION': {
+          const rules =
+            await context.dataSources.ruleAPI.getGraphQLRulesForOrg(user.orgId);
           return {
             kind: enqueueSourceInfo.kind,
             rules: rules.filter((rule) =>
               enqueueSourceInfo.rules.includes(rule.id),
             ),
           };
+        }
         default:
           assertUnreachable(enqueueSourceInfo);
       }
@@ -1318,17 +1317,16 @@ const UserManualReviewJobPayload: GQLUserManualReviewJobPayloadResolvers = {
       case 'REPORT':
       case 'POST_ACTIONS':
         return { kind: enqueueSourceInfo.kind };
-      case 'RULE_EXECUTION':
-        const org = await context.dataSources.orgAPI.getGraphQLOrgFromId(
-          user.orgId,
-        );
-        const rules = await org.getRules();
+      case 'RULE_EXECUTION': {
+        const rules =
+          await context.dataSources.ruleAPI.getGraphQLRulesForOrg(user.orgId);
         return {
           kind: enqueueSourceInfo.kind,
           rules: rules.filter((rule) =>
             enqueueSourceInfo.rules.includes(rule.id),
           ),
         };
+      }
       default:
         assertUnreachable(enqueueSourceInfo);
     }
@@ -1487,17 +1485,16 @@ const ThreadManualReviewJobPayload: GQLThreadManualReviewJobPayloadResolvers = {
       case 'REPORT':
       case 'POST_ACTIONS':
         return { kind: enqueueSourceInfo.kind };
-      case 'RULE_EXECUTION':
-        const org = await context.dataSources.orgAPI.getGraphQLOrgFromId(
-          user.orgId,
-        );
-        const rules = await org.getRules();
+      case 'RULE_EXECUTION': {
+        const rules =
+          await context.dataSources.ruleAPI.getGraphQLRulesForOrg(user.orgId);
         return {
           kind: enqueueSourceInfo.kind,
           rules: rules.filter((rule) =>
             enqueueSourceInfo.rules.includes(rule.id),
           ),
         };
+      }
       default:
         assertUnreachable(enqueueSourceInfo);
     }
@@ -1613,17 +1610,16 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
       case 'REPORT':
       case 'POST_ACTIONS':
         return { kind: enqueueSourceInfo.kind };
-      case 'RULE_EXECUTION':
-        const org = await context.dataSources.orgAPI.getGraphQLOrgFromId(
-          user.orgId,
-        );
-        const rules = await org.getRules();
+      case 'RULE_EXECUTION': {
+        const rules =
+          await context.dataSources.ruleAPI.getGraphQLRulesForOrg(user.orgId);
         return {
           kind: enqueueSourceInfo.kind,
           rules: rules.filter((rule) =>
             enqueueSourceInfo.rules.includes(rule.id),
           ),
         };
+      }
       default:
         assertUnreachable(enqueueSourceInfo);
     }

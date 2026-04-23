@@ -21,12 +21,13 @@ import { SignalType } from '../../signalsService/index.js';
 describe('JobRouting tests', () => {
   const jobRoutingTestWithFixtures = makeTestWithFixture(async () => {
     const { container } = await getBottle();
-    const { Org } = container.Sequelize;
     const manualReviewToolService = container.ManualReviewToolService;
     const { org, cleanup: orgCleanup } = await createOrg(
-      { Org },
-      container.ModerationConfigService,
-      container.ApiKeyService,
+      {
+        KyselyPg: container.KyselyPg,
+        ModerationConfigService: container.ModerationConfigService,
+        ApiKeyService: container.ApiKeyService,
+      },
       uid(),
     );
     const userId = uid();

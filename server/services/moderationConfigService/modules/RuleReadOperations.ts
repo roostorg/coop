@@ -146,6 +146,27 @@ export default class RuleReadOperations {
     return rowToPlainRuleWithLatest(row);
   }
 
+  /**
+   * All rules for an org (latest version string), for GraphQL org.rules and
+   * similar list surfaces. Not filtered by enabled status.
+   */
+  async getRulesForOrg(
+    orgId: string,
+    opts?: { readFromReplica?: boolean },
+  ): Promise<PlainRuleWithLatestVersion[]> {
+    const readFromReplica = opts?.readFromReplica ?? true;
+    const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
+    const rows = (await pg
+      .selectFrom('public.rules as r')
+      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
+      .select(ruleSelect)
+      .where('r.org_id', '=', orgId)
+      .orderBy('r.name', 'asc')
+      .execute()) as RuleRow[];
+
+    return rows.map(rowToPlainRuleWithLatest);
+  }
+
   async findEnabledUserRules() {
     const today = String(getUtcDateOnlyString());
     const rows = (await this.pgQueryReplica

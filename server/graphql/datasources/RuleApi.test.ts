@@ -27,9 +27,11 @@ describe('RuleAPI', () => {
     const { deps, shutdown } = await makeMockedServer();
     const { ModerationConfigService } = deps;
     const { org, cleanup: orgCleanup } = await createOrg(
-      deps.Sequelize,
-      ModerationConfigService,
-      deps.ApiKeyService,
+      {
+        KyselyPg: deps.KyselyPg,
+        ModerationConfigService,
+        ApiKeyService: deps.ApiKeyService,
+      },
       uid(),
     );
     const { user, cleanup: userCleanup } = await createUser(

@@ -4,6 +4,7 @@ import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
 
+import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import getBottle from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -117,9 +118,11 @@ describe('ModerationConfigService', () => {
     );
 
     const createOrgResult = await createOrg(
-      { Org: container.Sequelize.Org },
-      container.ModerationConfigService,
-      container.ApiKeyService,
+      {
+        KyselyPg: container.KyselyPg,
+        ModerationConfigService: container.ModerationConfigService,
+        ApiKeyService: container.ApiKeyService,
+      },
       dummyOrgId,
     );
 
@@ -129,7 +132,7 @@ describe('ModerationConfigService', () => {
 
   afterAll(async () => {
     const { Sequelize: models } = (await getBottle()).container;
-    await models.Org.destroy({ where: { id: dummyOrgId } });
+    await kyselyOrgDeleteById(container.KyselyPg, dummyOrgId);
 
     await Promise.all([
       container.KyselyPg.destroy(),
@@ -192,9 +195,11 @@ describe('ModerationConfigService', () => {
   describe('#getRuleByIdAndOrg', () => {
     const testWithRuleRow = makeTestWithFixture(async () => {
       const { org, cleanup: orgCleanup } = await createOrg(
-        { Org: container.Sequelize.Org },
-        container.ModerationConfigService,
-        container.ApiKeyService,
+        {
+          KyselyPg: container.KyselyPg,
+          ModerationConfigService: container.ModerationConfigService,
+          ApiKeyService: container.ApiKeyService,
+        },
         uid(),
       );
       const { user, cleanup: userCleanup } = await createUser(
@@ -247,9 +252,11 @@ describe('ModerationConfigService', () => {
       'returns null when the org id does not match (IDOR guard)',
       async ({ ruleId }) => {
         const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
-          { Org: container.Sequelize.Org },
-          container.ModerationConfigService,
-          container.ApiKeyService,
+          {
+            KyselyPg: container.KyselyPg,
+            ModerationConfigService: container.ModerationConfigService,
+            ApiKeyService: container.ApiKeyService,
+          },
           uid(),
         );
         try {
@@ -585,9 +592,11 @@ describe('ModerationConfigService', () => {
     describe('Mutations', () => {
       const testWithUserAndOrg = makeTestWithFixture(async () => {
         const { org, cleanup: orgCleanup } = await createOrg(
-          { Org: container.Sequelize.Org },
-          container.ModerationConfigService,
-          container.ApiKeyService,
+          {
+            KyselyPg: container.KyselyPg,
+            ModerationConfigService: container.ModerationConfigService,
+            ApiKeyService: container.ApiKeyService,
+          },
           uid(),
         );
 

@@ -16,9 +16,11 @@ describe('CommentOperations', () => {
     // Create test org
     const orgId = uuidv1();
     const { cleanup: orgCleanup } = await createOrg(
-      { Org: container.Sequelize.Org },
-      container.ModerationConfigService,
-      container.ApiKeyService,
+      {
+        KyselyPg: container.KyselyPg,
+        ModerationConfigService: container.ModerationConfigService,
+        ApiKeyService: container.ApiKeyService,
+      },
       orgId,
     );
 

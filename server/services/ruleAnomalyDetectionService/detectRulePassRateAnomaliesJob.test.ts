@@ -1,3 +1,4 @@
+import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import getBottle, {
   type Dependencies,
   type PublicInterface,
@@ -90,21 +91,24 @@ describe('Detect Rule Anomalies', () => {
         Sequelize: models,
         ModerationConfigService,
         ApiKeyService,
+        KyselyPg,
       } = (await getBottle()).container;
 
       // make some fake rules (w/ stable ids so we can match them in a snapshot)
       // in different initial alarm statuses, to test all 9 combinations [i.e.,
       // starting and ending at one of (OK, ALARM, or INSUFFICENT_DATA), where
       // the start and end states can be the same].
-      const { org } = await createOrg(
-        models,
+      const { org } = await createOrg({
+        KyselyPg,
         ModerationConfigService,
         ApiKeyService,
-      );
+      });
       const { org: org2 } = await createOrg(
-        models,
-        ModerationConfigService,
-        ApiKeyService,
+        {
+          KyselyPg,
+          ModerationConfigService,
+          ApiKeyService,
+        },
         undefined,
         { onCallAlertEmail: 'test@gmail.com' },
       );
@@ -208,7 +212,8 @@ describe('Detect Rule Anomalies', () => {
       deleteMockData = async () => {
         await Promise.all(fakeRules.map(async (it) => it.destroy()));
         await Promise.all([ruleOwner.destroy(), ruleOwner2.destroy()]);
-        await Promise.all([org.destroy(), org2.destroy()]);
+        await kyselyOrgDeleteById(KyselyPg, org.id);
+        await kyselyOrgDeleteById(KyselyPg, org2.id);
         await models.sequelize.close();
       };
       /* eslint-enable functional/immutable-data */

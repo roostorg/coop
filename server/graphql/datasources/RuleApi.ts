@@ -329,6 +329,14 @@ class RuleAPI {
     return buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps);
   }
 
+  /** GraphQL rule parents for `Org.rules` and MRT enqueue-source payloads. */
+  async getGraphQLRulesForOrg(orgId: string) {
+    const plains = await this.moderationConfigService.getRulesForOrg(orgId);
+    return plains.map((plain) =>
+      buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps),
+    );
+  }
+
   async createContentRule(
     input: GQLCreateContentRuleInput,
     userId: string,

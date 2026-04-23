@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
+import { kyselyOrgDeleteById } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { serializeDerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import { type ContentItemType } from '../../services/moderationConfigService/index.js';
@@ -23,7 +24,8 @@ describe('POST Content', () => {
     models: Dependencies['Sequelize'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     ApiKeyService: Dependencies['ApiKeyService'],
-    analytics: Dependencies['DataWarehouseAnalytics'];
+    analytics: Dependencies['DataWarehouseAnalytics'],
+    KyselyPg: Dependencies['KyselyPg'];
 
   beforeAll(async () => {
     ({
@@ -34,15 +36,14 @@ describe('POST Content', () => {
         DataWarehouseAnalytics: analytics,
         ModerationConfigService,
         ApiKeyService,
+        KyselyPg,
       },
     } = await makeMockedServer());
 
-    const { User, Org } = models;
+    const { User } = models;
 
     ({ apiKey } = await createOrg(
-      { Org },
-      ModerationConfigService,
-      ApiKeyService,
+      { KyselyPg, ModerationConfigService, ApiKeyService },
       orgId,
     ));
 
@@ -92,8 +93,8 @@ describe('POST Content', () => {
   });
 
   afterAll(async () => {
-    const { Org, User } = models;
-    await Org.destroy({ where: { id: orgId } });
+    const { User } = models;
+    await kyselyOrgDeleteById(KyselyPg, orgId);
     await ModerationConfigService.deleteItemType({
       orgId,
       itemTypeId: contentType1.id,

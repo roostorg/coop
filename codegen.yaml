@@ -99,12 +99,11 @@ generates:
         ContentType: ../models/rules/ItemTypeModel.js#ItemType
         DerivedFieldSource: ../services/derivedFieldsService/helpers.js#DerivedFieldSpecSource
         HashBank: ../models/HashBankModel.js#HashBank
-        Org: ../models/OrgModel.js#Org
-        # NB: for now we always resolve MatchingBanks with an Org model, and
-        # then call methods on the org model to resolve the sub-fields. This is
-        # a bit unusual, as matchingBanks could in theory be a standalone type,
-        # so we might have to expand this later.
-        MatchingBanks: ../models/OrgModel.js#Org
+        Org: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
+        # NB: `MatchingBanks` is currently resolved by returning the `Org`
+        # parent, and its sub-resolvers only read `org.id`. A bit unusual, as
+        # `MatchingBanks` could be a standalone type — may expand later.
+        MatchingBanks: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
         User: ../models/UserModel.js#User
         LocationBank: ./datasources/LocationBankApi.js#LocationBankWithoutFullPlacesAPIResponse
         # TODO(Kysely migration): these parents will flip to

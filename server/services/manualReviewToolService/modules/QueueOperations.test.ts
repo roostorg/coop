@@ -36,9 +36,11 @@ describe('QueueOperations', () => {
       const container = (await getBottle()).container;
 
       const { org, cleanup: orgCleanup } = await createOrg(
-        { Org: container.Sequelize.Org },
-        container.ModerationConfigService,
-        container.ApiKeyService,
+        {
+          KyselyPg: container.KyselyPg,
+          ModerationConfigService: container.ModerationConfigService,
+          ApiKeyService: container.ApiKeyService,
+        },
         uid(),
       );
 
