@@ -25,7 +25,7 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      prod-security:
+      root-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
@@ -36,7 +36,7 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      prod-security:
+      db-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
@@ -47,7 +47,7 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      prod-security:
+      migrator-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
@@ -58,7 +58,7 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      prod-security:
+      server-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
@@ -69,7 +69,7 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      prod-security:
+      client-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
@@ -80,7 +80,7 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      prod-security:
+      nodejs-instrumentation-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
