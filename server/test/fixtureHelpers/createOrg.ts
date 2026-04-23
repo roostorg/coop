@@ -20,22 +20,21 @@ export default async function createOrg(
 ) {
   const orgId = id ?? uid();
 
-  const { apiKey, record } = await deps.ApiKeyService.createApiKey(
-    orgId,
-    `Dummy_Company_Name_${orgId}_Key`,
-    null,
-    null,
-  ).catch(logErrorAndThrow);
-
   const org = await kyselyOrgInsert({
     db: deps.KyselyPg,
     id: orgId,
     name: `Dummy_Company_Name_${orgId}`,
     email: faker.internet.email(),
     websiteUrl: faker.internet.url(),
-    apiKeyId: record.id,
     onCallAlertEmail: extra.onCallAlertEmail ?? null,
   }).catch(logErrorAndThrow);
+
+  const { apiKey } = await deps.ApiKeyService.createApiKey(
+    orgId,
+    `Dummy_Company_Name_${orgId}_Key`,
+    null,
+    null,
+  ).catch(logErrorAndThrow);
 
   const defaultUserItemType = await deps.ModerationConfigService.createDefaultUserType(
     orgId,
