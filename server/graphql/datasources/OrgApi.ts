@@ -4,7 +4,6 @@ import { type Exception } from '@opentelemetry/api';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { type SequelizeAction } from '../../models/rules/ActionModel.js';
 import { CoopEmailAddress } from '../../services/sendEmailService/index.js';
 import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {
@@ -226,20 +225,6 @@ class OrgAPI {
   /** GraphQL `Org.users` / permission filters still use Sequelize `User` models. */
   async getOrgUsersForGraphQL(orgId: string) {
     return this.sequelize.User.findAll({ where: { orgId } });
-  }
-
-  /**
-   * GraphQL `Action` union members are still mapped to Sequelize action
-   * subtypes (see `codegen.yaml`), so `Org.actions` resolves with Sequelize
-   * instances. `ModerationConfigService.getActions` returns plain shapes that
-   * are NOT structurally assignable to those subtypes, so we keep a Sequelize
-   * lookup here until the Action GraphQL parents are migrated. The narrowing
-   * cast mirrors the typing on `OrgModel.getActions` (which returns
-   * `SequelizeAction[]` via the Sequelize association mixin).
-   */
-  async getSequelizeActionsForOrg(orgId: string): Promise<SequelizeAction[]> {
-    const rows = await this.sequelize.Action.findAll({ where: { orgId } });
-    return rows as SequelizeAction[];
   }
 
   // TODO: ApiKeyService should maybe be its own dataSource,

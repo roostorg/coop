@@ -69,8 +69,17 @@ export const makeGetActionsForRuleEventuallyConsistent = inject(
   ['ModerationConfigService'],
   (moderationConfigService) => {
     return cached({
-      async producer(ruleId: string) {
-        return moderationConfigService.getActionsForRuleId(ruleId);
+      keyGeneration: {
+        toString: (key: { orgId: string; ruleId: string }) =>
+          jsonStringify(key),
+        fromString: (it) => jsonParse(it),
+      },
+      async producer(key: { orgId: string; ruleId: string }) {
+        return moderationConfigService.getActionsForRuleId({
+          orgId: key.orgId,
+          ruleId: key.ruleId,
+          readFromReplica: true,
+        });
       },
       directives: { freshUntilAge: 30 },
     });

@@ -42,7 +42,10 @@ export function buildGraphqlRuleParent(
       return user;
     },
     async getActions() {
-      return deps.moderationConfigService.getActionsForRuleId(plain.id);
+      return deps.moderationConfigService.getActionsForRuleId({
+        orgId: plain.orgId,
+        ruleId: plain.id,
+      });
     },
     async getPolicies() {
       const byRule = await deps.moderationConfigService.getPoliciesByRuleIds([

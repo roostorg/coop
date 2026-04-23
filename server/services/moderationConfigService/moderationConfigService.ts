@@ -6,7 +6,7 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../../models/types/permissioning.js';
 import { type RuleErrorType, type LocationBankErrorType } from './errors.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
-import { type Action, type Policy } from './index.js';
+import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
 } from './modules/ActionOperations.js';
@@ -58,6 +58,27 @@ type ArrayOrPromiseOf<T> =
   | readonly ReadonlyDeep<T>[]
   | Promise<readonly ReadonlyDeep<T>[]>
   | Promise<ReadonlyDeep<T>>;
+
+type ContentTypeSchemaFieldRoles = {
+  creatorId?: string | null;
+  threadId?: string | null;
+  parentId?: string | null;
+  createdAt?: string | null;
+  displayName?: string | null;
+};
+
+type ThreadTypeSchemaFieldRoles = {
+  createdAt?: string | null;
+  displayName?: string | null;
+  creatorId?: string | null;
+};
+
+type UserTypeSchemaFieldRoles = {
+  profileIcon?: string | null;
+  backgroundImage?: string | null;
+  createdAt?: string | null;
+  displayName?: string | null;
+};
 
 /**
  * This service will eventually manage all CRUD operations on entities that are
@@ -137,13 +158,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        creatorId?: string | null;
-        threadId?: string | null;
-        parentId?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: ContentTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ContentItemType>> {
     return this.itemTypeOps.createContentType(orgId, input);
@@ -156,13 +171,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        creatorId?: string | null;
-        threadId?: string | null;
-        parentId?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: ContentTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ContentItemType>> {
     return this.itemTypeOps.updateContentType(orgId, input);
@@ -174,11 +183,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        createdAt?: string | null;
-        displayName?: string | null;
-        creatorId?: string | null;
-      };
+      schemaFieldRoles: ThreadTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ThreadItemType>> {
     return this.itemTypeOps.createThreadType(orgId, input);
@@ -191,11 +196,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        createdAt?: string | null;
-        displayName?: string | null;
-        creatorId?: string | null;
-      };
+      schemaFieldRoles: ThreadTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<ThreadItemType>> {
     return this.itemTypeOps.updateThreadType(orgId, input);
@@ -207,12 +208,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        profileIcon?: string | null;
-        backgroundImage?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: UserTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<UserItemType>> {
     return this.itemTypeOps.createUserType(orgId, input);
@@ -225,12 +221,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
-        profileIcon?: string | null;
-        backgroundImage?: string | null;
-        createdAt?: string | null;
-        displayName?: string | null;
-      };
+      schemaFieldRoles: UserTypeSchemaFieldRoles;
     },
   ): Promise<ReadonlyDeep<UserItemType>> {
     return this.itemTypeOps.updateUserType(orgId, input);
@@ -268,11 +259,33 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       callbackUrl: string;
       callbackUrlHeaders: JsonObject | null;
       callbackUrlBody: JsonObject | null;
-      // TODO: linking specific item types not yet supported.
       applyUserStrikes?: boolean;
+      itemTypeIds?: readonly string[];
     },
-  ) {
+  ): Promise<CustomAction> {
     return this.actionOps.createAction(orgId, input);
+  }
+
+  async updateCustomAction(
+    orgId: string,
+    opts: {
+      actionId: string;
+      patch: {
+        name?: string;
+        description?: string | null;
+        callbackUrl?: string;
+        callbackUrlHeaders?: JsonObject | null;
+        callbackUrlBody?: JsonObject | null;
+        applyUserStrikes?: boolean;
+      };
+      itemTypeIds?: readonly string[] | undefined;
+    },
+  ): Promise<CustomAction> {
+    return this.actionOps.updateCustomAction({ orgId, ...opts });
+  }
+
+  async deleteCustomAction(opts: { orgId: string; actionId: string }) {
+    return this.actionOps.deleteCustomAction(opts);
   }
 
   async getActions(opts: {
@@ -283,11 +296,21 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.actionOps.getActions(opts);
   }
 
-  async getActionsForRuleId(ruleId: string) {
-    return this.actionOps.getActionsForRuleId({
-      ruleId,
-      readFromReplica: true,
-    });
+  async getActionsForItemType(opts: {
+    orgId: string;
+    itemTypeId: string;
+    itemTypeKind: ItemTypeKind;
+    readFromReplica?: boolean;
+  }) {
+    return this.actionOps.getActionsForItemType(opts);
+  }
+
+  async getActionsForRuleId(opts: {
+    orgId: string;
+    ruleId: string;
+    readFromReplica?: boolean;
+  }) {
+    return this.actionOps.getActionsForRuleId(opts);
   }
 
   async getPoliciesByRuleIds(ruleIds: readonly string[]) {

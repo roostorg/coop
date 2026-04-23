@@ -91,10 +91,10 @@ generates:
       # Don't change this; it makes type checking too permissive.
       allowParentTypeOverride: false
       mappers:
-        CustomAction: ../models/rules/ActionModel.js#CustomAction
-        EnqueueToMrtAction: ../models/rules/ActionModel.js#EnqueueToMrtAction
-        EnqueueToNcmecAction: ../models/rules/ActionModel.js#EnqueueToNcmecAction
-        EnqueueAuthorToMrtAction: ../models/rules/ActionModel.js#EnqueueAuthorToMrtAction
+        CustomAction: ../services/moderationConfigService/types/actions.js#CustomAction
+        EnqueueToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueToMrtAction
+        EnqueueToNcmecAction: ../services/moderationConfigService/types/actions.js#EnqueueToNcmecAction
+        EnqueueAuthorToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueAuthorToMrtAction
         Backtest: ../models/rules/BacktestModel.js#Backtest
         ContentType: ../models/rules/ItemTypeModel.js#ItemType
         DerivedFieldSource: ../services/derivedFieldsService/helpers.js#DerivedFieldSpecSource

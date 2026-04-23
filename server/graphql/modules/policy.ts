@@ -1,6 +1,6 @@
 import _ from 'lodash';
 
-import { type Policy } from '../../models/PolicyModel.js';
+import { type Policy } from '../../services/moderationConfigService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   type GQLMutationDeletePolicyArgs,

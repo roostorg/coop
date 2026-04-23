@@ -2,7 +2,12 @@
 // since this service should not have any dependencies on the model instances'
 
 import { makeEnumLike } from '@roostorg/types';
-import { type JsonObject, type ReadonlyDeep, type Simplify } from 'type-fest';
+import {
+  type JsonObject,
+  type JsonValue,
+  type ReadonlyDeep,
+  type Simplify,
+} from 'type-fest';
 
 import { type TaggedUnionFromCases } from '../../../utils/typescript-types.js';
 
@@ -29,6 +34,7 @@ type AnyAction = ReadonlyDeep<
       id: string;
       orgId: string;
       name: string;
+      description: string | null;
       applyUserStrikes: boolean;
       penalty: UserPenaltySeverity;
     } & TaggedUnionFromCases<
@@ -41,7 +47,7 @@ type AnyAction = ReadonlyDeep<
           callbackUrl: string;
           callbackUrlHeaders: JsonObject | null;
           callbackUrlBody: JsonObject | null;
-          customMrtApiParams: JsonObject | null;
+          customMrtApiParams: JsonValue | null;
         };
       }
     >

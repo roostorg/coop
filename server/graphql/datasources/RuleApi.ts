@@ -509,7 +509,12 @@ class RuleAPI {
     // that are restricted to routing rules only.
     const willHaveActions = actionIds
       ? actionIds.length > 0
-      : (await this.moderationConfigService.getActionsForRuleId(id)).length > 0;
+      : (
+          await this.moderationConfigService.getActionsForRuleId({
+            orgId,
+            ruleId: id,
+          })
+        ).length > 0;
 
     if (willHaveActions && conditionSet) {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);

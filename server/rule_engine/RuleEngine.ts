@@ -233,9 +233,10 @@ class RuleEngine {
       await Promise.all(
         actionableRules.map(
           async (rule) => {
-            const actions = (await this.getRuleActionsEventuallyConsistent(
-              rule.id,
-            )) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
+            const actions = (await this.getRuleActionsEventuallyConsistent({
+              orgId: evaluationContext.org.id,
+              ruleId: rule.id,
+            })) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
             
             
             return [rule, actions] as const;

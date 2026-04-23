@@ -205,7 +205,10 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
-    return context.dataSources.orgAPI.getSequelizeActionsForOrg(org.id);
+    return context.services.ModerationConfigService.getActions({
+      orgId: org.id,
+      readFromReplica: true,
+    });
   },
   async contentTypes(org, _, context) {
     const user = context.getUser();
