@@ -96,6 +96,39 @@ The `server/bin` folder contains utility scripts for managing the Coop server:
 
 See `server/bin/README.md` for detailed usage instructions and examples.
 
+## Running CI Locally
+
+All PR checks are defined as `docker compose` services to reproduce any CI job locally.
+
+| CI job | Local command |
+| --- | --- |
+| `check_generated_graphql` | `docker compose run --rm codegen-check` |
+| `check_api_server` (lint) | `docker compose run --rm lint` |
+| `check_api_server` (build) | `docker compose build build-backend` |
+| `check_api_server` (test) | `docker compose run --rm test` |
+| `run_frontend_checks_if_changed` (lint) | `docker compose run --rm lint-client` |
+| `run_frontend_checks_if_changed` (build) | `docker compose build build-client` |
+
+Run the full suite (stops at first failure):
+
+```bash
+docker compose run --rm codegen-check \
+  && docker compose run --rm lint \
+  && docker compose build build-backend \
+  && docker compose run --rm test \
+  && docker compose run --rm lint-client \
+  && docker compose build build-client
+```
+
+Tear down:
+
+```bash
+docker compose down        # stop containers, keep DB volumes
+docker compose down -v     # also drop DB volumes (fresh DBs next run)
+```
+
+`check_migration_order` runs only in GitHub Actions — it's GitHub-specific and not needed locally. When adding a migration, use `date -u +"%Y.%m.%dT%H.%M.%S"` for the filename prefix and CI will pass.
+
 # Code Structure
 
 Server Code ( `/server` ):

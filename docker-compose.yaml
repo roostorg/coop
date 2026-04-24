@@ -118,6 +118,39 @@ services:
       - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
       - ./client/eslint.config.mjs:/app/eslint.config.mjs
 
+  # Regenerates GraphQL types and fails if the working tree drifts. Mirrors
+  # the `check_generated_graphql` CI job. node_modules is in a dedicated
+  # volume so the install doesn't clobber the host's node_modules with
+  # linux-built binaries.
+  codegen-check:
+    image: node:24.14.1-bullseye
+    working_dir: /src
+    command: bash -c 'set -e
+                      && npm ci
+                      && npm run generate
+                      && git diff --exit-code -- "*generated.ts"'
+    volumes:
+      - .:/src
+      - codegen_node_modules:/src/node_modules
+
+  # Builds the server image. Equivalent to `docker build . --target
+  # build_backend` in the `check_api_server` CI job. Run with
+  # `docker compose build build-backend`.
+  build-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build_backend
+    command: ['true']
+
+  # Builds the client image. Equivalent to `docker build client` in the
+  # `run_frontend_checks_if_changed` CI job. Run with
+  # `docker compose build build-client`.
+  build-client:
+    build:
+      context: client
+    command: ['true']
+
   jaeger:
     image: jaegertracing/all-in-one:1.76.0
     ports:
@@ -166,3 +199,4 @@ volumes:
   scylla_data:
   redis_data:
   clickhouse_data:
+  codegen_node_modules:

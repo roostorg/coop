@@ -29,21 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-      - run: npm ci
-      - name: Generate graphql
-        run: |
-          npm run generate
-          if [[ -z "$(git status --porcelain)" ]]; then
-            echo "Generated GraphQL is up to date."
-          else
-            echo "GraphQL re-generation required!!"
-            echo "::error:: $(git status)"
-            exit 1
-          fi
+      - name: Check generated GraphQL is up to date
+        run: docker compose run --rm --quiet-pull codegen-check
 
   check_migration_order:
     runs-on: ubuntu-latest
@@ -135,14 +122,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint
-        run: docker compose run --quiet-pull lint
+        run: docker compose run --rm --quiet-pull lint
 
       - name: Build server
-        run: DOCKER_BUILDKIT=1 docker build . --target build_backend
+        run: docker compose build build-backend
 
       - name: Migrate CI DBs and Test
         run: |
-          docker compose run --quiet-pull test
+          docker compose run --rm --quiet-pull test
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
@@ -171,10 +158,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint client
-        run: docker compose run --quiet-pull lint-client
+        run: docker compose run --rm --quiet-pull lint-client
 
       - name: Build client
-        # Without DOCKER_BUILDKIT we'll attempt to build the backend as well
-        run: DOCKER_BUILDKIT=1 docker build client
+        run: docker compose build build-client
 
 
