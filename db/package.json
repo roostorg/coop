@@ -11,8 +11,8 @@
   "author": "Roostorg",
   "license": "ISC",
   "dependencies": {
-    "@clickhouse/client": "^1.13.0",
-    "@roostorg/db-migrator": "^1.0.9",
+    "@clickhouse/client": "^1.18.3",
+    "@roostorg/db-migrator": "^1.1.0",
     "cassandra-driver": "^4.8.0",
     "csv-parse": "^6.2.1",
     "kysely": "^0.28.16",
@@ -23,7 +23,7 @@
     "ts-node": "^10.9.2",
     "uid": "^2.0.0",
     "umzug": "^3.0.0",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "overrides": {
     "ajv": "~8.18.0"
