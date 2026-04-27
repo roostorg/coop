@@ -9,6 +9,7 @@ import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {
   CoopError,
   ErrorType,
+  makeBadRequestError,
   type ErrorInstanceData,
   isCoopErrorOfType,
 } from '../../utils/errors.js';
@@ -27,6 +28,11 @@ import {
   kyselyOrgUpdate,
   type GraphQLOrgParent,
 } from './orgKyselyPersistence.js';
+import {
+  validateOrgCreateInput,
+  validateOrgUpdatePatch,
+  type OrgValidationFailure,
+} from './orgValidation.js';
 
 class OrgAPI {
   constructor(
@@ -46,6 +52,19 @@ class OrgAPI {
 
   async createOrg(params: GQLMutationCreateOrgArgs) {
     const { email, name, website } = params.input;
+
+    const validation = validateOrgCreateInput({
+      name,
+      email,
+      websiteUrl: website,
+    });
+    if (!validation.ok) {
+      throw orgValidationFailureToBadRequestError(
+        validation.failure,
+        'createOrg',
+      );
+    }
+
     const existingOrgByName = await kyselyOrgFindByName(this.kysely, name);
     if (existingOrgByName != null) {
       throw makeOrgNameExistsError({ shouldErrorSpan: true });
@@ -199,6 +218,14 @@ class OrgAPI {
       onCallAlertEmail?: string | null;
     },
   ): Promise<GraphQLOrgParent> {
+    const validation = validateOrgUpdatePatch(input);
+    if (!validation.ok) {
+      throw orgValidationFailureToBadRequestError(
+        validation.failure,
+        'updateOrgInfo',
+      );
+    }
+
     const updated = await kyselyOrgUpdate(this.kysely, orgId, {
       name: input.name ?? undefined,
       email: input.email ?? undefined,
@@ -282,6 +309,22 @@ export type OrgErrorType =
   | 'OrgWithNameExistsError'
   | 'InviteUserTokenExpiredError'
   | 'InviteUserTokenMissingError';
+
+function orgValidationFailureToBadRequestError(
+  failure: OrgValidationFailure,
+  mutation: 'createOrg' | 'updateOrgInfo',
+) {
+  // `createOrg` exposes `websiteUrl` as `website` in its GraphQL input;
+  // `updateOrgInfo` uses the same field name.
+  const gqlField =
+    mutation === 'createOrg' && failure.field === 'websiteUrl'
+      ? 'website'
+      : failure.field;
+  return makeBadRequestError(failure.message, {
+    pointer: `/input/${gqlField}`,
+    shouldErrorSpan: false,
+  });
+}
 
 export const makeOrgEmailExistsError = (data: ErrorInstanceData) =>
   new CoopError({

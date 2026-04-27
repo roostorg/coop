@@ -72,6 +72,21 @@ describe('orgKyselyPersistence', () => {
 
   describe('kyselyOrgInsert', () => {
     testWithFixture(
+      'throws an invariant error for malformed input (defense-in-depth)',
+      async ({ deps }) => {
+        await expect(
+          kyselyOrgInsert({
+            db: deps.KyselyPg,
+            id: uid(),
+            email: 'not-an-email',
+            name: `Bad_${uid()}`,
+            websiteUrl: 'https://example.com',
+          }),
+        ).rejects.toThrow(/kyselyOrgInsert invariant violated: email/);
+      },
+    );
+
+    testWithFixture(
       'apiKeyId is optional and defaults to NULL in the database',
       async ({ deps }) => {
         const id = uid();
@@ -102,6 +117,18 @@ describe('orgKyselyPersistence', () => {
   });
 
   describe('kyselyOrgUpdate', () => {
+    testWithFixture(
+      'throws an invariant error for malformed patch (defense-in-depth)',
+      async ({ deps, org }) => {
+        await expect(
+          kyselyOrgUpdate(deps.KyselyPg, org.id, {
+            // eslint-disable-next-line no-script-url
+            websiteUrl: 'javascript:alert(1)',
+          }),
+        ).rejects.toThrow(/kyselyOrgUpdate invariant violated: websiteUrl/);
+      },
+    );
+
     testWithFixture(
       'returns undefined when the org does not exist',
       async ({ deps }) => {

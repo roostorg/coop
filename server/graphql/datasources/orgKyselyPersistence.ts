@@ -1,6 +1,10 @@
 import { type Kysely } from 'kysely';
 
 import { type CoreAppTablesPg } from '../../services/coreAppTables.js';
+import {
+  validateOrgCreateInput,
+  validateOrgUpdatePatch,
+} from './orgValidation.js';
 
 /**
  * GraphQL `Org` parent shape. Field resolvers only read `id` from this; the
@@ -98,6 +102,20 @@ export async function kyselyOrgInsert(opts: {
   apiKeyId?: string | null;
   onCallAlertEmail?: string | null;
 }): Promise<GraphQLOrgParent> {
+  // Defense-in-depth so non-GraphQL callers (fixtures, scripts) can't insert
+  // invalid rows; user-facing validation lives in `OrgAPI`.
+  const validation = validateOrgCreateInput({
+    name: opts.name,
+    email: opts.email,
+    websiteUrl: opts.websiteUrl,
+    onCallAlertEmail: opts.onCallAlertEmail,
+  });
+  if (!validation.ok) {
+    throw new Error(
+      `kyselyOrgInsert invariant violated: ${validation.failure.field}: ${validation.failure.message}`,
+    );
+  }
+
   const now = new Date();
   const row = await opts.db
     .insertInto('public.orgs')
@@ -126,10 +144,15 @@ export async function kyselyOrgUpdate(
     onCallAlertEmail?: string | null;
   },
 ): Promise<GraphQLOrgParent | undefined> {
-  // Mirror the previous Sequelize behavior: only set non-null fields, and
-  // treat empty `websiteUrl` as "no change". `onCallAlertEmail` is the one
-  // exception — `null` is a meaningful value (clear the alert email), so we
-  // distinguish `null` (clear) from `undefined` (skip).
+  const validation = validateOrgUpdatePatch(patch);
+  if (!validation.ok) {
+    throw new Error(
+      `kyselyOrgUpdate invariant violated: ${validation.failure.field}: ${validation.failure.message}`,
+    );
+  }
+
+  // `onCallAlertEmail` is intentionally the only field where `null` is set
+  // on the row (clears the value); other fields treat `null` as skip.
   const update: {
     name?: string;
     email?: string;
