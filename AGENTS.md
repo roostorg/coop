@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Agent-specific guidance for Coop. Coop is production safety infrastructure used to moderate content for real platforms and protect real users — contributions are held to the same bar as any other. For setup, architecture, and concept docs, see [`README.md`](./README.md) and [`/docs`](./docs/).
+For setup, architecture, and concept docs, see [`README.md`](./README.md) and [`/docs`](./docs/).
 
 ## Precedence
 
