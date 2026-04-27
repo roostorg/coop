@@ -100,19 +100,34 @@ services:
       redis:
         condition: service_started
 
-
-  lint:
+  # Regenerate GraphQL types and fail if the working tree drifts. 
+  # Mirrors the `check_generated_graphql` CI job. 
+  # node_modules is in a dedicated volume so the install doesn't clobber the host's node_modules.
+  codegen-check:
     build:
       context: .
       dockerfile: Dockerfile
       target: server_base
-    command: npm run lint
+    working_dir: /src
+    command: bash -c 'set -e
+                      && git config --global --add safe.directory /src
+                      && npm ci
+                      && npm run generate
+                      && [[ -z "$(git status --porcelain)" ]]'
+    volumes:
+      - .:/src
+      - codegen_node_modules:/src/node_modules
 
-  lint-client:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server_base
+
+  client:
     build:
       context: client
       target: client_base
-    command: npm run lint
     volumes:
       - ./client/eslint:/app/eslint
       - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
@@ -166,3 +181,4 @@ volumes:
   scylla_data:
   redis_data:
   clickhouse_data:
+  codegen_node_modules:

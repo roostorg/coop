@@ -9,6 +9,7 @@
 # native modules, and we don't really care about the larger image size.
 FROM node:24.14.1-bullseye-slim AS server_base
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
 COPY ["server/package.json", "server/package-lock.json", "./"]
 RUN npm ci
