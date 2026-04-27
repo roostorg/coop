@@ -103,21 +103,21 @@ All PR checks are defined as `docker compose` services to reproduce any CI job l
 | CI job | Local command |
 | --- | --- |
 | `check_generated_graphql` | `docker compose run --rm codegen-check` |
-| `check_api_server` (lint) | `docker compose run --rm lint` |
-| `check_api_server` (build) | `docker compose build build-backend` |
+| `check_api_server` (lint) | `docker compose run --rm backend npm run lint` |
+| `check_api_server` (build) | `docker compose build backend` |
 | `check_api_server` (test) | `docker compose run --rm test` |
-| `run_frontend_checks_if_changed` (lint) | `docker compose run --rm lint-client` |
-| `run_frontend_checks_if_changed` (build) | `docker compose build build-client` |
+| `run_frontend_checks_if_changed` (lint) | `docker compose run --rm client npm run lint` |
+| `run_frontend_checks_if_changed` (build) | `docker compose build client` |
 
 Run the full suite (stops at first failure):
 
 ```bash
 docker compose run --rm codegen-check \
-  && docker compose run --rm lint \
-  && docker compose build build-backend \
+  && docker compose run --rm backend npm run lint \
+  && docker compose build backend \
   && docker compose run --rm test \
-  && docker compose run --rm lint-client \
-  && docker compose build build-client
+  && docker compose run --rm client npm run lint \
+  && docker compose build client
 ```
 
 Tear down:

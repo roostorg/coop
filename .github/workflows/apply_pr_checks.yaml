@@ -122,10 +122,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint
-        run: docker compose run --rm --quiet-pull lint
+        run: docker compose run --rm --quiet-pull backend npm run lint
 
       - name: Build server
-        run: docker compose build build-backend
+        run: docker compose build backend
 
       - name: Migrate CI DBs and Test
         run: |
@@ -158,9 +158,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint client
-        run: docker compose run --rm --quiet-pull lint-client
+        run: docker compose run --rm --quiet-pull client npm run lint
 
       - name: Build client
-        run: docker compose build build-client
+        run: docker compose build client
 
 

@@ -100,56 +100,37 @@ services:
       redis:
         condition: service_started
 
-
-  lint:
+  # Regenerate GraphQL types and fail if the working tree drifts. 
+  # Mirrors the `check_generated_graphql` CI job. 
+  # node_modules is in a dedicated volume so the install doesn't clobber the host's node_modules.
+  codegen-check:
     build:
       context: .
       dockerfile: Dockerfile
       target: server_base
-    command: npm run lint
-
-  lint-client:
-    build:
-      context: client
-      target: client_base
-    command: npm run lint
-    volumes:
-      - ./client/eslint:/app/eslint
-      - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
-      - ./client/eslint.config.mjs:/app/eslint.config.mjs
-
-  # Regenerates GraphQL types and fails if the working tree drifts. Mirrors
-  # the `check_generated_graphql` CI job. node_modules is in a dedicated
-  # volume so the install doesn't clobber the host's node_modules with
-  # linux-built binaries.
-  codegen-check:
-    image: node:24.14.1-bullseye
     working_dir: /src
     command: bash -c 'set -e
+                      && git config --global --add safe.directory /src
                       && npm ci
                       && npm run generate
-                      && git diff --exit-code -- "*generated.ts"'
+                      && [[ -z "$(git status --porcelain)" ]]'
     volumes:
       - .:/src
       - codegen_node_modules:/src/node_modules
 
-  # Builds the server image. Equivalent to `docker build . --target
-  # build_backend` in the `check_api_server` CI job. Run with
-  # `docker compose build build-backend`.
-  build-backend:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
       target: build_backend
-    command: ['true']
 
-  # Builds the client image. Equivalent to `docker build client` in the
-  # `run_frontend_checks_if_changed` CI job. Run with
-  # `docker compose build build-client`.
-  build-client:
+  client:
     build:
       context: client
-    command: ['true']
+    volumes:
+      - ./client/eslint:/app/eslint
+      - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
+      - ./client/eslint.config.mjs:/app/eslint.config.mjs
 
   jaeger:
     image: jaegertracing/all-in-one:1.76.0
