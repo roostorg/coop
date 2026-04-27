@@ -83,6 +83,6 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 
 - Hand-merge `generated.ts` or lockfiles.
 - Install with `--legacy-peer-deps` as a workaround.
-- Commit `.env`, credentials, or `/.devops/backups/` contents.
+- Commit `.env`, credentials or API Keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.
