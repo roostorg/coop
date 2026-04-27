@@ -68,7 +68,7 @@ On top of the community-wide list (dependencies, CI/CD, legal text), pause for e
 - **Database migrations** — anything added under `db/src/scripts/<service>/` runs against real data. Confirm schema design and rollback story with a maintainer.
 - **Deleting or renaming an existing GraphQL type or field** — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - **Rewiring `server/iocContainer`** in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
-- **Auth, session, or request middleware** (under `server/api.ts`, `server/auth/`, `server/middleware/`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
+- **Auth, session, or request middleware** (under `server/api.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
 - **Multi-thousand-line diffs** — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 
 ## Commit attribution
