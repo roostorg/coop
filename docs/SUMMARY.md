@@ -1,8 +1,7 @@
 # Summary
 
 - [Product Guide](product/README.md)
-  - [Overview of Coop](product/overview.md)
-  - [Automated Routing & Enforcement](product/routing-enforcement.md)
+  - [Automated Routing & Enforcement](product/automation.md)
   - [Manual Review & Enforcement](product/manual-review.md)
   - [Investigation](product/investigation.md)
   - [Bulk Actioning](product/bulk-actioning.md)

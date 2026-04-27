@@ -1,0 +1,24 @@
+---
+config:
+  layout: elk
+  theme: redux
+  look: classic
+---
+flowchart LR
+    P((Platform)) -->|Events| C
+
+    subgraph C[Coop]
+        R{Rules Engine}
+        M[Matching Banks] --> R
+        S[Signals] --> R
+
+        R --> |Routing Rules| HR{Human Review<br>Queues}
+
+        R --> |Proactive Rules| A[Action]
+        HR --> X((Ignore))
+        HR --> A
+    end
+    A --> |Reported Back| P
+
+    style P fill:#BBDEFB,stroke:#2962FF
+    style C fill:#FFF9C4,stroke:#FFD600
