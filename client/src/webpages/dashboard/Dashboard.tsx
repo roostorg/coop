@@ -6,7 +6,7 @@ import {
 } from '@/icons';
 import { gql } from '@apollo/client';
 import compact from 'lodash/compact';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   Navigate,
@@ -19,36 +19,6 @@ import {
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 
 import { RequireAuth } from '../../routing/auth';
-import AccountSettings from '../settings/AccountSettings';
-import ApiAuthenticationSettings from '../settings/ApiAuthenticationSettings';
-import ManageUsers from '../settings/ManageUsers';
-import OrgSettings from '../settings/OrgSettings';
-import ActionForm from './actions/ActionForm';
-import ActionsDashboard from './actions/ActionsDashboard';
-import LocationBankForm from './banks/location/LocationBankForm';
-import TextBankForm from './banks/text/TextBankForm';
-import HashBankForm from './banks/hash/HashBankForm';
-import BulkActioningDashboard from './bulk_actioning/BulkActioningDashboard';
-import IntegrationConfigForm from './integrations/IntegrationConfigForm';
-import IntegrationsDashboard from './integrations/IntegrationsDashboard';
-import InvestigationDashboard from './investigation/InvestigationDashboard';
-import ItemTypeForm from './item_types/ItemTypeForm';
-import ItemTypesDashboard from './item_types/ItemTypesDashboard';
-import ManualReviewJobReview from './mrt/manual_review_job/ManualReviewJobReview';
-import ManualReviewAnalyticsDashboard from './mrt/ManualReviewAnalyticsDashboard';
-import ManualReviewQueueForm from './mrt/ManualReviewQueueForm';
-import ManualReviewQueueJobsPreview from './mrt/ManualReviewQueueJobsPreview';
-import ManualReviewQueuesDashboard from './mrt/ManualReviewQueuesDashboard';
-import ManualReviewRecentDecisions from './mrt/ManualReviewRecentDecisions';
-import ManualReviewQueueRoutingDashboard from './mrt/queue_routing/ManualReviewQueueRoutingDashboard';
-import NcmecReportsDashboard from './ncmec/NcmecReportsDashboard';
-import PoliciesDashboard from './policies/PoliciesDashboard';
-import ReportingRulesDashboard from './rules/dashboard/ReportingRulesDashboard';
-import RulesDashboard from './rules/dashboard/RulesDashboard';
-import ReportingRuleInfo from './rules/info/ReportingRuleInfo';
-import RuleInfo from './rules/info/RuleInfo';
-import ReportingRuleForm from './rules/rule_form/ReportingRuleForm';
-import RuleForm from './rules/rule_form/RuleForm';
 
 import './Dashboard.css';
 
@@ -63,14 +33,6 @@ import {
   useGQLDashboardOrgQuery,
   useGQLLogoutMutation,
 } from '../../graphql/generated';
-import OrgSafetySettings from '../settings/OrgSafetySettings';
-import NCMECSettings from '../settings/NCMECSettings';
-import SSOSettings from '../settings/SSOSettings';
-import MatchingBanksDashboard from './banks/MatchingBanksDashboard';
-import ManualReviewAppealSettings from './mrt/ManualReviewAppealSettings';
-import Overview from './overview/Overview';
-import PolicyForm from './policies/PolicyForm';
-import UserStrikeDashboard from './userStrikes/UserStrikeDashboard';
 
 gql`
   query DashboardOrg {
@@ -94,6 +56,11 @@ gql`
   }
 `;
 
+const lazyRoute =
+  (importFn: () => Promise<{ default: ComponentType }>) => async () => ({
+    Component: (await importFn()).default,
+  });
+
 export function DashboardRoutes() {
   return {
     path: 'dashboard',
@@ -111,8 +78,8 @@ export function DashboardRoutes() {
       },
       {
         path: 'overview',
-        element: <Overview />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./overview/Overview')),
       },
       {
         path: 'rules',
@@ -121,35 +88,39 @@ export function DashboardRoutes() {
       },
       {
         path: 'rules/proactive',
-        element: <RulesDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./rules/dashboard/RulesDashboard')),
       },
       {
         path: 'rules/proactive/info/:id',
-        element: <RuleInfo />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./rules/info/RuleInfo')),
       },
       {
         path: 'rules/proactive/form/:id?',
-        element: <RuleForm />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./rules/rule_form/RuleForm')),
       },
 
       // Reporting Rules
       {
         path: 'rules/report',
-        element: <ReportingRulesDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(
+          async () => import('./rules/dashboard/ReportingRulesDashboard'),
+        ),
       },
       {
         path: 'rules/report/info/:id',
-        element: <ReportingRuleInfo />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./rules/info/ReportingRuleInfo')),
       },
       {
         path: 'rules/report/form/:id?',
-        element: <ReportingRuleForm />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(
+          async () => import('./rules/rule_form/ReportingRuleForm'),
+        ),
       },
       // Matching Banks
       {
@@ -159,8 +130,8 @@ export function DashboardRoutes() {
       },
       {
         path: 'rules/banks',
-        element: <MatchingBanksDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./banks/MatchingBanksDashboard')),
       },
       {
         path: 'banks/text',
@@ -174,7 +145,6 @@ export function DashboardRoutes() {
       },
       {
         path: 'rules/banks/form/text/:id?',
-        element: <TextBankForm />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -182,10 +152,10 @@ export function DashboardRoutes() {
             buttonLinkPath: 'rules/banks',
           },
         },
+        lazy: lazyRoute(async () => import('./banks/text/TextBankForm')),
       },
       {
         path: 'rules/banks/form/location/:id?',
-        element: <LocationBankForm />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -193,10 +163,12 @@ export function DashboardRoutes() {
             buttonLinkPath: 'rules/banks',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./banks/location/LocationBankForm'),
+        ),
       },
       {
         path: 'rules/banks/form/hash/:id?',
-        element: <HashBankForm />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -204,6 +176,7 @@ export function DashboardRoutes() {
             buttonLinkPath: 'rules/banks?kind=HASH',
           },
         },
+        lazy: lazyRoute(async () => import('./banks/hash/HashBankForm')),
       },
 
       // Actions
@@ -233,17 +206,18 @@ export function DashboardRoutes() {
       },
       {
         path: 'manual_review/queues',
-        element: <ManualReviewQueuesDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(
+          async () => import('./mrt/ManualReviewQueuesDashboard'),
+        ),
       },
       {
         path: 'manual_review/queues/form/:id?',
-        element: <ManualReviewQueueForm />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./mrt/ManualReviewQueueForm')),
       },
       {
         path: 'manual_review/queues/review/:queueId/:jobId?/:lockToken?',
-        element: <ManualReviewJobReview />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -251,10 +225,12 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./mrt/manual_review_job/ManualReviewJobReview'),
+        ),
       },
       {
         path: 'manual_review/queues/jobs/:queueId',
-        element: <ManualReviewQueueJobsPreview />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -262,10 +238,12 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./mrt/ManualReviewQueueJobsPreview'),
+        ),
       },
       {
         path: 'manual_review/bulk-actioning',
-        element: <BulkActioningDashboard />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -273,10 +251,12 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./bulk_actioning/BulkActioningDashboard'),
+        ),
       },
       {
         path: 'manual_review/investigation',
-        element: <InvestigationDashboard />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -284,10 +264,12 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./investigation/InvestigationDashboard'),
+        ),
       },
       {
         path: 'manual_review/ncmec_reports',
-        element: <NcmecReportsDashboard />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -295,10 +277,10 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(async () => import('./ncmec/NcmecReportsDashboard')),
       },
       {
         path: 'manual_review/routing',
-        element: <ManualReviewQueueRoutingDashboard />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -306,10 +288,13 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(
+          async () =>
+            import('./mrt/queue_routing/ManualReviewQueueRoutingDashboard'),
+        ),
       },
       {
         path: 'manual_review/recent',
-        element: <ManualReviewRecentDecisions />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -317,6 +302,9 @@ export function DashboardRoutes() {
             buttonLinkPath: 'manual_review/queues',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./mrt/ManualReviewRecentDecisions'),
+        ),
       },
       {
         path: 'manual_review/safety',
@@ -325,23 +313,25 @@ export function DashboardRoutes() {
       },
       {
         path: 'manual_review/analytics',
-        element: <ManualReviewAnalyticsDashboard />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
             buttonTitle: 'Back to Manual Review Queues',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./mrt/ManualReviewAnalyticsDashboard'),
+        ),
       },
       {
         path: 'settings/appeal_settings',
-        element: <ManualReviewAppealSettings />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
             buttonTitle: 'Back to Manual Review Queues',
           },
         },
+        lazy: lazyRoute(async () => import('./mrt/ManualReviewAppealSettings')),
       },
 
       // Redirect old Bulk Actioning Tool and Investigation paths
@@ -359,16 +349,21 @@ export function DashboardRoutes() {
       // Policies
       {
         path: 'policies',
-        element: <PoliciesDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./policies/PoliciesDashboard')),
       },
       {
         path: 'policies/form/:existingPolicyId?',
-        element: <PolicyForm />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./policies/PolicyForm')),
       },
       // TODO: uncomment this when final UI is finished
-      { path: 'user_strikes', element: <UserStrikeDashboard /> },
+      {
+        path: 'user_strikes',
+        lazy: lazyRoute(
+          async () => import('./userStrikes/UserStrikeDashboard'),
+        ),
+      },
 
       // Integrations
       {
@@ -385,27 +380,26 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/item_types',
-        element: <ItemTypesDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./item_types/ItemTypesDashboard')),
       },
       {
         path: 'settings/item_types/form/:id?',
-        element: <ItemTypeForm />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
             buttonTitle: 'Back to Item Types Dashboard',
           },
         },
+        lazy: lazyRoute(async () => import('./item_types/ItemTypeForm')),
       },
       {
         path: 'settings/actions',
-        element: <ActionsDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('./actions/ActionsDashboard')),
       },
       {
         path: 'settings/actions/form/:id?',
-        element: <ActionForm />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
@@ -413,21 +407,26 @@ export function DashboardRoutes() {
             buttonLinkPath: '/dashboard/actions',
           },
         },
+        lazy: lazyRoute(async () => import('./actions/ActionForm')),
       },
       {
         path: 'settings/integrations',
-        element: <IntegrationsDashboard />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(
+          async () => import('./integrations/IntegrationsDashboard'),
+        ),
       },
       {
         path: 'settings/integrations/:name',
-        element: <IntegrationConfigForm />,
         handle: {
           isUsingLegacyCSS: true,
           error: {
             buttonTitle: 'Back to Integrations Dashboard',
           },
         },
+        lazy: lazyRoute(
+          async () => import('./integrations/IntegrationConfigForm'),
+        ),
       },
       {
         path: 'settings/account',
@@ -436,39 +435,41 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/api_auth',
-        element: <ApiAuthenticationSettings />,
         handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(
+          async () => import('../settings/ApiAuthenticationSettings'),
+        ),
       },
       {
         path: 'settings/org_safety_settings',
-        element: <OrgSafetySettings />,
         handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(async () => import('../settings/OrgSafetySettings')),
       },
       {
         path: 'settings/ncmec',
-        element: <NCMECSettings />,
         handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(async () => import('../settings/NCMECSettings')),
       },
       {
         path: 'settings/users',
-        element: <ManageUsers />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('../settings/ManageUsers')),
       },
       {
         path: 'settings/sso',
-        element: <SSOSettings />,
         handle: { isUsingLegacyCSS: true },
+        lazy: lazyRoute(async () => import('../settings/SSOSettings')),
       },
       {
         path: 'settings/organization',
-        element: <OrgSettings />,
         handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(async () => import('../settings/OrgSettings')),
       },
       // Account
       {
         path: 'account',
-        element: <AccountSettings />,
         handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(async () => import('../settings/AccountSettings')),
       },
     ],
   };
