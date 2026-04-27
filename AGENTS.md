@@ -55,7 +55,7 @@ This runs server typecheck + server unit tests + client build + client unit test
 
 ## Server architecture quirk
 
-The server uses [BottleJS](https://github.com/young-steveo/bottlejs) for dependency injection, wired in `/server/iocContainer`. When adding a service:
+The server uses [BottleJS](https://github.com/ethanresnick/bottlejs) for dependency injection, wired in `/server/iocContainer`. When adding a service:
 - Register it in `iocContainer`, don't export a singleton from the service file.
 - Consumers receive dependencies via DI rather than importing directly.
 
