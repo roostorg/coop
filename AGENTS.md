@@ -91,10 +91,10 @@ CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). 
 ```bash
 docker compose run --rm codegen-check
 docker compose run --rm backend npm run lint
-docker compose build backend
-docker compose run --rm test
+docker compose run --rm backend npm run build
 docker compose run --rm client npm run lint
-docker compose build client
+docker compose run --rm client npm run build
+docker compose run --rm test
 ```
 
 Individual checks:
@@ -103,10 +103,10 @@ Individual checks:
 | --- | --- |
 | `check_generated_graphql` | `docker compose run --rm codegen-check` |
 | `check_api_server` (lint) | `docker compose run --rm backend npm run lint` |
-| `check_api_server` (build) | `docker compose build backend` |
-| `check_api_server` (test) | `docker compose run --rm test` |
+| `check_api_server` (build) | `docker compose run --rm backend npm run build` |
 | `run_frontend_checks_if_changed` (lint) | `docker compose run --rm client npm run lint` |
-| `run_frontend_checks_if_changed` (build) | `docker compose build client` |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build` |
+| `check_api_server` (test) | `docker compose run --rm test` |
 
 Tear down:
 
