@@ -49,8 +49,12 @@ and then follow the steps below:
    (cd server && npm install)
    (cd db && npm install)
    ```
-3. Make sure the `.env` files for `/server` and `db` are populated (including ClickHouse credentials). Run database migrations:
+3. Make sure the `.env` files for `/server` and `db` are populated (including ClickHouse credentials). Create databases and run migrations:
    ```bash
+   npm run db:create -- --env staging --db api-server-pg
+   npm run db:create -- --env staging --db scylla
+   npm run db:create -- --env staging --db clickhouse
+
    npm run db:update -- --env staging --db api-server-pg
    npm run db:update -- --env staging --db scylla
    npm run db:update -- --env staging --db clickhouse
