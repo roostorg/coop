@@ -75,7 +75,7 @@ On top of the community-wide list (dependencies, CI/CD, legal text), pause for e
 
 Agent-authored commits should include a `Co-Authored-By` trailer naming the agent, e.g.:
 ```
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Co-Authored-By: <agent-name>
 ```
 Coop is open source and contributions flow upstream; attribution matters for maintainer trust.
 
