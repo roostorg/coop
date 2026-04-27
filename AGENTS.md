@@ -18,7 +18,7 @@ Four independent packages, **not an npm workspace** — each has its own `packag
 - `/server` — Express + Apollo GraphQL API (ESM, `"type": "module"`)
 - `/client` — React + Vite + Apollo Client frontend
 - `/db` — migration runner for Postgres, ClickHouse, Scylla
-
+- `/migrator` -  Package, CLI tool for db migrations.
 Node **24** (`.nvmrc`). Running on Node 20 produces `EBADENGINE` warnings and can fail native builds.
 
 ## GraphQL codegen — the rule to internalize
