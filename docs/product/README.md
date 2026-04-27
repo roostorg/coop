@@ -15,7 +15,7 @@ This simplified diagram can help you better understand how data flows between a 
 
 Coop's functionality can be broken down into several key areas:
 
-- [Automated Routing & Enforcement](product/routing-enforcement.md)
+- [Automated Routing & Enforcement](product/automation.md)
 - [Manual Review & Enforcement](product/manual-review.md)
 - [Investigation](product/investigation.md)
 - [Bulk Actioning](product/bulk-actioning.md)
