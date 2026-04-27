@@ -81,6 +81,8 @@ npm install \
 5. Create an organization and admin user:
 ```bash
    npm run create-org
+
+6. Run `cd server && npm run copy-assets`
 ```
    
 Use the credentials provided to log in at `http://localhost:3000`.
