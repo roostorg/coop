@@ -122,11 +122,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: build_backend
+      target: server_base
 
   client:
     build:
       context: client
+      target: client_base
     volumes:
       - ./client/eslint:/app/eslint
       - ./client/.eslintrc.cjs:/app/.eslintrc.cjs

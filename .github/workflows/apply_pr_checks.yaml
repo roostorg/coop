@@ -125,7 +125,7 @@ jobs:
         run: docker compose run --rm --quiet-pull backend npm run lint
 
       - name: Build server
-        run: docker compose build backend
+        run: docker compose run --rm --quiet-pull backend npm run build
 
       - name: Migrate CI DBs and Test
         run: |
@@ -161,6 +161,6 @@ jobs:
         run: docker compose run --rm --quiet-pull client npm run lint
 
       - name: Build client
-        run: docker compose build client
+        run: docker compose run --rm --quiet-pull client npm run build
 
 
