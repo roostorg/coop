@@ -456,6 +456,7 @@ export default async function getBottle() {
     max: 30,
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
+    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   });
 
   const bottle = new Bottle<Dependencies>();
@@ -525,6 +526,7 @@ export default async function getBottle() {
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
+          ...(process.env.REDIS_TLS === 'true' ? { tls: {} } : {}),
         }),
   );
 
@@ -685,6 +687,13 @@ export default async function getBottle() {
       },
       localDataCenter: safeGetEnvVar('SCYLLA_LOCAL_DATACENTER'),
       keyspace: 'item_investigation_service',
+      protocolOptions: {
+        port: parseInt(process.env.SCYLLA_PORT ?? '9042'),
+      },
+      sslOptions: process.env.SCYLLA_SSL === 'true' ? {
+        host: safeGetEnvVar('SCYLLA_HOSTS').split(',')[0].trim(),
+        rejectUnauthorized: true,
+      } : undefined,
       pooling: {
         coreConnectionsPerHost: {
           [scyllaTypes.distance.local]: 3,

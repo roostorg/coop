@@ -58,7 +58,7 @@ export const makeSequelize = () =>
       // Think about how/if we'll do this w/ our kysely connection pools.
     },
     dialectOptions: {
-      //ssl: true,
+      ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
       query_timeout: 1_000_000,
       idle_in_transaction_session_timeout: 300_000,
     },
