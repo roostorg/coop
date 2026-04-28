@@ -244,7 +244,7 @@ import {
 } from '../utils/typescript-types.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
-import { register, safeGetEnvVar } from './utils.js';
+import { isEnvTrue, register, safeGetEnvVar } from './utils.js';
 
 // the otel instrumentation currently intercepts require statements. support for
 // esm support is experimental so we should wait until it is stable
@@ -456,7 +456,7 @@ export default async function getBottle() {
     max: 30,
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
-    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
   });
 
   const bottle = new Bottle<Dependencies>();
@@ -526,7 +526,9 @@ export default async function getBottle() {
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
-          ...(process.env.REDIS_TLS === 'true' ? { tls: {} } : {}),
+          ...(isEnvTrue('REDIS_TLS')
+            ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
+            : {}),
         }),
   );
 
@@ -677,10 +679,18 @@ export default async function getBottle() {
   // keyspace aware and it's very annoying and likely error prone to be
   // switching keyspaces with `USE KEYSPACE` all the time.
   bottle.factory('Scylla', () => {
+    const contactPoints = safeGetEnvVar('SCYLLA_HOSTS')
+      .split(',')
+      .map((it) => it.trim())
+      .filter((it) => it.length > 0);
+    // For TLS hostname verification we need an SNI value that matches the
+    // server cert. Prefer an explicit `SCYLLA_SSL_SERVERNAME` (e.g., the
+    // Keyspaces regional endpoint) over inferring one from `SCYLLA_HOSTS`,
+    // which may contain multiple contact points with different cert names.
+    const sslServerName =
+      process.env.SCYLLA_SSL_SERVERNAME ?? contactPoints[0];
     const scyllaDriver = new ScyllaClient({
-      contactPoints: safeGetEnvVar('SCYLLA_HOSTS')
-        .split(',')
-        .map((it) => it.trim()),
+      contactPoints,
       credentials: {
         username: safeGetEnvVar('SCYLLA_USERNAME'),
         password: safeGetEnvVar('SCYLLA_PASSWORD'),
@@ -690,10 +700,12 @@ export default async function getBottle() {
       protocolOptions: {
         port: parseInt(process.env.SCYLLA_PORT ?? '9042'),
       },
-      sslOptions: process.env.SCYLLA_SSL === 'true' ? {
-        host: safeGetEnvVar('SCYLLA_HOSTS').split(',')[0].trim(),
-        rejectUnauthorized: true,
-      } : undefined,
+      sslOptions: isEnvTrue('SCYLLA_SSL')
+        ? {
+            host: sslServerName,
+            rejectUnauthorized: true,
+          }
+        : undefined,
       pooling: {
         coreConnectionsPerHost: {
           [scyllaTypes.distance.local]: 3,

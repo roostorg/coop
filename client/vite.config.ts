@@ -15,6 +15,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Redirect `recharts-scale/es6/getNiceTickValues` through our wrapper so
+      // we can recover from upstream's DecimalError "Division by zero" on
+      // degenerate chart domains. See `src/rechartsScaleWrapper.js`.
+      'recharts-scale/es6/getNiceTickValues': path.resolve(
+        __dirname,
+        './src/rechartsScaleWrapper.js',
+      ),
     },
   },
   build: {
