@@ -14,7 +14,7 @@ import {
   type NonEmptyArray,
   type WithUndefined,
 } from '../../utils/typescript-types.js';
-import { type User } from '../UserModel.js';
+import { type GraphQLUserParent } from '../../graphql/datasources/userKyselyPersistence.js';
 import { type TaggedItemData } from './item-type-fields.js';
 
 export enum ConditionCompletionOutcome {
@@ -112,7 +112,7 @@ export function computeRuleStatusFromRow(
 }
 
 export type RuleGraphqlMethods = {
-  getCreator(): Promise<User>;
+  getCreator(): Promise<GraphQLUserParent>;
   getActions(): Promise<Action[]>;
   getPolicies(): Promise<Policy[]>;
 };

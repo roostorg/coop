@@ -104,7 +104,7 @@ generates:
         # parent, and its sub-resolvers only read `org.id`. A bit unusual, as
         # `MatchingBanks` could be a standalone type — may expand later.
         MatchingBanks: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
-        User: ../models/UserModel.js#User
+        User: ../graphql/datasources/userKyselyPersistence.js#GraphQLUserParent
         LocationBank: ./datasources/LocationBankApi.js#LocationBankWithoutFullPlacesAPIResponse
         # TODO(Kysely migration): these parents will flip to
         # `../models/rules/ruleTypes.js#Rule` once the Action/Policy resolvers

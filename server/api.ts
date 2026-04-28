@@ -29,7 +29,12 @@ import {
   makeLoginSsoRequiredError,
   makeLoginUserDoesNotExistError,
 } from './graphql/datasources/UserApi.js';
+import {
+  kyselyUserFindByEmail,
+  kyselyUserFindById,
+} from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
+import { passwordMatchesHash } from './services/userManagementService/index.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { type Dependencies } from './iocContainer/index.js';
@@ -90,7 +95,7 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
-  const { User } = deps.Sequelize;
+  const { KyselyPg } = deps;
 
   app.use(cors());
 
@@ -203,9 +208,10 @@ export default async function makeApiServer(deps: Dependencies) {
       },
       async (_req, profile, done) => {
         try {
-          const user = await User.findOne({
-            where: { email: String(profile?.email) },
-          });
+          const user = await kyselyUserFindByEmail(
+            KyselyPg,
+            String(profile?.email),
+          );
           // we should have already checked for this, but couldn't hurt to check
           // again
           if (user == null) {
@@ -225,9 +231,10 @@ export default async function makeApiServer(deps: Dependencies) {
       },
       async (_req, profile, done) => {
         try {
-          const user = await User.findOne({
-            where: { email: String(profile?.email) },
-          });
+          const user = await kyselyUserFindByEmail(
+            KyselyPg,
+            String(profile?.email),
+          );
           // we should have already checked for this, but couldn't hurt to check
           // again
           if (user == null) {
@@ -268,7 +275,7 @@ export default async function makeApiServer(deps: Dependencies) {
   passport.use(
     new GraphQLLocalStrategy(async (email, password, done) => {
       try {
-        const user = await User.findOne({ where: { email: String(email) } });
+        const user = await kyselyUserFindByEmail(KyselyPg, String(email));
         if (user == null) {
           return done(
             makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
@@ -303,12 +310,11 @@ export default async function makeApiServer(deps: Dependencies) {
           );
         }
 
-        // if loginMethod is password, password should be set
+        // `loginMethods` includes 'password', so the DB CHECK constraint
+        // guarantees `user.password` is non-null here.
         if (
-          await User.passwordMatchesHash(
-            String(password),
-            user.password satisfies string | null as string,
-          )
+          user.password != null &&
+          (await passwordMatchesHash(String(password), user.password))
         ) {
           done(null, user);
         } else {
@@ -330,9 +336,19 @@ export default async function makeApiServer(deps: Dependencies) {
   });
 
   passport.deserializeUser(async (id, done) => {
-    return User.findByPk(String(id), { rejectOnEmpty: true }).then((user) => {
-      done(null, user);
-    }, done);
+    try {
+      const user = await kyselyUserFindById(KyselyPg, String(id));
+      if (user == null) {
+        return done(
+          makeNotFoundError(`Session user ${String(id)} not found`, {
+            shouldErrorSpan: true,
+          }),
+        );
+      }
+      return done(null, user);
+    } catch (e) {
+      return done(e);
+    }
   });
 
   /**
@@ -534,7 +550,6 @@ function makeGqlServices(deps: Dependencies) {
       'PartialItemsService',
       'ReportingService',
       'RuleEvaluator',
-      'Sequelize',
       'SignalsService',
       'SigningKeyPairService',
       'Tracer',

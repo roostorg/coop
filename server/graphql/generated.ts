@@ -8,6 +8,7 @@ import { JsonObject, JsonValue } from 'type-fest';
 
 import type { UserHistoryForGQL } from '../graphql/datasources/InvestigationApi.js';
 import type { GraphQLOrgParent } from '../graphql/datasources/orgKyselyPersistence.js';
+import type { GraphQLUserParent } from '../graphql/datasources/userKyselyPersistence.js';
 import type {
   ContentItemTypeResolversParentType,
   ItemTypeResolversParentType,
@@ -26,7 +27,6 @@ import type {
   LeafConditionWithResult,
   Rule,
 } from '../models/rules/RuleModel.js';
-import type { User } from '../models/UserModel.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
 import type {
@@ -6189,7 +6189,7 @@ export type GQLResolversTypes = {
   >;
   UpdateUserStrikeTTLInput: GQLUpdateUserStrikeTtlInput;
   UpdateUserStrikeTTLSuccessResponse: ResolverTypeWrapper<GQLUpdateUserStrikeTtlSuccessResponse>;
-  User: ResolverTypeWrapper<User>;
+  User: ResolverTypeWrapper<GraphQLUserParent>;
   UserActionDecisionAction: GQLUserActionDecisionAction;
   UserActionDecisionPolicy: GQLUserActionDecisionPolicy;
   UserActionsHistory: ResolverTypeWrapper<GQLUserActionsHistory>;
@@ -6826,7 +6826,7 @@ export type GQLResolversParentTypes = {
   UpdateUserRuleResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['UpdateUserRuleResponse'];
   UpdateUserStrikeTTLInput: GQLUpdateUserStrikeTtlInput;
   UpdateUserStrikeTTLSuccessResponse: GQLUpdateUserStrikeTtlSuccessResponse;
-  User: User;
+  User: GraphQLUserParent;
   UserActionDecisionAction: GQLUserActionDecisionAction;
   UserActionDecisionPolicy: GQLUserActionDecisionPolicy;
   UserActionsHistory: GQLUserActionsHistory;

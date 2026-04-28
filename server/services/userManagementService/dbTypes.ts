@@ -1,6 +1,7 @@
 import type { ColumnType, GeneratedAlways } from 'kysely';
 
 import type { UserRole } from '../../models/types/permissioning.js';
+import { type CoreAppTablesPg } from '../coreAppTables.js';
 import type {
   DecisionCountsInput,
   JobCreationsInput,
@@ -56,20 +57,9 @@ export type UserManagementPg = {
     org_id: string;
     created_at: Date;
   };
-  'public.users': {
-    id: GeneratedAlways<string>;
-    email: string;
-    password: string | null;
-    first_name: string;
-    last_name: string;
-    role: UserRole;
-    approved_by_admin: boolean;
-    rejected_by_admin: boolean;
-    created_at: GeneratedAlways<Date>;
-    updated_at: GeneratedAlways<Date>;
-    org_id: string;
-    login_methods: ('password' | 'saml')[];
-  };
+  // Shared definition lives in `services/coreAppTables.ts` so Kysely instances
+  // typed on either `UserManagementPg` or `CombinedPg` see the same columns.
+  'public.users': CoreAppTablesPg['public.users'];
   'public.invite_user_tokens': {
     id: GeneratedAlways<string>;
     token: string;

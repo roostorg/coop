@@ -3,4 +3,4 @@ export {
   default as makeUserManagementService,
   type UserManagementService,
 } from './userManagementService.js';
-export { hashPassword } from './utils.js';
+export { hashPassword, passwordMatchesHash } from './utils.js';
