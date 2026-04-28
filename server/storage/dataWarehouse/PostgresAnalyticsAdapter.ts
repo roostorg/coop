@@ -26,9 +26,9 @@ import {
  * Uses batch inserts and logical replication for CDC
  */
 export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
-  private pendingWrites: Map<string, any[]> = new Map();
+  private pendingWrites: Map<string, unknown[]> = new Map();
 
-  constructor(private readonly kysely: Kysely<any>) {}
+  constructor(private readonly kysely: Kysely<AnalyticsSchema>) {}
 
   async bulkWrite<TableName extends keyof AnalyticsSchema>(
     tableName: TableName,
@@ -90,33 +90,33 @@ export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
     const rows = this.pendingWrites.get(tableName);
     if (!rows || rows.length === 0) return;
 
-    await this.kysely.insertInto(tableName as any).values(rows).execute();
+    await this.kysely.insertInto(tableName as keyof AnalyticsSchema).values(rows as AnalyticsSchema[keyof AnalyticsSchema][]).execute();
     this.pendingWrites.set(tableName, []);
   }
 
   // Stub implementations - integrators must implement these
-  logActionExecutions = async (..._args: any[]): Promise<void> => {
+  logActionExecutions = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logRuleExecutions = async (..._args: any[]): Promise<void> => {
+  logRuleExecutions = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logItemModelScore = async (..._args: any[]): Promise<void> => {
+  logItemModelScore = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logReportingRuleExecutions = async (..._args: any[]): Promise<void> => {
+  logReportingRuleExecutions = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logContentApiRequest = async (..._args: any[]): Promise<void> => {
+  logContentApiRequest = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logContentDetailsApiRequest = async (..._args: any[]): Promise<void> => {
+  logContentDetailsApiRequest = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logRoutingRuleExecutions = async (..._args: any[]): Promise<void> => {
+  logRoutingRuleExecutions = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
-  logOrgCreation = async (..._args: any[]): Promise<void> => {
+  logOrgCreation = async (..._args: unknown[]): Promise<void> => {
     throw new Error('Not implemented');
   };
 }
