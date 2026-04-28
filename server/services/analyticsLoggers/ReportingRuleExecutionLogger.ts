@@ -37,7 +37,7 @@ class ReportingRuleExecutionLogger {
   ) {
     const now = new Date();
     await this.analytics.bulkWrite(
-      'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS' as any,
+      'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS',
       executions.map((data) => ({
         ds: getUtcDateOnlyString(now),
         ts: now.valueOf(),

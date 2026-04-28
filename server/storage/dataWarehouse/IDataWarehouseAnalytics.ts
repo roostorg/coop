@@ -90,19 +90,7 @@ export type AnalyticsSchema = {
   };
 
   CONTENT_API_REQUESTS: {
-    ds: string;
-    ts: number;
-    org_id: string;
-    item_id: string;
-    item_type_id: string;
-    item_submission_id?: string;
-    item_creator_id?: string;
-    endpoint: string;
-    method: string;
-    correlation_id: string;
-    duration_ms: number;
-    failed: boolean;
-    error_message?: string;
+    [key: string]: unknown; // Logged by ContentApiLogger
   };
 
   // Operational tables (using warehouse for operational data)
@@ -120,6 +108,14 @@ export type AnalyticsSchema = {
   
   'USER_STATISTICS_SERVICE.SUBMISSION_STATS': {
     [key: string]: unknown; // Dynamic schema
+  };
+
+  'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS': {
+    [key: string]: unknown; // Logged by ReportingRuleExecutionLogger
+  };
+
+  'MANUAL_REVIEW_TOOL.ROUTING_RULE_EXECUTIONS': {
+    [key: string]: unknown; // Logged by RoutingRuleExecutionLogger
   };
 };
 

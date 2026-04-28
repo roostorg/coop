@@ -11,7 +11,7 @@
  * - See ../README.md for implementation guide
  */
 
-import { sql, type Kysely } from 'kysely';
+import { sql, type InsertObject, type Kysely } from 'kysely';
 import type SafeTracer from '../../utils/SafeTracer.js';
 import {
   type IDataWarehouseAnalytics,
@@ -26,7 +26,12 @@ import {
  * Uses batch inserts and logical replication for CDC
  */
 export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
-  private pendingWrites: Map<string, unknown[]> = new Map();
+  // Each entry pairs a row buffer with a typed flush closure captured while
+  // TableName is in scope in bulkWrite, so flushTable never needs a cast.
+  private pendingWrites = new Map<
+    string,
+    { rows: unknown[]; flush: (rows: unknown[]) => Promise<void> }
+  >();
 
   constructor(private readonly kysely: Kysely<AnalyticsSchema>) {}
 
@@ -38,14 +43,24 @@ export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
     const tableKey = tableName as string;
 
     if (!this.pendingWrites.has(tableKey)) {
-      this.pendingWrites.set(tableKey, []);
+      this.pendingWrites.set(tableKey, {
+        rows: [],
+        // Closure captures the concrete TableName so Kysely can type-check
+        // the insert at the call site where the generic is still in scope.
+        flush: async (r) => {
+          await this.kysely
+            .insertInto(tableName)
+            .values(r as ReadonlyArray<InsertObject<AnalyticsSchema, TableName>>)
+            .execute();
+        },
+      });
     }
-    this.pendingWrites.get(tableKey)!.push(...rows);
+    this.pendingWrites.get(tableKey)!.rows.push(...rows);
 
     const batchSize = config?.batchSize ?? 500;
     const pending = this.pendingWrites.get(tableKey)!;
 
-    if (config?.batchTimeout === 0 || pending.length >= batchSize) {
+    if (config?.batchTimeout === 0 || pending.rows.length >= batchSize) {
       await this.flushTable(tableKey);
     }
   }
@@ -87,11 +102,11 @@ export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
   }
 
   private async flushTable(tableName: string): Promise<void> {
-    const rows = this.pendingWrites.get(tableName);
-    if (!rows || rows.length === 0) return;
+    const pending = this.pendingWrites.get(tableName);
+    if (!pending || pending.rows.length === 0) return;
 
-    await this.kysely.insertInto(tableName as keyof AnalyticsSchema).values(rows as AnalyticsSchema[keyof AnalyticsSchema][]).execute();
-    this.pendingWrites.set(tableName, []);
+    await pending.flush(pending.rows);
+    pending.rows = [];
   }
 
   // Stub implementations - integrators must implement these
