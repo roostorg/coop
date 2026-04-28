@@ -214,7 +214,7 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user as any);
+          return done(null, user.toJSON() as Record<string, unknown>);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -236,7 +236,7 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user as any);
+          return done(null, user.toJSON() as Record<string, unknown>);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -325,7 +325,7 @@ export default async function makeApiServer(deps: Dependencies) {
     }),
   );
 
-  passport.serializeUser((user: any, done) => {
+  passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
