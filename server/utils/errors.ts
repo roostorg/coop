@@ -260,6 +260,9 @@ export type CoopErrorName =
   | 'InternalServerError'
   | 'BadRequestError'
   | 'UnauthorizedError'
+  // apiKey errors
+  | 'RotateApiKeyError'
+  | 'RotateWebhookSigningKeyError'
   // gql mutation errors
   | UserErrorType
   | IntegrationErrorType
