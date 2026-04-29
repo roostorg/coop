@@ -1,8 +1,6 @@
 import * as oidcClient from 'openid-client';
 
-export function normalizeIssuerUrl(raw: string): string {
-  return `https://${raw.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
-}
+export { normalizeIssuerUrl } from './oidcUrlUtils.js';
 
 export async function discoverOidcConfig(
   issuerUrl: string,

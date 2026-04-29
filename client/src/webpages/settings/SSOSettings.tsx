@@ -15,6 +15,7 @@ import { toast } from '@/coop-ui/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Heading, Text } from '@/coop-ui/Typography';
 import { userHasPermissions } from '@/routing/permissions';
+import { isValidIssuerDomain, normalizeIssuerDomain } from '@/utils/oidc';
 import { gql } from '@apollo/client';
 import { Clipboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -26,8 +27,8 @@ import FullScreenLoading from '@/components/common/FullScreenLoading';
 import {
   GQLSsoMethod,
   GQLUserPermission,
+  useGQLGetSsoCallbackUrlsQuery,
   useGQLGetSsoCredentialsQuery,
-  useGQLGetSsoOidcCallbackUrlQuery,
   useGQLSwitchSsoMethodMutation,
   useGQLUpdateSsoOidcCredentialsMutation,
   useGQLUpdateSsoSamlCredentialsMutation,
@@ -49,8 +50,12 @@ gql`
     }
   }
 
-  query GetSSOOidcCallbackUrl {
-    getSSOOidcCallbackUrl
+  query GetSSOCallbackUrls($orgId: String!) {
+    getSSOCallbackUrls(orgId: $orgId) {
+      samlCallbackUrl
+      samlIssuer
+      oidcCallbackUrl
+    }
   }
 
   mutation UpdateSSOSamlCredentials($input: UpdateSSOSamlCredentialsInput!) {
@@ -87,7 +92,11 @@ export default function SSOSettings() {
   const navigate = useNavigate();
 
   const { data, loading, error } = useGQLGetSsoCredentialsQuery();
-  const { data: callbackData } = useGQLGetSsoOidcCallbackUrlQuery();
+  const orgId = data?.myOrg?.id;
+  const { data: callbackData } = useGQLGetSsoCallbackUrlsQuery({
+    variables: { orgId: orgId ?? '' },
+    skip: !orgId,
+  });
   const [updateSSOSamlCredentials, { loading: samlUpdateLoading }] =
     useGQLUpdateSsoSamlCredentialsMutation();
   const [updateSSOOidcCredentials, { loading: oidcUpdateLoading }] =
@@ -99,7 +108,7 @@ export default function SSOSettings() {
     const org = data.myOrg;
     if (org.ssoUrl != null) setSsoUrl(org.ssoUrl);
     if (org.ssoCert != null) setSsoCert(org.ssoCert);
-    if (org.issuerUrl != null) setIssuerUrl(org.issuerUrl);
+    if (org.issuerUrl != null) setIssuerUrl(normalizeIssuerDomain(org.issuerUrl));
     if (org.clientId != null) setClientId(org.clientId);
     if (org.oidcEnabled) setActiveTab('OIDC');
   }, [data]);
@@ -120,23 +129,15 @@ export default function SSOSettings() {
   const isCurrentTabActive = activeTab === currentMethod;
   const isSwitching = !isCurrentTabActive && currentMethod !== 'Password';
 
-  const samlCallbackUri = `https://getcoop.com/api/v1/saml/login/${data?.myOrg?.id}/callback`;
-  const oidcCallbackUri = callbackData?.getSSOOidcCallbackUrl ?? '';
+  const samlCallbackUri = callbackData?.getSSOCallbackUrls.samlCallbackUrl ?? '';
+  const samlIssuer = callbackData?.getSSOCallbackUrls.samlIssuer ?? '';
+  const oidcCallbackUri = callbackData?.getSSOCallbackUrls.oidcCallbackUrl ?? '';
 
   const stringIsAValidUrl = (s: string) => {
     try {
       // eslint-disable-next-line no-new
       new URL(s);
       return true;
-    } catch (_) {
-      return false;
-    }
-  };
-
-  const isValidDomain = (s: string) => {
-    try {
-      const url = new URL(`https://${s.replace(/^https?:\/\//, '')}`);
-      return url.hostname.includes('.') && url.hostname === s.replace(/^https?:\/\//, '').replace(/\/$/, '');
     } catch (_) {
       return false;
     }
@@ -169,14 +170,23 @@ export default function SSOSettings() {
   };
 
   const handleSaveOidc = (closeDialog = false) => {
-    if (!isValidDomain(issuerUrl)) {
+    const normalizedIssuerUrl = normalizeIssuerDomain(issuerUrl);
+    if (!isValidIssuerDomain(normalizedIssuerUrl)) {
       toast.error('Domain is not valid (e.g. your-tenant.auth0.com)');
       return;
     }
     updateSSOOidcCredentials({
-      variables: { input: { oidcEnabled: true, issuerUrl, clientId, clientSecret } },
+      variables: {
+        input: {
+          oidcEnabled: true,
+          issuerUrl: normalizedIssuerUrl,
+          clientId,
+          clientSecret,
+        },
+      },
       refetchQueries: ['GetSSOCredentials'],
       onCompleted: () => {
+        setIssuerUrl(normalizedIssuerUrl);
         toast.success('OIDC credentials updated');
         if (closeDialog) setShowSwitchDialog(false);
       },
@@ -214,17 +224,24 @@ export default function SSOSettings() {
         },
       });
     } else {
-      if (!isValidDomain(issuerUrl)) {
+      const normalizedIssuerUrl = normalizeIssuerDomain(issuerUrl);
+      if (!isValidIssuerDomain(normalizedIssuerUrl)) {
         toast.error('Domain is not valid (e.g. your-tenant.auth0.com)');
         setShowSwitchDialog(false);
         return;
       }
       switchSSOMethod({
         variables: {
-          input: { method: GQLSsoMethod.Oidc, issuerUrl, clientId, clientSecret },
+          input: {
+            method: GQLSsoMethod.Oidc,
+            issuerUrl: normalizedIssuerUrl,
+            clientId,
+            clientSecret,
+          },
         },
         refetchQueries: ['GetSSOCredentials'],
         onCompleted: () => {
+          setIssuerUrl(normalizedIssuerUrl);
           toast.success('Switched to OIDC');
           setShowSwitchDialog(false);
         },
@@ -321,7 +338,7 @@ export default function SSOSettings() {
               id="SpEntityId"
               type="text"
               className="tracking-widest"
-              value="https://getcoop.com"
+              value={samlIssuer}
               disabled
               endSlot={
                 <div className="flex">
@@ -331,7 +348,7 @@ export default function SSOSettings() {
                         variant="white"
                         size="icon"
                         className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
-                        onClick={async () => copyText('https://getcoop.com')}
+                        onClick={async () => copyText(samlIssuer)}
                       >
                         <Clipboard />
                       </Button>
@@ -421,7 +438,7 @@ export default function SSOSettings() {
               placeholder="your-tenant.auth0.com"
               value={issuerUrl}
               onChange={(e) => setIssuerUrl(e.target.value)}
-
+              onBlur={() => setIssuerUrl(normalizeIssuerDomain(issuerUrl))}
             />
           </div>
           <div className="flex flex-col gap-2">

@@ -808,10 +808,12 @@ const Mutation: GQLMutationResolvers = {
       if (!input.issuerUrl || !input.clientId || !input.clientSecret) {
         throw new Error('issuerUrl, clientId, and clientSecret are required when switching to OIDC.');
       }
+      const issuerUrl = normalizeIssuerUrl(input.issuerUrl);
+
       await context.services.OrgSettingsService.switchSSOMethod({
         orgId: user.orgId,
         method: 'oidc',
-        issuerUrl: input.issuerUrl,
+        issuerUrl,
         clientId: input.clientId,
         clientSecret: input.clientSecret,
       });

@@ -26,7 +26,6 @@ import * as oidcClient from 'openid-client';
 
 import {
   discoverOidcConfig,
-  normalizeIssuerUrl,
 } from './services/SSOService/index.js';
 import {
   makeLoginIncorrectPasswordError,
@@ -36,6 +35,7 @@ import {
 import {
   kyselyUserFindByEmail,
   kyselyUserFindById,
+  kyselyUserUpdateLoginMethods,
 } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
@@ -224,11 +224,8 @@ export default async function makeApiServer(deps: Dependencies) {
           done(null, {
             entryPoint: samlSettings.sso_url as string,
             idpCert: samlSettings.cert as string,
-            // I could use UI_URL here but technically the API could be hosted
-            // on a different domain in the future so hopefully this is more
-            // robust, not that it will likely matter.
-            callbackUrl: `${deps.ConfigService.uiUrl}/api/v1/saml/login/${orgId}/callback`,
-            issuer: deps.ConfigService.uiUrl,
+            callbackUrl: deps.SSOService.getSSOSamlCallbackUrl(orgId),
+            issuer: deps.SSOService.getSSOSamlIssuer(),
           });
         },
       },
@@ -247,11 +244,17 @@ export default async function makeApiServer(deps: Dependencies) {
           }
 
           if (!user.loginMethods.includes('saml')) {
-            user.loginMethods = [...user.loginMethods, 'saml'];
-            await user.save();
+            const updatedUser = await kyselyUserUpdateLoginMethods(
+              KyselyPg,
+              user.id,
+              [...user.loginMethods, 'saml'],
+            );
+            if (updatedUser != null) {
+              return done(null, updatedUser);
+            }
           }
 
-          return done(null, user as any);
+          return done(null, user);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -275,11 +278,17 @@ export default async function makeApiServer(deps: Dependencies) {
           }
 
           if (!user.loginMethods.includes('saml')) {
-            user.loginMethods = [...user.loginMethods, 'saml'];
-            await user.save();
+            const updatedUser = await kyselyUserUpdateLoginMethods(
+              KyselyPg,
+              user.id,
+              [...user.loginMethods, 'saml'],
+            );
+            if (updatedUser != null) {
+              return done(null, updatedUser);
+            }
           }
 
-          return done(null, user as any);
+          return done(null, user);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -313,9 +322,7 @@ export default async function makeApiServer(deps: Dependencies) {
       return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=${req.query.error}`);
     }
     try {
-      const sessionData = req.session['oidc'] as
-        | { code_verifier: string; state: string; org_id: string }
-        | undefined;
+      const sessionData = req.session.oidc;
 
       if (!sessionData || !sessionData.code_verifier || !sessionData.state || !sessionData.org_id) {
         return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=session_expired`);
@@ -332,16 +339,15 @@ export default async function makeApiServer(deps: Dependencies) {
         return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
       }
 
-      const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
-
-      const config = await discoverOidcConfig(issuerUrl, oidcSettings.client_id, oidcSettings.client_secret);
+      const config = await discoverOidcConfig(
+        oidcSettings.issuer_url,
+        oidcSettings.client_id,
+        oidcSettings.client_secret,
+      );
 
       // Reconstruct callback URL with code/state from IdP redirect.
       // authorizationCodeGrant needs: base = registered redirect_uri, query = code+state from IdP.
-      const currentUrl = new URL(`${deps.ConfigService.apiUrl}/api/v1/oidc/login/callback`);
-      for (const [k, v] of new URLSearchParams(req.url.includes('?') ? req.url.split('?')[1] : '')) {
-        currentUrl.searchParams.set(k, v);
-      }
+      const currentUrl = new URL(req.originalUrl, deps.ConfigService.apiUrl);
 
       const checks = { pkceCodeVerifier: codeVerifier, expectedState: state };
 
@@ -358,23 +364,18 @@ export default async function makeApiServer(deps: Dependencies) {
       if (!email) {
         // eslint-disable-next-line no-console
         console.error('[OIDC] No email in token claims or userinfo');
-        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=no_email`);
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
       }
 
-      const user = await User.findOne({ where: { email: String(email) } });
+      const user = await kyselyUserFindByEmail(KyselyPg, String(email));
 
       if (!user || user.orgId !== orgId) {
         // eslint-disable-next-line no-console
         console.error('[OIDC] User not found or org mismatch', { email, orgId, userOrgId: user?.orgId });
-        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=user_not_found`);
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
       }
 
-      if (!user.loginMethods.includes('oidc')) {
-        user.loginMethods = [...user.loginMethods, 'oidc'];
-        await user.save();
-      }
-
-      req.login(user as any, (err) => {
+      req.login(user, (err) => {
         if (err) return next(err);
         res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
       });
@@ -383,7 +384,7 @@ export default async function makeApiServer(deps: Dependencies) {
     }
   });
 
-  app.get('/oidc/login/:orgId', async (req, res, next) => {
+  app.post('/oidc/login/:orgId', async (req, res, next) => {
     try {
       const { orgId } = req.params;
       const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
@@ -398,26 +399,28 @@ export default async function makeApiServer(deps: Dependencies) {
       }
 
       const callbackUrl = deps.SSOService.getSSOOidcCallbackUrl();
-      const issuerUrl = normalizeIssuerUrl(oidcSettings.issuer_url);
-      
-      const config = await discoverOidcConfig(issuerUrl, oidcSettings.client_id, oidcSettings.client_secret);
+      const config = await discoverOidcConfig(
+        oidcSettings.issuer_url,
+        oidcSettings.client_id,
+        oidcSettings.client_secret,
+      );
 
       const codeVerifier = oidcClient.randomPKCECodeVerifier();
       const codeChallenge = await oidcClient.calculatePKCECodeChallenge(codeVerifier);
+      const state = oidcClient.randomState();
 
-      const params: Record<string, string> = {
+      const params = new URLSearchParams({
         redirect_uri: callbackUrl,
         scope: 'openid email',
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
-      };
+        state,
+      });
 
       const redirectTo = oidcClient.buildAuthorizationUrl(config, params);
 
-      const state = oidcClient.randomState();
-      redirectTo.searchParams.set('state', state);
-
-      // Store PKCE data + orgId in session for callback
+      // Store the OIDC verifier/state in the server-side session store. The
+      // browser cookie only contains the opaque session identifier.
       req.session.oidc = { code_verifier: codeVerifier, state, org_id: orgId };
 
       // Explicitly save before redirecting — with saveUninitialized:false and an

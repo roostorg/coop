@@ -1,59 +1,71 @@
-import { type CipherKey, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { Encryption } from '@boringnode/encryption';
+import { aes256gcm } from '@boringnode/encryption/drivers/aes_256_gcm';
 
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12;
-const AUTH_TAG_LENGTH = 16;
+const CURRENT_ENCRYPTER_ID = 'sso';
+const ENCRYPTION_NAMESPACE = 'coop';
+const ENCRYPTION_VERSION = 'v1';
 
-function getEncryptionKey(): CipherKey {
-  const key = process.env.SSO_ENCRYPTION_KEY;
+function getEncryptionSecret(): string {
+  const key = process.env.ENCRYPTION_KEY;
   if (!key) {
-    throw new Error('SSO_ENCRYPTION_KEY environment variable is not set');
+    throw new Error(
+      'ENCRYPTION_KEY environment variable is not set',
+    );
   }
   
   const buf = Buffer.from(key, 'base64');
   if (buf.length !== 32) {
     throw new Error(
-      'SSO_ENCRYPTION_KEY must be a base64-encoded 32-byte key',
+      'ENCRYPTION_KEY must be a base64-encoded 32-byte key',
     );
   }
-  return buf as CipherKey;
+  return key;
+}
+
+function getEncryption(): Encryption {
+  const secret = getEncryptionSecret();
+  return new Encryption(
+    aes256gcm({
+      id: CURRENT_ENCRYPTER_ID,
+      keys: [secret],
+    }),
+  );
+}
+
+function getCiphertextPrefix(): string {
+  return `${ENCRYPTION_NAMESPACE}:${ENCRYPTION_VERSION}:`;
+}
+
+function unwrapCiphertext(value: string): string {
+  const prefix = getCiphertextPrefix();
+  if (!value.startsWith(prefix)) {
+    throw new Error('Encrypted value is not in the supported format');
+  }
+
+  const ciphertext = value.slice(prefix.length);
+  if (!ciphertext) {
+    throw new Error('Encrypted value is not in the supported format');
+  }
+
+  return ciphertext;
 }
 
 /**
- * Encrypts a plaintext string using AES-256-GCM.
- * Returns a string in the format: coop:v1:iv:ciphertext:authTag (all base64)
+ * Encrypts a plaintext string using the shared boringnode encrypter.
+ * Returns a string in the format:
+ * coop:v1:<boringnode-ciphertext>
  */
 export function encrypt(plaintext: string): string {
-  const key = getEncryptionKey();
-  const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGORITHM, key, new Uint8Array(iv), {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
-  const encrypted = Buffer.concat([new Uint8Array(cipher.update(plaintext, 'utf8')), new Uint8Array(cipher.final())]);
-  const authTag = cipher.getAuthTag();
-  return `coop:v1:${iv.toString('base64')}:${encrypted.toString('base64')}:${authTag.toString('base64')}`;
+  return `${getCiphertextPrefix()}${getEncryption().encrypt(plaintext)}`;
 }
 
 /**
  * Decrypts a string previously encrypted with encrypt().
- * Returns null if the value doesn't look like an encrypted string (for
- * backwards compatibility with pre-encryption plaintext values).
  */
 export function decrypt(encryptedValue: string): string {
-  if (!encryptedValue.startsWith('coop:')) {
-    return encryptedValue; // legacy plaintext
+  const decrypted = getEncryption().decrypt<string>(unwrapCiphertext(encryptedValue));
+  if (typeof decrypted !== 'string') {
+    throw new Error('Failed to decrypt encrypted value');
   }
-  const [_ns, version, ivB64, ciphertextB64, authTagB64] = encryptedValue.split(':');
-  if (version === 'v1') {
-    const key = getEncryptionKey();
-    const iv = Buffer.from(ivB64, 'base64');
-    const encrypted = Buffer.from(ciphertextB64, 'base64');
-    const authTag = Buffer.from(authTagB64, 'base64');
-    const decipher = createDecipheriv(ALGORITHM, key, new Uint8Array(iv), {
-      authTagLength: AUTH_TAG_LENGTH,
-    });
-    decipher.setAuthTag(new Uint8Array(authTag));
-    return decipher.update(new Uint8Array(encrypted), undefined, 'utf8') + decipher.final('utf8');
-  }
-  throw new Error(`Unknown encryption version: ${version}`);
+  return decrypted;
 }

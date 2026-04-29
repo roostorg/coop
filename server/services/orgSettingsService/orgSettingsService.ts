@@ -6,6 +6,7 @@ import { inject } from '../../iocContainer/index.js';
 import { cached } from '../../utils/caching.js';
 import { encrypt, decrypt } from '../../utils/crypto.js';
 import { MINUTE_MS } from '../../utils/time.js';
+import { normalizeIssuerUrl } from '../SSOService/index.js';
 
 export type OrgSettingsPg = {
   'public.org_settings': {
@@ -209,12 +210,14 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       clientId: string;
       clientSecret?: string;
     }) {
+      const issuerUrl = normalizeIssuerUrl(input.issuerUrl);
+
       await pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
         .set({
           oidc_enabled: input.oidcEnabled,
-          issuer_url: input.issuerUrl,
+          issuer_url: issuerUrl,
           client_id: input.clientId,
           ...(input.clientSecret ? { client_secret: encrypt(input.clientSecret) } : {}),
         })
@@ -237,13 +240,15 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
           .set({ saml_enabled: true, oidc_enabled: false, sso_url: input.ssoUrl, cert: input.cert })
           .executeTakeFirst();
       } else {
+        const issuerUrl = input.issuerUrl ? normalizeIssuerUrl(input.issuerUrl) : undefined;
+
         await pgQuery
           .updateTable('public.org_settings')
           .where('org_id', '=', input.orgId)
           .set({
             saml_enabled: false,
             oidc_enabled: true,
-            issuer_url: input.issuerUrl,
+            issuer_url: issuerUrl,
             client_id: input.clientId,
             client_secret: input.clientSecret ? encrypt(input.clientSecret) : undefined,
           })

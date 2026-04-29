@@ -54,7 +54,11 @@ function fail(
   return { ok: false, failure: { field, message } };
 }
 
-const ALLOWED_LOGIN_METHODS: readonly LoginMethod[] = ['password', 'saml'];
+const ALLOWED_LOGIN_METHODS: readonly LoginMethod[] = [
+  'password',
+  'saml',
+  'oidc',
+];
 
 function validateLoginMethodsShape(
   loginMethods: readonly string[],
