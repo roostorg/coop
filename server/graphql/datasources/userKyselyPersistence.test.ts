@@ -3,6 +3,7 @@ import { uid } from 'uid';
 
 import { UserRole } from '../../models/types/permissioning.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createRule from '../../test/fixtureHelpers/createRule.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import {
@@ -285,7 +286,7 @@ describe('userKyselyPersistence', () => {
     );
 
     testWithFixture(
-      'null firstName / lastName / email / role are skipped; password: null clears',
+      'null firstName / lastName / email / role are skipped (password untouched)',
       async ({ deps, org }) => {
         const input = {
           ...samlUserInput(org.id),
@@ -306,11 +307,51 @@ describe('userKyselyPersistence', () => {
           expect(skipped!.email).toBe(input.email);
           expect(skipped!.role).toBe(input.role);
           expect(skipped!.password).toBe('placeholder');
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, input.id);
+        }
+      },
+    );
 
-          const cleared = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+    // NB: `kyselyUserUpdate` doesn't expose `loginMethods`, so we can't
+    // *cleanly* clear a password on a password-login user through this helper
+    // (the DB CHECK constraint — and our app-layer `validateUserCreateInput`
+    // mirror of it — requires `password IS NOT NULL ⇔ 'password' ∈ login_methods`).
+    // A SAML user already has `password: null`, so the `password: null` path
+    // is a shape-valid no-op we can verify end-to-end here.
+    testWithFixture(
+      'password: null is a valid patch and leaves the column null on a SAML user',
+      async ({ deps, org }) => {
+        const input = samlUserInput(org.id);
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        try {
+          const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
             password: null,
           });
-          expect(cleared!.password).toBeNull();
+          expect(updated!.password).toBeNull();
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, input.id);
+        }
+      },
+    );
+
+    // And conversely: trying to clear a password on a password-login user
+    // without transitioning `loginMethods` must surface the DB CHECK
+    // constraint. This protects against regressions if we ever loosen
+    // `validateUserUpdatePatch`.
+    testWithFixture(
+      "clearing password on a password-login user violates password_null_when_not_present",
+      async ({ deps, org }) => {
+        const input = {
+          ...samlUserInput(org.id),
+          loginMethods: ['password'] as const,
+          password: 'placeholder',
+        };
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        try {
+          await expect(
+            kyselyUserUpdate(deps.KyselyPg, input.id, { password: null }),
+          ).rejects.toThrow(/password_null_when_not_present/);
         } finally {
           await kyselyUserDeleteById(deps.KyselyPg, input.id);
         }
@@ -359,21 +400,26 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const ruleId = `rule-${uid()}`;
+        // `users_and_favorite_rules.rule_id` has a FK to `public.rules`, so
+        // we need a real rule row. Reuse the existing Sequelize fixture until
+        // rule fixtures are themselves Kysely-backed.
+        const rule = await createRule(deps.Sequelize, org.id, {
+          creatorId: input.id,
+        });
         try {
           expect(
             await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
           ).toEqual([]);
 
-          await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, ruleId);
+          await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
           // Second add must be a no-op (matches Sequelize `addFavoriteRules`).
-          await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, ruleId);
+          await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
 
           expect(
             await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
-          ).toEqual([ruleId]);
+          ).toEqual([rule.id]);
 
-          await kyselyUserRemoveFavoriteRule(deps.KyselyPg, input.id, ruleId);
+          await kyselyUserRemoveFavoriteRule(deps.KyselyPg, input.id, rule.id);
           expect(
             await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
           ).toEqual([]);
@@ -381,8 +427,9 @@ describe('userKyselyPersistence', () => {
           await kyselyUserRemoveFavoriteRule(
             deps.KyselyPg,
             input.id,
-            ruleId,
+            rule.id,
           ).catch(() => undefined);
+          await rule.destroy().catch(() => undefined);
           await kyselyUserDeleteById(deps.KyselyPg, input.id);
         }
       },
