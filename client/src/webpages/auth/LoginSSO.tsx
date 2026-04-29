@@ -11,6 +11,7 @@ import { toast } from '@/coop-ui/Toast';
 
 import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
+import { redirectToSsoUrl } from './ssoRedirect';
 
 import LogoBlack from '../../images/LogoBlack.png';
 
@@ -95,7 +96,7 @@ export default function LoginSSO() {
                 onCompleted: (data) => {
                   const redirectUrl = data.getSSORedirectUrl;
                   if (redirectUrl) {
-                    window.location.href = redirectUrl;
+                    redirectToSsoUrl(redirectUrl);
                   }
                 },
                 onError: (_error) => {

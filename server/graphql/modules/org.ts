@@ -784,12 +784,6 @@ const Org: GQLOrgResolvers = {
 
     return settings.cert;
   },
-  async clientSecret(org, _, context) {
-    // Never expose the real client secret — return masked value if set
-    const value = await resolveOidcField(org, context, 'client_secret');
-    return value ? '••••••••' : null;
-  },
-  
   async issuerUrl(org, _, context) {
     return resolveOidcField(org, context, 'issuer_url');
   },
@@ -942,14 +936,12 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    const oidcSettings =
-      await context.services.OrgSettingsService.getOidcSettings(user.orgId);
-
     if (!user.getPermissions().includes('MANAGE_ORG')) {
       throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
     }
+
     const oidcSettings =
       await context.services.OrgSettingsService.getOidcSettings(user.orgId);
 
@@ -975,10 +967,6 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-
-    const samlSettings =
-      await context.services.OrgSettingsService.getSamlSettings(user.orgId);
-
     if (!user.getPermissions().includes('MANAGE_ORG')) {
       throw forbiddenError(
         'User does not have permission to manage SSO settings',
@@ -1033,10 +1021,12 @@ const Mutation: GQLMutationResolvers = {
           'issuerUrl, clientId, and clientSecret are required when switching to OIDC.',
         );
       }
+      const issuerUrl = normalizeIssuerUrl(input.issuerUrl);
+
       await context.services.OrgSettingsService.switchSSOMethod({
         orgId: user.orgId,
         method: 'oidc',
-        issuerUrl: input.issuerUrl,
+        issuerUrl,
         clientId: input.clientId,
         clientSecret: input.clientSecret,
       });

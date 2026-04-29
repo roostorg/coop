@@ -6,7 +6,7 @@ import type { SSOServicePg } from './dbTypes.js';
 export class SSOService {
   constructor(
     private readonly pgQuery: Kysely<SSOServicePg>,
-    private readonly configService: { apiUrl: string },
+    private readonly configService: { apiUrl: string; uiUrl: string },
   ) {}
 
   // Throws is SSO is not enabled for an org
@@ -25,8 +25,16 @@ export class SSOService {
     if (samlEnabled) {
       return `/api/v1/saml/login/${orgId}`
     } else {
-      return `${this.configService.apiUrl}/api/v1/oidc/login/${orgId}`;
+      return `/api/v1/oidc/login/${orgId}`;
     }
+  }
+
+  getSSOSamlCallbackUrl(orgId: string): string {
+    return `${this.configService.apiUrl}/api/v1/saml/login/${orgId}/callback`;
+  }
+
+  getSSOSamlIssuer(): string {
+    return this.configService.uiUrl;
   }
 
   getSSOOidcCallbackUrl(): string {

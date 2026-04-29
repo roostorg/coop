@@ -8,6 +8,13 @@ const typeDefs = /* GraphQL */ `
     me: User @publicResolver
     getSSORedirectUrl(emailAddress: String!): String @publicResolver
     getSSOOidcCallbackUrl: String
+    getSSOCallbackUrls(orgId: String!): SSOCallbackUrls!
+  }
+
+  type SSOCallbackUrls {
+    samlCallbackUrl: String!
+    samlIssuer: String!
+    oidcCallbackUrl: String!
   }
 
   type Mutation {
@@ -70,6 +77,13 @@ const Query: ResolverMap = {
   },
   async getSSOOidcCallbackUrl(_: unknown, __: unknown, context) {
     return context.services.SSOService.getSSOOidcCallbackUrl();
+  },
+  async getSSOCallbackUrls(_: unknown, { orgId }, context) {
+    return {
+      samlCallbackUrl: context.services.SSOService.getSSOSamlCallbackUrl(orgId),
+      samlIssuer: context.services.SSOService.getSSOSamlIssuer(),
+      oidcCallbackUrl: context.services.SSOService.getSSOOidcCallbackUrl(),
+    };
   },
 };
 
