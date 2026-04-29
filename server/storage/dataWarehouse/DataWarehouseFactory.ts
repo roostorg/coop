@@ -27,6 +27,7 @@ import {
   type DataWarehouseProvider as IDataWarehouseProvider,
   type TransactionFunction,
 } from './IDataWarehouse.js';
+import { type Kysely } from 'kysely';
 import type {
   AnalyticsSchema,
   BulkWriteConfig,
@@ -70,6 +71,22 @@ export type DataWarehouseConfig =
       provider: 'noop';
       analyticsProvider?: AnalyticsProvider;
     };
+
+class NoOpKyselyDialect implements IDataWarehouseDialect {
+  getKyselyInstance(): Kysely<any> {
+    // Return a proxy that throws only when a query is actually executed,
+    // allowing services to hold a reference without crashing at startup.
+    return new Proxy({} as Kysely<any>, {
+      get(_target, prop) {
+        if (prop === 'destroy') return async () => {};
+        return () => {
+          throw new Error('NoOp dialect: Kysely queries are not supported');
+        };
+      },
+    });
+  }
+  async destroy(): Promise<void> {}
+}
 
 class WarehouseAdapterBridge implements IDataWarehouse {
   constructor(
@@ -225,7 +242,7 @@ export class DataWarehouseFactory {
       case 'postgresql':
         throw new Error('PostgreSQL Kysely dialect not yet implemented');
       case 'noop':
-        throw new Error('NoOp provider does not support Kysely dialect');
+        return new NoOpKyselyDialect();
       default:
         return assertUnreachable(
           config,
