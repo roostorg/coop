@@ -6,7 +6,6 @@ import { getConditionSetResults } from '../condition_evaluator/conditionSet.js';
 import makeGetDerivedFieldValueWithCache from '../condition_evaluator/getDerivedFieldValue.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
-import { type ConditionSetWithResult } from '../models/rules/RuleModel.js';
 import {
   type DerivedFieldSpec,
   type DerivedFieldValue,
@@ -14,6 +13,7 @@ import {
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
 import {
   type ConditionSet,
+  type ConditionSetWithResult,
   type ItemType,
 } from '../services/moderationConfigService/index.js';
 import { type TransientRunSignalWithCache } from '../services/orgAwareSignalExecutionService/index.js';

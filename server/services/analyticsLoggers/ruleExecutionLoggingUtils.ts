@@ -1,14 +1,14 @@
 import { type ReadonlyDeep } from 'type-fest';
 
 import { isConditionSet } from '../../condition_evaluator/condition.js';
+import { type LocationArea } from '../../models/types/locationArea.js';
+import { type DerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import {
   type ConditionResult,
   type ConditionSetWithResult,
+  type CoopInput,
   type LeafConditionWithResult,
-} from '../../models/rules/RuleModel.js';
-import { type LocationArea } from '../../models/types/locationArea.js';
-import { type DerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
-import { type CoopInput } from '../../services/moderationConfigService/index.js';
+} from '../../services/moderationConfigService/index.js';
 import { isSignalId } from '../../services/signalsService/index.js';
 import { type CorrelationId } from '../../utils/correlationIds.js';
 import { jsonParse, tryJsonParse, type JsonOf } from '../../utils/encoding.js';

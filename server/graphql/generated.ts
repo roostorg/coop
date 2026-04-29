@@ -20,12 +20,7 @@ import type { ReportingInsights } from '../graphql/modules/reporting.js';
 import type { HashBank } from '../models/HashBankModel.js';
 import type { Backtest } from '../models/rules/BacktestModel.js';
 import type { ItemType } from '../models/rules/ItemTypeModel.js';
-import type {
-  ConditionSetWithResult,
-  ConditionWithResult,
-  LeafConditionWithResult,
-  Rule,
-} from '../models/rules/RuleModel.js';
+import type { Rule } from '../models/rules/RuleModel.js';
 import type { User } from '../models/UserModel.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
@@ -46,7 +41,10 @@ import type { RoutingRuleWithoutVersion } from '../services/manualReviewToolServ
 import type {
   Condition,
   ConditionSet,
+  ConditionSetWithResult,
+  ConditionWithResult,
   LeafCondition,
+  LeafConditionWithResult,
 } from '../services/moderationConfigService/index.js';
 import type {
   CustomAction,

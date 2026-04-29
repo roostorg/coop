@@ -3,10 +3,8 @@ import fc, { type Arbitrary } from 'fast-check';
 import { outcomeToNullableBool } from '../../condition_evaluator/condition.js';
 import {
   ConditionCompletionOutcome,
-  ConditionFailureOutcome,
-} from '../../models/rules/RuleModel.js';
-import {
   ConditionConjunction,
+  ConditionFailureOutcome,
   ValueComparator,
   type ConditionInput,
   type ConditionSet,

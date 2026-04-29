@@ -114,11 +114,11 @@ generates:
         # `buildGraphqlRuleParent` casts to it at the boundary.
         Rule: ../models/rules/RuleModel.js#Rule
         Condition: ../services/moderationConfigService/index.js#Condition
-        ConditionWithResult: ../models/rules/RuleModel.js#ConditionWithResult
+        ConditionWithResult: ../services/moderationConfigService/index.js#ConditionWithResult
         ConditionSet: ../services/moderationConfigService/index.js#ConditionSet
-        ConditionSetWithResult: ../models/rules/RuleModel.js#ConditionSetWithResult
+        ConditionSetWithResult: ../services/moderationConfigService/index.js#ConditionSetWithResult
         LeafCondition: ../services/moderationConfigService/index.js#LeafCondition
-        LeafConditionWithResult: ../models/rules/RuleModel.js#LeafConditionWithResult
+        LeafConditionWithResult: ../services/moderationConfigService/index.js#LeafConditionWithResult
         UserRule: ../models/rules/RuleModel.js#Rule
         ContentRule: ../models/rules/RuleModel.js#Rule
         RuleInsights: ../models/rules/RuleModel.js#Rule

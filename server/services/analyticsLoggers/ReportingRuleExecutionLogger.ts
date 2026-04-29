@@ -3,9 +3,9 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type ConditionSetWithResult } from '../../models/rules/RuleModel.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type ItemSubmission } from '../../services/itemProcessingService/index.js';
+import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import { type ReportingRuleExecutionCorrelationId } from '../../services/reportingService/index.js';
 import { fromCorrelationId } from '../../utils/correlationIds.js';
 import { jsonStringify } from '../../utils/encoding.js';

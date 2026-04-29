@@ -3,7 +3,7 @@ import { type DateString } from '@roostorg/types';
 
 import _ from 'lodash';
 
-import { type ConditionSetWithResult } from '../../models/rules/RuleModel.js';
+import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import {
   getFieldValueForRole,
   type ItemSubmission,

@@ -16,14 +16,12 @@
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
-import {
-  ConditionCompletionOutcome,
-  ConditionFailureOutcome,
-  type ConditionOutcome,
-} from '../models/rules/RuleModel.js';
 import { getFieldDerivationCost } from '../services/derivedFieldsService/index.js';
 import {
   type Condition,
+  ConditionCompletionOutcome,
+  ConditionFailureOutcome,
+  type ConditionOutcome,
   type ConditionSet,
 } from '../services/moderationConfigService/index.js';
 import { type SignalId } from '../services/signalsService/index.js';
