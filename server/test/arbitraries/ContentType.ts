@@ -47,7 +47,7 @@ export const GeohashArbitrary = fc
   });
 
 export const DateStringArbitrary = fc
-  .date()
+  .date({ noInvalidDate: true })
   .map((date) => makeDateString(date.toISOString())!);
 
 // Id-like fields allow numbers and strings as inputs, but the normalized

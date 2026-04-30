@@ -24,6 +24,7 @@ gql`
           role
           orgId
           samlEnabled
+          oidcEnabled
         }
       }
       ... on InviteUserTokenExpiredError {
@@ -130,6 +131,21 @@ export default function SignUp() {
             orgId: tokenInfo.orgId,
             inviteUserToken: token!,
             loginMethod: 'SAML',
+          },
+        },
+      });
+    } else if (tokenInfo.oidcEnabled) {
+      // OIDC-enabled signup
+      await signUp({
+        variables: {
+          input: {
+            email: tokenInfo.email,
+            firstName,
+            lastName,
+            role: tokenInfo.role,
+            orgId: tokenInfo.orgId,
+            inviteUserToken: token!,
+            loginMethod: 'OIDC',
           },
         },
       });
@@ -240,7 +256,7 @@ export default function SignUp() {
             />
           </div>
 
-          {!tokenInfo.samlEnabled && (
+          {(!tokenInfo.samlEnabled && !tokenInfo.oidcEnabled) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
@@ -256,13 +272,13 @@ export default function SignUp() {
 
           <div className="w-full">
             <CoopButton
-              title={tokenInfo.samlEnabled ? 'Create Account' : 'Sign Up'}
+              title={(tokenInfo.samlEnabled || tokenInfo.oidcEnabled) ? 'Create Account' : 'Sign Up'}
               onClick={onSignUp}
               loading={signUpLoading}
               disabled={
                 !firstName ||
                 !lastName ||
-                (!tokenInfo.samlEnabled && (!password || password.length < 8))
+                ((!tokenInfo.samlEnabled && !tokenInfo.oidcEnabled) && (!password || password.length < 8))
               }
               size="large"
             />

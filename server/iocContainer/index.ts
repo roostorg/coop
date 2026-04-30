@@ -422,7 +422,7 @@ export interface Dependencies {
   Tracer: SafeTracer;
   Meter: CoopMeter;
   KeyValueStore: StringNumberKeyValueStore;
-  ConfigService: { uiUrl: string };
+  ConfigService: { uiUrl: string; apiUrl: string };
 }
 
 // Takes a class and returns a type that just contains its public methods and
@@ -1475,7 +1475,7 @@ export default async function getBottle() {
     'SigningKeyPairStorageService',
     (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
   );
-  bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
+  bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL'), apiUrl: safeGetEnvVar('API_BASE_URL') });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
   bottle.factory('sendEmail', makeSendEmail);
   register(bottle, 'KeyValueStore', makeKeyValueStore);

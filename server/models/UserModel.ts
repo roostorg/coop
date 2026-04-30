@@ -40,7 +40,7 @@ const makeUserModel = (sequelize: Sequelize, DataTypes: DataTypes) => {
     public declare rejectedByAdmin: CreationOptional<boolean>;
     public declare createdAt: Date;
     public declare updatedAt: Date;
-    public declare loginMethods: ('password' | 'saml')[];
+    public declare loginMethods: ('password' | 'saml' | 'oidc')[];
 
     // Have to use any below to avoid circular type errors
     /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -138,7 +138,7 @@ const makeUserModel = (sequelize: Sequelize, DataTypes: DataTypes) => {
         defaultValue: false,
       },
       loginMethods: {
-        type: DataTypes.ARRAY(DataTypes.ENUM('password', 'saml')),
+        type: DataTypes.ARRAY(DataTypes.ENUM('password', 'saml', 'oidc')),
         defaultValue: ['password'],
         allowNull: false,
       },

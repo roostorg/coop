@@ -3,9 +3,11 @@ import { Label } from '@/coop-ui/Label';
 import { useGQLGetSsoRedirectUrlLazyQuery } from '@/graphql/generated';
 import { gql } from '@apollo/client';
 import { Input } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+
+import { toast } from '@/coop-ui/Toast';
 
 import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
@@ -27,6 +29,16 @@ export default function LoginSSO() {
   const [errorModalVisible, setErrorModalVisible] = useState(false);
 
   const [getSSORedirectUrl, { loading }] = useGQLGetSsoRedirectUrlLazyQuery();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error === 'access_denied') {
+      toast.error('SSO login was cancelled. Please try again.');
+    } else if (error) {
+      toast.error('SSO login failed. Please try again or contact your administrator.');
+    }
+  }, []);
   const errorModal = (
     <CoopModal
       title={'SSO Unavailable'}
