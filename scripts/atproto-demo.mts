@@ -71,6 +71,36 @@ if (hasFlag('--help') || hasFlag('-h')) {
   process.exit(0);
 }
 
+// --- Bluesky profile cache ---------------------------------------------------
+
+interface BlueskyProfile {
+  handle: string;
+  displayName?: string;
+}
+
+const profileCache = new Map<string, BlueskyProfile>();
+
+async function fetchProfile(did: string): Promise<BlueskyProfile> {
+  const cached = profileCache.get(did);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(did)}`,
+    );
+    if (!response.ok) throw new Error(`${response.status}`);
+    const data = (await response.json()) as {
+      handle: string;
+      displayName?: string;
+    };
+    const profile: BlueskyProfile = { handle: data.handle, displayName: data.displayName };
+    profileCache.set(did, profile);
+    return profile;
+  } catch {
+    return { handle: did };
+  }
+}
+
 // --- Types for Jetstream messages --------------------------------------------
 
 interface JetstreamCommit {
@@ -138,7 +168,9 @@ interface CoopItem {
   data: {
     text: string;
     url: string;
-    authorHandle: string;
+    did: string;
+    handle: string;
+    displayName?: string;
     langs?: string;
     createdAt?: string;
     replyTo?: string;
@@ -153,19 +185,22 @@ function buildBskyUrl(did: string, rkey: string): string {
   return `https://bsky.app/profile/${did}/post/${rkey}`;
 }
 
-function postToCoopItem(
+async function postToCoopItem(
   did: string,
   rkey: string,
   record: BlueskyPost,
-): CoopItem {
+): Promise<CoopItem> {
   const atUri = buildAtUri(did, rkey);
+  const profile = await fetchProfile(did);
   return {
     id: atUri,
     typeId: postTypeId as string,
     data: {
       text: record.text,
       url: buildBskyUrl(did, rkey),
-      authorHandle: did,
+      did,
+      handle: profile.handle,
+      ...(profile.displayName ? { displayName: profile.displayName } : {}),
       ...(record.langs?.length ? { langs: record.langs.join(', ') } : {}),
       ...(record.createdAt ? { createdAt: record.createdAt } : {}),
       ...(record.reply ? { replyTo: record.reply.parent.uri } : {}),
@@ -256,19 +291,18 @@ function connect() {
         return;
       }
 
-      const item = postToCoopItem(msg.did, msg.commit.rkey, record);
-
-      if (dryRun) {
-        logStatus('DRY RUN', record.text);
-        console.log('  Would submit:', JSON.stringify(item, null, 2));
-        submitted++;
-        return;
-      }
-
-      submitToCoop(item)
-        .then(() => {
-          submitted++;
-          logStatus('Submitted', record.text);
+      postToCoopItem(msg.did, msg.commit.rkey, record)
+        .then((item) => {
+          if (dryRun) {
+            logStatus('DRY RUN', record.text);
+            console.log('  Would submit:', JSON.stringify(item, null, 2));
+            submitted++;
+            return;
+          }
+          return submitToCoop(item).then(() => {
+            submitted++;
+            logStatus('Submitted', record.text);
+          });
         })
         .catch((err: unknown) => {
           errors++;
