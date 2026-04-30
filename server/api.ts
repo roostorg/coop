@@ -230,7 +230,7 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user.toJSON() as Record<string, unknown>);
+          return done(null, user);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -253,7 +253,7 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user.toJSON() as Record<string, unknown>);
+          return done(null, user);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
