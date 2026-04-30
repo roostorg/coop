@@ -74,8 +74,8 @@ export type DataWarehouseConfig =
 
 class NoOpKyselyDialect implements IDataWarehouseDialect {
   getKyselyInstance(): Kysely<any> {
-    // Return a proxy that throws only when a query is actually executed,
-    // allowing services to hold a reference without crashing at startup.
+    // Return a proxy so services can hold a Kysely reference without
+    // crashing at startup; any attempt to build or execute a query throws.
     return new Proxy({} as Kysely<any>, {
       get(_target, prop) {
         if (prop === 'destroy') return async () => {};
