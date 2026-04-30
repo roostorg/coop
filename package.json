@@ -19,7 +19,8 @@
     "prepare": "husky install",
     "lint": "cd client && npm run lint; cd ../server && npm run lint",
     "up": "docker compose up --detach postgres clickhouse hma scylla redis otel-collector && open http://localhost:16686",
-    "down": "docker compose down"
+    "down": "docker compose down",
+    "atproto:demo": "TS_NODE_PROJECT=server/tsconfig.json node --loader ts-node/esm scripts/atproto-demo.mts"
   },
   "dependencies": {
     "@graphiql/create-fetcher": "^0.1.0",
