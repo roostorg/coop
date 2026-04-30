@@ -19,7 +19,7 @@
  *   --api-key        Coop API key (from `npm run create-org`)           [required]
  *   --post-type-id   Bluesky Post item type ID (from atproto:setup)     [required]
  *   --coop-url       Base URL of the Coop server  [default: http://localhost:3000]
- *   --rate-limit     Max posts submitted per minute                     [default: 10]
+ *   --rate-limit     Max posts submitted per minute                     [default: 100]
  *   --dry-run        Print submissions without sending them to Coop
  *   --langs          Comma-separated language codes to filter (e.g. en,es)
  */
@@ -50,7 +50,7 @@ function hasFlag(flag: string): boolean {
 const apiKey = getArg('--api-key');
 const postTypeId = getArg('--post-type-id');
 const coopUrl = getArg('--coop-url') ?? 'http://localhost:3000';
-const rateLimit = Number(getArg('--rate-limit') ?? '10');
+const rateLimit = Number(getArg('--rate-limit') ?? '100');
 const dryRun = hasFlag('--dry-run');
 const langsFilter = getArg('--langs')
   ? new Set((getArg('--langs') as string).split(',').map((l) => l.trim()))
