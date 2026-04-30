@@ -100,19 +100,14 @@ class RuleEngine {
     executionsCorrelationId: RuleExecutionCorrelationId,
     sync: boolean = false,
   ) {
-    // enabledRules can be null when the contentType can't be found.
-    // getEnabledRulesForContentTypeEventuallyConsistent has `null` in its
-    // return type primarily in case the contentTypeId points to a content type
-    // that doesn't exist. However, even though we know that the contentTypeId
-    // is for a content type that does exist (because we have the full
-    // ContentType model object), we still must handle `null` b/c it could be
-    // that contentType was _just_ created and can't be seen yet by
-    // getEnabledRulesForContentTypeEventuallyConsistent, which, as the name
-    // implies, is eventually consistent.
+    // enabledRules will be an empty array when the contentType can't be found
+    // or has no rules attached. getEnabledRulesForItemTypeEventuallyConsistent
+    // is, as the name implies, eventually consistent, so a content type that
+    // was just created may not yet be visible.
     const enabledRules =
-      (await this.getEnabledRulesForItemTypeEventuallyConsistent(
+      await this.getEnabledRulesForItemTypeEventuallyConsistent(
         itemSubmission.itemType.id,
-      )) ?? [];
+      );
 
     const [liveRules, backgroundRules] = partition(
       enabledRules,
