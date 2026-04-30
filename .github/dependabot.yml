@@ -2,6 +2,10 @@
 # package ecosystems to update and where the package manifests are located.
 # Please see the documentation for all configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Major version updates are disabled for now across every ecosystem/directory.
+# Security updates are unaffected (Dependabot ignores `ignore` rules for
+# security advisories), so majors still land when they fix a vulnerability.
 
 version: 2
 updates:
@@ -16,7 +20,7 @@ updates:
     schedule:
       interval: "weekly"
     ignore:
-      - dependency-name: "node"
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
   # Enable version updates for npm
@@ -24,6 +28,9 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       root-prod-security:
         dependency-type: 'production'
@@ -45,6 +52,9 @@ updates:
     directory: '/db'
     schedule:
       interval: 'weekly'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       db-prod-security:
         dependency-type: 'production'
@@ -66,6 +76,9 @@ updates:
     directory: '/migrator'
     schedule:
       interval: 'weekly'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       migrator-prod-security:
         dependency-type: 'production'
@@ -87,6 +100,9 @@ updates:
     directory: '/server'
     schedule:
       interval: 'weekly'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       server-prod-security:
         dependency-type: 'production'
@@ -108,6 +124,9 @@ updates:
     directory: '/client'
     schedule:
       interval: 'weekly'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       client-prod-security:
         dependency-type: 'production'
@@ -129,6 +148,9 @@ updates:
     directory: '/nodejs-instrumentation'
     schedule:
       interval: 'weekly'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       nodejs-instrumentation-prod-security:
         dependency-type: 'production'
