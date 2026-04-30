@@ -579,7 +579,7 @@ describe('ModerationConfigService', () => {
 
         it('should round-trip a non-null customMrtApiParams value', async () => {
           const action = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(),
+            name: faker.random.alphaNumeric(16),
             description: null,
             type: 'CUSTOM_ACTION',
             callbackUrl: 'https://example.com',
@@ -624,7 +624,7 @@ describe('ModerationConfigService', () => {
       describe('#updateCustomAction', () => {
         const testWithAction = makeTestWithFixture(async () => {
           const action = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(),
+            name: faker.random.alphaNumeric(16),
             description: 'before',
             type: 'CUSTOM_ACTION',
             callbackUrl: 'https://before.example.com',
@@ -743,7 +743,7 @@ describe('ModerationConfigService', () => {
           'should reject renaming onto an existing action name',
           async ({ action }) => {
             const other = await sutWithPrimary.createAction(dummyOrgId, {
-              name: faker.random.alphaNumeric(),
+              name: faker.random.alphaNumeric(16),
               description: null,
               type: 'CUSTOM_ACTION',
               callbackUrl: 'https://example.com',
@@ -778,7 +778,7 @@ describe('ModerationConfigService', () => {
               {
                 schema: dummySchema,
                 description: null,
-                name: faker.random.alphaNumeric(),
+                name: faker.random.alphaNumeric(16),
                 schemaFieldRoles: { displayName: 'fakeField' },
               },
             );
@@ -787,7 +787,7 @@ describe('ModerationConfigService', () => {
               {
                 schema: dummySchema,
                 description: null,
-                name: faker.random.alphaNumeric(),
+                name: faker.random.alphaNumeric(16),
                 schemaFieldRoles: { displayName: 'fakeField' },
               },
             );
@@ -853,7 +853,7 @@ describe('ModerationConfigService', () => {
       describe('#deleteCustomAction', () => {
         const testWithAction = makeTestWithFixture(async () => {
           const action = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(),
+            name: faker.random.alphaNumeric(16),
             description: null,
             type: 'CUSTOM_ACTION',
             callbackUrl: 'https://example.com',
@@ -936,7 +936,7 @@ describe('ModerationConfigService', () => {
               {
                 schema: dummySchema,
                 description: null,
-                name: faker.random.alphaNumeric(),
+                name: faker.random.alphaNumeric(16),
                 schemaFieldRoles: { displayName: 'fakeField' },
               },
             );
@@ -988,14 +988,14 @@ describe('ModerationConfigService', () => {
         const itemType = await sutWithPrimary.createContentType(dummyOrgId, {
           schema: dummySchema,
           description: null,
-          name: faker.random.alphaNumeric(),
+          name: faker.random.alphaNumeric(16),
           schemaFieldRoles: { displayName: 'fakeField' },
         });
 
         const viaJunctionAction = await sutWithPrimary.createAction(
           dummyOrgId,
           {
-            name: faker.random.alphaNumeric(),
+            name: faker.random.alphaNumeric(16),
             description: null,
             type: 'CUSTOM_ACTION',
             callbackUrl: 'https://example.com',
@@ -1008,7 +1008,7 @@ describe('ModerationConfigService', () => {
         const viaAppliesAllAction = await sutWithPrimary.createAction(
           dummyOrgId,
           {
-            name: faker.random.alphaNumeric(),
+            name: faker.random.alphaNumeric(16),
             description: null,
             type: 'CUSTOM_ACTION',
             callbackUrl: 'https://example.com',
@@ -1023,7 +1023,7 @@ describe('ModerationConfigService', () => {
 
         // Action satisfying both branches; result should still include it once.
         const viaBothAction = await sutWithPrimary.createAction(dummyOrgId, {
-          name: faker.random.alphaNumeric(),
+          name: faker.random.alphaNumeric(16),
           description: null,
           type: 'CUSTOM_ACTION',
           callbackUrl: 'https://example.com',
@@ -1116,7 +1116,7 @@ describe('ModerationConfigService', () => {
       const testWithRuleAndAction = makeTestWithFixture(async () => {
         const rule = await createRule(container.Sequelize, dummyOrgId);
         const action = await sutWithPrimary.createAction(dummyOrgId, {
-          name: faker.random.alphaNumeric(),
+          name: faker.random.alphaNumeric(16),
           description: null,
           type: 'CUSTOM_ACTION',
           callbackUrl: 'https://example.com',
@@ -1440,7 +1440,7 @@ describe('ModerationConfigService', () => {
       const itemType = await sutWithPrimary.createContentType(dummyOrgId, {
         schema: dummySchema,
         description: null,
-        name: faker.random.alphaNumeric(),
+        name: faker.random.alphaNumeric(16),
         schemaFieldRoles: {
           displayName: 'fakeField',
         },
@@ -1461,7 +1461,7 @@ describe('ModerationConfigService', () => {
       const itemType = await sutWithPrimary.createContentType(dummyOrgId, {
         schema: dummySchema,
         description: null,
-        name: faker.random.alphaNumeric(),
+        name: faker.random.alphaNumeric(16),
         schemaFieldRoles: {
           displayName: 'fakeField',
         },
@@ -1469,7 +1469,7 @@ describe('ModerationConfigService', () => {
 
       const newItemType = await sutWithPrimary.updateContentType(dummyOrgId, {
         id: itemType.id,
-        name: faker.random.alphaNumeric(),
+        name: faker.random.alphaNumeric(16),
         schemaFieldRoles: {
           creatorId: undefined,
         },
@@ -1546,7 +1546,7 @@ describe('ModerationConfigService', () => {
       async ({ itemType }) => {
         await sutWithPrimary.updateContentType(dummyOrgId, {
           id: itemType.id,
-          name: faker.random.alphaNumeric(),
+          name: faker.random.alphaNumeric(16),
           schemaFieldRoles: {
             creatorId: undefined,
           },
