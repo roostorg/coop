@@ -6,7 +6,7 @@ import {
   type Action,
   type Policy,
 } from '../../services/moderationConfigService/index.js';
-import { type User } from '../UserModel.js';
+import { type GraphQLUserParent } from '../../graphql/datasources/userKyselyPersistence.js';
 
 export type RuleLatestVersionRow = {
   ruleId: string;
@@ -50,7 +50,7 @@ export function computeRuleStatusFromRow(
 }
 
 export type RuleGraphqlMethods = {
-  getCreator(): Promise<User>;
+  getCreator(): Promise<GraphQLUserParent>;
   getActions(): Promise<Action[]>;
   getPolicies(): Promise<Policy[]>;
 };

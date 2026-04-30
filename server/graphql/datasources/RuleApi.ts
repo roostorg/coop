@@ -8,7 +8,6 @@ import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type Backtest } from '../../models/rules/BacktestModel.js';
-import { type User } from '../../models/UserModel.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
@@ -68,6 +67,10 @@ import {
   kyselyListBacktestsForRule,
   kyselyUpdateRule,
 } from './ruleKyselyPersistence.js';
+import {
+  type GraphQLUserParent,
+  kyselyUserFindByIdAndOrg,
+} from './userKyselyPersistence.js';
 import { locationAreaInputToLocationArea } from './LocationBankApi.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
@@ -302,7 +305,6 @@ class RuleAPI {
     public readonly ruleInsights: Dependencies['RuleActionInsights'],
     private readonly actionStats: Dependencies['ActionStatisticsService'],
     private readonly kyselyPg: Dependencies['KyselyPg'],
-    private readonly models: Dependencies['Sequelize'],
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
@@ -315,10 +317,8 @@ class RuleAPI {
     );
     this.graphQlRuleParentDeps = {
       moderationConfigService: this.moderationConfigService,
-      // TODO(Kysely migration): replace with a ModerationConfigService /
-      // user-service-backed lookup once users are migrated off Sequelize.
       findUserByIdAndOrg: async (opts) =>
-        this.models.User.findOne({ where: opts.where }),
+        kyselyUserFindByIdAndOrg(this.kyselyPg, opts),
     };
   }
 
@@ -667,7 +667,10 @@ class RuleAPI {
    * `ruleKyselyPersistence.ts`, and the deleted private helpers (`getContentItemTypeIdsForRule`,
    * `runSampledRuleExecutions`, `queryWarehouseSubmissionsForRule`).
    */
-  async createBacktest(_input: GQLCreateBacktestInput, _user: User): Promise<Backtest> {
+  async createBacktest(
+    _input: GQLCreateBacktestInput,
+    _user: GraphQLUserParent,
+  ): Promise<Backtest> {
     throw new Error(
       'createBacktest is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
     );
@@ -777,7 +780,10 @@ class RuleAPI {
    * TODO(BACKTEST_RETROACTION): Same as `createBacktest` — re-enable when UI and env
    * support validation.
    */
-  async runRetroaction(_input: GQLRunRetroactionInput, _user: User): Promise<{ _: boolean }> {
+  async runRetroaction(
+    _input: GQLRunRetroactionInput,
+    _user: GraphQLUserParent,
+  ): Promise<{ _: boolean }> {
     throw new Error(
       'runRetroaction is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
     );
@@ -856,7 +862,6 @@ export default inject(
     'RuleActionInsights',
     'ActionStatisticsService',
     'KyselyPg',
-    'Sequelize',
     'ModerationConfigService',
     'Tracer',
     'SignalsService',
