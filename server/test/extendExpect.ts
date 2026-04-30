@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
-import jestSnapshot from 'jest-snapshot';
+import jestSnapshot, { type Context as SnapshotContext } from 'jest-snapshot';
 import { JSONPath } from 'jsonpath-plus';
 import lodash from 'lodash';
 
@@ -41,7 +41,11 @@ declare global {
 }
 
 expect.extend({
-  toMatchDynamicSnapshot(received, propertyMatchers: object, hint?: string) {
+  toMatchDynamicSnapshot(
+    received,
+    propertyMatchers: object,
+    hint?: string,
+  ): jest.CustomMatcherResult | Promise<jest.CustomMatcherResult> {
     // Treat property matcher keys as jsonpath queries
     // if they start with a $ and contain a dot.
     const isJsonPath = (it: string) => it[0] === '$' && it.includes('.');
@@ -63,8 +67,8 @@ expect.extend({
       }
     });
 
-    return (toMatchSnapshot as any).call(
-      this,
+    return toMatchSnapshot.call(
+      this as SnapshotContext,
       received,
       generatedPropertyMatchers,
       hint,

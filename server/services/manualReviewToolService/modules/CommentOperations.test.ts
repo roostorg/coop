@@ -6,6 +6,7 @@ import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
 import CommentOperations from './CommentOperations.js';
+import { type JobId } from '../manualReviewToolService.js';
 
 describe('CommentOperations', () => {
   const testWithFixtures = makeTestWithFixture(async () => {
@@ -54,7 +55,7 @@ describe('CommentOperations', () => {
       .insertInto('manual_review_tool.job_creations')
       .values([
         {
-          id: jobId1 as any,
+          id: jobId1 as JobId,
           org_id: orgId,
           item_id: itemId,
           item_type_id: itemTypeId,
@@ -63,7 +64,7 @@ describe('CommentOperations', () => {
           enqueue_source_info: {},
         },
         {
-          id: jobId2 as any,
+          id: jobId2 as JobId,
           org_id: orgId,
           item_id: itemId,
           item_type_id: itemTypeId,
@@ -120,8 +121,7 @@ describe('CommentOperations', () => {
       async ({ commentOps, orgId }) => {
         const nonExistentJobId = uuidv1();
 
-        // Access private method for testing
-        const result = await (commentOps as any).getRelatedJobIds({
+        const result = await commentOps['getRelatedJobIds']({
           orgId,
           jobId: nonExistentJobId,
         });
@@ -133,7 +133,7 @@ describe('CommentOperations', () => {
     testWithFixtures(
       'should return all related job IDs when job found in job_creations',
       async ({ commentOps, orgId, jobId1, jobId2 }) => {
-        const result = await (commentOps as any).getRelatedJobIds({
+        const result = await commentOps['getRelatedJobIds']({
           orgId,
           jobId: jobId1,
         });

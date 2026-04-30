@@ -30,10 +30,10 @@ describe('Signal Execution Service', () => {
 
   // eslint-disable-next-line functional/immutable-data
   mockLocationsLoader.close = jest.fn();
-  // eslint-disable-next-line functional/immutable-data
+  /* eslint-disable functional/immutable-data, @typescript-eslint/no-explicit-any */
   (mockTextBankStringsLoader as any).close = jest.fn();
-  // eslint-disable-next-line functional/immutable-data, @typescript-eslint/no-explicit-any
   (mockGetImageBank as any).close = jest.fn();
+  /* eslint-enable functional/immutable-data, @typescript-eslint/no-explicit-any */
 
   describe('getTransientRunSignalWithCache', () => {
     beforeAll(async () => {
@@ -133,10 +133,13 @@ describe('Signal Execution Service', () => {
       // signals don't hit the network. (The point of the mock is just so we can
       // spy on how many times runSignal was called.)
       const signalsServiceSpy = (await getBottle()).container.SignalsService;
-      // eslint-disable-next-line functional/immutable-data
+      /* eslint-disable functional/immutable-data, @typescript-eslint/no-explicit-any --
+         jest.fn doesn't preserve the original method's overloads, so we need
+         a cast to assign back onto the typed "runSignal" property. */
       signalsServiceSpy.runSignal = jest.fn(
         signalsServiceSpy.runSignal.bind(signalsServiceSpy),
       ) as any;
+      /* eslint-enable functional/immutable-data, @typescript-eslint/no-explicit-any */
 
       const runSignal = makeGetTransientRunSignalWithCache(
         mockLocationsLoader,

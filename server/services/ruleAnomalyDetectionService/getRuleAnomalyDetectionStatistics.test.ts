@@ -13,7 +13,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
   let queryMock: MockedFn<
     (
       query: string,
-      tracer: any,
+      tracer: unknown,
       binds?: readonly unknown[],
     ) => Promise<unknown[]>
   >;
@@ -33,6 +33,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
 
     // Scope of this is just the test suite, so mutation should be ok.
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jest.fn() defaults to a generic call signature; cast lets us use the typed "queryMock" declared above.
     queryMock = jest.fn() as any;
     queryMock.mockResolvedValue(queryResult);
 
@@ -48,6 +49,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
 
     getRulePassStatistics = makeGetRuleAnomalyDetectionStatistics(
       dataWarehouseMock,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the second injected arg (tracer) is unused by this code path; passing an empty object stub.
       {} as any,
     );
   });
