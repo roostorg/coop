@@ -79,6 +79,8 @@ class NoOpKyselyDialect implements IDataWarehouseDialect {
     return new Proxy({} as Kysely<any>, {
       get(_target, prop) {
         if (prop === 'destroy') return async () => {};
+        if (prop === 'then') return undefined; // not thenable
+        if (typeof prop === 'symbol') return undefined;
         return () => {
           throw new Error('NoOp dialect: Kysely queries are not supported');
         };
