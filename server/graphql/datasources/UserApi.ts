@@ -75,14 +75,10 @@ class UserAPI {
     return kyselyUserFindByIds(this.kyselyPg, ids);
   }
 
-<<<<<<< fix-eslint-server
   async login(
     params: GQLMutationLoginArgs,
-    context: PassportContext<TUser, { email: string; password: string }>,
+    context: PassportContext<GraphQLUserParent, { email: string; password: string }>,
   ) {
-=======
-  async login(params: any, context: PassportContext<GraphQLUserParent, any>) {
->>>>>>> main
     const credentials = safePick(params.input, ['email', 'password']);
 
     // NB: this will throw for bad credentials; will be handled in the resolver.
@@ -108,11 +104,7 @@ class UserAPI {
     }
   }
 
-<<<<<<< fix-eslint-server
-  async signUp(params: GQLMutationSignUpArgs, _: unknown) {
-=======
-  async signUp(params: any, _: any): Promise<GraphQLUserParent> {
->>>>>>> main
+  async signUp(params: GQLMutationSignUpArgs, _: unknown): Promise<GraphQLUserParent> {
     const { role } = params.input;
     const {
       email,
