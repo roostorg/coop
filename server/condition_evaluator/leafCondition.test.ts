@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 
-import { ConditionCompletionOutcome } from '../models/rules/RuleModel.js';
 import type { RuleEvaluationContext } from '../rule_engine/RuleEvaluator.js';
+import { ConditionCompletionOutcome } from '../services/moderationConfigService/index.js';
 import { SignalType } from '../services/signalsService/index.js';
 import {
   LeafConditionArbitrary,

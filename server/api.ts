@@ -38,8 +38,9 @@ import { passwordMatchesHash } from './services/userManagementService/index.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { type Dependencies } from './iocContainer/index.js';
-import { safeGetEnvInt } from './iocContainer/utils.js';
+import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
+import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
   ErrorType,
@@ -139,12 +140,21 @@ export default async function makeApiServer(deps: Dependencies) {
     DATABASE_PASSWORD,
   } = process.env;
 
-  const connectionString = `postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}`;
+  const conObject = {
+    host: DATABASE_HOST,
+    port: Number(DATABASE_PORT),
+    user: DATABASE_USER,
+    password: DATABASE_PASSWORD,
+    database: DATABASE_NAME,
+    // NB: `rejectUnauthorized: false` keeps the connection encrypted but skips
+    // certificate validation.
+    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+  };
 
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ conString: connectionString }),
+      store: new sessionStore({ conObject }),
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -448,9 +458,16 @@ export default async function makeApiServer(deps: Dependencies) {
   Object.entries(controllers).forEach(([_k, controller]) => {
     controller.routes.forEach((it) => {
       const handler = it.handler(deps);
+      const handlers = Array.isArray(handler) ? handler : [handler];
+      // If the route declares a bodySchema, validate the request body against
+      // it before any handler runs. Routes without a schema (e.g., GETs) skip
+      // validation entirely.
+      const middlewares = it.bodySchema
+        ? [createBodySchemaValidator(it.bodySchema), ...handlers]
+        : handlers;
       app[it.method](
         path.join(controller.pathPrefix, it.path),
-        ...(Array.isArray(handler) ? handler : [handler]),
+        ...middlewares,
       );
     });
   });

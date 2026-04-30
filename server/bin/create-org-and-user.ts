@@ -37,6 +37,12 @@ const argv = await yargs(hideBin(process.argv))
       type: 'string',
       demandOption: true,
       description: 'Organization website URL',
+      coerce: (value: string) => {
+        if (!/^https?:\/\//i.test(value)) {
+          return `https://${value}`;
+        }
+        return value;
+      },
     },
     firstName: {
       type: 'string',
@@ -65,26 +71,25 @@ async function createOrgAndUser() {
     const orgId = uid();
     const userId = uid();
 
-    // Create signing keys
-    await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);
-
-    // Create API key
-    const { apiKey: rawApiKey, record: apiKeyRecord } =
-      await container.ApiKeyService.createApiKey(
-        orgId,
-        'Main API Key',
-        'Primary API key for organization',
-        null,
-      );
-
+    // Create org first so FK-dependent tables can reference it
     const org = await kyselyOrgInsert({
       db: container.KyselyPg,
       id: orgId,
       email: argv.email,
       name: argv.name,
       websiteUrl: argv.website,
-      apiKeyId: apiKeyRecord.id,
     });
+
+    // Create signing keys and API key (both reference org via FK)
+    await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);
+
+    const { apiKey: rawApiKey } =
+      await container.ApiKeyService.createApiKey(
+        orgId,
+        'Main API Key',
+        'Primary API key for organization',
+        null,
+      );
 
     // Initialize org settings
     await Promise.all([

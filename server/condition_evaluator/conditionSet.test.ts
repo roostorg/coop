@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import _ from 'lodash';
 
-import { ConditionCompletionOutcome } from '../models/rules/RuleModel.js';
 import {
+  ConditionCompletionOutcome,
   ConditionConjunction,
   type LeafCondition,
 } from '../services/moderationConfigService/index.js';

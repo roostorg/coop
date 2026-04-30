@@ -7,14 +7,14 @@ import {
 } from '../condition_evaluator/conditionSet.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
-import { ConditionCompletionOutcome } from '../models/rules/RuleModel.js';
 import { type PlainRuleWithLatestVersion } from '../models/rules/ruleTypes.js';
 import { evaluateAggregationRuntimeArgsForItem } from '../services/aggregationsService/index.js';
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
 import {
-  RuleStatus,
   type Action,
+  ConditionCompletionOutcome,
   type ConditionSet,
+  RuleStatus,
 } from '../services/moderationConfigService/index.js';
 import { type RuleExecutionCorrelationId } from '../services/analyticsLoggers/index.js';
 import {

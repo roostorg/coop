@@ -5,9 +5,9 @@ import { match } from 'ts-pattern';
 import { formatClickhouseQuery } from '../../plugins/warehouse/utils/clickhouseSql.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import type { ConditionWithResult } from '../../models/rules/RuleModel.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';
+import { type ConditionWithResult } from '../../services/moderationConfigService/index.js';
 import {
   BuiltInThirdPartySignalType,
   SignalType,

@@ -30,6 +30,18 @@ export {
 } from './types/rules.js';
 
 export {
+  ConditionCompletionOutcome,
+  ConditionFailureOutcome,
+  ConditionOutcome,
+  ConditionCompletionMetadata,
+  ConditionFailureMetadata,
+  ConditionResult,
+  ConditionWithResult,
+  ConditionSetWithResult,
+  LeafConditionWithResult,
+} from './types/conditionResults.js';
+
+export {
   Action,
   ActionType,
   CustomAction,

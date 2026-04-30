@@ -664,6 +664,17 @@ export function safeGetEnvVar(varName: string): string {
 }
 
 /**
+ * Returns true when the env var is set to a truthy value. Accepts `true`, `1`,
+ * and `yes` (case-insensitive) so callers don't have to worry about casing or
+ * common aliases. Any other value (including unset) returns false.
+ */
+export function isEnvTrue(varName: string): boolean {
+  const raw = process.env[varName];
+  if (raw == null) return false;
+  return ['true', '1', 'yes'].includes(raw.trim().toLowerCase());
+}
+
+/**
  * Gets an env var and parses it as a positive integer. Returns `defaultValue`
  * if the variable is unset or invalid, logging an error on misconfiguration.
  */

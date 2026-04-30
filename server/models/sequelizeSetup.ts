@@ -8,6 +8,7 @@
 import clsHooked from 'cls-hooked';
 import pkg, { type Transaction, type TransactionOptions } from 'sequelize';
 
+import { isEnvTrue } from '../iocContainer/utils.js';
 import { safeGet } from '../utils/misc.js';
 
 const { Sequelize } = pkg;
@@ -58,7 +59,7 @@ export const makeSequelize = () =>
       // Think about how/if we'll do this w/ our kysely connection pools.
     },
     dialectOptions: {
-      //ssl: true,
+      ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
       query_timeout: 1_000_000,
       idle_in_transaction_session_timeout: 300_000,
     },

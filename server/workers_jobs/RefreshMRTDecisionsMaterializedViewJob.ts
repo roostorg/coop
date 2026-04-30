@@ -25,9 +25,11 @@ export default inject(
           throw new Error('No last_insert timestamp found for the table');
         }
 
-        const oneMinutePrevious = new Date(
-          lastTimestamp.last_insert.valueOf() - MINUTE_MS,
-        );
+        // When last_insert is null (fresh deploy), do a full backfill
+        const isInitialBackfill = lastTimestamp.last_insert == null;
+        const oneMinutePrevious = isInitialBackfill
+          ? new Date(0)
+          : new Date(lastTimestamp.last_insert.valueOf() - MINUTE_MS);
 
         const insertedRows = await trx
           .insertInto('manual_review_tool.dim_mrt_decisions_materialized')
