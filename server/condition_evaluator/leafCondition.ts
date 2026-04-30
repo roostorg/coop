@@ -210,7 +210,7 @@ export async function runLeafCondition(
           });
         }),
       )
-    : signalInputValues.map((it): SignalResult<any> => {
+    : signalInputValues.map((it): SignalResult<SignalOutputType> => {
         // If the condition specified no signal, then we should act as though
         // the "identity" signal was used; i.e., the value that the condition
         // picked out (with `condition.input`) should be returned as-is.
@@ -266,7 +266,7 @@ export async function runLeafCondition(
               it.score,
               condition.threshold,
               condition.comparator,
-              it.outputType as SignalOutputType,
+              it.outputType,
             )
           : (it as SignalResult<{ scalarType: ScalarTypes['BOOLEAN'] }>).score,
       ),
