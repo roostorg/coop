@@ -33,10 +33,10 @@ async function setup() {
     bottle.container;
 
   try {
-    // Bluesky User item type — represents the author of a post
+    // atproto User item type — represents the author of a post
     const userType = await ModerationConfigService.createUserType(orgId, {
-      name: 'Bluesky User',
-      description: 'An AT Protocol / Bluesky account.',
+      name: 'atproto User',
+      description: 'AT Protocol/Bluesky account.',
       schema: [
         { name: 'handle', type: 'STRING', required: true, container: null },
         { name: 'displayName', type: 'STRING', required: false, container: null },
@@ -51,14 +51,16 @@ async function setup() {
       },
     });
 
-    // Bluesky Post item type — represents a post from the firehose
+    // atproto Post item type — represents a post from the firehose
     const postType = await ModerationConfigService.createContentType(orgId, {
-      name: 'Bluesky Post',
-      description: 'A post ingested from the AT Protocol Jetstream firehose.',
+      name: 'atproto Post',
+      description: 'Post ingested from the AT Protocol Jetstream firehose.',
       schema: [
         { name: 'text', type: 'STRING', required: true, container: null },
         { name: 'url', type: 'URL', required: true, container: null },
-        { name: 'authorHandle', type: 'STRING', required: false, container: null },
+        { name: 'did', type: 'STRING', required: false, container: null },
+        { name: 'handle', type: 'STRING', required: false, container: null },
+        { name: 'displayName', type: 'STRING', required: false, container: null },
         { name: 'langs', type: 'STRING', required: false, container: null },
         { name: 'createdAt', type: 'DATETIME', required: false, container: null },
         { name: 'replyTo', type: 'STRING', required: false, container: null },
@@ -73,8 +75,8 @@ async function setup() {
     console.log('═'.repeat(60));
     console.log('Copy these IDs for use with the firehose connector:');
     console.log('═'.repeat(60));
-    console.log(`Bluesky User item type ID:  ${userType.id}`);
-    console.log(`Bluesky Post item type ID:  ${postType.id}`);
+    console.log(`atproto User item type ID:  ${userType.id}`);
+    console.log(`atproto Post item type ID:  ${postType.id}`);
     console.log('═'.repeat(60));
     console.log('\nStart the firehose connector:');
     console.log(
