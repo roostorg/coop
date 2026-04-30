@@ -89,6 +89,25 @@ Use the credentials provided to log in at `http://localhost:3000`.
 Please note that the initial page load may take a while.
 
 
+### Populate with live data (optional)
+
+To feed a local Coop instance with real content from the [AT Protocol](https://atproto.com/) (Bluesky) firehose:
+
+1. Create the Bluesky item types (run once after `npm run create-org`):
+   ```bash
+   cd server && npm run atproto:setup -- --org-id <orgId>
+   ```
+   Copy the **Bluesky Post item type ID** printed at the end.
+
+2. Start the firehose connector (in a separate terminal):
+   ```bash
+   npm run atproto:demo -- --api-key <apiKey> --post-type-id <postTypeId>
+   ```
+
+Posts from the Bluesky firehose will appear in the review queue as they arrive. The connector defaults to 10 submissions per minute; pass `--rate-limit <n>` to adjust. Use `--dry-run` to preview submissions without sending them.
+
+See `scripts/atproto-demo.mts` for the full list of options.
+
 ### **Database Structure and Migrations**
 
 All of the data around the database tables ( SQL/Schema ) exist under the `db/src/scripts` folder where there is a folder for each service (for example `api-server-pg`, `clickhouse`, `scylla`).
