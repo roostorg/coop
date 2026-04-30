@@ -1870,7 +1870,8 @@ export default function RuleForm() {
   */
 
   return (
-    <div className="flex flex-col test-start">
+    // relative to prevent overflow/scrolling issues; see issue #168
+    <div className="flex flex-col test-start relative">
       <Helmet>
         <title>{id == null ? 'Create Rule' : 'Update Rule'}</title>
       </Helmet>
