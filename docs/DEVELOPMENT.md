@@ -8,7 +8,7 @@ This guide covers configuration details and troubleshooting for local developmen
 - **Node.js 24** (use `nvm install && nvm use` so local matches `.nvmrc`)
 - **npm** (included with Node.js)
 - **Docker and Docker Compose**
-- **16 GB RAM** or more recommended
+- **4 GiB RAM** minimum for a bare instance, 8 GiB or more recommended for development-related tasks
 
 ## Environment Setup
 
