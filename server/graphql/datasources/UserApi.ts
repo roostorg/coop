@@ -179,7 +179,7 @@ class UserAPI {
   async updateAccountInfo(
     user: GraphQLUserParent,
     params: { firstName?: string | null; lastName?: string | null },
-  ) {
+  ): Promise<GraphQLUserParent> {
     const patch = {
       firstName: params.firstName ?? undefined,
       lastName: params.lastName ?? undefined,
@@ -190,7 +190,14 @@ class UserAPI {
       throw userValidationFailureToBadRequestError(validation.failure);
     }
 
-    await kyselyUserUpdate(this.kyselyPg, user.id, patch);
+    const updated = await kyselyUserUpdate(this.kyselyPg, user.id, patch);
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${user.id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
+    return updated;
   }
 
   async changePassword(
@@ -225,9 +232,15 @@ class UserAPI {
     }
 
     const hashedNewPassword = await hashPassword(newPassword);
-    await kyselyUserUpdate(this.kyselyPg, user.id, {
+    const updated = await kyselyUserUpdate(this.kyselyPg, user.id, {
       password: hashedNewPassword,
     });
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${user.id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
 
     return {
       __typename: 'ChangePasswordSuccessResponse' as const,
@@ -275,7 +288,15 @@ class UserAPI {
       );
     }
 
-    await kyselyUserUpdate(this.kyselyPg, id, { approvedByAdmin: true });
+    const updated = await kyselyUserUpdate(this.kyselyPg, id, {
+      approvedByAdmin: true,
+    });
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
     return true;
   }
 
@@ -295,7 +316,15 @@ class UserAPI {
       );
     }
 
-    await kyselyUserUpdate(this.kyselyPg, id, { rejectedByAdmin: true });
+    const updated = await kyselyUserUpdate(this.kyselyPg, id, {
+      rejectedByAdmin: true,
+    });
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
     return true;
   }
 
