@@ -12,11 +12,6 @@ import {
   type TaggedItemData,
 } from '../models/rules/item-type-fields.js';
 import {
-  ConditionCompletionOutcome,
-  ConditionFailureOutcome,
-  type ConditionResult,
-} from '../models/rules/RuleModel.js';
-import {
   getUserFromRuleInput,
   isFullSubmission,
   type RuleEvaluationContext,
@@ -31,10 +26,13 @@ import {
 } from '../services/itemProcessingService/index.js';
 import {
   CoopInput,
-  ValueComparator,
+  ConditionCompletionOutcome,
+  ConditionFailureOutcome,
   type ConditionInput,
+  type ConditionResult,
   type ConditionSignalInfo,
   type LeafCondition,
+  ValueComparator,
 } from '../services/moderationConfigService/index.js';
 import {
   isSignalErrorResult,

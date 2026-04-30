@@ -4,7 +4,7 @@ import { type PassportContext } from 'graphql-passport';
 
 import { type GQLServices } from '../api.js';
 import { type DataSources } from '../iocContainer/index.js';
-import { type User } from '../models/UserModel.js';
+import { type GraphQLUserParent } from './datasources/userKyselyPersistence.js';
 import { CoopError, isCoopErrorOfType } from '../utils/errors.js';
 import {
   type GQLInviteUserToken,
@@ -41,7 +41,7 @@ import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
 import { forbiddenError, unauthenticatedError } from './utils/errors.js';
 
 // eslint-disable-next-line @typescript-eslint/no-restricted-types
-export type Context = PassportContext<User, {}> & {
+export type Context = PassportContext<GraphQLUserParent, {}> & {
   dataSources: DataSources;
   services: GQLServices;
 };
@@ -127,7 +127,7 @@ const Query: GQLQueryResolvers = {
   },
 };
 
-type TSignUpResponse = { data: User } | CoopError;
+type TSignUpResponse = { data: GraphQLUserParent } | CoopError;
 const SignUpResponse: ResolverMap<TSignUpResponse> = {
   __resolveType(response) {
     if (response instanceof CoopError) {

@@ -3,9 +3,13 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+<<<<<<< fix-eslint-server
 import { type AnalyticsSchema } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import { type ConditionSetWithResult } from '../../models/rules/RuleModel.js';
+=======
+>>>>>>> main
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
+import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import { fromCorrelationId } from '../../utils/correlationIds.js';
 import { jsonStringifyUnstable } from '../../utils/encoding.js';
 

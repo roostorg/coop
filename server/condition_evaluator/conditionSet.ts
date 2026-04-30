@@ -1,20 +1,18 @@
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
-import {
-  ConditionCompletionOutcome,
-  ConditionFailureOutcome,
-  type ConditionOutcome,
-  type ConditionSetWithResult,
-  type ConditionWithResult,
-  type LeafConditionWithResult,
-} from '../models/rules/RuleModel.js';
 import { type RuleEvaluationContext } from '../rule_engine/RuleEvaluator.js';
 import { type AggregationClause } from '../services/aggregationsService/index.js';
 import {
+  ConditionCompletionOutcome,
   ConditionConjunction,
+  ConditionFailureOutcome,
+  type ConditionOutcome,
   type ConditionSet,
+  type ConditionSetWithResult,
+  type ConditionWithResult,
   type LeafCondition,
+  type LeafConditionWithResult,
 } from '../services/moderationConfigService/index.js';
 import { equalLengthZip } from '../utils/fp-helpers.js';
 import { assertUnreachable } from '../utils/misc.js';

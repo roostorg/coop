@@ -3,12 +3,12 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type ConditionSetWithResult } from '../../models/rules/RuleModel.js';
 import {
   isFullSubmission,
   type RuleInput,
 } from '../../rule_engine/RuleEvaluator.js';
 import { type ManualReviewJobKind } from '../../services/manualReviewToolService/index.js';
+import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import { fromCorrelationId } from '../../utils/correlationIds.js';
 import { jsonStringifyUnstable } from '../../utils/encoding.js';
 import { getUtcDateOnlyString } from '../../utils/time.js';

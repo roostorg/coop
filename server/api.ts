@@ -29,12 +29,18 @@ import {
   makeLoginSsoRequiredError,
   makeLoginUserDoesNotExistError,
 } from './graphql/datasources/UserApi.js';
+import {
+  kyselyUserFindByEmail,
+  kyselyUserFindById,
+} from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
+import { passwordMatchesHash } from './services/userManagementService/index.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { type Dependencies } from './iocContainer/index.js';
-import { safeGetEnvInt } from './iocContainer/utils.js';
+import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
+import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
   ErrorType,
@@ -90,7 +96,7 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
-  const { User } = deps.Sequelize;
+  const { KyselyPg } = deps;
 
   app.use(cors());
 
@@ -134,12 +140,21 @@ export default async function makeApiServer(deps: Dependencies) {
     DATABASE_PASSWORD,
   } = process.env;
 
-  const connectionString = `postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}`;
+  const conObject = {
+    host: DATABASE_HOST,
+    port: Number(DATABASE_PORT),
+    user: DATABASE_USER,
+    password: DATABASE_PASSWORD,
+    database: DATABASE_NAME,
+    // NB: `rejectUnauthorized: false` keeps the connection encrypted but skips
+    // certificate validation.
+    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+  };
 
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ conString: connectionString }),
+      store: new sessionStore({ conObject }),
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -203,9 +218,10 @@ export default async function makeApiServer(deps: Dependencies) {
       },
       async (_req, profile, done) => {
         try {
-          const user = await User.findOne({
-            where: { email: String(profile?.email) },
-          });
+          const user = await kyselyUserFindByEmail(
+            KyselyPg,
+            String(profile?.email),
+          );
           // we should have already checked for this, but couldn't hurt to check
           // again
           if (user == null) {
@@ -225,9 +241,10 @@ export default async function makeApiServer(deps: Dependencies) {
       },
       async (_req, profile, done) => {
         try {
-          const user = await User.findOne({
-            where: { email: String(profile?.email) },
-          });
+          const user = await kyselyUserFindByEmail(
+            KyselyPg,
+            String(profile?.email),
+          );
           // we should have already checked for this, but couldn't hurt to check
           // again
           if (user == null) {
@@ -268,7 +285,7 @@ export default async function makeApiServer(deps: Dependencies) {
   passport.use(
     new GraphQLLocalStrategy(async (email, password, done) => {
       try {
-        const user = await User.findOne({ where: { email: String(email) } });
+        const user = await kyselyUserFindByEmail(KyselyPg, String(email));
         if (user == null) {
           return done(
             makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
@@ -303,12 +320,11 @@ export default async function makeApiServer(deps: Dependencies) {
           );
         }
 
-        // if loginMethod is password, password should be set
+        // `loginMethods` includes 'password', so the DB CHECK constraint
+        // guarantees `user.password` is non-null here.
         if (
-          await User.passwordMatchesHash(
-            String(password),
-            user.password satisfies string | null as string,
-          )
+          user.password != null &&
+          (await passwordMatchesHash(String(password), user.password))
         ) {
           done(null, user);
         } else {
@@ -330,9 +346,19 @@ export default async function makeApiServer(deps: Dependencies) {
   });
 
   passport.deserializeUser(async (id, done) => {
-    return User.findByPk(String(id), { rejectOnEmpty: true }).then((user) => {
-      done(null, user);
-    }, done);
+    try {
+      const user = await kyselyUserFindById(KyselyPg, String(id));
+      if (user == null) {
+        return done(
+          makeNotFoundError(`Session user ${String(id)} not found`, {
+            shouldErrorSpan: true,
+          }),
+        );
+      }
+      return done(null, user);
+    } catch (e) {
+      return done(e);
+    }
   });
 
   /**
@@ -432,9 +458,16 @@ export default async function makeApiServer(deps: Dependencies) {
   Object.entries(controllers).forEach(([_k, controller]) => {
     controller.routes.forEach((it) => {
       const handler = it.handler(deps);
+      const handlers = Array.isArray(handler) ? handler : [handler];
+      // If the route declares a bodySchema, validate the request body against
+      // it before any handler runs. Routes without a schema (e.g., GETs) skip
+      // validation entirely.
+      const middlewares = it.bodySchema
+        ? [createBodySchemaValidator(it.bodySchema), ...handlers]
+        : handlers;
       app[it.method](
         path.join(controller.pathPrefix, it.path),
-        ...(Array.isArray(handler) ? handler : [handler]),
+        ...middlewares,
       );
     });
   });
@@ -534,7 +567,6 @@ function makeGqlServices(deps: Dependencies) {
       'PartialItemsService',
       'ReportingService',
       'RuleEvaluator',
-      'Sequelize',
       'SignalsService',
       'SigningKeyPairService',
       'Tracer',

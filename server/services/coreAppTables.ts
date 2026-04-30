@@ -1,7 +1,12 @@
 import { type Generated, type GeneratedAlways } from 'kysely';
 
+import { type UserRole } from '../models/types/permissioning.js';
+
 /** Postgres enum for backtests.status (generated column — read-only in app). */
 export type BacktestStatusDb = 'RUNNING' | 'COMPLETE' | 'CANCELED';
+
+/** Postgres enum for users.login_methods. */
+export type LoginMethod = 'password' | 'saml';
 
 export type CoreAppTablesPg = {
   'public.orgs': {
@@ -13,6 +18,25 @@ export type CoreAppTablesPg = {
     created_at: Date;
     updated_at: Date;
     on_call_alert_email: string | null;
+  };
+  // `id`, `created_at`, `updated_at` are all NOT NULL with no server-side
+  // default — the app supplies them on INSERT, just like the Sequelize model
+  // did. The DB enforces a CHECK constraint (`password_null_when_not_present`)
+  // tying `password IS NOT NULL` to `'password' ∈ login_methods`; that
+  // invariant is enforced at the app layer too (see `userValidation.ts`).
+  'public.users': {
+    id: string;
+    email: string;
+    password: string | null;
+    first_name: string;
+    last_name: string;
+    role: UserRole;
+    approved_by_admin: boolean;
+    rejected_by_admin: boolean;
+    created_at: Date;
+    updated_at: Date;
+    org_id: string;
+    login_methods: LoginMethod[];
   };
   'public.location_banks': {
     id: string;

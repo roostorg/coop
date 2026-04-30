@@ -22,18 +22,6 @@ import { type User } from '../UserModel.js';
 import { type SequelizeAction } from './ActionModel.js';
 import { type RuleLatestVersion } from './RuleLatestVersionModel.js';
 
-export {
-  ConditionCompletionOutcome,
-  ConditionFailureOutcome,
-  type ConditionOutcome,
-  type ConditionCompletionMetadata,
-  type ConditionFailureMetadata,
-  type ConditionResult,
-  type ConditionWithResult,
-  type ConditionSetWithResult,
-  type LeafConditionWithResult,
-} from './ruleTypes.js';
-
 const { Model, Op } = sequelize;
 const { without } = _;
 

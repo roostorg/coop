@@ -8,52 +8,81 @@ import {
 } from '../generated.js';
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type Rule } from '../../models/rules/RuleModel.js';
-import { type User as TUser } from '../../models/UserModel.js';
-import { hashPassword } from '../../services/userManagementService/index.js';
+import { type LoginMethod } from '../../services/coreAppTables.js';
+import {
+  hashPassword,
+  passwordMatchesHash,
+} from '../../services/userManagementService/index.js';
 import {
   CoopError,
   ErrorType,
   makeBadRequestError,
   makeInternalServerError,
+  makeNotFoundError,
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
+import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
+import {
+  type GraphQLUserParent,
+  kyselyUserAddFavoriteRule,
+  kyselyUserFindByEmail,
+  kyselyUserFindByIdAndOrg,
+  kyselyUserFindById,
+  kyselyUserFindByIds,
+  kyselyUserInsert,
+  kyselyUserListFavoriteRuleIds,
+  kyselyUserRemoveFavoriteRule,
+  kyselyUserUpdate,
+} from './userKyselyPersistence.js';
+import {
+  type UserValidationFailure,
+  validateUserCreateInput,
+  validateUserUpdatePatch,
+} from './userValidation.js';
 
 /**
  * GraphQL Object for a User
  */
 class UserAPI {
   constructor(
-    private readonly sequelize: Dependencies['Sequelize'],
+    private readonly kyselyPg: Dependencies['KyselyPg'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly userManagementService: Dependencies['UserManagementService'],
-  ) {
+    private readonly moderationConfigService: Dependencies['ModerationConfigService'],
+  ) {}
+
+  async getGraphQLUserFromId(opts: {
+    id: string;
+    orgId: string;
+  }): Promise<GraphQLUserParent> {
+    const user = await kyselyUserFindByIdAndOrg(this.kyselyPg, opts);
+    if (user === undefined) {
+      // Matches the `rejectOnEmpty: true` semantics of the Sequelize call
+      // this method replaced (callers rely on a throw when the row is
+      // missing, e.g. `getFavoriteRules`).
+      throw makeNotFoundError(
+        `User ${opts.id} not found in org ${opts.orgId}`,
+        { shouldErrorSpan: true },
+      );
+    }
+    return user;
   }
 
-  async getGraphQLUserFromId(opts: { id: string; orgId: string }) {
-    const { id, orgId } = opts;
-
-    return this.sequelize.User.findOne({
-      where: {
-        id,
-        orgId,
-      },
-      rejectOnEmpty: true,
-    });
+  async getGraphQLUsersFromIds(ids: string[]): Promise<GraphQLUserParent[]> {
+    return kyselyUserFindByIds(this.kyselyPg, ids);
   }
 
-  async getGraphQLUsersFromIds(ids: string[]) {
-    return this.sequelize.User.findAll({
-      where: { id: ids },
-    });
-  }
-
+<<<<<<< fix-eslint-server
   async login(
     params: GQLMutationLoginArgs,
     context: PassportContext<TUser, { email: string; password: string }>,
   ) {
+=======
+  async login(params: any, context: PassportContext<GraphQLUserParent, any>) {
+>>>>>>> main
     const credentials = safePick(params.input, ['email', 'password']);
 
     // NB: this will throw for bad credentials; will be handled in the resolver.
@@ -79,7 +108,11 @@ class UserAPI {
     }
   }
 
+<<<<<<< fix-eslint-server
   async signUp(params: GQLMutationSignUpArgs, _: unknown) {
+=======
+  async signUp(params: any, _: any): Promise<GraphQLUserParent> {
+>>>>>>> main
     const { role } = params.input;
     const {
       email,
@@ -97,9 +130,7 @@ class UserAPI {
         { shouldErrorSpan: true },
       );
 
-    const existingUser = await this.sequelize.User.findOne({
-      where: { email },
-    });
+    const existingUser = await kyselyUserFindByEmail(this.kyselyPg, email);
     if (existingUser != null) {
       throw makeSignUpUserExistsError({ shouldErrorSpan: true });
     }
@@ -126,16 +157,32 @@ class UserAPI {
       });
     }
 
-    const user = await this.sequelize.User.create({
+    const loginMethodNormalized = String(loginMethod).toLowerCase() as LoginMethod;
+    const createInput = {
+      email,
+      firstName,
+      lastName,
+      role: token.role,
+      loginMethods: [loginMethodNormalized] as const,
+      password: passwordToSave,
+    };
+
+    const validation = validateUserCreateInput(createInput);
+    if (!validation.ok) {
+      throw userValidationFailureToBadRequestError(validation.failure);
+    }
+
+    const user = await kyselyUserInsert({
+      db: this.kyselyPg,
       id: uid(),
+      orgId,
       email,
       password: passwordToSave,
       firstName,
       lastName,
       role: token.role,
       approvedByAdmin: true,
-      orgId,
-      loginMethods: [loginMethod.toLowerCase()],
+      loginMethods: [loginMethodNormalized],
     });
 
     // Delete the invite token after successful user creation
@@ -145,26 +192,35 @@ class UserAPI {
   }
 
   async updateAccountInfo(
-    user: TUser,
+    user: GraphQLUserParent,
     params: { firstName?: string | null; lastName?: string | null },
-  ) {
-    const { firstName, lastName } = params;
-    if (firstName != null) {
-      user.firstName = firstName;
+  ): Promise<GraphQLUserParent> {
+    const patch = {
+      firstName: params.firstName ?? undefined,
+      lastName: params.lastName ?? undefined,
+    };
+
+    const validation = validateUserUpdatePatch(patch);
+    if (!validation.ok) {
+      throw userValidationFailureToBadRequestError(validation.failure);
     }
-    if (lastName != null) {
-      user.lastName = lastName;
+
+    const updated = await kyselyUserUpdate(this.kyselyPg, user.id, patch);
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${user.id} not found`, {
+        shouldErrorSpan: true,
+      });
     }
-    await user.save();
+    return updated;
   }
 
   async changePassword(
-    user: TUser,
+    user: GraphQLUserParent,
     params: { currentPassword: string; newPassword: string },
   ) {
     const { currentPassword, newPassword } = params;
 
-    // Check if user has password login method
     if (!user.loginMethods.includes('password')) {
       throw makeChangePasswordNotAllowedError({
         detail: 'Password login is not enabled for this user.',
@@ -172,7 +228,6 @@ class UserAPI {
       });
     }
 
-    // Verify current password
     if (user.password == null) {
       throw makeChangePasswordIncorrectPasswordError({
         detail: 'Current password is not set.',
@@ -180,11 +235,10 @@ class UserAPI {
       });
     }
 
-    const isCurrentPasswordValid =
-      await this.sequelize.User.passwordMatchesHash(
-        currentPassword,
-        user.password,
-      );
+    const isCurrentPasswordValid = await passwordMatchesHash(
+      currentPassword,
+      user.password,
+    );
 
     if (!isCurrentPasswordValid) {
       throw makeChangePasswordIncorrectPasswordError({
@@ -192,10 +246,16 @@ class UserAPI {
       });
     }
 
-    // Hash and save new password
     const hashedNewPassword = await hashPassword(newPassword);
-    user.password = hashedNewPassword;
-    await user.save();
+    const updated = await kyselyUserUpdate(this.kyselyPg, user.id, {
+      password: hashedNewPassword,
+    });
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${user.id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
 
     return {
       __typename: 'ChangePasswordSuccessResponse' as const,
@@ -206,8 +266,17 @@ class UserAPI {
   async deleteUser(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
     try {
-      const user = await this.sequelize.User.findOne({ where: { id, orgId } });
-      await user?.destroy();
+      const user = await kyselyUserFindByIdAndOrg(this.kyselyPg, {
+        id,
+        orgId,
+      });
+      if (user != null) {
+        await this.kyselyPg
+          .deleteFrom('public.users')
+          .where('id', '=', id)
+          .where('org_id', '=', orgId)
+          .execute();
+      }
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
@@ -219,11 +288,14 @@ class UserAPI {
   }
 
   async approveUser(id: string, invokerOrgId: string) {
-    const user = await this.sequelize.User.findByPk(id, {
-      rejectOnEmpty: true,
-    });
+    const user = await kyselyUserFindById(this.kyselyPg, id);
+    if (user == null) {
+      throw makeNotFoundError(`User ${id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
 
-    // Security check: ensure admin can only approve users in their own org
+    // Security check: ensure admin can only approve users in their own org.
     if (user.orgId !== invokerOrgId) {
       throw makeUnauthorizedError(
         'You can only approve users in your organization',
@@ -231,17 +303,27 @@ class UserAPI {
       );
     }
 
-    user.approvedByAdmin = true;
-    await user.save();
+    const updated = await kyselyUserUpdate(this.kyselyPg, id, {
+      approvedByAdmin: true,
+    });
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
     return true;
   }
 
   async rejectUser(id: string, invokerOrgId: string) {
-    const user = await this.sequelize.User.findByPk(id, {
-      rejectOnEmpty: true,
-    });
+    const user = await kyselyUserFindById(this.kyselyPg, id);
+    if (user == null) {
+      throw makeNotFoundError(`User ${id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
 
-    // Security check: ensure admin can only reject users in their own org
+    // Security check: ensure admin can only reject users in their own org.
     if (user.orgId !== invokerOrgId) {
       throw makeUnauthorizedError(
         'You can only reject users in your organization',
@@ -249,30 +331,71 @@ class UserAPI {
       );
     }
 
-    user.rejectedByAdmin = true;
-    await user.save();
+    const updated = await kyselyUserUpdate(this.kyselyPg, id, {
+      rejectedByAdmin: true,
+    });
+    if (updated == null) {
+      // Row went missing between load and update (e.g. concurrent delete).
+      throw makeNotFoundError(`User ${id} not found`, {
+        shouldErrorSpan: true,
+      });
+    }
     return true;
   }
 
   async getFavoriteRules(id: string, orgId: string): Promise<Array<Rule>> {
-    const user = await this.getGraphQLUserFromId({ id, orgId });
-    const rules = await user.getFavoriteRules();
-    return rules;
+    // Make sure the requested user lives in the invoker's org (the caller
+    // always passes the invoker's orgId), then scope rule lookups to that
+    // org so cross-org data can't leak even if stale favorites exist.
+    await this.getGraphQLUserFromId({ id, orgId });
+    const ruleIds = await kyselyUserListFavoriteRuleIds(this.kyselyPg, id);
+    const plains = (
+      await Promise.all(
+        ruleIds.map(async (ruleId) =>
+          this.moderationConfigService.getRuleByIdAndOrg(ruleId, orgId),
+        ),
+      )
+    ).filter((plain): plain is NonNullable<typeof plain> => plain != null);
+    return plains.map((plain) =>
+      buildGraphqlRuleParent(plain, {
+        moderationConfigService: this.moderationConfigService,
+        findUserByIdAndOrg: async (opts) =>
+          kyselyUserFindByIdAndOrg(this.kyselyPg, opts),
+      }),
+    );
   }
 
   async addFavoriteRule(userId: string, ruleId: string, orgId: string) {
-    const user = await this.getGraphQLUserFromId({ id: userId, orgId });
-    await user.addFavoriteRules([ruleId]);
+    // Scope by org so a caller can't add a favorite targeting a rule in a
+    // different org (the Sequelize association was unscoped).
+    await this.getGraphQLUserFromId({ id: userId, orgId });
+    const rule = await this.moderationConfigService.getRuleByIdAndOrg(
+      ruleId,
+      orgId,
+    );
+    if (rule == null) {
+      throw makeNotFoundError(`Rule ${ruleId} not found in org ${orgId}`, {
+        shouldErrorSpan: true,
+      });
+    }
+    await kyselyUserAddFavoriteRule(this.kyselyPg, userId, ruleId);
   }
 
   async removeFavoriteRule(userId: string, ruleId: string, orgId: string) {
-    const user = await this.getGraphQLUserFromId({ id: userId, orgId });
-    await user.removeFavoriteRules([ruleId]);
+    await this.getGraphQLUserFromId({ id: userId, orgId });
+    await kyselyUserRemoveFavoriteRule(this.kyselyPg, userId, ruleId);
   }
 }
 
+function userValidationFailureToBadRequestError(failure: UserValidationFailure) {
+  return makeBadRequestError(failure.message, {
+    pointer: `/input/${failure.field}`,
+    shouldErrorSpan: false,
+  });
+}
+
 export default inject(
-  ['Sequelize', 'Tracer', 'UserManagementService'],
+  ['KyselyPg', 'Tracer', 'UserManagementService', 'ModerationConfigService'],
   UserAPI,
 );
 export type { UserAPI };

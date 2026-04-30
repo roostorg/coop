@@ -1,19 +1,20 @@
 import { type Rule as SequelizeRule } from '../../models/rules/RuleModel.js';
-import { type User } from '../../models/UserModel.js';
 import {
   type PlainRuleWithLatestVersion,
   type Rule as RuleGraphqlParent,
 } from '../../models/rules/ruleTypes.js';
 import { type ModerationConfigService } from '../../services/moderationConfigService/index.js';
+import { type GraphQLUserParent } from './userKyselyPersistence.js';
 
 type FindUserByIdAndOrg = (opts: {
-  where: { id: string; orgId: string };
-}) => Promise<User | null>;
+  id: string;
+  orgId: string;
+}) => Promise<GraphQLUserParent | undefined>;
 
 /**
  * Builds a GraphQL Rule parent (plain row fields + the three association
  * getters our resolvers actually use) backed by ModerationConfigService
- * reads and a Sequelize-backed User lookup for the creator.
+ * reads and a Kysely-backed User lookup for the creator.
  *
  * The returned object only implements the {@link RuleGraphqlParent} contract
  * (`getCreator` / `getActions` / `getPolicies`). We cast to `SequelizeRule`
@@ -34,7 +35,8 @@ export function buildGraphqlRuleParent(
     ...plain,
     async getCreator() {
       const user = await deps.findUserByIdAndOrg({
-        where: { id: plain.creatorId, orgId: plain.orgId },
+        id: plain.creatorId,
+        orgId: plain.orgId,
       });
       if (user == null) {
         throw new Error(`User not found for rule creator ${plain.creatorId}`);

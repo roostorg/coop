@@ -180,6 +180,9 @@ class OrgAPI {
   }
 
   async requestDemo(input: GQLRequestDemoInput) {
+    if (process.env.ENABLE_DEMO_REQUEST !== 'true') {
+      return false;
+    }
     const { email, company, website, interests, ref, isFromGoogleAds } = input;
     const msg = {
       to: CoopEmailAddress.Support,
