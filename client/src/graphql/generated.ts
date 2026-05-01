@@ -11703,1320 +11703,6 @@ export type GQLActionsWithCustomParamsQuery = {
   } | null;
 };
 
-export type GQLJobFieldsFragment = {
-  readonly __typename: 'ManualReviewJob';
-  readonly id: string;
-  readonly createdAt: Date | string;
-  readonly policyIds: ReadonlyArray<string>;
-  readonly numTimesReported?: number | null;
-  readonly payload:
-    | {
-        readonly __typename: 'ContentAppealManualReviewJobPayload';
-        readonly userScore?: number | null;
-        readonly appealReason?: string | null;
-        readonly appealId: string;
-        readonly actionsTaken: ReadonlyArray<string>;
-        readonly item: {
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly additionalContentItems: ReadonlyArray<{
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        }>;
-        readonly appealerIdentifier?: {
-          readonly __typename: 'ItemIdentifier';
-          readonly id: string;
-          readonly typeId: string;
-        } | null;
-        readonly enqueueSourceInfo?: {
-          readonly __typename: 'AppealEnqueueSourceInfo';
-          readonly kind: GQLJobCreationSourceOptions;
-        } | null;
-      }
-    | {
-        readonly __typename: 'ContentManualReviewJobPayload';
-        readonly userScore?: number | null;
-        readonly reportHistory: ReadonlyArray<{
-          readonly __typename: 'ReportHistoryEntry';
-          readonly policyId?: string | null;
-          readonly reportId: string;
-          readonly reason?: string | null;
-          readonly reportedAt: Date | string;
-          readonly reporterId?: {
-            readonly __typename: 'ItemIdentifier';
-            readonly id: string;
-            readonly typeId: string;
-          } | null;
-        }>;
-        readonly item: {
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly additionalContentItems: ReadonlyArray<{
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        }>;
-        readonly itemThreadContentItems?: ReadonlyArray<{
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        }> | null;
-        readonly reportedForReasons: ReadonlyArray<{
-          readonly __typename: 'ReportedForReason';
-          readonly reason?: string | null;
-          readonly reporterId?: {
-            readonly __typename: 'ItemIdentifier';
-            readonly id: string;
-            readonly typeId: string;
-          } | null;
-        }>;
-        readonly enqueueSourceInfo?:
-          | { readonly __typename: 'AppealEnqueueSourceInfo' }
-          | {
-              readonly __typename: 'MrtJobEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'PostActionsEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'ReportEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-              readonly rules: ReadonlyArray<
-                | {
-                    readonly __typename: 'ContentRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-                | {
-                    readonly __typename: 'UserRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-              >;
-            }
-          | null;
-      }
-    | {
-        readonly __typename: 'NcmecManualReviewJobPayload';
-        readonly item: {
-          readonly __typename: 'UserItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'UserItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'UserSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly createdAt?: string | null;
-              readonly profileIcon?: string | null;
-              readonly backgroundImage?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly allMediaItems: ReadonlyArray<{
-          readonly __typename: 'NcmecContentItem';
-          readonly isConfirmedCSAM: boolean;
-          readonly isReported: boolean;
-          readonly contentItem:
-            | {
-                readonly __typename: 'ContentItem';
-                readonly id: string;
-                readonly submissionId: string;
-                readonly submissionTime?: Date | string | null;
-                readonly data: JsonObject;
-                readonly type: {
-                  readonly __typename: 'ContentItemType';
-                  readonly id: string;
-                  readonly name: string;
-                  readonly description?: string | null;
-                  readonly version: string;
-                  readonly schemaVariant: GQLItemTypeSchemaVariant;
-                  readonly hiddenFields: ReadonlyArray<string>;
-                  readonly schemaFieldRoles: {
-                    readonly __typename: 'ContentSchemaFieldRoles';
-                    readonly displayName?: string | null;
-                    readonly parentId?: string | null;
-                    readonly threadId?: string | null;
-                    readonly createdAt?: string | null;
-                    readonly creatorId?: string | null;
-                    readonly isDeleted?: string | null;
-                  };
-                  readonly baseFields: ReadonlyArray<{
-                    readonly __typename: 'BaseField';
-                    readonly name: string;
-                    readonly required: boolean;
-                    readonly type: GQLFieldType;
-                    readonly container?: {
-                      readonly __typename: 'Container';
-                      readonly containerType: GQLContainerType;
-                      readonly keyScalarType?: GQLScalarType | null;
-                      readonly valueScalarType: GQLScalarType;
-                    } | null;
-                  }>;
-                  readonly derivedFields: ReadonlyArray<{
-                    readonly __typename: 'DerivedField';
-                    readonly type: GQLFieldType;
-                    readonly name: string;
-                    readonly container?: {
-                      readonly __typename: 'Container';
-                      readonly containerType: GQLContainerType;
-                      readonly keyScalarType?: GQLScalarType | null;
-                      readonly valueScalarType: GQLScalarType;
-                    } | null;
-                    readonly spec: {
-                      readonly __typename: 'DerivedFieldSpec';
-                      readonly derivationType: GQLDerivedFieldDerivationType;
-                      readonly source:
-                        | {
-                            readonly __typename: 'DerivedFieldCoopInputSource';
-                            readonly coopInput: GQLCoopInput;
-                          }
-                        | {
-                            readonly __typename: 'DerivedFieldFieldSource';
-                            readonly name: string;
-                            readonly contentTypeId: string;
-                          }
-                        | {
-                            readonly __typename: 'DerivedFieldFullItemSource';
-                            readonly _?: boolean | null;
-                          };
-                    };
-                  }>;
-                };
-              }
-            | {
-                readonly __typename: 'ThreadItem';
-                readonly id: string;
-                readonly submissionId: string;
-                readonly submissionTime?: Date | string | null;
-                readonly data: JsonObject;
-                readonly type: {
-                  readonly __typename: 'ThreadItemType';
-                  readonly id: string;
-                  readonly name: string;
-                  readonly description?: string | null;
-                  readonly version: string;
-                  readonly schemaVariant: GQLItemTypeSchemaVariant;
-                  readonly hiddenFields: ReadonlyArray<string>;
-                  readonly schemaFieldRoles: {
-                    readonly __typename: 'ThreadSchemaFieldRoles';
-                    readonly displayName?: string | null;
-                    readonly createdAt?: string | null;
-                    readonly creatorId?: string | null;
-                    readonly isDeleted?: string | null;
-                  };
-                  readonly baseFields: ReadonlyArray<{
-                    readonly __typename: 'BaseField';
-                    readonly name: string;
-                    readonly required: boolean;
-                    readonly type: GQLFieldType;
-                    readonly container?: {
-                      readonly __typename: 'Container';
-                      readonly containerType: GQLContainerType;
-                      readonly keyScalarType?: GQLScalarType | null;
-                      readonly valueScalarType: GQLScalarType;
-                    } | null;
-                  }>;
-                  readonly derivedFields: ReadonlyArray<{
-                    readonly __typename: 'DerivedField';
-                    readonly type: GQLFieldType;
-                    readonly name: string;
-                    readonly container?: {
-                      readonly __typename: 'Container';
-                      readonly containerType: GQLContainerType;
-                      readonly keyScalarType?: GQLScalarType | null;
-                      readonly valueScalarType: GQLScalarType;
-                    } | null;
-                    readonly spec: {
-                      readonly __typename: 'DerivedFieldSpec';
-                      readonly derivationType: GQLDerivedFieldDerivationType;
-                      readonly source:
-                        | {
-                            readonly __typename: 'DerivedFieldCoopInputSource';
-                            readonly coopInput: GQLCoopInput;
-                          }
-                        | {
-                            readonly __typename: 'DerivedFieldFieldSource';
-                            readonly name: string;
-                            readonly contentTypeId: string;
-                          }
-                        | {
-                            readonly __typename: 'DerivedFieldFullItemSource';
-                            readonly _?: boolean | null;
-                          };
-                    };
-                  }>;
-                };
-              }
-            | {
-                readonly __typename: 'UserItem';
-                readonly id: string;
-                readonly submissionId: string;
-                readonly submissionTime?: Date | string | null;
-                readonly data: JsonObject;
-                readonly type: {
-                  readonly __typename: 'UserItemType';
-                  readonly id: string;
-                  readonly name: string;
-                  readonly description?: string | null;
-                  readonly version: string;
-                  readonly schemaVariant: GQLItemTypeSchemaVariant;
-                  readonly hiddenFields: ReadonlyArray<string>;
-                  readonly schemaFieldRoles: {
-                    readonly __typename: 'UserSchemaFieldRoles';
-                    readonly displayName?: string | null;
-                    readonly createdAt?: string | null;
-                    readonly profileIcon?: string | null;
-                    readonly backgroundImage?: string | null;
-                    readonly isDeleted?: string | null;
-                  };
-                  readonly baseFields: ReadonlyArray<{
-                    readonly __typename: 'BaseField';
-                    readonly name: string;
-                    readonly required: boolean;
-                    readonly type: GQLFieldType;
-                    readonly container?: {
-                      readonly __typename: 'Container';
-                      readonly containerType: GQLContainerType;
-                      readonly keyScalarType?: GQLScalarType | null;
-                      readonly valueScalarType: GQLScalarType;
-                    } | null;
-                  }>;
-                  readonly derivedFields: ReadonlyArray<{
-                    readonly __typename: 'DerivedField';
-                    readonly type: GQLFieldType;
-                    readonly name: string;
-                    readonly container?: {
-                      readonly __typename: 'Container';
-                      readonly containerType: GQLContainerType;
-                      readonly keyScalarType?: GQLScalarType | null;
-                      readonly valueScalarType: GQLScalarType;
-                    } | null;
-                    readonly spec: {
-                      readonly __typename: 'DerivedFieldSpec';
-                      readonly derivationType: GQLDerivedFieldDerivationType;
-                      readonly source:
-                        | {
-                            readonly __typename: 'DerivedFieldCoopInputSource';
-                            readonly coopInput: GQLCoopInput;
-                          }
-                        | {
-                            readonly __typename: 'DerivedFieldFieldSource';
-                            readonly name: string;
-                            readonly contentTypeId: string;
-                          }
-                        | {
-                            readonly __typename: 'DerivedFieldFullItemSource';
-                            readonly _?: boolean | null;
-                          };
-                    };
-                  }>;
-                };
-              };
-        }>;
-        readonly enqueueSourceInfo?:
-          | { readonly __typename: 'AppealEnqueueSourceInfo' }
-          | {
-              readonly __typename: 'MrtJobEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'PostActionsEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'ReportEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-              readonly rules: ReadonlyArray<
-                | {
-                    readonly __typename: 'ContentRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-                | {
-                    readonly __typename: 'UserRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-              >;
-            }
-          | null;
-      }
-    | {
-        readonly __typename: 'ThreadAppealManualReviewJobPayload';
-        readonly appealId: string;
-        readonly appealReason?: string | null;
-        readonly actionsTaken: ReadonlyArray<string>;
-        readonly item: {
-          readonly __typename: 'ThreadItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ThreadItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ThreadSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly appealerIdentifier?: {
-          readonly __typename: 'ItemIdentifier';
-          readonly id: string;
-          readonly typeId: string;
-        } | null;
-        readonly enqueueSourceInfo?: {
-          readonly __typename: 'AppealEnqueueSourceInfo';
-          readonly kind: GQLJobCreationSourceOptions;
-        } | null;
-      }
-    | {
-        readonly __typename: 'ThreadManualReviewJobPayload';
-        readonly reportHistory: ReadonlyArray<{
-          readonly __typename: 'ReportHistoryEntry';
-          readonly reportId: string;
-          readonly policyId?: string | null;
-          readonly reason?: string | null;
-          readonly reportedAt: Date | string;
-          readonly reporterId?: {
-            readonly __typename: 'ItemIdentifier';
-            readonly id: string;
-            readonly typeId: string;
-          } | null;
-        }>;
-        readonly item: {
-          readonly __typename: 'ThreadItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ThreadItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ThreadSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly reportedForReasons: ReadonlyArray<{
-          readonly __typename: 'ReportedForReason';
-          readonly reason?: string | null;
-          readonly reporterId?: {
-            readonly __typename: 'ItemIdentifier';
-            readonly id: string;
-            readonly typeId: string;
-          } | null;
-        }>;
-        readonly enqueueSourceInfo?:
-          | { readonly __typename: 'AppealEnqueueSourceInfo' }
-          | {
-              readonly __typename: 'MrtJobEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'PostActionsEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'ReportEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-              readonly rules: ReadonlyArray<
-                | {
-                    readonly __typename: 'ContentRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-                | {
-                    readonly __typename: 'UserRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-              >;
-            }
-          | null;
-      }
-    | {
-        readonly __typename: 'UserAppealManualReviewJobPayload';
-        readonly userScore?: number | null;
-        readonly appealReason?: string | null;
-        readonly appealId: string;
-        readonly actionsTaken: ReadonlyArray<string>;
-        readonly item: {
-          readonly __typename: 'UserItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'UserItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'UserSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly createdAt?: string | null;
-              readonly profileIcon?: string | null;
-              readonly backgroundImage?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly additionalContentItems: ReadonlyArray<{
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        }>;
-        readonly appealerIdentifier?: {
-          readonly __typename: 'ItemIdentifier';
-          readonly id: string;
-          readonly typeId: string;
-        } | null;
-        readonly enqueueSourceInfo?: {
-          readonly __typename: 'AppealEnqueueSourceInfo';
-          readonly kind: GQLJobCreationSourceOptions;
-        } | null;
-      }
-    | {
-        readonly __typename: 'UserManualReviewJobPayload';
-        readonly userScore?: number | null;
-        readonly reportHistory: ReadonlyArray<{
-          readonly __typename: 'ReportHistoryEntry';
-          readonly reportId: string;
-          readonly policyId?: string | null;
-          readonly reason?: string | null;
-          readonly reportedAt: Date | string;
-          readonly reporterId?: {
-            readonly __typename: 'ItemIdentifier';
-            readonly id: string;
-            readonly typeId: string;
-          } | null;
-        }>;
-        readonly item: {
-          readonly __typename: 'UserItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'UserItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'UserSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly createdAt?: string | null;
-              readonly profileIcon?: string | null;
-              readonly backgroundImage?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        };
-        readonly itemThreadContentItems?: ReadonlyArray<{
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        }> | null;
-        readonly reportedItems?: ReadonlyArray<{
-          readonly __typename: 'ItemIdentifier';
-          readonly id: string;
-          readonly typeId: string;
-        } | null> | null;
-        readonly additionalContentItems: ReadonlyArray<{
-          readonly __typename: 'ContentItem';
-          readonly id: string;
-          readonly submissionId: string;
-          readonly submissionTime?: Date | string | null;
-          readonly data: JsonObject;
-          readonly type: {
-            readonly __typename: 'ContentItemType';
-            readonly id: string;
-            readonly name: string;
-            readonly description?: string | null;
-            readonly version: string;
-            readonly schemaVariant: GQLItemTypeSchemaVariant;
-            readonly hiddenFields: ReadonlyArray<string>;
-            readonly schemaFieldRoles: {
-              readonly __typename: 'ContentSchemaFieldRoles';
-              readonly displayName?: string | null;
-              readonly parentId?: string | null;
-              readonly threadId?: string | null;
-              readonly createdAt?: string | null;
-              readonly creatorId?: string | null;
-              readonly isDeleted?: string | null;
-            };
-            readonly baseFields: ReadonlyArray<{
-              readonly __typename: 'BaseField';
-              readonly name: string;
-              readonly required: boolean;
-              readonly type: GQLFieldType;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-            }>;
-            readonly derivedFields: ReadonlyArray<{
-              readonly __typename: 'DerivedField';
-              readonly type: GQLFieldType;
-              readonly name: string;
-              readonly container?: {
-                readonly __typename: 'Container';
-                readonly containerType: GQLContainerType;
-                readonly keyScalarType?: GQLScalarType | null;
-                readonly valueScalarType: GQLScalarType;
-              } | null;
-              readonly spec: {
-                readonly __typename: 'DerivedFieldSpec';
-                readonly derivationType: GQLDerivedFieldDerivationType;
-                readonly source:
-                  | {
-                      readonly __typename: 'DerivedFieldCoopInputSource';
-                      readonly coopInput: GQLCoopInput;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFieldSource';
-                      readonly name: string;
-                      readonly contentTypeId: string;
-                    }
-                  | {
-                      readonly __typename: 'DerivedFieldFullItemSource';
-                      readonly _?: boolean | null;
-                    };
-              };
-            }>;
-          };
-        }>;
-        readonly reportedForReasons: ReadonlyArray<{
-          readonly __typename: 'ReportedForReason';
-          readonly reason?: string | null;
-          readonly reporterId?: {
-            readonly __typename: 'ItemIdentifier';
-            readonly id: string;
-            readonly typeId: string;
-          } | null;
-        }>;
-        readonly enqueueSourceInfo?:
-          | { readonly __typename: 'AppealEnqueueSourceInfo' }
-          | {
-              readonly __typename: 'MrtJobEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'PostActionsEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'ReportEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-            }
-          | {
-              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
-              readonly kind: GQLJobCreationSourceOptions;
-              readonly rules: ReadonlyArray<
-                | {
-                    readonly __typename: 'ContentRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-                | {
-                    readonly __typename: 'UserRule';
-                    readonly id: string;
-                    readonly name: string;
-                  }
-              >;
-            }
-          | null;
-      };
-};
-
 export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
@@ -16032,6 +14718,1320 @@ export type GQLReleaseJobLockMutationVariables = Exact<{
 export type GQLReleaseJobLockMutation = {
   readonly __typename: 'Mutation';
   readonly releaseJobLock: boolean;
+};
+
+export type GQLJobFieldsFragment = {
+  readonly __typename: 'ManualReviewJob';
+  readonly id: string;
+  readonly createdAt: Date | string;
+  readonly policyIds: ReadonlyArray<string>;
+  readonly numTimesReported?: number | null;
+  readonly payload:
+    | {
+        readonly __typename: 'ContentAppealManualReviewJobPayload';
+        readonly userScore?: number | null;
+        readonly appealReason?: string | null;
+        readonly appealId: string;
+        readonly actionsTaken: ReadonlyArray<string>;
+        readonly item: {
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly additionalContentItems: ReadonlyArray<{
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        }>;
+        readonly appealerIdentifier?: {
+          readonly __typename: 'ItemIdentifier';
+          readonly id: string;
+          readonly typeId: string;
+        } | null;
+        readonly enqueueSourceInfo?: {
+          readonly __typename: 'AppealEnqueueSourceInfo';
+          readonly kind: GQLJobCreationSourceOptions;
+        } | null;
+      }
+    | {
+        readonly __typename: 'ContentManualReviewJobPayload';
+        readonly userScore?: number | null;
+        readonly reportHistory: ReadonlyArray<{
+          readonly __typename: 'ReportHistoryEntry';
+          readonly policyId?: string | null;
+          readonly reportId: string;
+          readonly reason?: string | null;
+          readonly reportedAt: Date | string;
+          readonly reporterId?: {
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          } | null;
+        }>;
+        readonly item: {
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly additionalContentItems: ReadonlyArray<{
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        }>;
+        readonly itemThreadContentItems?: ReadonlyArray<{
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        }> | null;
+        readonly reportedForReasons: ReadonlyArray<{
+          readonly __typename: 'ReportedForReason';
+          readonly reason?: string | null;
+          readonly reporterId?: {
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          } | null;
+        }>;
+        readonly enqueueSourceInfo?:
+          | { readonly __typename: 'AppealEnqueueSourceInfo' }
+          | {
+              readonly __typename: 'MrtJobEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'PostActionsEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'ReportEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+              readonly rules: ReadonlyArray<
+                | {
+                    readonly __typename: 'ContentRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+                | {
+                    readonly __typename: 'UserRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+              >;
+            }
+          | null;
+      }
+    | {
+        readonly __typename: 'NcmecManualReviewJobPayload';
+        readonly item: {
+          readonly __typename: 'UserItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'UserItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'UserSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly profileIcon?: string | null;
+              readonly backgroundImage?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly allMediaItems: ReadonlyArray<{
+          readonly __typename: 'NcmecContentItem';
+          readonly isConfirmedCSAM: boolean;
+          readonly isReported: boolean;
+          readonly contentItem:
+            | {
+                readonly __typename: 'ContentItem';
+                readonly id: string;
+                readonly submissionId: string;
+                readonly submissionTime?: Date | string | null;
+                readonly data: JsonObject;
+                readonly type: {
+                  readonly __typename: 'ContentItemType';
+                  readonly id: string;
+                  readonly name: string;
+                  readonly description?: string | null;
+                  readonly version: string;
+                  readonly schemaVariant: GQLItemTypeSchemaVariant;
+                  readonly hiddenFields: ReadonlyArray<string>;
+                  readonly schemaFieldRoles: {
+                    readonly __typename: 'ContentSchemaFieldRoles';
+                    readonly displayName?: string | null;
+                    readonly parentId?: string | null;
+                    readonly threadId?: string | null;
+                    readonly createdAt?: string | null;
+                    readonly creatorId?: string | null;
+                    readonly isDeleted?: string | null;
+                  };
+                  readonly baseFields: ReadonlyArray<{
+                    readonly __typename: 'BaseField';
+                    readonly name: string;
+                    readonly required: boolean;
+                    readonly type: GQLFieldType;
+                    readonly container?: {
+                      readonly __typename: 'Container';
+                      readonly containerType: GQLContainerType;
+                      readonly keyScalarType?: GQLScalarType | null;
+                      readonly valueScalarType: GQLScalarType;
+                    } | null;
+                  }>;
+                  readonly derivedFields: ReadonlyArray<{
+                    readonly __typename: 'DerivedField';
+                    readonly type: GQLFieldType;
+                    readonly name: string;
+                    readonly container?: {
+                      readonly __typename: 'Container';
+                      readonly containerType: GQLContainerType;
+                      readonly keyScalarType?: GQLScalarType | null;
+                      readonly valueScalarType: GQLScalarType;
+                    } | null;
+                    readonly spec: {
+                      readonly __typename: 'DerivedFieldSpec';
+                      readonly derivationType: GQLDerivedFieldDerivationType;
+                      readonly source:
+                        | {
+                            readonly __typename: 'DerivedFieldCoopInputSource';
+                            readonly coopInput: GQLCoopInput;
+                          }
+                        | {
+                            readonly __typename: 'DerivedFieldFieldSource';
+                            readonly name: string;
+                            readonly contentTypeId: string;
+                          }
+                        | {
+                            readonly __typename: 'DerivedFieldFullItemSource';
+                            readonly _?: boolean | null;
+                          };
+                    };
+                  }>;
+                };
+              }
+            | {
+                readonly __typename: 'ThreadItem';
+                readonly id: string;
+                readonly submissionId: string;
+                readonly submissionTime?: Date | string | null;
+                readonly data: JsonObject;
+                readonly type: {
+                  readonly __typename: 'ThreadItemType';
+                  readonly id: string;
+                  readonly name: string;
+                  readonly description?: string | null;
+                  readonly version: string;
+                  readonly schemaVariant: GQLItemTypeSchemaVariant;
+                  readonly hiddenFields: ReadonlyArray<string>;
+                  readonly schemaFieldRoles: {
+                    readonly __typename: 'ThreadSchemaFieldRoles';
+                    readonly displayName?: string | null;
+                    readonly createdAt?: string | null;
+                    readonly creatorId?: string | null;
+                    readonly isDeleted?: string | null;
+                  };
+                  readonly baseFields: ReadonlyArray<{
+                    readonly __typename: 'BaseField';
+                    readonly name: string;
+                    readonly required: boolean;
+                    readonly type: GQLFieldType;
+                    readonly container?: {
+                      readonly __typename: 'Container';
+                      readonly containerType: GQLContainerType;
+                      readonly keyScalarType?: GQLScalarType | null;
+                      readonly valueScalarType: GQLScalarType;
+                    } | null;
+                  }>;
+                  readonly derivedFields: ReadonlyArray<{
+                    readonly __typename: 'DerivedField';
+                    readonly type: GQLFieldType;
+                    readonly name: string;
+                    readonly container?: {
+                      readonly __typename: 'Container';
+                      readonly containerType: GQLContainerType;
+                      readonly keyScalarType?: GQLScalarType | null;
+                      readonly valueScalarType: GQLScalarType;
+                    } | null;
+                    readonly spec: {
+                      readonly __typename: 'DerivedFieldSpec';
+                      readonly derivationType: GQLDerivedFieldDerivationType;
+                      readonly source:
+                        | {
+                            readonly __typename: 'DerivedFieldCoopInputSource';
+                            readonly coopInput: GQLCoopInput;
+                          }
+                        | {
+                            readonly __typename: 'DerivedFieldFieldSource';
+                            readonly name: string;
+                            readonly contentTypeId: string;
+                          }
+                        | {
+                            readonly __typename: 'DerivedFieldFullItemSource';
+                            readonly _?: boolean | null;
+                          };
+                    };
+                  }>;
+                };
+              }
+            | {
+                readonly __typename: 'UserItem';
+                readonly id: string;
+                readonly submissionId: string;
+                readonly submissionTime?: Date | string | null;
+                readonly data: JsonObject;
+                readonly type: {
+                  readonly __typename: 'UserItemType';
+                  readonly id: string;
+                  readonly name: string;
+                  readonly description?: string | null;
+                  readonly version: string;
+                  readonly schemaVariant: GQLItemTypeSchemaVariant;
+                  readonly hiddenFields: ReadonlyArray<string>;
+                  readonly schemaFieldRoles: {
+                    readonly __typename: 'UserSchemaFieldRoles';
+                    readonly displayName?: string | null;
+                    readonly createdAt?: string | null;
+                    readonly profileIcon?: string | null;
+                    readonly backgroundImage?: string | null;
+                    readonly isDeleted?: string | null;
+                  };
+                  readonly baseFields: ReadonlyArray<{
+                    readonly __typename: 'BaseField';
+                    readonly name: string;
+                    readonly required: boolean;
+                    readonly type: GQLFieldType;
+                    readonly container?: {
+                      readonly __typename: 'Container';
+                      readonly containerType: GQLContainerType;
+                      readonly keyScalarType?: GQLScalarType | null;
+                      readonly valueScalarType: GQLScalarType;
+                    } | null;
+                  }>;
+                  readonly derivedFields: ReadonlyArray<{
+                    readonly __typename: 'DerivedField';
+                    readonly type: GQLFieldType;
+                    readonly name: string;
+                    readonly container?: {
+                      readonly __typename: 'Container';
+                      readonly containerType: GQLContainerType;
+                      readonly keyScalarType?: GQLScalarType | null;
+                      readonly valueScalarType: GQLScalarType;
+                    } | null;
+                    readonly spec: {
+                      readonly __typename: 'DerivedFieldSpec';
+                      readonly derivationType: GQLDerivedFieldDerivationType;
+                      readonly source:
+                        | {
+                            readonly __typename: 'DerivedFieldCoopInputSource';
+                            readonly coopInput: GQLCoopInput;
+                          }
+                        | {
+                            readonly __typename: 'DerivedFieldFieldSource';
+                            readonly name: string;
+                            readonly contentTypeId: string;
+                          }
+                        | {
+                            readonly __typename: 'DerivedFieldFullItemSource';
+                            readonly _?: boolean | null;
+                          };
+                    };
+                  }>;
+                };
+              };
+        }>;
+        readonly enqueueSourceInfo?:
+          | { readonly __typename: 'AppealEnqueueSourceInfo' }
+          | {
+              readonly __typename: 'MrtJobEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'PostActionsEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'ReportEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+              readonly rules: ReadonlyArray<
+                | {
+                    readonly __typename: 'ContentRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+                | {
+                    readonly __typename: 'UserRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+              >;
+            }
+          | null;
+      }
+    | {
+        readonly __typename: 'ThreadAppealManualReviewJobPayload';
+        readonly appealId: string;
+        readonly appealReason?: string | null;
+        readonly actionsTaken: ReadonlyArray<string>;
+        readonly item: {
+          readonly __typename: 'ThreadItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ThreadItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ThreadSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly appealerIdentifier?: {
+          readonly __typename: 'ItemIdentifier';
+          readonly id: string;
+          readonly typeId: string;
+        } | null;
+        readonly enqueueSourceInfo?: {
+          readonly __typename: 'AppealEnqueueSourceInfo';
+          readonly kind: GQLJobCreationSourceOptions;
+        } | null;
+      }
+    | {
+        readonly __typename: 'ThreadManualReviewJobPayload';
+        readonly reportHistory: ReadonlyArray<{
+          readonly __typename: 'ReportHistoryEntry';
+          readonly reportId: string;
+          readonly policyId?: string | null;
+          readonly reason?: string | null;
+          readonly reportedAt: Date | string;
+          readonly reporterId?: {
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          } | null;
+        }>;
+        readonly item: {
+          readonly __typename: 'ThreadItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ThreadItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ThreadSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly reportedForReasons: ReadonlyArray<{
+          readonly __typename: 'ReportedForReason';
+          readonly reason?: string | null;
+          readonly reporterId?: {
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          } | null;
+        }>;
+        readonly enqueueSourceInfo?:
+          | { readonly __typename: 'AppealEnqueueSourceInfo' }
+          | {
+              readonly __typename: 'MrtJobEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'PostActionsEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'ReportEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+              readonly rules: ReadonlyArray<
+                | {
+                    readonly __typename: 'ContentRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+                | {
+                    readonly __typename: 'UserRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+              >;
+            }
+          | null;
+      }
+    | {
+        readonly __typename: 'UserAppealManualReviewJobPayload';
+        readonly userScore?: number | null;
+        readonly appealReason?: string | null;
+        readonly appealId: string;
+        readonly actionsTaken: ReadonlyArray<string>;
+        readonly item: {
+          readonly __typename: 'UserItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'UserItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'UserSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly profileIcon?: string | null;
+              readonly backgroundImage?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly additionalContentItems: ReadonlyArray<{
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        }>;
+        readonly appealerIdentifier?: {
+          readonly __typename: 'ItemIdentifier';
+          readonly id: string;
+          readonly typeId: string;
+        } | null;
+        readonly enqueueSourceInfo?: {
+          readonly __typename: 'AppealEnqueueSourceInfo';
+          readonly kind: GQLJobCreationSourceOptions;
+        } | null;
+      }
+    | {
+        readonly __typename: 'UserManualReviewJobPayload';
+        readonly userScore?: number | null;
+        readonly reportHistory: ReadonlyArray<{
+          readonly __typename: 'ReportHistoryEntry';
+          readonly reportId: string;
+          readonly policyId?: string | null;
+          readonly reason?: string | null;
+          readonly reportedAt: Date | string;
+          readonly reporterId?: {
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          } | null;
+        }>;
+        readonly item: {
+          readonly __typename: 'UserItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'UserItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'UserSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly createdAt?: string | null;
+              readonly profileIcon?: string | null;
+              readonly backgroundImage?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        };
+        readonly itemThreadContentItems?: ReadonlyArray<{
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        }> | null;
+        readonly reportedItems?: ReadonlyArray<{
+          readonly __typename: 'ItemIdentifier';
+          readonly id: string;
+          readonly typeId: string;
+        } | null> | null;
+        readonly additionalContentItems: ReadonlyArray<{
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly data: JsonObject;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly description?: string | null;
+            readonly version: string;
+            readonly schemaVariant: GQLItemTypeSchemaVariant;
+            readonly hiddenFields: ReadonlyArray<string>;
+            readonly schemaFieldRoles: {
+              readonly __typename: 'ContentSchemaFieldRoles';
+              readonly displayName?: string | null;
+              readonly parentId?: string | null;
+              readonly threadId?: string | null;
+              readonly createdAt?: string | null;
+              readonly creatorId?: string | null;
+              readonly isDeleted?: string | null;
+            };
+            readonly baseFields: ReadonlyArray<{
+              readonly __typename: 'BaseField';
+              readonly name: string;
+              readonly required: boolean;
+              readonly type: GQLFieldType;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+            }>;
+            readonly derivedFields: ReadonlyArray<{
+              readonly __typename: 'DerivedField';
+              readonly type: GQLFieldType;
+              readonly name: string;
+              readonly container?: {
+                readonly __typename: 'Container';
+                readonly containerType: GQLContainerType;
+                readonly keyScalarType?: GQLScalarType | null;
+                readonly valueScalarType: GQLScalarType;
+              } | null;
+              readonly spec: {
+                readonly __typename: 'DerivedFieldSpec';
+                readonly derivationType: GQLDerivedFieldDerivationType;
+                readonly source:
+                  | {
+                      readonly __typename: 'DerivedFieldCoopInputSource';
+                      readonly coopInput: GQLCoopInput;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFieldSource';
+                      readonly name: string;
+                      readonly contentTypeId: string;
+                    }
+                  | {
+                      readonly __typename: 'DerivedFieldFullItemSource';
+                      readonly _?: boolean | null;
+                    };
+              };
+            }>;
+          };
+        }>;
+        readonly reportedForReasons: ReadonlyArray<{
+          readonly __typename: 'ReportedForReason';
+          readonly reason?: string | null;
+          readonly reporterId?: {
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          } | null;
+        }>;
+        readonly enqueueSourceInfo?:
+          | { readonly __typename: 'AppealEnqueueSourceInfo' }
+          | {
+              readonly __typename: 'MrtJobEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'PostActionsEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'ReportEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+            }
+          | {
+              readonly __typename: 'RuleExecutionEnqueueSourceInfo';
+              readonly kind: GQLJobCreationSourceOptions;
+              readonly rules: ReadonlyArray<
+                | {
+                    readonly __typename: 'ContentRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+                | {
+                    readonly __typename: 'UserRule';
+                    readonly id: string;
+                    readonly name: string;
+                  }
+              >;
+            }
+          | null;
+      };
 };
 
 export type GQLGetRelatedItemsQueryVariables = Exact<{
