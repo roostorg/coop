@@ -1,9 +1,13 @@
+import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
+import { UserRole } from '../../models/types/permissioning.js';
+import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { CoopError } from '../../utils/errors.js';
+import { kyselyUserDeleteById, kyselyUserInsert } from './userKyselyPersistence.js';
 
 describe('OrgAPI', () => {
   const testWithFixture = makeTestWithFixture(async () => {
@@ -126,6 +130,167 @@ describe('OrgAPI', () => {
           name: 'BadRequestError',
           pointer: '/input/email',
         });
+      },
+    );
+  });
+
+  describe('getContentTypesForOrg', () => {
+    testWithFixture(
+      'returns every item type for the org with the fields read by the ContentType resolver',
+      async ({ deps, org }) => {
+        const { itemTypes, cleanup } = await createContentItemTypes({
+          moderationConfigService: deps.ModerationConfigService,
+          orgId: org.id,
+          numItemTypes: 1,
+          extra: {},
+        });
+        try {
+          const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
+            org.id,
+          );
+          const actualIds = new Set(result.map((it) => it.id));
+          for (const created of itemTypes) {
+            expect(actualIds.has(created.id)).toBe(true);
+          }
+          for (const it of result) {
+            expect(it.orgId).toBe(org.id);
+            expect(typeof it.id).toBe('string');
+            expect(typeof it.name).toBe('string');
+            expect(['CONTENT', 'USER', 'THREAD']).toContain(it.kind);
+            expect(Array.isArray(it.schema)).toBe(true);
+          }
+        } finally {
+          await cleanup();
+        }
+      },
+    );
+
+    testWithFixture(
+      'returns all item-type kinds, not just CONTENT (createOrg seeds a default USER)',
+      async ({ deps, org }) => {
+        const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
+          org.id,
+        );
+        expect(result.length).toBeGreaterThan(0);
+        expect(result.some((it) => it.kind === 'USER')).toBe(true);
+      },
+    );
+
+    testWithFixture(
+      'does not leak item types across orgs',
+      async ({ deps, org }) => {
+        const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
+          {
+            KyselyPg: deps.KyselyPg,
+            ModerationConfigService: deps.ModerationConfigService,
+            ApiKeyService: deps.ApiKeyService,
+          },
+          uid(),
+        );
+        try {
+          const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
+            org.id,
+          );
+          for (const it of result) {
+            expect(it.orgId).toBe(org.id);
+            expect(it.orgId).not.toBe(otherOrg.id);
+          }
+        } finally {
+          await otherOrgCleanup();
+        }
+      },
+    );
+  });
+
+  describe('getOrgUsersForGraphQL', () => {
+    testWithFixture(
+      'returns GraphQLUserParents for every user in the org with a working getPermissions() method',
+      async ({ deps, org }) => {
+        const adminId = uid();
+        const analystId = uid();
+        await kyselyUserInsert({
+          db: deps.KyselyPg,
+          id: adminId,
+          orgId: org.id,
+          email: faker.internet.email(),
+          firstName: faker.name.firstName(),
+          lastName: faker.name.lastName(),
+          role: UserRole.ADMIN,
+          loginMethods: ['saml'],
+          password: null,
+        });
+        await kyselyUserInsert({
+          db: deps.KyselyPg,
+          id: analystId,
+          orgId: org.id,
+          email: faker.internet.email(),
+          firstName: faker.name.firstName(),
+          lastName: faker.name.lastName(),
+          role: UserRole.ANALYST,
+          loginMethods: ['saml'],
+          password: null,
+        });
+        try {
+          const users = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(
+            org.id,
+          );
+          const ids = users.map((u) => u.id).sort();
+          expect(ids).toEqual([adminId, analystId].sort());
+          const admin = users.find((u) => u.id === adminId)!;
+          const analyst = users.find((u) => u.id === analystId)!;
+          expect(admin.getPermissions()).toEqual(
+            expect.arrayContaining(['EDIT_MRT_QUEUES']),
+          );
+          expect(analyst.getPermissions()).not.toContain('EDIT_MRT_QUEUES');
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, adminId);
+          await kyselyUserDeleteById(deps.KyselyPg, analystId);
+        }
+      },
+    );
+
+    testWithFixture(
+      'returns an empty array for an org with no users',
+      async ({ deps, org }) => {
+        const result = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(
+          org.id,
+        );
+        expect(result).toEqual([]);
+      },
+    );
+
+    testWithFixture(
+      'does not leak users across orgs',
+      async ({ deps, org }) => {
+        const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
+          {
+            KyselyPg: deps.KyselyPg,
+            ModerationConfigService: deps.ModerationConfigService,
+            ApiKeyService: deps.ApiKeyService,
+          },
+          uid(),
+        );
+        const otherUserId = uid();
+        await kyselyUserInsert({
+          db: deps.KyselyPg,
+          id: otherUserId,
+          orgId: otherOrg.id,
+          email: faker.internet.email(),
+          firstName: faker.name.firstName(),
+          lastName: faker.name.lastName(),
+          role: UserRole.ADMIN,
+          loginMethods: ['saml'],
+          password: null,
+        });
+        try {
+          const result = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(
+            org.id,
+          );
+          expect(result.find((u) => u.id === otherUserId)).toBeUndefined();
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, otherUserId);
+          await otherOrgCleanup();
+        }
       },
     );
   });

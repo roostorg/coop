@@ -96,7 +96,7 @@ generates:
         EnqueueToNcmecAction: ../services/moderationConfigService/types/actions.js#EnqueueToNcmecAction
         EnqueueAuthorToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueAuthorToMrtAction
         Backtest: ../models/rules/BacktestModel.js#Backtest
-        ContentType: ../models/rules/ItemTypeModel.js#ItemType
+        ContentType: ../services/moderationConfigService/types/itemTypes.js#ItemType
         DerivedFieldSource: ../services/derivedFieldsService/helpers.js#DerivedFieldSpecSource
         HashBank: ../models/HashBankModel.js#HashBank
         Org: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
