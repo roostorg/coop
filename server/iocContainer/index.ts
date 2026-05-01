@@ -453,7 +453,7 @@ export default async function getBottle() {
     password: safeGetEnvVar('DATABASE_PASSWORD'),
     port: parseInt(process.env.DATABASE_PORT ?? '5432'),
     host: safeGetEnvVar('DATABASE_HOST'),
-    max: 30,
+    max: parseInt(process.env.DATABASE_POOL_MAX ?? '30'),
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
     ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
@@ -489,7 +489,7 @@ export default async function getBottle() {
         dialect: new PostgresDialect({
           pool: new pg.Pool({
             ...getPgMasterConnectionInfo(),
-            max: 150,
+            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
             host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
           }),
           cursor: Cursor as unknown as PostgresCursorConstructor,
