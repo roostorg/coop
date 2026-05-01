@@ -771,7 +771,7 @@ export default async function getBottle() {
         controlConnection?: { hosts?: { setMaxListeners?: (n: number) => void } };
       }
     ).controlConnection;
-    controlConnection?.hosts?.setMaxListeners?.(50);
+    controlConnection?.hosts?.setMaxListeners?.(15);
 
     class ClosableScylla<
       DB extends Record<string, Record<string, unknown>>,
