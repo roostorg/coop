@@ -7,7 +7,7 @@ import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { type Backtest } from '../../models/rules/BacktestModel.js';
+import { type GraphQLBacktestParent } from './ruleKyselyPersistence.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
@@ -670,7 +670,7 @@ class RuleAPI {
   async createBacktest(
     _input: GQLCreateBacktestInput,
     _user: GraphQLUserParent,
-  ): Promise<Backtest> {
+  ): Promise<GraphQLBacktestParent> {
     throw new Error(
       'createBacktest is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
     );

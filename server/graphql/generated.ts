@@ -8,6 +8,7 @@ import { JsonObject, JsonValue } from 'type-fest';
 
 import type { UserHistoryForGQL } from '../graphql/datasources/InvestigationApi.js';
 import type { GraphQLOrgParent } from '../graphql/datasources/orgKyselyPersistence.js';
+import type { GraphQLBacktestParent } from '../graphql/datasources/ruleKyselyPersistence.js';
 import type { GraphQLUserParent } from '../graphql/datasources/userKyselyPersistence.js';
 import type {
   ContentItemTypeResolversParentType,
@@ -18,11 +19,10 @@ import type {
   UserItemTypeResolversParentType,
 } from '../graphql/modules/itemType.js';
 import type { ReportingInsights } from '../graphql/modules/reporting.js';
-import type { HashBank } from '../models/HashBankModel.js';
-import type { Backtest } from '../models/rules/BacktestModel.js';
 import type { Rule } from '../models/rules/RuleModel.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
+import type { HashBank } from '../services/hmaService/index.js';
 import type {
   ContentAppealReviewJobPayload,
   ContentManualReviewJobPayload,
@@ -5444,7 +5444,7 @@ export type GQLResolversTypes = {
   AppealSettings: ResolverTypeWrapper<GQLAppealSettings>;
   AppealSettingsInput: GQLAppealSettingsInput;
   AutomaticCloseDecisionComponent: ResolverTypeWrapper<GQLAutomaticCloseDecisionComponent>;
-  Backtest: ResolverTypeWrapper<Backtest>;
+  Backtest: ResolverTypeWrapper<GraphQLBacktestParent>;
   BacktestStatus: GQLBacktestStatus;
   BaseField: ResolverTypeWrapper<GQLBaseField>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
@@ -6274,7 +6274,7 @@ export type GQLResolversParentTypes = {
   AppealSettings: GQLAppealSettings;
   AppealSettingsInput: GQLAppealSettingsInput;
   AutomaticCloseDecisionComponent: GQLAutomaticCloseDecisionComponent;
-  Backtest: Backtest;
+  Backtest: GraphQLBacktestParent;
   BaseField: GQLBaseField;
   Boolean: Scalars['Boolean']['output'];
   CannotDeleteDefaultUserError: GQLCannotDeleteDefaultUserError;

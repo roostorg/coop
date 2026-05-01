@@ -1,9 +1,9 @@
-import { type Backtest } from '../../models/rules/BacktestModel.js';
 import {
   hasPermission,
   UserPermission,
 } from '../../models/types/permissioning.js';
 import { type RuleExecutionResult } from '../datasources/RuleApi.js';
+import { type GraphQLBacktestParent } from '../datasources/ruleKyselyPersistence.js';
 import { type GQLMutationCreateBacktestArgs } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import {
@@ -77,14 +77,14 @@ const typeDefs = /* GraphQL */ `
 
 const resolvers = {
   Backtest: {
-    contentItemsProcessed(source: Backtest) {
+    contentItemsProcessed(source: GraphQLBacktestParent) {
       return source.correctedContentItemsProcessed;
     },
-    contentItemsMatched(source: Backtest) {
+    contentItemsMatched(source: GraphQLBacktestParent) {
       return source.correctedContentItemsMatched;
     },
     results: makeConnectionResolver<
-      Backtest,
+      GraphQLBacktestParent,
       { ts: number },
       RuleExecutionResult,
       Context,
