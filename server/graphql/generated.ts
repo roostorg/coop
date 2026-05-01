@@ -20,7 +20,6 @@ import type {
 import type { ReportingInsights } from '../graphql/modules/reporting.js';
 import type { HashBank } from '../models/HashBankModel.js';
 import type { Backtest } from '../models/rules/BacktestModel.js';
-import type { ItemType } from '../services/moderationConfigService/types/itemTypes.js';
 import type { Rule } from '../models/rules/RuleModel.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
@@ -52,6 +51,7 @@ import type {
   EnqueueToMrtAction,
   EnqueueToNcmecAction,
 } from '../services/moderationConfigService/types/actions.js';
+import type { ItemType } from '../services/moderationConfigService/types/itemTypes.js';
 import type { Notification } from '../services/notificationsService/notificationsService.js';
 import type { ReportingRuleWithoutVersion } from '../services/reportingService/ReportingRules.js';
 import type { Signal } from '../services/signalsService/index.js';
