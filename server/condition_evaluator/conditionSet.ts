@@ -69,12 +69,19 @@ export async function getConditionSetResults(
   runLeafCondition = defaultRunLeafCondition,
 ): Promise<Required<ConditionSetWithResult>> {
   const { conjunction } = conditionSet;
-  const result: ConditionSetWithResult = {
-    conjunction,
-    conditions: [] as unknown as
-      | NonEmptyArray<LeafConditionWithResult>
-      | NonEmptyArray<ConditionSetWithResult>,
-  };
+  // We collect mixed condition results during the loop, then narrow back to
+  // the public "ConditionSetWithResult.conditions" shape at return time. The
+  // public type is a discriminated union of "all leaves" or "all sets", which
+  // can't be safely pushed into; the array's runtime contents stay uniform
+  // because the input "conditionSet.conditions" is uniform.
+  //
+  // The element type is "ReadonlyDeep<...>" here because the inputs we push
+  // come from "ReadonlyDeep<ConditionSet>". We cast back to the mutable
+  // shape at the return site below; the cast is sound because the data is
+  // freshly built and never mutated by callers.
+  const conditionsWithResult: Array<
+    ReadonlyDeep<LeafConditionWithResult | ConditionSetWithResult>
+  > = [];
 
   // The conditions, sorted with lowest cost ones first.
   const getSignalCost = evaluationContext.getSignalCost.bind(evaluationContext);
@@ -99,17 +106,17 @@ export async function getConditionSetResults(
   // if we can determine it before evaluating all conditions.
   let finalOutcome: ConditionOutcome | undefined;
 
-  // This is basically mapping `conditions` to ConditionWithResult, and putting
-  // the mapped array in result.conditions. But we don't use `map` because we
-  // want to run the conditions in sequence (i.e., with an `await` on each loop
+  // This is basically mapping "conditions" to ConditionWithResult, and pushing
+  // them onto "conditionsWithResult". But we don't use "map" because we want to
+  // run the conditions in sequence (i.e., with an "await" on each loop
   // iteration), and map would run them in parallel.
   for (const condition of sortedConditions) {
     // If we already know the final outcome for the condition set, then we can
     // skip all subsequent conditions, and a condition that's skipped has an
     // identical representation for its ConditionWithResult, so we just push
-    // the skipped condition into result.conditions.
+    // the skipped condition through.
     if (finalOutcome !== undefined) {
-      result.conditions.push(condition as any);
+      conditionsWithResult.push(condition);
       continue;
     }
 
@@ -133,14 +140,14 @@ export async function getConditionSetResults(
             ),
           };
 
-    result.conditions.push(conditionWithResult as any);
+    conditionsWithResult.push(conditionWithResult);
     // console.log('RESULT ' + conditionWithResult.result.outcome);
 
     // Attempt to determine the result for the whole condition set from the
     // outcomes so far. If we can, save that result to skip running each
     // condition for the rest of the loop
     const conditionSetOutcome = tryGetOutcomeFromPartialOutcomes(
-      result.conditions.map((c) => c.result!.outcome),
+      conditionsWithResult.map((c) => c.result!.outcome),
       conjunction,
     );
 
@@ -150,12 +157,14 @@ export async function getConditionSetResults(
   }
 
   return {
-    ...result,
+    conjunction,
+    conditions:
+      conditionsWithResult as ConditionSetWithResult['conditions'],
     result: {
       outcome:
         finalOutcome ??
         getConditionSetOutcome(
-          result.conditions.map((c) => c.result!.outcome),
+          conditionsWithResult.map((c) => c.result!.outcome),
           conjunction,
         ),
     },

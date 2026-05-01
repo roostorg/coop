@@ -44,7 +44,7 @@ const makeGetRuleAnomalyDetectionaStatistics =
     // UTC time, which is what we need (current_timestamp() is server-local time).
     const [conditions, conditionBindValues] = unzip2<string, string[] | Date>([
       ...(!includePeriodsInProgress
-        ? [['ts_end_exclusive <= SYSDATE()', [] as any] as const]
+        ? [['ts_end_exclusive <= SYSDATE()', [] as string[]] as const]
         : []),
       ...(startTime ? [['ts_start_inclusive >= ?', startTime] as const] : []),
       ...(ruleIds
@@ -77,20 +77,23 @@ const makeGetRuleAnomalyDetectionaStatistics =
       bindValues,
     );
 
-    return results.map((result: any) => ({
-      ruleId: result.RULE_ID,
-      // name is a reminder that JS may trim the precision on the Date here,
-      // but that should be ok for our purposes.
-      approxRuleVersion: new Date(result.RULE_VERSION),
-      // nb: the warehouse returned value for a timestamp is a JS Date, but with
-      // some extra methods attached to it. These methods include toString, so
-      // we cast back to a proper Date to avoid the string representation
-      // changing (e.g., when serializing to JSON).
-      windowStart: new Date(result.TS_START_INCLUSIVE),
-      passCount: result.NUM_PASSES,
-      passingUsersCount: result.NUM_DISTINCT_USERS,
-      runsCount: result.NUM_RUNS,
-    }));
+    return results.map((result) => {
+      const row = result as Record<string, unknown>;
+      return {
+        ruleId: row.RULE_ID as string,
+        // name is a reminder that JS may trim the precision on the Date here,
+        // but that should be ok for our purposes.
+        approxRuleVersion: new Date(row.RULE_VERSION as string | number | Date),
+        // nb: the warehouse returned value for a timestamp is a JS Date, but with
+        // some extra methods attached to it. These methods include toString, so
+        // we cast back to a proper Date to avoid the string representation
+        // changing (e.g., when serializing to JSON).
+        windowStart: new Date(row.TS_START_INCLUSIVE as string | number | Date),
+        passCount: row.NUM_PASSES as number,
+        passingUsersCount: row.NUM_DISTINCT_USERS as number,
+        runsCount: row.NUM_RUNS as number,
+      };
+    });
   };
 
 export default inject(

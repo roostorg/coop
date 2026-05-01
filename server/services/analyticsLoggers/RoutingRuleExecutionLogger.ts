@@ -43,7 +43,7 @@ class RoutingRuleExecutionLogger {
   ) {
     const now = new Date();
     await this.analytics.bulkWrite(
-      'MANUAL_REVIEW_TOOL.ROUTING_RULE_EXECUTIONS' as any,
+      'MANUAL_REVIEW_TOOL.ROUTING_RULE_EXECUTIONS',
       executions.map((data) => ({
         ds: getUtcDateOnlyString(now),
         ts: now.valueOf(),

@@ -2,6 +2,10 @@ import { type Exception } from '@opentelemetry/api';
 import { type PassportContext } from 'graphql-passport';
 import { uid } from 'uid';
 
+import {
+  type GQLMutationLoginArgs,
+  type GQLMutationSignUpArgs,
+} from '../generated.js';
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type Rule } from '../../models/rules/RuleModel.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
@@ -71,7 +75,10 @@ class UserAPI {
     return kyselyUserFindByIds(this.kyselyPg, ids);
   }
 
-  async login(params: any, context: PassportContext<GraphQLUserParent, any>) {
+  async login(
+    params: GQLMutationLoginArgs,
+    context: PassportContext<GraphQLUserParent, { email: string; password: string }>,
+  ) {
     const credentials = safePick(params.input, ['email', 'password']);
 
     // NB: this will throw for bad credentials; will be handled in the resolver.
@@ -88,7 +95,7 @@ class UserAPI {
     return user;
   }
 
-  async logout(context: any) {
+  async logout(context: { logout(): void }) {
     try {
       context.logout();
       return true;
@@ -97,7 +104,7 @@ class UserAPI {
     }
   }
 
-  async signUp(params: any, _: any): Promise<GraphQLUserParent> {
+  async signUp(params: GQLMutationSignUpArgs, _: unknown): Promise<GraphQLUserParent> {
     const { role } = params.input;
     const {
       email,

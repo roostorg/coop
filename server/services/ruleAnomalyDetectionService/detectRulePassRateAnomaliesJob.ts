@@ -73,7 +73,11 @@ export default inject(
           const ruleNowInAlarm =
             newAlarmStatusByRule[rule.id].status === RuleAlarmStatus.ALARM;
 
-          const orgRow = orgsForChangedRules[rule.org_id];
+          // Use a "Partial" view to make the index access return the honest
+          // "OrgAlertRow | undefined" so the runtime guard stays meaningful.
+          const orgRow = (orgsForChangedRules as Partial<typeof orgsForChangedRules>)[
+            rule.org_id
+          ];
           if (!orgRow) {
             return [];
           }

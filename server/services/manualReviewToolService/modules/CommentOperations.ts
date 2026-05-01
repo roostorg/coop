@@ -4,6 +4,7 @@ import { v1 as uuidv1 } from 'uuid';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
+import { type JobId } from '../manualReviewToolService.js';
 
 export type ManualReviewJobComment = {
   id: string;
@@ -30,7 +31,7 @@ export default class CommentOperations {
       .selectFrom('manual_review_tool.job_creations')
       .select(['item_id', 'item_type_id'])
       .where('org_id', '=', orgId)
-      .where('id', '=', jobId as any)
+      .where('id', '=', jobId as JobId)
       .executeTakeFirst();
 
     if (!currentJob) {
@@ -58,7 +59,7 @@ export default class CommentOperations {
       .selectFrom('manual_review_tool.job_comments')
       .select(manualReviewCommentDbSelection)
       .where('org_id', '=', orgId)
-      .where('job_id', 'in', jobIds as any[])
+      .where('job_id', 'in', jobIds as JobId[])
       .orderBy('created_at', 'asc')
       .execute();
 
@@ -73,7 +74,7 @@ export default class CommentOperations {
       .selectFrom('manual_review_tool.job_comments')
       .select((eb) => eb.fn.count('id').as('count'))
       .where('org_id', '=', orgId)
-      .where('job_id', 'in', jobIds as any[])
+      .where('job_id', 'in', jobIds as JobId[])
       .executeTakeFirst();
 
     return result?.count ? Number(result.count) : 0;

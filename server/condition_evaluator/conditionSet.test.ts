@@ -86,8 +86,12 @@ describe('Condition Evaluation', () => {
 
               await getConditionSetResults(
                 { conditions, conjunction: ConditionConjunction.OR },
+                // Tests only exercise getSignalCost / tracer.getActiveSpan;
+                // a full RuleEvaluationContext / SafeTracer is unnecessary.
+                /* eslint-disable @typescript-eslint/no-explicit-any */
                 { getSignalCost } as any,
                 jest.fn() as any,
+                /* eslint-enable @typescript-eslint/no-explicit-any */
                 stubRunLeafCondition,
               );
 

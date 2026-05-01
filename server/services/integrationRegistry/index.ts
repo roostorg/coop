@@ -91,9 +91,7 @@ let cachedRegistry: IntegrationRegistry | null = null;
  * Returns the integration registry (built once on first call).
  */
 export function getIntegrationRegistry(): IntegrationRegistry {
-  if (cachedRegistry == null) {
-    cachedRegistry = buildRegistry();
-  }
+  cachedRegistry ??= buildRegistry();
   return cachedRegistry;
 }
 

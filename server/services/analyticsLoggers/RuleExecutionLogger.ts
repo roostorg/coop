@@ -3,6 +3,7 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { type AnalyticsSchema } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import { fromCorrelationId } from '../../utils/correlationIds.js';
@@ -80,7 +81,7 @@ class RuleExecutionLogger {
         correlation_id: fromCorrelationId(data.correlationId),
         result: jsonStringifyUnstable(pickConditionPropsToLog(data.result)),
         passed: data.passed,
-      })) as any,
+      })) as AnalyticsSchema['RULE_EXECUTIONS'][],
       { batchTimeout: sync ? 0 : undefined },
     );
   }

@@ -99,10 +99,13 @@ const Query: GQLQueryResolvers = {
     }
 
     try {
-      // TODO: this response type actually isn't right; remove cast and fix errors.
+      // TODO: this response type actually isn't right; remove the cast below
+      // and fix the underlying mismatch in getAllRuleInsights' return shape.
+      /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
       return (await context.dataSources.ruleAPI.getAllRuleInsights(
         user.orgId,
       )) as any;
+      /* eslint-enable @typescript-eslint/no-explicit-any */
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('allRuleInsights: warehouse query failed:', (e as Error).message);

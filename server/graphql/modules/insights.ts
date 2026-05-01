@@ -180,10 +180,10 @@ const RuleInsights: GQLRuleInsightsResolvers = {
         },
       );
 
-    // TODO: remove any cast. It's hiding that there are legit fields missing
-    // here, meaning that graphql queries would throw an exception if asking for
-    // those fields. To provide them, we'll have to update (and add better
-    // typings for) getRulePassingContentSamples.
+    // TODO: type this properly. graphql queries would throw an exception if
+    // asking for fields that aren't populated here. To provide them, we'll
+    // have to update (and add better typings for) getRulePassingContentSamples.
+    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
     return samples.map((it) => ({
       ...it,
       itemId: it.contentId,
@@ -193,6 +193,7 @@ const RuleInsights: GQLRuleInsightsResolvers = {
       ruleId: rule.id,
       ruleName: rule.name,
     })) as any[];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   },
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -210,10 +211,8 @@ const RuleInsights: GQLRuleInsightsResolvers = {
         },
       );
 
-    // TODO: remove any cast. It's hiding that there are legit fields missing
-    // here, meaning that graphql queries would throw an exception if asking for
-    // those fields. To provide them, we'll have to update (and add better
-    // typings for) getRulePassingContentSamples.
+    // TODO: type this properly. See latestVersionSamples for context.
+    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
     return samples.map((it) => ({
       ...it,
       itemId: it.contentId,
@@ -223,6 +222,7 @@ const RuleInsights: GQLRuleInsightsResolvers = {
       ruleId: rule.id,
       ruleName: rule.name,
     })) as any[];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   },
 };
 
@@ -255,10 +255,10 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // TODO: remove any cast. It's hiding that there are legit fields missing
-    // here, meaning that graphql queries would throw an exception if asking for
-    // those fields. To provide them, we'll have to update (and add better
-    // typings for) getRulePassingContentSamples.
+    // TODO: type this properly. graphql queries would throw an exception if
+    // asking for fields that aren't populated here. To provide them, we'll
+    // have to update (and add better typings for) getRulePassingContentSamples.
+    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
     return samples.map((it) => ({
       ...it,
       itemId: it.contentId,
@@ -268,6 +268,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
       ruleId: rule.id,
       ruleName: rule.name,
     })) as any[];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   },
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -285,10 +286,8 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // TODO: remove any cast. It's hiding that there are legit fields missing
-    // here, meaning that graphql queries would throw an exception if asking for
-    // those fields. To provide them, we'll have to update (and add better
-    // typings for) getRulePassingContentSamples.
+    // TODO: type this properly. See latestVersionSamples for context.
+    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
     return samples.map((it) => ({
       ...it,
       itemId: it.contentId,
@@ -298,6 +297,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
       ruleId: rule.id,
       ruleName: rule.name,
     })) as any[];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   },
 };
 
@@ -346,12 +346,11 @@ const Query: GQLQueryResolvers = {
 
       const result = samples[0];
 
+      // TODO: type this properly. graphql queries would throw an exception if
+      // asking for fields that aren't populated here. To provide them, we'll
+      // have to update (and add better typings for) getRulePassingContentSamples.
+      /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
       return gqlSuccessResult(
-        // TODO: remove any cast. It's hiding that there are legit fields missing
-        // here, meaning that graphql queries would throw an exception if asking for
-        // those fields. To provide them, we'll have to update (and add better
-        // typings for) getRulePassingContentSamples.
-
         {
           ...result,
           itemId: result.contentId,
@@ -363,6 +362,7 @@ const Query: GQLQueryResolvers = {
         } as any,
         'RuleExecutionResult',
       );
+      /* eslint-enable @typescript-eslint/no-explicit-any */
     } catch (e) {
       if (isCoopErrorOfType(e, 'NotFoundError')) {
         return gqlErrorResult(e);

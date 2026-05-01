@@ -35,8 +35,8 @@ export default function serveIntegrationLogo(
     // so the SPA can load it via <img src> when deployed on a different origin
     // than the API.
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.sendFile(filePath, (err) => {
-      if (err != null && !res.headersSent) {
+    res.sendFile(filePath, (err?: Error) => {
+      if (err && !res.headersSent) {
          
         next(err);
       }

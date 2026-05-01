@@ -128,7 +128,6 @@ export default function submitReport({
                   const matchedBankNames: string[] = [];
                    
                   if (
-                    hashes &&
                     Object.keys(hashes).length > 0 &&
                     allBankNames.length > 0
                   ) {
