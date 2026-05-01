@@ -56,6 +56,7 @@ class ActionAPI {
       callbackUrlHeaders,
       callbackUrlBody,
       applyUserStrikes,
+      parameters,
     } = input;
 
     return this.moderationConfigService.createAction(orgId, {
@@ -67,6 +68,7 @@ class ActionAPI {
       callbackUrlBody: callbackUrlBody ?? null,
       applyUserStrikes: applyUserStrikes ?? undefined,
       itemTypeIds,
+      parameters: parameters ?? undefined,
     });
   }
 
@@ -80,6 +82,7 @@ class ActionAPI {
       callbackUrlHeaders,
       callbackUrlBody,
       applyUserStrikes,
+      parameters,
     } = input;
 
     return this.moderationConfigService.updateCustomAction(orgId, {
@@ -91,6 +94,8 @@ class ActionAPI {
         callbackUrlHeaders,
         callbackUrlBody,
         applyUserStrikes: applyUserStrikes ?? undefined,
+        parameters:
+          parameters === undefined ? undefined : (parameters ?? []),
       },
       itemTypeIds: itemTypeIds ?? undefined,
     });

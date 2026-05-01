@@ -17,6 +17,11 @@ import { assertUnreachable, removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Action, type CustomAction } from '../index.js';
 import { type ItemTypeKind } from '../types/itemTypes.js';
+import {
+  type ActionParameter,
+  type RawActionParameterInput,
+  validateActionParameters,
+} from './actionParametersValidation.js';
 
 function assertCustomAction(action: Action): asserts action is CustomAction {
   if (action.actionType !== 'CUSTOM_ACTION') {
@@ -87,8 +92,14 @@ export default class ActionOperations {
       callbackUrlBody: JsonObject | null;
       applyUserStrikes?: boolean;
       itemTypeIds?: readonly string[];
+      // AJV narrows this to `readonly ActionParameter[]` and rejects nulls /
+      // unknown fields; the GraphQL input shape is wider (nullable optionals)
+      // so we accept arbitrary property bags here.
+      parameters?: readonly RawActionParameterInput[] | null;
     },
   ): Promise<CustomAction> {
+    const parameters = validateActionParameters(input.parameters ?? null);
+
     return this.transactionWithRetry(async (trx) => {
       try {
         const query = trx
@@ -104,6 +115,7 @@ export default class ActionOperations {
             callback_url_body: input.callbackUrlBody,
             penalty: 'NONE',
             apply_user_strikes: input.applyUserStrikes ?? false,
+            custom_mrt_api_params: serializeParameters(parameters),
             updated_at: new Date(),
           })
           .returning(actionDbSelection);
@@ -145,10 +157,16 @@ export default class ActionOperations {
       callbackUrlHeaders?: JsonObject | null;
       callbackUrlBody?: JsonObject | null;
       applyUserStrikes?: boolean;
+      // `undefined` = leave unchanged. Pass `[]` to clear all parameters.
+      parameters?: readonly RawActionParameterInput[] | null;
     };
     itemTypeIds?: readonly string[] | undefined;
   }): Promise<CustomAction> {
     const { orgId, actionId, patch, itemTypeIds } = opts;
+    const validatedParameters =
+      patch.parameters === undefined
+        ? undefined
+        : validateActionParameters(patch.parameters);
     return this.transactionWithRetry(async (trx) => {
       const existing = (await trx
         .selectFrom('public.actions')
@@ -169,6 +187,10 @@ export default class ActionOperations {
         callback_url_headers: patch.callbackUrlHeaders,
         callback_url_body: patch.callbackUrlBody,
         apply_user_strikes: patch.applyUserStrikes,
+        custom_mrt_api_params:
+          validatedParameters === undefined
+            ? undefined
+            : serializeParameters(validatedParameters),
       });
       const hasUserFields = Object.keys(setPayload).length > 0;
       const touchesJunction = itemTypeIds !== undefined;
@@ -389,3 +411,30 @@ export const makeActionNameExistsError = (data: ErrorInstanceData) =>
     name: 'ActionNameExistsError',
     ...data,
   });
+
+/**
+ * Serialize a validated parameter list to the shape the DB driver expects for
+ * `actions.custom_mrt_api_params jsonb[]`. Returns `[]` (the column default)
+ * when the caller passed an empty list, so writes stay deterministic.
+ */
+function serializeParameters(
+  parameters: readonly ActionParameter[],
+): JsonValue[] {
+  return parameters.map((param) => {
+    const out: Record<string, JsonValue> = {
+      name: param.name,
+      displayName: param.displayName,
+      type: param.type,
+      required: param.required,
+    };
+    if (param.description !== undefined) out.description = param.description;
+    if (param.options !== undefined) {
+      out.options = param.options.map((o) => ({ value: o.value, label: o.label }));
+    }
+    if (param.min !== undefined) out.min = param.min;
+    if (param.max !== undefined) out.max = param.max;
+    if (param.maxLength !== undefined) out.maxLength = param.maxLength;
+    if (param.defaultValue !== undefined) out.defaultValue = param.defaultValue as JsonValue;
+    return out;
+  });
+}

@@ -76,6 +76,11 @@ export type GQLActionBase = {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  /**
+   * Parameters whose values the moderator supplies at execution time. Empty
+   * list when the action takes no runtime parameters.
+   */
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -100,6 +105,75 @@ export type GQLActionNameExistsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+/**
+ * Definition of a single runtime parameter on an action. The moderator is
+ * prompted for a value matching `type` when they execute the action; the
+ * value is included in the webhook payload under the parameter's `name`.
+ */
+export type GQLActionParameter = {
+  readonly __typename: 'ActionParameter';
+  /** Pre-filled value shown to the moderator. Type matches `type`. */
+  readonly defaultValue?: Maybe<Scalars['JSON']['output']>;
+  readonly description?: Maybe<Scalars['String']['output']>;
+  readonly displayName: Scalars['String']['output'];
+  /** Inclusive maximum, NUMBER parameters only. */
+  readonly max?: Maybe<Scalars['Float']['output']>;
+  /** Inclusive maximum length in characters, STRING parameters only. */
+  readonly maxLength?: Maybe<Scalars['Int']['output']>;
+  /** Inclusive minimum, NUMBER parameters only. */
+  readonly min?: Maybe<Scalars['Float']['output']>;
+  /**
+   * Stable identifier used as the key in the webhook payload. Must match
+   * `^[a-zA-Z_][a-zA-Z0-9_]*$`.
+   */
+  readonly name: Scalars['String']['output'];
+  readonly options?: Maybe<ReadonlyArray<GQLActionParameterOption>>;
+  readonly required: Scalars['Boolean']['output'];
+  readonly type: GQLActionParameterType;
+};
+
+export type GQLActionParameterInput = {
+  readonly defaultValue?: InputMaybe<Scalars['JSON']['input']>;
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly displayName: Scalars['String']['input'];
+  readonly max?: InputMaybe<Scalars['Float']['input']>;
+  readonly maxLength?: InputMaybe<Scalars['Int']['input']>;
+  readonly min?: InputMaybe<Scalars['Float']['input']>;
+  readonly name: Scalars['String']['input'];
+  readonly options?: InputMaybe<ReadonlyArray<GQLActionParameterOptionInput>>;
+  readonly required: Scalars['Boolean']['input'];
+  readonly type: GQLActionParameterType;
+};
+
+/**
+ * An option for a `SELECT` or `MULTISELECT` parameter. `value` is what's
+ * sent in the webhook payload; `label` is what's shown to the moderator.
+ */
+export type GQLActionParameterOption = {
+  readonly __typename: 'ActionParameterOption';
+  readonly label: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
+};
+
+export type GQLActionParameterOptionInput = {
+  readonly label: Scalars['String']['input'];
+  readonly value: Scalars['String']['input'];
+};
+
+/**
+ * Allowed data types for an `ActionParameter`. Drives both server-side
+ * validation of submitted values and the input control rendered in the UI.
+ */
+export const GQLActionParameterType = {
+  Boolean: 'BOOLEAN',
+  Multiselect: 'MULTISELECT',
+  Number: 'NUMBER',
+  Select: 'SELECT',
+  String: 'STRING',
+} as const;
+
+export type GQLActionParameterType =
+  (typeof GQLActionParameterType)[keyof typeof GQLActionParameterType];
 export const GQLActionSource = {
   AutomatedRule: 'AUTOMATED_RULE',
   ManualActionRun: 'MANUAL_ACTION_RUN',
@@ -654,6 +728,8 @@ export type GQLCreateActionInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly itemTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
+  /** Optional list of runtime parameters. Defaults to empty. */
+  readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
 export type GQLCreateBacktestInput = {
@@ -817,12 +893,19 @@ export type GQLCustomAction = GQLActionBase & {
   readonly callbackUrl: Scalars['String']['output'];
   readonly callbackUrlBody?: Maybe<Scalars['JSONObject']['output']>;
   readonly callbackUrlHeaders?: Maybe<Scalars['JSONObject']['output']>;
+  /**
+   * Deprecated alias for `parameters` retained for back-compat with the
+   * initial MRT-only parameter implementation. New consumers should read
+   * `parameters` instead.
+   * @deprecated Use `parameters` instead.
+   */
   readonly customMrtApiParams: ReadonlyArray<Maybe<GQLCustomMrtApiParamSpec>>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1051,6 +1134,7 @@ export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1062,6 +1146,7 @@ export type GQLEnqueueToMrtAction = GQLActionBase & {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1073,6 +1158,7 @@ export type GQLEnqueueToNcmecAction = GQLActionBase & {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -4407,6 +4493,11 @@ export type GQLUpdateActionInput = {
   readonly id: Scalars['ID']['input'];
   readonly itemTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Pass to replace the action's parameter list (use `[]` to clear). Omit to
+   * leave parameters unchanged.
+   */
+  readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
 export type GQLUpdateContentItemTypeInput = {
@@ -5328,6 +5419,23 @@ export type GQLCustomActionFragmentFragment = {
     | { readonly __typename: 'ThreadItemType'; readonly id: string }
     | { readonly __typename: 'UserItemType'; readonly id: string }
   >;
+  readonly parameters: ReadonlyArray<{
+    readonly __typename: 'ActionParameter';
+    readonly name: string;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly type: GQLActionParameterType;
+    readonly required: boolean;
+    readonly min?: number | null;
+    readonly max?: number | null;
+    readonly maxLength?: number | null;
+    readonly defaultValue?: JsonValue | null;
+    readonly options?: ReadonlyArray<{
+      readonly __typename: 'ActionParameterOption';
+      readonly value: string;
+      readonly label: string;
+    }> | null;
+  }>;
 };
 
 export type GQLActionQueryVariables = Exact<{
@@ -5350,6 +5458,23 @@ export type GQLActionQuery = {
           | { readonly __typename: 'ThreadItemType'; readonly id: string }
           | { readonly __typename: 'UserItemType'; readonly id: string }
         >;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
       }
     | { readonly __typename: 'EnqueueAuthorToMrtAction' }
     | { readonly __typename: 'EnqueueToMrtAction' }
@@ -5415,6 +5540,23 @@ export type GQLCreateActionMutation = {
             | { readonly __typename: 'ThreadItemType'; readonly id: string }
             | { readonly __typename: 'UserItemType'; readonly id: string }
           >;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
         };
       };
 };
@@ -5447,6 +5589,23 @@ export type GQLUpdateActionMutation = {
             | { readonly __typename: 'ThreadItemType'; readonly id: string }
             | { readonly __typename: 'UserItemType'; readonly id: string }
           >;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
         };
       };
 };
@@ -24178,6 +24337,21 @@ export const GQLCustomActionFragmentFragmentDoc = gql`
     callbackUrl
     callbackUrlHeaders
     callbackUrlBody
+    parameters {
+      name
+      displayName
+      description
+      type
+      required
+      options {
+        value
+        label
+      }
+      min
+      max
+      maxLength
+      defaultValue
+    }
   }
 `;
 export const GQLManualReviewDecisionComponentFieldsFragmentDoc = gql`

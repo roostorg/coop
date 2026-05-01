@@ -63,3 +63,12 @@ export {
   makeRuleHasRunningBacktestsError,
   makeLocationBankNameExistsError,
 } from './errors.js';
+
+export {
+  ACTION_PARAMETER_TYPES,
+  type ActionParameter,
+  type ActionParameterOption,
+  type ActionParameterType,
+  type RawActionParameterInput,
+  validateActionParameters,
+} from './modules/actionParametersValidation.js';

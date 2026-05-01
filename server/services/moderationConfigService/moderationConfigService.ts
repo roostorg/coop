@@ -10,6 +10,7 @@ import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
 } from './modules/ActionOperations.js';
+import { type RawActionParameterInput } from './modules/actionParametersValidation.js';
 import ItemTypeOperations from './modules/ItemTypeOperations.js';
 import MatchingBankOperations, {
   type MatchingBankErrorType,
@@ -261,6 +262,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       callbackUrlBody: JsonObject | null;
       applyUserStrikes?: boolean;
       itemTypeIds?: readonly string[];
+      parameters?: readonly RawActionParameterInput[] | null;
     },
   ): Promise<CustomAction> {
     return this.actionOps.createAction(orgId, input);
@@ -277,6 +279,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
         callbackUrlHeaders?: JsonObject | null;
         callbackUrlBody?: JsonObject | null;
         applyUserStrikes?: boolean;
+        parameters?: readonly RawActionParameterInput[] | null;
       };
       itemTypeIds?: readonly string[] | undefined;
     },
