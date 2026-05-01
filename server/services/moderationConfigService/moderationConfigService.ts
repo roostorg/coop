@@ -287,6 +287,9 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   async deleteCustomAction(opts: { orgId: string; actionId: string }) {
     return this.actionOps.deleteCustomAction(opts);
   }
+  async upsertBuiltInActions(orgId: string) {
+    return this.actionOps.upsertBuiltInActions(orgId);
+  }
 
   async getActions(opts: {
     orgId: string;

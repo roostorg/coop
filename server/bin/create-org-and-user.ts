@@ -94,6 +94,7 @@ async function createOrgAndUser() {
     // Initialize org settings
     await Promise.all([
       container.ModerationConfigService.createDefaultUserType(orgId),
+      container.ModerationConfigService.upsertBuiltInActions(orgId),
       container.OrgCreationLogger.logOrgCreated(
         orgId,
         argv.name,

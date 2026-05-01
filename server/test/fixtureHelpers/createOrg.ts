@@ -40,6 +40,10 @@ export default async function createOrg(
     orgId,
   ).catch(logErrorAndThrow);
 
+  await deps.ModerationConfigService.upsertBuiltInActions(orgId).catch(
+    logErrorAndThrow,
+  );
+
   return {
     org,
     apiKey,
