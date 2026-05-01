@@ -25,12 +25,12 @@ const ContentType: GQLContentTypeResolvers = {
     });
   },
   baseFields(contentType) {
-    return contentType.fields;
+    return contentType.schema;
   },
   async derivedFields(contentType, _, context) {
     return context.services.DerivedFieldsService.getDerivedFields(
       contentType.id,
-      contentType.fields,
+      contentType.schema,
       contentType.orgId,
     );
   },

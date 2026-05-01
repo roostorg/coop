@@ -33,6 +33,10 @@ import {
   validateOrgUpdatePatch,
   type OrgValidationFailure,
 } from './orgValidation.js';
+import {
+  type GraphQLUserParent,
+  kyselyUserListByOrg,
+} from './userKyselyPersistence.js';
 
 class OrgAPI {
   constructor(
@@ -47,7 +51,6 @@ class OrgAPI {
     private readonly orgSettingsService: Dependencies['OrgSettingsService'],
     private readonly manualReviewToolService: Dependencies['ManualReviewToolService'],
     private readonly kysely: Dependencies['KyselyPg'],
-    private readonly sequelize: Dependencies['Sequelize'],
   ) {}
 
   async createOrg(params: GQLMutationCreateOrgArgs) {
@@ -242,19 +245,12 @@ class OrgAPI {
     return updated;
   }
 
-  /**
-   * Legacy GraphQL `ContentType` parents still use Sequelize `getActions` on
-   * item types; load them from the ORM until item types are fully migrated.
-   */
-  async getSequelizeContentTypesForOrg(orgId: string) {
-    return this.sequelize.ItemType.findAll({
-      where: { orgId },
-    });
+  async getContentTypesForOrg(orgId: string) {
+    return this.moderationConfigService.getItemTypes({ orgId });
   }
 
-  /** GraphQL `Org.users` / permission filters still use Sequelize `User` models. */
-  async getOrgUsersForGraphQL(orgId: string) {
-    return this.sequelize.User.findAll({ where: { orgId } });
+  async getOrgUsersForGraphQL(orgId: string): Promise<GraphQLUserParent[]> {
+    return kyselyUserListByOrg(this.kysely, orgId);
   }
 
   // TODO: ApiKeyService should maybe be its own dataSource,
@@ -378,7 +374,6 @@ export default inject(
     'OrgSettingsService',
     'ManualReviewToolService',
     'KyselyPg',
-    'Sequelize',
   ],
   OrgAPI,
 );
