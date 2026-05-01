@@ -31,9 +31,9 @@ We're developing Coop in the open and want to hear from you! Whether you're test
 * **Utility Services**: Database migrators, instrumentation, and proxy layers.  
 
 ## Getting Started
-For development on Coop it is recommended to:
+For deploying a Coop instance it is recommended to:
 
-- use a machine with 16 GiB RAM or more
+- use a machine with 4 GiB RAM or more (at least 8GiB is recommended for running development-related tasks, e.g. linting, tests)
 - use Node 24 (run `nvm install && nvm use` so local matches `.nvmrc`)
 
 and then follow the steps below:
