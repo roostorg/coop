@@ -41,7 +41,7 @@ If you want to automatically detect known CSAM via hash matching, you need a **s
 
 ## NCMEC Settings
 
-Configure NCMEC reporting under **Settings � NCMEC** (`/dashboard/settings/ncmec`).
+Configure NCMEC reporting under **Settings → NCMEC** (`/dashboard/settings/ncmec`).
 
 ![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](./images/coop-ncmec-settings.png)
 

@@ -53,7 +53,6 @@ Coop comes with pre-built integrations to common software used for online safety
 
 Coop uses role-based access controls to make sure the right people can access and view the right data. You can use the UI to invite more users and either copy the link for them to sign up with an account, or set up an email service to email the link to the invited user.   
 
-
 ### User Roles
 
 Coop comes with 7 predefined roles that can be further customized:
@@ -67,53 +66,32 @@ Coop comes with 7 predefined roles that can be further customized:
 | Moderator | Yes | No | No | No | No | No |
 | External Moderator | Yes | No | No | No | No | No |
 
+**Admin**
+Admins manage their entire organizations. They have full control over all of the organization's resources and settings within Coop.
+
+**Analyst**
+Analysts can view metrics for all Rules, create or edit Draft and Background Rules, and run Backtests. They cannot create or edit Live Rules, run Retroaction on Live rules, or edit any other resources (Actions, Content Types, Signals, other Users, etc.). In short, they can experiment with Background Rules and view Rule metrics, but cannot affect any Live Rules or other features that actually mutate your data.
+
+**Child Safety Moderator**
+Child Safety Moderators have the same permissions as Moderators, but they are also able to review Child Safety jobs and can see previous Child Safety decisions.
+
+**External Moderator**
+External Moderators can only review jobs in the Manual Review tool. They cannot see any decisions or use any other tooling
+
+**Moderator**
+Moderators can view the Manual Review tool, but are only able to review jobs from queues that they've been given permission to see. They can also view overall Manual Review metrics. They cannot see any Child Safety-related jobs or decisions.
+
+**Moderator Manager**
+Moderator managers can view and edit queues within the Manual Review Tool. They have full control over the permissions that moderators have, and the Routing Rules that determine how to route each incoming job to the right queue.
+
+**Rules Manager**
+Rules Managers can create, edit, and deploy Rules, and they can view all metrics related to Rules. They cannot create, edit, or delete other organization-level settings, including Actions, Item Types, Manual Review Queues, or other Users in the organization.
+
+Once you invite a new user to Coop, you can either configure an email service to send the link to that person or copy the invite link and share it directly with them.
 
 ### NCMEC Reporting Settings
 
-If your organization submits reports to the NCMEC CyberTipline, configure NCMEC reporting under **Settings → NCMEC** (or `/dashboard/settings/ncmec`). These settings are used when building and submitting CyberTip reports.
-
-![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](./images/coop-ncmec-settings.png) 
-
-| Setting | Required | Description |
-|--------|----------|-------------|
-| **Username** | Yes | Your NCMEC CyberTipline API username. |
-| **Password** | Yes | Your NCMEC CyberTipline API password. |
-| **Company Report Name** | Yes | Your organization name as it appears in NCMEC reports. This value is also sent as the reporter’s product/service name (ESP service) for the reported user in each report. |
-| **Legal URL** | Yes | URL to your Terms of Service or legal policies (e.g. `https://yourcompany.com/terms`). |
-| **Contact Email** | No | Email for the reporting person on the CyberTip report. The XML receipt from NCMEC can serve as the ESP notification. |
-| **Terms of Service** | No | Optional TOS relevant to the incident being reported or URL to acceptable use policy. |
-| **Contact person (for law enforcement)** | No | Optional person law enforcement can contact (other than the reporting person): first name, last name, email, phone. All fields optional. |
-| **More Info URL** | No | Optional URL for additional information (e.g. `https://yourcompany.com/ncmec-info`). |
-| **Default NCMEC queue** | No | When reviewers choose “Enqueue to NCMEC,” jobs are sent to this manual review queue. Leave as “Use org default queue” to use the organization’s default queue. |
-| **Default internet detail type** | No | Incident context (channel/medium) for CyberTip reports: Web page, Email, Newsgroup, Chat/IM, Online gaming, Cell phone, Non-internet, or Peer-to-peer. When set, each report includes this in internetDetails. For "Web page," the More Info URL is used if set. |
-| **NCMEC Preservation Endpoint** | No | Optional webhook URL for NCMEC preservation requests after a report is submitted. Your service can use this to preserve user/data as required. |
-| **NCMEC Additional Info Endpoint** | No | Optional webhook URL. When building a report, Coop calls this endpoint to request additional information (e.g. user email, screen name, IP capture events) for the reported users and media. If not set, reports use minimal defaults (e.g. user ID as screen name). |
-
-Saving credentials and required fields (Company Report Name, Legal URL) enables NCMEC reporting for the organization. Reporting only occurs when reviewers submit a report from the NCMEC Review queue.
-
-**Admin**  
-Admins manage their entire organizations. They have full control over all of the organization's resources and settings within Coop.
-
-**Analyst**  
-Analysts can view metrics for all Rules, create or edit Draft and Background Rules, and run Backtests. They cannot create or edit Live Rules, run Retroaction on Live rules, or edit any other resources (Actions, Content Types, Signals, other Users, etc.). In short, they can experiment with Background Rules and view Rule metrics, but cannot affect any Live Rules or other features that actually mutate your data.
-
-**Child Safety Moderator**  
-Child Safety Moderators have the same permissions as Moderators, but they are also able to review Child Safety jobs and can see previous Child Safety decisions.
-
-**External Moderator**  
-External Moderators can only review jobs in the Manual Review tool. They cannot see any decisions or use any other tooling
-
-**Moderator**  
-Moderators can view the Manual Review tool, but are only able to review jobs from queues that they've been given permission to see. They can also view overall Manual Review metrics. They cannot see any Child Safety-related jobs or decisions.
-
-**Moderator Manager**  
-Moderator managers can view and edit queues within the Manual Review Tool. They have full control over the permissions that moderators have, and the Routing Rules that determine how to route each incoming job to the right queue.
-
-**Rules Manager**  
-Rules Managers can create, edit, and deploy Rules, and they can view all metrics related to Rules. They cannot create, edit, or delete other organization-level settings, including Actions, Item Types, Manual Review Queues, or other Users in the organization.
-
-
-Once you invite a new user to Coop, you can either configure an email service to send the link to that person or copy the invite link and share it directly with them.
+If your organization submits reports to the NCMEC CyberTipline, configure NCMEC reporting under **Settings → NCMEC** (or `/dashboard/settings/ncmec`). See [NCMEC Reporting](NCMEC.md#ncmec-settings) for the full list of settings and how to configure them.
 
 ### SSO
 
@@ -283,51 +261,6 @@ Coop logs all actions taken in a Recent Decisions Log that includes basic inform
 
 ## NCMEC Review and Reporting
 
-Coop is integrated with the [CyberTip Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. Head to [NCMEC Reporting](NCMEC.md) for more information.
+Coop is integrated with the [CyberTipline Reporting API](https://report.cybertip.org/ispws/documentation) from the National Center for Missing and Exploited Children. Content can be routed to a dedicated NCMEC queue via hash matching, AI-based detection, inbound CSAM reports, or manual escalation by a reviewer. From there, a Child Safety Moderator reviews the aggregated user job and submits a CyberTip directly through Coop.
 
-![Coop's NCMEC settings page where you populate your organization's ESP username, password, name of org, and legal URL.](./images/coop-ncmec-settings.png) 
-
-  ### Prerequisites
-In order to review accounts and content to report to NCMEC, you must have:
-
-  1. NCMEC API credentials — a username and password for the CyberTip API, obtained from NCMEC directly by [registering as an Electronic Service Prover](https://esp.ncmec.org/registration).
-  2. A User item type with a creatorId field role on content types A User item type that is a RELATED_ITEM field for associated content, sometimes the `creatorId` field. This stores a structured reference to the User item. NCMEC-type jobs extract the user identifier from this structured reference to look up the full user in the Item Investigation Service.     
-  3. NCMEC org settings configured. This is set via the Settings page (Admin only): API credentials, company template, legal URL, and contact email
-  4. A dedicated NCMEC manual review queue called "NCMEC Review".  Coop uses a default_ncmec_queue_id setting to route NCMEC jobs. Queue IDs registered as production queues submit real CyberTips; all
-  others use the NCMEC test environment.
-  5. An Additional Info endpoint (optional but recommended) is a signed webhook Coop calls before submitting a CyberTip to retrieve user email addresses, screen names, IP
-  capture events, and per-media metadata. If not configured, Coop submits with minimal user data that can make reports less actionable.
-  6. A Preservation endpoint (optional) is a webhook Coop calls after a successful CyberTip submission with the report ID, so you can preserve relevant data per NCMEC
-  requirements.
-
-   Coop will automatically convert content Item Types and aggregate all media associated with the user to convert the job into a NCMEC-type job. This creates a detailed NCMEC report around one user, rather than multiple NCMEC reports for multiple pieces of content from the same user.
-
-
-![Coop's NCMEC Reporting task view. This differs from the usual task view as it aggregates all media associated wih a user. There are keyboard shortcuts to apply specific industry classifications, a dropdown for selecting the incident type, and add labels per NCMEC's CyberTip fields](./images/coop-ncmec-job.png) 
-The NCMEC job UI includes:
-
-* Incident Type category (from the [Reporting API](https://report.cybertip.org/ispws/documentation/index.html#incident-summary)). Values include:  
-  * Child Pornography (possession, manufacture, and distribution)  
-  * Child Sex Trafficking  
-  * Child Sex Tourism  
-  * Child Sexual Molestation  
-  * Misleading Domain Name  
-  * Misleading Words or Digital Images on the Internet  
-  * Online Enticement of Children for Sexual Acts  
-  * Unsolicited Obscene Material Sent to a Child  
-* [Industry categorization](https://report.cybertip.org/ispws/documentation/index.html#incident-summary) (A categorization from the [ESP-designated categorization scale](https://technologycoalition.org/wp-content/uploads/Tech_Coalition_Industry_Classification_System.pdf)):  
-  * A1  
-  * A2  
-  * B1  
-  * B2  
-* [Labels (file annotations)](https://report.cybertip.org/ispws/documentation/index.html#file-annotations):  
-  * **animeDrawingVirtualHentai**: The file is depicting anime, drawing, cartoon, virtual or hentai.  
-  * **potentialMeme**: The file is being shared/posted out of mimicry or other seemingly non-malicious intent.  
-  * **viral:** The file is circulating rapidly from one user to another.  
-  * **possibleSelfProduction**: The file contains content that is believed to be self-produced.  
-  * **physicalHarm**: The file depicts an intentional act of causing physical injury or trauma to a person.  
-  * **violenceGore**: The file depicts graphic violence, including but not limited to acts of brutality or detailed or vivid gruesomeness.  
-  * **bestiality**: The file involves an animal.  
-  * **liveStreaming**: The file depicts content that was streamed live at the time it was uploaded.  
-  * **infant**: The file depicts an infant.  
-  * **generativeAi**: The file contains content that is believed to be Generative Artificial Intelligence.
+See [NCMEC Reporting](NCMEC.md) for full details on prerequisites, the review flow, webhook integrations, and the CyberTip submission process.
