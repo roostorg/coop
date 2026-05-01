@@ -60,12 +60,10 @@ import type { LocationBankWithoutFullPlacesAPIResponse } from './datasources/Loc
 import type { Context } from './resolvers.js';
 import type { ItemSubmissionForGQL } from './types.js';
 
-export type Maybe<T> = T extends Promise<infer U>
-  ? Promise<U | null>
-  : T | null;
-export type InputMaybe<T> = T extends Promise<infer U>
-  ? Promise<U | null>
-  : T | null;
+export type Maybe<T> =
+  T extends Promise<infer U> ? Promise<U | null> : T | null;
+export type InputMaybe<T> =
+  T extends Promise<infer U> ? Promise<U | null> : T | null;
 export type Exact<T extends { [key: string]: unknown }> = {
   [K in keyof T]: T[K];
 };
@@ -6875,8 +6873,8 @@ export type GQLPublicResolverDirectiveResolver<
 
 export type GQLAcceptAppealDecisionComponentResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AcceptAppealDecisionComponent'] = GQLResolversParentTypes['AcceptAppealDecisionComponent'],
+  ParentType extends GQLResolversParentTypes['AcceptAppealDecisionComponent'] =
+    GQLResolversParentTypes['AcceptAppealDecisionComponent'],
 > = {
   actionIds?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -6894,8 +6892,8 @@ export type GQLAcceptAppealDecisionComponentResolvers<
 
 export type GQLActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Action'] = GQLResolversParentTypes['Action'],
+  ParentType extends GQLResolversParentTypes['Action'] =
+    GQLResolversParentTypes['Action'],
 > = {
   __resolveType: TypeResolveFn<
     | 'CustomAction'
@@ -6909,8 +6907,8 @@ export type GQLActionResolvers<
 
 export type GQLActionBaseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ActionBase'] = GQLResolversParentTypes['ActionBase'],
+  ParentType extends GQLResolversParentTypes['ActionBase'] =
+    GQLResolversParentTypes['ActionBase'],
 > = {
   __resolveType: TypeResolveFn<
     | 'CustomAction'
@@ -6924,8 +6922,8 @@ export type GQLActionBaseResolvers<
 
 export type GQLActionDataResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ActionData'] = GQLResolversParentTypes['ActionData'],
+  ParentType extends GQLResolversParentTypes['ActionData'] =
+    GQLResolversParentTypes['ActionData'],
 > = {
   action_id?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -6958,8 +6956,8 @@ export type GQLActionDataResolvers<
 
 export type GQLActionNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ActionNameExistsError'] = GQLResolversParentTypes['ActionNameExistsError'],
+  ParentType extends GQLResolversParentTypes['ActionNameExistsError'] =
+    GQLResolversParentTypes['ActionNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -6989,7 +6987,8 @@ export type GQLActionNameExistsErrorResolvers<
 export type GQLAddAccessibleQueuesToUserResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['AddAccessibleQueuesToUserResponse'] = GQLResolversParentTypes['AddAccessibleQueuesToUserResponse'],
+    GQLResolversParentTypes['AddAccessibleQueuesToUserResponse'] =
+    GQLResolversParentTypes['AddAccessibleQueuesToUserResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MutateAccessibleQueuesForUserSuccessResponse',
@@ -7000,8 +6999,8 @@ export type GQLAddAccessibleQueuesToUserResponseResolvers<
 
 export type GQLAddCommentFailedErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AddCommentFailedError'] = GQLResolversParentTypes['AddCommentFailedError'],
+  ParentType extends GQLResolversParentTypes['AddCommentFailedError'] =
+    GQLResolversParentTypes['AddCommentFailedError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -7031,15 +7030,16 @@ export type GQLAddCommentFailedErrorResolvers<
 export type GQLAddFavoriteMrtQueueSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['AddFavoriteMRTQueueSuccessResponse'] = GQLResolversParentTypes['AddFavoriteMRTQueueSuccessResponse'],
+    GQLResolversParentTypes['AddFavoriteMRTQueueSuccessResponse'] =
+    GQLResolversParentTypes['AddFavoriteMRTQueueSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
 export type GQLAddFavoriteRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AddFavoriteRuleResponse'] = GQLResolversParentTypes['AddFavoriteRuleResponse'],
+  ParentType extends GQLResolversParentTypes['AddFavoriteRuleResponse'] =
+    GQLResolversParentTypes['AddFavoriteRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'AddFavoriteRuleSuccessResponse',
@@ -7050,8 +7050,8 @@ export type GQLAddFavoriteRuleResponseResolvers<
 
 export type GQLAddFavoriteRuleSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AddFavoriteRuleSuccessResponse'] = GQLResolversParentTypes['AddFavoriteRuleSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['AddFavoriteRuleSuccessResponse'] =
+    GQLResolversParentTypes['AddFavoriteRuleSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -7060,7 +7060,8 @@ export type GQLAddFavoriteRuleSuccessResponseResolvers<
 export type GQLAddManualReviewJobCommentResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['AddManualReviewJobCommentResponse'] = GQLResolversParentTypes['AddManualReviewJobCommentResponse'],
+    GQLResolversParentTypes['AddManualReviewJobCommentResponse'] =
+    GQLResolversParentTypes['AddManualReviewJobCommentResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'AddManualReviewJobCommentSuccessResponse' | 'NotFoundError',
@@ -7072,7 +7073,8 @@ export type GQLAddManualReviewJobCommentResponseResolvers<
 export type GQLAddManualReviewJobCommentSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['AddManualReviewJobCommentSuccessResponse'] = GQLResolversParentTypes['AddManualReviewJobCommentSuccessResponse'],
+    GQLResolversParentTypes['AddManualReviewJobCommentSuccessResponse'] =
+    GQLResolversParentTypes['AddManualReviewJobCommentSuccessResponse'],
 > = {
   comment?: Resolver<
     GQLResolversTypes['ManualReviewJobComment'],
@@ -7084,8 +7086,8 @@ export type GQLAddManualReviewJobCommentSuccessResponseResolvers<
 
 export type GQLAddPoliciesResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AddPoliciesResponse'] = GQLResolversParentTypes['AddPoliciesResponse'],
+  ParentType extends GQLResolversParentTypes['AddPoliciesResponse'] =
+    GQLResolversParentTypes['AddPoliciesResponse'],
 > = {
   failures?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -7101,8 +7103,8 @@ export type GQLAddPoliciesResponseResolvers<
 
 export type GQLAggregationResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Aggregation'] = GQLResolversParentTypes['Aggregation'],
+  ParentType extends GQLResolversParentTypes['Aggregation'] =
+    GQLResolversParentTypes['Aggregation'],
 > = {
   type?: Resolver<
     GQLResolversTypes['AggregationType'],
@@ -7113,8 +7115,8 @@ export type GQLAggregationResolvers<
 
 export type GQLAggregationClauseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AggregationClause'] = GQLResolversParentTypes['AggregationClause'],
+  ParentType extends GQLResolversParentTypes['AggregationClause'] =
+    GQLResolversParentTypes['AggregationClause'],
 > = {
   aggregation?: Resolver<
     Maybe<GQLResolversTypes['Aggregation']>,
@@ -7141,8 +7143,8 @@ export type GQLAggregationClauseResolvers<
 
 export type GQLAggregationSignalArgsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AggregationSignalArgs'] = GQLResolversParentTypes['AggregationSignalArgs'],
+  ParentType extends GQLResolversParentTypes['AggregationSignalArgs'] =
+    GQLResolversParentTypes['AggregationSignalArgs'],
 > = {
   aggregationClause?: Resolver<
     Maybe<GQLResolversTypes['AggregationClause']>,
@@ -7154,8 +7156,8 @@ export type GQLAggregationSignalArgsResolvers<
 
 export type GQLAllLanguagesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AllLanguages'] = GQLResolversParentTypes['AllLanguages'],
+  ParentType extends GQLResolversParentTypes['AllLanguages'] =
+    GQLResolversParentTypes['AllLanguages'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -7163,8 +7165,8 @@ export type GQLAllLanguagesResolvers<
 
 export type GQLAllRuleInsightsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AllRuleInsights'] = GQLResolversParentTypes['AllRuleInsights'],
+  ParentType extends GQLResolversParentTypes['AllRuleInsights'] =
+    GQLResolversParentTypes['AllRuleInsights'],
 > = {
   actionedSubmissionsByActionByDay?: Resolver<
     ReadonlyArray<GQLResolversTypes['CountByActionByDay']>,
@@ -7195,8 +7197,8 @@ export type GQLAllRuleInsightsResolvers<
 
 export type GQLApiKeyResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ApiKey'] = GQLResolversParentTypes['ApiKey'],
+  ParentType extends GQLResolversParentTypes['ApiKey'] =
+    GQLResolversParentTypes['ApiKey'],
 > = {
   createdAt?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   createdBy?: Resolver<
@@ -7221,8 +7223,8 @@ export type GQLApiKeyResolvers<
 
 export type GQLAppealEnqueueSourceInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AppealEnqueueSourceInfo'] = GQLResolversParentTypes['AppealEnqueueSourceInfo'],
+  ParentType extends GQLResolversParentTypes['AppealEnqueueSourceInfo'] =
+    GQLResolversParentTypes['AppealEnqueueSourceInfo'],
 > = {
   kind?: Resolver<
     GQLResolversTypes['JobCreationSourceOptions'],
@@ -7234,8 +7236,8 @@ export type GQLAppealEnqueueSourceInfoResolvers<
 
 export type GQLAppealSettingsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['AppealSettings'] = GQLResolversParentTypes['AppealSettings'],
+  ParentType extends GQLResolversParentTypes['AppealSettings'] =
+    GQLResolversParentTypes['AppealSettings'],
 > = {
   appealsCallbackBody?: Resolver<
     Maybe<GQLResolversTypes['JSONObject']>,
@@ -7257,7 +7259,8 @@ export type GQLAppealSettingsResolvers<
 export type GQLAutomaticCloseDecisionComponentResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['AutomaticCloseDecisionComponent'] = GQLResolversParentTypes['AutomaticCloseDecisionComponent'],
+    GQLResolversParentTypes['AutomaticCloseDecisionComponent'] =
+    GQLResolversParentTypes['AutomaticCloseDecisionComponent'],
 > = {
   type?: Resolver<
     GQLResolversTypes['ManualReviewDecisionType'],
@@ -7269,8 +7272,8 @@ export type GQLAutomaticCloseDecisionComponentResolvers<
 
 export type GQLBacktestResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Backtest'] = GQLResolversParentTypes['Backtest'],
+  ParentType extends GQLResolversParentTypes['Backtest'] =
+    GQLResolversParentTypes['Backtest'],
 > = {
   contentItemsMatched?: Resolver<
     GQLResolversTypes['Int'],
@@ -7320,8 +7323,8 @@ export type GQLBacktestResolvers<
 
 export type GQLBaseFieldResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['BaseField'] = GQLResolversParentTypes['BaseField'],
+  ParentType extends GQLResolversParentTypes['BaseField'] =
+    GQLResolversParentTypes['BaseField'],
 > = {
   container?: Resolver<
     Maybe<GQLResolversTypes['Container']>,
@@ -7336,8 +7339,8 @@ export type GQLBaseFieldResolvers<
 
 export type GQLCannotDeleteDefaultUserErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CannotDeleteDefaultUserError'] = GQLResolversParentTypes['CannotDeleteDefaultUserError'],
+  ParentType extends GQLResolversParentTypes['CannotDeleteDefaultUserError'] =
+    GQLResolversParentTypes['CannotDeleteDefaultUserError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -7366,8 +7369,8 @@ export type GQLCannotDeleteDefaultUserErrorResolvers<
 
 export type GQLChangePasswordErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ChangePasswordError'] = GQLResolversParentTypes['ChangePasswordError'],
+  ParentType extends GQLResolversParentTypes['ChangePasswordError'] =
+    GQLResolversParentTypes['ChangePasswordError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -7396,8 +7399,8 @@ export type GQLChangePasswordErrorResolvers<
 
 export type GQLChangePasswordResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ChangePasswordResponse'] = GQLResolversParentTypes['ChangePasswordResponse'],
+  ParentType extends GQLResolversParentTypes['ChangePasswordResponse'] =
+    GQLResolversParentTypes['ChangePasswordResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'ChangePasswordError' | 'ChangePasswordSuccessResponse',
@@ -7408,8 +7411,8 @@ export type GQLChangePasswordResponseResolvers<
 
 export type GQLChangePasswordSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ChangePasswordSuccessResponse'] = GQLResolversParentTypes['ChangePasswordSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['ChangePasswordSuccessResponse'] =
+    GQLResolversParentTypes['ChangePasswordSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -7417,8 +7420,8 @@ export type GQLChangePasswordSuccessResponseResolvers<
 
 export type GQLConditionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Condition'] = GQLResolversParentTypes['Condition'],
+  ParentType extends GQLResolversParentTypes['Condition'] =
+    GQLResolversParentTypes['Condition'],
 > = {
   __resolveType: TypeResolveFn<
     'ConditionSet' | 'LeafCondition',
@@ -7429,8 +7432,8 @@ export type GQLConditionResolvers<
 
 export type GQLConditionInputFieldResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ConditionInputField'] = GQLResolversParentTypes['ConditionInputField'],
+  ParentType extends GQLResolversParentTypes['ConditionInputField'] =
+    GQLResolversParentTypes['ConditionInputField'],
 > = {
   contentTypeId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -7461,8 +7464,8 @@ export type GQLConditionInputFieldResolvers<
 
 export type GQLConditionResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ConditionResult'] = GQLResolversParentTypes['ConditionResult'],
+  ParentType extends GQLResolversParentTypes['ConditionResult'] =
+    GQLResolversParentTypes['ConditionResult'],
 > = {
   matchedValue?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -7479,8 +7482,8 @@ export type GQLConditionResultResolvers<
 
 export type GQLConditionSetResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ConditionSet'] = GQLResolversParentTypes['ConditionSet'],
+  ParentType extends GQLResolversParentTypes['ConditionSet'] =
+    GQLResolversParentTypes['ConditionSet'],
 > = {
   conditions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Condition']>,
@@ -7497,8 +7500,8 @@ export type GQLConditionSetResolvers<
 
 export type GQLConditionSetWithResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ConditionSetWithResult'] = GQLResolversParentTypes['ConditionSetWithResult'],
+  ParentType extends GQLResolversParentTypes['ConditionSetWithResult'] =
+    GQLResolversParentTypes['ConditionSetWithResult'],
 > = {
   conditions?: Resolver<
     ReadonlyArray<GQLResolversTypes['ConditionWithResult']>,
@@ -7520,8 +7523,8 @@ export type GQLConditionSetWithResultResolvers<
 
 export type GQLConditionWithResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ConditionWithResult'] = GQLResolversParentTypes['ConditionWithResult'],
+  ParentType extends GQLResolversParentTypes['ConditionWithResult'] =
+    GQLResolversParentTypes['ConditionWithResult'],
 > = {
   __resolveType: TypeResolveFn<
     'ConditionSetWithResult' | 'LeafConditionWithResult',
@@ -7532,8 +7535,8 @@ export type GQLConditionWithResultResolvers<
 
 export type GQLContainerResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Container'] = GQLResolversParentTypes['Container'],
+  ParentType extends GQLResolversParentTypes['Container'] =
+    GQLResolversParentTypes['Container'],
 > = {
   containerType?: Resolver<
     GQLResolversTypes['ContainerType'],
@@ -7555,7 +7558,8 @@ export type GQLContainerResolvers<
 export type GQLContentAppealManualReviewJobPayloadResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['ContentAppealManualReviewJobPayload'] = GQLResolversParentTypes['ContentAppealManualReviewJobPayload'],
+    GQLResolversParentTypes['ContentAppealManualReviewJobPayload'] =
+    GQLResolversParentTypes['ContentAppealManualReviewJobPayload'],
 > = {
   actionsTaken?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -7594,8 +7598,8 @@ export type GQLContentAppealManualReviewJobPayloadResolvers<
 
 export type GQLContentItemResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ContentItem'] = GQLResolversParentTypes['ContentItem'],
+  ParentType extends GQLResolversParentTypes['ContentItem'] =
+    GQLResolversParentTypes['ContentItem'],
 > = {
   data?: Resolver<GQLResolversTypes['JSONObject'], ParentType, ContextType>;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
@@ -7615,8 +7619,8 @@ export type GQLContentItemResolvers<
 
 export type GQLContentItemTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ContentItemType'] = GQLResolversParentTypes['ContentItemType'],
+  ParentType extends GQLResolversParentTypes['ContentItemType'] =
+    GQLResolversParentTypes['ContentItemType'],
 > = {
   baseFields?: Resolver<
     ReadonlyArray<GQLResolversTypes['BaseField']>,
@@ -7656,8 +7660,8 @@ export type GQLContentItemTypeResolvers<
 
 export type GQLContentManualReviewJobPayloadResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ContentManualReviewJobPayload'] = GQLResolversParentTypes['ContentManualReviewJobPayload'],
+  ParentType extends GQLResolversParentTypes['ContentManualReviewJobPayload'] =
+    GQLResolversParentTypes['ContentManualReviewJobPayload'],
 > = {
   additionalContentItems?: Resolver<
     ReadonlyArray<GQLResolversTypes['ContentItem']>,
@@ -7700,8 +7704,8 @@ export type GQLContentManualReviewJobPayloadResolvers<
 
 export type GQLContentRuleResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ContentRule'] = GQLResolversParentTypes['ContentRule'],
+  ParentType extends GQLResolversParentTypes['ContentRule'] =
+    GQLResolversParentTypes['ContentRule'],
 > = {
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
@@ -7766,8 +7770,8 @@ export type GQLContentRuleResolvers<
 
 export type GQLContentSchemaFieldRolesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ContentSchemaFieldRoles'] = GQLResolversParentTypes['ContentSchemaFieldRoles'],
+  ParentType extends GQLResolversParentTypes['ContentSchemaFieldRoles'] =
+    GQLResolversParentTypes['ContentSchemaFieldRoles'],
 > = {
   createdAt?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -7804,8 +7808,8 @@ export type GQLContentSchemaFieldRolesResolvers<
 
 export type GQLContentTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ContentType'] = GQLResolversParentTypes['ContentType'],
+  ParentType extends GQLResolversParentTypes['ContentType'] =
+    GQLResolversParentTypes['ContentType'],
 > = {
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
@@ -7831,15 +7835,17 @@ export type GQLContentTypeResolvers<
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
-export interface GQLCoopInputOrStringScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['CoopInputOrString'], any> {
+export interface GQLCoopInputOrStringScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['CoopInputOrString'],
+  any
+> {
   name: 'CoopInputOrString';
 }
 
 export type GQLCountByActionByDayResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByActionByDay'] = GQLResolversParentTypes['CountByActionByDay'],
+  ParentType extends GQLResolversParentTypes['CountByActionByDay'] =
+    GQLResolversParentTypes['CountByActionByDay'],
 > = {
   action?: Resolver<
     GQLResolversTypes['CountByActionByDayAction'],
@@ -7852,8 +7858,8 @@ export type GQLCountByActionByDayResolvers<
 
 export type GQLCountByActionByDayActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByActionByDayAction'] = GQLResolversParentTypes['CountByActionByDayAction'],
+  ParentType extends GQLResolversParentTypes['CountByActionByDayAction'] =
+    GQLResolversParentTypes['CountByActionByDayAction'],
 > = {
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -7861,8 +7867,8 @@ export type GQLCountByActionByDayActionResolvers<
 
 export type GQLCountByDayResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByDay'] = GQLResolversParentTypes['CountByDay'],
+  ParentType extends GQLResolversParentTypes['CountByDay'] =
+    GQLResolversParentTypes['CountByDay'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   date?: Resolver<GQLResolversTypes['Date'], ParentType, ContextType>;
@@ -7870,8 +7876,8 @@ export type GQLCountByDayResolvers<
 
 export type GQLCountByDecisionTypeByDayResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByDecisionTypeByDay'] = GQLResolversParentTypes['CountByDecisionTypeByDay'],
+  ParentType extends GQLResolversParentTypes['CountByDecisionTypeByDay'] =
+    GQLResolversParentTypes['CountByDecisionTypeByDay'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   date?: Resolver<GQLResolversTypes['Date'], ParentType, ContextType>;
@@ -7880,8 +7886,8 @@ export type GQLCountByDecisionTypeByDayResolvers<
 
 export type GQLCountByPolicyByDayResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByPolicyByDay'] = GQLResolversParentTypes['CountByPolicyByDay'],
+  ParentType extends GQLResolversParentTypes['CountByPolicyByDay'] =
+    GQLResolversParentTypes['CountByPolicyByDay'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   date?: Resolver<GQLResolversTypes['Date'], ParentType, ContextType>;
@@ -7894,8 +7900,8 @@ export type GQLCountByPolicyByDayResolvers<
 
 export type GQLCountByPolicyByDayPolicyResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByPolicyByDayPolicy'] = GQLResolversParentTypes['CountByPolicyByDayPolicy'],
+  ParentType extends GQLResolversParentTypes['CountByPolicyByDayPolicy'] =
+    GQLResolversParentTypes['CountByPolicyByDayPolicy'],
 > = {
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -7903,8 +7909,8 @@ export type GQLCountByPolicyByDayPolicyResolvers<
 
 export type GQLCountByTagByDayResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CountByTagByDay'] = GQLResolversParentTypes['CountByTagByDay'],
+  ParentType extends GQLResolversParentTypes['CountByTagByDay'] =
+    GQLResolversParentTypes['CountByTagByDay'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   date?: Resolver<GQLResolversTypes['Date'], ParentType, ContextType>;
@@ -7913,16 +7919,16 @@ export type GQLCountByTagByDayResolvers<
 
 export type GQLCreateBacktestResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateBacktestResponse'] = GQLResolversParentTypes['CreateBacktestResponse'],
+  ParentType extends GQLResolversParentTypes['CreateBacktestResponse'] =
+    GQLResolversParentTypes['CreateBacktestResponse'],
 > = {
   backtest?: Resolver<GQLResolversTypes['Backtest'], ParentType, ContextType>;
 };
 
 export type GQLCreateContentRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateContentRuleResponse'] = GQLResolversParentTypes['CreateContentRuleResponse'],
+  ParentType extends GQLResolversParentTypes['CreateContentRuleResponse'] =
+    GQLResolversParentTypes['CreateContentRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MutateContentRuleSuccessResponse' | 'RuleNameExistsError',
@@ -7934,7 +7940,8 @@ export type GQLCreateContentRuleResponseResolvers<
 export type GQLCreateManualReviewQueueResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['CreateManualReviewQueueResponse'] = GQLResolversParentTypes['CreateManualReviewQueueResponse'],
+    GQLResolversParentTypes['CreateManualReviewQueueResponse'] =
+    GQLResolversParentTypes['CreateManualReviewQueueResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'ManualReviewQueueNameExistsError'
@@ -7946,8 +7953,8 @@ export type GQLCreateManualReviewQueueResponseResolvers<
 
 export type GQLCreateOrgResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateOrgResponse'] = GQLResolversParentTypes['CreateOrgResponse'],
+  ParentType extends GQLResolversParentTypes['CreateOrgResponse'] =
+    GQLResolversParentTypes['CreateOrgResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'CreateOrgSuccessResponse'
@@ -7960,8 +7967,8 @@ export type GQLCreateOrgResponseResolvers<
 
 export type GQLCreateOrgSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateOrgSuccessResponse'] = GQLResolversParentTypes['CreateOrgSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['CreateOrgSuccessResponse'] =
+    GQLResolversParentTypes['CreateOrgSuccessResponse'],
 > = {
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -7969,8 +7976,8 @@ export type GQLCreateOrgSuccessResponseResolvers<
 
 export type GQLCreateReportingRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateReportingRuleResponse'] = GQLResolversParentTypes['CreateReportingRuleResponse'],
+  ParentType extends GQLResolversParentTypes['CreateReportingRuleResponse'] =
+    GQLResolversParentTypes['CreateReportingRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MutateReportingRuleSuccessResponse' | 'ReportingRuleNameExistsError',
@@ -7981,8 +7988,8 @@ export type GQLCreateReportingRuleResponseResolvers<
 
 export type GQLCreateRoutingRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateRoutingRuleResponse'] = GQLResolversParentTypes['CreateRoutingRuleResponse'],
+  ParentType extends GQLResolversParentTypes['CreateRoutingRuleResponse'] =
+    GQLResolversParentTypes['CreateRoutingRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'MutateRoutingRuleSuccessResponse'
@@ -7995,8 +8002,8 @@ export type GQLCreateRoutingRuleResponseResolvers<
 
 export type GQLCreateUserRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CreateUserRuleResponse'] = GQLResolversParentTypes['CreateUserRuleResponse'],
+  ParentType extends GQLResolversParentTypes['CreateUserRuleResponse'] =
+    GQLResolversParentTypes['CreateUserRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MutateUserRuleSuccessResponse' | 'RuleNameExistsError',
@@ -8005,15 +8012,17 @@ export type GQLCreateUserRuleResponseResolvers<
   >;
 };
 
-export interface GQLCursorScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['Cursor'], any> {
+export interface GQLCursorScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['Cursor'],
+  any
+> {
   name: 'Cursor';
 }
 
 export type GQLCustomActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CustomAction'] = GQLResolversParentTypes['CustomAction'],
+  ParentType extends GQLResolversParentTypes['CustomAction'] =
+    GQLResolversParentTypes['CustomAction'],
 > = {
   applyUserStrikes?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
@@ -8059,28 +8068,32 @@ export type GQLCustomActionResolvers<
 
 export type GQLCustomMrtApiParamSpecResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['CustomMrtApiParamSpec'] = GQLResolversParentTypes['CustomMrtApiParamSpec'],
+  ParentType extends GQLResolversParentTypes['CustomMrtApiParamSpec'] =
+    GQLResolversParentTypes['CustomMrtApiParamSpec'],
 > = {
   displayName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   type?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
-export interface GQLDateScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['Date'], any> {
+export interface GQLDateScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['Date'],
+  any
+> {
   name: 'Date';
 }
 
-export interface GQLDateTimeScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['DateTime'], any> {
+export interface GQLDateTimeScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['DateTime'],
+  any
+> {
   name: 'DateTime';
 }
 
 export type GQLDecisionCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DecisionCount'] = GQLResolversParentTypes['DecisionCount'],
+  ParentType extends GQLResolversParentTypes['DecisionCount'] =
+    GQLResolversParentTypes['DecisionCount'],
 > = {
   action_id?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8113,8 +8126,8 @@ export type GQLDecisionCountResolvers<
 
 export type GQLDecisionCountFilterByResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DecisionCountFilterBy'] = GQLResolversParentTypes['DecisionCountFilterBy'],
+  ParentType extends GQLResolversParentTypes['DecisionCountFilterBy'] =
+    GQLResolversParentTypes['DecisionCountFilterBy'],
 > = {
   actionIds?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -8157,8 +8170,8 @@ export type GQLDecisionCountFilterByResolvers<
 
 export type GQLDeleteAllJobsFromQueueResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DeleteAllJobsFromQueueResponse'] = GQLResolversParentTypes['DeleteAllJobsFromQueueResponse'],
+  ParentType extends GQLResolversParentTypes['DeleteAllJobsFromQueueResponse'] =
+    GQLResolversParentTypes['DeleteAllJobsFromQueueResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'DeleteAllJobsFromQueueSuccessResponse' | 'DeleteAllJobsUnauthorizedError',
@@ -8170,7 +8183,8 @@ export type GQLDeleteAllJobsFromQueueResponseResolvers<
 export type GQLDeleteAllJobsFromQueueSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['DeleteAllJobsFromQueueSuccessResponse'] = GQLResolversParentTypes['DeleteAllJobsFromQueueSuccessResponse'],
+    GQLResolversParentTypes['DeleteAllJobsFromQueueSuccessResponse'] =
+    GQLResolversParentTypes['DeleteAllJobsFromQueueSuccessResponse'],
 > = {
   _?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -8178,8 +8192,8 @@ export type GQLDeleteAllJobsFromQueueSuccessResponseResolvers<
 
 export type GQLDeleteAllJobsUnauthorizedErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DeleteAllJobsUnauthorizedError'] = GQLResolversParentTypes['DeleteAllJobsUnauthorizedError'],
+  ParentType extends GQLResolversParentTypes['DeleteAllJobsUnauthorizedError'] =
+    GQLResolversParentTypes['DeleteAllJobsUnauthorizedError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8208,8 +8222,8 @@ export type GQLDeleteAllJobsUnauthorizedErrorResolvers<
 
 export type GQLDeleteItemTypeResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DeleteItemTypeResponse'] = GQLResolversParentTypes['DeleteItemTypeResponse'],
+  ParentType extends GQLResolversParentTypes['DeleteItemTypeResponse'] =
+    GQLResolversParentTypes['DeleteItemTypeResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'CannotDeleteDefaultUserError' | 'DeleteItemTypeSuccessResponse',
@@ -8220,8 +8234,8 @@ export type GQLDeleteItemTypeResponseResolvers<
 
 export type GQLDeleteItemTypeSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DeleteItemTypeSuccessResponse'] = GQLResolversParentTypes['DeleteItemTypeSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['DeleteItemTypeSuccessResponse'] =
+    GQLResolversParentTypes['DeleteItemTypeSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -8229,8 +8243,8 @@ export type GQLDeleteItemTypeSuccessResponseResolvers<
 
 export type GQLDequeueManualReviewJobResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DequeueManualReviewJobResponse'] = GQLResolversParentTypes['DequeueManualReviewJobResponse'],
+  ParentType extends GQLResolversParentTypes['DequeueManualReviewJobResponse'] =
+    GQLResolversParentTypes['DequeueManualReviewJobResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'DequeueManualReviewJobSuccessResponse',
@@ -8242,7 +8256,8 @@ export type GQLDequeueManualReviewJobResponseResolvers<
 export type GQLDequeueManualReviewJobSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['DequeueManualReviewJobSuccessResponse'] = GQLResolversParentTypes['DequeueManualReviewJobSuccessResponse'],
+    GQLResolversParentTypes['DequeueManualReviewJobSuccessResponse'] =
+    GQLResolversParentTypes['DequeueManualReviewJobSuccessResponse'],
 > = {
   job?: Resolver<GQLResolversTypes['ManualReviewJob'], ParentType, ContextType>;
   lockToken?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -8252,8 +8267,8 @@ export type GQLDequeueManualReviewJobSuccessResponseResolvers<
 
 export type GQLDerivedFieldResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DerivedField'] = GQLResolversParentTypes['DerivedField'],
+  ParentType extends GQLResolversParentTypes['DerivedField'] =
+    GQLResolversParentTypes['DerivedField'],
 > = {
   container?: Resolver<
     Maybe<GQLResolversTypes['Container']>,
@@ -8272,8 +8287,8 @@ export type GQLDerivedFieldResolvers<
 
 export type GQLDerivedFieldCoopInputSourceResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DerivedFieldCoopInputSource'] = GQLResolversParentTypes['DerivedFieldCoopInputSource'],
+  ParentType extends GQLResolversParentTypes['DerivedFieldCoopInputSource'] =
+    GQLResolversParentTypes['DerivedFieldCoopInputSource'],
 > = {
   name?: Resolver<GQLResolversTypes['CoopInput'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -8281,8 +8296,8 @@ export type GQLDerivedFieldCoopInputSourceResolvers<
 
 export type GQLDerivedFieldFieldSourceResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DerivedFieldFieldSource'] = GQLResolversParentTypes['DerivedFieldFieldSource'],
+  ParentType extends GQLResolversParentTypes['DerivedFieldFieldSource'] =
+    GQLResolversParentTypes['DerivedFieldFieldSource'],
 > = {
   contentTypeId?: Resolver<
     GQLResolversTypes['String'],
@@ -8295,8 +8310,8 @@ export type GQLDerivedFieldFieldSourceResolvers<
 
 export type GQLDerivedFieldFullItemSourceResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DerivedFieldFullItemSource'] = GQLResolversParentTypes['DerivedFieldFullItemSource'],
+  ParentType extends GQLResolversParentTypes['DerivedFieldFullItemSource'] =
+    GQLResolversParentTypes['DerivedFieldFullItemSource'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -8304,8 +8319,8 @@ export type GQLDerivedFieldFullItemSourceResolvers<
 
 export type GQLDerivedFieldSourceResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DerivedFieldSource'] = GQLResolversParentTypes['DerivedFieldSource'],
+  ParentType extends GQLResolversParentTypes['DerivedFieldSource'] =
+    GQLResolversParentTypes['DerivedFieldSource'],
 > = {
   __resolveType: TypeResolveFn<
     | 'DerivedFieldCoopInputSource'
@@ -8318,8 +8333,8 @@ export type GQLDerivedFieldSourceResolvers<
 
 export type GQLDerivedFieldSpecResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DerivedFieldSpec'] = GQLResolversParentTypes['DerivedFieldSpec'],
+  ParentType extends GQLResolversParentTypes['DerivedFieldSpec'] =
+    GQLResolversParentTypes['DerivedFieldSpec'],
 > = {
   derivationType?: Resolver<
     GQLResolversTypes['DerivedFieldDerivationType'],
@@ -8335,8 +8350,8 @@ export type GQLDerivedFieldSpecResolvers<
 
 export type GQLDisabledInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['DisabledInfo'] = GQLResolversParentTypes['DisabledInfo'],
+  ParentType extends GQLResolversParentTypes['DisabledInfo'] =
+    GQLResolversParentTypes['DisabledInfo'],
 > = {
   disabled?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   disabledMessage?: Resolver<
@@ -8348,8 +8363,8 @@ export type GQLDisabledInfoResolvers<
 
 export type GQLEnqueueAuthorToMrtActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['EnqueueAuthorToMrtAction'] = GQLResolversParentTypes['EnqueueAuthorToMrtAction'],
+  ParentType extends GQLResolversParentTypes['EnqueueAuthorToMrtAction'] =
+    GQLResolversParentTypes['EnqueueAuthorToMrtAction'],
 > = {
   applyUserStrikes?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -8379,8 +8394,8 @@ export type GQLEnqueueAuthorToMrtActionResolvers<
 
 export type GQLEnqueueToMrtActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['EnqueueToMrtAction'] = GQLResolversParentTypes['EnqueueToMrtAction'],
+  ParentType extends GQLResolversParentTypes['EnqueueToMrtAction'] =
+    GQLResolversParentTypes['EnqueueToMrtAction'],
 > = {
   applyUserStrikes?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
@@ -8410,8 +8425,8 @@ export type GQLEnqueueToMrtActionResolvers<
 
 export type GQLEnqueueToNcmecActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['EnqueueToNcmecAction'] = GQLResolversParentTypes['EnqueueToNcmecAction'],
+  ParentType extends GQLResolversParentTypes['EnqueueToNcmecAction'] =
+    GQLResolversParentTypes['EnqueueToNcmecAction'],
 > = {
   applyUserStrikes?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
@@ -8441,8 +8456,8 @@ export type GQLEnqueueToNcmecActionResolvers<
 
 export type GQLEnumSignalOutputTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['EnumSignalOutputType'] = GQLResolversParentTypes['EnumSignalOutputType'],
+  ParentType extends GQLResolversParentTypes['EnumSignalOutputType'] =
+    GQLResolversParentTypes['EnumSignalOutputType'],
 > = {
   enum?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -8460,8 +8475,8 @@ export type GQLEnumSignalOutputTypeResolvers<
 
 export type GQLErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Error'] = GQLResolversParentTypes['Error'],
+  ParentType extends GQLResolversParentTypes['Error'] =
+    GQLResolversParentTypes['Error'],
 > = {
   __resolveType: TypeResolveFn<
     | 'ActionNameExistsError'
@@ -8508,8 +8523,8 @@ export type GQLErrorResolvers<
 
 export type GQLExchangeApiInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExchangeApiInfo'] = GQLResolversParentTypes['ExchangeApiInfo'],
+  ParentType extends GQLResolversParentTypes['ExchangeApiInfo'] =
+    GQLResolversParentTypes['ExchangeApiInfo'],
 > = {
   has_auth?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -8522,8 +8537,8 @@ export type GQLExchangeApiInfoResolvers<
 
 export type GQLExchangeApiSchemaResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExchangeApiSchema'] = GQLResolversParentTypes['ExchangeApiSchema'],
+  ParentType extends GQLResolversParentTypes['ExchangeApiSchema'] =
+    GQLResolversParentTypes['ExchangeApiSchema'],
 > = {
   config_schema?: Resolver<
     GQLResolversTypes['ExchangeSchemaSection'],
@@ -8539,8 +8554,8 @@ export type GQLExchangeApiSchemaResolvers<
 
 export type GQLExchangeFieldDescriptorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExchangeFieldDescriptor'] = GQLResolversParentTypes['ExchangeFieldDescriptor'],
+  ParentType extends GQLResolversParentTypes['ExchangeFieldDescriptor'] =
+    GQLResolversParentTypes['ExchangeFieldDescriptor'],
 > = {
   choices?: Resolver<
     Maybe<ReadonlyArray<GQLResolversTypes['String']>>,
@@ -8556,8 +8571,8 @@ export type GQLExchangeFieldDescriptorResolvers<
 
 export type GQLExchangeInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExchangeInfo'] = GQLResolversParentTypes['ExchangeInfo'],
+  ParentType extends GQLResolversParentTypes['ExchangeInfo'] =
+    GQLResolversParentTypes['ExchangeInfo'],
 > = {
   api?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   enabled?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
@@ -8592,8 +8607,8 @@ export type GQLExchangeInfoResolvers<
 
 export type GQLExchangeSchemaSectionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExchangeSchemaSection'] = GQLResolversParentTypes['ExchangeSchemaSection'],
+  ParentType extends GQLResolversParentTypes['ExchangeSchemaSection'] =
+    GQLResolversParentTypes['ExchangeSchemaSection'],
 > = {
   fields?: Resolver<
     ReadonlyArray<GQLResolversTypes['ExchangeFieldDescriptor']>,
@@ -8604,8 +8619,8 @@ export type GQLExchangeSchemaSectionResolvers<
 
 export type GQLExecuteActionResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExecuteActionResponse'] = GQLResolversParentTypes['ExecuteActionResponse'],
+  ParentType extends GQLResolversParentTypes['ExecuteActionResponse'] =
+    GQLResolversParentTypes['ExecuteActionResponse'],
 > = {
   actionId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   itemId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -8614,8 +8629,8 @@ export type GQLExecuteActionResponseResolvers<
 
 export type GQLExecuteBulkActionResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ExecuteBulkActionResponse'] = GQLResolversParentTypes['ExecuteBulkActionResponse'],
+  ParentType extends GQLResolversParentTypes['ExecuteBulkActionResponse'] =
+    GQLResolversParentTypes['ExecuteBulkActionResponse'],
 > = {
   results?: Resolver<
     ReadonlyArray<GQLResolversTypes['ExecuteActionResponse']>,
@@ -8626,8 +8641,8 @@ export type GQLExecuteBulkActionResponseResolvers<
 
 export type GQLFieldResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Field'] = GQLResolversParentTypes['Field'],
+  ParentType extends GQLResolversParentTypes['Field'] =
+    GQLResolversParentTypes['Field'],
 > = {
   __resolveType: TypeResolveFn<
     'BaseField' | 'DerivedField',
@@ -8638,8 +8653,8 @@ export type GQLFieldResolvers<
 
 export type GQLGetDecisionCountSettingsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['GetDecisionCountSettings'] = GQLResolversParentTypes['GetDecisionCountSettings'],
+  ParentType extends GQLResolversParentTypes['GetDecisionCountSettings'] =
+    GQLResolversParentTypes['GetDecisionCountSettings'],
 > = {
   filterBy?: Resolver<
     GQLResolversTypes['DecisionCountFilterBy'],
@@ -8668,7 +8683,8 @@ export type GQLGetDecisionCountSettingsResolvers<
 export type GQLGetFullReportingRuleResultForItemResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['GetFullReportingRuleResultForItemResponse'] = GQLResolversParentTypes['GetFullReportingRuleResultForItemResponse'],
+    GQLResolversParentTypes['GetFullReportingRuleResultForItemResponse'] =
+    GQLResolversParentTypes['GetFullReportingRuleResultForItemResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'NotFoundError' | 'ReportingRuleExecutionResult',
@@ -8679,8 +8695,8 @@ export type GQLGetFullReportingRuleResultForItemResponseResolvers<
 
 export type GQLGetFullResultForItemResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['GetFullResultForItemResponse'] = GQLResolversParentTypes['GetFullResultForItemResponse'],
+  ParentType extends GQLResolversParentTypes['GetFullResultForItemResponse'] =
+    GQLResolversParentTypes['GetFullResultForItemResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'NotFoundError' | 'RuleExecutionResult',
@@ -8691,8 +8707,8 @@ export type GQLGetFullResultForItemResponseResolvers<
 
 export type GQLGetJobCreationCountSettingsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['GetJobCreationCountSettings'] = GQLResolversParentTypes['GetJobCreationCountSettings'],
+  ParentType extends GQLResolversParentTypes['GetJobCreationCountSettings'] =
+    GQLResolversParentTypes['GetJobCreationCountSettings'],
 > = {
   filterBy?: Resolver<
     GQLResolversTypes['JobCreationFilterBy'],
@@ -8721,7 +8737,8 @@ export type GQLGetJobCreationCountSettingsResolvers<
 export type GQLGoogleContentSafetyApiIntegrationApiCredentialResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential'] = GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential'],
+    GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential'] =
+    GQLResolversParentTypes['GoogleContentSafetyApiIntegrationApiCredential'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -8729,16 +8746,16 @@ export type GQLGoogleContentSafetyApiIntegrationApiCredentialResolvers<
 
 export type GQLGooglePlaceLocationInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['GooglePlaceLocationInfo'] = GQLResolversParentTypes['GooglePlaceLocationInfo'],
+  ParentType extends GQLResolversParentTypes['GooglePlaceLocationInfo'] =
+    GQLResolversParentTypes['GooglePlaceLocationInfo'],
 > = {
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
 };
 
 export type GQLHashBankResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['HashBank'] = GQLResolversParentTypes['HashBank'],
+  ParentType extends GQLResolversParentTypes['HashBank'] =
+    GQLResolversParentTypes['HashBank'],
 > = {
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8759,8 +8776,8 @@ export type GQLHashBankResolvers<
 
 export type GQLIgnoreDecisionComponentResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IgnoreDecisionComponent'] = GQLResolversParentTypes['IgnoreDecisionComponent'],
+  ParentType extends GQLResolversParentTypes['IgnoreDecisionComponent'] =
+    GQLResolversParentTypes['IgnoreDecisionComponent'],
 > = {
   type?: Resolver<
     GQLResolversTypes['ManualReviewDecisionType'],
@@ -8772,8 +8789,8 @@ export type GQLIgnoreDecisionComponentResolvers<
 
 export type GQLIntegrationApiCredentialResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IntegrationApiCredential'] = GQLResolversParentTypes['IntegrationApiCredential'],
+  ParentType extends GQLResolversParentTypes['IntegrationApiCredential'] =
+    GQLResolversParentTypes['IntegrationApiCredential'],
 > = {
   __resolveType: TypeResolveFn<
     | 'GoogleContentSafetyApiIntegrationApiCredential'
@@ -8787,8 +8804,8 @@ export type GQLIntegrationApiCredentialResolvers<
 
 export type GQLIntegrationConfigResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IntegrationConfig'] = GQLResolversParentTypes['IntegrationConfig'],
+  ParentType extends GQLResolversParentTypes['IntegrationConfig'] =
+    GQLResolversParentTypes['IntegrationConfig'],
 > = {
   apiCredential?: Resolver<
     GQLResolversTypes['IntegrationApiCredential'],
@@ -8823,8 +8840,8 @@ export type GQLIntegrationConfigResolvers<
 
 export type GQLIntegrationConfigQueryResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IntegrationConfigQueryResponse'] = GQLResolversParentTypes['IntegrationConfigQueryResponse'],
+  ParentType extends GQLResolversParentTypes['IntegrationConfigQueryResponse'] =
+    GQLResolversParentTypes['IntegrationConfigQueryResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'IntegrationConfigSuccessResult'
@@ -8836,8 +8853,8 @@ export type GQLIntegrationConfigQueryResponseResolvers<
 
 export type GQLIntegrationConfigSuccessResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IntegrationConfigSuccessResult'] = GQLResolversParentTypes['IntegrationConfigSuccessResult'],
+  ParentType extends GQLResolversParentTypes['IntegrationConfigSuccessResult'] =
+    GQLResolversParentTypes['IntegrationConfigSuccessResult'],
 > = {
   config?: Resolver<
     Maybe<GQLResolversTypes['IntegrationConfig']>,
@@ -8850,7 +8867,8 @@ export type GQLIntegrationConfigSuccessResultResolvers<
 export type GQLIntegrationConfigTooManyCredentialsErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['IntegrationConfigTooManyCredentialsError'] = GQLResolversParentTypes['IntegrationConfigTooManyCredentialsError'],
+    GQLResolversParentTypes['IntegrationConfigTooManyCredentialsError'] =
+    GQLResolversParentTypes['IntegrationConfigTooManyCredentialsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8880,7 +8898,8 @@ export type GQLIntegrationConfigTooManyCredentialsErrorResolvers<
 export type GQLIntegrationConfigUnsupportedIntegrationErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['IntegrationConfigUnsupportedIntegrationError'] = GQLResolversParentTypes['IntegrationConfigUnsupportedIntegrationError'],
+    GQLResolversParentTypes['IntegrationConfigUnsupportedIntegrationError'] =
+    GQLResolversParentTypes['IntegrationConfigUnsupportedIntegrationError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8910,7 +8929,8 @@ export type GQLIntegrationConfigUnsupportedIntegrationErrorResolvers<
 export type GQLIntegrationEmptyInputCredentialsErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['IntegrationEmptyInputCredentialsError'] = GQLResolversParentTypes['IntegrationEmptyInputCredentialsError'],
+    GQLResolversParentTypes['IntegrationEmptyInputCredentialsError'] =
+    GQLResolversParentTypes['IntegrationEmptyInputCredentialsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8939,8 +8959,8 @@ export type GQLIntegrationEmptyInputCredentialsErrorResolvers<
 
 export type GQLIntegrationMetadataResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IntegrationMetadata'] = GQLResolversParentTypes['IntegrationMetadata'],
+  ParentType extends GQLResolversParentTypes['IntegrationMetadata'] =
+    GQLResolversParentTypes['IntegrationMetadata'],
 > = {
   docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   logoUrl?: Resolver<
@@ -8965,7 +8985,8 @@ export type GQLIntegrationMetadataResolvers<
 export type GQLIntegrationNoInputCredentialsErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['IntegrationNoInputCredentialsError'] = GQLResolversParentTypes['IntegrationNoInputCredentialsError'],
+    GQLResolversParentTypes['IntegrationNoInputCredentialsError'] =
+    GQLResolversParentTypes['IntegrationNoInputCredentialsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -8994,8 +9015,8 @@ export type GQLIntegrationNoInputCredentialsErrorResolvers<
 
 export type GQLInviteUserTokenResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['InviteUserToken'] = GQLResolversParentTypes['InviteUserToken'],
+  ParentType extends GQLResolversParentTypes['InviteUserToken'] =
+    GQLResolversParentTypes['InviteUserToken'],
 > = {
   email?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   orgId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -9006,8 +9027,8 @@ export type GQLInviteUserTokenResolvers<
 
 export type GQLInviteUserTokenExpiredErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['InviteUserTokenExpiredError'] = GQLResolversParentTypes['InviteUserTokenExpiredError'],
+  ParentType extends GQLResolversParentTypes['InviteUserTokenExpiredError'] =
+    GQLResolversParentTypes['InviteUserTokenExpiredError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9036,8 +9057,8 @@ export type GQLInviteUserTokenExpiredErrorResolvers<
 
 export type GQLInviteUserTokenMissingErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['InviteUserTokenMissingError'] = GQLResolversParentTypes['InviteUserTokenMissingError'],
+  ParentType extends GQLResolversParentTypes['InviteUserTokenMissingError'] =
+    GQLResolversParentTypes['InviteUserTokenMissingError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9066,8 +9087,8 @@ export type GQLInviteUserTokenMissingErrorResolvers<
 
 export type GQLInviteUserTokenResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['InviteUserTokenResponse'] = GQLResolversParentTypes['InviteUserTokenResponse'],
+  ParentType extends GQLResolversParentTypes['InviteUserTokenResponse'] =
+    GQLResolversParentTypes['InviteUserTokenResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'InviteUserTokenExpiredError'
@@ -9080,8 +9101,8 @@ export type GQLInviteUserTokenResponseResolvers<
 
 export type GQLInviteUserTokenSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['InviteUserTokenSuccessResponse'] = GQLResolversParentTypes['InviteUserTokenSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['InviteUserTokenSuccessResponse'] =
+    GQLResolversParentTypes['InviteUserTokenSuccessResponse'],
 > = {
   tokenData?: Resolver<
     GQLResolversTypes['InviteUserToken'],
@@ -9093,8 +9114,8 @@ export type GQLInviteUserTokenSuccessResponseResolvers<
 
 export type GQLIpAddressResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['IpAddress'] = GQLResolversParentTypes['IpAddress'],
+  ParentType extends GQLResolversParentTypes['IpAddress'] =
+    GQLResolversParentTypes['IpAddress'],
 > = {
   ip?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   port?: Resolver<Maybe<GQLResolversTypes['Int']>, ParentType, ContextType>;
@@ -9102,8 +9123,8 @@ export type GQLIpAddressResolvers<
 
 export type GQLItemResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Item'] = GQLResolversParentTypes['Item'],
+  ParentType extends GQLResolversParentTypes['Item'] =
+    GQLResolversParentTypes['Item'],
 > = {
   __resolveType: TypeResolveFn<
     'ContentItem' | 'ThreadItem' | 'UserItem',
@@ -9114,8 +9135,8 @@ export type GQLItemResolvers<
 
 export type GQLItemActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemAction'] = GQLResolversParentTypes['ItemAction'],
+  ParentType extends GQLResolversParentTypes['ItemAction'] =
+    GQLResolversParentTypes['ItemAction'],
 > = {
   actionId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   actorId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
@@ -9147,8 +9168,8 @@ export type GQLItemActionResolvers<
 
 export type GQLItemBaseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemBase'] = GQLResolversParentTypes['ItemBase'],
+  ParentType extends GQLResolversParentTypes['ItemBase'] =
+    GQLResolversParentTypes['ItemBase'],
 > = {
   __resolveType: TypeResolveFn<
     'ContentItem' | 'ThreadItem' | 'UserItem',
@@ -9159,8 +9180,8 @@ export type GQLItemBaseResolvers<
 
 export type GQLItemHistoryResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemHistoryResponse'] = GQLResolversParentTypes['ItemHistoryResponse'],
+  ParentType extends GQLResolversParentTypes['ItemHistoryResponse'] =
+    GQLResolversParentTypes['ItemHistoryResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'ItemHistoryResult' | 'NotFoundError',
@@ -9171,8 +9192,8 @@ export type GQLItemHistoryResponseResolvers<
 
 export type GQLItemHistoryResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemHistoryResult'] = GQLResolversParentTypes['ItemHistoryResult'],
+  ParentType extends GQLResolversParentTypes['ItemHistoryResult'] =
+    GQLResolversParentTypes['ItemHistoryResult'],
 > = {
   executions?: Resolver<
     ReadonlyArray<GQLResolversTypes['RuleExecutionResult']>,
@@ -9185,8 +9206,8 @@ export type GQLItemHistoryResultResolvers<
 
 export type GQLItemIdentifierResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemIdentifier'] = GQLResolversParentTypes['ItemIdentifier'],
+  ParentType extends GQLResolversParentTypes['ItemIdentifier'] =
+    GQLResolversParentTypes['ItemIdentifier'],
 > = {
   id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   typeId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -9194,8 +9215,8 @@ export type GQLItemIdentifierResolvers<
 
 export type GQLItemSubmissionsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemSubmissions'] = GQLResolversParentTypes['ItemSubmissions'],
+  ParentType extends GQLResolversParentTypes['ItemSubmissions'] =
+    GQLResolversParentTypes['ItemSubmissions'],
 > = {
   latest?: Resolver<GQLResolversTypes['Item'], ParentType, ContextType>;
   prior?: Resolver<
@@ -9207,8 +9228,8 @@ export type GQLItemSubmissionsResolvers<
 
 export type GQLItemTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemType'] = GQLResolversParentTypes['ItemType'],
+  ParentType extends GQLResolversParentTypes['ItemType'] =
+    GQLResolversParentTypes['ItemType'],
 > = {
   __resolveType: TypeResolveFn<
     'ContentItemType' | 'ThreadItemType' | 'UserItemType',
@@ -9219,8 +9240,8 @@ export type GQLItemTypeResolvers<
 
 export type GQLItemTypeBaseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemTypeBase'] = GQLResolversParentTypes['ItemTypeBase'],
+  ParentType extends GQLResolversParentTypes['ItemTypeBase'] =
+    GQLResolversParentTypes['ItemTypeBase'],
 > = {
   __resolveType: TypeResolveFn<
     'ContentItemType' | 'ThreadItemType' | 'UserItemType',
@@ -9231,8 +9252,8 @@ export type GQLItemTypeBaseResolvers<
 
 export type GQLItemTypeIdentifierResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemTypeIdentifier'] = GQLResolversParentTypes['ItemTypeIdentifier'],
+  ParentType extends GQLResolversParentTypes['ItemTypeIdentifier'] =
+    GQLResolversParentTypes['ItemTypeIdentifier'],
 > = {
   id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   schemaVariant?: Resolver<
@@ -9249,8 +9270,8 @@ export type GQLItemTypeIdentifierResolvers<
 
 export type GQLItemTypeNameAlreadyExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemTypeNameAlreadyExistsError'] = GQLResolversParentTypes['ItemTypeNameAlreadyExistsError'],
+  ParentType extends GQLResolversParentTypes['ItemTypeNameAlreadyExistsError'] =
+    GQLResolversParentTypes['ItemTypeNameAlreadyExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9289,8 +9310,8 @@ export type GQLItemTypeSchemaVariantInputResolvers = EnumResolverSignature<
 
 export type GQLItemWithParentsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemWithParents'] = GQLResolversParentTypes['ItemWithParents'],
+  ParentType extends GQLResolversParentTypes['ItemWithParents'] =
+    GQLResolversParentTypes['ItemWithParents'],
 > = {
   item?: Resolver<
     GQLResolversTypes['ItemSubmissions'],
@@ -9304,20 +9325,24 @@ export type GQLItemWithParentsResolvers<
   >;
 };
 
-export interface GQLJsonScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['JSON'], any> {
+export interface GQLJsonScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['JSON'],
+  any
+> {
   name: 'JSON';
 }
 
-export interface GQLJsonObjectScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['JSONObject'], any> {
+export interface GQLJsonObjectScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['JSONObject'],
+  any
+> {
   name: 'JSONObject';
 }
 
 export type GQLJobCreationCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['JobCreationCount'] = GQLResolversParentTypes['JobCreationCount'],
+  ParentType extends GQLResolversParentTypes['JobCreationCount'] =
+    GQLResolversParentTypes['JobCreationCount'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   itemTypeId?: Resolver<
@@ -9350,8 +9375,8 @@ export type GQLJobCreationCountResolvers<
 
 export type GQLJobCreationFilterByResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['JobCreationFilterBy'] = GQLResolversParentTypes['JobCreationFilterBy'],
+  ParentType extends GQLResolversParentTypes['JobCreationFilterBy'] =
+    GQLResolversParentTypes['JobCreationFilterBy'],
 > = {
   endDate?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   itemTypeIds?: Resolver<
@@ -9385,7 +9410,8 @@ export type GQLJobCreationFilterByResolvers<
 export type GQLJobHasAlreadyBeenSubmittedErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['JobHasAlreadyBeenSubmittedError'] = GQLResolversParentTypes['JobHasAlreadyBeenSubmittedError'],
+    GQLResolversParentTypes['JobHasAlreadyBeenSubmittedError'] =
+    GQLResolversParentTypes['JobHasAlreadyBeenSubmittedError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9414,8 +9440,8 @@ export type GQLJobHasAlreadyBeenSubmittedErrorResolvers<
 
 export type GQLLanguagesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Languages'] = GQLResolversParentTypes['Languages'],
+  ParentType extends GQLResolversParentTypes['Languages'] =
+    GQLResolversParentTypes['Languages'],
 > = {
   languages?: Resolver<
     ReadonlyArray<GQLResolversTypes['Language']>,
@@ -9427,8 +9453,8 @@ export type GQLLanguagesResolvers<
 
 export type GQLLatLngResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LatLng'] = GQLResolversParentTypes['LatLng'],
+  ParentType extends GQLResolversParentTypes['LatLng'] =
+    GQLResolversParentTypes['LatLng'],
 > = {
   lat?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
   lng?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
@@ -9436,8 +9462,8 @@ export type GQLLatLngResolvers<
 
 export type GQLLeafConditionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LeafCondition'] = GQLResolversParentTypes['LeafCondition'],
+  ParentType extends GQLResolversParentTypes['LeafCondition'] =
+    GQLResolversParentTypes['LeafCondition'],
 > = {
   comparator?: Resolver<
     Maybe<GQLResolversTypes['ValueComparator']>,
@@ -9469,8 +9495,8 @@ export type GQLLeafConditionResolvers<
 
 export type GQLLeafConditionWithResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LeafConditionWithResult'] = GQLResolversParentTypes['LeafConditionWithResult'],
+  ParentType extends GQLResolversParentTypes['LeafConditionWithResult'] =
+    GQLResolversParentTypes['LeafConditionWithResult'],
 > = {
   comparator?: Resolver<
     Maybe<GQLResolversTypes['ValueComparator']>,
@@ -9507,8 +9533,8 @@ export type GQLLeafConditionWithResultResolvers<
 
 export type GQLLocationAreaResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LocationArea'] = GQLResolversParentTypes['LocationArea'],
+  ParentType extends GQLResolversParentTypes['LocationArea'] =
+    GQLResolversParentTypes['LocationArea'],
 > = {
   bounds?: Resolver<
     Maybe<GQLResolversTypes['PlaceBounds']>,
@@ -9531,8 +9557,8 @@ export type GQLLocationAreaResolvers<
 
 export type GQLLocationBankResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LocationBank'] = GQLResolversParentTypes['LocationBank'],
+  ParentType extends GQLResolversParentTypes['LocationBank'] =
+    GQLResolversParentTypes['LocationBank'],
 > = {
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9550,8 +9576,8 @@ export type GQLLocationBankResolvers<
 
 export type GQLLocationBankNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LocationBankNameExistsError'] = GQLResolversParentTypes['LocationBankNameExistsError'],
+  ParentType extends GQLResolversParentTypes['LocationBankNameExistsError'] =
+    GQLResolversParentTypes['LocationBankNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9580,8 +9606,8 @@ export type GQLLocationBankNameExistsErrorResolvers<
 
 export type GQLLocationGeometryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LocationGeometry'] = GQLResolversParentTypes['LocationGeometry'],
+  ParentType extends GQLResolversParentTypes['LocationGeometry'] =
+    GQLResolversParentTypes['LocationGeometry'],
 > = {
   center?: Resolver<GQLResolversTypes['LatLng'], ParentType, ContextType>;
   radius?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
@@ -9589,8 +9615,8 @@ export type GQLLocationGeometryResolvers<
 
 export type GQLLoginIncorrectPasswordErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LoginIncorrectPasswordError'] = GQLResolversParentTypes['LoginIncorrectPasswordError'],
+  ParentType extends GQLResolversParentTypes['LoginIncorrectPasswordError'] =
+    GQLResolversParentTypes['LoginIncorrectPasswordError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9619,8 +9645,8 @@ export type GQLLoginIncorrectPasswordErrorResolvers<
 
 export type GQLLoginResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LoginResponse'] = GQLResolversParentTypes['LoginResponse'],
+  ParentType extends GQLResolversParentTypes['LoginResponse'] =
+    GQLResolversParentTypes['LoginResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'LoginIncorrectPasswordError'
@@ -9634,8 +9660,8 @@ export type GQLLoginResponseResolvers<
 
 export type GQLLoginSsoRequiredErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LoginSsoRequiredError'] = GQLResolversParentTypes['LoginSsoRequiredError'],
+  ParentType extends GQLResolversParentTypes['LoginSsoRequiredError'] =
+    GQLResolversParentTypes['LoginSsoRequiredError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9664,8 +9690,8 @@ export type GQLLoginSsoRequiredErrorResolvers<
 
 export type GQLLoginSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LoginSuccessResponse'] = GQLResolversParentTypes['LoginSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['LoginSuccessResponse'] =
+    GQLResolversParentTypes['LoginSuccessResponse'],
 > = {
   user?: Resolver<GQLResolversTypes['User'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -9673,8 +9699,8 @@ export type GQLLoginSuccessResponseResolvers<
 
 export type GQLLoginUserDoesNotExistErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['LoginUserDoesNotExistError'] = GQLResolversParentTypes['LoginUserDoesNotExistError'],
+  ParentType extends GQLResolversParentTypes['LoginUserDoesNotExistError'] =
+    GQLResolversParentTypes['LoginUserDoesNotExistError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9703,8 +9729,8 @@ export type GQLLoginUserDoesNotExistErrorResolvers<
 
 export type GQLManualReviewChartSettingsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewChartSettings'] = GQLResolversParentTypes['ManualReviewChartSettings'],
+  ParentType extends GQLResolversParentTypes['ManualReviewChartSettings'] =
+    GQLResolversParentTypes['ManualReviewChartSettings'],
 > = {
   __resolveType: TypeResolveFn<
     'GetDecisionCountSettings' | 'GetJobCreationCountSettings',
@@ -9715,8 +9741,8 @@ export type GQLManualReviewChartSettingsResolvers<
 
 export type GQLManualReviewDecisionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewDecision'] = GQLResolversParentTypes['ManualReviewDecision'],
+  ParentType extends GQLResolversParentTypes['ManualReviewDecision'] =
+    GQLResolversParentTypes['ManualReviewDecision'],
 > = {
   createdAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   decisionReason?: Resolver<
@@ -9756,8 +9782,8 @@ export type GQLManualReviewDecisionResolvers<
 
 export type GQLManualReviewDecisionComponentResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewDecisionComponent'] = GQLResolversParentTypes['ManualReviewDecisionComponent'],
+  ParentType extends GQLResolversParentTypes['ManualReviewDecisionComponent'] =
+    GQLResolversParentTypes['ManualReviewDecisionComponent'],
 > = {
   __resolveType: TypeResolveFn<
     | 'AcceptAppealDecisionComponent'
@@ -9775,7 +9801,8 @@ export type GQLManualReviewDecisionComponentResolvers<
 export type GQLManualReviewDecisionComponentBaseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['ManualReviewDecisionComponentBase'] = GQLResolversParentTypes['ManualReviewDecisionComponentBase'],
+    GQLResolversParentTypes['ManualReviewDecisionComponentBase'] =
+    GQLResolversParentTypes['ManualReviewDecisionComponentBase'],
 > = {
   __resolveType: TypeResolveFn<
     | 'AcceptAppealDecisionComponent'
@@ -9792,8 +9819,8 @@ export type GQLManualReviewDecisionComponentBaseResolvers<
 
 export type GQLManualReviewExistingJobResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewExistingJob'] = GQLResolversParentTypes['ManualReviewExistingJob'],
+  ParentType extends GQLResolversParentTypes['ManualReviewExistingJob'] =
+    GQLResolversParentTypes['ManualReviewExistingJob'],
 > = {
   job?: Resolver<GQLResolversTypes['ManualReviewJob'], ParentType, ContextType>;
   queueId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -9801,8 +9828,8 @@ export type GQLManualReviewExistingJobResolvers<
 
 export type GQLManualReviewJobResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewJob'] = GQLResolversParentTypes['ManualReviewJob'],
+  ParentType extends GQLResolversParentTypes['ManualReviewJob'] =
+    GQLResolversParentTypes['ManualReviewJob'],
 > = {
   comments?: Resolver<
     ReadonlyArray<GQLResolversTypes['ManualReviewJobComment']>,
@@ -9830,8 +9857,8 @@ export type GQLManualReviewJobResolvers<
 
 export type GQLManualReviewJobCommentResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewJobComment'] = GQLResolversParentTypes['ManualReviewJobComment'],
+  ParentType extends GQLResolversParentTypes['ManualReviewJobComment'] =
+    GQLResolversParentTypes['ManualReviewJobComment'],
 > = {
   author?: Resolver<GQLResolversTypes['User'], ParentType, ContextType>;
   commentText?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -9842,7 +9869,8 @@ export type GQLManualReviewJobCommentResolvers<
 export type GQLManualReviewJobEnqueueSourceInfoResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['ManualReviewJobEnqueueSourceInfo'] = GQLResolversParentTypes['ManualReviewJobEnqueueSourceInfo'],
+    GQLResolversParentTypes['ManualReviewJobEnqueueSourceInfo'] =
+    GQLResolversParentTypes['ManualReviewJobEnqueueSourceInfo'],
 > = {
   __resolveType: TypeResolveFn<
     | 'AppealEnqueueSourceInfo'
@@ -9857,8 +9885,8 @@ export type GQLManualReviewJobEnqueueSourceInfoResolvers<
 
 export type GQLManualReviewJobPayloadResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewJobPayload'] = GQLResolversParentTypes['ManualReviewJobPayload'],
+  ParentType extends GQLResolversParentTypes['ManualReviewJobPayload'] =
+    GQLResolversParentTypes['ManualReviewJobPayload'],
 > = {
   __resolveType: TypeResolveFn<
     | 'ContentAppealManualReviewJobPayload'
@@ -9875,8 +9903,8 @@ export type GQLManualReviewJobPayloadResolvers<
 
 export type GQLManualReviewJobWithDecisionsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewJobWithDecisions'] = GQLResolversParentTypes['ManualReviewJobWithDecisions'],
+  ParentType extends GQLResolversParentTypes['ManualReviewJobWithDecisions'] =
+    GQLResolversParentTypes['ManualReviewJobWithDecisions'],
 > = {
   decision?: Resolver<
     GQLResolversTypes['ManualReviewDecision'],
@@ -9888,8 +9916,8 @@ export type GQLManualReviewJobWithDecisionsResolvers<
 
 export type GQLManualReviewQueueResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ManualReviewQueue'] = GQLResolversParentTypes['ManualReviewQueue'],
+  ParentType extends GQLResolversParentTypes['ManualReviewQueue'] =
+    GQLResolversParentTypes['ManualReviewQueue'],
 > = {
   autoCloseJobs?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -9941,7 +9969,8 @@ export type GQLManualReviewQueueResolvers<
 export type GQLManualReviewQueueNameExistsErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['ManualReviewQueueNameExistsError'] = GQLResolversParentTypes['ManualReviewQueueNameExistsError'],
+    GQLResolversParentTypes['ManualReviewQueueNameExistsError'] =
+    GQLResolversParentTypes['ManualReviewQueueNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9970,8 +9999,8 @@ export type GQLManualReviewQueueNameExistsErrorResolvers<
 
 export type GQLMatchingBankNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MatchingBankNameExistsError'] = GQLResolversParentTypes['MatchingBankNameExistsError'],
+  ParentType extends GQLResolversParentTypes['MatchingBankNameExistsError'] =
+    GQLResolversParentTypes['MatchingBankNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -10000,8 +10029,8 @@ export type GQLMatchingBankNameExistsErrorResolvers<
 
 export type GQLMatchingBanksResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MatchingBanks'] = GQLResolversParentTypes['MatchingBanks'],
+  ParentType extends GQLResolversParentTypes['MatchingBanks'] =
+    GQLResolversParentTypes['MatchingBanks'],
 > = {
   hashBanks?: Resolver<
     ReadonlyArray<GQLResolversTypes['HashBank']>,
@@ -10022,8 +10051,8 @@ export type GQLMatchingBanksResolvers<
 
 export type GQLMatchingValuesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MatchingValues'] = GQLResolversParentTypes['MatchingValues'],
+  ParentType extends GQLResolversParentTypes['MatchingValues'] =
+    GQLResolversParentTypes['MatchingValues'],
 > = {
   imageBankIds?: Resolver<
     Maybe<ReadonlyArray<GQLResolversTypes['String']>>,
@@ -10054,8 +10083,8 @@ export type GQLMatchingValuesResolvers<
 
 export type GQLMessageWithIpAddressResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MessageWithIpAddress'] = GQLResolversParentTypes['MessageWithIpAddress'],
+  ParentType extends GQLResolversParentTypes['MessageWithIpAddress'] =
+    GQLResolversParentTypes['MessageWithIpAddress'],
 > = {
   ipAddress?: Resolver<GQLResolversTypes['IpAddress'], ParentType, ContextType>;
   message?: Resolver<GQLResolversTypes['ContentItem'], ParentType, ContextType>;
@@ -10063,8 +10092,8 @@ export type GQLMessageWithIpAddressResolvers<
 
 export type GQLModelCardResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ModelCard'] = GQLResolversParentTypes['ModelCard'],
+  ParentType extends GQLResolversParentTypes['ModelCard'] =
+    GQLResolversParentTypes['ModelCard'],
 > = {
   modelName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   releaseDate?: Resolver<
@@ -10082,8 +10111,8 @@ export type GQLModelCardResolvers<
 
 export type GQLModelCardFieldResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ModelCardField'] = GQLResolversParentTypes['ModelCardField'],
+  ParentType extends GQLResolversParentTypes['ModelCardField'] =
+    GQLResolversParentTypes['ModelCardField'],
 > = {
   label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   value?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -10091,8 +10120,8 @@ export type GQLModelCardFieldResolvers<
 
 export type GQLModelCardSectionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ModelCardSection'] = GQLResolversParentTypes['ModelCardSection'],
+  ParentType extends GQLResolversParentTypes['ModelCardSection'] =
+    GQLResolversParentTypes['ModelCardSection'],
 > = {
   fields?: Resolver<
     Maybe<ReadonlyArray<GQLResolversTypes['ModelCardField']>>,
@@ -10110,8 +10139,8 @@ export type GQLModelCardSectionResolvers<
 
 export type GQLModelCardSubsectionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ModelCardSubsection'] = GQLResolversParentTypes['ModelCardSubsection'],
+  ParentType extends GQLResolversParentTypes['ModelCardSubsection'] =
+    GQLResolversParentTypes['ModelCardSubsection'],
 > = {
   fields?: Resolver<
     ReadonlyArray<GQLResolversTypes['ModelCardField']>,
@@ -10123,8 +10152,8 @@ export type GQLModelCardSubsectionResolvers<
 
 export type GQLMrtJobEnqueueSourceInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MrtJobEnqueueSourceInfo'] = GQLResolversParentTypes['MrtJobEnqueueSourceInfo'],
+  ParentType extends GQLResolversParentTypes['MrtJobEnqueueSourceInfo'] =
+    GQLResolversParentTypes['MrtJobEnqueueSourceInfo'],
 > = {
   kind?: Resolver<
     GQLResolversTypes['JobCreationSourceOptions'],
@@ -10137,7 +10166,8 @@ export type GQLMrtJobEnqueueSourceInfoResolvers<
 export type GQLMutateAccessibleQueuesForUserSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateAccessibleQueuesForUserSuccessResponse'] = GQLResolversParentTypes['MutateAccessibleQueuesForUserSuccessResponse'],
+    GQLResolversParentTypes['MutateAccessibleQueuesForUserSuccessResponse'] =
+    GQLResolversParentTypes['MutateAccessibleQueuesForUserSuccessResponse'],
 > = {
   _?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10145,8 +10175,8 @@ export type GQLMutateAccessibleQueuesForUserSuccessResponseResolvers<
 
 export type GQLMutateActionResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateActionResponse'] = GQLResolversParentTypes['MutateActionResponse'],
+  ParentType extends GQLResolversParentTypes['MutateActionResponse'] =
+    GQLResolversParentTypes['MutateActionResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'ActionNameExistsError' | 'MutateActionSuccessResponse',
@@ -10157,8 +10187,8 @@ export type GQLMutateActionResponseResolvers<
 
 export type GQLMutateActionSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateActionSuccessResponse'] = GQLResolversParentTypes['MutateActionSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['MutateActionSuccessResponse'] =
+    GQLResolversParentTypes['MutateActionSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['CustomAction'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10166,8 +10196,8 @@ export type GQLMutateActionSuccessResponseResolvers<
 
 export type GQLMutateBankResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateBankResponse'] = GQLResolversParentTypes['MutateBankResponse'],
+  ParentType extends GQLResolversParentTypes['MutateBankResponse'] =
+    GQLResolversParentTypes['MutateBankResponse'],
 > = {
   error?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
   success?: Resolver<
@@ -10179,8 +10209,8 @@ export type GQLMutateBankResponseResolvers<
 
 export type GQLMutateContentItemTypeResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateContentItemTypeResponse'] = GQLResolversParentTypes['MutateContentItemTypeResponse'],
+  ParentType extends GQLResolversParentTypes['MutateContentItemTypeResponse'] =
+    GQLResolversParentTypes['MutateContentItemTypeResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'ItemTypeNameAlreadyExistsError' | 'MutateContentTypeSuccessResponse',
@@ -10192,7 +10222,8 @@ export type GQLMutateContentItemTypeResponseResolvers<
 export type GQLMutateContentRuleSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateContentRuleSuccessResponse'] = GQLResolversParentTypes['MutateContentRuleSuccessResponse'],
+    GQLResolversParentTypes['MutateContentRuleSuccessResponse'] =
+    GQLResolversParentTypes['MutateContentRuleSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['ContentRule'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10201,7 +10232,8 @@ export type GQLMutateContentRuleSuccessResponseResolvers<
 export type GQLMutateContentTypeSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateContentTypeSuccessResponse'] = GQLResolversParentTypes['MutateContentTypeSuccessResponse'],
+    GQLResolversParentTypes['MutateContentTypeSuccessResponse'] =
+    GQLResolversParentTypes['MutateContentTypeSuccessResponse'],
 > = {
   data?: Resolver<
     Maybe<GQLResolversTypes['ContentItemType']>,
@@ -10213,8 +10245,8 @@ export type GQLMutateContentTypeSuccessResponseResolvers<
 
 export type GQLMutateHashBankResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateHashBankResponse'] = GQLResolversParentTypes['MutateHashBankResponse'],
+  ParentType extends GQLResolversParentTypes['MutateHashBankResponse'] =
+    GQLResolversParentTypes['MutateHashBankResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MatchingBankNameExistsError' | 'MutateHashBankSuccessResponse',
@@ -10225,8 +10257,8 @@ export type GQLMutateHashBankResponseResolvers<
 
 export type GQLMutateHashBankSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateHashBankSuccessResponse'] = GQLResolversParentTypes['MutateHashBankSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['MutateHashBankSuccessResponse'] =
+    GQLResolversParentTypes['MutateHashBankSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['HashBank'], ParentType, ContextType>;
   warning?: Resolver<
@@ -10239,8 +10271,8 @@ export type GQLMutateHashBankSuccessResponseResolvers<
 
 export type GQLMutateLocationBankResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateLocationBankResponse'] = GQLResolversParentTypes['MutateLocationBankResponse'],
+  ParentType extends GQLResolversParentTypes['MutateLocationBankResponse'] =
+    GQLResolversParentTypes['MutateLocationBankResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'LocationBankNameExistsError' | 'MutateLocationBankSuccessResponse',
@@ -10252,7 +10284,8 @@ export type GQLMutateLocationBankResponseResolvers<
 export type GQLMutateLocationBankSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateLocationBankSuccessResponse'] = GQLResolversParentTypes['MutateLocationBankSuccessResponse'],
+    GQLResolversParentTypes['MutateLocationBankSuccessResponse'] =
+    GQLResolversParentTypes['MutateLocationBankSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['LocationBank'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10261,7 +10294,8 @@ export type GQLMutateLocationBankSuccessResponseResolvers<
 export type GQLMutateManualReviewQueueSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateManualReviewQueueSuccessResponse'] = GQLResolversParentTypes['MutateManualReviewQueueSuccessResponse'],
+    GQLResolversParentTypes['MutateManualReviewQueueSuccessResponse'] =
+    GQLResolversParentTypes['MutateManualReviewQueueSuccessResponse'],
 > = {
   data?: Resolver<
     GQLResolversTypes['ManualReviewQueue'],
@@ -10274,7 +10308,8 @@ export type GQLMutateManualReviewQueueSuccessResponseResolvers<
 export type GQLMutateReportingRuleSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateReportingRuleSuccessResponse'] = GQLResolversParentTypes['MutateReportingRuleSuccessResponse'],
+    GQLResolversParentTypes['MutateReportingRuleSuccessResponse'] =
+    GQLResolversParentTypes['MutateReportingRuleSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['ReportingRule'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10283,7 +10318,8 @@ export type GQLMutateReportingRuleSuccessResponseResolvers<
 export type GQLMutateRoutingRuleSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateRoutingRuleSuccessResponse'] = GQLResolversParentTypes['MutateRoutingRuleSuccessResponse'],
+    GQLResolversParentTypes['MutateRoutingRuleSuccessResponse'] =
+    GQLResolversParentTypes['MutateRoutingRuleSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['RoutingRule'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10292,7 +10328,8 @@ export type GQLMutateRoutingRuleSuccessResponseResolvers<
 export type GQLMutateRoutingRulesOrderSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateRoutingRulesOrderSuccessResponse'] = GQLResolversParentTypes['MutateRoutingRulesOrderSuccessResponse'],
+    GQLResolversParentTypes['MutateRoutingRulesOrderSuccessResponse'] =
+    GQLResolversParentTypes['MutateRoutingRulesOrderSuccessResponse'],
 > = {
   data?: Resolver<
     ReadonlyArray<GQLResolversTypes['RoutingRule']>,
@@ -10304,8 +10341,8 @@ export type GQLMutateRoutingRulesOrderSuccessResponseResolvers<
 
 export type GQLMutateThreadItemTypeResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateThreadItemTypeResponse'] = GQLResolversParentTypes['MutateThreadItemTypeResponse'],
+  ParentType extends GQLResolversParentTypes['MutateThreadItemTypeResponse'] =
+    GQLResolversParentTypes['MutateThreadItemTypeResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'ItemTypeNameAlreadyExistsError' | 'MutateThreadTypeSuccessResponse',
@@ -10317,7 +10354,8 @@ export type GQLMutateThreadItemTypeResponseResolvers<
 export type GQLMutateThreadTypeSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['MutateThreadTypeSuccessResponse'] = GQLResolversParentTypes['MutateThreadTypeSuccessResponse'],
+    GQLResolversParentTypes['MutateThreadTypeSuccessResponse'] =
+    GQLResolversParentTypes['MutateThreadTypeSuccessResponse'],
 > = {
   data?: Resolver<
     Maybe<GQLResolversTypes['ThreadItemType']>,
@@ -10329,8 +10367,8 @@ export type GQLMutateThreadTypeSuccessResponseResolvers<
 
 export type GQLMutateUserItemTypeResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateUserItemTypeResponse'] = GQLResolversParentTypes['MutateUserItemTypeResponse'],
+  ParentType extends GQLResolversParentTypes['MutateUserItemTypeResponse'] =
+    GQLResolversParentTypes['MutateUserItemTypeResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'ItemTypeNameAlreadyExistsError' | 'MutateUserTypeSuccessResponse',
@@ -10341,8 +10379,8 @@ export type GQLMutateUserItemTypeResponseResolvers<
 
 export type GQLMutateUserRuleSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateUserRuleSuccessResponse'] = GQLResolversParentTypes['MutateUserRuleSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['MutateUserRuleSuccessResponse'] =
+    GQLResolversParentTypes['MutateUserRuleSuccessResponse'],
 > = {
   data?: Resolver<GQLResolversTypes['UserRule'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -10350,8 +10388,8 @@ export type GQLMutateUserRuleSuccessResponseResolvers<
 
 export type GQLMutateUserTypeSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['MutateUserTypeSuccessResponse'] = GQLResolversParentTypes['MutateUserTypeSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['MutateUserTypeSuccessResponse'] =
+    GQLResolversParentTypes['MutateUserTypeSuccessResponse'],
 > = {
   data?: Resolver<
     Maybe<GQLResolversTypes['UserItemType']>,
@@ -10363,8 +10401,8 @@ export type GQLMutateUserTypeSuccessResponseResolvers<
 
 export type GQLMutationResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Mutation'] = GQLResolversParentTypes['Mutation'],
+  ParentType extends GQLResolversParentTypes['Mutation'] =
+    GQLResolversParentTypes['Mutation'],
 > = {
   addAccessibleQueuesToUser?: Resolver<
     GQLResolversTypes['AddAccessibleQueuesToUserResponse'],
@@ -10878,8 +10916,8 @@ export type GQLMutationResolvers<
 
 export type GQLNcmecReportResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NCMECReport'] = GQLResolversParentTypes['NCMECReport'],
+  ParentType extends GQLResolversParentTypes['NCMECReport'] =
+    GQLResolversParentTypes['NCMECReport'],
 > = {
   additionalFiles?: Resolver<
     ReadonlyArray<GQLResolversTypes['NcmecAdditionalFile']>,
@@ -10919,8 +10957,8 @@ export type GQLNcmecReportResolvers<
 
 export type GQLNcmecReportedMediaResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NCMECReportedMedia'] = GQLResolversParentTypes['NCMECReportedMedia'],
+  ParentType extends GQLResolversParentTypes['NCMECReportedMedia'] =
+    GQLResolversParentTypes['NCMECReportedMedia'],
 > = {
   id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   xml?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -10928,8 +10966,8 @@ export type GQLNcmecReportedMediaResolvers<
 
 export type GQLNcmecReportedThreadResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NCMECReportedThread'] = GQLResolversParentTypes['NCMECReportedThread'],
+  ParentType extends GQLResolversParentTypes['NCMECReportedThread'] =
+    GQLResolversParentTypes['NCMECReportedThread'],
 > = {
   csv?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   fileName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -10938,8 +10976,8 @@ export type GQLNcmecReportedThreadResolvers<
 
 export type GQLNcmecAdditionalFileResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NcmecAdditionalFile'] = GQLResolversParentTypes['NcmecAdditionalFile'],
+  ParentType extends GQLResolversParentTypes['NcmecAdditionalFile'] =
+    GQLResolversParentTypes['NcmecAdditionalFile'],
 > = {
   ncmecFileId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   url?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -10948,8 +10986,8 @@ export type GQLNcmecAdditionalFileResolvers<
 
 export type GQLNcmecContentItemResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NcmecContentItem'] = GQLResolversParentTypes['NcmecContentItem'],
+  ParentType extends GQLResolversParentTypes['NcmecContentItem'] =
+    GQLResolversParentTypes['NcmecContentItem'],
 > = {
   contentItem?: Resolver<GQLResolversTypes['Item'], ParentType, ContextType>;
   isConfirmedCSAM?: Resolver<
@@ -10962,8 +11000,8 @@ export type GQLNcmecContentItemResolvers<
 
 export type GQLNcmecManualReviewJobPayloadResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NcmecManualReviewJobPayload'] = GQLResolversParentTypes['NcmecManualReviewJobPayload'],
+  ParentType extends GQLResolversParentTypes['NcmecManualReviewJobPayload'] =
+    GQLResolversParentTypes['NcmecManualReviewJobPayload'],
 > = {
   allMediaItems?: Resolver<
     ReadonlyArray<GQLResolversTypes['NcmecContentItem']>,
@@ -10986,8 +11024,8 @@ export type GQLNcmecManualReviewJobPayloadResolvers<
 
 export type GQLNcmecOrgSettingsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NcmecOrgSettings'] = GQLResolversParentTypes['NcmecOrgSettings'],
+  ParentType extends GQLResolversParentTypes['NcmecOrgSettings'] =
+    GQLResolversParentTypes['NcmecOrgSettings'],
 > = {
   companyTemplate?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11060,8 +11098,8 @@ export type GQLNcmecOrgSettingsResolvers<
 
 export type GQLNcmecReportedMediaDetailsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NcmecReportedMediaDetails'] = GQLResolversParentTypes['NcmecReportedMediaDetails'],
+  ParentType extends GQLResolversParentTypes['NcmecReportedMediaDetails'] =
+    GQLResolversParentTypes['NcmecReportedMediaDetails'],
 > = {
   fileAnnotations?: Resolver<
     ReadonlyArray<GQLResolversTypes['NcmecFileAnnotation']>,
@@ -11080,8 +11118,8 @@ export type GQLNcmecReportedMediaDetailsResolvers<
 
 export type GQLNoJobWithIdInQueueErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NoJobWithIdInQueueError'] = GQLResolversParentTypes['NoJobWithIdInQueueError'],
+  ParentType extends GQLResolversParentTypes['NoJobWithIdInQueueError'] =
+    GQLResolversParentTypes['NoJobWithIdInQueueError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11108,15 +11146,17 @@ export type GQLNoJobWithIdInQueueErrorResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export interface GQLNonEmptyStringScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['NonEmptyString'], any> {
+export interface GQLNonEmptyStringScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['NonEmptyString'],
+  any
+> {
   name: 'NonEmptyString';
 }
 
 export type GQLNotFoundErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['NotFoundError'] = GQLResolversParentTypes['NotFoundError'],
+  ParentType extends GQLResolversParentTypes['NotFoundError'] =
+    GQLResolversParentTypes['NotFoundError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11145,8 +11185,8 @@ export type GQLNotFoundErrorResolvers<
 
 export type GQLNotificationResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Notification'] = GQLResolversParentTypes['Notification'],
+  ParentType extends GQLResolversParentTypes['Notification'] =
+    GQLResolversParentTypes['Notification'],
 > = {
   createdAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   data?: Resolver<
@@ -11170,8 +11210,8 @@ export type GQLNotificationResolvers<
 
 export type GQLOpenAiIntegrationApiCredentialResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['OpenAiIntegrationApiCredential'] = GQLResolversParentTypes['OpenAiIntegrationApiCredential'],
+  ParentType extends GQLResolversParentTypes['OpenAiIntegrationApiCredential'] =
+    GQLResolversParentTypes['OpenAiIntegrationApiCredential'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -11179,8 +11219,8 @@ export type GQLOpenAiIntegrationApiCredentialResolvers<
 
 export type GQLOrgResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Org'] = GQLResolversParentTypes['Org'],
+  ParentType extends GQLResolversParentTypes['Org'] =
+    GQLResolversParentTypes['Org'],
 > = {
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
@@ -11349,8 +11389,8 @@ export type GQLOrgResolvers<
 
 export type GQLOrgWithEmailExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['OrgWithEmailExistsError'] = GQLResolversParentTypes['OrgWithEmailExistsError'],
+  ParentType extends GQLResolversParentTypes['OrgWithEmailExistsError'] =
+    GQLResolversParentTypes['OrgWithEmailExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11379,8 +11419,8 @@ export type GQLOrgWithEmailExistsErrorResolvers<
 
 export type GQLOrgWithNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['OrgWithNameExistsError'] = GQLResolversParentTypes['OrgWithNameExistsError'],
+  ParentType extends GQLResolversParentTypes['OrgWithNameExistsError'] =
+    GQLResolversParentTypes['OrgWithNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11409,8 +11449,8 @@ export type GQLOrgWithNameExistsErrorResolvers<
 
 export type GQLPageInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PageInfo'] = GQLResolversParentTypes['PageInfo'],
+  ParentType extends GQLResolversParentTypes['PageInfo'] =
+    GQLResolversParentTypes['PageInfo'],
 > = {
   endCursor?: Resolver<GQLResolversTypes['Cursor'], ParentType, ContextType>;
   hasNextPage?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
@@ -11425,7 +11465,8 @@ export type GQLPageInfoResolvers<
 export type GQLPartialItemsEndpointResponseErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['PartialItemsEndpointResponseError'] = GQLResolversParentTypes['PartialItemsEndpointResponseError'],
+    GQLResolversParentTypes['PartialItemsEndpointResponseError'] =
+    GQLResolversParentTypes['PartialItemsEndpointResponseError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11455,7 +11496,8 @@ export type GQLPartialItemsEndpointResponseErrorResolvers<
 export type GQLPartialItemsInvalidResponseErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['PartialItemsInvalidResponseError'] = GQLResolversParentTypes['PartialItemsInvalidResponseError'],
+    GQLResolversParentTypes['PartialItemsInvalidResponseError'] =
+    GQLResolversParentTypes['PartialItemsInvalidResponseError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11485,7 +11527,8 @@ export type GQLPartialItemsInvalidResponseErrorResolvers<
 export type GQLPartialItemsMissingEndpointErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['PartialItemsMissingEndpointError'] = GQLResolversParentTypes['PartialItemsMissingEndpointError'],
+    GQLResolversParentTypes['PartialItemsMissingEndpointError'] =
+    GQLResolversParentTypes['PartialItemsMissingEndpointError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11514,8 +11557,8 @@ export type GQLPartialItemsMissingEndpointErrorResolvers<
 
 export type GQLPartialItemsResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PartialItemsResponse'] = GQLResolversParentTypes['PartialItemsResponse'],
+  ParentType extends GQLResolversParentTypes['PartialItemsResponse'] =
+    GQLResolversParentTypes['PartialItemsResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'PartialItemsEndpointResponseError'
@@ -11529,8 +11572,8 @@ export type GQLPartialItemsResponseResolvers<
 
 export type GQLPartialItemsSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PartialItemsSuccessResponse'] = GQLResolversParentTypes['PartialItemsSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['PartialItemsSuccessResponse'] =
+    GQLResolversParentTypes['PartialItemsSuccessResponse'],
 > = {
   items?: Resolver<
     ReadonlyArray<GQLResolversTypes['Item']>,
@@ -11542,8 +11585,8 @@ export type GQLPartialItemsSuccessResponseResolvers<
 
 export type GQLPendingInviteResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PendingInvite'] = GQLResolversParentTypes['PendingInvite'],
+  ParentType extends GQLResolversParentTypes['PendingInvite'] =
+    GQLResolversParentTypes['PendingInvite'],
 > = {
   createdAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   email?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -11553,8 +11596,8 @@ export type GQLPendingInviteResolvers<
 
 export type GQLPlaceBoundsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PlaceBounds'] = GQLResolversParentTypes['PlaceBounds'],
+  ParentType extends GQLResolversParentTypes['PlaceBounds'] =
+    GQLResolversParentTypes['PlaceBounds'],
 > = {
   northeastCorner?: Resolver<
     GQLResolversTypes['LatLng'],
@@ -11570,8 +11613,8 @@ export type GQLPlaceBoundsResolvers<
 
 export type GQLPluginIntegrationApiCredentialResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PluginIntegrationApiCredential'] = GQLResolversParentTypes['PluginIntegrationApiCredential'],
+  ParentType extends GQLResolversParentTypes['PluginIntegrationApiCredential'] =
+    GQLResolversParentTypes['PluginIntegrationApiCredential'],
 > = {
   credential?: Resolver<
     GQLResolversTypes['JSONObject'],
@@ -11583,8 +11626,8 @@ export type GQLPluginIntegrationApiCredentialResolvers<
 
 export type GQLPolicyResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Policy'] = GQLResolversParentTypes['Policy'],
+  ParentType extends GQLResolversParentTypes['Policy'] =
+    GQLResolversParentTypes['Policy'],
 > = {
   applyUserStrikeCountConfigToChildren?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
@@ -11619,8 +11662,8 @@ export type GQLPolicyResolvers<
 
 export type GQLPolicyActionCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PolicyActionCount'] = GQLResolversParentTypes['PolicyActionCount'],
+  ParentType extends GQLResolversParentTypes['PolicyActionCount'] =
+    GQLResolversParentTypes['PolicyActionCount'],
 > = {
   actionId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   actorId?: Resolver<
@@ -11643,8 +11686,8 @@ export type GQLPolicyActionCountResolvers<
 
 export type GQLPolicyNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PolicyNameExistsError'] = GQLResolversParentTypes['PolicyNameExistsError'],
+  ParentType extends GQLResolversParentTypes['PolicyNameExistsError'] =
+    GQLResolversParentTypes['PolicyNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11673,8 +11716,8 @@ export type GQLPolicyNameExistsErrorResolvers<
 
 export type GQLPolicyViolationsCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PolicyViolationsCount'] = GQLResolversParentTypes['PolicyViolationsCount'],
+  ParentType extends GQLResolversParentTypes['PolicyViolationsCount'] =
+    GQLResolversParentTypes['PolicyViolationsCount'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   policyId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -11682,8 +11725,8 @@ export type GQLPolicyViolationsCountResolvers<
 
 export type GQLPostActionsEnqueueSourceInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['PostActionsEnqueueSourceInfo'] = GQLResolversParentTypes['PostActionsEnqueueSourceInfo'],
+  ParentType extends GQLResolversParentTypes['PostActionsEnqueueSourceInfo'] =
+    GQLResolversParentTypes['PostActionsEnqueueSourceInfo'],
 > = {
   kind?: Resolver<
     GQLResolversTypes['JobCreationSourceOptions'],
@@ -11695,8 +11738,8 @@ export type GQLPostActionsEnqueueSourceInfoResolvers<
 
 export type GQLQueryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Query'] = GQLResolversParentTypes['Query'],
+  ParentType extends GQLResolversParentTypes['Query'] =
+    GQLResolversParentTypes['Query'],
 > = {
   action?: Resolver<
     Maybe<GQLResolversTypes['Action']>,
@@ -12060,8 +12103,8 @@ export type GQLQueryResolvers<
 
 export type GQLQueueDoesNotExistErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['QueueDoesNotExistError'] = GQLResolversParentTypes['QueueDoesNotExistError'],
+  ParentType extends GQLResolversParentTypes['QueueDoesNotExistError'] =
+    GQLResolversParentTypes['QueueDoesNotExistError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12090,8 +12133,8 @@ export type GQLQueueDoesNotExistErrorResolvers<
 
 export type GQLRecentDecisionsForUserResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RecentDecisionsForUser'] = GQLResolversParentTypes['RecentDecisionsForUser'],
+  ParentType extends GQLResolversParentTypes['RecentDecisionsForUser'] =
+    GQLResolversParentTypes['RecentDecisionsForUser'],
 > = {
   recentDecisions?: Resolver<
     ReadonlyArray<GQLResolversTypes['ManualReviewDecision']>,
@@ -12107,8 +12150,8 @@ export type GQLRecentDecisionsForUserResolvers<
 
 export type GQLRecentUserStrikeActionsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RecentUserStrikeActions'] = GQLResolversParentTypes['RecentUserStrikeActions'],
+  ParentType extends GQLResolversParentTypes['RecentUserStrikeActions'] =
+    GQLResolversParentTypes['RecentUserStrikeActions'],
 > = {
   actionId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   itemId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -12119,8 +12162,8 @@ export type GQLRecentUserStrikeActionsResolvers<
 
 export type GQLRecommendedThresholdsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RecommendedThresholds'] = GQLResolversParentTypes['RecommendedThresholds'],
+  ParentType extends GQLResolversParentTypes['RecommendedThresholds'] =
+    GQLResolversParentTypes['RecommendedThresholds'],
 > = {
   highPrecisionThreshold?: Resolver<
     GQLResolversTypes['StringOrFloat'],
@@ -12137,7 +12180,8 @@ export type GQLRecommendedThresholdsResolvers<
 export type GQLRecordingJobDecisionFailedErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['RecordingJobDecisionFailedError'] = GQLResolversParentTypes['RecordingJobDecisionFailedError'],
+    GQLResolversParentTypes['RecordingJobDecisionFailedError'] =
+    GQLResolversParentTypes['RecordingJobDecisionFailedError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12166,8 +12210,8 @@ export type GQLRecordingJobDecisionFailedErrorResolvers<
 
 export type GQLRejectAppealDecisionComponentResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RejectAppealDecisionComponent'] = GQLResolversParentTypes['RejectAppealDecisionComponent'],
+  ParentType extends GQLResolversParentTypes['RejectAppealDecisionComponent'] =
+    GQLResolversParentTypes['RejectAppealDecisionComponent'],
 > = {
   actionIds?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -12186,7 +12230,8 @@ export type GQLRejectAppealDecisionComponentResolvers<
 export type GQLRemoveAccessibleQueuesToUserResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['RemoveAccessibleQueuesToUserResponse'] = GQLResolversParentTypes['RemoveAccessibleQueuesToUserResponse'],
+    GQLResolversParentTypes['RemoveAccessibleQueuesToUserResponse'] =
+    GQLResolversParentTypes['RemoveAccessibleQueuesToUserResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MutateAccessibleQueuesForUserSuccessResponse' | 'NotFoundError',
@@ -12198,15 +12243,16 @@ export type GQLRemoveAccessibleQueuesToUserResponseResolvers<
 export type GQLRemoveFavoriteMrtQueueSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['RemoveFavoriteMRTQueueSuccessResponse'] = GQLResolversParentTypes['RemoveFavoriteMRTQueueSuccessResponse'],
+    GQLResolversParentTypes['RemoveFavoriteMRTQueueSuccessResponse'] =
+    GQLResolversParentTypes['RemoveFavoriteMRTQueueSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
 export type GQLRemoveFavoriteRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RemoveFavoriteRuleResponse'] = GQLResolversParentTypes['RemoveFavoriteRuleResponse'],
+  ParentType extends GQLResolversParentTypes['RemoveFavoriteRuleResponse'] =
+    GQLResolversParentTypes['RemoveFavoriteRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'RemoveFavoriteRuleSuccessResponse',
@@ -12218,7 +12264,8 @@ export type GQLRemoveFavoriteRuleResponseResolvers<
 export type GQLRemoveFavoriteRuleSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['RemoveFavoriteRuleSuccessResponse'] = GQLResolversParentTypes['RemoveFavoriteRuleSuccessResponse'],
+    GQLResolversParentTypes['RemoveFavoriteRuleSuccessResponse'] =
+    GQLResolversParentTypes['RemoveFavoriteRuleSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -12226,8 +12273,8 @@ export type GQLRemoveFavoriteRuleSuccessResponseResolvers<
 
 export type GQLReorderRoutingRulesResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReorderRoutingRulesResponse'] = GQLResolversParentTypes['ReorderRoutingRulesResponse'],
+  ParentType extends GQLResolversParentTypes['ReorderRoutingRulesResponse'] =
+    GQLResolversParentTypes['ReorderRoutingRulesResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'MutateRoutingRulesOrderSuccessResponse',
@@ -12238,8 +12285,8 @@ export type GQLReorderRoutingRulesResponseResolvers<
 
 export type GQLReportEnqueueSourceInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportEnqueueSourceInfo'] = GQLResolversParentTypes['ReportEnqueueSourceInfo'],
+  ParentType extends GQLResolversParentTypes['ReportEnqueueSourceInfo'] =
+    GQLResolversParentTypes['ReportEnqueueSourceInfo'],
 > = {
   kind?: Resolver<
     GQLResolversTypes['JobCreationSourceOptions'],
@@ -12251,8 +12298,8 @@ export type GQLReportEnqueueSourceInfoResolvers<
 
 export type GQLReportHistoryEntryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportHistoryEntry'] = GQLResolversParentTypes['ReportHistoryEntry'],
+  ParentType extends GQLResolversParentTypes['ReportHistoryEntry'] =
+    GQLResolversParentTypes['ReportHistoryEntry'],
 > = {
   policyId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
   reason?: Resolver<
@@ -12271,8 +12318,8 @@ export type GQLReportHistoryEntryResolvers<
 
 export type GQLReportedForReasonResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportedForReason'] = GQLResolversParentTypes['ReportedForReason'],
+  ParentType extends GQLResolversParentTypes['ReportedForReason'] =
+    GQLResolversParentTypes['ReportedForReason'],
 > = {
   reason?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12288,8 +12335,8 @@ export type GQLReportedForReasonResolvers<
 
 export type GQLReportingInsightsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportingInsights'] = GQLResolversParentTypes['ReportingInsights'],
+  ParentType extends GQLResolversParentTypes['ReportingInsights'] =
+    GQLResolversParentTypes['ReportingInsights'],
 > = {
   totalIngestedReportsByDay?: Resolver<
     ReadonlyArray<GQLResolversTypes['CountByDay']>,
@@ -12300,8 +12347,8 @@ export type GQLReportingInsightsResolvers<
 
 export type GQLReportingRuleResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportingRule'] = GQLResolversParentTypes['ReportingRule'],
+  ParentType extends GQLResolversParentTypes['ReportingRule'] =
+    GQLResolversParentTypes['ReportingRule'],
 > = {
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
@@ -12346,8 +12393,8 @@ export type GQLReportingRuleResolvers<
 
 export type GQLReportingRuleExecutionResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportingRuleExecutionResult'] = GQLResolversParentTypes['ReportingRuleExecutionResult'],
+  ParentType extends GQLResolversParentTypes['ReportingRuleExecutionResult'] =
+    GQLResolversParentTypes['ReportingRuleExecutionResult'],
 > = {
   creatorId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12393,8 +12440,8 @@ export type GQLReportingRuleExecutionResultResolvers<
 
 export type GQLReportingRuleInsightsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportingRuleInsights'] = GQLResolversParentTypes['ReportingRuleInsights'],
+  ParentType extends GQLResolversParentTypes['ReportingRuleInsights'] =
+    GQLResolversParentTypes['ReportingRuleInsights'],
 > = {
   latestVersionSamples?: Resolver<
     ReadonlyArray<GQLResolversTypes['ReportingRuleExecutionResult']>,
@@ -12416,8 +12463,8 @@ export type GQLReportingRuleInsightsResolvers<
 
 export type GQLReportingRuleNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportingRuleNameExistsError'] = GQLResolversParentTypes['ReportingRuleNameExistsError'],
+  ParentType extends GQLResolversParentTypes['ReportingRuleNameExistsError'] =
+    GQLResolversParentTypes['ReportingRuleNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12446,8 +12493,8 @@ export type GQLReportingRuleNameExistsErrorResolvers<
 
 export type GQLReportingRulePassRateDataResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ReportingRulePassRateData'] = GQLResolversParentTypes['ReportingRulePassRateData'],
+  ParentType extends GQLResolversParentTypes['ReportingRulePassRateData'] =
+    GQLResolversParentTypes['ReportingRulePassRateData'],
 > = {
   date?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   totalMatches?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
@@ -12456,8 +12503,8 @@ export type GQLReportingRulePassRateDataResolvers<
 
 export type GQLResolvedJobCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ResolvedJobCount'] = GQLResolversParentTypes['ResolvedJobCount'],
+  ParentType extends GQLResolversParentTypes['ResolvedJobCount'] =
+    GQLResolversParentTypes['ResolvedJobCount'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   queueId?: Resolver<
@@ -12475,8 +12522,8 @@ export type GQLResolvedJobCountResolvers<
 
 export type GQLRotateApiKeyErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RotateApiKeyError'] = GQLResolversParentTypes['RotateApiKeyError'],
+  ParentType extends GQLResolversParentTypes['RotateApiKeyError'] =
+    GQLResolversParentTypes['RotateApiKeyError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12505,8 +12552,8 @@ export type GQLRotateApiKeyErrorResolvers<
 
 export type GQLRotateApiKeyResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RotateApiKeyResponse'] = GQLResolversParentTypes['RotateApiKeyResponse'],
+  ParentType extends GQLResolversParentTypes['RotateApiKeyResponse'] =
+    GQLResolversParentTypes['RotateApiKeyResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'RotateApiKeyError' | 'RotateApiKeySuccessResponse',
@@ -12517,8 +12564,8 @@ export type GQLRotateApiKeyResponseResolvers<
 
 export type GQLRotateApiKeySuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RotateApiKeySuccessResponse'] = GQLResolversParentTypes['RotateApiKeySuccessResponse'],
+  ParentType extends GQLResolversParentTypes['RotateApiKeySuccessResponse'] =
+    GQLResolversParentTypes['RotateApiKeySuccessResponse'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   record?: Resolver<GQLResolversTypes['ApiKey'], ParentType, ContextType>;
@@ -12527,8 +12574,8 @@ export type GQLRotateApiKeySuccessResponseResolvers<
 
 export type GQLRotateWebhookSigningKeyErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RotateWebhookSigningKeyError'] = GQLResolversParentTypes['RotateWebhookSigningKeyError'],
+  ParentType extends GQLResolversParentTypes['RotateWebhookSigningKeyError'] =
+    GQLResolversParentTypes['RotateWebhookSigningKeyError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12558,7 +12605,8 @@ export type GQLRotateWebhookSigningKeyErrorResolvers<
 export type GQLRotateWebhookSigningKeyResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['RotateWebhookSigningKeyResponse'] = GQLResolversParentTypes['RotateWebhookSigningKeyResponse'],
+    GQLResolversParentTypes['RotateWebhookSigningKeyResponse'] =
+    GQLResolversParentTypes['RotateWebhookSigningKeyResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'RotateWebhookSigningKeyError' | 'RotateWebhookSigningKeySuccessResponse',
@@ -12570,7 +12618,8 @@ export type GQLRotateWebhookSigningKeyResponseResolvers<
 export type GQLRotateWebhookSigningKeySuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'] = GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'],
+    GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'] =
+    GQLResolversParentTypes['RotateWebhookSigningKeySuccessResponse'],
 > = {
   publicSigningKey?: Resolver<
     GQLResolversTypes['String'],
@@ -12582,8 +12631,8 @@ export type GQLRotateWebhookSigningKeySuccessResponseResolvers<
 
 export type GQLRoutingRuleResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RoutingRule'] = GQLResolversParentTypes['RoutingRule'],
+  ParentType extends GQLResolversParentTypes['RoutingRule'] =
+    GQLResolversParentTypes['RoutingRule'],
 > = {
   conditionSet?: Resolver<
     GQLResolversTypes['ConditionSet'],
@@ -12617,8 +12666,8 @@ export type GQLRoutingRuleResolvers<
 
 export type GQLRoutingRuleNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RoutingRuleNameExistsError'] = GQLResolversParentTypes['RoutingRuleNameExistsError'],
+  ParentType extends GQLResolversParentTypes['RoutingRuleNameExistsError'] =
+    GQLResolversParentTypes['RoutingRuleNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12647,8 +12696,8 @@ export type GQLRoutingRuleNameExistsErrorResolvers<
 
 export type GQLRuleResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Rule'] = GQLResolversParentTypes['Rule'],
+  ParentType extends GQLResolversParentTypes['Rule'] =
+    GQLResolversParentTypes['Rule'],
 > = {
   __resolveType: TypeResolveFn<
     'ContentRule' | 'UserRule',
@@ -12659,8 +12708,8 @@ export type GQLRuleResolvers<
 
 export type GQLRuleExecutionEnqueueSourceInfoResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleExecutionEnqueueSourceInfo'] = GQLResolversParentTypes['RuleExecutionEnqueueSourceInfo'],
+  ParentType extends GQLResolversParentTypes['RuleExecutionEnqueueSourceInfo'] =
+    GQLResolversParentTypes['RuleExecutionEnqueueSourceInfo'],
 > = {
   kind?: Resolver<
     GQLResolversTypes['JobCreationSourceOptions'],
@@ -12677,8 +12726,8 @@ export type GQLRuleExecutionEnqueueSourceInfoResolvers<
 
 export type GQLRuleExecutionResultResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleExecutionResult'] = GQLResolversParentTypes['RuleExecutionResult'],
+  ParentType extends GQLResolversParentTypes['RuleExecutionResult'] =
+    GQLResolversParentTypes['RuleExecutionResult'],
 > = {
   content?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   contentId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -12729,8 +12778,8 @@ export type GQLRuleExecutionResultResolvers<
 
 export type GQLRuleExecutionResultEdgeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleExecutionResultEdge'] = GQLResolversParentTypes['RuleExecutionResultEdge'],
+  ParentType extends GQLResolversParentTypes['RuleExecutionResultEdge'] =
+    GQLResolversParentTypes['RuleExecutionResultEdge'],
 > = {
   cursor?: Resolver<GQLResolversTypes['Cursor'], ParentType, ContextType>;
   node?: Resolver<
@@ -12742,8 +12791,8 @@ export type GQLRuleExecutionResultEdgeResolvers<
 
 export type GQLRuleExecutionResultsConnectionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleExecutionResultsConnection'] = GQLResolversParentTypes['RuleExecutionResultsConnection'],
+  ParentType extends GQLResolversParentTypes['RuleExecutionResultsConnection'] =
+    GQLResolversParentTypes['RuleExecutionResultsConnection'],
 > = {
   edges?: Resolver<
     ReadonlyArray<GQLResolversTypes['RuleExecutionResultEdge']>,
@@ -12755,8 +12804,8 @@ export type GQLRuleExecutionResultsConnectionResolvers<
 
 export type GQLRuleHasRunningBacktestsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleHasRunningBacktestsError'] = GQLResolversParentTypes['RuleHasRunningBacktestsError'],
+  ParentType extends GQLResolversParentTypes['RuleHasRunningBacktestsError'] =
+    GQLResolversParentTypes['RuleHasRunningBacktestsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12785,8 +12834,8 @@ export type GQLRuleHasRunningBacktestsErrorResolvers<
 
 export type GQLRuleInsightsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleInsights'] = GQLResolversParentTypes['RuleInsights'],
+  ParentType extends GQLResolversParentTypes['RuleInsights'] =
+    GQLResolversParentTypes['RuleInsights'],
 > = {
   latestVersionSamples?: Resolver<
     ReadonlyArray<GQLResolversTypes['RuleExecutionResult']>,
@@ -12808,8 +12857,8 @@ export type GQLRuleInsightsResolvers<
 
 export type GQLRuleNameExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RuleNameExistsError'] = GQLResolversParentTypes['RuleNameExistsError'],
+  ParentType extends GQLResolversParentTypes['RuleNameExistsError'] =
+    GQLResolversParentTypes['RuleNameExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12838,8 +12887,8 @@ export type GQLRuleNameExistsErrorResolvers<
 
 export type GQLRulePassRateDataResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RulePassRateData'] = GQLResolversParentTypes['RulePassRateData'],
+  ParentType extends GQLResolversParentTypes['RulePassRateData'] =
+    GQLResolversParentTypes['RulePassRateData'],
 > = {
   date?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   totalMatches?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
@@ -12848,8 +12897,8 @@ export type GQLRulePassRateDataResolvers<
 
 export type GQLRunRetroactionResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RunRetroactionResponse'] = GQLResolversParentTypes['RunRetroactionResponse'],
+  ParentType extends GQLResolversParentTypes['RunRetroactionResponse'] =
+    GQLResolversParentTypes['RunRetroactionResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'RunRetroactionSuccessResponse',
@@ -12860,8 +12909,8 @@ export type GQLRunRetroactionResponseResolvers<
 
 export type GQLRunRetroactionSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['RunRetroactionSuccessResponse'] = GQLResolversParentTypes['RunRetroactionSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['RunRetroactionSuccessResponse'] =
+    GQLResolversParentTypes['RunRetroactionSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -12869,8 +12918,8 @@ export type GQLRunRetroactionSuccessResponseResolvers<
 
 export type GQLScalarSignalOutputTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ScalarSignalOutputType'] = GQLResolversParentTypes['ScalarSignalOutputType'],
+  ParentType extends GQLResolversParentTypes['ScalarSignalOutputType'] =
+    GQLResolversParentTypes['ScalarSignalOutputType'],
 > = {
   scalarType?: Resolver<
     GQLResolversTypes['ScalarType'],
@@ -12882,8 +12931,8 @@ export type GQLScalarSignalOutputTypeResolvers<
 
 export type GQLSchemaFieldRolesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SchemaFieldRoles'] = GQLResolversParentTypes['SchemaFieldRoles'],
+  ParentType extends GQLResolversParentTypes['SchemaFieldRoles'] =
+    GQLResolversParentTypes['SchemaFieldRoles'],
 > = {
   __resolveType: TypeResolveFn<
     | 'ContentSchemaFieldRoles'
@@ -12897,15 +12946,16 @@ export type GQLSchemaFieldRolesResolvers<
 export type GQLSetAllUserStrikeThresholdsSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['SetAllUserStrikeThresholdsSuccessResponse'] = GQLResolversParentTypes['SetAllUserStrikeThresholdsSuccessResponse'],
+    GQLResolversParentTypes['SetAllUserStrikeThresholdsSuccessResponse'] =
+    GQLResolversParentTypes['SetAllUserStrikeThresholdsSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
 export type GQLSetIntegrationConfigResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SetIntegrationConfigResponse'] = GQLResolversParentTypes['SetIntegrationConfigResponse'],
+  ParentType extends GQLResolversParentTypes['SetIntegrationConfigResponse'] =
+    GQLResolversParentTypes['SetIntegrationConfigResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'IntegrationConfigTooManyCredentialsError'
@@ -12920,7 +12970,8 @@ export type GQLSetIntegrationConfigResponseResolvers<
 export type GQLSetIntegrationConfigSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['SetIntegrationConfigSuccessResponse'] = GQLResolversParentTypes['SetIntegrationConfigSuccessResponse'],
+    GQLResolversParentTypes['SetIntegrationConfigSuccessResponse'] =
+    GQLResolversParentTypes['SetIntegrationConfigSuccessResponse'],
 > = {
   config?: Resolver<
     GQLResolversTypes['IntegrationConfig'],
@@ -12933,7 +12984,8 @@ export type GQLSetIntegrationConfigSuccessResponseResolvers<
 export type GQLSetModeratorSafetySettingsSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['SetModeratorSafetySettingsSuccessResponse'] = GQLResolversParentTypes['SetModeratorSafetySettingsSuccessResponse'],
+    GQLResolversParentTypes['SetModeratorSafetySettingsSuccessResponse'] =
+    GQLResolversParentTypes['SetModeratorSafetySettingsSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
@@ -12941,15 +12993,16 @@ export type GQLSetModeratorSafetySettingsSuccessResponseResolvers<
 export type GQLSetMrtChartConfigurationSettingsSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['SetMrtChartConfigurationSettingsSuccessResponse'] = GQLResolversParentTypes['SetMrtChartConfigurationSettingsSuccessResponse'],
+    GQLResolversParentTypes['SetMrtChartConfigurationSettingsSuccessResponse'] =
+    GQLResolversParentTypes['SetMrtChartConfigurationSettingsSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
 export type GQLSignUpResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignUpResponse'] = GQLResolversParentTypes['SignUpResponse'],
+  ParentType extends GQLResolversParentTypes['SignUpResponse'] =
+    GQLResolversParentTypes['SignUpResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'SignUpSuccessResponse' | 'SignUpUserExistsError',
@@ -12960,8 +13013,8 @@ export type GQLSignUpResponseResolvers<
 
 export type GQLSignUpSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignUpSuccessResponse'] = GQLResolversParentTypes['SignUpSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['SignUpSuccessResponse'] =
+    GQLResolversParentTypes['SignUpSuccessResponse'],
 > = {
   data?: Resolver<Maybe<GQLResolversTypes['User']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -12969,8 +13022,8 @@ export type GQLSignUpSuccessResponseResolvers<
 
 export type GQLSignUpUserExistsErrorResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignUpUserExistsError'] = GQLResolversParentTypes['SignUpUserExistsError'],
+  ParentType extends GQLResolversParentTypes['SignUpUserExistsError'] =
+    GQLResolversParentTypes['SignUpUserExistsError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -12999,8 +13052,8 @@ export type GQLSignUpUserExistsErrorResolvers<
 
 export type GQLSignalResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['Signal'] = GQLResolversParentTypes['Signal'],
+  ParentType extends GQLResolversParentTypes['Signal'] =
+    GQLResolversParentTypes['Signal'],
 > = {
   allowedInAutomatedRules?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -13105,8 +13158,8 @@ export type GQLSignalResolvers<
 
 export type GQLSignalArgsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignalArgs'] = GQLResolversParentTypes['SignalArgs'],
+  ParentType extends GQLResolversParentTypes['SignalArgs'] =
+    GQLResolversParentTypes['SignalArgs'],
 > = {
   __resolveType: TypeResolveFn<
     'AggregationSignalArgs',
@@ -13117,8 +13170,8 @@ export type GQLSignalArgsResolvers<
 
 export type GQLSignalOutputTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignalOutputType'] = GQLResolversParentTypes['SignalOutputType'],
+  ParentType extends GQLResolversParentTypes['SignalOutputType'] =
+    GQLResolversParentTypes['SignalOutputType'],
 > = {
   __resolveType: TypeResolveFn<
     'EnumSignalOutputType' | 'ScalarSignalOutputType',
@@ -13129,8 +13182,8 @@ export type GQLSignalOutputTypeResolvers<
 
 export type GQLSignalPricingStructureResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignalPricingStructure'] = GQLResolversParentTypes['SignalPricingStructure'],
+  ParentType extends GQLResolversParentTypes['SignalPricingStructure'] =
+    GQLResolversParentTypes['SignalPricingStructure'],
 > = {
   type?: Resolver<
     GQLResolversTypes['SignalPricingStructureType'],
@@ -13141,8 +13194,8 @@ export type GQLSignalPricingStructureResolvers<
 
 export type GQLSignalSubcategoryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignalSubcategory'] = GQLResolversParentTypes['SignalSubcategory'],
+  ParentType extends GQLResolversParentTypes['SignalSubcategory'] =
+    GQLResolversParentTypes['SignalSubcategory'],
 > = {
   childrenIds?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -13160,8 +13213,8 @@ export type GQLSignalSubcategoryResolvers<
 
 export type GQLSignalWithScoreResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SignalWithScore'] = GQLResolversParentTypes['SignalWithScore'],
+  ParentType extends GQLResolversParentTypes['SignalWithScore'] =
+    GQLResolversParentTypes['SignalWithScore'],
 > = {
   integration?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13179,8 +13232,8 @@ export type GQLSignalWithScoreResolvers<
 
 export type GQLSkippedJobResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SkippedJob'] = GQLResolversParentTypes['SkippedJob'],
+  ParentType extends GQLResolversParentTypes['SkippedJob'] =
+    GQLResolversParentTypes['SkippedJob'],
 > = {
   jobId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   queueId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -13190,8 +13243,8 @@ export type GQLSkippedJobResolvers<
 
 export type GQLSkippedJobCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SkippedJobCount'] = GQLResolversParentTypes['SkippedJobCount'],
+  ParentType extends GQLResolversParentTypes['SkippedJobCount'] =
+    GQLResolversParentTypes['SkippedJobCount'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   queueId?: Resolver<
@@ -13207,15 +13260,17 @@ export type GQLSkippedJobCountResolvers<
   time?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
-export interface GQLStringOrFloatScalarConfig
-  extends GraphQLScalarTypeConfig<GQLResolversTypes['StringOrFloat'], any> {
+export interface GQLStringOrFloatScalarConfig extends GraphQLScalarTypeConfig<
+  GQLResolversTypes['StringOrFloat'],
+  any
+> {
   name: 'StringOrFloat';
 }
 
 export type GQLSubmitDecisionResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SubmitDecisionResponse'] = GQLResolversParentTypes['SubmitDecisionResponse'],
+  ParentType extends GQLResolversParentTypes['SubmitDecisionResponse'] =
+    GQLResolversParentTypes['SubmitDecisionResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'JobHasAlreadyBeenSubmittedError'
@@ -13230,8 +13285,8 @@ export type GQLSubmitDecisionResponseResolvers<
 
 export type GQLSubmitDecisionSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SubmitDecisionSuccessResponse'] = GQLResolversParentTypes['SubmitDecisionSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['SubmitDecisionSuccessResponse'] =
+    GQLResolversParentTypes['SubmitDecisionSuccessResponse'],
 > = {
   success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -13240,7 +13295,8 @@ export type GQLSubmitDecisionSuccessResponseResolvers<
 export type GQLSubmitNcmecReportDecisionComponentResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['SubmitNCMECReportDecisionComponent'] = GQLResolversParentTypes['SubmitNCMECReportDecisionComponent'],
+    GQLResolversParentTypes['SubmitNCMECReportDecisionComponent'] =
+    GQLResolversParentTypes['SubmitNCMECReportDecisionComponent'],
 > = {
   reportedMedia?: Resolver<
     ReadonlyArray<GQLResolversTypes['NcmecReportedMediaDetails']>,
@@ -13258,7 +13314,8 @@ export type GQLSubmitNcmecReportDecisionComponentResolvers<
 export type GQLSubmittedJobActionNotFoundErrorResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['SubmittedJobActionNotFoundError'] = GQLResolversParentTypes['SubmittedJobActionNotFoundError'],
+    GQLResolversParentTypes['SubmittedJobActionNotFoundError'] =
+    GQLResolversParentTypes['SubmittedJobActionNotFoundError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13287,8 +13344,8 @@ export type GQLSubmittedJobActionNotFoundErrorResolvers<
 
 export type GQLSupportedLanguagesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['SupportedLanguages'] = GQLResolversParentTypes['SupportedLanguages'],
+  ParentType extends GQLResolversParentTypes['SupportedLanguages'] =
+    GQLResolversParentTypes['SupportedLanguages'],
 > = {
   __resolveType: TypeResolveFn<
     'AllLanguages' | 'Languages',
@@ -13299,8 +13356,8 @@ export type GQLSupportedLanguagesResolvers<
 
 export type GQLTableDecisionCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['TableDecisionCount'] = GQLResolversParentTypes['TableDecisionCount'],
+  ParentType extends GQLResolversParentTypes['TableDecisionCount'] =
+    GQLResolversParentTypes['TableDecisionCount'],
 > = {
   action_id?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13327,8 +13384,8 @@ export type GQLTableDecisionCountResolvers<
 
 export type GQLTextBankResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['TextBank'] = GQLResolversParentTypes['TextBank'],
+  ParentType extends GQLResolversParentTypes['TextBank'] =
+    GQLResolversParentTypes['TextBank'],
 > = {
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13348,7 +13405,8 @@ export type GQLTextBankResolvers<
 export type GQLThreadAppealManualReviewJobPayloadResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['ThreadAppealManualReviewJobPayload'] = GQLResolversParentTypes['ThreadAppealManualReviewJobPayload'],
+    GQLResolversParentTypes['ThreadAppealManualReviewJobPayload'] =
+    GQLResolversParentTypes['ThreadAppealManualReviewJobPayload'],
 > = {
   actionsTaken?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -13377,8 +13435,8 @@ export type GQLThreadAppealManualReviewJobPayloadResolvers<
 
 export type GQLThreadItemResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ThreadItem'] = GQLResolversParentTypes['ThreadItem'],
+  ParentType extends GQLResolversParentTypes['ThreadItem'] =
+    GQLResolversParentTypes['ThreadItem'],
 > = {
   data?: Resolver<GQLResolversTypes['JSONObject'], ParentType, ContextType>;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
@@ -13394,8 +13452,8 @@ export type GQLThreadItemResolvers<
 
 export type GQLThreadItemTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ThreadItemType'] = GQLResolversParentTypes['ThreadItemType'],
+  ParentType extends GQLResolversParentTypes['ThreadItemType'] =
+    GQLResolversParentTypes['ThreadItemType'],
 > = {
   baseFields?: Resolver<
     ReadonlyArray<GQLResolversTypes['BaseField']>,
@@ -13435,8 +13493,8 @@ export type GQLThreadItemTypeResolvers<
 
 export type GQLThreadManualReviewJobPayloadResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ThreadManualReviewJobPayload'] = GQLResolversParentTypes['ThreadManualReviewJobPayload'],
+  ParentType extends GQLResolversParentTypes['ThreadManualReviewJobPayload'] =
+    GQLResolversParentTypes['ThreadManualReviewJobPayload'],
 > = {
   enqueueSourceInfo?: Resolver<
     Maybe<GQLResolversTypes['ManualReviewJobEnqueueSourceInfo']>,
@@ -13469,8 +13527,8 @@ export type GQLThreadManualReviewJobPayloadResolvers<
 
 export type GQLThreadSchemaFieldRolesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ThreadSchemaFieldRoles'] = GQLResolversParentTypes['ThreadSchemaFieldRoles'],
+  ParentType extends GQLResolversParentTypes['ThreadSchemaFieldRoles'] =
+    GQLResolversParentTypes['ThreadSchemaFieldRoles'],
 > = {
   createdAt?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13497,8 +13555,8 @@ export type GQLThreadSchemaFieldRolesResolvers<
 
 export type GQLThreadWithMessagesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ThreadWithMessages'] = GQLResolversParentTypes['ThreadWithMessages'],
+  ParentType extends GQLResolversParentTypes['ThreadWithMessages'] =
+    GQLResolversParentTypes['ThreadWithMessages'],
 > = {
   messages?: Resolver<
     ReadonlyArray<GQLResolversTypes['ItemSubmissions']>,
@@ -13511,8 +13569,8 @@ export type GQLThreadWithMessagesResolvers<
 
 export type GQLThreadWithMessagesAndIpAddressResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ThreadWithMessagesAndIpAddress'] = GQLResolversParentTypes['ThreadWithMessagesAndIpAddress'],
+  ParentType extends GQLResolversParentTypes['ThreadWithMessagesAndIpAddress'] =
+    GQLResolversParentTypes['ThreadWithMessagesAndIpAddress'],
 > = {
   messages?: Resolver<
     ReadonlyArray<GQLResolversTypes['MessageWithIpAddress']>,
@@ -13525,8 +13583,8 @@ export type GQLThreadWithMessagesAndIpAddressResolvers<
 
 export type GQLTimeToActionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['TimeToAction'] = GQLResolversParentTypes['TimeToAction'],
+  ParentType extends GQLResolversParentTypes['TimeToAction'] =
+    GQLResolversParentTypes['TimeToAction'],
 > = {
   itemTypeId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13548,7 +13606,8 @@ export type GQLTimeToActionResolvers<
 export type GQLTransformJobAndRecreateInQueueDecisionComponentResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['TransformJobAndRecreateInQueueDecisionComponent'] = GQLResolversParentTypes['TransformJobAndRecreateInQueueDecisionComponent'],
+    GQLResolversParentTypes['TransformJobAndRecreateInQueueDecisionComponent'] =
+    GQLResolversParentTypes['TransformJobAndRecreateInQueueDecisionComponent'],
 > = {
   newJobKind?: Resolver<
     GQLResolversTypes['ManualReviewJobKind'],
@@ -13580,8 +13639,8 @@ export type GQLTransformJobAndRecreateInQueueDecisionComponentResolvers<
 
 export type GQLUpdateContentRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdateContentRuleResponse'] = GQLResolversParentTypes['UpdateContentRuleResponse'],
+  ParentType extends GQLResolversParentTypes['UpdateContentRuleResponse'] =
+    GQLResolversParentTypes['UpdateContentRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'MutateContentRuleSuccessResponse'
@@ -13596,7 +13655,8 @@ export type GQLUpdateContentRuleResponseResolvers<
 export type GQLUpdateManualReviewQueueQueueResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['UpdateManualReviewQueueQueueResponse'] = GQLResolversParentTypes['UpdateManualReviewQueueQueueResponse'],
+    GQLResolversParentTypes['UpdateManualReviewQueueQueueResponse'] =
+    GQLResolversParentTypes['UpdateManualReviewQueueQueueResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'ManualReviewQueueNameExistsError'
@@ -13609,24 +13669,24 @@ export type GQLUpdateManualReviewQueueQueueResponseResolvers<
 
 export type GQLUpdateNcmecOrgSettingsResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdateNcmecOrgSettingsResponse'] = GQLResolversParentTypes['UpdateNcmecOrgSettingsResponse'],
+  ParentType extends GQLResolversParentTypes['UpdateNcmecOrgSettingsResponse'] =
+    GQLResolversParentTypes['UpdateNcmecOrgSettingsResponse'],
 > = {
   success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type GQLUpdateOrgInfoSuccessResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdateOrgInfoSuccessResponse'] = GQLResolversParentTypes['UpdateOrgInfoSuccessResponse'],
+  ParentType extends GQLResolversParentTypes['UpdateOrgInfoSuccessResponse'] =
+    GQLResolversParentTypes['UpdateOrgInfoSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
 export type GQLUpdatePolicyResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdatePolicyResponse'] = GQLResolversParentTypes['UpdatePolicyResponse'],
+  ParentType extends GQLResolversParentTypes['UpdatePolicyResponse'] =
+    GQLResolversParentTypes['UpdatePolicyResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'NotFoundError' | 'Policy',
@@ -13637,8 +13697,8 @@ export type GQLUpdatePolicyResponseResolvers<
 
 export type GQLUpdateReportingRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdateReportingRuleResponse'] = GQLResolversParentTypes['UpdateReportingRuleResponse'],
+  ParentType extends GQLResolversParentTypes['UpdateReportingRuleResponse'] =
+    GQLResolversParentTypes['UpdateReportingRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'MutateReportingRuleSuccessResponse'
@@ -13651,8 +13711,8 @@ export type GQLUpdateReportingRuleResponseResolvers<
 
 export type GQLUpdateRoutingRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdateRoutingRuleResponse'] = GQLResolversParentTypes['UpdateRoutingRuleResponse'],
+  ParentType extends GQLResolversParentTypes['UpdateRoutingRuleResponse'] =
+    GQLResolversParentTypes['UpdateRoutingRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'MutateRoutingRuleSuccessResponse'
@@ -13666,8 +13726,8 @@ export type GQLUpdateRoutingRuleResponseResolvers<
 
 export type GQLUpdateUserRuleResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UpdateUserRuleResponse'] = GQLResolversParentTypes['UpdateUserRuleResponse'],
+  ParentType extends GQLResolversParentTypes['UpdateUserRuleResponse'] =
+    GQLResolversParentTypes['UpdateUserRuleResponse'],
 > = {
   __resolveType: TypeResolveFn<
     | 'MutateUserRuleSuccessResponse'
@@ -13682,15 +13742,16 @@ export type GQLUpdateUserRuleResponseResolvers<
 export type GQLUpdateUserStrikeTtlSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['UpdateUserStrikeTTLSuccessResponse'] = GQLResolversParentTypes['UpdateUserStrikeTTLSuccessResponse'],
+    GQLResolversParentTypes['UpdateUserStrikeTTLSuccessResponse'] =
+    GQLResolversParentTypes['UpdateUserStrikeTTLSuccessResponse'],
 > = {
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
 export type GQLUserResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['User'] = GQLResolversParentTypes['User'],
+  ParentType extends GQLResolversParentTypes['User'] =
+    GQLResolversParentTypes['User'],
 > = {
   approvedByAdmin?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
@@ -13758,8 +13819,8 @@ export type GQLUserResolvers<
 
 export type GQLUserActionsHistoryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserActionsHistory'] = GQLResolversParentTypes['UserActionsHistory'],
+  ParentType extends GQLResolversParentTypes['UserActionsHistory'] =
+    GQLResolversParentTypes['UserActionsHistory'],
 > = {
   countsByPolicy?: Resolver<
     ReadonlyArray<GQLResolversTypes['PolicyActionCount']>,
@@ -13771,7 +13832,8 @@ export type GQLUserActionsHistoryResolvers<
 export type GQLUserAppealManualReviewJobPayloadResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['UserAppealManualReviewJobPayload'] = GQLResolversParentTypes['UserAppealManualReviewJobPayload'],
+    GQLResolversParentTypes['UserAppealManualReviewJobPayload'] =
+    GQLResolversParentTypes['UserAppealManualReviewJobPayload'],
 > = {
   actionsTaken?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -13815,8 +13877,8 @@ export type GQLUserAppealManualReviewJobPayloadResolvers<
 
 export type GQLUserHistoryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserHistory'] = GQLResolversParentTypes['UserHistory'],
+  ParentType extends GQLResolversParentTypes['UserHistory'] =
+    GQLResolversParentTypes['UserHistory'],
 > = {
   actions?: Resolver<
     GQLResolversTypes['UserActionsHistory'],
@@ -13844,8 +13906,8 @@ export type GQLUserHistoryResolvers<
 
 export type GQLUserHistoryResponseResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserHistoryResponse'] = GQLResolversParentTypes['UserHistoryResponse'],
+  ParentType extends GQLResolversParentTypes['UserHistoryResponse'] =
+    GQLResolversParentTypes['UserHistoryResponse'],
 > = {
   __resolveType: TypeResolveFn<
     'NotFoundError' | 'UserHistory',
@@ -13856,8 +13918,8 @@ export type GQLUserHistoryResponseResolvers<
 
 export type GQLUserInterfacePreferencesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserInterfacePreferences'] = GQLResolversParentTypes['UserInterfacePreferences'],
+  ParentType extends GQLResolversParentTypes['UserInterfacePreferences'] =
+    GQLResolversParentTypes['UserInterfacePreferences'],
 > = {
   moderatorSafetyBlurLevel?: Resolver<
     GQLResolversTypes['Int'],
@@ -13883,8 +13945,8 @@ export type GQLUserInterfacePreferencesResolvers<
 
 export type GQLUserItemResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserItem'] = GQLResolversParentTypes['UserItem'],
+  ParentType extends GQLResolversParentTypes['UserItem'] =
+    GQLResolversParentTypes['UserItem'],
 > = {
   data?: Resolver<GQLResolversTypes['JSONObject'], ParentType, ContextType>;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
@@ -13901,8 +13963,8 @@ export type GQLUserItemResolvers<
 
 export type GQLUserItemTypeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserItemType'] = GQLResolversParentTypes['UserItemType'],
+  ParentType extends GQLResolversParentTypes['UserItemType'] =
+    GQLResolversParentTypes['UserItemType'],
 > = {
   baseFields?: Resolver<
     ReadonlyArray<GQLResolversTypes['BaseField']>,
@@ -13947,8 +14009,8 @@ export type GQLUserItemTypeResolvers<
 
 export type GQLUserManualReviewJobPayloadResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserManualReviewJobPayload'] = GQLResolversParentTypes['UserManualReviewJobPayload'],
+  ParentType extends GQLResolversParentTypes['UserManualReviewJobPayload'] =
+    GQLResolversParentTypes['UserManualReviewJobPayload'],
 > = {
   additionalContentItems?: Resolver<
     ReadonlyArray<GQLResolversTypes['ContentItem']>,
@@ -13996,16 +14058,16 @@ export type GQLUserManualReviewJobPayloadResolvers<
 
 export type GQLUserNotificationEdgeResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserNotificationEdge'] = GQLResolversParentTypes['UserNotificationEdge'],
+  ParentType extends GQLResolversParentTypes['UserNotificationEdge'] =
+    GQLResolversParentTypes['UserNotificationEdge'],
 > = {
   node?: Resolver<GQLResolversTypes['Notification'], ParentType, ContextType>;
 };
 
 export type GQLUserNotificationsResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserNotifications'] = GQLResolversParentTypes['UserNotifications'],
+  ParentType extends GQLResolversParentTypes['UserNotifications'] =
+    GQLResolversParentTypes['UserNotifications'],
 > = {
   edges?: Resolver<
     ReadonlyArray<GQLResolversTypes['UserNotificationEdge']>,
@@ -14017,7 +14079,8 @@ export type GQLUserNotificationsResolvers<
 export type GQLUserOrRelatedActionDecisionComponentResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['UserOrRelatedActionDecisionComponent'] = GQLResolversParentTypes['UserOrRelatedActionDecisionComponent'],
+    GQLResolversParentTypes['UserOrRelatedActionDecisionComponent'] =
+    GQLResolversParentTypes['UserOrRelatedActionDecisionComponent'],
 > = {
   actionIds?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
@@ -14050,8 +14113,8 @@ export type GQLUserOrRelatedActionDecisionComponentResolvers<
 
 export type GQLUserRuleResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserRule'] = GQLResolversParentTypes['UserRule'],
+  ParentType extends GQLResolversParentTypes['UserRule'] =
+    GQLResolversParentTypes['UserRule'],
 > = {
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
@@ -14111,8 +14174,8 @@ export type GQLUserRuleResolvers<
 
 export type GQLUserSchemaFieldRolesResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserSchemaFieldRoles'] = GQLResolversParentTypes['UserSchemaFieldRoles'],
+  ParentType extends GQLResolversParentTypes['UserSchemaFieldRoles'] =
+    GQLResolversParentTypes['UserSchemaFieldRoles'],
 > = {
   backgroundImage?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -14144,8 +14207,8 @@ export type GQLUserSchemaFieldRolesResolvers<
 
 export type GQLUserStrikeBucketResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserStrikeBucket'] = GQLResolversParentTypes['UserStrikeBucket'],
+  ParentType extends GQLResolversParentTypes['UserStrikeBucket'] =
+    GQLResolversParentTypes['UserStrikeBucket'],
 > = {
   numStrikes?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   numUsers?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
@@ -14153,8 +14216,8 @@ export type GQLUserStrikeBucketResolvers<
 
 export type GQLUserStrikeThresholdResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserStrikeThreshold'] = GQLResolversParentTypes['UserStrikeThreshold'],
+  ParentType extends GQLResolversParentTypes['UserStrikeThreshold'] =
+    GQLResolversParentTypes['UserStrikeThreshold'],
 > = {
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['ID']>,
@@ -14167,8 +14230,8 @@ export type GQLUserStrikeThresholdResolvers<
 
 export type GQLUserSubmissionCountResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserSubmissionCount'] = GQLResolversParentTypes['UserSubmissionCount'],
+  ParentType extends GQLResolversParentTypes['UserSubmissionCount'] =
+    GQLResolversParentTypes['UserSubmissionCount'],
 > = {
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   itemTypeId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
@@ -14176,8 +14239,8 @@ export type GQLUserSubmissionCountResolvers<
 
 export type GQLUserSubmissionsHistoryResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['UserSubmissionsHistory'] = GQLResolversParentTypes['UserSubmissionsHistory'],
+  ParentType extends GQLResolversParentTypes['UserSubmissionsHistory'] =
+    GQLResolversParentTypes['UserSubmissionsHistory'],
 > = {
   countsByItemType?: Resolver<
     ReadonlyArray<GQLResolversTypes['UserSubmissionCount']>,
@@ -14188,8 +14251,8 @@ export type GQLUserSubmissionsHistoryResolvers<
 
 export type GQLWindowConfigurationResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['WindowConfiguration'] = GQLResolversParentTypes['WindowConfiguration'],
+  ParentType extends GQLResolversParentTypes['WindowConfiguration'] =
+    GQLResolversParentTypes['WindowConfiguration'],
 > = {
   hopMs?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   sizeMs?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
@@ -14198,7 +14261,8 @@ export type GQLWindowConfigurationResolvers<
 export type GQLZentropiIntegrationApiCredentialResolvers<
   ContextType = Context,
   ParentType extends
-    GQLResolversParentTypes['ZentropiIntegrationApiCredential'] = GQLResolversParentTypes['ZentropiIntegrationApiCredential'],
+    GQLResolversParentTypes['ZentropiIntegrationApiCredential'] =
+    GQLResolversParentTypes['ZentropiIntegrationApiCredential'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   labelerVersions?: Resolver<
@@ -14211,8 +14275,8 @@ export type GQLZentropiIntegrationApiCredentialResolvers<
 
 export type GQLZentropiLabelerVersionResolvers<
   ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ZentropiLabelerVersion'] = GQLResolversParentTypes['ZentropiLabelerVersion'],
+  ParentType extends GQLResolversParentTypes['ZentropiLabelerVersion'] =
+    GQLResolversParentTypes['ZentropiLabelerVersion'],
 > = {
   id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
