@@ -649,7 +649,7 @@ export default function Dashboard() {
             }
           : null,
         {
-          title: 'Employee Safety' as const,
+          title: 'Wellness' as const,
           urlPath: 'org_safety_settings',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },

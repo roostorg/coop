@@ -563,7 +563,7 @@ export default function AccountSettings() {
         )}
 
         <div className="mb-8">
-          <Heading>Safety Settings</Heading>
+          <Heading>Wellness</Heading>
           <Text size="SM">
             These are your personal default settings. Every time you view a
             reported image or video in Coop, these settings will be
