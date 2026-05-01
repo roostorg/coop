@@ -30,7 +30,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
 ## Build and run
 
-Prerequisites: Node 24 (`.nvmrc`), Docker + Docker Compose v2, 16 GiB RAM recommended.
+Prerequisites: Node 24 (`.nvmrc`), Docker + Docker Compose v2, 8 GiB RAM recommended (running an instance requires 4 GiB, the rest will be used by development tools).
 
 ```bash
 # Start backing services (Postgres, ClickHouse, Scylla, Redis)

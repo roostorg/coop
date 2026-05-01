@@ -32,9 +32,8 @@ import {
 } from '../../../utils/time';
 import { jsonParse } from '../../../utils/typescript-types';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
-import ManualReviewJobReview, {
-  JOB_FRAGMENT,
-} from './manual_review_job/ManualReviewJobReview';
+import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
+import { JOB_FRAGMENT } from './manual_review_job/jobFragment';
 import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
