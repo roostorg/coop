@@ -3,7 +3,7 @@ import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
 import { makeDateString, type ItemIdentifier } from '@roostorg/types';
-import { types as scyllaTypes } from 'cassandra-driver';
+import { types as scyllaTypes, type Host as ScyllaHost } from 'cassandra-driver';
 import IORedis, { type Cluster } from 'ioredis';
 import {
   Kysely,
@@ -234,6 +234,7 @@ import {
 } from '../utils/correlationIds.js';
 import { getUsableCoreCount } from '../utils/cpu-helpers.js';
 import { jsonStringify, type JsonOf } from '../utils/encoding.js';
+import { logErrorJson, logJson } from '../utils/logging.js';
 import { __throw, assertUnreachable } from '../utils/misc.js';
 import SafeTracer from '../utils/SafeTracer.js';
 import {
@@ -310,7 +311,10 @@ export interface Dependencies {
   // that each dependent service can type its arg more specifically with the set
   // of tables it is responsible for / allowed to query.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Scylla: Scylla<any> & { close: () => Promise<void> };
+  Scylla: Scylla<any> & {
+    connect: () => Promise<void>;
+    close: () => Promise<void>;
+  };
 
   Sequelize: ReturnType<typeof makeDb>;
   OrgModel: ReturnType<typeof makeDb>['Org'];
@@ -723,9 +727,59 @@ export default async function getBottle() {
         consistency: scyllaTypes.consistencies.localQuorum,
       },
     });
+
+    // Surface cluster state changes so reconnect storms are visible in logs.
+    scyllaDriver.on('hostUp', (host: ScyllaHost) => {
+      // eslint-disable-next-line no-restricted-syntax
+      logJson(`scylla.hostUp address=${host.address}`);
+    });
+    scyllaDriver.on('hostDown', (host: ScyllaHost) => {
+      // eslint-disable-next-line no-restricted-syntax
+      logJson(`scylla.hostDown address=${host.address}`);
+    });
+    // Forward driver-internal warnings/errors (auth, TLS, connection drops,
+    // etc.); skip the very chatty `info`/`verbose` levels.
+    scyllaDriver.on(
+      'log',
+      (
+        level: 'verbose' | 'info' | 'warning' | 'error',
+        source: string,
+        message: string,
+        furtherInfo?: unknown,
+      ) => {
+        if (level !== 'warning' && level !== 'error') {
+          return;
+        }
+        const wrapped = new Error(`scylla.${level}: [${source}] ${message}`);
+        if (furtherInfo instanceof Error) {
+          wrapped.stack = furtherInfo.stack ?? wrapped.stack;
+        }
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({
+          message: `scylla.driver.${level}`,
+          error: wrapped,
+        });
+      },
+    );
+
+    // cassandra-driver leaks ~4 HostMap listeners per failed `Client._connect()`
+    // retry and never recreates the HostMap, so the default cap of 10 trips
+    // after ~3 failures. Raise it so transient blips don't spam the warning,
+    // but keep it bounded so a true runaway is still noticeable.
+    const controlConnection = (
+      scyllaDriver as unknown as {
+        controlConnection?: { hosts?: { setMaxListeners?: (n: number) => void } };
+      }
+    ).controlConnection;
+    controlConnection?.hosts?.setMaxListeners?.(50);
+
     class ClosableScylla<
       DB extends Record<string, Record<string, unknown>>,
     > extends Scylla<DB> {
+      /** Eagerly connect; idempotent once `connected` is true. */
+      async connect() {
+        return scyllaDriver.connect();
+      }
       async close() {
         return scyllaDriver.shutdown();
       }
