@@ -26,6 +26,37 @@ function assertCustomAction(action: Action): asserts action is CustomAction {
   }
 }
 
+// Seeded once per org by upsertBuiltInActions; not creatable/editable via the
+// CRUD APIs, which are scoped to action_type='CUSTOM_ACTION'.
+export const BUILT_IN_ACTIONS = [
+  {
+    actionType: 'ENQUEUE_TO_MRT',
+    name: 'Enqueue Item to Manual Review',
+    description:
+      'Sends the matched item directly to a manual review queue, routed by the org\u2019s MRT routing rules.',
+    appliesToAllItemsOfKind: ['CONTENT', 'USER', 'THREAD'] as const,
+  },
+  {
+    actionType: 'ENQUEUE_AUTHOR_TO_MRT',
+    name: 'Enqueue Author for Manual Review',
+    description:
+      'Sends the author of the matched content to a manual review queue, with the matched item attached as context.',
+    appliesToAllItemsOfKind: ['CONTENT'] as const,
+  },
+  {
+    actionType: 'ENQUEUE_TO_NCMEC',
+    name: 'Enqueue for NCMEC Review',
+    description:
+      'Sends the user associated with the matched item to the NCMEC review flow, gathering their media for reporting.',
+    appliesToAllItemsOfKind: ['CONTENT', 'USER'] as const,
+  },
+] as const satisfies readonly {
+  actionType: Exclude<Action['actionType'], 'CUSTOM_ACTION'>;
+  name: string;
+  description: string;
+  appliesToAllItemsOfKind: readonly ItemTypeKind[];
+}[];
+
 const actionDbSelection = [
   'id',
   'name',
@@ -132,6 +163,56 @@ export default class ActionOperations {
         }
         throw e;
       }
+    });
+  }
+
+  // Idempotent: existing built-ins are detected by (org_id, action_type).
+  async upsertBuiltInActions(orgId: string): Promise<readonly Action[]> {
+    return this.transactionWithRetry(async (trx) => {
+      const existingByType = new Set(
+        (
+          (await trx
+            .selectFrom('public.actions')
+            .select('action_type as actionType')
+            .where('org_id', '=', orgId)
+            .where('action_type', '!=', 'CUSTOM_ACTION')
+            .execute()) as { actionType: Action['actionType'] }[]
+        ).map((row) => row.actionType),
+      );
+
+      const toInsert = BUILT_IN_ACTIONS.filter(
+        (b) => !existingByType.has(b.actionType),
+      ).map((b) => ({
+        id: uid(),
+        name: b.name,
+        description: b.description,
+        org_id: orgId,
+        action_type: b.actionType,
+        callback_url: null,
+        callback_url_headers: null,
+        callback_url_body: null,
+        penalty: 'NONE' as const,
+        apply_user_strikes: false,
+        applies_to_all_items_of_kind: [...b.appliesToAllItemsOfKind],
+        updated_at: new Date(),
+      }));
+
+      if (toInsert.length > 0) {
+        await trx
+          .insertInto('public.actions')
+          .values(toInsert)
+          .onConflict((oc) => oc.doNothing())
+          .execute();
+      }
+
+      const refreshed = (await trx
+        .selectFrom('public.actions')
+        .select(actionDbSelection)
+        .where('org_id', '=', orgId)
+        .where('action_type', '!=', 'CUSTOM_ACTION')
+        .execute()) as ActionDbResult[];
+
+      return refreshed.map((row) => this.#dbResultToAction(row));
     });
   }
 
