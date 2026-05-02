@@ -11,7 +11,7 @@ CREATE TABLE signal_auth_service.integration_configs (
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE signal_auth_service.integration_configs OWNER TO postgres;
+ALTER TABLE signal_auth_service.integration_configs OWNER TO CURRENT_USER;
 
 ALTER TABLE ONLY signal_auth_service.integration_configs
     ADD CONSTRAINT integration_configs_pkey PRIMARY KEY (org_id, integration_id);

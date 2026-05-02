@@ -37,7 +37,7 @@ export const makeSequelize = () =>
       write: { host: DATABASE_HOST },
     },
     pool: {
-      max: 150,
+      max: Number(process.env.SEQUELIZE_POOL_MAX ?? 150),
       acquire: 15_000,
       // This timeout was made crazy long so that queries which take a long time
       // to respond don't cause Sequelize to release the connection back to the

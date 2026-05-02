@@ -26,8 +26,13 @@ export function makePostgresDatabaseConfig(opts: {
   defaultScriptFormat: PostgresSupportedScriptFormats;
   scriptsDirectory: string;
   driverOpts: Options & { schema: string };
+  maintenanceDatabase?: string;
 }): DatabaseConfig<PostgresSupportedScriptFormats, PostgresContext> {
   const { driverOpts, scriptsDirectory, defaultScriptFormat } = opts;
+  // DB used for CREATE/DROP DATABASE (can't be the target DB itself).
+  // Defaults to `postgres`; some managed providers use a different name
+  // (e.g. `defaultdb`).
+  const maintenanceDatabase = opts.maintenanceDatabase ?? 'postgres';
 
   return {
     supportedEnvironments: ['staging', 'prod'],
@@ -119,32 +124,32 @@ export function makePostgresDatabaseConfig(opts: {
     },
 
     async dropDbAndDisconnect() {
-      // Verify that the user provided valid credentials for the db we're
-      // trying to drop, and that it exists, by trying to connect to it;
-      // throw if we can't.
       const targetDbconn = new Sequelize(driverOpts);
       await targetDbconn.authenticate();
       await targetDbconn.close();
 
-      // Now, connect to the default `postgres` db, rather than the db that we
-      // want to drop, because, in postgres, the database currently connected
-      // to cannot be dropped.
-      const postgresDbConn = new Sequelize({
+      const sequelize = new Sequelize({
         ...driverOpts,
-        database: 'postgres',
+        database: maintenanceDatabase,
       });
-      const dbName = driverOpts.database;
-
-      await postgresDbConn.query(`DROP DATABASE "${dbName}" WITH (FORCE);`);
-      await postgresDbConn.close();
+      await sequelize.query(
+        `DROP DATABASE "${driverOpts.database}" WITH (FORCE);`,
+      );
+      await sequelize.close();
     },
 
     async prepareDbAndDisconnect() {
-      const sequelize = new Sequelize({ ...driverOpts, database: 'postgres' });
-      const databases = await sequelize.query(
-        `SELECT * FROM pg_database WHERE datname='${driverOpts.database}'`,
+      const sequelize = new Sequelize({
+        ...driverOpts,
+        database: maintenanceDatabase,
+      });
+      const existing = await sequelize.query(
+        `SELECT 1 FROM pg_database WHERE datname = ?`,
+        { replacements: [driverOpts.database], type: QueryTypes.SELECT },
       );
-      if ((databases[1] as any).rows.length === 0) {
+      if (existing.length === 0) {
+        // DDL identifiers can't be bound; driverOpts.database comes from
+        // trusted config (env vars), not user input.
         await sequelize.query(`CREATE DATABASE "${driverOpts.database}";`);
       }
       await sequelize.close();
