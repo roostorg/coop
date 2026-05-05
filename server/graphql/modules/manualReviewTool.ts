@@ -1630,20 +1630,25 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   async jobs(queue, { ids: jobIds, limit }, context) {
     const { orgId, id: queueId } = queue;
 
-    if (!jobIds) {
+    if (jobIds == null) {
       return context.services.ManualReviewToolService.getAllJobsForQueue({
         orgId,
         queueId,
         limit: limit ?? undefined,
       });
-    } else {
-      return context.services.ManualReviewToolService.getJobsForQueue({
-        orgId,
-        queueId,
-        jobIds,
-        isAppealsQueue: queue.isAppealsQueue,
-      });
     }
+    // Empty array means "filter to no IDs" -> result is always []. Short-circuit
+    // so we don't open a Bull/Redis queue handle per reviewable queue on every
+    // MRT page load before a job has been dequeued.
+    if (jobIds.length === 0) {
+      return [];
+    }
+    return context.services.ManualReviewToolService.getJobsForQueue({
+      orgId,
+      queueId,
+      jobIds,
+      isAppealsQueue: queue.isAppealsQueue,
+    });
   },
   async pendingJobCount(queue, _, context) {
     const { orgId, id: queueId } = queue;

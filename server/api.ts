@@ -19,7 +19,6 @@ import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
-import depthLimit from 'graphql-depth-limit';
 import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
@@ -37,6 +36,7 @@ import resolvers, { type Context } from './graphql/resolvers.js';
 import { passwordMatchesHash } from './services/userManagementService/index.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
+import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
@@ -388,7 +388,7 @@ export default async function makeApiServer(deps: Dependencies) {
         ? [ApolloServerPluginLandingPageDisabled()]
         : []),
     ],
-    validationRules: [depthLimit(safeGetEnvInt('GRAPHQL_MAX_DEPTH', 10))],
+    validationRules: [safeDepthLimit(safeGetEnvInt('GRAPHQL_MAX_DEPTH', 10))],
     introspection: process.env.NODE_ENV !== 'production',
     formatError(formattedError, error) {
       // unwrapResolverError removes the GraphQLError wrapper added by graphql-js
