@@ -58,6 +58,8 @@ export type AnalyticsSchema = {
     policies: readonly unknown[];
     actor_id?: string;
     job_id?: string;
+    parameters: string;
+    actor_note?: string;
     failed: boolean;
   };
 

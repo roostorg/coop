@@ -1,3 +1,8 @@
+import ActionParameterInputs, {
+  type ActionParameterValues,
+  findMissingRequiredParameters,
+} from '@/components/ActionParameterInputs';
+import { type JsonObject } from 'type-fest';
 import {
   namedOperations,
   useGQLBulkActionExecutionMutation,
@@ -5,7 +10,7 @@ import {
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
 import { ItemIdentifier } from '@roostorg/types';
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -50,10 +55,39 @@ export default function ItemAction(props: {
   const [selectedActionIds, setSelectedActionIds] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [modalBody, setModalBody] = useState<string>('');
+  const [parametersByActionId, setParametersByActionId] = useState<
+    Record<string, ActionParameterValues>
+  >({});
+  const [moderatorNote, setModeratorNote] = useState<string>('');
 
   const eligibleActions = (queryData?.myOrg?.actions ?? []).filter((it) =>
     it.itemTypes.map((it) => it.id).includes(itemIdentifier.typeId),
   );
+
+  const selectedActionsWithParams = useMemo(
+    () =>
+      eligibleActions.filter(
+        (action) =>
+          selectedActionIds.includes(action.id) &&
+          action.parameters.length > 0,
+      ),
+    [eligibleActions, selectedActionIds],
+  );
+
+  // Aggregate missing-required-parameter labels across all selected actions
+  // so the disabled-button tooltip can name them. Server still re-validates
+  // on publish.
+  const missingRequiredLabels = useMemo(() => {
+    const out: string[] = [];
+    for (const action of selectedActionsWithParams) {
+      const missing = findMissingRequiredParameters(
+        action.parameters,
+        parametersByActionId[action.id] ?? {},
+      );
+      out.push(...missing.map((label) => `"${action.name}" → ${label}`));
+    }
+    return out;
+  }, [selectedActionsWithParams, parametersByActionId]);
 
   const selectOnChange = useCallback(
     (actionIds: string[]) => setSelectedActionIds(actionIds),
@@ -107,6 +141,19 @@ export default function ItemAction(props: {
             actionIds: selectedActionIds,
             itemIds: [itemIdentifier.id],
             policyIds: selectedPolicyIds,
+            // Drop empty per-action entries so the input doesn't carry
+            // meaningless `{}` payloads. Server validates the rest.
+            // GQL `JSONObject` constrains values to `JsonValue`. Our per-
+            // action map's inner values are `unknown` because each parameter
+            // type produces a different concrete value; they're all
+            // JSON-serializable in practice (string, number, boolean,
+            // string[]) and the server re-validates. Cast through unknown to
+            // satisfy the input type.
+            parameters:
+              Object.keys(parametersByActionId).length > 0
+                ? (parametersByActionId as unknown as JsonObject)
+                : undefined,
+            note: moderatorNote.trim() === '' ? undefined : moderatorNote.trim(),
           },
         },
       }),
@@ -116,6 +163,8 @@ export default function ItemAction(props: {
       itemIdentifier.typeId,
       selectedActionIds,
       selectedPolicyIds,
+      parametersByActionId,
+      moderatorNote,
     ],
   );
 
@@ -170,9 +219,59 @@ export default function ItemAction(props: {
           size="small"
           onClick={buttonOnClick}
           loading={loading}
-          disabled={selectedActionIds.length === 0}
+          disabled={
+            selectedActionIds.length === 0 || missingRequiredLabels.length > 0
+          }
+          disabledTooltipTitle={
+            missingRequiredLabels.length > 0
+              ? `Fill in required details: ${missingRequiredLabels.join(', ')}`
+              : undefined
+          }
         />
       </div>
+      {selectedActionsWithParams.length > 0 && (
+        <div className="mt-4 flex flex-col gap-4">
+          {selectedActionsWithParams.map((action) => (
+            <div
+              key={action.id}
+              className="rounded-xl border border-gray-200 p-3"
+            >
+              <div className="mb-2 text-sm font-semibold">
+                "{action.name}" details
+              </div>
+              <ActionParameterInputs
+                parameters={action.parameters}
+                values={parametersByActionId[action.id] ?? {}}
+                onChange={(next) =>
+                  setParametersByActionId((prev) => ({
+                    ...prev,
+                    [action.id]: next,
+                  }))
+                }
+                idPrefix={`item-action-${action.id}`}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {selectedActionIds.length > 0 && (
+        <div className="mt-4 flex flex-col">
+          <label
+            htmlFor="item-action-moderator-note"
+            className="mb-1 text-sm font-medium text-gray-700"
+          >
+            Note (optional)
+          </label>
+          <Input.TextArea
+            id="item-action-moderator-note"
+            placeholder="Why are you taking this action? Sent to the action's webhook as `actorNote`."
+            rows={2}
+            maxLength={5000}
+            value={moderatorNote}
+            onChange={(e) => setModeratorNote(e.target.value)}
+          />
+        </div>
+      )}
       <CoopModal visible={showModal} onClose={modalOnClose}>
         {modalBody}
       </CoopModal>

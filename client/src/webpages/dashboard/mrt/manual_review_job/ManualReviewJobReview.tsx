@@ -3,13 +3,21 @@ import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react
 import { __throw } from '@/utils/misc';
 import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
-import { DownOutlined, LoadingOutlined } from '@ant-design/icons';
+import {
+  DownOutlined,
+  EditOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
 import ComponentLoading from '../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../components/common/CopyTextComponent';
 import CoopModal from '../../components/CoopModal';
@@ -35,6 +43,7 @@ import {
   useGQLManualReviewJobInfoQuery,
   useGQLReleaseJobLockMutation,
   useGQLSubmitManualReviewDecisionMutation,
+  type GQLActionParameter,
   type GQLThreadManualReviewJobPayload,
   type GQLUserItem,
 } from '../../../../graphql/generated';
@@ -44,7 +53,6 @@ import { recomputeSelectedRelatedActions } from '../../../../utils/manualReviewT
 import HTMLRenderer from '../../policies/HTMLRenderer';
 import { JOB_FRAGMENT } from './jobFragment';
 import { ITEM_TYPE_FRAGMENT } from '../../rules/rule_form/RuleForm';
-import CustomMrtApiParamsSection from './CustomMrtApiParamsSection';
 import ManualReviewJobDequeueErrorComponent from './ManualReviewJobDequeueErrorComponent';
 import MergedReportsComponent from './MergedReportsComponent';
 import ReportInfoComponent from './ReportInfoComponent';
@@ -102,10 +110,20 @@ gql`
               name
             }
           }
-          customMrtApiParams {
+          parameters {
             name
-            type
             displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
           }
         }
       }
@@ -228,7 +246,11 @@ export type ManualReviewJobEnqueuedActionData = {
   action: CustomAction;
   target: { identifier: ManualReviewJobItemIdentifier; displayName: string };
   policies: { id: string; name: string }[];
-  customMrtApiParamDecisionPayload?: Record<string, string | boolean>;
+  // Widened from `string | boolean` to `unknown` so this map can carry the
+  // full set of parameter types now supported (NUMBER, SELECT, MULTISELECT)
+  // alongside the original STRING/BOOLEAN. Values are JSON-serializable; the
+  // server validates them against each action's spec at submit time.
+  customMrtApiParamDecisionPayload?: Record<string, unknown>;
 };
 
 export type ManualReviewJobAction = {
@@ -383,31 +405,35 @@ function ManualReviewJobReviewImpl(props: {
       }
     }
   }, [jobId, data, loading, navigate, queueId, closedJob]);
-  const selectedActionsForCustomActionParamsInput = filterNullOrUndefined(
-    selectedPrimaryActions.map((it) =>
-      'id' in it.action ? it.action.id : undefined,
-    ),
-  );
-  const setCustomParamsForActionCallback = (
-    actionId: string,
-    customParams: Record<string, string | boolean>,
-  ) => {
-    const updatedAction = selectedPrimaryActions.find(
-      (action) => !('type' in action.action) && action.action.id === actionId,
-    );
-    if (updatedAction) {
-      updatedAction.customMrtApiParamDecisionPayload = {
-        ...updatedAction.customMrtApiParamDecisionPayload,
-        ...customParams,
+  // Modal-driven entry of action parameters. Opening the modal in `create`
+  // mode happens *before* the action is added to `selectedPrimaryActions`,
+  // so cancelling leaves the picker exactly as it was. `edit` mode opens
+  // the modal pre-filled with the values already saved on a selected action,
+  // and Save replaces that single action's payload.
+  type ParamsModalState =
+    | { open: false }
+    | {
+        open: true;
+        mode: 'create';
+        actionId: string;
+        actionName: string;
+        parameters: ReadonlyArray<GQLActionParameter>;
+        initialValues: ActionParameterValues;
+        // Snapshot of the click context so we can mirror the existing
+        // "deselect Ignore on add" branch without re-deriving it.
+        target: ManualReviewJobEnqueuedPrimaryActionData['target'];
+      }
+    | {
+        open: true;
+        mode: 'edit';
+        actionId: string;
+        actionName: string;
+        parameters: ReadonlyArray<GQLActionParameter>;
+        initialValues: ActionParameterValues;
       };
-      setSelectedPrimaryActions([
-        ...selectedPrimaryActions.filter(
-          (action) => 'type' in action.action || action.action.id !== actionId,
-        ),
-        updatedAction,
-      ]);
-    }
-  };
+  const [paramsModal, setParamsModal] = useState<ParamsModalState>({
+    open: false,
+  });
 
   const goBackToQueuesPage = () => navigate('/dashboard/manual_review/queues');
   const hideModal = () => setModalInfo({ ...modalInfo, visible: false });
@@ -806,6 +832,82 @@ function ManualReviewJobReviewImpl(props: {
     ...builtInMoveAction,
   ];
 
+  // Builds the standard target descriptor for the reported item. Hoisted so
+  // both the direct-add path and the modal Save handler use the same shape.
+  const reportedItemTarget = (): ManualReviewJobEnqueuedPrimaryActionData['target'] => ({
+    identifier: {
+      itemId: reportedItem.id,
+      itemTypeId: reportedItem.type.id,
+    },
+    displayName:
+      getFieldValueForRole<GQLSchemaFieldRoles, keyof GQLSchemaFieldRoles>(
+        reportedItem,
+        'displayName',
+      ) ?? reportedItem.id,
+  });
+
+  // Returns the parameter spec for a CustomAction by id, or `[]` for
+  // built-ins / actions without a spec. Looks up against `decisionActions`
+  // since that's the list rendered in the picker.
+  const getActionParameters = (
+    actionId: string,
+  ): ReadonlyArray<GQLActionParameter> => {
+    const found = decisionActions.find(
+      (a) => !('type' in a) && a.id === actionId,
+    );
+    if (!found || 'type' in found || !('parameters' in found)) return [];
+    return (found.parameters ?? []) as ReadonlyArray<GQLActionParameter>;
+  };
+
+  // Adds an action to `selectedPrimaryActions` while preserving the existing
+  // mutual-exclusion rules (Ignore/Accept/Reject collapse the selection;
+  // selecting any other action clears Ignore). Pulled out of the inline
+  // click handler so the modal Save handler can reuse the exact same logic.
+  const addPrimaryAction = (
+    action: (typeof decisionActions)[number],
+    customMrtApiParamDecisionPayload?: Record<string, unknown>,
+  ) => {
+    const newAction: ManualReviewJobEnqueuedPrimaryActionData = {
+      action: action as ManualReviewJobEnqueuedPrimaryActionData['action'],
+      target: reportedItemTarget(),
+      policies: selectedPrimaryPolicies,
+      ...(customMrtApiParamDecisionPayload
+        ? { customMrtApiParamDecisionPayload }
+        : {}),
+    };
+    if (
+      'type' in action &&
+      (action.type === 'IGNORE' ||
+        action.type === 'ACCEPT_APPEAL' ||
+        action.type === 'REJECT_APPEAL')
+    ) {
+      setSelectedPrimaryActions([newAction]);
+      setSelectedPrimaryPolicies([]);
+    } else {
+      setSelectedPrimaryActions([
+        ...selectedPrimaryActions.filter(
+          (a) => !('type' in a.action && a.action.type === 'IGNORE'),
+        ),
+        newAction,
+      ]);
+    }
+  };
+
+  // Replaces a single selected action's parameter payload (used by the
+  // modal Save in `edit` mode).
+  const updateSelectedActionParams = (
+    actionId: string,
+    customMrtApiParamDecisionPayload: Record<string, unknown>,
+  ) => {
+    setSelectedPrimaryActions(
+      selectedPrimaryActions.map((a) =>
+        !('type' in a.action) && a.action.id === actionId
+          ? { ...a, customMrtApiParamDecisionPayload }
+          : a,
+      ),
+    );
+  };
+
   const actionList = (
     <div
       className="sticky flex flex-col border border-gray-200 border-solid rounded-md shrink-0"
@@ -921,9 +1023,18 @@ function ManualReviewJobReviewImpl(props: {
             action.type === BuiltInActionType.EnqueueToNcmec &&
             !org.hasNCMECReportingEnabled;
 
+          // Show a pencil only for selected CustomActions whose spec has at
+          // least one parameter — that's exactly when re-editing has any
+          // effect. Click stops propagation so the row's deselect-on-click
+          // doesn't fire underneath.
+          const showEditPencil =
+            selected &&
+            !('type' in action) &&
+            getActionParameters(action.id).length > 0;
+
           const actionDiv = (
             <div
-              className={`self-stretch text-start font-semibold p-3 ${
+              className={`self-stretch flex flex-row items-center justify-between text-start font-semibold p-3 ${
                 isNcmecDisabled
                   ? 'cursor-not-allowed text-gray-400 bg-gray-50'
                   : selected
@@ -936,11 +1047,11 @@ function ManualReviewJobReviewImpl(props: {
                   return;
                 }
                 if (selected) {
-                  // If the action is a built-in action, then nothing else can
-                  // be selected anyway, so we should deselect everything
+                  // Built-in actions are mutually exclusive with everything,
+                  // so deselecting Ignore clears the entire selection.
                   // TODO: Create a better definition for built-in actions, and
-                  // how they correlate with custom actions (since we
-                  // can't necessarily depend on 'type' always being a key).
+                  // how they correlate with custom actions (since we can't
+                  // necessarily depend on 'type' always being a key).
                   if ('type' in action && action.type === 'IGNORE') {
                     setSelectedPrimaryActions([]);
                   } else if ('type' in action) {
@@ -964,76 +1075,60 @@ function ManualReviewJobReviewImpl(props: {
                       ),
                     );
                   }
-                } else {
-                  const newAction = {
-                    action,
-                    target: {
-                      identifier: {
-                        itemId: reportedItem.id,
-                        itemTypeId: reportedItem.type.id,
-                      },
-                      displayName:
-                        getFieldValueForRole<
-                          GQLSchemaFieldRoles,
-                          keyof GQLSchemaFieldRoles
-                        >(reportedItem, 'displayName') ?? reportedItem.id,
-                    },
-                    policies: selectedPrimaryPolicies,
-                  };
-
-                  // If the action is Ignore, or a built in appeal action we should deselect
-                  // every other selected action
-                  if (
-                    'type' in action &&
-                    (action.type === 'IGNORE' ||
-                      action.type === 'ACCEPT_APPEAL' ||
-                      action.type === 'REJECT_APPEAL')
-                  ) {
-                    setSelectedPrimaryActions([newAction]);
-                    setSelectedPrimaryPolicies([]);
-                  } else {
-                    // Deselect Ignore if a user action is
-                    // selected
-                    setSelectedPrimaryActions([
-                      ...selectedPrimaryActions.filter(
-                        (action) =>
-                          !(
-                            'type' in action.action &&
-                            action.action.type === 'IGNORE'
-                          ),
-                      ),
-                      {
-                        ...newAction,
-                        // for user actions, we should set the default custom
-                        // mrt params if they exist
-                        ...('id' in action &&
-                        action.__typename === 'CustomAction' &&
-                        action.customMrtApiParams
-                          ? {
-                              customMrtApiParamDecisionPayload:
-                                filterNullOrUndefined(
-                                  action.customMrtApiParams,
-                                ).reduce(
-                                  (acc, param) => ({
-                                    ...acc,
-                                    [param.name]:
-                                      param.type === 'BOOLEAN'
-                                        ? false
-                                        : param.type === 'STRING'
-                                        ? ''
-                                        : undefined,
-                                  }),
-                                  {},
-                                ),
-                            }
-                          : {}),
-                      },
-                    ]);
+                  return;
+                }
+                // Not selected — for parameterized CustomActions, gate the
+                // selection behind the parameter modal. The action is only
+                // committed on Save, so cancelling leaves the picker
+                // unchanged.
+                if (!('type' in action)) {
+                  const parameters = getActionParameters(action.id);
+                  if (parameters.length > 0) {
+                    setParamsModal({
+                      open: true,
+                      mode: 'create',
+                      actionId: action.id,
+                      actionName: action.name,
+                      parameters,
+                      initialValues: defaultValuesForParameters(parameters),
+                      target: reportedItemTarget(),
+                    });
+                    return;
                   }
                 }
+                addPrimaryAction(action);
               }}
             >
-              {label}
+              <span>{label}</span>
+              {showEditPencil && (
+                <Tooltip title="Edit details">
+                  <span
+                    className="ml-2 text-sky-600 hover:text-sky-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if ('type' in action) return;
+                      const parameters = getActionParameters(action.id);
+                      const current = selectedPrimaryActions.find(
+                        (a) =>
+                          !('type' in a.action) && a.action.id === action.id,
+                      );
+                      setParamsModal({
+                        open: true,
+                        mode: 'edit',
+                        actionId: action.id,
+                        actionName: action.name,
+                        parameters,
+                        initialValues:
+                          (current?.customMrtApiParamDecisionPayload as
+                            | ActionParameterValues
+                            | undefined) ?? {},
+                      });
+                    }}
+                  >
+                    <EditOutlined />
+                  </span>
+                </Tooltip>
+              )}
             </div>
           );
           return isNcmecDisabled ? (
@@ -1473,10 +1568,32 @@ function ManualReviewJobReviewImpl(props: {
                 ])
               }
             />
-            <CustomMrtApiParamsSection
-              selectedActionIds={selectedActionsForCustomActionParamsInput}
-              setCustomParamsForAction={setCustomParamsForActionCallback}
-            />
+            {paramsModal.open && (
+              <ActionParametersModal
+                open={paramsModal.open}
+                actionName={paramsModal.actionName}
+                parameters={paramsModal.parameters}
+                initialValues={paramsModal.initialValues}
+                mode={paramsModal.mode}
+                onCancel={() => setParamsModal({ open: false })}
+                onSave={(values) => {
+                  if (paramsModal.mode === 'create') {
+                    const action = decisionActions.find(
+                      (a) =>
+                        !('type' in a) && a.id === paramsModal.actionId,
+                    );
+                    if (action) {
+                      addPrimaryAction(action, { ...values });
+                    }
+                  } else {
+                    updateSelectedActionParams(paramsModal.actionId, {
+                      ...values,
+                    });
+                  }
+                  setParamsModal({ open: false });
+                }}
+              />
+            )}
             <div
               className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
                 canBeSubmitted

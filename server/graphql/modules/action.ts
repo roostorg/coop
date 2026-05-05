@@ -13,7 +13,7 @@ import {
 } from '../generated.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
-import { ACTION_PARAMETER_TYPES } from '../../services/moderationConfigService/index.js';
+import { parseStoredParameters } from '../../services/moderationConfigService/index.js';
 
 const typeDefs = /* GraphQL */ `
   interface ActionBase {
@@ -204,6 +204,19 @@ const typeDefs = /* GraphQL */ `
     actionIds: [String!]!
     itemTypeId: String!
     policyIds: [String!]!
+    """
+    Optional map of \`actionId\` -> \`{ paramName: value }\` carrying
+    moderator-supplied runtime parameter values. Each map is validated against
+    the action's parameter spec server-side before publish; invalid values
+    reject the entire request.
+    """
+    parameters: JSONObject
+    """
+    Optional moderator-authored note explaining why this action was taken.
+    Sent to the action's webhook as \`actorNote\` and persisted to the action
+    execution audit log.
+    """
+    note: String
   }
 
   type ExecuteActionResponse {
@@ -252,42 +265,24 @@ const Action: GQLActionResolvers = {
 };
 
 // Project the loose `JsonValue | null` stored in `actions.custom_mrt_api_params`
-// to the typed `ActionParameter` shape. Silently drops malformed entries so
-// legacy rows (written before parameter authoring landed) don't crash reads.
+// to the typed `ActionParameter` shape via the service-layer
+// `parseStoredParameters` (single source of truth for the projection rules).
 function projectParameters(value: unknown): GQLActionParameter[] {
-  if (!Array.isArray(value)) return [];
-  const allowedTypes = ACTION_PARAMETER_TYPES as readonly string[];
-  const out: GQLActionParameter[] = [];
-  for (const raw of value) {
-    if (typeof raw !== 'object' || raw === null) continue;
-    const obj = raw as Record<string, unknown>;
-    const name = typeof obj.name === 'string' ? obj.name : null;
-    const displayName = typeof obj.displayName === 'string' ? obj.displayName : null;
-    const typeRaw = typeof obj.type === 'string' ? obj.type : null;
-    if (name === null || displayName === null || typeRaw === null) continue;
-    if (!allowedTypes.includes(typeRaw)) continue;
-    out.push({
-      name,
-      displayName,
-      description: typeof obj.description === 'string' ? obj.description : null,
-      type: typeRaw as GQLActionParameter['type'],
-      required: obj.required === true,
-      options: Array.isArray(obj.options)
-        ? obj.options.flatMap((opt) => {
-            if (typeof opt !== 'object' || opt === null) return [];
-            const o = opt as Record<string, unknown>;
-            return typeof o.value === 'string' && typeof o.label === 'string'
-              ? [{ value: o.value, label: o.label }]
-              : [];
-          })
-        : null,
-      min: typeof obj.min === 'number' ? obj.min : null,
-      max: typeof obj.max === 'number' ? obj.max : null,
-      maxLength: typeof obj.maxLength === 'number' ? obj.maxLength : null,
-      defaultValue: 'defaultValue' in obj ? (obj.defaultValue as GQLActionParameter['defaultValue']) : null,
-    });
-  }
-  return out;
+  return parseStoredParameters(value).map((p) => ({
+    name: p.name,
+    displayName: p.displayName,
+    description: p.description ?? null,
+    type: p.type as GQLActionParameter['type'],
+    required: p.required,
+    options: p.options ? p.options.map((o) => ({ value: o.value, label: o.label })) : null,
+    min: p.min ?? null,
+    max: p.max ?? null,
+    maxLength: p.maxLength ?? null,
+    defaultValue:
+      p.defaultValue === undefined
+        ? null
+        : (p.defaultValue as GQLActionParameter['defaultValue']),
+  }));
 }
 
 // `customMrtApiParams` lives only on CustomAction in the service-layer types,
@@ -438,15 +433,23 @@ const Mutation: GQLMutationResolvers = {
     const { orgId, id, email } = user;
 
     const actionResults =
-      await context.dataSources.actionAPI.bulkExecuteActions(
-        params.input.itemIds,
-        params.input.actionIds,
-        params.input.itemTypeId,
-        params.input.policyIds,
+      await context.dataSources.actionAPI.bulkExecuteActions({
+        itemIds: params.input.itemIds,
+        actionIds: params.input.actionIds,
+        itemTypeId: params.input.itemTypeId,
+        policyIds: params.input.policyIds,
         orgId,
-        id,
-        email,
-      );
+        actorId: id,
+        actorEmail: email,
+        // GraphQL `JSONObject` arrives as a plain object; the datasource
+        // narrows + validates per-action against each spec.
+        actionIdToParameters:
+          (params.input.parameters ?? null) as Record<
+            string,
+            Record<string, unknown>
+          > | null,
+        actorNote: params.input.note ?? null,
+      });
 
     return {
       results: actionResults.flat().map((actionResult) => ({

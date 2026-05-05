@@ -1221,6 +1221,19 @@ export type GQLExecuteBulkActionInput = {
   readonly actionIds: ReadonlyArray<Scalars['String']['input']>;
   readonly itemIds: ReadonlyArray<Scalars['String']['input']>;
   readonly itemTypeId: Scalars['String']['input'];
+  /**
+   * Optional moderator-authored note explaining why this action was taken.
+   * Sent to the action's webhook as `actorNote` and persisted to the action
+   * execution audit log.
+   */
+  readonly note?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Optional map of `actionId` -> `{ paramName: value }` carrying
+   * moderator-supplied runtime parameter values. Each map is validated against
+   * the action's parameter spec server-side before publish; invalid values
+   * reject the entire request.
+   */
+  readonly parameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly policyIds: ReadonlyArray<Scalars['String']['input']>;
 };
 
@@ -5883,6 +5896,23 @@ export type GQLBulkActionsFormDataQuery = {
           readonly __typename: 'CustomAction';
           readonly id: string;
           readonly name: string;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | { readonly __typename: 'ContentItemType'; readonly id: string }
             | { readonly __typename: 'ThreadItemType'; readonly id: string }
@@ -5893,6 +5923,23 @@ export type GQLBulkActionsFormDataQuery = {
           readonly __typename: 'EnqueueAuthorToMrtAction';
           readonly id: string;
           readonly name: string;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | { readonly __typename: 'ContentItemType'; readonly id: string }
             | { readonly __typename: 'ThreadItemType'; readonly id: string }
@@ -5903,6 +5950,23 @@ export type GQLBulkActionsFormDataQuery = {
           readonly __typename: 'EnqueueToMrtAction';
           readonly id: string;
           readonly name: string;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | { readonly __typename: 'ContentItemType'; readonly id: string }
             | { readonly __typename: 'ThreadItemType'; readonly id: string }
@@ -5913,6 +5977,23 @@ export type GQLBulkActionsFormDataQuery = {
           readonly __typename: 'EnqueueToNcmecAction';
           readonly id: string;
           readonly name: string;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | { readonly __typename: 'ContentItemType'; readonly id: string }
             | { readonly __typename: 'ThreadItemType'; readonly id: string }
@@ -11804,45 +11885,6 @@ export type GQLSetModeratorSafetySettingsMutation = {
   } | null;
 };
 
-export type GQLActionsWithCustomParamsQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GQLActionsWithCustomParamsQuery = {
-  readonly __typename: 'Query';
-  readonly myOrg?: {
-    readonly __typename: 'Org';
-    readonly actions: ReadonlyArray<
-      | {
-          readonly __typename: 'CustomAction';
-          readonly id: string;
-          readonly name: string;
-          readonly customMrtApiParams: ReadonlyArray<{
-            readonly __typename: 'CustomMrtApiParamSpec';
-            readonly name: string;
-            readonly type: string;
-            readonly displayName: string;
-          } | null>;
-        }
-      | {
-          readonly __typename: 'EnqueueAuthorToMrtAction';
-          readonly id: string;
-          readonly name: string;
-        }
-      | {
-          readonly __typename: 'EnqueueToMrtAction';
-          readonly id: string;
-          readonly name: string;
-        }
-      | {
-          readonly __typename: 'EnqueueToNcmecAction';
-          readonly id: string;
-          readonly name: string;
-        }
-    >;
-  } | null;
-};
-
 export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
@@ -12066,12 +12108,23 @@ export type GQLManualReviewJobInfoQuery = {
                 readonly name: string;
               }
           >;
-          readonly customMrtApiParams: ReadonlyArray<{
-            readonly __typename: 'CustomMrtApiParamSpec';
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
             readonly name: string;
-            readonly type: string;
             readonly displayName: string;
-          } | null>;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
         }
       | {
           readonly __typename: 'EnqueueAuthorToMrtAction';
@@ -28659,6 +28712,21 @@ export const GQLBulkActionsFormDataDocument = gql`
         ... on ActionBase {
           id
           name
+          parameters {
+            name
+            displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
+          }
         }
         ... on CustomAction {
           itemTypes {
@@ -33493,118 +33561,6 @@ export type GQLSetModeratorSafetySettingsMutationOptions =
     GQLSetModeratorSafetySettingsMutation,
     GQLSetModeratorSafetySettingsMutationVariables
   >;
-export const GQLActionsWithCustomParamsDocument = gql`
-  query ActionsWithCustomParams {
-    myOrg {
-      actions {
-        ... on ActionBase {
-          id
-          name
-        }
-        ... on CustomAction {
-          id
-          name
-          customMrtApiParams {
-            name
-            type
-            displayName
-          }
-        }
-      }
-    }
-  }
-`;
-
-/**
- * __useGQLActionsWithCustomParamsQuery__
- *
- * To run a query within a React component, call `useGQLActionsWithCustomParamsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLActionsWithCustomParamsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLActionsWithCustomParamsQuery({
- *   variables: {
- *   },
- * });
- */
-export function useGQLActionsWithCustomParamsQuery(
-  baseOptions?: Apollo.QueryHookOptions<
-    GQLActionsWithCustomParamsQuery,
-    GQLActionsWithCustomParamsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<
-    GQLActionsWithCustomParamsQuery,
-    GQLActionsWithCustomParamsQueryVariables
-  >(GQLActionsWithCustomParamsDocument, options);
-}
-export function useGQLActionsWithCustomParamsLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLActionsWithCustomParamsQuery,
-    GQLActionsWithCustomParamsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<
-    GQLActionsWithCustomParamsQuery,
-    GQLActionsWithCustomParamsQueryVariables
-  >(GQLActionsWithCustomParamsDocument, options);
-}
-// @ts-ignore
-export function useGQLActionsWithCustomParamsSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLActionsWithCustomParamsQuery,
-    GQLActionsWithCustomParamsQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<
-  GQLActionsWithCustomParamsQuery,
-  GQLActionsWithCustomParamsQueryVariables
->;
-export function useGQLActionsWithCustomParamsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLActionsWithCustomParamsQuery,
-        GQLActionsWithCustomParamsQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLActionsWithCustomParamsQuery | undefined,
-  GQLActionsWithCustomParamsQueryVariables
->;
-export function useGQLActionsWithCustomParamsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLActionsWithCustomParamsQuery,
-        GQLActionsWithCustomParamsQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<
-    GQLActionsWithCustomParamsQuery,
-    GQLActionsWithCustomParamsQueryVariables
-  >(GQLActionsWithCustomParamsDocument, options);
-}
-export type GQLActionsWithCustomParamsQueryHookResult = ReturnType<
-  typeof useGQLActionsWithCustomParamsQuery
->;
-export type GQLActionsWithCustomParamsLazyQueryHookResult = ReturnType<
-  typeof useGQLActionsWithCustomParamsLazyQuery
->;
-export type GQLActionsWithCustomParamsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLActionsWithCustomParamsSuspenseQuery
->;
-export type GQLActionsWithCustomParamsQueryResult = Apollo.QueryResult<
-  GQLActionsWithCustomParamsQuery,
-  GQLActionsWithCustomParamsQueryVariables
->;
 export const GQLManualReviewJobInfoDocument = gql`
   query ManualReviewJobInfo($jobIds: [ID!]) {
     myOrg {
@@ -33641,10 +33597,20 @@ export const GQLManualReviewJobInfoDocument = gql`
               name
             }
           }
-          customMrtApiParams {
+          parameters {
             name
-            type
             displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
           }
         }
       }
@@ -43305,7 +43271,6 @@ export const namedOperations = {
     getSkipsForRecentDecisions: 'getSkipsForRecentDecisions',
     GetDecidedJob: 'GetDecidedJob',
     ManualReviewSafetySettings: 'ManualReviewSafetySettings',
-    ActionsWithCustomParams: 'ActionsWithCustomParams',
     ManualReviewJobInfo: 'ManualReviewJobInfo',
     getRelatedItems: 'getRelatedItems',
     GetCommentsForJob: 'GetCommentsForJob',
