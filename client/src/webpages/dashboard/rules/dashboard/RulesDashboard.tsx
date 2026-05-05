@@ -42,6 +42,7 @@ import {
   GQLRuleStatus,
   GQLSignalType,
   GQLUserPermission,
+  namedOperations,
   useGQLAddFavoriteRuleMutation,
   useGQLDeleteRuleMutation,
   useGQLRemoveFavoriteRuleMutation,
@@ -222,7 +223,7 @@ export default function RulesDashboard() {
   const onDeleteRule = (id: string) => {
     deleteRule({
       variables: { id },
-      refetchQueries: [{ query: RULES_QUERY }],
+      refetchQueries: [namedOperations.Query.Rules],
     });
   };
   const onAddFavoriteRule = useCallback(
@@ -232,7 +233,7 @@ export default function RulesDashboard() {
         variables: {
           ruleId,
         },
-        refetchQueries: [{ query: RULES_QUERY }],
+        refetchQueries: [namedOperations.Query.Rules],
       });
     },
     [addFavoriteRule],
@@ -244,7 +245,7 @@ export default function RulesDashboard() {
         variables: {
           ruleId,
         },
-        refetchQueries: [{ query: RULES_QUERY }],
+        refetchQueries: [namedOperations.Query.Rules],
       });
     },
     [removeFavoriteRule],
