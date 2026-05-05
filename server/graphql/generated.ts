@@ -141,10 +141,6 @@ export type GQLActionBase = {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
-  /**
-   * Parameters whose values the moderator supplies at execution time. Empty
-   * list when the action takes no runtime parameters.
-   */
   readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
@@ -172,25 +168,22 @@ export type GQLActionNameExistsError = GQLError & {
 
 /**
  * Definition of a single runtime parameter on an action. The moderator is
- * prompted for a value matching `type` when they execute the action; the
- * value is included in the webhook payload under the parameter's `name`.
+ * prompted for a value at execution time; the value is included in the
+ * webhook payload under the parameter's `name`.
  */
 export type GQLActionParameter = {
   readonly __typename?: 'ActionParameter';
-  /** Pre-filled value shown to the moderator. Type matches `type`. */
+  /** Pre-filled value shown to the moderator. Shape matches `type`. */
   readonly defaultValue?: Maybe<Scalars['JSON']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Inclusive maximum, NUMBER parameters only. */
+  /** NUMBER only: inclusive maximum. */
   readonly max?: Maybe<Scalars['Float']['output']>;
-  /** Inclusive maximum length in characters, STRING parameters only. */
+  /** STRING only: inclusive maximum length in characters. */
   readonly maxLength?: Maybe<Scalars['Int']['output']>;
-  /** Inclusive minimum, NUMBER parameters only. */
+  /** NUMBER only: inclusive minimum. */
   readonly min?: Maybe<Scalars['Float']['output']>;
-  /**
-   * Stable identifier used as the key in the webhook payload. Must match
-   * `^[a-zA-Z_][a-zA-Z0-9_]*$`.
-   */
+  /** Key under which the value is sent in the webhook payload. */
   readonly name: Scalars['String']['output'];
   readonly options?: Maybe<ReadonlyArray<GQLActionParameterOption>>;
   readonly required: Scalars['Boolean']['output'];
@@ -210,10 +203,6 @@ export type GQLActionParameterInput = {
   readonly type: GQLActionParameterType;
 };
 
-/**
- * An option for a `SELECT` or `MULTISELECT` parameter. `value` is what's
- * sent in the webhook payload; `label` is what's shown to the moderator.
- */
 export type GQLActionParameterOption = {
   readonly __typename?: 'ActionParameterOption';
   readonly label: Scalars['String']['output'];
@@ -225,10 +214,6 @@ export type GQLActionParameterOptionInput = {
   readonly value: Scalars['String']['input'];
 };
 
-/**
- * Allowed data types for an `ActionParameter`. Drives both server-side
- * validation of submitted values and the input control rendered in the UI.
- */
 export const GQLActionParameterType = {
   Boolean: 'BOOLEAN',
   Multiselect: 'MULTISELECT',
@@ -793,7 +778,6 @@ export type GQLCreateActionInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly itemTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
-  /** Optional list of runtime parameters. Defaults to empty. */
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
@@ -4558,10 +4542,7 @@ export type GQLUpdateActionInput = {
   readonly id: Scalars['ID']['input'];
   readonly itemTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
-  /**
-   * Pass to replace the action's parameter list (use `[]` to clear). Omit to
-   * leave parameters unchanged.
-   */
+  /** Replace the parameter list (`[]` clears it). Omit to leave unchanged. */
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
