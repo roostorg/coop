@@ -523,6 +523,92 @@ describe('ModerationConfigService', () => {
 
   describe('Action-returning methods', () => {
     describe('Creation methods', () => {
+      describe('#upsertBuiltInActions', () => {
+        it('seeds the three built-in (non-CUSTOM_ACTION) rows for the org', async () => {
+          const all = await sutWithPrimary.getActions({ orgId: dummyOrgId });
+          const builtIns = all.filter(
+            (it) => it.actionType !== 'CUSTOM_ACTION',
+          );
+          const types = builtIns.map((it) => it.actionType).sort();
+          expect(types).toEqual(
+            [
+              'ENQUEUE_AUTHOR_TO_MRT',
+              'ENQUEUE_TO_MRT',
+              'ENQUEUE_TO_NCMEC',
+            ].sort(),
+          );
+          for (const action of builtIns) {
+            expect(action.orgId).toBe(dummyOrgId);
+            expect(action).not.toHaveProperty('callbackUrl');
+          }
+        });
+
+        it('is idempotent: calling twice does not create duplicates', async () => {
+          const before = await sutWithPrimary.getActions({
+            orgId: dummyOrgId,
+          });
+          const beforeBuiltIns = before
+            .filter((it) => it.actionType !== 'CUSTOM_ACTION')
+            .map((it) => it.id)
+            .sort();
+          await sutWithPrimary.upsertBuiltInActions(dummyOrgId);
+          const after = await sutWithPrimary.getActions({
+            orgId: dummyOrgId,
+          });
+          const afterBuiltIns = after
+            .filter((it) => it.actionType !== 'CUSTOM_ACTION')
+            .map((it) => it.id)
+            .sort();
+          expect(afterBuiltIns).toEqual(beforeBuiltIns);
+        });
+
+        it('built-ins surface for the appropriate item type kinds', async () => {
+          const fresh = await createOrg(
+            {
+              KyselyPg: container.KyselyPg,
+              ModerationConfigService: container.ModerationConfigService,
+              ApiKeyService: container.ApiKeyService,
+            },
+            uid(),
+          );
+          try {
+            const contentType =
+              await sutWithPrimary.createContentType(fresh.org.id, {
+                schema: dummySchema,
+                description: null,
+                name: faker.random.alphaNumeric(16),
+                schemaFieldRoles: { displayName: 'fakeField' },
+              });
+
+            const forUser = await sutWithPrimary.getActionsForItemType({
+              orgId: fresh.org.id,
+              itemTypeId: fresh.defaultUserItemType.id,
+              itemTypeKind: 'USER',
+            });
+            expect(
+              forUser.map((it) => it.actionType).sort(),
+            ).toEqual(['ENQUEUE_TO_MRT', 'ENQUEUE_TO_NCMEC'].sort());
+
+            const forContent = await sutWithPrimary.getActionsForItemType({
+              orgId: fresh.org.id,
+              itemTypeId: contentType.id,
+              itemTypeKind: 'CONTENT',
+            });
+            expect(
+              forContent.map((it) => it.actionType).sort(),
+            ).toEqual(
+              [
+                'ENQUEUE_AUTHOR_TO_MRT',
+                'ENQUEUE_TO_MRT',
+                'ENQUEUE_TO_NCMEC',
+              ].sort(),
+            );
+          } finally {
+            await fresh.cleanup();
+          }
+        });
+      });
+
       describe('#createAction', () => {
         it('should return and durably save the new action', async () => {
           const saved = await sutWithPrimary.createAction(dummyOrgId, {
@@ -573,8 +659,13 @@ describe('ModerationConfigService', () => {
 
         it('should return all actions, properly formatted', async () => {
           const res = await sutWithPrimary.getActions({ orgId: dummyOrgId });
-          expect(res).toHaveLength(createdActions.length);
-          expect(res).toEqual(expect.arrayContaining(createdActions));
+          const customActions = res.filter(
+            (it) => it.actionType === 'CUSTOM_ACTION',
+          );
+          expect(customActions).toHaveLength(createdActions.length);
+          expect(customActions).toEqual(
+            expect.arrayContaining(createdActions),
+          );
         });
 
         it('should round-trip a non-null customMrtApiParams value', async () => {
@@ -1077,8 +1168,11 @@ describe('ModerationConfigService', () => {
             readFromReplica: false,
           });
 
-          const ids = result.map((it) => it.id).sort();
-          expect(ids).toEqual(
+          const customIds = result
+            .filter((it) => it.actionType === 'CUSTOM_ACTION')
+            .map((it) => it.id)
+            .sort();
+          expect(customIds).toEqual(
             [
               viaJunctionAction.id,
               viaAppliesAllAction.id,
@@ -1104,7 +1198,9 @@ describe('ModerationConfigService', () => {
               itemTypeKind: 'CONTENT',
               readFromReplica: false,
             });
-            expect(otherResult).toEqual([]);
+            expect(
+              otherResult.filter((it) => it.actionType === 'CUSTOM_ACTION'),
+            ).toEqual([]);
           } finally {
             await otherOrg.cleanup();
           }
