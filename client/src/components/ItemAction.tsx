@@ -1,16 +1,18 @@
-import ActionParameterInputs, {
-  type ActionParameterValues,
-  findMissingRequiredParameters,
-} from '@/components/ActionParameterInputs';
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
 import { type JsonObject } from 'type-fest';
 import {
+  type GQLActionParameter,
   namedOperations,
   useGQLBulkActionExecutionMutation,
   useGQLBulkActionsFormDataQuery,
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
 import { ItemIdentifier } from '@roostorg/types';
-import { Input, Select } from 'antd';
+import Pencil from '@/icons/lni/Education/pencil.svg?react';
+import { Button, Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -20,6 +22,16 @@ import CoopModal from '@/webpages/dashboard/components/CoopModal';
 import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
 
 const { Option } = Select;
+
+type EligibleAction = {
+  id: string;
+  name: string;
+  parameters: ReadonlyArray<GQLActionParameter>;
+};
+
+type ParamsModalState =
+  | { open: false }
+  | { open: true; mode: 'create' | 'edit'; actionId: string };
 
 export default function ItemAction(props: {
   itemIdentifier: ItemIdentifier;
@@ -58,40 +70,87 @@ export default function ItemAction(props: {
   const [parametersByActionId, setParametersByActionId] = useState<
     Record<string, ActionParameterValues>
   >({});
+  const [paramsModal, setParamsModal] = useState<ParamsModalState>({
+    open: false,
+  });
   const [moderatorNote, setModeratorNote] = useState<string>('');
 
-  const eligibleActions = (queryData?.myOrg?.actions ?? []).filter((it) =>
-    it.itemTypes.map((it) => it.id).includes(itemIdentifier.typeId),
+  const eligibleActions: EligibleAction[] = (queryData?.myOrg?.actions ?? [])
+    .filter((it) => it.itemTypes.map((t) => t.id).includes(itemIdentifier.typeId))
+    .map((it) => ({
+      id: it.id,
+      name: it.name,
+      parameters: ('parameters' in it ? it.parameters : []) ?? [],
+    }));
+
+  const eligibleActionsById = useMemo(
+    () => new Map(eligibleActions.map((a) => [a.id, a])),
+    [eligibleActions],
   );
 
-  const selectedActionsWithParams = useMemo(
+  const selectedParameterizedActions = useMemo(
     () =>
-      eligibleActions.filter(
-        (action) =>
-          selectedActionIds.includes(action.id) &&
-          action.parameters.length > 0,
-      ),
-    [eligibleActions, selectedActionIds],
+      selectedActionIds
+        .map((id) => eligibleActionsById.get(id))
+        .filter(
+          (a): a is EligibleAction => a != null && a.parameters.length > 0,
+        ),
+    [selectedActionIds, eligibleActionsById],
   );
-
-  // Aggregate missing-required-parameter labels across all selected actions
-  // so the disabled-button tooltip can name them. Server still re-validates
-  // on publish.
-  const missingRequiredLabels = useMemo(() => {
-    const out: string[] = [];
-    for (const action of selectedActionsWithParams) {
-      const missing = findMissingRequiredParameters(
-        action.parameters,
-        parametersByActionId[action.id] ?? {},
-      );
-      out.push(...missing.map((label) => `"${action.name}" → ${label}`));
-    }
-    return out;
-  }, [selectedActionsWithParams, parametersByActionId]);
 
   const selectOnChange = useCallback(
-    (actionIds: string[]) => setSelectedActionIds(actionIds),
-    [],
+    (actionIds: string[]) => {
+      const previous = new Set(selectedActionIds);
+      const added = actionIds.find((id) => !previous.has(id));
+
+      const addedAction = added ? eligibleActionsById.get(added) : undefined;
+      if (addedAction && addedAction.parameters.length > 0) {
+        // Stage the selection but gate the actual commit behind the modal so
+        // a moderator can never publish a parameterized action without
+        // filling in required values. Cancel removes the staged id.
+        setSelectedActionIds(actionIds);
+        setParamsModal({
+          open: true,
+          mode: 'create',
+          actionId: addedAction.id,
+        });
+        return;
+      }
+
+      setSelectedActionIds(actionIds);
+      // Drop param payloads for any actions that were just deselected so the
+      // submitted input doesn't carry stale values.
+      const next = new Set(actionIds);
+      setParametersByActionId((prev) => {
+        const out: Record<string, ActionParameterValues> = {};
+        for (const [id, values] of Object.entries(prev)) {
+          if (next.has(id)) out[id] = values;
+        }
+        return out;
+      });
+    },
+    [selectedActionIds, eligibleActionsById],
+  );
+
+  const onParamsModalCancel = useCallback(() => {
+    if (paramsModal.open && paramsModal.mode === 'create') {
+      setSelectedActionIds((ids) =>
+        ids.filter((id) => id !== paramsModal.actionId),
+      );
+    }
+    setParamsModal({ open: false });
+  }, [paramsModal]);
+
+  const onParamsModalSave = useCallback(
+    (values: ActionParameterValues) => {
+      if (!paramsModal.open) return;
+      setParametersByActionId((prev) => ({
+        ...prev,
+        [paramsModal.actionId]: values,
+      }));
+      setParamsModal({ open: false });
+    },
+    [paramsModal],
   );
 
   const selectDropdownRender = useCallback(
@@ -142,13 +201,12 @@ export default function ItemAction(props: {
             itemIds: [itemIdentifier.id],
             policyIds: selectedPolicyIds,
             // Drop empty per-action entries so the input doesn't carry
-            // meaningless `{}` payloads. Server validates the rest.
-            // GQL `JSONObject` constrains values to `JsonValue`. Our per-
-            // action map's inner values are `unknown` because each parameter
-            // type produces a different concrete value; they're all
-            // JSON-serializable in practice (string, number, boolean,
-            // string[]) and the server re-validates. Cast through unknown to
-            // satisfy the input type.
+            // meaningless `{}` payloads. GQL `JSONObject` constrains values
+            // to `JsonValue`; our per-action map's inner values are
+            // `unknown` because each parameter type produces a different
+            // concrete value. They're all JSON-serializable in practice
+            // (string, number, boolean, string[]) and the server
+            // re-validates. Cast through unknown to satisfy the input type.
             parameters:
               Object.keys(parametersByActionId).length > 0
                 ? (parametersByActionId as unknown as JsonObject)
@@ -174,6 +232,10 @@ export default function ItemAction(props: {
     return null;
   }
 
+  const activeParamsAction = paramsModal.open
+    ? eligibleActionsById.get(paramsModal.actionId)
+    : undefined;
+
   return (
     <div className="flex flex-col">
       <div className="flex flex-col items-start mb-2">
@@ -189,6 +251,7 @@ export default function ItemAction(props: {
               placeholder="Select action"
               dropdownMatchSelectWidth={false}
               filterOption={selectFilterByLabelOption}
+              value={selectedActionIds}
               onChange={selectOnChange}
               dropdownRender={selectDropdownRender}
             >
@@ -219,37 +282,31 @@ export default function ItemAction(props: {
           size="small"
           onClick={buttonOnClick}
           loading={loading}
-          disabled={
-            selectedActionIds.length === 0 || missingRequiredLabels.length > 0
-          }
-          disabledTooltipTitle={
-            missingRequiredLabels.length > 0
-              ? `Fill in required details: ${missingRequiredLabels.join(', ')}`
-              : undefined
-          }
+          disabled={selectedActionIds.length === 0}
         />
       </div>
-      {selectedActionsWithParams.length > 0 && (
-        <div className="mt-4 flex flex-col gap-4">
-          {selectedActionsWithParams.map((action) => (
+      {selectedParameterizedActions.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1">
+          {selectedParameterizedActions.map((action) => (
             <div
               key={action.id}
-              className="rounded-xl border border-gray-200 p-3"
+              className="flex flex-row items-center gap-2 text-sm"
             >
-              <div className="mb-2 text-sm font-semibold">
-                "{action.name}" details
-              </div>
-              <ActionParameterInputs
-                parameters={action.parameters}
-                values={parametersByActionId[action.id] ?? {}}
-                onChange={(next) =>
-                  setParametersByActionId((prev) => ({
-                    ...prev,
-                    [action.id]: next,
-                  }))
+              <span className="text-gray-700">{action.name} details:</span>
+              <Button
+                type="link"
+                size="small"
+                icon={<Pencil className="w-3 h-3" />}
+                onClick={() =>
+                  setParamsModal({
+                    open: true,
+                    mode: 'edit',
+                    actionId: action.id,
+                  })
                 }
-                idPrefix={`item-action-${action.id}`}
-              />
+              >
+                Edit
+              </Button>
             </div>
           ))}
         </div>
@@ -271,6 +328,20 @@ export default function ItemAction(props: {
             onChange={(e) => setModeratorNote(e.target.value)}
           />
         </div>
+      )}
+      {paramsModal.open && activeParamsAction && (
+        <ActionParametersModal
+          open
+          mode={paramsModal.mode}
+          actionName={activeParamsAction.name}
+          parameters={activeParamsAction.parameters}
+          initialValues={
+            parametersByActionId[activeParamsAction.id] ??
+            defaultValuesForParameters(activeParamsAction.parameters)
+          }
+          onCancel={onParamsModalCancel}
+          onSave={onParamsModalSave}
+        />
       )}
       <CoopModal visible={showModal} onClose={modalOnClose}>
         {modalBody}

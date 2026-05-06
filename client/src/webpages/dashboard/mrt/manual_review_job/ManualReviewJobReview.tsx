@@ -66,6 +66,7 @@ import {
 } from './v2/ManualReviewJobRelatedActionsStore';
 import NCMECReviewUser from './v2/ncmec/NCMECReviewUser';
 import ManualReviewJobEnqueuedRelatedActions from './v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
+import { useEnqueueActionGate } from './v2/useEnqueueActionGate';
 import ManualReviewJobListOfThreadsComponent from './v2/threads/ManualReviewJobListOfThreadsComponent';
 import ManualReviewJobPrimaryUserComponent from './v2/user/ManualReviewJobPrimaryUserComponent';
 
@@ -600,6 +601,21 @@ function ManualReviewJobReviewImpl(props: {
       'Unknown',
     [data?.myOrg],
   );
+
+  // Gate any related-action enqueues that involve a parameterized action
+  // behind the shared `ActionParametersModal`. Items without parameters (or
+  // already carrying a `customMrtApiParamDecisionPayload` from another flow)
+  // pass through unchanged. The modal element is rendered once below.
+  // Hook is declared up here (rather than next to the v2 component props)
+  // because `ManualReviewJobReviewImpl` short-circuits with `throw` further
+  // down, and rules-of-hooks forbid placing hooks after a conditional throw.
+  const enqueueGate = useEnqueueActionGate({
+    allActions: data?.myOrg?.actions ?? [],
+    onEnqueueActions: (actions) =>
+      setSelectedRelatedActions(
+        recomputeSelectedRelatedActions(actions, selectedRelatedActions),
+      ),
+  });
 
   const job = closedJob
     ? closedJob
@@ -1296,11 +1312,7 @@ function ManualReviewJobReviewImpl(props: {
         allItemTypes={org.itemTypes as GQLItemType[]}
         relatedActions={selectedRelatedActions}
         allPolicies={org.policies}
-        onEnqueueActions={(actions) =>
-          setSelectedRelatedActions(
-            recomputeSelectedRelatedActions(actions, selectedRelatedActions),
-          )
-        }
+        onEnqueueActions={enqueueGate.enqueueActions}
         parentRef={mrtParentComponentRef}
         reportedUserRef={reportedUserRef}
         unblurAllMedia={unblurAllMedia}
@@ -1326,11 +1338,7 @@ function ManualReviewJobReviewImpl(props: {
         allItemTypes={org.itemTypes as GQLItemType[]}
         relatedActions={selectedRelatedActions}
         allPolicies={org.policies}
-        onEnqueueActions={(actions) =>
-          setSelectedRelatedActions(
-            recomputeSelectedRelatedActions(actions, selectedRelatedActions),
-          )
-        }
+        onEnqueueActions={enqueueGate.enqueueActions}
         reportedUserRef={reportedUserRef}
         unblurAllMedia={unblurAllMedia}
         isActionable={!closedJob}
@@ -1353,14 +1361,7 @@ function ManualReviewJobReviewImpl(props: {
                 : (payload as GQLContentAppealManualReviewJobPayload)
             }
             allActions={closedJob ? [] : filteredActions}
-            onEnqueueActions={(actions) =>
-              setSelectedRelatedActions(
-                recomputeSelectedRelatedActions(
-                  actions,
-                  selectedRelatedActions,
-                ),
-              )
-            }
+            onEnqueueActions={enqueueGate.enqueueActions}
             allPolicies={org.policies}
             allItemTypes={org.itemTypes as GQLItemType[]}
             relatedActions={selectedRelatedActions}
@@ -1385,14 +1386,7 @@ function ManualReviewJobReviewImpl(props: {
                 : (payload as GQLThreadAppealManualReviewJobPayload)
             }
             allActions={closedJob ? [] : filteredActions}
-            onEnqueueActions={(actions) =>
-              setSelectedRelatedActions(
-                recomputeSelectedRelatedActions(
-                  actions,
-                  selectedRelatedActions,
-                ),
-              )
-            }
+            onEnqueueActions={enqueueGate.enqueueActions}
             allPolicies={org.policies}
             allItemTypes={org.itemTypes as GQLItemType[]}
             relatedActions={selectedRelatedActions}
@@ -1418,14 +1412,7 @@ function ManualReviewJobReviewImpl(props: {
             allPolicies={org.policies}
             relatedActions={selectedRelatedActions}
             reportedUserRef={reportedUserRef}
-            onEnqueueActions={(actions) =>
-              setSelectedRelatedActions(
-                recomputeSelectedRelatedActions(
-                  actions,
-                  selectedRelatedActions,
-                ),
-              )
-            }
+            onEnqueueActions={enqueueGate.enqueueActions}
             requirePolicySelectionToEnqueueAction={
               org.requiresPolicyForDecisionsInMrt
             }
@@ -1594,6 +1581,7 @@ function ManualReviewJobReviewImpl(props: {
                 }}
               />
             )}
+            {enqueueGate.modalElement}
             <div
               className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
                 canBeSubmitted
