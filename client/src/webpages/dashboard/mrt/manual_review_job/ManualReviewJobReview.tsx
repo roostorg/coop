@@ -73,6 +73,16 @@ import ManualReviewJobPrimaryUserComponent from './v2/user/ManualReviewJobPrimar
 const { Option } = Select;
 const { TextArea } = Input;
 
+// Narrows the GraphQL union of action types to "this one declares parameter
+// inputs". Only `CustomAction` carries `parameters`; everything else is
+// treated as no-parameter.
+function actionHasParameters(action: { __typename?: string } | undefined): boolean {
+  if (!action || !('parameters' in action)) return false;
+  const params = (action as { parameters?: readonly unknown[] | null })
+    .parameters;
+  return (params?.length ?? 0) > 0;
+}
+
 gql`
   ${JOB_FRAGMENT}
   ${ITEM_TYPE_FRAGMENT}
@@ -1540,6 +1550,9 @@ function ManualReviewJobReviewImpl(props: {
                     action.target.identifier.itemId,
                 },
                 policyNames: action.policies.map((policy) => policy.name),
+                hasParameters: actionHasParameters(
+                  org.actions.find((a) => a.id === action.action.id),
+                ),
               }))}
               onRemoveAction={(action) =>
                 setSelectedRelatedActions([
@@ -1554,6 +1567,22 @@ function ManualReviewJobReviewImpl(props: {
                   ),
                 ])
               }
+              onEditAction={(action) => {
+                const entry = selectedRelatedActions.find(
+                  (a) =>
+                    a.target.identifier.itemId === action.target.itemId &&
+                    a.target.identifier.itemTypeId ===
+                      action.target.itemTypeId &&
+                    a.action.id === action.id,
+                );
+                if (entry) {
+                  enqueueGate.editParameters(
+                    entry,
+                    selectedRelatedActions,
+                    setSelectedRelatedActions,
+                  );
+                }
+              }}
             />
             {paramsModal.open && (
               <ActionParametersModal
