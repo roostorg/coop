@@ -18,7 +18,7 @@
 -- send these fields (older code paths) keep working unchanged.
 
 ALTER TABLE analytics.ACTION_EXECUTIONS
-  ADD COLUMN IF NOT EXISTS parameters String NOT NULL DEFAULT '{}';
+  ADD COLUMN IF NOT EXISTS parameters String DEFAULT '{}';
 
 ALTER TABLE analytics.ACTION_EXECUTIONS
   ADD COLUMN IF NOT EXISTS actor_note Nullable(String);
