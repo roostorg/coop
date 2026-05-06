@@ -18,8 +18,8 @@ import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Action, type CustomAction } from '../index.js';
 import { type ItemTypeKind } from '../types/itemTypes.js';
 import {
-  type ActionParameter,
   type RawActionParameterInput,
+  serializeParameters,
   validateActionParameters,
 } from './actionParametersValidation.js';
 
@@ -411,30 +411,3 @@ export const makeActionNameExistsError = (data: ErrorInstanceData) =>
     name: 'ActionNameExistsError',
     ...data,
   });
-
-/**
- * Serialize a validated parameter list to the shape the DB driver expects for
- * `actions.custom_mrt_api_params jsonb[]`. Returns `[]` (the column default)
- * when the caller passed an empty list, so writes stay deterministic.
- */
-function serializeParameters(
-  parameters: readonly ActionParameter[],
-): JsonValue[] {
-  return parameters.map((param) => {
-    const out: Record<string, JsonValue> = {
-      name: param.name,
-      displayName: param.displayName,
-      type: param.type,
-      required: param.required,
-    };
-    if (param.description !== undefined) out.description = param.description;
-    if (param.options !== undefined) {
-      out.options = param.options.map((o) => ({ value: o.value, label: o.label }));
-    }
-    if (param.min !== undefined) out.min = param.min;
-    if (param.max !== undefined) out.max = param.max;
-    if (param.maxLength !== undefined) out.maxLength = param.maxLength;
-    if (param.defaultValue !== undefined) out.defaultValue = param.defaultValue as JsonValue;
-    return out;
-  });
-}

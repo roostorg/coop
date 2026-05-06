@@ -1,4 +1,5 @@
 import _Ajv, { type ErrorObject } from 'ajv-draft-04';
+import { type JsonValue } from 'type-fest';
 
 import { makeBadRequestError } from '../../../utils/errors.js';
 import { assertUnreachable } from '../../../utils/misc.js';
@@ -292,5 +293,32 @@ function makeInvalidParameterError(detail: string) {
   return makeBadRequestError('Invalid action parameters', {
     detail,
     shouldErrorSpan: false,
+  });
+}
+
+/**
+ * Serialize a validated parameter list to the shape the DB driver expects for
+ * `actions.custom_mrt_api_params jsonb[]`. Returns `[]` (the column default)
+ * when the caller passed an empty list, so writes stay deterministic.
+ */
+export function serializeParameters(
+  parameters: readonly ActionParameter[],
+): JsonValue[] {
+  return parameters.map((param) => {
+    const out: Record<string, JsonValue> = {
+      name: param.name,
+      displayName: param.displayName,
+      type: param.type,
+      required: param.required,
+    };
+    if (param.description !== undefined) out.description = param.description;
+    if (param.options !== undefined) {
+      out.options = param.options.map((o) => ({ value: o.value, label: o.label }));
+    }
+    if (param.min !== undefined) out.min = param.min;
+    if (param.max !== undefined) out.max = param.max;
+    if (param.maxLength !== undefined) out.maxLength = param.maxLength;
+    if (param.defaultValue !== undefined) out.defaultValue = param.defaultValue as JsonValue;
+    return out;
   });
 }
