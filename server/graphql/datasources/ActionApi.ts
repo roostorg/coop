@@ -3,6 +3,12 @@ import pLimit from 'p-limit';
 import { v1 as uuidv1 } from 'uuid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import {
+  parseStoredParameters,
+  validateActionParameterValues,
+  validateActorNote,
+  type Action,
+} from '../../services/moderationConfigService/index.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import {
@@ -117,15 +123,40 @@ class ActionAPI {
     }
   }
 
-  async bulkExecuteActions(
-    itemIds: readonly string[],
-    actionIds: readonly string[],
-    itemTypeId: string,
-    policyIds: readonly string[],
-    orgId: string,
-    actorId: string,
-    actorEmail: string,
-  ) {
+  async bulkExecuteActions(opts: {
+    itemIds: readonly string[];
+    actionIds: readonly string[];
+    itemTypeId: string;
+    policyIds: readonly string[];
+    orgId: string;
+    actorId: string;
+    actorEmail: string;
+    /**
+     * Map of `actionId` -> `{ paramName: value }` carrying moderator-supplied
+     * runtime parameter values. Validated per-action against each action's
+     * stored spec; rejects with a 400 if any value is missing/wrong-type.
+     */
+    actionIdToParameters?: Record<string, Record<string, unknown>> | null;
+    /**
+     * Optional moderator note. Forwarded to the action's webhook as
+     * `actorNote` and persisted in the audit log (PR 3).
+     */
+    actorNote?: string | null;
+  }) {
+    const {
+      itemIds,
+      actionIds,
+      itemTypeId,
+      policyIds,
+      orgId,
+      actorId,
+      actorEmail,
+      actionIdToParameters,
+      actorNote,
+    } = opts;
+
+    validateActorNote(actorNote);
+
     const [actions, policies, itemType] = await Promise.all([
       this.moderationConfigService.getActions({
         orgId,
@@ -146,6 +177,14 @@ class ActionAPI {
     if (itemType === undefined) {
       throw new Error(`Item type ${itemTypeId} not found for org ${orgId}`);
     }
+
+    // Validate moderator-supplied parameter values once per action up front;
+    // throws BadRequestError before any side-effecting publish if any value
+    // doesn't match its spec.
+    const validatedParameters = this.#validateParametersForActions(
+      actions,
+      actionIdToParameters ?? null,
+    );
 
     const correlationId = toCorrelationId({
       type: 'manual-action-run',
@@ -168,49 +207,63 @@ class ActionAPI {
             })
           )?.latestSubmission;
 
-          // If the item isn't found, pass it along to the action publisher anyway
-          // without the full submission. In this case, we'll be losing some
-          // information in the logging but it's better than not submitting the
-          // action at all, and it's possible that the item was never submitted to
-          // us at all.
-          if (itemSubmission === undefined) {
-            return this.actionPublisher.publishActions(
-              actions.map((action) => ({
-                action,
-                matchingRules: undefined,
-                ruleEnvironment: undefined,
-                policies,
-              })),
-              {
-                orgId,
-                correlationId,
-                targetItem: {
-                  itemId,
-                  itemType: { id: itemType.id, kind: itemType.kind, name: itemType.name },
-                },
-                actorId,
-                actorEmail,
-              },
-            );
-          }
-          return this.actionPublisher.publishActions(
-            actions.map((action) => ({
-              action,
-              matchingRules: undefined,
-              ruleEnvironment: undefined,
-              policies,
-            })),
-            {
-              orgId,
-              correlationId,
-              targetItem: itemSubmission,
-              actorId,
-              actorEmail,
-            },
-          );
+          const triggered = actions.map((action) => ({
+            action,
+            matchingRules: undefined as undefined,
+            ruleEnvironment: undefined as undefined,
+            policies,
+            customMrtApiParamDecisionPayload: validatedParameters.get(action.id),
+          }));
+
+          // If the item isn't found, pass it along to the action publisher
+          // anyway without the full submission. We lose some logging fidelity
+          // but it's better than refusing to submit, and the item may have
+          // never been submitted to us at all.
+          const targetItem = itemSubmission ?? {
+            itemId,
+            itemType: { id: itemType.id, kind: itemType.kind, name: itemType.name },
+          };
+          return this.actionPublisher.publishActions(triggered, {
+            orgId,
+            correlationId,
+            targetItem,
+            actorId,
+            actorEmail,
+            actorNote: actorNote ?? undefined,
+          });
         }),
       ),
     );
+  }
+
+  /**
+   * Validate the supplied per-action parameter map against each action's
+   * stored spec and return a Map of `actionId -> validated values`. Actions
+   * with no supplied values and no required parameters get `undefined` (no
+   * entry in the result Map) so the publisher can treat absence as
+   * "no runtime params for this action".
+   */
+  #validateParametersForActions(
+    actions: readonly Action[],
+    rawByActionId: Readonly<Record<string, Record<string, unknown>>> | null,
+  ): Map<string, Record<string, unknown> | undefined> {
+    const out = new Map<string, Record<string, unknown> | undefined>();
+    for (const action of actions) {
+      const spec = parseStoredParameters(
+        action.actionType === 'CUSTOM_ACTION' ? action.customMrtApiParams : null,
+      );
+      const supplied = rawByActionId?.[action.id];
+      if (spec.length === 0 && (supplied === undefined || Object.keys(supplied).length === 0)) {
+        // No spec, no values — nothing to do for this action.
+        continue;
+      }
+      // Throws BadRequestError on missing required, type mismatch, unknown
+      // keys, etc. Validation runs even when no values are supplied so that
+      // missing-required-with-no-default is caught.
+      const validated = validateActionParameterValues(spec, supplied ?? null);
+      out.set(action.id, Object.keys(validated).length > 0 ? validated : undefined);
+    }
+    return out;
   }
 }
 
@@ -224,4 +277,4 @@ export default inject(
   ],
   ActionAPI,
 );
-export type { ActionAPI };
+export { ActionAPI };

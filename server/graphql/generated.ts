@@ -1286,6 +1286,19 @@ export type GQLExecuteBulkActionInput = {
   readonly actionIds: ReadonlyArray<Scalars['String']['input']>;
   readonly itemIds: ReadonlyArray<Scalars['String']['input']>;
   readonly itemTypeId: Scalars['String']['input'];
+  /**
+   * Optional moderator-authored note explaining why this action was taken.
+   * Sent to the action's webhook as `actorNote` and persisted to the action
+   * execution audit log.
+   */
+  readonly note?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Optional map of `actionId` -> `{ paramName: value }` carrying
+   * moderator-supplied runtime parameter values. Each map is validated against
+   * the action's parameter spec server-side before publish; invalid values
+   * reject the entire request.
+   */
+  readonly parameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly policyIds: ReadonlyArray<Scalars['String']['input']>;
 };
 

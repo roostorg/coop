@@ -178,6 +178,18 @@ function validateStringRules(param: ActionParameter, index: number): void {
       `${at(index, 'defaultValue')} exceeds maxLength`,
     );
   }
+  // An empty default on a required field would silently pass the runtime
+  // required-check. Reject at authoring time so the spec is internally
+  // consistent.
+  if (
+    param.required &&
+    typeof param.defaultValue === 'string' &&
+    param.defaultValue.trim() === ''
+  ) {
+    throw makeInvalidParameterError(
+      `${at(index, 'defaultValue')} cannot be empty when the parameter is required`,
+    );
+  }
 }
 
 function validateNumberRules(param: ActionParameter, index: number): void {
@@ -280,6 +292,19 @@ function validateSelectRules(param: ActionParameter, index: number): void {
         : `${at(index, 'defaultValue')} must be an array of option values`,
     );
   }
+  // An empty MULTISELECT default on a required field would silently pass the
+  // runtime required-check. SELECT defaults of `''` are already rejected by
+  // the `optionValues.has` check above (option values must be minLength 1).
+  if (
+    param.required &&
+    param.type === 'MULTISELECT' &&
+    Array.isArray(param.defaultValue) &&
+    param.defaultValue.length === 0
+  ) {
+    throw makeInvalidParameterError(
+      `${at(index, 'defaultValue')} cannot be empty when the parameter is required`,
+    );
+  }
 }
 
 function formatAjvErrors(errors: readonly ErrorObject[] | null | undefined): string {
@@ -287,6 +312,55 @@ function formatAjvErrors(errors: readonly ErrorObject[] | null | undefined): str
   return errors
     .map((err) => `${err.instancePath || '/'}: ${err.message ?? 'invalid value'}`)
     .join('; ');
+}
+
+/**
+ * Recover a typed parameter list from the loose `JsonValue | null` stored in
+ * `actions.custom_mrt_api_params`. Designed to be defensive: silently drops
+ * any entry that doesn't validate so legacy rows written before the AJV-
+ * validated authoring path (PR 1) don't crash readers/executors.
+ *
+ * Use this anywhere you need to act on an action's parameter spec at
+ * execution time — distinct from `validateActionParameters`, which is the
+ * write-side AJV validator.
+ */
+export function parseStoredParameters(value: unknown): ActionParameter[] {
+  if (!Array.isArray(value)) return [];
+  const allowedTypes = ACTION_PARAMETER_TYPES as readonly string[];
+  const out: ActionParameter[] = [];
+  for (const raw of value) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    const obj = raw as Record<string, unknown>;
+    const name = typeof obj.name === 'string' ? obj.name : null;
+    const displayName = typeof obj.displayName === 'string' ? obj.displayName : null;
+    const typeRaw = typeof obj.type === 'string' ? obj.type : null;
+    if (name === null || displayName === null || typeRaw === null) continue;
+    if (!allowedTypes.includes(typeRaw)) continue;
+    const parsed: ActionParameter = {
+      name,
+      displayName,
+      type: typeRaw as ActionParameterType,
+      required: obj.required === true,
+    };
+    if (typeof obj.description === 'string') parsed.description = obj.description;
+    if (Array.isArray(obj.options)) {
+      const options: ActionParameterOption[] = [];
+      for (const opt of obj.options) {
+        if (typeof opt !== 'object' || opt === null) continue;
+        const o = opt as Record<string, unknown>;
+        if (typeof o.value === 'string' && typeof o.label === 'string') {
+          options.push({ value: o.value, label: o.label });
+        }
+      }
+      if (options.length > 0) parsed.options = options;
+    }
+    if (typeof obj.min === 'number') parsed.min = obj.min;
+    if (typeof obj.max === 'number') parsed.max = obj.max;
+    if (typeof obj.maxLength === 'number') parsed.maxLength = obj.maxLength;
+    if ('defaultValue' in obj) parsed.defaultValue = obj.defaultValue;
+    out.push(parsed);
+  }
+  return out;
 }
 
 function makeInvalidParameterError(detail: string) {
