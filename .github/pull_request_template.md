@@ -14,3 +14,7 @@ Are there any special things that have to be done before this can be deployed
 to prod (e.g., other blocking PRs; manual load testing/validation that needs to
 be done on staging; etc.)? If so, please note them here.
  -->
+
+## Public Artifact Review
+
+- [ ] Titles, descriptions, branch names, screenshots, and linked artifacts avoid partner, customer, brand, campaign, or other sensitive external names unless explicitly approved
