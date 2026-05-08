@@ -11,6 +11,7 @@ import {
   getSourceType,
   type CorrelationId,
 } from '../../utils/correlationIds.js';
+import { jsonStringify } from '../../utils/encoding.js';
 import { safePick } from '../../utils/misc.js';
 import { getUtcDateOnlyString } from '../../utils/time.js';
 import {
@@ -43,10 +44,12 @@ export type MatchingRule = Omit<
   policies: Policy[];
 };
 
+// Constructor takes only the slice it actually uses so callers (incl. tests)
+// can supply a narrower stub without casting.
+type AnalyticsDep = Pick<Dependencies['DataWarehouseAnalytics'], 'bulkWrite'>;
+
 class ActionExecutionLogger {
-  constructor(
-    private readonly analytics: Dependencies['DataWarehouseAnalytics'],
-  ) {}
+  constructor(private readonly analytics: AnalyticsDep) {}
   async logActionExecutions<T extends ActionExecutionCorrelationId>(opts: {
     executions: ActionExecutionData<T>[];
     failed: boolean;
@@ -95,6 +98,11 @@ class ActionExecutionLogger {
           policies: data.policies,
           actor_id: data.actorId,
           job_id: data.jobId,
+          // Always set `parameters` (default `'{}'`) so columnar storage
+          // doesn't get a mix of NULL and JSON-text values; readers can rely
+          // on the column being a parseable JSON object.
+          parameters: jsonStringify(data.parameterValues ?? {}),
+          actor_note: data.actorNote,
           failed,
         };
       }),
@@ -104,4 +112,4 @@ class ActionExecutionLogger {
 }
 
 export default inject(['DataWarehouseAnalytics'], ActionExecutionLogger);
-export { type ActionExecutionLogger };
+export { ActionExecutionLogger };

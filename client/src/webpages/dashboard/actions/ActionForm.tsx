@@ -24,6 +24,12 @@ import {
 } from '../../../graphql/generated';
 import { userHasPermissions } from '../../../routing/permissions';
 import { prettyPrintJsonValue } from '../../../utils/string';
+import ActionParametersEditor, {
+  type ActionParameterDraft,
+  fromGraphQLParameters,
+  toMutationInput,
+  validateDrafts,
+} from './ActionParametersEditor';
 
 const { Option } = Select;
 
@@ -40,6 +46,21 @@ gql`
     callbackUrl
     callbackUrlHeaders
     callbackUrlBody
+    parameters {
+      name
+      displayName
+      description
+      type
+      required
+      options {
+        value
+        label
+      }
+      min
+      max
+      maxLength
+      defaultValue
+    }
   }
 
   query Action($id: ID!) {
@@ -120,6 +141,9 @@ export default function ActionForm() {
   const [actionCallbackUrlBody, setActionCallbackUrlBody] = useState<
     string | undefined
   >(undefined);
+  const [actionParameters, setActionParameters] = useState<
+    ActionParameterDraft[]
+  >([]);
 
   const showModal = () => {
     setModalVisible(true);
@@ -190,6 +214,7 @@ export default function ActionForm() {
         ? prettyPrintJsonValue(action.callbackUrlBody)
         : undefined,
     );
+    setActionParameters(fromGraphQLParameters(action.parameters));
   }, [action]);
 
   if (actionQueryError ?? actionFormQueryError) {
@@ -219,6 +244,7 @@ export default function ActionForm() {
           callbackUrlBody: actionCallbackUrlBody
             ? JSON.parse(actionCallbackUrlBody)
             : undefined,
+          parameters: toMutationInput(actionParameters),
         },
       },
       refetchQueries: [namedOperations.Query.Actions],
@@ -239,6 +265,7 @@ export default function ActionForm() {
           callbackUrlBody: actionCallbackUrlBody
             ? JSON.parse(actionCallbackUrlBody)
             : undefined,
+          parameters: toMutationInput(actionParameters),
         },
       },
       refetchQueries: [
@@ -416,6 +443,16 @@ export default function ActionForm() {
       {divider()}
       {callbackUrlInput}
       {divider()}
+      <FormSectionHeader
+        title="Parameters (Optional)"
+        subtitle="Define parameters that moderators will be prompted to fill in when running this action. Their values are merged into the webhook body under each parameter's name."
+      />
+      <ActionParametersEditor
+        value={actionParameters}
+        onChange={setActionParameters}
+        disabled={!canEditActions}
+      />
+      {divider()}
       <CoopButton
         title={id == null ? 'Create Action' : 'Save Changes'}
         disabled={
@@ -424,7 +461,8 @@ export default function ActionForm() {
           !actionItemTypeIds?.length ||
           !actionCallbackUrl ||
           !validateJson(actionCallbackUrlHeaders) ||
-          !validateJson(actionCallbackUrlBody)
+          !validateJson(actionCallbackUrlBody) ||
+          validateDrafts(actionParameters) !== null
         }
         loading={createMutationLoading || updateMutationLoading}
         disabledTooltipTitle={(() => {
@@ -445,6 +483,10 @@ export default function ActionForm() {
           }
           if (!validateJson(actionCallbackUrlBody)) {
             return 'Please enter a valid JSON for the callback URL body.';
+          }
+          const paramError = validateDrafts(actionParameters);
+          if (paramError !== null) {
+            return paramError;
           }
         })()}
         disabledTooltipPlacement="bottomLeft"
