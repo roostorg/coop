@@ -2,6 +2,7 @@ import { type Insertable, type Kysely, type Updateable, sql } from 'kysely';
 
 import { computeRuleStatusFromRow } from '../../models/rules/ruleTypes.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
+import { type BacktestStatusDb } from '../../services/coreAppTables.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import {
   RuleAlarmStatus,
@@ -9,7 +10,25 @@ import {
   RuleType,
   type ConditionSet,
 } from '../../services/moderationConfigService/index.js';
-import { type Backtest } from '../../models/rules/BacktestModel.js';
+
+export type GraphQLBacktestParent = {
+  id: string;
+  ruleId: string;
+  creatorId: string;
+  sampleDesiredSize: number;
+  sampleActualSize: number;
+  sampleStartAt: Date;
+  sampleEndAt: Date;
+  samplingComplete: boolean;
+  contentItemsProcessed: number;
+  contentItemsMatched: number;
+  status: BacktestStatusDb;
+  createdAt: Date;
+  updatedAt: Date;
+  cancelationDate: Date | null;
+  correctedContentItemsProcessed: number;
+  correctedContentItemsMatched: number;
+};
 
 /** Matches `public.backtests.status` when generated value is RUNNING. */
 const backtestRunningPredicate = sql<boolean>`cancelation_date is null
@@ -344,7 +363,7 @@ export async function kyselyListBacktestsForRule(
   kysely: Kysely<CombinedPg>,
   ruleId: string,
   backtestIds?: readonly string[] | null,
-): Promise<Backtest[]> {
+): Promise<GraphQLBacktestParent[]> {
   let q = kysely
     .selectFrom('public.backtests')
     .selectAll()
@@ -353,10 +372,10 @@ export async function kyselyListBacktestsForRule(
     q = q.where('id', 'in', [...backtestIds]);
   }
   const rows = await q.execute();
-  return rows.map((r) => mapBacktestRowToGqlParent(r)) as unknown as Backtest[];
+  return rows.map((r) => mapBacktestRowToGqlParent(r));
 }
 
-function mapBacktestRowToGqlParent(r: {
+export function mapBacktestRowToGqlParent(r: {
   id: string;
   rule_id: string;
   creator_id: string;
@@ -367,11 +386,13 @@ function mapBacktestRowToGqlParent(r: {
   sampling_complete: boolean;
   content_items_processed: number;
   content_items_matched: number;
-  status: string;
+  status: BacktestStatusDb;
   created_at: Date;
   updated_at: Date;
   cancelation_date: Date | null;
-}) {
+}): GraphQLBacktestParent {
+  // Queues deliver sampled items at-least-once, so processed/matched counters
+  // can rarely exceed sample_actual_size. Clamp the values exposed to clients.
   const correctedContentItemsProcessed = Math.min(
     r.sample_actual_size,
     r.content_items_processed,

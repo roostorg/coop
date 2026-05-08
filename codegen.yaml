@@ -95,10 +95,10 @@ generates:
         EnqueueToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueToMrtAction
         EnqueueToNcmecAction: ../services/moderationConfigService/types/actions.js#EnqueueToNcmecAction
         EnqueueAuthorToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueAuthorToMrtAction
-        Backtest: ../models/rules/BacktestModel.js#Backtest
+        Backtest: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLBacktestParent
         ContentType: ../services/moderationConfigService/types/itemTypes.js#ItemType
         DerivedFieldSource: ../services/derivedFieldsService/helpers.js#DerivedFieldSpecSource
-        HashBank: ../models/HashBankModel.js#HashBank
+        HashBank: ../services/hmaService/index.js#HashBank
         Org: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
         # NB: `MatchingBanks` is currently resolved by returning the `Org`
         # parent, and its sub-resolvers only read `org.id`. A bit unusual, as
