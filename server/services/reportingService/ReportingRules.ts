@@ -1,9 +1,9 @@
-import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { makeEnumLike } from '@roostorg/types';
 import { sql, type Kysely, type Transaction } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
+import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { cached } from '../../utils/caching.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
@@ -162,7 +162,7 @@ export default class ReportingRules {
 
         return {
           ...reportingRule,
-          itemTypeIds: itemTypeIds as string[],
+          itemTypeIds,
           actionIds,
           policyIds,
         };

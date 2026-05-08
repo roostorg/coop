@@ -3,13 +3,12 @@ import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
 import { makeDateString, type ItemIdentifier } from '@roostorg/types';
-import { types as scyllaTypes, type Host as ScyllaHost } from 'cassandra-driver';
-import IORedis, { type Cluster } from 'ioredis';
 import {
-  Kysely,
-  PostgresDialect,
-  type PostgresCursorConstructor,
-} from 'kysely';
+  types as scyllaTypes,
+  type Host as ScyllaHost,
+} from 'cassandra-driver';
+import IORedis, { type Cluster } from 'ioredis';
+import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
 import { DynamicPool } from 'node-worker-threads-pool';
 import pg from 'pg';
@@ -36,10 +35,6 @@ import {
   makeItemSubmissionBulkWrite,
   type ItemSubmissionBulkWrite,
 } from '../queues/itemSubmissionQueue.js';
-import {
-  getPolicyActionPenaltiesForOrg,
-  type PolicyActionPenalties,
-} from '../services/policyActionPenalties.js';
 import makeActionPublisher, {
   type ActionPublisher,
   type ActionTargetItem,
@@ -173,6 +168,10 @@ import {
   makePlacesApiService,
   type PlacesApiService,
 } from '../services/placesApiService/index.js';
+import {
+  getPolicyActionPenaltiesForOrg,
+  type PolicyActionPenalties,
+} from '../services/policyActionPenalties.js';
 import {
   makeReportingService,
   type ReportingService,
@@ -481,7 +480,7 @@ export default async function getBottle() {
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
           pool: new pg.Pool(getPgMasterConnectionInfo()),
-          cursor: Cursor as unknown as PostgresCursorConstructor,
+          cursor: Cursor,
         }),
       }),
   );
@@ -496,7 +495,7 @@ export default async function getBottle() {
             max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
             host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
           }),
-          cursor: Cursor as unknown as PostgresCursorConstructor,
+          cursor: Cursor,
         }),
       }),
   );
@@ -691,8 +690,7 @@ export default async function getBottle() {
     // server cert. Prefer an explicit `SCYLLA_SSL_SERVERNAME` (e.g., the
     // Keyspaces regional endpoint) over inferring one from `SCYLLA_HOSTS`,
     // which may contain multiple contact points with different cert names.
-    const sslServerName =
-      process.env.SCYLLA_SSL_SERVERNAME ?? contactPoints[0];
+    const sslServerName = process.env.SCYLLA_SSL_SERVERNAME ?? contactPoints[0];
     const scyllaDriver = new ScyllaClient({
       contactPoints,
       credentials: {
@@ -768,7 +766,9 @@ export default async function getBottle() {
     // but keep it bounded so a true runaway is still noticeable.
     const controlConnection = (
       scyllaDriver as unknown as {
-        controlConnection?: { hosts?: { setMaxListeners?: (n: number) => void } };
+        controlConnection?: {
+          hosts?: { setMaxListeners?: (n: number) => void };
+        };
       }
     ).controlConnection;
     controlConnection?.hosts?.setMaxListeners?.(15);
@@ -1270,7 +1270,7 @@ export default async function getBottle() {
                     ...{
                       reportIds:
                         'reportIds' in job.payload
-                          ? job.payload.reportIds ?? []
+                          ? (job.payload.reportIds ?? [])
                           : [],
                     },
                     ...('reportedForReason' in job.payload
@@ -1410,10 +1410,7 @@ export default async function getBottle() {
 
       return cached({
         async producer(orgId) {
-          return getPolicyActionPenaltiesForOrg(
-            moderationConfigService,
-            orgId,
-          );
+          return getPolicyActionPenaltiesForOrg(moderationConfigService, orgId);
         },
         directives: { freshUntilAge: 60 },
       });

@@ -52,11 +52,10 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
         org_id: keyId.orgId,
         key_data: jsonStringify(keyData),
       })
-      .onConflict((oc) => oc
-        .column('org_id')
-        .doUpdateSet({
+      .onConflict((oc) =>
+        oc.column('org_id').doUpdateSet({
           key_data: jsonStringify(keyData),
-        })
+        }),
       )
       .execute();
   }
@@ -81,10 +80,8 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
 
     const keyData: JWTCryptoKeyPairWithAlgorithm =
       typeof result.key_data === 'string'
-        ? jsonParse(
-            result.key_data as JsonOf<JWTCryptoKeyPairWithAlgorithm>,
-          )
-        : (result.key_data as JWTCryptoKeyPairWithAlgorithm);
+        ? jsonParse(result.key_data as JsonOf<JWTCryptoKeyPairWithAlgorithm>)
+        : result.key_data;
     const { privateKeyWithAlgorithm, publicKeyWithAlgorithm } = keyData;
 
     return {

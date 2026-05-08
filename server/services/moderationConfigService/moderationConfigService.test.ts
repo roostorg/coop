@@ -17,12 +17,11 @@ import { ErrorType } from '../../utils/errors.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
+  RuleStatus,
+  RuleType,
   type Action,
   type ConditionSet,
   type ItemType,
-  RuleAlarmStatus,
-  RuleStatus,
-  RuleType,
   type Policy,
   type UserItemType,
 } from './index.js';
@@ -133,13 +132,11 @@ describe('ModerationConfigService', () => {
   });
 
   afterAll(async () => {
-    const { Sequelize: models } = (await getBottle()).container;
     await dummyOrgCleanup();
 
     await Promise.all([
       container.KyselyPg.destroy(),
       container.KyselyPgReadReplica.destroy(),
-      await models.close(),
     ]);
   });
 
@@ -205,33 +202,23 @@ describe('ModerationConfigService', () => {
         uid(),
       );
       const { user, cleanup: userCleanup } = await createUser(
-        container.Sequelize,
+        container.KyselyPg,
         org.id,
       );
-      const ruleId = uid();
-      await container.Sequelize.Rule.create({
-        id: ruleId,
-        orgId: org.id,
-        creatorId: user.id,
+      const rule = await createRule(container.KyselyPg, org.id, {
+        creator: user,
         name: 'getRuleByIdAndOrg fixture rule',
-        description: null,
-        status: RuleStatus.DRAFT,
-        statusIfUnexpired: RuleStatus.DRAFT,
-        tags: [],
-        conditionSet: minimalRuleConditionSet,
         ruleType: RuleType.USER,
-        alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
+        status: RuleStatus.DRAFT,
+        conditionSet: minimalRuleConditionSet,
       });
 
       return {
         org,
         user,
-        ruleId,
+        ruleId: rule.id,
         async cleanup() {
-          await container.Sequelize.Rule.destroy({
-            where: { id: ruleId },
-            force: true,
-          });
+          await rule.destroy();
           await userCleanup();
           await orgCleanup();
         },
@@ -572,31 +559,31 @@ describe('ModerationConfigService', () => {
             uid(),
           );
           try {
-            const contentType =
-              await sutWithPrimary.createContentType(fresh.org.id, {
+            const contentType = await sutWithPrimary.createContentType(
+              fresh.org.id,
+              {
                 schema: dummySchema,
                 description: null,
                 name: faker.random.alphaNumeric(16),
                 schemaFieldRoles: { displayName: 'fakeField' },
-              });
+              },
+            );
 
             const forUser = await sutWithPrimary.getActionsForItemType({
               orgId: fresh.org.id,
               itemTypeId: fresh.defaultUserItemType.id,
               itemTypeKind: 'USER',
             });
-            expect(
-              forUser.map((it) => it.actionType).sort(),
-            ).toEqual(['ENQUEUE_TO_MRT', 'ENQUEUE_TO_NCMEC'].sort());
+            expect(forUser.map((it) => it.actionType).sort()).toEqual(
+              ['ENQUEUE_TO_MRT', 'ENQUEUE_TO_NCMEC'].sort(),
+            );
 
             const forContent = await sutWithPrimary.getActionsForItemType({
               orgId: fresh.org.id,
               itemTypeId: contentType.id,
               itemTypeKind: 'CONTENT',
             });
-            expect(
-              forContent.map((it) => it.actionType).sort(),
-            ).toEqual(
+            expect(forContent.map((it) => it.actionType).sort()).toEqual(
               [
                 'ENQUEUE_AUTHOR_TO_MRT',
                 'ENQUEUE_TO_MRT',
@@ -663,9 +650,7 @@ describe('ModerationConfigService', () => {
             (it) => it.actionType === 'CUSTOM_ACTION',
           );
           expect(customActions).toHaveLength(createdActions.length);
-          expect(customActions).toEqual(
-            expect.arrayContaining(createdActions),
-          );
+          expect(customActions).toEqual(expect.arrayContaining(createdActions));
         });
 
         it('should round-trip a non-null customMrtApiParams value', async () => {
@@ -862,16 +847,18 @@ describe('ModerationConfigService', () => {
 
             await new Promise((resolve) => setTimeout(resolve, 5));
 
-            const result = await sutWithPrimary.updateCustomAction(
-              dummyOrgId,
-              { actionId: action.id, patch: {} },
-            );
+            const result = await sutWithPrimary.updateCustomAction(dummyOrgId, {
+              actionId: action.id,
+              patch: {},
+            });
 
             const after = await container.KyselyPg.selectFrom('public.actions')
               .select(['updated_at'])
               .where('id', '=', action.id)
               .executeTakeFirstOrThrow();
-            expect(after.updated_at.getTime()).toBe(before.updated_at.getTime());
+            expect(after.updated_at.getTime()).toBe(
+              before.updated_at.getTime(),
+            );
             expect(result.id).toBe(action.id);
           },
         );
@@ -1196,11 +1183,9 @@ describe('ModerationConfigService', () => {
                 schemaFieldRoles: { displayName: 'fakeField' },
               },
             );
-            const rule = await createRule(container.Sequelize, dummyOrgId);
+            const rule = await createRule(container.KyselyPg, dummyOrgId);
 
-            await container.KyselyPg.insertInto(
-              'public.actions_and_item_types',
-            )
+            await container.KyselyPg.insertInto('public.actions_and_item_types')
               .values({ action_id: action.id, item_type_id: itemType.id })
               .execute();
             await container.KyselyPg.insertInto('public.rules_and_actions')
@@ -1375,7 +1360,7 @@ describe('ModerationConfigService', () => {
 
     describe('#getActionsForRuleId', () => {
       const testWithRuleAndAction = makeTestWithFixture(async () => {
-        const rule = await createRule(container.Sequelize, dummyOrgId);
+        const rule = await createRule(container.KyselyPg, dummyOrgId);
         const action = await sutWithPrimary.createAction(dummyOrgId, {
           name: faker.random.alphaNumeric(16),
           description: null,
@@ -1463,7 +1448,7 @@ describe('ModerationConfigService', () => {
         );
 
         const { user, cleanup: userCleanup } = await createUser(
-          container.Sequelize,
+          container.KyselyPg,
           org.id,
         );
 

@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 import _ from 'lodash';
+import type { ReadonlyDeep } from 'type-fest';
 
 import {
   ConditionCompletionOutcome,
@@ -9,7 +10,6 @@ import {
 import {
   getSignalIdString,
   type ExternalSignalId,
-  type SignalId,
 } from '../services/signalsService/index.js';
 import {
   ConditionOutcomeArbitrary as anyOutcomeArbitrary,
@@ -27,7 +27,6 @@ import {
   getConditionSetResults,
   tryGetOutcomeFromPartialOutcomes,
 } from './conditionSet.js';
-import type { ReadonlyDeep } from 'type-fest';
 
 const { sampleSize, shuffle, groupBy } = _;
 const { AND, OR, XOR } = ConditionConjunction;
@@ -35,9 +34,11 @@ const { AND, OR, XOR } = ConditionConjunction;
 describe('Condition Evaluation', () => {
   describe('getConditionSetResults', () => {
     test('should run conditions in cost order, skipping unnecessary ones', async () => {
-      const stubRunLeafCondition = jest.fn(async (_it: ReadonlyDeep<LeafCondition>) => ({
-        outcome: ConditionCompletionOutcome.PASSED,
-      }));
+      const stubRunLeafCondition = jest.fn(
+        async (_it: ReadonlyDeep<LeafCondition>) => ({
+          outcome: ConditionCompletionOutcome.PASSED,
+        }),
+      );
 
       await fc.assert(
         fc
@@ -70,9 +71,7 @@ describe('Condition Evaluation', () => {
 
                 return async (id: ExternalSignalId) =>
                   costsBySignalId.get(getSignalIdString(id))!;
-              })() satisfies (id: ExternalSignalId) => Promise<number> as (
-                id: SignalId,
-              ) => Promise<number>;
+              })() satisfies (id: ExternalSignalId) => Promise<number>;
 
               const conditions = leafConditionsAndCostsWithUniqueSignalIds.map(
                 (it) => it[0],
@@ -242,11 +241,11 @@ describe('Condition Evaluation', () => {
               outcomesByType['true']?.length === 1 && !outcomesByType['null']
                 ? true
                 : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                outcomesByType['null']?.length > 0 &&
-                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                  (outcomesByType['true']?.length ?? 0) < 2
-                ? null
-                : false,
+                  outcomesByType['null']?.length > 0 &&
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                    (outcomesByType['true']?.length ?? 0) < 2
+                  ? null
+                  : false,
             );
           }),
         );

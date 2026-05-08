@@ -45,7 +45,7 @@ describe('QueueOperations', () => {
       );
 
       const { user, cleanup: userCleanup } = await createUser(
-        container.Sequelize,
+        container.KyselyPg,
         org.id,
       );
       const { itemTypes, cleanup: itemTypesCleanup } =

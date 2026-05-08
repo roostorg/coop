@@ -15,7 +15,6 @@ import {
 import {
   isUniqueViolationError,
   type FixKyselyRowCorrelation,
-
 } from '../../../utils/kysely.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
@@ -124,7 +123,7 @@ export default class PolicyOperations {
     const out: Record<string, Policy[]> = {};
     for (const row of rows) {
       const { ruleId, ...policyFields } = row;
-      const policy = this.#dbResultToPolicy(policyFields as PolicyDbResult);
+      const policy = this.#dbResultToPolicy(policyFields);
       (out[ruleId] ??= []).push(policy);
     }
     return out;
@@ -142,8 +141,7 @@ export default class PolicyOperations {
       .select(policyDbSelection)
       .where('org_id', '=', orgId)
       .where('id', '=', policyId);
-    const result =
-      (await query.executeTakeFirst()) as PolicyDbResult;
+    const result = (await query.executeTakeFirst()) as PolicyDbResult;
 
     return this.#dbResultToPolicy(result);
   }

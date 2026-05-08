@@ -1,15 +1,15 @@
-import { type Insertable, type Kysely, type Updateable, sql } from 'kysely';
+import { sql, type Insertable, type Kysely, type Updateable } from 'kysely';
 
 import { computeRuleStatusFromRow } from '../../models/rules/ruleTypes.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type BacktestStatusDb } from '../../services/coreAppTables.js';
-import { makeNotFoundError } from '../../utils/errors.js';
 import {
   RuleAlarmStatus,
   RuleStatus,
   RuleType,
   type ConditionSet,
 } from '../../services/moderationConfigService/index.js';
+import { makeNotFoundError } from '../../utils/errors.js';
 
 export type GraphQLBacktestParent = {
   id: string;
@@ -67,13 +67,18 @@ async function replaceRuleActions(
   ruleId: string,
   actionIds: readonly string[],
 ) {
-  await trx.deleteFrom('public.rules_and_actions').where('rule_id', '=', ruleId).execute();
+  await trx
+    .deleteFrom('public.rules_and_actions')
+    .where('rule_id', '=', ruleId)
+    .execute();
   if (actionIds.length === 0) {
     return;
   }
   await trx
     .insertInto('public.rules_and_actions')
-    .values(actionIds.map((actionId) => ({ rule_id: ruleId, action_id: actionId })))
+    .values(
+      actionIds.map((actionId) => ({ rule_id: ruleId, action_id: actionId })),
+    )
     .execute();
 }
 
@@ -82,7 +87,10 @@ async function replaceRulePolicies(
   ruleId: string,
   policyIds: readonly string[],
 ) {
-  await trx.deleteFrom('public.rules_and_policies').where('rule_id', '=', ruleId).execute();
+  await trx
+    .deleteFrom('public.rules_and_policies')
+    .where('rule_id', '=', ruleId)
+    .execute();
   if (policyIds.length === 0) {
     return;
   }
@@ -105,7 +113,10 @@ async function replaceRuleItemTypes(
   ruleId: string,
   itemTypeIds: readonly string[],
 ) {
-  await trx.deleteFrom('public.rules_and_item_types').where('rule_id', '=', ruleId).execute();
+  await trx
+    .deleteFrom('public.rules_and_item_types')
+    .where('rule_id', '=', ruleId)
+    .execute();
   if (itemTypeIds.length === 0) {
     return;
   }
@@ -175,10 +186,7 @@ export async function kyselyCreateRule(
     created_at: now,
     updated_at: now,
   };
-  await trx
-    .insertInto('public.rules')
-    .values(ruleValues as Insertable<CombinedPg['public.rules']>)
-    .execute();
+  await trx.insertInto('public.rules').values(ruleValues).execute();
 
   await replaceRuleActions(trx, input.id, input.actionIds);
   await replaceRulePolicies(trx, input.id, input.policyIds);
@@ -329,7 +337,11 @@ export async function kyselyDeleteRule(
     .deleteFrom('public.users_and_favorite_rules')
     .where('rule_id', '=', id)
     .execute();
-  await trx.deleteFrom('public.rules').where('id', '=', id).where('org_id', '=', orgId).execute();
+  await trx
+    .deleteFrom('public.rules')
+    .where('id', '=', id)
+    .where('org_id', '=', orgId)
+    .execute();
   return true;
 }
 

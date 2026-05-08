@@ -100,8 +100,7 @@ class ActionAPI {
         callbackUrlHeaders,
         callbackUrlBody,
         applyUserStrikes: applyUserStrikes ?? undefined,
-        parameters:
-          parameters === undefined ? undefined : (parameters ?? []),
+        parameters: parameters === undefined ? undefined : (parameters ?? []),
       },
       itemTypeIds: itemTypeIds ?? undefined,
     });
@@ -209,10 +208,12 @@ class ActionAPI {
 
           const triggered = actions.map((action) => ({
             action,
-            matchingRules: undefined as undefined,
-            ruleEnvironment: undefined as undefined,
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
             policies,
-            customMrtApiParamDecisionPayload: validatedParameters.get(action.id),
+            customMrtApiParamDecisionPayload: validatedParameters.get(
+              action.id,
+            ),
           }));
 
           // If the item isn't found, pass it along to the action publisher
@@ -221,7 +222,11 @@ class ActionAPI {
           // never been submitted to us at all.
           const targetItem = itemSubmission ?? {
             itemId,
-            itemType: { id: itemType.id, kind: itemType.kind, name: itemType.name },
+            itemType: {
+              id: itemType.id,
+              kind: itemType.kind,
+              name: itemType.name,
+            },
           };
           return this.actionPublisher.publishActions(triggered, {
             orgId,
@@ -250,10 +255,15 @@ class ActionAPI {
     const out = new Map<string, Record<string, unknown> | undefined>();
     for (const action of actions) {
       const spec = parseStoredParameters(
-        action.actionType === 'CUSTOM_ACTION' ? action.customMrtApiParams : null,
+        action.actionType === 'CUSTOM_ACTION'
+          ? action.customMrtApiParams
+          : null,
       );
       const supplied = rawByActionId?.[action.id];
-      if (spec.length === 0 && (supplied === undefined || Object.keys(supplied).length === 0)) {
+      if (
+        spec.length === 0 &&
+        (supplied === undefined || Object.keys(supplied).length === 0)
+      ) {
         // No spec, no values — nothing to do for this action.
         continue;
       }
@@ -261,7 +271,10 @@ class ActionAPI {
       // keys, etc. Validation runs even when no values are supplied so that
       // missing-required-with-no-default is caught.
       const validated = validateActionParameterValues(spec, supplied ?? null);
-      out.set(action.id, Object.keys(validated).length > 0 ? validated : undefined);
+      out.set(
+        action.id,
+        Object.keys(validated).length > 0 ? validated : undefined,
+      );
     }
     return out;
   }

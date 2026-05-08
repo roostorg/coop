@@ -1,8 +1,10 @@
-import { Kysely, PostgresDialect, type PostgresQueryResult } from 'kysely';
+import { Kysely, PostgresDialect } from 'kysely';
 
 import { takeLast } from './sql.js';
 
-function makeCompileOnlyDb<T extends Record<string, Record<string, unknown>>>() {
+function makeCompileOnlyDb<
+  T extends Record<string, Record<string, unknown>>,
+>() {
   return new Kysely<T>({
     dialect: new PostgresDialect({
       pool: {
@@ -12,7 +14,7 @@ function makeCompileOnlyDb<T extends Record<string, Record<string, unknown>>>() 
               rows: [],
               command: 'SELECT',
               rowCount: 0,
-            } as PostgresQueryResult<unknown>),
+            }),
             async release() {},
           };
         },
