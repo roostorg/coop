@@ -10,7 +10,10 @@ import {
   type AnalyticsWriteOptions,
 } from '../types.js';
 import { formatClickhouseQuery } from '../../warehouse/utils/clickhouseSql.js';
-import { withClickhouseInsertRetries } from './clickhouseRetry.js';
+import {
+  isTransientNetworkError,
+  withClickhouseInsertRetries,
+} from './clickhouseRetry.js';
 
 export interface ClickhouseAnalyticsConnection {
   host: string;
@@ -145,7 +148,11 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       try {
         await this.insertWithRetries({ table, values: normalizedBatch });
       } catch (err) {
-        // Drop on persistent outage so it doesn't crash the request.
+        // Only swallow transient network errors; let schema/auth/payload
+        // errors propagate so they're not silently dropped.
+        if (!isTransientNetworkError(err)) {
+          throw err;
+        }
         // eslint-disable-next-line no-restricted-syntax
         logErrorJson({
           message: `clickhouse.analytics.insert_failed table=${table} batchSize=${normalizedBatch.length}`,
