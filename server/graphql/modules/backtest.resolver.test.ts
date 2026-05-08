@@ -1,26 +1,28 @@
-import { UserRole } from '../../models/types/permissioning.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import {
-  type GraphQLBacktestParent,
   mapBacktestRowToGqlParent,
+  type GraphQLBacktestParent,
 } from '../datasources/ruleKyselyPersistence.js';
 import { resolvers } from './backtest.js';
 
-function makeBacktestRow(overrides: Partial<{
-  id: string;
-  rule_id: string;
-  creator_id: string;
-  sample_desired_size: number;
-  sample_actual_size: number;
-  sample_start_at: Date;
-  sample_end_at: Date;
-  sampling_complete: boolean;
-  content_items_processed: number;
-  content_items_matched: number;
-  status: 'RUNNING' | 'COMPLETE' | 'CANCELED';
-  created_at: Date;
-  updated_at: Date;
-  cancelation_date: Date | null;
-}> = {}) {
+function makeBacktestRow(
+  overrides: Partial<{
+    id: string;
+    rule_id: string;
+    creator_id: string;
+    sample_desired_size: number;
+    sample_actual_size: number;
+    sample_start_at: Date;
+    sample_end_at: Date;
+    sampling_complete: boolean;
+    content_items_processed: number;
+    content_items_matched: number;
+    status: 'RUNNING' | 'COMPLETE' | 'CANCELED';
+    created_at: Date;
+    updated_at: Date;
+    cancelation_date: Date | null;
+  }> = {},
+) {
   const now = new Date('2026-01-01T00:00:00Z');
   return {
     id: 'bt-1',
@@ -142,19 +144,22 @@ describe('backtest resolvers', () => {
       };
 
       await expect(
-        (resolvers.Mutation as { createBacktest: (...a: unknown[]) => Promise<unknown> })
-          .createBacktest(
-            {},
-            {
-              input: {
-                ruleId: 'rule-1',
-                sampleDesiredSize: 10,
-                sampleStartAt: new Date().toISOString(),
-                sampleEndAt: new Date().toISOString(),
-              },
+        (
+          resolvers.Mutation as {
+            createBacktest: (...a: unknown[]) => Promise<unknown>;
+          }
+        ).createBacktest(
+          {},
+          {
+            input: {
+              ruleId: 'rule-1',
+              sampleDesiredSize: 10,
+              sampleStartAt: new Date().toISOString(),
+              sampleEndAt: new Date().toISOString(),
             },
-            ctx as never,
-          ),
+          },
+          ctx as never,
+        ),
       ).rejects.toThrow('User not authorized to create backtests.');
 
       expect(getRuleByIdAndOrg).not.toHaveBeenCalled();

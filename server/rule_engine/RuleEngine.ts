@@ -7,16 +7,16 @@ import {
 } from '../condition_evaluator/conditionSet.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
-import { type PlainRuleWithLatestVersion } from '../models/rules/ruleTypes.js';
 import { evaluateAggregationRuntimeArgsForItem } from '../services/aggregationsService/index.js';
+import { type RuleExecutionCorrelationId } from '../services/analyticsLoggers/index.js';
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
 import {
-  type Action,
   ConditionCompletionOutcome,
-  type ConditionSet,
   RuleStatus,
+  type Action,
+  type ConditionSet,
+  type PlainRuleWithLatestVersion,
 } from '../services/moderationConfigService/index.js';
-import { type RuleExecutionCorrelationId } from '../services/analyticsLoggers/index.js';
 import {
   type CorrelationId,
   type CorrelationIdType,
@@ -119,7 +119,6 @@ class RuleEngine {
       (rule) => rule.status === RuleStatus.LIVE,
     );
 
-
     const evaluationContext = this.makeRuleExecutionContext({
       orgId: itemSubmission.itemType.orgId,
       input: itemSubmission,
@@ -220,7 +219,6 @@ class RuleEngine {
       ),
     );
 
-
     const rulesToResults = new Map(equalLengthZip(rules, ruleResults));
 
     const passingRules = [...rulesToResults.entries()]
@@ -231,17 +229,14 @@ class RuleEngine {
 
     const actionableRulesToActions = new Map(
       await Promise.all(
-        actionableRules.map(
-          async (rule) => {
-            const actions = (await this.getRuleActionsEventuallyConsistent({
-              orgId: evaluationContext.org.id,
-              ruleId: rule.id,
-            })) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
-            
-            
-            return [rule, actions] as const;
-          }
-        ),
+        actionableRules.map(async (rule) => {
+          const actions = (await this.getRuleActionsEventuallyConsistent({
+            orgId: evaluationContext.org.id,
+            ruleId: rule.id,
+          })) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
+
+          return [rule, actions] as const;
+        }),
       ),
     );
 
@@ -396,7 +391,6 @@ class RuleEngine {
       );
     }
   }
-
 }
 
 export default inject(

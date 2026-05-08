@@ -230,6 +230,14 @@ namespace NodeJS {
     DATABASE_NAME?: string;
     DATABASE_USER?: string;
     DATABASE_PASSWORD?: string;
+    DATABASE_SSL?: string;
+    DATABASE_POOL_MAX?: string;
+    DATABASE_READ_POOL_MAX?: string;
+    DATABASE_POOL_IDLE_TIMEOUT_MS?: string;
+    DATABASE_POOL_CONNECTION_TIMEOUT_MS?: string;
+    DATABASE_QUERY_TIMEOUT_MS?: string;
+    DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS?: string;
+    DATABASE_PRINT_LOGS?: string;
     SESSION_SECRET?: string;
     WAREHOUSE_ADAPTER?: string;
     ANALYTICS_ADAPTER?: string;
@@ -237,7 +245,6 @@ namespace NodeJS {
     NODE_ENV?: string;
     EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS?: string;
     ALLOW_USER_INPUT_LOCALHOST_URIS?: string;
-    SEQUELIZE_PRINT_LOGS?: string;
     REDIS_USE_CLUSTER?: string;
     REDIS_HOST?: string;
     REDIS_PORT?: string;

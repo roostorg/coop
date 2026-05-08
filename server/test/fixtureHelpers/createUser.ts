@@ -6,9 +6,9 @@ import {
   kyselyUserDeleteById,
   kyselyUserInsert,
 } from '../../graphql/datasources/userKyselyPersistence.js';
-import { UserRole } from '../../models/types/permissioning.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import { logErrorAndThrow } from '../utils.js';
 
 // SAML-only by default keeps the `password_null_when_not_present` CHECK

@@ -16,7 +16,6 @@ import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
-import makeDb from '../models/index.js';
 import type { IActionExecutionsAdapter } from '../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
 import type { IContentApiRequestsAdapter } from '../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
@@ -315,15 +314,6 @@ export interface Dependencies {
     close: () => Promise<void>;
   };
 
-  Sequelize: ReturnType<typeof makeDb>;
-  OrgModel: ReturnType<typeof makeDb>['Org'];
-  RuleModel: ReturnType<typeof makeDb>['Rule'];
-  ActionModel: ReturnType<typeof makeDb>['Action'];
-  PolicyModel: ReturnType<typeof makeDb>['Policy'];
-  ItemTypeModel: ReturnType<typeof makeDb>['ItemType'];
-  LocationBankModel: ReturnType<typeof makeDb>['LocationBank'];
-  LocationBankLocationModel: ReturnType<typeof makeDb>['LocationBankLocation'];
-
   // Data Warehouse abstraction
   DataWarehouse: IDataWarehouse;
   DataWarehouseDialect: IDataWarehouseDialect;
@@ -441,6 +431,25 @@ export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
  * copies of the container as needed for selective rebinding.
  */
 export default async function getBottle() {
+  // Pool / client tuning shared by both Kysely pools. Defaults preserve our
+  // pre-Kysely behavior; env var names are generic.
+  const getPgPoolTuning = () => ({
+    // pg's default is 10s, which churns connections during quiet periods.
+    idleTimeoutMillis: parseInt(
+      process.env.DATABASE_POOL_IDLE_TIMEOUT_MS ?? '300000',
+    ),
+    // pg's default is 0 (wait forever); fail fast if the db is unreachable.
+    connectionTimeoutMillis: parseInt(
+      process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS ?? '15000',
+    ),
+    // Bound long-running queries instead of letting them hold a pool slot.
+    query_timeout: parseInt(process.env.DATABASE_QUERY_TIMEOUT_MS ?? '1000000'),
+    // Kill sessions sitting idle inside an open transaction (holding locks).
+    idle_in_transaction_session_timeout: parseInt(
+      process.env.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS ?? '300000',
+    ),
+  });
+
   // NB: this is a function because safeGetEnvVar can throw, so we only want to
   // try to look up the env vars (and throw if they're missing) _if someone
   // actually tries to fetch a service from bottle that needs these env vars_.
@@ -460,7 +469,16 @@ export default async function getBottle() {
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
     ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+    ...getPgPoolTuning(),
   });
+
+  // Kysely's default is `['error']`; opt-in to also logging every executed
+  // query (SQL, bound params, duration).
+  const kyselyLogLevels: ReadonlyArray<'query' | 'error'> = isEnvTrue(
+    'DATABASE_PRINT_LOGS',
+  )
+    ? ['query', 'error']
+    : ['error'];
 
   const bottle = new Bottle<Dependencies>();
 
@@ -472,8 +490,6 @@ export default async function getBottle() {
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
-  //
-  // - 'Sequelize' + the sequelize models are used to query pg through sequelize.
   bottle.factory(
     'KyselyPg',
     () =>
@@ -482,6 +498,7 @@ export default async function getBottle() {
           pool: new pg.Pool(getPgMasterConnectionInfo()),
           cursor: Cursor,
         }),
+        log: kyselyLogLevels,
       }),
   );
 
@@ -497,6 +514,7 @@ export default async function getBottle() {
           }),
           cursor: Cursor,
         }),
+        log: kyselyLogLevels,
       }),
   );
 
@@ -533,21 +551,6 @@ export default async function getBottle() {
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
         }),
-  );
-
-  bottle.factory('Sequelize', () => makeDb());
-  bottle.factory('OrgModel', ({ Sequelize }) => Sequelize.Org);
-  bottle.factory('RuleModel', ({ Sequelize }) => Sequelize.Rule);
-  bottle.factory('ActionModel', ({ Sequelize }) => Sequelize.Action);
-  bottle.factory('PolicyModel', ({ Sequelize }) => Sequelize.Policy);
-  bottle.factory('ItemTypeModel', ({ Sequelize }) => Sequelize.ItemType);
-  bottle.factory(
-    'LocationBankModel',
-    ({ Sequelize }) => Sequelize.LocationBank,
-  );
-  bottle.factory(
-    'LocationBankLocationModel',
-    ({ Sequelize }) => Sequelize.LocationBankLocation,
   );
 
   // Data Warehouse abstraction layer
@@ -1594,18 +1597,8 @@ export default async function getBottle() {
                 }[CloseMethodName];
               }[keyof Dependencies]
             >,
-            // Seqelize puts a close method on each model, but we only need to
-            // close the root sequelize instance.
-            | 'OrgModel'
-            | 'PolicyModel'
-            | 'RuleModel'
-            | 'ActionModel'
-            | 'ItemTypeModel'
-            | 'LocationBankModel'
-            | 'LocationBankLocationModel'
             // Services that don't need cleanup
-            | 'UserStatisticsService'
-            | 'HMAHashBankService'
+            'UserStatisticsService' | 'HMAHashBankService'
           >;
 
           // This will be a type error if we forgot to close something.
@@ -1621,7 +1614,6 @@ export default async function getBottle() {
             'Scylla',
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
-            'Sequelize',
             'IORedis',
             // Storage abstractions
             'DataWarehouse',

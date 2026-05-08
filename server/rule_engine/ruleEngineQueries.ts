@@ -10,8 +10,8 @@
 import { sql, type Kysely } from 'kysely';
 
 import { inject } from '../iocContainer/index.js';
-import { type LocationArea } from '../models/types/locationArea.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
+import { type LocationArea } from '../services/moderationConfigService/index.js';
 import { cached } from '../utils/caching.js';
 import { jsonParse, jsonStringify } from '../utils/encoding.js';
 import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
@@ -107,7 +107,8 @@ export const makeGetLocationBankLocationsEventuallyConsistent = inject(
               name: r.name ?? undefined,
               geometry: r.geometry as LocationArea['geometry'],
               bounds: r.bounds as LocationArea['bounds'],
-              googlePlaceInfo: r.google_place_info as LocationArea['googlePlaceInfo'],
+              googlePlaceInfo:
+                r.google_place_info as LocationArea['googlePlaceInfo'],
             }) satisfies LocationArea,
         );
       },

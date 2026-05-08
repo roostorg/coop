@@ -1,11 +1,11 @@
 import { type ScalarType, type TaggedScalar } from '@roostorg/types';
 
-import { type TaggedItemData } from '../../../models/rules/item-type-fields.js';
 import { type SerializableError } from '../../../utils/errors.js';
 import {
   type NonEmptyArray,
   type WithUndefined,
 } from '../../../utils/typescript-types.js';
+import { type TaggedItemData } from './itemTypeFields.js';
 import { type ConditionSet, type LeafCondition } from './rules.js';
 
 /**

@@ -3,7 +3,6 @@ import { type UnwrapOpaque } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { isTaggedItemData } from '../../models/rules/item-type-fields.js';
 import {
   parseDerivedFieldSpec,
   type DerivedFieldSpec,
@@ -16,8 +15,10 @@ import {
 } from '../../services/itemProcessingService/index.js';
 import {
   CoopInput,
+  isTaggedItemData,
   type ItemType,
 } from '../../services/moderationConfigService/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   fromCorrelationId,
   toCorrelationId,
@@ -34,7 +35,6 @@ import {
 import { safeGet, safePick, sleep } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   type EvaluateContentInputCamelCase,
   type EvaluateContentOutput,
@@ -113,7 +113,7 @@ Dependencies): RequestHandlerWithBodies<
         }),
       );
     }
-    
+
     const { orgId } = req;
     const activeSpan = Tracer.getActiveSpan();
     if (activeSpan?.isRecording()) {

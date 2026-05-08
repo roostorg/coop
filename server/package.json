@@ -96,7 +96,6 @@
     "pg-cursor": "^2.7.4",
     "pipeline-segment": "^0.0.6",
     "safe-stable-stringify": "^2.4.2",
-    "sequelize": "^6.37.8",
     "size-limited-map": "^2.0.0",
     "stream-json": "^1.8.0",
     "stream-to-async-iterator": "^1.0.0",

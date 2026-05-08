@@ -1,16 +1,16 @@
 import {
   hasPermission,
   UserPermission,
-} from '../../models/types/permissioning.js';
+} from '../../services/userManagementService/index.js';
 import { type RuleExecutionResult } from '../datasources/RuleApi.js';
 import { type GraphQLBacktestParent } from '../datasources/ruleKyselyPersistence.js';
 import { type GQLMutationCreateBacktestArgs } from '../generated.js';
 import { type Context } from '../resolvers.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import {
   makeConnectionResolver,
   type ConnectionArguments,
 } from '../utils/paginationHandler.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
   enum BacktestStatus {

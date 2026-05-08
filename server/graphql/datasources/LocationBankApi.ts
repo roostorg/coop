@@ -4,9 +4,11 @@ import { uid } from 'uid';
 import { v1 as uuidV1 } from 'uuid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { type LocationArea } from '../../models/types/locationArea.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
-import { makeLocationBankNameExistsError } from '../../services/moderationConfigService/index.js';
+import {
+  makeLocationBankNameExistsError,
+  type LocationArea,
+} from '../../services/moderationConfigService/index.js';
 import { type PlacesApiService } from '../../services/placesApiService/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';

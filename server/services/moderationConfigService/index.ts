@@ -27,6 +27,10 @@ export {
   ConditionSet,
   LeafCondition,
   ConditionSignalInfo,
+  PlainRuleWithLatestVersion,
+  RuleLatestVersionRow,
+  RuleWithLatestVersion,
+  computeRuleStatusFromRow,
 } from './types/rules.js';
 
 export {
@@ -51,6 +55,23 @@ export {
 export { Policy, PolicyType } from './types/policies.js';
 
 export { UserPenaltySeverity } from './types/shared.js';
+
+export { LocationArea, LocationGeometry } from './types/locationArea.js';
+
+export {
+  MatchingValueType,
+  MatchingValues,
+  getMatchingValuesType,
+  isLocationArea,
+} from './types/matchingValues.js';
+
+export {
+  TaggedItemData,
+  isTaggedItemData,
+  isTextValue,
+  isTranscribableType,
+  isTranscribableValue,
+} from './types/itemTypeFields.js';
 
 export {
   ModerationConfigService,

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
-import { UserRole } from '../../models/types/permissioning.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';

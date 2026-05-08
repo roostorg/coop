@@ -2,12 +2,12 @@ import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import { isTaggedItemData } from '../../models/rules/item-type-fields.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { CoopError, ErrorType, makeNotFoundError } from '../../utils/errors.js';
 import { __throw, assertUnreachable } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
 import { getIntegrationRegistry } from '../integrationRegistry/index.js';
+import { isTaggedItemData } from '../moderationConfigService/index.js';
 import { instantiateBuiltInSignals } from './helpers/instantiateBuiltInSignals.js';
 import { loadPluginSignals } from './helpers/loadPluginSignals.js';
 import { makeCachedCredentialGetters } from './helpers/makeCachedCredentialsGetters.js';

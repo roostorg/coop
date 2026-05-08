@@ -1,13 +1,16 @@
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
-import { UserRole } from '../../models/types/permissioning.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { CoopError } from '../../utils/errors.js';
-import { kyselyUserDeleteById, kyselyUserInsert } from './userKyselyPersistence.js';
+import {
+  kyselyUserDeleteById,
+  kyselyUserInsert,
+} from './userKyselyPersistence.js';
 
 describe('OrgAPI', () => {
   const testWithFixture = makeTestWithFixture(async () => {
@@ -31,17 +34,17 @@ describe('OrgAPI', () => {
   });
 
   describe('getGraphQLOrgFromId', () => {
-    testWithFixture('returns the org parent for an existing id', async ({
-      deps,
-      org,
-    }) => {
-      const result = await deps.OrgAPIDataSource.getGraphQLOrgFromId(org.id);
-      expect(result).toMatchObject({
-        id: org.id,
-        name: org.name,
-        email: org.email,
-      });
-    });
+    testWithFixture(
+      'returns the org parent for an existing id',
+      async ({ deps, org }) => {
+        const result = await deps.OrgAPIDataSource.getGraphQLOrgFromId(org.id);
+        expect(result).toMatchObject({
+          id: org.id,
+          name: org.name,
+          email: org.email,
+        });
+      },
+    );
 
     testWithFixture(
       'throws when the org does not exist (replaces Sequelize rejectOnEmpty)',
@@ -55,16 +58,13 @@ describe('OrgAPI', () => {
   });
 
   describe('updateOrgInfo', () => {
-    testWithFixture(
-      'throws when the org does not exist',
-      async ({ deps }) => {
-        await expect(
-          deps.OrgAPIDataSource.updateOrgInfo(`missing-${uid()}`, {
-            name: 'whatever',
-          }),
-        ).rejects.toThrow(/Organization not found/);
-      },
-    );
+    testWithFixture('throws when the org does not exist', async ({ deps }) => {
+      await expect(
+        deps.OrgAPIDataSource.updateOrgInfo(`missing-${uid()}`, {
+          name: 'whatever',
+        }),
+      ).rejects.toThrow(/Organization not found/);
+    });
 
     testWithFixture(
       'returns the updated parent when the org exists',

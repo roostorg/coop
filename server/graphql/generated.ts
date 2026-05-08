@@ -8,7 +8,10 @@ import { JsonObject, JsonValue } from 'type-fest';
 
 import type { UserHistoryForGQL } from '../graphql/datasources/InvestigationApi.js';
 import type { GraphQLOrgParent } from '../graphql/datasources/orgKyselyPersistence.js';
-import type { GraphQLBacktestParent } from '../graphql/datasources/ruleKyselyPersistence.js';
+import type {
+  GraphQLBacktestParent,
+  GraphQLRuleParent as Rule,
+} from '../graphql/datasources/ruleKyselyPersistence.js';
 import type { GraphQLUserParent } from '../graphql/datasources/userKyselyPersistence.js';
 import type {
   ContentItemTypeResolversParentType,
@@ -19,7 +22,6 @@ import type {
   UserItemTypeResolversParentType,
 } from '../graphql/modules/itemType.js';
 import type { ReportingInsights } from '../graphql/modules/reporting.js';
-import type { Rule } from '../models/rules/RuleModel.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
 import type { HashBank } from '../services/hmaService/index.js';

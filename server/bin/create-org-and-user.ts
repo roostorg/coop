@@ -19,8 +19,10 @@ import { hideBin } from 'yargs/helpers';
 import { kyselyOrgInsert } from '../graphql/datasources/orgKyselyPersistence.js';
 import { kyselyUserInsert } from '../graphql/datasources/userKyselyPersistence.js';
 import getBottle from '../iocContainer/index.js';
-import { UserRole } from '../models/types/permissioning.js';
-import { hashPassword } from '../services/userManagementService/index.js';
+import {
+  hashPassword,
+  UserRole,
+} from '../services/userManagementService/index.js';
 
 const argv = await yargs(hideBin(process.argv))
   .options({

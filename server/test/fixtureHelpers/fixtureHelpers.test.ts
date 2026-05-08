@@ -1,12 +1,12 @@
 import { uid } from 'uid';
 
 import { kyselyUserFindById } from '../../graphql/datasources/userKyselyPersistence.js';
-import { UserRole } from '../../models/types/permissioning.js';
 import {
   RuleAlarmStatus,
   RuleStatus,
   RuleType,
 } from '../../services/moderationConfigService/index.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import { makeMockedServer } from '../setupMockedServer.js';
 import { makeTestWithFixture } from '../utils.js';
 import createOrg from './createOrg.js';

@@ -6,11 +6,11 @@ import {
 } from '@roostorg/types';
 import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
-import { type PolicyActionPenalties } from '../../policyActionPenalties.js';
-import { type TaggedItemData } from '../../../models/rules/item-type-fields.js';
 import { type CoopError } from '../../../utils/errors.js';
 import { type Language } from '../../../utils/language.js';
 import { type NonEmptyArray } from '../../../utils/typescript-types.js';
+import { type TaggedItemData } from '../../moderationConfigService/index.js';
+import { type PolicyActionPenalties } from '../../policyActionPenalties.js';
 import { type Integration } from '../types/Integration.js';
 import { type RecommendedThresholds } from '../types/RecommendedThresholds.js';
 import {
@@ -70,8 +70,8 @@ export type SignalInput<
   value: T extends 'FULL_ITEM'
     ? TaggedItemData
     : T extends ScalarType
-    ? TaggedScalar<T>
-    : TaggedItemData | TaggedScalar<Exclude<T, 'FULL_ITEM'>>;
+      ? TaggedScalar<T>
+      : TaggedItemData | TaggedScalar<Exclude<T, 'FULL_ITEM'>>;
   matchingValues:
     | NonEmptyArray<MatchingValue>
     | (NeedsMatchingValues extends true ? never : undefined);
