@@ -1,6 +1,6 @@
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
-import { type JsonObject, type ReadonlyDeep } from 'type-fest';
+import { type ReadonlyDeep } from 'type-fest';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../../models/types/permissioning.js';
@@ -247,45 +247,28 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.itemTypeOps.getItemTypesForRule(opts);
   }
 
+  // TODO: support other action types? Need to figure out the relationship
+  // between activating various org settings (e.g., enabling MRT or NCMEC
+  // reporting) and this moderationConfigService.
   async createAction(
     orgId: string,
-    input: {
-      name: string;
-      description: string | null;
-      // TODO: support other types? Need to figure out relationship between
-      // activating various org settings (e.g., to enable MRT or NCMEC reporting)
-      // and this moderationConfigService.
-      type: 'CUSTOM_ACTION';
-      callbackUrl: string;
-      callbackUrlHeaders: JsonObject | null;
-      callbackUrlBody: JsonObject | null;
-      applyUserStrikes?: boolean;
-      itemTypeIds?: readonly string[];
-    },
+    input: Parameters<ActionOperations['createAction']>[1],
   ): Promise<CustomAction> {
     return this.actionOps.createAction(orgId, input);
   }
 
   async updateCustomAction(
     orgId: string,
-    opts: {
-      actionId: string;
-      patch: {
-        name?: string;
-        description?: string | null;
-        callbackUrl?: string;
-        callbackUrlHeaders?: JsonObject | null;
-        callbackUrlBody?: JsonObject | null;
-        applyUserStrikes?: boolean;
-      };
-      itemTypeIds?: readonly string[] | undefined;
-    },
+    opts: Omit<Parameters<ActionOperations['updateCustomAction']>[0], 'orgId'>,
   ): Promise<CustomAction> {
     return this.actionOps.updateCustomAction({ orgId, ...opts });
   }
 
   async deleteCustomAction(opts: { orgId: string; actionId: string }) {
     return this.actionOps.deleteCustomAction(opts);
+  }
+  async upsertBuiltInActions(orgId: string) {
+    return this.actionOps.upsertBuiltInActions(orgId);
   }
 
   async getActions(opts: {

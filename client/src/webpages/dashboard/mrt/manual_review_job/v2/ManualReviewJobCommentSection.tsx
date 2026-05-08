@@ -62,7 +62,7 @@ gql`
 
 type ManualReviewJobCommentData = {
   id: string;
-  author: { id: string; firstName: string; lastName: string };
+  author?: { id: string; firstName: string; lastName: string } | null;
   createdAt: Date | string;
   commentText: string;
 };
@@ -90,7 +90,9 @@ function ManualReviewJobComment(props: {
               isBeingDeleted ? 'text-gray-400' : 'text-gray-900'
             }`}
           >
-            {comment.author.firstName} {comment.author.lastName}
+            {comment.author
+              ? `${comment.author.firstName} ${comment.author.lastName}`
+              : 'Deleted User'}
           </div>
           <div
             className={`text-sm font-normal ${
@@ -108,7 +110,7 @@ function ManualReviewJobComment(props: {
           {comment.commentText}
         </div>
       </div>
-      {currentUserId === comment.author.id && (
+      {currentUserId === comment.author?.id && (
         <Button
           className="self-start w-6 h-6 text-red-600 border-none"
           icon={<DeleteOutlined className="text-xs" />}

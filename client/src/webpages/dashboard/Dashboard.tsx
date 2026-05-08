@@ -570,7 +570,7 @@ export default function Dashboard() {
       title: 'Policies' as const,
       urlPath: 'policies',
       icon: SparklesFilled,
-      requiredPermissions: [GQLUserPermission.ManageOrg],
+      requiredPermissions: [GQLUserPermission.ManagePolicies],
     },
     !isDemoOrg && {
       title: 'Review Console' as const,
@@ -649,7 +649,7 @@ export default function Dashboard() {
             }
           : null,
         {
-          title: 'Employee Safety' as const,
+          title: 'Wellness' as const,
           urlPath: 'org_safety_settings',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },

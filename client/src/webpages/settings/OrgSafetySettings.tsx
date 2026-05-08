@@ -60,11 +60,11 @@ export default function ManualReviewSafetySettings() {
   const [saveSafetySettings, { loading: isSafetySettingsMutationLoading }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
       onCompleted: () => {
-        toast.success('Default safety settings saved!');
+        toast.success('Default wellness settings saved!');
       },
       onError: () => {
         toast.error(
-          "Your organization's safety settings failed to save. Please try again.",
+          "Your organization's wellness settings failed to save. Please try again.",
         );
       },
     });
@@ -90,25 +90,25 @@ export default function ManualReviewSafetySettings() {
   }
 
   if (error || !data?.myOrg?.defaultInterfacePreferences) {
-    throw error ?? new Error('Could not load safety settings');
+    throw error ?? new Error('Could not load wellness settings');
   }
 
   return (
     <>
       <Helmet>
-        <title>Default Organization Safety Settings</title>
+        <title>Default Wellness Settings</title>
       </Helmet>
 
       <div className="w-[700px]">
         <Heading size="2XL" className="mb-2">
-          Standardize Your Organization's Safety Settings
+          Default Wellness Settings
         </Heading>
         <Text size="SM" className="mb-12">
-        Configure your organization's default safety settings. When a new 
-        employee joins your team and needs to use Coop, these settings 
-        will be applied by default to maintain their safety and well-being. 
-        If an employee wants to override these settings, they can do so in 
-        their personal Safety Settings.
+        Configure your organization's default wellness settings. When a new
+        user joins your team and needs to use Coop, these settings
+        will be applied by default to maintain their safety and well-being.
+        If a user wants to override these settings, they can do so in
+        their personal Wellness settings.
         </Text>
         <div className="flex gap-12 mb-8">
           <div className="flex flex-col gap-5 w-64 pt-10">

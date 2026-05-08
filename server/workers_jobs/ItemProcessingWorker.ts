@@ -23,6 +23,7 @@ export default inject(
     'ContentApiLogger',
     'ModerationConfigService',
     'ItemInvestigationService',
+    'Scylla',
     'Meter',
     'itemSubmissionRetryQueueBulkWrite',
   ],
@@ -33,6 +34,7 @@ export default inject(
     contentApiLogger,
     moderationConfigService,
     ItemInvestigationService,
+    scylla,
     Meter,
     itemSubmissionRetryQueueBulkWrite,
   ) => {
@@ -42,6 +44,8 @@ export default inject(
     return {
       type: 'Worker' as const,
       async run(_signal) {
+        // Fail fast if Scylla is unreachable, instead of retry-looping per job.
+        await scylla.connect();
         queue = new Queue(ITEM_SUBMISSION_QUEUE_NAME, { connection: redis });
         const insertWithRetries = tracer.traced(
           {

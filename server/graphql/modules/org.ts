@@ -13,6 +13,7 @@ import {
 import { GraphQLError } from 'graphql';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import { type Context } from '../resolvers.js';
 
 const typeDefs = /* GraphQL */ `
   type Org {
@@ -199,17 +200,40 @@ const Query: GQLQueryResolvers = {
   },
 };
 
-const Org: GQLOrgResolvers = {
-  async actions(org, _, context) {
-    const user = context.getUser();
-    if (!user || user.orgId !== org.id) {
-      throw unauthenticatedError('User required.');
-    }
-    return context.services.ModerationConfigService.getActions({
+// Narrowed to only the context fields this resolver actually uses, so tests
+// can build a minimal mock without casting. `Context` (the full resolver
+// context) is structurally assignable to this, so production usage is unchanged.
+type ResolveOrgActionsContext = {
+  getUser: () => { orgId: string } | null | undefined;
+  services: {
+    ModerationConfigService: Pick<Context['services']['ModerationConfigService'], 'getActions'>;
+    NcmecService: Pick<Context['services']['NcmecService'], 'hasNCMECReportingEnabled'>;
+  };
+};
+
+export async function resolveOrgActions(
+  org: { id: string },
+  _: unknown,
+  context: ResolveOrgActionsContext,
+) {
+  const user = context.getUser();
+  if (!user || user.orgId !== org.id) {
+    throw unauthenticatedError('User required.');
+  }
+  const [actions, hasNcmecEnabled] = await Promise.all([
+    context.services.ModerationConfigService.getActions({
       orgId: org.id,
       readFromReplica: true,
-    });
-  },
+    }),
+    context.services.NcmecService.hasNCMECReportingEnabled(org.id),
+  ]);
+  return hasNcmecEnabled
+    ? actions
+    : actions.filter((it) => it.actionType !== 'ENQUEUE_TO_NCMEC');
+}
+
+const Org: GQLOrgResolvers = {
+  actions: resolveOrgActions,
   async contentTypes(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {

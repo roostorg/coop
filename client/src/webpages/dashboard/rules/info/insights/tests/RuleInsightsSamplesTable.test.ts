@@ -71,5 +71,25 @@ describe('RuleInsightsSamplesTable tests', () => {
         'a:b:c:d:e': 1,
       });
     });
+    it('Null nested value renders as an empty cell', () => {
+      const content = { a: 1, b: null, c: { c1: null, c2: 'x' } };
+      expect(flattenRuleExecutionSampleForCSV(null, content)).toMatchObject({
+        a: 1,
+        b: '',
+        'c:c1': '',
+        'c:c2': 'x',
+      });
+    });
+    it('Null top-level input does not throw', () => {
+      expect(() => flattenRuleExecutionSampleForCSV(null, null)).not.toThrow();
+      expect(flattenRuleExecutionSampleForCSV(null, null)).toMatchObject({});
+    });
+    it('Array values are stringified rather than recursed into', () => {
+      const content = { tags: ['a', 'b'], n: 1 };
+      expect(flattenRuleExecutionSampleForCSV(null, content)).toMatchObject({
+        tags: '["a","b"]',
+        n: 1,
+      });
+    });
   });
 });
