@@ -4,9 +4,6 @@ import stringify from 'safe-stable-stringify';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
-import { type PolicyActionPenalties } from '../policyActionPenalties.js';
-import { type MatchingValues } from '../../models/rules/matchingValues.js';
-import { type LocationArea } from '../../models/types/locationArea.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import type SafeTracer from '../../utils/SafeTracer.js';
@@ -14,6 +11,12 @@ import {
   isNonEmptyArray,
   type NonEmptyArray,
 } from '../../utils/typescript-types.js';
+import { type HashBank } from '../hmaService/index.js';
+import {
+  type LocationArea,
+  type MatchingValues,
+} from '../moderationConfigService/index.js';
+import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import {
   type SignalId,
   type SignalInput,
@@ -24,7 +27,6 @@ import {
   type SignalType,
   type SignalTypesToRunInputTypes,
 } from '../signalsService/index.js';
-import { type HashBank } from '../hmaService/index.js';
 
 const { memoize } = _;
 
@@ -68,8 +70,13 @@ export default inject(
       orgId: string;
       bankId: string;
     }) => Promise<readonly string[] | undefined>,
-    getPolicyActionPenalties: (orgId: string) => Promise<ReadonlyDeep<PolicyActionPenalties[]>>,
-    getImageBank: (input: { orgId: string; bankId: string }) => Promise<HashBank | null>,
+    getPolicyActionPenalties: (
+      orgId: string,
+    ) => Promise<ReadonlyDeep<PolicyActionPenalties[]>>,
+    getImageBank: (input: {
+      orgId: string;
+      bankId: string;
+    }) => Promise<HashBank | null>,
     signalsService: SignalsService,
     tracer: SafeTracer,
   ) =>
@@ -112,12 +119,9 @@ export default inject(
         bankIds: readonly string[],
       ) =>
         Promise.all(
-          bankIds.map(async (bankId) =>
-            getImageBank({ orgId, bankId }),
-          ),
-        ).then(
-          (bankResults) =>
-            bankResults.filter((it): it is HashBank => it !== null),
+          bankIds.map(async (bankId) => getImageBank({ orgId, bankId })),
+        ).then((bankResults) =>
+          bankResults.filter((it): it is HashBank => it !== null),
         );
 
       // For running a signal for now with caching, we use a memoized function
@@ -184,7 +188,8 @@ async function runSignal(
               return undefined;
             }
 
-            const { locationBankIds, textBankIds, imageBankIds } = matchingValues ?? {};
+            const { locationBankIds, textBankIds, imageBankIds } =
+              matchingValues ?? {};
 
             // A condition can have both strings and text banks as matching
             // values simultaneously (and same with locations and location
@@ -194,9 +199,16 @@ async function runSignal(
             const scalarMatchingValues =
               matchingValues?.strings ?? matchingValues?.locations ?? [];
 
-            let matchingValuesFromBanks: readonly (string | ReadonlyDeep<LocationArea> | HashBank)[] = [];
+            let matchingValuesFromBanks: readonly (
+              | string
+              | ReadonlyDeep<LocationArea>
+              | HashBank
+            )[] = [];
             if (textBankIds?.length) {
-              matchingValuesFromBanks = await textBanksStringsLoader(orgId, textBankIds);
+              matchingValuesFromBanks = await textBanksStringsLoader(
+                orgId,
+                textBankIds,
+              );
             } else if (locationBankIds?.length) {
               matchingValuesFromBanks = await Promise.all(
                 locationBankIds.map(async (id) => locationsLoader(id)),
@@ -208,7 +220,10 @@ async function runSignal(
                   .flat(),
               );
             } else if (imageBankIds?.length) {
-              matchingValuesFromBanks = await imageBanksLoader(orgId, imageBankIds);
+              matchingValuesFromBanks = await imageBanksLoader(
+                orgId,
+                imageBankIds,
+              );
             }
 
             const loadedMatchingValues = [

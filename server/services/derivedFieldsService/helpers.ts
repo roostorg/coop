@@ -4,7 +4,6 @@ import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { extractContentValueOrValues } from '../../condition_evaluator/leafCondition.js';
-import { type TaggedItemData } from '../../models/rules/item-type-fields.js';
 import {
   b64UrlDecode,
   b64UrlEncode,
@@ -21,7 +20,10 @@ import { everyAsync } from '../../utils/fp-helpers.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { type ItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
-import { CoopInput } from '../moderationConfigService/index.js';
+import {
+  CoopInput,
+  type TaggedItemData,
+} from '../moderationConfigService/index.js';
 import { type TransientRunSignalWithCache } from '../orgAwareSignalExecutionService/signalExecutionService.js';
 import {
   isSignalErrorResult,

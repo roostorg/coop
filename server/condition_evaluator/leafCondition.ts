@@ -8,10 +8,6 @@ import {
 import { type ReadonlyDeep } from 'type-fest';
 
 import {
-  isTaggedItemData,
-  type TaggedItemData,
-} from '../models/rules/item-type-fields.js';
-import {
   getUserFromRuleInput,
   isFullSubmission,
   type RuleEvaluationContext,
@@ -28,11 +24,13 @@ import {
   ConditionCompletionOutcome,
   ConditionFailureOutcome,
   CoopInput,
+  isTaggedItemData,
   ValueComparator,
   type ConditionInput,
   type ConditionResult,
   type ConditionSignalInfo,
   type LeafCondition,
+  type TaggedItemData,
 } from '../services/moderationConfigService/index.js';
 import {
   isSignalErrorResult,

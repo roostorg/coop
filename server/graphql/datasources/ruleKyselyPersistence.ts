@@ -1,15 +1,30 @@
 import { sql, type Insertable, type Kysely, type Updateable } from 'kysely';
 
-import { computeRuleStatusFromRow } from '../../models/rules/ruleTypes.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type BacktestStatusDb } from '../../services/coreAppTables.js';
 import {
+  computeRuleStatusFromRow,
   RuleAlarmStatus,
   RuleStatus,
   RuleType,
+  type Action,
   type ConditionSet,
+  type PlainRuleWithLatestVersion,
+  type Policy,
 } from '../../services/moderationConfigService/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
+import { type GraphQLUserParent } from './userKyselyPersistence.js';
+
+/**
+ * GraphQL Rule parent: plain row fields plus the three resolver getters our
+ * Rule / ContentRule / UserRule / RuleInsights resolvers actually use. The
+ * codegen mapper for those four GraphQL types points here.
+ */
+export type GraphQLRuleParent = PlainRuleWithLatestVersion & {
+  getCreator(): Promise<GraphQLUserParent>;
+  getActions(): Promise<Action[]>;
+  getPolicies(): Promise<Policy[]>;
+};
 
 export type GraphQLBacktestParent = {
   id: string;

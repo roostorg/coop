@@ -3,9 +3,9 @@ import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import type { Invoker } from '../../models/types/permissioning.js';
-import { type RuleErrorType, type LocationBankErrorType } from './errors.js';
+import type { Invoker } from '../userManagementService/index.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
+import { type LocationBankErrorType, type RuleErrorType } from './errors.js';
 import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
@@ -31,7 +31,7 @@ import {
   type UserItemType,
 } from './types/itemTypes.js';
 import type { PolicyType } from './types/policies.js';
-import { type PlainRuleWithLatestVersion } from '../../models/rules/ruleTypes.js';
+import { type PlainRuleWithLatestVersion } from './types/rules.js';
 
 export type ModerationConfigErrorType =
   | 'AttemptingToDeleteDefaultUserType'
@@ -477,4 +477,3 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     await this.itemTypeOps.close();
   }
 }
-

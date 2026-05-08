@@ -16,7 +16,6 @@ import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
-import makeDb from '../models/index.js';
 import type { IActionExecutionsAdapter } from '../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import type { IActionStatisticsAdapter } from '../plugins/warehouse/queries/IActionStatisticsAdapter.js';
 import type { IContentApiRequestsAdapter } from '../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
@@ -315,15 +314,6 @@ export interface Dependencies {
     close: () => Promise<void>;
   };
 
-  Sequelize: ReturnType<typeof makeDb>;
-  OrgModel: ReturnType<typeof makeDb>['Org'];
-  RuleModel: ReturnType<typeof makeDb>['Rule'];
-  ActionModel: ReturnType<typeof makeDb>['Action'];
-  PolicyModel: ReturnType<typeof makeDb>['Policy'];
-  ItemTypeModel: ReturnType<typeof makeDb>['ItemType'];
-  LocationBankModel: ReturnType<typeof makeDb>['LocationBank'];
-  LocationBankLocationModel: ReturnType<typeof makeDb>['LocationBankLocation'];
-
   // Data Warehouse abstraction
   DataWarehouse: IDataWarehouse;
   DataWarehouseDialect: IDataWarehouseDialect;
@@ -472,8 +462,6 @@ export default async function getBottle() {
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
-  //
-  // - 'Sequelize' + the sequelize models are used to query pg through sequelize.
   bottle.factory(
     'KyselyPg',
     () =>
@@ -533,21 +521,6 @@ export default async function getBottle() {
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
         }),
-  );
-
-  bottle.factory('Sequelize', () => makeDb());
-  bottle.factory('OrgModel', ({ Sequelize }) => Sequelize.Org);
-  bottle.factory('RuleModel', ({ Sequelize }) => Sequelize.Rule);
-  bottle.factory('ActionModel', ({ Sequelize }) => Sequelize.Action);
-  bottle.factory('PolicyModel', ({ Sequelize }) => Sequelize.Policy);
-  bottle.factory('ItemTypeModel', ({ Sequelize }) => Sequelize.ItemType);
-  bottle.factory(
-    'LocationBankModel',
-    ({ Sequelize }) => Sequelize.LocationBank,
-  );
-  bottle.factory(
-    'LocationBankLocationModel',
-    ({ Sequelize }) => Sequelize.LocationBankLocation,
   );
 
   // Data Warehouse abstraction layer
@@ -1594,18 +1567,8 @@ export default async function getBottle() {
                 }[CloseMethodName];
               }[keyof Dependencies]
             >,
-            // Seqelize puts a close method on each model, but we only need to
-            // close the root sequelize instance.
-            | 'OrgModel'
-            | 'PolicyModel'
-            | 'RuleModel'
-            | 'ActionModel'
-            | 'ItemTypeModel'
-            | 'LocationBankModel'
-            | 'LocationBankLocationModel'
             // Services that don't need cleanup
-            | 'UserStatisticsService'
-            | 'HMAHashBankService'
+            'UserStatisticsService' | 'HMAHashBankService'
           >;
 
           // This will be a type error if we forgot to close something.
@@ -1621,7 +1584,6 @@ export default async function getBottle() {
             'Scylla',
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
-            'Sequelize',
             'IORedis',
             // Storage abstractions
             'DataWarehouse',

@@ -1,7 +1,7 @@
 import {
   hasPermission,
   UserPermission,
-} from '../../models/types/permissioning.js';
+} from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   isNonEmptyArray,
@@ -15,8 +15,8 @@ import {
   type GQLQueryResolvers,
   type GQLRoutingRuleResolvers,
 } from '../generated.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type RoutingRule {
@@ -94,12 +94,12 @@ const typeDefs = /* GraphQL */ `
   }
 
   union CreateRoutingRuleResponse =
-      MutateRoutingRuleSuccessResponse
+    | MutateRoutingRuleSuccessResponse
     | RoutingRuleNameExistsError
     | QueueDoesNotExistError
 
   union UpdateRoutingRuleResponse =
-      MutateRoutingRuleSuccessResponse
+    | MutateRoutingRuleSuccessResponse
     | RoutingRuleNameExistsError
     | NotFoundError
     | QueueDoesNotExistError

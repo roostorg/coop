@@ -8,10 +8,6 @@ import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import {
-  type Invoker,
-  type UserPermission,
-} from '../../models/types/permissioning.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
@@ -24,6 +20,10 @@ import {
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
+import {
+  type Invoker,
+  type UserPermission,
+} from '../userManagementService/index.js';
 import {
   type UserScore,
   type UserStatisticsService,
@@ -553,9 +553,8 @@ export class ManualReviewToolService {
             `No item type for org ${input.orgId} with ID ${input.payload.item.itemTypeIdentifier.id}`,
           );
         }
-        const enrichedJobPayload = await this.jobEnrichment.enrichAppealPayload(
-          input,
-        );
+        const enrichedJobPayload =
+          await this.jobEnrichment.enrichAppealPayload(input);
 
         const attemptAppealEnqueue = async (): Promise<
           | { job: ManualReviewAppealJob; targetQueueForNewJob: string }
@@ -688,10 +687,10 @@ export class ManualReviewToolService {
           ? _.uniqBy(
               [
                 ...('itemThreadContentItems' in newJob
-                  ? newJob.itemThreadContentItems ?? []
+                  ? (newJob.itemThreadContentItems ?? [])
                   : []),
                 ...('itemThreadContentItems' in existingJob
-                  ? existingJob.itemThreadContentItems ?? []
+                  ? (existingJob.itemThreadContentItems ?? [])
                   : []),
               ],
               (it) => jsonStringify([it.itemId, it.itemTypeIdentifier.id]),
@@ -704,10 +703,10 @@ export class ManualReviewToolService {
           ? _.uniqBy(
               [
                 ...('reportedItems' in newJob
-                  ? newJob.reportedItems ?? []
+                  ? (newJob.reportedItems ?? [])
                   : []),
                 ...('reportedItems' in existingJob
-                  ? existingJob.reportedItems ?? []
+                  ? (existingJob.reportedItems ?? [])
                   : []),
               ],
               (it) => jsonStringify([it.id, it.typeId]),

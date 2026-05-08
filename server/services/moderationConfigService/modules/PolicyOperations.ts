@@ -3,10 +3,6 @@ import { type Writable } from 'type-fest';
 import { uid } from 'uid';
 
 import {
-  UserPermission,
-  type Invoker,
-} from '../../../models/types/permissioning.js';
-import {
   CoopError,
   ErrorType,
   makeUnauthorizedError,
@@ -17,6 +13,10 @@ import {
   type FixKyselyRowCorrelation,
 } from '../../../utils/kysely.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
+import {
+  UserPermission,
+  type Invoker,
+} from '../../userManagementService/index.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Policy } from '../index.js';
 import type { PolicyType } from '../types/policies.js';

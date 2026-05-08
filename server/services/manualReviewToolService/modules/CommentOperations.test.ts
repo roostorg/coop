@@ -1,10 +1,10 @@
 import { v1 as uuidv1 } from 'uuid';
 
 import getBottle from '../../../iocContainer/index.js';
-import { UserPermission } from '../../../models/types/permissioning.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
+import { UserPermission } from '../../userManagementService/index.js';
 import CommentOperations from './CommentOperations.js';
 
 describe('CommentOperations', () => {

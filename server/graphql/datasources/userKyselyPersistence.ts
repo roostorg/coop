@@ -1,12 +1,12 @@
 import { sql, type Kysely } from 'kysely';
 
+import { type CombinedPg } from '../../services/combinedDbTypes.js';
+import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   getPermissionsForRole,
   type UserPermission,
   type UserRole,
-} from '../../models/types/permissioning.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
-import { type LoginMethod } from '../../services/coreAppTables.js';
+} from '../../services/userManagementService/index.js';
 import {
   validateUserCreateInput,
   validateUserUpdatePatch,

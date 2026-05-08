@@ -1,8 +1,10 @@
 import { ScalarTypes } from '@roostorg/types';
 import Geohash from 'latlon-geohash';
 
-import { isLocationArea } from '../../../models/rules/matchingValues.js';
-import { type LocationArea } from '../../../models/types/locationArea.js';
+import {
+  isLocationArea,
+  type LocationArea,
+} from '../../moderationConfigService/index.js';
 import { SignalPricingStructure as SignalPricingStructureType } from '../types/SignalPricingStructure.js';
 import { SignalType } from '../types/SignalType.js';
 import SignalBase, { type SignalInput } from './SignalBase.js';

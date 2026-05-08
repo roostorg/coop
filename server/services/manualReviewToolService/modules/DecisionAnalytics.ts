@@ -2,8 +2,8 @@
 import { sql, type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { UserPermission } from '../../../models/types/permissioning.js';
 import { MONTH_MS } from '../../../utils/time.js';
+import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import {
   type ManualReviewJob,
