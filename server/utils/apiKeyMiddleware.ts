@@ -43,7 +43,7 @@ export function createApiKeyMiddleware<
     }
 
     if (!orgId) {
-      // Invalid API key is a client-side error, so return a 400.
+      // A missing or invalid API key is an authentication failure, so return 401.
       const requestId = toCorrelationId({
         type: 'api-key-validation',
         id: uuidv1(),
