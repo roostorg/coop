@@ -51,8 +51,10 @@ export function takeLast<
   }
   inner = inner.limit(size);
 
-  // Chaining `orderBy` in a loop widens `outer` to an incompatible union; the
-  // builder is still the same concrete Kysely select at runtime.
+  // The initial cast pins `outer` to the concrete `SelectQueryBuilder` shape
+  // we want to return; chaining `orderBy` in the loop below otherwise widens
+  // it to an incompatible union, and the final cast restores that shape for
+  // callers. The builder is the same concrete Kysely select at runtime.
   let outer = db
     .selectFrom(inner.as(SUBQUERY_ALIAS))
     .selectAll() as SelectQueryBuilder<
