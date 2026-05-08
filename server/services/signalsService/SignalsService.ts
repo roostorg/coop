@@ -294,8 +294,8 @@ export class SignalsService {
       'value' in input.value
         ? input.value.type
         : isTaggedItemData(input.value)
-        ? 'FULL_ITEM'
-        : assertUnreachable(input.value, 'Unknown signal input...');
+          ? 'FULL_ITEM'
+          : assertUnreachable(input.value, 'Unknown signal input...');
 
     if (!signal.eligibleInputs.includes(signalInputType)) {
       throw new CoopError({
@@ -320,7 +320,7 @@ export class SignalsService {
     // and some demand an image reference), so it'll only let us make this call
     // if we cast the input to `never` (which is the intersection of every
     // signal's input type).
-    return signal.run(input as never) as Promise<
+    return signal.run(input) as Promise<
       Awaited<SignalTypesToRunOutputTypes[T]>
     >;
   }

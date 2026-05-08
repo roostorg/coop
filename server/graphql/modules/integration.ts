@@ -3,17 +3,16 @@ import { Integration } from '../../services/signalsService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   makeIntegrationConfigUnsupportedIntegrationError,
+  type TIntegrationConfigWithMetadata,
 } from '../datasources/IntegrationApi.js';
-import type { TIntegrationConfigWithMetadata } from '../datasources/IntegrationApi.js';
 import {
   type GQLIntegrationConfig,
-  type GQLIntegrationMetadata,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   enum Integration {
@@ -41,7 +40,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union IntegrationApiCredential =
-      GoogleContentSafetyApiIntegrationApiCredential
+    | GoogleContentSafetyApiIntegrationApiCredential
     | OpenAiIntegrationApiCredential
     | ZentropiIntegrationApiCredential
     | PluginIntegrationApiCredential
@@ -155,7 +154,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union SetIntegrationConfigResponse =
-      SetIntegrationConfigSuccessResponse
+    | SetIntegrationConfigSuccessResponse
     | IntegrationConfigTooManyCredentialsError
     | IntegrationNoInputCredentialsError
     | IntegrationEmptyInputCredentialsError
@@ -174,7 +173,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union IntegrationConfigQueryResponse =
-      IntegrationConfigSuccessResult
+    | IntegrationConfigSuccessResult
     | IntegrationConfigUnsupportedIntegrationError
 
   type Query {
@@ -197,7 +196,9 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
-const IntegrationApiCredential: ResolverMap<TIntegrationConfigWithMetadata['apiCredential']> = {
+const IntegrationApiCredential: ResolverMap<
+  TIntegrationConfigWithMetadata['apiCredential']
+> = {
   __resolveType(it) {
     const integrationName = (it as { name?: string }).name ?? '';
     switch (integrationName) {
@@ -252,13 +253,13 @@ const Query: GQLQueryResolvers = {
     if (user == null) {
       throw unauthenticatedError('Unauthenticated User');
     }
-    return context.dataSources.integrationAPI.getAvailableIntegrations() as GQLIntegrationMetadata[];
+    return context.dataSources.integrationAPI.getAvailableIntegrations();
   },
 };
 
 const PluginIntegrationApiCredential = {
   credential(it: TIntegrationConfigWithMetadata['apiCredential']) {
-    return it as Record<string, unknown>;
+    return it;
   },
 };
 
@@ -301,7 +302,7 @@ const Mutation: GQLMutationResolvers = {
       const newConfig =
         await context.dataSources.integrationAPI.setConfigByIntegrationId(
           params.input.integrationId,
-          params.input.credential as Record<string, unknown>,
+          params.input.credential,
           user.orgId,
         );
 

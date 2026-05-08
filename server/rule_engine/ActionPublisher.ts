@@ -77,8 +77,8 @@ export function getUserFromActionTarget(it: ActionTargetItem) {
   return it.itemType.kind === 'USER'
     ? { id: it.itemId, typeId: it.itemType.id }
     : isFullSubmission(it)
-    ? it.creator
-    : undefined;
+      ? it.creator
+      : undefined;
 }
 
 /**
@@ -100,8 +100,8 @@ export function getUserFromActionTargetItem(it: ActionTargetItem) {
   return it.itemType.kind === 'USER'
     ? { id: it.itemId, typeId: it.itemType.id }
     : isFullSubmission(it)
-    ? it.creator
-    : undefined;
+      ? it.creator
+      : undefined;
 }
 
 /**
@@ -267,9 +267,7 @@ class ActionPublisher {
                 // Audit-trail context: persist what the moderator supplied
                 // alongside the action itself so reviewers can see why and
                 // with what values it ran (PR 3 for #377).
-                parameterValues: customMrtApiParamDecisionPayload as
-                  | Record<string, unknown>
-                  | undefined,
+                parameterValues: customMrtApiParamDecisionPayload,
                 actorNote,
               },
             ],

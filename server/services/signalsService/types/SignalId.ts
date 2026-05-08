@@ -78,7 +78,7 @@ export function isSignalId(it: unknown): it is SignalId {
     typeof it === 'object' &&
     it !== null &&
     'type' in it &&
-    typeof (it as { type: unknown }).type === 'string' &&
+    typeof it.type === 'string' &&
     (it.type === SignalType.CUSTOM
       ? 'id' in it && isNonEmptyString(it.id)
       : true)

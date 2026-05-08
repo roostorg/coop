@@ -6,15 +6,12 @@ import createPolicy from '../../test/fixtureHelpers/createPolicy.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 
 describe('GET policies', () => {
-  const orgId = uid(),
-    policyId1 = uid(),
-    policyId2 = uid();
+  const orgId = uid();
 
   let request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
     apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
     orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
-    models: Dependencies['Sequelize'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     ApiKeyService: Dependencies['ApiKeyService'],
     KyselyPg: Dependencies['KyselyPg'];
@@ -23,12 +20,7 @@ describe('GET policies', () => {
     ({
       request,
       shutdown,
-      deps: {
-        Sequelize: models,
-        ModerationConfigService,
-        ApiKeyService,
-        KyselyPg,
-      },
+      deps: { ModerationConfigService, ApiKeyService, KyselyPg },
     } = await makeMockedServer());
 
     ({ apiKey, cleanup: orgCleanup } = await createOrg(
@@ -38,9 +30,6 @@ describe('GET policies', () => {
   });
 
   afterAll(async () => {
-    const { Policy } = models;
-    await Policy.destroy({ where: { id: policyId1 } });
-    await Policy.destroy({ where: { id: policyId2 } });
     await orgCleanup();
     await shutdown();
   });

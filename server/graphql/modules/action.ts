@@ -1,3 +1,4 @@
+import { parseStoredParameters } from '../../services/moderationConfigService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import {
@@ -11,9 +12,8 @@ import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
-import { parseStoredParameters } from '../../services/moderationConfigService/index.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   interface ActionBase {
@@ -51,20 +51,30 @@ const typeDefs = /* GraphQL */ `
   webhook payload under the parameter's \`name\`.
   """
   type ActionParameter {
-    """Key under which the value is sent in the webhook payload."""
+    """
+    Key under which the value is sent in the webhook payload.
+    """
     name: String!
     displayName: String!
     description: String
     type: ActionParameterType!
     required: Boolean!
     options: [ActionParameterOption!]
-    """NUMBER only: inclusive minimum."""
+    """
+    NUMBER only: inclusive minimum.
+    """
     min: Float
-    """NUMBER only: inclusive maximum."""
+    """
+    NUMBER only: inclusive maximum.
+    """
     max: Float
-    """STRING only: inclusive maximum length in characters."""
+    """
+    STRING only: inclusive maximum length in characters.
+    """
     maxLength: Int
-    """Pre-filled value shown to the moderator. Shape matches \`type\`."""
+    """
+    Pre-filled value shown to the moderator. Shape matches \`type\`.
+    """
     defaultValue: JSON
   }
 
@@ -142,7 +152,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union Action =
-      EnqueueToMrtAction
+    | EnqueueToMrtAction
     | EnqueueToNcmecAction
     | CustomAction
     | EnqueueAuthorToMrtAction
@@ -183,7 +193,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union MutateActionResponse =
-      MutateActionSuccessResponse
+    | MutateActionSuccessResponse
     | ActionNameExistsError
 
   type MutateActionSuccessResponse {
@@ -272,9 +282,11 @@ function projectParameters(value: unknown): GQLActionParameter[] {
     name: p.name,
     displayName: p.displayName,
     description: p.description ?? null,
-    type: p.type as GQLActionParameter['type'],
+    type: p.type,
     required: p.required,
-    options: p.options ? p.options.map((o) => ({ value: o.value, label: o.label })) : null,
+    options: p.options
+      ? p.options.map((o) => ({ value: o.value, label: o.label }))
+      : null,
     min: p.min ?? null,
     max: p.max ?? null,
     maxLength: p.maxLength ?? null,
@@ -290,7 +302,9 @@ function projectParameters(value: unknown): GQLActionParameter[] {
 // defensively so the GraphQL projection works for all four action types.
 function readRawParameters(parent: unknown): unknown {
   if (typeof parent !== 'object' || parent === null) return null;
-  return (parent as { customMrtApiParams?: unknown }).customMrtApiParams ?? null;
+  return (
+    (parent as { customMrtApiParams?: unknown }).customMrtApiParams ?? null
+  );
 }
 
 const CustomAction: GQLCustomActionResolvers = {
@@ -443,11 +457,10 @@ const Mutation: GQLMutationResolvers = {
         actorEmail: email,
         // GraphQL `JSONObject` arrives as a plain object; the datasource
         // narrows + validates per-action against each spec.
-        actionIdToParameters:
-          (params.input.parameters ?? null) as Record<
-            string,
-            Record<string, unknown>
-          > | null,
+        actionIdToParameters: (params.input.parameters ?? null) as Record<
+          string,
+          Record<string, unknown>
+        > | null,
         actorNote: params.input.note ?? null,
       });
 

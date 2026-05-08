@@ -23,7 +23,7 @@ export const makeGetActionsByIdEventuallyConsistent = inject(
           orgId: actionIds.orgId,
           ids: actionIds.ids,
           readFromReplica: true,
-        }) as Promise<CollapseCases<Action>[]>;
+        });
       },
       directives: { freshUntilAge: 10, maxStale: [0, 2, 2] },
     }),

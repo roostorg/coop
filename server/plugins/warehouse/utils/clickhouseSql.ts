@@ -23,7 +23,7 @@ function formatValue(value: unknown): string {
 
   const type = typeof value;
   if (type === 'number') {
-    if (!Number.isFinite(value as number)) {
+    if (!Number.isFinite(value)) {
       throw new Error('ClickHouse adapter does not support non-finite numbers');
     }
     return String(value);
@@ -89,4 +89,3 @@ function translateFunctions(statement: string): string {
     .replace(/\bDATE_TRUNC\b/gi, 'date_trunc')
     .replace(/\bDATE\(/gi, 'toDate(');
 }
-

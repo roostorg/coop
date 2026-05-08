@@ -5,6 +5,7 @@ import { uid } from 'uid';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ContentItemType } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 
 describe('POST Items', () => {
@@ -16,7 +17,7 @@ describe('POST Items', () => {
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
     apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
     orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
-    models: Dependencies['Sequelize'],
+    userCleanup: Awaited<ReturnType<typeof createUser>>['cleanup'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     ApiKeyService: Dependencies['ApiKeyService'],
     analytics: Dependencies['DataWarehouseAnalytics'],
@@ -27,15 +28,12 @@ describe('POST Items', () => {
       request,
       shutdown,
       deps: {
-        Sequelize: models,
         DataWarehouseAnalytics: analytics,
         ModerationConfigService,
         ApiKeyService,
         KyselyPg,
       },
     } = await makeMockedServer());
-
-    const { User } = models;
 
     ({ apiKey, cleanup: orgCleanup } = await createOrg(
       { KyselyPg, ModerationConfigService, ApiKeyService },
@@ -62,25 +60,18 @@ describe('POST Items', () => {
       schemaFieldRoles: {},
     });
 
-    await User.create({
+    ({ cleanup: userCleanup } = await createUser(KyselyPg, orgId, {
       id: userId,
-      orgId,
-      password: faker.random.alphaNumeric(),
-      firstName: faker.name.firstName(),
-      lastName: faker.name.lastName(),
-      email: faker.internet.email(),
-      loginMethods: ['password'],
-    });
+    }));
   });
 
   afterAll(async () => {
-    const { User } = models;
     await orgCleanup();
     await ModerationConfigService.deleteItemType({
       orgId,
       itemTypeId: contentType.id,
     });
-    await User.destroy({ where: { id: userId } });
+    await userCleanup();
     await shutdown();
   });
 

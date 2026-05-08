@@ -47,22 +47,21 @@ export function takeLast<
 ) {
   let inner = unsortedSelectQuery.clearOrderBy();
   for (const it of sortCriteria) {
-    inner = inner.orderBy(
-      it.column,
-      it.order === 'desc' ? 'asc' : 'desc',
-    );
+    inner = inner.orderBy(it.column, it.order === 'desc' ? 'asc' : 'desc');
   }
   inner = inner.limit(size);
 
   // Chaining `orderBy` in a loop widens `outer` to an incompatible union; the
   // builder is still the same concrete Kysely select at runtime.
-  let outer = db.selectFrom(inner.as(SUBQUERY_ALIAS)).selectAll() as SelectQueryBuilder<
+  let outer = db
+    .selectFrom(inner.as(SUBQUERY_ALIAS))
+    .selectAll() as SelectQueryBuilder<
     DB & { [K in typeof SUBQUERY_ALIAS]: O },
     typeof SUBQUERY_ALIAS,
     O
   >;
   for (const it of sortCriteria) {
-    outer = outer.orderBy(it.column, it.order) as typeof outer;
+    outer = outer.orderBy(it.column, it.order);
   }
   return outer as SelectQueryBuilder<
     DB & { [K in typeof SUBQUERY_ALIAS]: O },
