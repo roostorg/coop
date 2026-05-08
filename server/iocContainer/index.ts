@@ -431,6 +431,25 @@ export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
  * copies of the container as needed for selective rebinding.
  */
 export default async function getBottle() {
+  // Pool / client tuning shared by both Kysely pools. Defaults preserve our
+  // pre-Kysely behavior; env var names are generic.
+  const getPgPoolTuning = () => ({
+    // pg's default is 10s, which churns connections during quiet periods.
+    idleTimeoutMillis: parseInt(
+      process.env.DATABASE_POOL_IDLE_TIMEOUT_MS ?? '300000',
+    ),
+    // pg's default is 0 (wait forever); fail fast if the db is unreachable.
+    connectionTimeoutMillis: parseInt(
+      process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS ?? '15000',
+    ),
+    // Bound long-running queries instead of letting them hold a pool slot.
+    query_timeout: parseInt(process.env.DATABASE_QUERY_TIMEOUT_MS ?? '1000000'),
+    // Kill sessions sitting idle inside an open transaction (holding locks).
+    idle_in_transaction_session_timeout: parseInt(
+      process.env.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS ?? '300000',
+    ),
+  });
+
   // NB: this is a function because safeGetEnvVar can throw, so we only want to
   // try to look up the env vars (and throw if they're missing) _if someone
   // actually tries to fetch a service from bottle that needs these env vars_.
@@ -450,7 +469,16 @@ export default async function getBottle() {
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
     ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+    ...getPgPoolTuning(),
   });
+
+  // Kysely's default is `['error']`; opt-in to also logging every executed
+  // query (SQL, bound params, duration).
+  const kyselyLogLevels: ReadonlyArray<'query' | 'error'> = isEnvTrue(
+    'DATABASE_PRINT_LOGS',
+  )
+    ? ['query', 'error']
+    : ['error'];
 
   const bottle = new Bottle<Dependencies>();
 
@@ -470,6 +498,7 @@ export default async function getBottle() {
           pool: new pg.Pool(getPgMasterConnectionInfo()),
           cursor: Cursor,
         }),
+        log: kyselyLogLevels,
       }),
   );
 
@@ -485,6 +514,7 @@ export default async function getBottle() {
           }),
           cursor: Cursor,
         }),
+        log: kyselyLogLevels,
       }),
   );
 
