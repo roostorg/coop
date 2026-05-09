@@ -1,8 +1,8 @@
-# docs in `main` get built into `/latest`, docs from tags get build into a subdirectory
+# docs in `main` get built into `/latest`, docs from tags get built into a subdirectory
 # matching the tag name (e.g. `/0.1`). Automatically runs when updating the docs, editing
 # this workflow, or pushing a new tag.
 #
-# Does not handle directly publishing to GitHub Pages; just updates the `gh-pages` branch to 
+# Does not handle directly publishing to GitHub Pages; just updates the `gh-pages` branch to
 # let GitHub build and deploy from that branch.
 
 name: Update docs with mdbook
