@@ -39,6 +39,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.repository == 'roostorg/coop' }}
     env:
       MDBOOK_VERSION: 0.5.2
     steps:
