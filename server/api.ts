@@ -14,11 +14,11 @@ import {
   SEMATTRS_EXCEPTION_STACKTRACE,
   SEMATTRS_EXCEPTION_TYPE,
 } from '@opentelemetry/semantic-conventions';
-import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
+import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
@@ -33,13 +33,13 @@ import {
   kyselyUserFindById,
 } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
-import { passwordMatchesHash } from './services/userManagementService/index.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
+import { passwordMatchesHash } from './services/userManagementService/index.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
@@ -187,9 +187,8 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          const samlSettings = await deps.OrgSettingsService.getSamlSettings(
-            orgId,
-          );
+          const samlSettings =
+            await deps.OrgSettingsService.getSamlSettings(orgId);
 
           if (!samlSettings)
             return done(
@@ -230,7 +229,7 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user as any);
+          return done(null, user);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -253,7 +252,7 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          return done(null, user as any);
+          return done(null, user);
         } catch (e) {
           return done(
             makeInternalServerError('Unknown error during login attempt', {
@@ -405,7 +404,7 @@ export default async function makeApiServer(deps: Dependencies) {
       // For all other errors (CoopError, unexpected errors, context errors),
       // sanitize to remove sensitive details and reformat for the client.
       const sanitizedError = sanitizeError(
-        rawError instanceof Error ? rawError : (error as Error),
+        rawError instanceof Error ? rawError : error,
       );
       const { title: sanitizedErrorTitle, ...extensions } = sanitizedError;
 
@@ -430,10 +429,10 @@ export default async function makeApiServer(deps: Dependencies) {
           code: extensions.type.includes(ErrorType.Unauthenticated)
             ? 'UNAUTHENTICATED'
             : extensions.type.includes(ErrorType.Unauthorized)
-            ? 'FORBIDDEN'
-            : extensions.type.includes(ErrorType.InvalidUserInput)
-            ? 'BAD_USER_INPUT'
-            : 'INTERNAL_SERVER_ERROR',
+              ? 'FORBIDDEN'
+              : extensions.type.includes(ErrorType.InvalidUserInput)
+                ? 'BAD_USER_INPUT'
+                : 'INTERNAL_SERVER_ERROR',
         },
         message: sanitizedErrorTitle,
       };
@@ -447,11 +446,12 @@ export default async function makeApiServer(deps: Dependencies) {
     '/graphql',
     express.json(),
     expressMiddleware(apolloServer, {
-      context: async ({ req, res }) => ({
-        ...buildContext({ req, res }),
-        services: makeGqlServices(deps),
-        dataSources: deps.DataSources,
-      } as unknown as Context),
+      context: async ({ req, res }) =>
+        ({
+          ...buildContext({ req, res }),
+          services: makeGqlServices(deps),
+          dataSources: deps.DataSources,
+        }) as unknown as Context,
     }),
   );
 
@@ -465,10 +465,7 @@ export default async function makeApiServer(deps: Dependencies) {
       const middlewares = it.bodySchema
         ? [createBodySchemaValidator(it.bodySchema), ...handlers]
         : handlers;
-      app[it.method](
-        path.join(controller.pathPrefix, it.path),
-        ...middlewares,
-      );
+      app[it.method](path.join(controller.pathPrefix, it.path), ...middlewares);
     });
   });
 

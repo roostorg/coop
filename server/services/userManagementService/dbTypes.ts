@@ -1,12 +1,12 @@
 import type { ColumnType, GeneratedAlways } from 'kysely';
 
-import type { UserRole } from '../../models/types/permissioning.js';
 import { type CoreAppTablesPg } from '../coreAppTables.js';
 import type {
   DecisionCountsInput,
   JobCreationsInput,
 } from '../manualReviewToolService/modules/DecisionAnalytics.js';
 import { type OrgSettingsPg } from '../orgSettingsService/index.js';
+import type { UserRole } from './permissioning.js';
 
 export type MrtChartConfig = {
   title: string;

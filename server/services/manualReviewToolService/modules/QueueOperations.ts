@@ -1,8 +1,7 @@
 /* eslint-disable max-lines */
 
 import { type ItemIdentifier } from '@roostorg/types';
-import { Queue, Worker } from 'bullmq';
-import { type Job } from 'bullmq';
+import { Queue, Worker, type Job } from 'bullmq';
 import { type Cluster } from 'ioredis';
 import type IORedis from 'ioredis';
 import { type Kysely, type Transaction } from 'kysely';
@@ -11,10 +10,6 @@ import { type Opaque, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
-import {
-  UserPermission,
-  type Invoker,
-} from '../../../models/types/permissioning.js';
 import { cached, type Cached } from '../../../utils/caching.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
@@ -41,6 +36,10 @@ import {
   makeSubmissionId,
 } from '../../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import {
+  UserPermission,
+  type Invoker,
+} from '../../userManagementService/index.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import {
   type AppealEnqueueSourceInfo,
@@ -1010,8 +1009,8 @@ export default class QueueOperations {
     // putting the payload kind in a variable to help TS do some type narrowing.
     const jobKind = job.data.payload.kind;
     if (jobKind === 'DEFAULT') {
-      const { allMediaItems: _omitted, ...storedPayloadWithoutNcmec } =
-        job.data.payload as Record<string, unknown> & { allMediaItems?: unknown };
+      const { allMediaItems: _omitted, ...storedPayloadWithoutNcmec } = job.data
+        .payload as Record<string, unknown> & { allMediaItems?: unknown };
       payload = {
         ...storedPayloadWithoutNcmec,
         kind: 'DEFAULT',
@@ -1105,8 +1104,8 @@ export default class QueueOperations {
       'policyIds' in job.data
         ? job.data.policyIds
         : 'policyId' in job.data.payload && job.data.payload.policyId
-        ? [job.data.payload.policyId]
-        : [];
+          ? [job.data.payload.policyId]
+          : [];
 
     const convertedJobData = {
       ...safePick(job.data, [

@@ -3,7 +3,6 @@ import { type PassportContext } from 'graphql-passport';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { type Rule } from '../../models/rules/RuleModel.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   hashPassword,
@@ -21,22 +20,23 @@ import {
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
+import { type GraphQLRuleParent } from './ruleKyselyPersistence.js';
 import {
-  type GraphQLUserParent,
   kyselyUserAddFavoriteRule,
   kyselyUserFindByEmail,
-  kyselyUserFindByIdAndOrg,
   kyselyUserFindById,
+  kyselyUserFindByIdAndOrg,
   kyselyUserFindByIds,
   kyselyUserInsert,
   kyselyUserListFavoriteRuleIds,
   kyselyUserRemoveFavoriteRule,
   kyselyUserUpdate,
+  type GraphQLUserParent,
 } from './userKyselyPersistence.js';
 import {
-  type UserValidationFailure,
   validateUserCreateInput,
   validateUserUpdatePatch,
+  type UserValidationFailure,
 } from './userValidation.js';
 
 /**
@@ -142,7 +142,9 @@ class UserAPI {
       });
     }
 
-    const loginMethodNormalized = String(loginMethod).toLowerCase() as LoginMethod;
+    const loginMethodNormalized = String(
+      loginMethod,
+    ).toLowerCase() as LoginMethod;
     const createInput = {
       email,
       firstName,
@@ -328,7 +330,10 @@ class UserAPI {
     return true;
   }
 
-  async getFavoriteRules(id: string, orgId: string): Promise<Array<Rule>> {
+  async getFavoriteRules(
+    id: string,
+    orgId: string,
+  ): Promise<Array<GraphQLRuleParent>> {
     // Make sure the requested user lives in the invoker's org (the caller
     // always passes the invoker's orgId), then scope rule lookups to that
     // org so cross-org data can't leak even if stale favorites exist.
@@ -372,7 +377,9 @@ class UserAPI {
   }
 }
 
-function userValidationFailureToBadRequestError(failure: UserValidationFailure) {
+function userValidationFailureToBadRequestError(
+  failure: UserValidationFailure,
+) {
   return makeBadRequestError(failure.message, {
     pointer: `/input/${failure.field}`,
     shouldErrorSpan: false,

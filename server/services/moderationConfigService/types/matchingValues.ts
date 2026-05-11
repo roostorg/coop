@@ -1,6 +1,6 @@
 import { type ReadonlyDeep } from 'type-fest';
 
-import { type LocationArea } from '../types/locationArea.js';
+import { type LocationArea } from './locationArea.js';
 
 export enum MatchingValueType {
   STRING = 'STRING',

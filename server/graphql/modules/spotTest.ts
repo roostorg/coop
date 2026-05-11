@@ -80,7 +80,7 @@ const Query: GQLQueryResolvers = {
       passed: result.passed,
       ruleId: rule.id,
       ruleName: rule.name,
-      policies: await rule.getPolicies(),
+      policies: (await rule.getPolicies()).map((policy) => policy.id),
       tags: rule.tags,
     };
   },

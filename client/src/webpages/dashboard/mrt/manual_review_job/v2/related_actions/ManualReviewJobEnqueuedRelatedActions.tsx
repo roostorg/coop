@@ -20,13 +20,17 @@ type Action = {
     displayName: string;
   };
   policyNames: readonly string[];
+  // Marks parameterized entries so we render the Edit affordance only for
+  // those; non-parameterized actions stay visually unchanged.
+  hasParameters?: boolean;
 };
 
 export default function ManualReviewJobEnqueuedRelatedActions(props: {
   actionsData: Action[];
   onRemoveAction: (action: Action) => void;
+  onEditAction?: (action: Action) => void;
 }) {
-  const { actionsData: actions, onRemoveAction } = props;
+  const { actionsData: actions, onRemoveAction, onEditAction } = props;
 
   // Group actions by action Id and associate with list of targets on which that
   // action will be performed
@@ -40,6 +44,7 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
     targetsWithPolicies: actionsById[actionId].map((action) => ({
       target: action.target,
       policyNames: action.policyNames,
+      hasParameters: action.hasParameters ?? false,
     })),
   }));
 
@@ -78,6 +83,15 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
                       ...groupedAction.action,
                       ...targetWithPolicies,
                     })
+                  }
+                  onEditParameters={
+                    targetWithPolicies.hasParameters && onEditAction
+                      ? () =>
+                          onEditAction({
+                            ...groupedAction.action,
+                            ...targetWithPolicies,
+                          })
+                      : undefined
                   }
                 />
               ))}

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
-import { UserRole } from '../../models/types/permissioning.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
@@ -131,7 +131,7 @@ describe('userKyselyPersistence', () => {
     );
 
     testWithFixture(
-      "throws an invariant error when password/loginMethods disagree (CHECK constraint shape)",
+      'throws an invariant error when password/loginMethods disagree (CHECK constraint shape)',
       async ({ deps, org }) => {
         await expect(
           kyselyUserInsert({
@@ -340,7 +340,7 @@ describe('userKyselyPersistence', () => {
     // constraint. This protects against regressions if we ever loosen
     // `validateUserUpdatePatch`.
     testWithFixture(
-      "clearing password on a password-login user violates password_null_when_not_present",
+      'clearing password on a password-login user violates password_null_when_not_present',
       async ({ deps, org }) => {
         const input = {
           ...samlUserInput(org.id),
@@ -364,8 +364,7 @@ describe('userKyselyPersistence', () => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
         try {
-          const beforeRow = await deps.KyselyPg
-            .selectFrom('public.users')
+          const beforeRow = await deps.KyselyPg.selectFrom('public.users')
             .select(['updated_at'])
             .where('id', '=', input.id)
             .executeTakeFirstOrThrow();
@@ -379,8 +378,7 @@ describe('userKyselyPersistence', () => {
           expect(updated!.firstName).toBe('Updated');
           expect(updated!.approvedByAdmin).toBe(true);
 
-          const afterRow = await deps.KyselyPg
-            .selectFrom('public.users')
+          const afterRow = await deps.KyselyPg.selectFrom('public.users')
             .select(['updated_at'])
             .where('id', '=', input.id)
             .executeTakeFirstOrThrow();
@@ -401,9 +399,8 @@ describe('userKyselyPersistence', () => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
         // `users_and_favorite_rules.rule_id` has a FK to `public.rules`, so
-        // we need a real rule row. Reuse the existing Sequelize fixture until
-        // rule fixtures are themselves Kysely-backed.
-        const rule = await createRule(deps.Sequelize, org.id, {
+        // we need a real rule row.
+        const rule = await createRule(deps.KyselyPg, org.id, {
           creatorId: input.id,
         });
         try {

@@ -31,7 +31,7 @@ describe('Content type schemas', () => {
             fc.property(dummyContainerFieldArb, (containerField) => {
               expect(
                 (handlers as (typeof fieldTypeHandlers)[ContainerType]).coerce(
-                  null as never,
+                  null,
                   [],
                   containerField.container as never,
                 ),

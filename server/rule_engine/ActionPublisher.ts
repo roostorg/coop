@@ -56,6 +56,15 @@ export type ActionExecutionData<
   actorId?: string;
   reportedItems?: ItemIdentifier[];
   jobId?: string;
+  /**
+   * Validated moderator-supplied runtime parameter values for this action,
+   * propagated into the audit log alongside the action itself. Persisted as
+   * JSON in `analytics.ACTION_EXECUTIONS.parameters` so reviewers can see
+   * exactly what the action ran with.
+   */
+  parameterValues?: Record<string, unknown>;
+  /** Optional moderator note. Persisted in `analytics.ACTION_EXECUTIONS.actor_note`. */
+  actorNote?: string;
 };
 
 export type ActionResult<T extends ActionTargetItem> = {
@@ -68,8 +77,8 @@ export function getUserFromActionTarget(it: ActionTargetItem) {
   return it.itemType.kind === 'USER'
     ? { id: it.itemId, typeId: it.itemType.id }
     : isFullSubmission(it)
-    ? it.creator
-    : undefined;
+      ? it.creator
+      : undefined;
 }
 
 /**
@@ -91,8 +100,8 @@ export function getUserFromActionTargetItem(it: ActionTargetItem) {
   return it.itemType.kind === 'USER'
     ? { id: it.itemId, typeId: it.itemType.id }
     : isFullSubmission(it)
-    ? it.creator
-    : undefined;
+      ? it.creator
+      : undefined;
 }
 
 /**
@@ -144,10 +153,23 @@ class ActionPublisher {
       actorId?: string;
       actorEmail?: string;
       decisionReason?: string;
+      /**
+       * Optional moderator-authored note explaining why the action(s) ran.
+       * Forwarded to CUSTOM_ACTION webhooks as `actorNote` and persisted by
+       * the audit logger (PR 3).
+       */
+      actorNote?: string;
     },
   ): Promise<ActionResult<U>[]> {
-    const { orgId, correlationId, targetItem, sync, actorId, actorEmail } =
-      executionContext;
+    const {
+      orgId,
+      correlationId,
+      targetItem,
+      sync,
+      actorId,
+      actorEmail,
+      actorNote,
+    } = executionContext;
 
     // Apply user strikes from the actions that were triggered.
     // we do this without awaiting to not block the action publishing
@@ -211,6 +233,7 @@ class ActionPublisher {
                 reportedItems,
                 relatedRules,
                 customMrtApiParamDecisionPayload,
+                actorNote,
               );
             },
           );
@@ -241,6 +264,11 @@ class ActionPublisher {
                 correlationId,
                 actorId,
                 jobId,
+                // Audit-trail context: persist what the moderator supplied
+                // alongside the action itself so reviewers can see why and
+                // with what values it ran (PR 3 for #377).
+                parameterValues: customMrtApiParamDecisionPayload,
+                actorNote,
               },
             ],
             failed: success === false,
@@ -272,6 +300,7 @@ class ActionPublisher {
       string,
       string | boolean | unknown
     >,
+    actorNote?: string,
   ): Promise<boolean> {
     return this.tracer.addActiveSpan(
       { resource: 'actionPublisher', operation: 'publishAction' },
@@ -321,6 +350,10 @@ class ActionPublisher {
                 action: { id: action.id },
                 custom: customBodyWithMrtParams,
                 actorEmail,
+                // Top-level (not nested under `custom`) so the moderator note
+                // can't collide with a user-defined parameter named
+                // `actorNote`. Omitted from the body entirely when absent.
+                ...(actorNote !== undefined ? { actorNote } : {}),
               };
 
               const response = await this.fetchHTTP({
@@ -560,4 +593,4 @@ export default inject(
   ],
   ActionPublisher,
 );
-export { type ActionPublisher };
+export { ActionPublisher };

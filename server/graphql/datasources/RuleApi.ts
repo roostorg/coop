@@ -2,17 +2,18 @@
 
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/types';
-
 import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { type Backtest } from '../../models/rules/BacktestModel.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
+  makeRuleHasRunningBacktestsError,
+  makeRuleIsMissingContentTypeError,
+  makeRuleNameExistsError,
   RuleType,
   type Condition,
   type ConditionInput,
@@ -22,22 +23,26 @@ import {
   type RuleStatus,
 } from '../../services/moderationConfigService/index.js';
 import {
-  makeRuleHasRunningBacktestsError,
-  makeRuleIsMissingContentTypeError,
-  makeRuleNameExistsError,
-} from '../../services/moderationConfigService/index.js';
-import {
   isSignalId,
   signalIsExternal,
   type SignalId,
 } from '../../services/signalsService/index.js';
 import {
-  type DataWarehousePublicSchema,
   warehouseDateToDate,
+  type DataWarehousePublicSchema,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
-import { jsonParse, jsonStringify, tryJsonParse } from '../../utils/encoding.js';
+import {
+  jsonParse,
+  jsonStringify,
+  tryJsonParse,
+} from '../../utils/encoding.js';
 import { makeNotFoundError } from '../../utils/errors.js';
+import { isUniqueViolationError } from '../../utils/kysely.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../utils/kyselyTransactionWithRetry.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
 import {
@@ -56,9 +61,11 @@ import {
   type GQLUpdateContentRuleInput,
   type GQLUpdateUserRuleInput,
 } from '../generated.js';
+import { unauthenticatedError } from '../utils/errors.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 import { type CursorInfo, type Edge } from '../utils/paginationHandler.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
+import { locationAreaInputToLocationArea } from './LocationBankApi.js';
 import {
   kyselyCancelRunningBacktestsForRule,
   kyselyCreateRule,
@@ -66,18 +73,12 @@ import {
   kyselyHasRunningBacktestsForRule,
   kyselyListBacktestsForRule,
   kyselyUpdateRule,
+  type GraphQLBacktestParent,
 } from './ruleKyselyPersistence.js';
 import {
-  type GraphQLUserParent,
   kyselyUserFindByIdAndOrg,
+  type GraphQLUserParent,
 } from './userKyselyPersistence.js';
-import { locationAreaInputToLocationArea } from './LocationBankApi.js';
-import { unauthenticatedError } from '../utils/errors.js';
-import { isUniqueViolationError } from '../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../utils/kyselyTransactionWithRetry.js';
 
 /**
  * Normalize the GraphQL `expirationTime` input scalar into a shape our
@@ -323,7 +324,10 @@ class RuleAPI {
   }
 
   async getGraphQLRuleFromId(id: string, orgId: string) {
-    const plain = await this.moderationConfigService.getRuleByIdAndOrg(id, orgId);
+    const plain = await this.moderationConfigService.getRuleByIdAndOrg(
+      id,
+      orgId,
+    );
     if (plain == null) {
       throw unauthenticatedError('User not authenticated to fetch this rule');
     }
@@ -569,9 +573,13 @@ class RuleAPI {
         : e;
     }
 
-    const plain = await this.moderationConfigService.getRuleByIdAndOrg(id, orgId, {
-      readFromReplica: false,
-    });
+    const plain = await this.moderationConfigService.getRuleByIdAndOrg(
+      id,
+      orgId,
+      {
+        readFromReplica: false,
+      },
+    );
     if (plain == null) {
       throw new Error('Rule was updated but could not be reloaded');
     }
@@ -670,7 +678,7 @@ class RuleAPI {
   async createBacktest(
     _input: GQLCreateBacktestInput,
     _user: GraphQLUserParent,
-  ): Promise<Backtest> {
+  ): Promise<GraphQLBacktestParent> {
     throw new Error(
       'createBacktest is temporarily disabled (TODO BACKTEST_RETROACTION: no UI / env to validate).',
     );
@@ -735,9 +743,7 @@ class RuleAPI {
     // have to use our helper that implements "takeLast" in SQL.
     const finalQuery =
       takeFrom === 'start'
-        ? filteredResultsQuery
-            .orderBy('ts', desiredSort.order)
-            .limit(count)
+        ? filteredResultsQuery.orderBy('ts', desiredSort.order).limit(count)
         : takeLast(this.warehouse, filteredResultsQuery, [desiredSort], count);
 
     const results = await finalQuery.execute();
@@ -751,7 +757,7 @@ class RuleAPI {
         itemTypeId: it.itemTypeId,
         userId: it.userId ?? undefined,
         userTypeId: it.userTypeId ?? undefined,
-        content: (it.content ?? '') as string,
+        content: it.content ?? '',
         result: it.result ? jsonParse(it.result) : null,
         environment: it.environment as RuleStatus,
         passed: it.passed,

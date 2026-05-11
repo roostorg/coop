@@ -1,17 +1,17 @@
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 
+import { getUtcDateOnlyString } from '../../../utils/time.js';
+import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
-  type RuleAlarmStatus,
   RuleStatus,
   RuleType,
   type ConditionSet,
+  type RuleAlarmStatus,
 } from '../index.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
-import { getUtcDateOnlyString } from '../../../utils/time.js';
 import {
-  type PlainRuleWithLatestVersion,
   computeRuleStatusFromRow,
-} from '../../../models/rules/ruleTypes.js';
+  type PlainRuleWithLatestVersion,
+} from '../types/rules.js';
 
 const ruleSelect = [
   'r.id',
@@ -63,7 +63,10 @@ function enabledQuotaWhere(today: string) {
 }
 
 function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
-  const status = computeRuleStatusFromRow(row.expirationTime, row.statusIfUnexpired);
+  const status = computeRuleStatusFromRow(
+    row.expirationTime,
+    row.statusIfUnexpired,
+  );
   const version = row.latestVersionString ?? '';
   return {
     id: row.id,

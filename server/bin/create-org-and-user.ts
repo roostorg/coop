@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 /**
  * Script to create a new organization and admin user
- * 
+ *
  * Usage:
  *   npm run create-org -- \
  *     --name "My Org" \
@@ -12,14 +12,17 @@
  *     --lastName "Doe" \
  *     --password "securePassword123"
  */
-
 import { uid } from 'uid';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
 import { kyselyOrgInsert } from '../graphql/datasources/orgKyselyPersistence.js';
+import { kyselyUserInsert } from '../graphql/datasources/userKyselyPersistence.js';
 import getBottle from '../iocContainer/index.js';
-import { hashPassword } from '../services/userManagementService/index.js';
+import {
+  hashPassword,
+  UserRole,
+} from '../services/userManagementService/index.js';
 
 const argv = await yargs(hideBin(process.argv))
   .options({
@@ -83,13 +86,12 @@ async function createOrgAndUser() {
     // Create signing keys and API key (both reference org via FK)
     await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);
 
-    const { apiKey: rawApiKey } =
-      await container.ApiKeyService.createApiKey(
-        orgId,
-        'Main API Key',
-        'Primary API key for organization',
-        null,
-      );
+    const { apiKey: rawApiKey } = await container.ApiKeyService.createApiKey(
+      orgId,
+      'Main API Key',
+      'Primary API key for organization',
+      null,
+    );
 
     // Initialize org settings
     await Promise.all([
@@ -110,15 +112,16 @@ async function createOrgAndUser() {
 
     // Hash the password and create the admin user
     const hashedPassword = await hashPassword(argv.password);
-    const user = await container.Sequelize.User.create({
+    const user = await kyselyUserInsert({
+      db: container.KyselyPg,
       id: userId,
+      orgId,
       email: argv.email,
       password: hashedPassword,
       firstName: argv.firstName,
       lastName: argv.lastName,
-      role: 'ADMIN',
+      role: UserRole.ADMIN,
       approvedByAdmin: true,
-      orgId,
       loginMethods: ['password'],
     });
 
@@ -141,7 +144,9 @@ async function createOrgAndUser() {
     console.log('\n' + '═'.repeat(60));
     console.log('🔑 API KEY (STORE THIS SECURELY!)');
     console.log('═'.repeat(60));
-    console.log('\nNew API key generated successfully! Please copy and store it securely.\n');
+    console.log(
+      '\nNew API key generated successfully! Please copy and store it securely.\n',
+    );
     console.log(`API Key: ${rawApiKey}\n`);
     console.log('⚠️  This API key will not be shown again. Save it now!');
     console.log('═'.repeat(60) + '\n');
@@ -152,14 +157,14 @@ async function createOrgAndUser() {
   } catch (error: unknown) {
     console.error('\n❌ Error creating organization and user:\n');
     console.error(error);
-    
+
     // Try to close resources even on error
     try {
       await container.closeSharedResourcesForShutdown();
     } catch (shutdownError) {
       console.error('Error during shutdown:', shutdownError);
     }
-    
+
     process.exit(1);
   }
 }
@@ -168,4 +173,3 @@ createOrgAndUser().catch((error) => {
   console.error('Unhandled error:', error);
   process.exit(1);
 });
-

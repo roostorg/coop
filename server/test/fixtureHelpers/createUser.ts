@@ -1,28 +1,50 @@
 import { faker } from '@faker-js/faker';
+import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
-import { type Dependencies } from '../../iocContainer/index.js';
+import {
+  kyselyUserDeleteById,
+  kyselyUserInsert,
+} from '../../graphql/datasources/userKyselyPersistence.js';
+import { type CombinedPg } from '../../services/combinedDbTypes.js';
+import { type LoginMethod } from '../../services/coreAppTables.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import { logErrorAndThrow } from '../utils.js';
 
-export default async function (
-  models: Dependencies['Sequelize'],
+// SAML-only by default keeps the `password_null_when_not_present` CHECK
+// satisfied without a placeholder password.
+const DEFAULT_LOGIN_METHODS: readonly LoginMethod[] = ['saml'];
+
+export default async function createUser(
+  db: Kysely<CombinedPg>,
   orgId: string,
-  extra: { id?: string } = {},
+  extra: {
+    id?: string;
+    role?: UserRole;
+    loginMethods?: readonly LoginMethod[];
+    password?: string | null;
+  } = {},
 ) {
-  const user = await models.User.create({
+  const userId = extra.id ?? uid();
+  const loginMethods = extra.loginMethods ?? DEFAULT_LOGIN_METHODS;
+  const password = extra.password ?? null;
+
+  const user = await kyselyUserInsert({
+    db,
+    id: userId,
     orgId,
-    id: extra.id ?? uid(),
     email: faker.internet.email(),
-    password: '',
+    password,
     firstName: faker.name.firstName(),
     lastName: faker.name.lastName(),
-    loginMethods: ['password'],
+    role: extra.role ?? UserRole.ADMIN,
+    loginMethods,
   }).catch(logErrorAndThrow);
 
   return {
     user,
     async cleanup() {
-      await user.destroy();
+      await kyselyUserDeleteById(db, userId);
     },
   };
 }

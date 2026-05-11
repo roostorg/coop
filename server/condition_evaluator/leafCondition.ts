@@ -8,10 +8,6 @@ import {
 import { type ReadonlyDeep } from 'type-fest';
 
 import {
-  isTaggedItemData,
-  type TaggedItemData,
-} from '../models/rules/item-type-fields.js';
-import {
   getUserFromRuleInput,
   isFullSubmission,
   type RuleEvaluationContext,
@@ -25,14 +21,16 @@ import {
   type ItemSubmission,
 } from '../services/itemProcessingService/index.js';
 import {
-  CoopInput,
   ConditionCompletionOutcome,
   ConditionFailureOutcome,
+  CoopInput,
+  isTaggedItemData,
+  ValueComparator,
   type ConditionInput,
   type ConditionResult,
   type ConditionSignalInfo,
   type LeafCondition,
-  ValueComparator,
+  type TaggedItemData,
 } from '../services/moderationConfigService/index.js';
 import {
   isSignalErrorResult,
@@ -119,13 +117,11 @@ export async function runLeafCondition(
   const { input: conditionInput, signal } = condition;
   const { input: ruleInput } = evaluationContext;
 
-
   // Figure out what data we're going to extract to pass to the signal.
   const selectedValueOrValues = await (conditionInput.type !==
   'CONTENT_DERIVED_FIELD'
     ? getSignalInputValueOrValues(conditionInput, ruleInput)
     : evaluationContext.getDerivedFieldValue(conditionInput.spec));
-
 
   // We got an error computing the value for a derived field.
   if (isCoopError(selectedValueOrValues)) {
@@ -162,7 +158,6 @@ export async function runLeafCondition(
       ? selectedValueOrValues
       : [selectedValueOrValues];
 
-
   // Now, transform the extracted content values by running them through the
   // signal. If the signal is null, we just treat it as the identity function
   // and leave the extracted values as-is. (A null/identity signal often happens
@@ -188,15 +183,15 @@ export async function runLeafCondition(
               ? ruleInput.data['spectrum-context-id']
                 ? String(ruleInput.data['spectrum-context-id'])
                 : ruleInput.data['spectrum_context_id']
-                ? String(ruleInput.data['spectrum_context_id'])
-                : ruleInput.itemType.kind === 'CONTENT'
-                ? getFieldValueForRole(
-                    ruleInput.itemType.schema,
-                    ruleInput.itemType.schemaFieldRoles,
-                    'threadId',
-                    ruleInput.data,
-                  )?.id
-                : undefined
+                  ? String(ruleInput.data['spectrum_context_id'])
+                  : ruleInput.itemType.kind === 'CONTENT'
+                    ? getFieldValueForRole(
+                        ruleInput.itemType.schema,
+                        ruleInput.itemType.schemaFieldRoles,
+                        'threadId',
+                        ruleInput.data,
+                      )?.id
+                    : undefined
               : undefined,
             contentType: isFullSubmission(ruleInput)
               ? ruleInput.itemType.name
@@ -459,7 +454,7 @@ export function extractContentValueOrValues(
             schemaFields.filter(
               (it) => getScalarType(it) === ScalarTypes.IMAGE,
             ),
-          ) as TaggedScalar<ScalarTypes['IMAGE']>[];
+          );
 
         case CoopInput.ANY_GEOHASH:
           return getValuesFromFields(
@@ -467,7 +462,7 @@ export function extractContentValueOrValues(
             schemaFields.filter(
               (it) => getScalarType(it) === ScalarTypes.GEOHASH,
             ),
-          ) as TaggedScalar<ScalarTypes['GEOHASH']>[];
+          );
 
         case CoopInput.ANY_VIDEO:
           return getValuesFromFields(
@@ -475,7 +470,7 @@ export function extractContentValueOrValues(
             schemaFields.filter(
               (it) => getScalarType(it) === ScalarTypes.VIDEO,
             ),
-          ) as TaggedScalar<ScalarTypes['VIDEO']>[];
+          );
 
         case CoopInput.POLICY_ID:
         case CoopInput.SOURCE:

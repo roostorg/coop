@@ -2,6 +2,10 @@ import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
+  parseStoredParameters,
+  validateActionParameterValues,
+} from '../../services/moderationConfigService/index.js';
+import {
   fromCorrelationId,
   toCorrelationId,
 } from '../../utils/correlationIds.js';
@@ -36,8 +40,16 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
     const { orgId } = req;
 
     const { body } = req;
-    const { itemId, itemTypeId, actionId, policyIds, actorId, reportedItems } =
-      body;
+    const {
+      itemId,
+      itemTypeId,
+      actionId,
+      policyIds,
+      actorId,
+      reportedItems,
+      parameters,
+      note,
+    } = body;
     const action = (
       await ModerationConfigService.getActions({
         orgId,
@@ -84,6 +96,20 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
       ? await UserAPIDataSource.getGraphQLUserFromId({ id: actorId, orgId })
       : undefined;
 
+    // Validate moderator-supplied parameter values against the action's
+    // stored spec before publish. Throws BadRequestError (400) which the
+    // standard Express error handler serializes for the client.
+    const spec = parseStoredParameters(
+      action.actionType === 'CUSTOM_ACTION' ? action.customMrtApiParams : null,
+    );
+    let validatedParameters: Record<string, unknown> | undefined;
+    try {
+      const validated = validateActionParameterValues(spec, parameters ?? null);
+      validatedParameters = Object.keys(validated).length > 0 ? validated : undefined;
+    } catch (e) {
+      return next(e);
+    }
+
     await ActionPublisher.publishActions(
       [
         {
@@ -92,12 +118,14 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
           ruleEnvironment: undefined,
           policies,
           reportedItems,
+          customMrtApiParamDecisionPayload: validatedParameters,
         },
       ],
       {
         orgId,
         correlationId: requestId,
         targetItem: { itemId, itemType },
+        actorNote: note,
         ...(user ? { actorId: user.id, actorEmail: user.email } : {}),
       },
     );

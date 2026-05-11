@@ -4,3 +4,11 @@ export {
   type UserManagementService,
 } from './userManagementService.js';
 export { hashPassword, passwordMatchesHash } from './utils.js';
+export {
+  Invoker,
+  UserPermission,
+  UserPermissionsForRole,
+  UserRole,
+  getPermissionsForRole,
+  hasPermission,
+} from './permissioning.js';

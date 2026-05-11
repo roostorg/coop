@@ -1,6 +1,5 @@
 import { makeEnumLike } from '@roostorg/types';
 
-import { type MatchingValues } from '../../../models/rules/matchingValues.js';
 import { type JsonOf } from '../../../utils/encoding.js';
 import {
   type NonEmptyArray,
@@ -12,6 +11,7 @@ import {
   type SignalArgsByType,
   type SignalType,
 } from '../../signalsService/index.js';
+import { type MatchingValues } from './matchingValues.js';
 
 export const RuleStatus = makeEnumLike([
   'BACKGROUND',
@@ -31,6 +31,48 @@ export enum RuleAlarmStatus {
   OK = 'OK',
   INSUFFICIENT_DATA = 'INSUFFICIENT_DATA',
 }
+
+export type RuleLatestVersionRow = {
+  ruleId: string;
+  version: string;
+};
+
+/** Rule row fields shared by the rule engine (no GraphQL resolver methods). */
+export type PlainRuleWithLatestVersion = {
+  id: string;
+  name: string;
+  description: string | null;
+  statusIfUnexpired: Exclude<RuleStatus, typeof RuleStatus.EXPIRED>;
+  status: RuleStatus;
+  tags: string[];
+  maxDailyActions: number | null;
+  dailyActionsRun: number;
+  lastActionDate: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  orgId: string;
+  creatorId: string;
+  expirationTime: Date | null;
+  conditionSet: ConditionSet;
+  alarmStatus: RuleAlarmStatus;
+  alarmStatusSetAt: Date;
+  ruleType: RuleType;
+  parentId: string | null;
+  latestVersion: RuleLatestVersionRow;
+};
+
+export function computeRuleStatusFromRow(
+  expirationTime: Date | null,
+  statusIfUnexpired: Exclude<RuleStatus, typeof RuleStatus.EXPIRED>,
+): RuleStatus {
+  if (expirationTime && expirationTime.valueOf() < Date.now()) {
+    return RuleStatus.EXPIRED;
+  }
+  return statusIfUnexpired;
+}
+
+/** @deprecated Use {@link PlainRuleWithLatestVersion} directly. */
+export type RuleWithLatestVersion = PlainRuleWithLatestVersion;
 
 // TODO: we really shouldn't be storing the signal name in the condition, as
 // that's derived state liable to come out of sync. Instead, we just wanna store
@@ -161,4 +203,3 @@ export type LeafCondition =
       matchingValues?: MatchingValues | null;
       threshold?: string | number | null;
     };
-

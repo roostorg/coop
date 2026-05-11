@@ -4,9 +4,9 @@ import {
   type TaggedScalar,
 } from '@roostorg/types';
 
-import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';
-import { type ItemType } from '../../services/moderationConfigService/index.js';
-import { hasOwn } from '../../utils/misc.js';
+import { hasOwn } from '../../../utils/misc.js';
+import { type NormalizedItemData } from '../../itemProcessingService/index.js';
+import { type ItemType } from './itemTypes.js';
 
 export type TaggedItemData = Readonly<{
   itemType: ItemType;

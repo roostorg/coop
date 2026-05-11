@@ -1,8 +1,8 @@
 import { createRequire } from 'node:module';
 import type { IsEmailOptions } from 'validator/lib/isEmail.js';
 
-import { UserRole } from '../../models/types/permissioning.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 
 // `validator` is CJS with UMD-style types whose `default` doesn't resolve to
 // a callable under `module: NodeNext`; `createRequire` gives us `module.exports`

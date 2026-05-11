@@ -1,14 +1,12 @@
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 
+import { type CombinedPg } from '../../services/combinedDbTypes.js';
+import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   getPermissionsForRole,
   type UserPermission,
   type UserRole,
-} from '../../models/types/permissioning.js';
-import {
-  type CoreAppTablesPg,
-  type LoginMethod,
-} from '../../services/coreAppTables.js';
+} from '../../services/userManagementService/index.js';
 import {
   validateUserCreateInput,
   validateUserUpdatePatch,
@@ -39,7 +37,10 @@ export type GraphQLUserParent = {
   getPermissions(): UserPermission[];
 };
 
-type UsersDb = Kysely<CoreAppTablesPg>;
+// Aligns with `ruleKyselyPersistence.ts`: persistence helpers operate on the
+// full app schema. Lets fixtures and `kyselyCreateRule` callers share a single
+// `Kysely<CombinedPg>` handle without running into Kysely's invariant generic.
+type UsersDb = Kysely<CombinedPg>;
 
 type UserRow = {
   id: string;

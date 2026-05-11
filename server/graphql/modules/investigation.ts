@@ -1,13 +1,12 @@
 /* eslint-disable max-lines */
 import { type DateString } from '@roostorg/types';
-
 import _ from 'lodash';
 
-import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import {
   getFieldValueForRole,
   type ItemSubmission,
 } from '../../services/itemProcessingService/index.js';
+import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
 import {
   asyncIterableToArray,
   asyncIterableToArrayWithTimeout,
@@ -19,13 +18,12 @@ import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
 import { MONTH_MS } from '../../utils/time.js';
 import {
   type GQLQueryResolvers,
-  type GQLResolversTypes,
   type GQLRuleEnvironment,
   type GQLUserHistoryResolvers,
 } from '../generated.js';
 import { formatItemSubmissionForGQL } from '../types.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -366,9 +364,7 @@ const Query: GQLQueryResolvers = {
       {
         item: formatItemSubmissionForGQL(item.latestSubmission),
         // TODO: Fix casting here
-        executions: itemExecutionHistory as ReadonlyArray<
-          GQLResolversTypes['RuleExecutionResult']
-        >,
+        executions: itemExecutionHistory,
       },
       'ItemHistoryResult',
     );

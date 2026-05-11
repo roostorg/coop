@@ -95,10 +95,10 @@ generates:
         EnqueueToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueToMrtAction
         EnqueueToNcmecAction: ../services/moderationConfigService/types/actions.js#EnqueueToNcmecAction
         EnqueueAuthorToMrtAction: ../services/moderationConfigService/types/actions.js#EnqueueAuthorToMrtAction
-        Backtest: ../models/rules/BacktestModel.js#Backtest
-        ContentType: ../models/rules/ItemTypeModel.js#ItemType
+        Backtest: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLBacktestParent
+        ContentType: ../services/moderationConfigService/types/itemTypes.js#ItemType
         DerivedFieldSource: ../services/derivedFieldsService/helpers.js#DerivedFieldSpecSource
-        HashBank: ../models/HashBankModel.js#HashBank
+        HashBank: ../services/hmaService/index.js#HashBank
         Org: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
         # NB: `MatchingBanks` is currently resolved by returning the `Org`
         # parent, and its sub-resolvers only read `org.id`. A bit unusual, as
@@ -106,22 +106,16 @@ generates:
         MatchingBanks: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
         User: ../graphql/datasources/userKyselyPersistence.js#GraphQLUserParent
         LocationBank: ./datasources/LocationBankApi.js#LocationBankWithoutFullPlacesAPIResponse
-        # TODO(Kysely migration): these parents will flip to
-        # `../models/rules/ruleTypes.js#Rule` once the Action/Policy resolvers
-        # and the remaining Sequelize-backed callers of `org.getRules()` /
-        # `user.getFavoriteRules()` are migrated off Sequelize. Until then the
-        # GraphQL Rule parent is the Sequelize instance type, and
-        # `buildGraphqlRuleParent` casts to it at the boundary.
-        Rule: ../models/rules/RuleModel.js#Rule
+        Rule: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLRuleParent
         Condition: ../services/moderationConfigService/index.js#Condition
         ConditionWithResult: ../services/moderationConfigService/index.js#ConditionWithResult
         ConditionSet: ../services/moderationConfigService/index.js#ConditionSet
         ConditionSetWithResult: ../services/moderationConfigService/index.js#ConditionSetWithResult
         LeafCondition: ../services/moderationConfigService/index.js#LeafCondition
         LeafConditionWithResult: ../services/moderationConfigService/index.js#LeafConditionWithResult
-        UserRule: ../models/rules/RuleModel.js#Rule
-        ContentRule: ../models/rules/RuleModel.js#Rule
-        RuleInsights: ../models/rules/RuleModel.js#Rule
+        UserRule: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLRuleParent
+        ContentRule: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLRuleParent
+        RuleInsights: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLRuleParent
         Notification: ../services/notificationsService/notificationsService.js#Notification
         Signal: ../services/signalsService/index.js#Signal
         ManualReviewJobPayload: ../services/manualReviewToolService/index.js#ManualReviewJobPayload
