@@ -1,4 +1,7 @@
-import { safeGetEnvInt } from '../../../iocContainer/utils.js';
+import {
+  safeGetEnvInt,
+  safeGetEnvNonNegativeInt,
+} from '../../../iocContainer/utils.js';
 import { withRetries } from '../../../utils/misc.js';
 
 // Network errors we'll retry on. ClickHouse over HTTP can RST in-flight
@@ -27,7 +30,7 @@ export function withClickhouseInsertRetries<Args extends unknown[]>(
 ): (...args: Args) => Promise<void> {
   return withRetries(
     {
-      maxRetries: safeGetEnvInt('CLICKHOUSE_INSERT_MAX_RETRIES', 2),
+      maxRetries: safeGetEnvNonNegativeInt('CLICKHOUSE_INSERT_MAX_RETRIES', 2),
       initialTimeMsBetweenRetries: safeGetEnvInt(
         'CLICKHOUSE_INSERT_RETRY_INITIAL_MS',
         100,

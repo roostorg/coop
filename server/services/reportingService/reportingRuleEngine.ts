@@ -149,9 +149,10 @@ export default class ReportingRuleEngine {
         })),
       )
       .catch((err) => {
+        this.tracer.logActiveSpanFailedIfAny(err);
         // eslint-disable-next-line no-restricted-syntax
         logErrorJson({
-          message: 'logReportingRuleExecutions failed',
+          message: `logReportingRuleExecutions failed orgId=${org.id} environment=${environment} correlationId=${executionsCorrelationId}`,
           error: err,
         });
       });

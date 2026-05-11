@@ -276,8 +276,12 @@ class RuleEngine {
         sync,
       )
       .catch((err) => {
+        this.tracer.logActiveSpanFailedIfAny(err);
         // eslint-disable-next-line no-restricted-syntax
-        logErrorJson({ message: 'logRuleExecutions failed', error: err });
+        logErrorJson({
+          message: `logRuleExecutions failed orgId=${org.id} environment=${environment} correlationId=${executionsCorrelationId}`,
+          error: err,
+        });
       });
 
     if (!shouldRunActions) {
