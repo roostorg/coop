@@ -22,6 +22,7 @@ import {
   type CorrelationIdType,
 } from '../utils/correlationIds.js';
 import { equalLengthZip } from '../utils/fp-helpers.js';
+import { logErrorJson } from '../utils/logging.js';
 import { safePick } from '../utils/misc.js';
 import type SafeTracer from '../utils/SafeTracer.js';
 import {
@@ -254,24 +255,30 @@ class RuleEngine {
       rules.map((it) => it.id),
     );
 
-    const logRuleExecutionsPromise = this.ruleExecutionLogger.logRuleExecutions(
-      [...rulesToResults.entries()].map(([rule, result]) => ({
-        orgId: org.id,
-        rule: {
-          id: rule.id,
-          name: rule.name,
-          version: rule.latestVersion.version,
-          tags: rule.tags,
-        },
-        ruleInput,
-        environment,
-        result: result.conditionResults,
-        correlationId: executionsCorrelationId,
-        passed: result.passed,
-        policies: policiesByRule[rule.id] ?? [],
-      })),
-      sync,
-    );
+    // Catch at construction; awaited below via Promise.all.
+    const logRuleExecutionsPromise = this.ruleExecutionLogger
+      .logRuleExecutions(
+        [...rulesToResults.entries()].map(([rule, result]) => ({
+          orgId: org.id,
+          rule: {
+            id: rule.id,
+            name: rule.name,
+            version: rule.latestVersion.version,
+            tags: rule.tags,
+          },
+          ruleInput,
+          environment,
+          result: result.conditionResults,
+          correlationId: executionsCorrelationId,
+          passed: result.passed,
+          policies: policiesByRule[rule.id] ?? [],
+        })),
+        sync,
+      )
+      .catch((err) => {
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({ message: 'logRuleExecutions failed', error: err });
+      });
 
     if (!shouldRunActions) {
       await logRuleExecutionsPromise;
