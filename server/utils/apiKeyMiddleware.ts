@@ -3,7 +3,7 @@ import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../iocContainer/index.js';
 import { fromCorrelationId, toCorrelationId } from './correlationIds.js';
-import { CoopError, ErrorType } from './errors.js';
+import { makeUnauthenticatedError } from './errors.js';
 import { type RequestHandlerWithBodies } from './route-helpers.js';
 
 /**
@@ -43,22 +43,17 @@ export function createApiKeyMiddleware<
     }
 
     if (!orgId) {
-      // A missing or invalid API key is an authentication failure, so return 401.
       const requestId = toCorrelationId({
         type: 'api-key-validation',
         id: uuidv1(),
       });
 
       return next(
-        new CoopError({
-          status: 401,
-          type: [ErrorType.Unauthorized],
-          title: 'Invalid API Key',
+        makeUnauthenticatedError('Invalid API Key', {
           detail:
             'Something went wrong finding or validating your API key. ' +
             'Make sure the proper key is provided in the x-api-key header.',
           requestId: fromCorrelationId(requestId),
-          name: 'UnauthorizedError',
           shouldErrorSpan: true,
         }),
       );
