@@ -10,7 +10,7 @@ import type { UserHistoryForGQL } from '../graphql/datasources/InvestigationApi.
 import type { GraphQLOrgParent } from '../graphql/datasources/orgKyselyPersistence.js';
 import type {
   GraphQLBacktestParent,
-  GraphQLRuleParent as Rule,
+  GraphQLRuleParent,
 } from '../graphql/datasources/ruleKyselyPersistence.js';
 import type { GraphQLUserParent } from '../graphql/datasources/userKyselyPersistence.js';
 import type {
@@ -5469,7 +5469,7 @@ export type GQLResolversInterfaceTypes<
     | GQLSubmitNcmecReportDecisionComponent
     | GQLTransformJobAndRecreateInQueueDecisionComponent
     | GQLUserOrRelatedActionDecisionComponent;
-  Rule: Rule | Rule;
+  Rule: GraphQLRuleParent | GraphQLRuleParent;
 };
 
 /** Mapping between all available schema types and the resolvers types */
@@ -5576,7 +5576,7 @@ export type GQLResolversTypes = {
   >;
   ContentItemType: ResolverTypeWrapper<ContentItemTypeResolversParentType>;
   ContentManualReviewJobPayload: ResolverTypeWrapper<ContentManualReviewJobPayload>;
-  ContentRule: ResolverTypeWrapper<Rule>;
+  ContentRule: ResolverTypeWrapper<GraphQLRuleParent>;
   ContentSchemaFieldRoles: ResolverTypeWrapper<GQLContentSchemaFieldRoles>;
   ContentSchemaFieldRolesInput: GQLContentSchemaFieldRolesInput;
   ContentType: ResolverTypeWrapper<ItemType>;
@@ -6108,7 +6108,7 @@ export type GQLResolversTypes = {
   RoutingRule: ResolverTypeWrapper<RoutingRuleWithoutVersion>;
   RoutingRuleNameExistsError: ResolverTypeWrapper<GQLRoutingRuleNameExistsError>;
   RoutingRuleStatus: GQLRoutingRuleStatus;
-  Rule: ResolverTypeWrapper<Rule>;
+  Rule: ResolverTypeWrapper<GraphQLRuleParent>;
   RuleEnvironment: GQLRuleEnvironment;
   RuleExecutionEnqueueSourceInfo: ResolverTypeWrapper<
     Omit<GQLRuleExecutionEnqueueSourceInfo, 'rules'> & {
@@ -6134,7 +6134,7 @@ export type GQLResolversTypes = {
     }
   >;
   RuleHasRunningBacktestsError: ResolverTypeWrapper<GQLRuleHasRunningBacktestsError>;
-  RuleInsights: ResolverTypeWrapper<Rule>;
+  RuleInsights: ResolverTypeWrapper<GraphQLRuleParent>;
   RuleNameExistsError: ResolverTypeWrapper<GQLRuleNameExistsError>;
   RulePassRateData: ResolverTypeWrapper<GQLRulePassRateData>;
   RuleStatus: GQLRuleStatus;
@@ -6310,7 +6310,7 @@ export type GQLResolversTypes = {
   UserPenaltySeverity: GQLUserPenaltySeverity;
   UserPermission: GQLUserPermission;
   UserRole: GQLUserRole;
-  UserRule: ResolverTypeWrapper<Rule>;
+  UserRule: ResolverTypeWrapper<GraphQLRuleParent>;
   UserSchemaFieldRoles: ResolverTypeWrapper<GQLUserSchemaFieldRoles>;
   UserSchemaFieldRolesInput: GQLUserSchemaFieldRolesInput;
   UserStrikeBucket: ResolverTypeWrapper<GQLUserStrikeBucket>;
@@ -6399,7 +6399,7 @@ export type GQLResolversParentTypes = {
   };
   ContentItemType: ContentItemTypeResolversParentType;
   ContentManualReviewJobPayload: ContentManualReviewJobPayload;
-  ContentRule: Rule;
+  ContentRule: GraphQLRuleParent;
   ContentSchemaFieldRoles: GQLContentSchemaFieldRoles;
   ContentSchemaFieldRolesInput: GQLContentSchemaFieldRolesInput;
   ContentType: ItemType;
@@ -6792,7 +6792,7 @@ export type GQLResolversParentTypes = {
   RotateWebhookSigningKeySuccessResponse: GQLRotateWebhookSigningKeySuccessResponse;
   RoutingRule: RoutingRuleWithoutVersion;
   RoutingRuleNameExistsError: GQLRoutingRuleNameExistsError;
-  Rule: Rule;
+  Rule: GraphQLRuleParent;
   RuleExecutionEnqueueSourceInfo: Omit<
     GQLRuleExecutionEnqueueSourceInfo,
     'rules'
@@ -6816,7 +6816,7 @@ export type GQLResolversParentTypes = {
     edges: ReadonlyArray<GQLResolversParentTypes['RuleExecutionResultEdge']>;
   };
   RuleHasRunningBacktestsError: GQLRuleHasRunningBacktestsError;
-  RuleInsights: Rule;
+  RuleInsights: GraphQLRuleParent;
   RuleNameExistsError: GQLRuleNameExistsError;
   RulePassRateData: GQLRulePassRateData;
   RunRetroactionInput: GQLRunRetroactionInput;
@@ -6943,7 +6943,7 @@ export type GQLResolversParentTypes = {
     edges: ReadonlyArray<GQLResolversParentTypes['UserNotificationEdge']>;
   };
   UserOrRelatedActionDecisionComponent: GQLUserOrRelatedActionDecisionComponent;
-  UserRule: Rule;
+  UserRule: GraphQLRuleParent;
   UserSchemaFieldRoles: GQLUserSchemaFieldRoles;
   UserSchemaFieldRolesInput: GQLUserSchemaFieldRolesInput;
   UserStrikeBucket: GQLUserStrikeBucket;
