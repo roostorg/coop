@@ -157,6 +157,39 @@ npm run test:prepush      # Single run
 npm run check:prepush
 ```
 
+## Running CI Locally
+
+All PR checks are defined as `docker compose` services to reproduce any CI job locally.
+
+| CI job                                   | Local command                                   |
+| ---------------------------------------- | ----------------------------------------------- |
+| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
+| `check_api_server` (test)                | `docker compose run --rm test`                  |
+
+Run the full suite (stops at first failure):
+
+```bash
+docker compose run --rm codegen-check \
+  && docker compose run --rm backend npm run lint \
+  && docker compose run --rm backend npm run build \
+  && docker compose run --rm client npm run lint \
+  && docker compose run --rm client npm run build \
+  && docker compose run --rm test
+```
+
+Tear down:
+
+```bash
+docker compose down        # stop containers, keep DB volumes
+docker compose down -v     # also drop DB volumes (fresh DBs next run)
+```
+
+`check_migration_order` runs only in GitHub Actions — it's GitHub-specific and not needed locally. When adding a migration, use `date -u +"%Y.%m.%dT%H.%M.%S"` for the filename prefix and CI will pass.
+
 ## GraphQL Development
 
 Coop uses schema-first GraphQL with bidirectional code generation.

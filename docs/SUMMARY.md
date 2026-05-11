@@ -20,6 +20,7 @@
   - [Local Development](development/local.md)
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)
+  - [Deployment](development/deployment.md)
 
 ---
 
