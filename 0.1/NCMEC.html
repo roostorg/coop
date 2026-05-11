@@ -1,0 +1,654 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>NCMEC Reporting - Coop Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-bafa919a.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-a41fe059.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coop Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="https://github.com/roostorg/coop" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/roostorg/coop/edit/main/docs/./NCMEC.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="ncmec-reporting"><a class="header" href="#ncmec-reporting">NCMEC Reporting</a></h1>
+<p>Coop is integrated with the <a href="https://report.cybertip.org/ispws/documentation">CyberTipline Reporting API</a> from the National Center for Missing and Exploited Children (NCMEC). Coop handles the full lifecycle: detecting known CSAM via hash matching or AI-based rules, routing content to a dedicated NCMEC manual review queue, and submitting CyberTips with the relevant metadata.</p>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>NCMEC reporting requires your organization to be registered with NCMEC as an Electronic Service Provider (ESP). You can register at <a href="https://esp.ncmec.org/registration">esp.ncmec.org/registration</a>.</p>
+</blockquote>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<h3 id="cybertip-reporting"><a class="header" href="#cybertip-reporting">CyberTip Reporting</a></h3>
+<p>Before you can review and report content to NCMEC, you must have the following configured:</p>
+<ol>
+<li><strong>CyberTipline API credentials</strong>: a username and password for the CyberTipline API, obtained from NCMEC.</li>
+</ol>
+<h4 id="two-separate-sets-of-ncmec-credentials"><a class="header" href="#two-separate-sets-of-ncmec-credentials">Two separate sets of NCMEC credentials</a></h4>
+<p>Coop’s NCMEC integration uses two different NCMEC APIs, each requiring its own credentials:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th><a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a></th><th><a href="https://report.cybertip.org/ispws/documentation/index.html">CyberTipline Reporting API</a></th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Purpose</strong></td><td>Pull known CSAM hashes for matching</td><td>Submit CyberTip reports</td></tr>
+<tr><td><strong>URL</strong></td><td><code>report.cybertip.org/ws-hashsharing</code></td><td><code>report.cybertip.org/ispws</code></td></tr>
+<tr><td><strong>How to configure credentials</strong></td><td>In HMA’s curator UI or via <code>TX_NCMEC_CREDENTIALS</code> env var on the HMA service</td><td>In Coop under <strong>Settings → NCMEC</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>Both sets of credentials must be obtained from NCMEC by <a href="https://esp.ncmec.org/registration">registering as an ESP</a>. They may be the same account or different accounts depending on how NCMEC provisions access for your organization.</p>
+<ol start="2">
+<li>
+<p><strong>A User Item Type with a <code>creatorId</code> field</strong>: NCMEC-type jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a <code>creatorId</code> field (a <code>RELATED_ITEM</code> field referencing the User Item Type). Coop then aggregates all media associated with that user into a single NCMEC review job.</p>
+</li>
+<li>
+<p><strong>NCMEC org settings configured</strong>: set via <strong>Settings → NCMEC</strong> (Admin only). See <a href="#ncmec-settings">NCMEC Settings</a> below.</p>
+</li>
+<li>
+<p><strong>A dedicated NCMEC manual review queue named “NCMEC Review</strong>: Coop routes NCMEC jobs to the queue specified in your NCMEC settings. Queue IDs that are registered as production queues with Coop support will submit real CyberTips; all others use the NCMEC test environment.</p>
+</li>
+<li>
+<p><strong>An Additional Info endpoint</strong> (optional, but strongly recommended): a webhook Coop calls before submitting a CyberTip to fetch enriched metadata: email addresses, screen names, IP capture events, and per-media details. Without this, Coop submits the CyberTip with only the user ID and basic information from the Item data.</p>
+</li>
+<li>
+<p><strong>A Preservation endpoint</strong> (optional): a webhook Coop calls after a successful CyberTip submission so your platform can preserve relevant user data per NCMEC requirements. NOTE: Coop does not come with built-in preservation functionalities.</p>
+</li>
+</ol>
+<h3 id="hash-matching-hma"><a class="header" href="#hash-matching-hma">Hash Matching (HMA)</a></h3>
+<p>If you want to automatically detect known CSAM via hash matching, you need a <strong>separate</strong> set of credentials for NCMEC’s Hash Sharing API — distinct from the CyberTipline credentials above. See <a href="/docs/USER_GUIDE.html#hash-banks">Hash Banks in the User Guide</a> for more detailed setup. Both credential sets are obtained from NCMEC when registering as an ESP, but they authenticate against different APIs and are configured in different places: Hash Sharing credentials go into HMA’s own configuration (its curator UI or the <code>TX_NCMEC_CREDENTIALS</code> env var on the HMA service), while CyberTipline credentials are configured in the Coop settings UI.</p>
+<h2 id="ncmec-settings"><a class="header" href="#ncmec-settings">NCMEC Settings</a></h2>
+<p>Configure NCMEC reporting under <strong>Settings � NCMEC</strong> (<code>/dashboard/settings/ncmec</code>).</p>
+<p><img src="./images/coop-ncmec-settings.png" alt="Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies"></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Setting</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Username</strong></td><td>Your NCMEC CyberTipline API username.</td></tr>
+<tr><td><strong>Password</strong></td><td>Your NCMEC CyberTipline API password.</td></tr>
+<tr><td><strong>Company Report Name</strong></td><td>Your organization name as it appears in NCMEC reports. This value is also sent as the ESP service name for the reported user in each CyberTip.</td></tr>
+<tr><td><strong>Legal URL</strong></td><td>URL to your Terms of Service or legal policies (e.g. <code>https://yourcompany.com/terms</code>).</td></tr>
+<tr><td><strong>Contact Email</strong></td><td>Email for the reporting person on the CyberTip. The XML receipt from NCMEC can serve as the ESP notification.</td></tr>
+<tr><td><strong>Terms of Service</strong></td><td>TOS text or URL to an acceptable use policy relevant to the incident being reported. Maximum 3000 characters.</td></tr>
+<tr><td><strong>Contact Person (for law enforcement)</strong></td><td>A contact person law enforcement can reach (other than the reporting contact email): first name, last name, email, phone.</td></tr>
+<tr><td><strong>More Info URL</strong></td><td>URL for additional information about your reporting process (e.g. <code>https://yourcompany.com/ncmec-info</code>). Used as the web page URL when “Default internet detail type” is set to “Web page.”</td></tr>
+<tr><td><strong>Default NCMEC Queue</strong></td><td>When reviewers click “Enqueue to NCMEC,” jobs are sent to this queue. Leave as “Use org default queue” to fall back to the organization’s default queue.</td></tr>
+<tr><td><strong>Default Internet Detail Type</strong></td><td>The incident context (channel/medium) included in every CyberTip: Web page, Email, Newsgroup, Chat/IM, Online gaming, Cell phone, Non-internet, or Peer-to-peer.</td></tr>
+<tr><td><strong>NCMEC Additional Info Endpoint</strong></td><td>Webhook URL Coop calls before submitting a CyberTip to fetch enriched user and media metadata. See <a href="#additional-info-endpoint">Additional Info Endpoint</a> below. Strongly recommended as without it, CyberTips are submitted with minimal user data.</td></tr>
+<tr><td><strong>NCMEC Preservation Endpoint</strong></td><td>Webhook URL Coop calls after a successful CyberTip submission with the report ID. See <a href="#preservation-endpoint">Preservation Endpoint</a> below.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Saving credentials, Company Report Name, and Legal URL enables NCMEC reporting for the organization. The remaining fields are not required to submit a CyberTip, but filling them out makes reports significantly more actionable for NCMEC investigators.</p>
+<h2 id="access-and-roles"><a class="header" href="#access-and-roles">Access and Roles</a></h2>
+<p>NCMEC data is sensitive. Coop restricts access based on user roles:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Role</th><th>Can Access NCMEC Jobs</th><th>Can Submit CyberTips</th><th>Can Configure NCMEC Settings</th></tr>
+</thead>
+<tbody>
+<tr><td>Admin</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Moderator Manager</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+<tr><td>Child Safety Moderator</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+<tr><td>Moderator</td><td>No</td><td>No</td><td>No</td></tr>
+<tr><td>Analyst / Rules Manager</td><td>No</td><td>No</td><td>No</td></tr>
+<tr><td>External Moderator</td><td>No</td><td>No</td><td>No</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="how-content-gets-routed-to-the-ncmec-queue"><a class="header" href="#how-content-gets-routed-to-the-ncmec-queue">How Content Gets Routed to the NCMEC Queue</a></h2>
+<p>There are four ways content can enter the NCMEC review queue:</p>
+<h3 id="1-hash-matching-known-csam-hma"><a class="header" href="#1-hash-matching-known-csam-hma">1. Hash Matching Known CSAM (HMA)</a></h3>
+<p>Coop integrates with Meta’s <a href="https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner">Hasher-Matcher-Actioner (HMA)</a>, which matches uploaded media against NCMEC’s database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.</p>
+<h4 id="how-it-works"><a class="header" href="#how-it-works">How it works</a></h4>
+<p>When media is submitted to your platform, Coop calls HMA to compute a perceptual hash (PDQ for images, MD5 for video) and checks it against the hash banks configured in HMA. If a match is found against an NCMEC-sourced bank, configure a routing rule to assign the content to your NCMEC review queue automatically.</p>
+<p>HMA syncs hashes from NCMEC via NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>, a separate API from the CyberTipline reporting API. The Hash Sharing API gives you access to NCMEC’s database of image and video fingerprints for known CSAM, which HMA pulls on a schedule and indexes locally for fast matching.</p>
+<h4 id="setup"><a class="header" href="#setup">Setup</a></h4>
+<ol>
+<li>Configure NCMEC Hash Sharing API credentials in HMA (via HMA’s curator UI or by setting the <code>TX_NCMEC_CREDENTIALS</code> environment variable on the HMA service).</li>
+<li>In HMA, create a bank sourced from the NCMEC exchange. HMA will begin syncing hashes on its background fetch schedule (every 5 minutes by default).</li>
+<li>In Coop, go to <strong>Settings → Integrations</strong> and add your HMA service URL.</li>
+<li>In Coop’s <strong>Matching Banks</strong>, the NCMEC-sourced bank will be available to reference in rules.</li>
+<li>How you set things up depends on your use case:</li>
+</ol>
+<ul>
+<li>
+<p>If items are submitted by user reports (<code>POST /api/v1/report</code>): create a routing rule with the NCMEC hash match logic and assign it to the NCMEC queue.</p>
+</li>
+<li>
+<p>If items are submitted via the items API <code>(POST /api/v1/items/async/)</code> and you want Coop to proactively flag matches without a user report: you need an automated enforcement rule with the image hash condition and a “Enqueue to NCMEC” action.</p>
+</li>
+</ul>
+<h3 id="2-novel-csam-detection-content-safety-api"><a class="header" href="#2-novel-csam-detection-content-safety-api">2. Novel CSAM Detection (Content Safety API)</a></h3>
+<p>For content that hasn’t been seen before and therefore has no known hash, Coop integrates with Google’s Content Safety API that classifies images for potential CSAM. You can configure a Routing Rule using a Content Safety signal to route high-confidence detections directly to the NCMEC queue, or to a triage queue for human review before escalation.</p>
+<h3 id="3-inbound-report-flagged-as-csam"><a class="header" href="#3-inbound-report-flagged-as-csam">3. Inbound Report Flagged as CSAM</a></h3>
+<p>When your platform sends a user report to Coop’s Report API with <code>reportedForReason.csam: true</code>, Coop automatically routes it to the NCMEC queue instead of the default review queue. These reasons should be configured by your reporting flow and match whatever reporting reasons you have defined.</p>
+<pre><code class="language-json">{
+  "reporter": { "id": "user123", "typeId": "user-type-id" },
+  "reportedAt": "2025-01-01T00:00:00Z",
+  "reportedItem": {
+    "id": "content456",
+    "typeId": "post-type-id",
+    "data": { ... }
+  },
+  "reportedForReason": {
+    "csam": true
+  }
+}
+</code></pre>
+<h3 id="4-manual-escalation-from-the-review-console"><a class="header" href="#4-manual-escalation-from-the-review-console">4. Manual Escalation from the Review Console</a></h3>
+<p>In any review task, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. This immediately moves the job out of the current queue and into the NCMEC queue.</p>
+<h3 id="what-happens-when-content-is-enqueued-to-ncmec"><a class="header" href="#what-happens-when-content-is-enqueued-to-ncmec">What Happens When Content Is Enqueued to NCMEC</a></h3>
+<p>When any of the three triggers above fire, Coop:</p>
+<ol>
+<li>Identifies the <strong>user</strong> associated with the content (via the <code>creatorId</code> field on the content item, or directly if the item is a User type).</li>
+<li>Checks whether that user already has an open NCMEC job. If one exists, the existing job is updated with the new payload (the new job’s content always takes precedence). No duplicate jobs are created.</li>
+<li>Fetches <strong>all media</strong> ever associated with that user across your platform.</li>
+<li>Creates a single consolidated NCMEC review job containing the user and all their media.</li>
+<li>Routes the job to the configured NCMEC queue (or the org default queue if none is configured).</li>
+</ol>
+<p>This user-centric aggregation means that even if a user has uploaded many pieces of CSAM, a single NCMEC review job is created for the reviewer, and a single CyberTip is submitted to NCMEC rather than separate reports per piece of content.</p>
+<h2 id="reviewing-an-ncmec-job"><a class="header" href="#reviewing-an-ncmec-job">Reviewing an NCMEC Job</a></h2>
+<p>The NCMEC job UI is distinct from standard review tasks. It is designed around the user and all of their associated media.</p>
+<p><img src="./images/coop-ncmec-job.png" alt="Coop’s NCMEC Reporting task view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors"></p>
+<h3 id="incident-type"><a class="header" href="#incident-type">Incident Type</a></h3>
+<p>Select the applicable incident type from the NCMEC CyberTipline’s defined categories:</p>
+<ul>
+<li>Child Pornography (possession, manufacture, and distribution)</li>
+<li>Child Sex Trafficking</li>
+<li>Child Sex Tourism</li>
+<li>Child Sexual Molestation</li>
+<li>Misleading Domain Name</li>
+<li>Misleading Words or Digital Images on the Internet</li>
+<li>Online Enticement of Children for Sexual Acts</li>
+<li>Unsolicited Obscene Material Sent to a Child</li>
+</ul>
+<h3 id="industry-classification"><a class="header" href="#industry-classification">Industry Classification</a></h3>
+<p>Apply an <a href="https://technologycoalition.org/wp-content/uploads/Tech_Coalition_Industry_Classification_System.pdf">ESP-designated industry classification</a> to each media item being reported:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Classification</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>A1</strong></td><td>Prepubescent minor, explicit sexual activity</td></tr>
+<tr><td><strong>A2</strong></td><td>Prepubescent minor, non-explicit nudity or sexual posing</td></tr>
+<tr><td><strong>B1</strong></td><td>Pubescent minor, explicit sexual activity</td></tr>
+<tr><td><strong>B2</strong></td><td>Pubescent minor, non-explicit nudity or sexual posing</td></tr>
+</tbody>
+</table>
+</div>
+<p>Keyboard shortcuts are available in the review UI to speed up classification.</p>
+<h3 id="file-annotations-labels"><a class="header" href="#file-annotations-labels">File Annotations (Labels)</a></h3>
+<p>Apply one or more labels to individual media items to provide NCMEC with additional context:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Label</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>animeDrawingVirtualHentai</code></td><td>The file depicts anime, cartoon, virtual, or hentai content.</td></tr>
+<tr><td><code>potentialMeme</code></td><td>The file appears to be shared out of mimicry or other seemingly non-malicious intent.</td></tr>
+<tr><td><code>viral</code></td><td>The file is circulating rapidly from user to user.</td></tr>
+<tr><td><code>possibleSelfProduction</code></td><td>The file is believed to be self-produced.</td></tr>
+<tr><td><code>physicalHarm</code></td><td>The file depicts an intentional act of causing physical injury or trauma.</td></tr>
+<tr><td><code>violenceGore</code></td><td>The file depicts graphic violence or brutality.</td></tr>
+<tr><td><code>bestiality</code></td><td>The file involves an animal.</td></tr>
+<tr><td><code>liveStreaming</code></td><td>The content was streamed live at the time it was uploaded.</td></tr>
+<tr><td><code>infant</code></td><td>The file depicts an infant.</td></tr>
+<tr><td><code>generativeAi</code></td><td>The file is believed to be generated by AI.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="submitting-the-cybertip"><a class="header" href="#submitting-the-cybertip">Submitting the CyberTip</a></h3>
+<p>Once the reviewer has classified all media and selected the incident type, they click <strong>Submit to NCMEC</strong>. Coop then builds and submits the CyberTip automatically. See <a href="#cybertip-submission-flow">CyberTip Submission Flow</a> below.</p>
+<h2 id="cybertip-submission-flow"><a class="header" href="#cybertip-submission-flow">CyberTip Submission Flow</a></h2>
+<p>When a reviewer submits a CyberTip, Coop performs the following steps:</p>
+<ol>
+<li>
+<p><strong>Fetch additional info</strong> — Coop calls your <a href="#additional-info-endpoint">Additional Info endpoint</a> to retrieve enriched metadata: user email, screen name, IP capture events, and per-media details.</p>
+</li>
+<li>
+<p><strong>Build the CyberTip XML</strong> — Coop assembles the full report:</p>
+<ul>
+<li>
+<p><strong>escalateToHighPriority</strong>: this is a boolean that marks the report as high priority (ie. there is abuse happening now) that NCMEC prioritizes when triaging.</p>
+</li>
+<li>
+<p><strong>Incident summary</strong>: the incident type selected by the reviewer, and the timestamp of the most recently created media item as the <code>incidentDateTime</code>.</p>
+</li>
+<li>
+<p><strong>Internet details</strong>: the channel or medium of the incident (e.g. Web page, Chat/IM, Email), set via the “Default Internet Detail Type” in NCMEC org settings.</p>
+</li>
+<li>
+<p><strong>Reporter</strong>: your organization’s name (<code>companyTemplate</code>), legal URL, contact email, optional terms of service language, and optional law enforcement contact person. All sourced from NCMEC org settings.</p>
+</li>
+<li>
+<p><strong>Reported user (<code>personOrUserReported</code>)</strong>: the suspected perpetrator. Coop includes:</p>
+<ul>
+<li><code>espIdentifier</code>: the user’s internal platform ID</li>
+<li><code>espService</code>: your organization’s name (from <code>companyTemplate</code>)</li>
+<li><code>screenName</code>: the user’s username, from your Additional Info endpoint</li>
+<li><code>displayName</code>: the user’s display name, if available</li>
+<li><code>email</code>: known email addresses for the user, from your Additional Info endpoint</li>
+<li><code>ipCaptureEvent</code>: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC’s ability to identify and locate the suspect.</li>
+</ul>
+</li>
+<li>
+<p><strong>Victim</strong>: if a child victim is identifiable (e.g. from a messaging context), Coop includes their <code>espIdentifier</code>, <code>screenName</code>, <code>displayName</code>, and <code>ipCaptureEvent</code>. This helps NCMEC locate and provide assistance to the victim.</p>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Submit the report</strong>: Coop POSTs the report XML to the NCMEC CyberTipline API and receives a <code>reportId</code>.</p>
+</li>
+<li>
+<p><strong>Upload media</strong>: For each media item, Coop downloads the file from its URL and uploads it to NCMEC with full file metadata:</p>
+<ul>
+<li>Industry classification (A1/A2/B1/B2)</li>
+<li>File annotations (labels selected by the reviewer)</li>
+<li>IP capture events associated with the upload</li>
+<li>Whether the content was publicly available on your platform (<code>publiclyAvailable</code>)</li>
+<li>Whether the ESP viewed the file and its EXIF data (<code>fileViewedByEsp: true</code>, <code>exifViewedByEsp: true</code>)</li>
+<li>File hash, if provided by your Additional Info endpoint</li>
+</ul>
+</li>
+<li>
+<p><strong>Upload supplemental files</strong>: Any additional files returned by your Additional Info endpoint (e.g. screenshots, supporting evidence) are uploaded to NCMEC as supplemental reported files.</p>
+</li>
+<li>
+<p><strong>Upload message threads</strong>: If the user was reported in a messaging context, Coop generates a CSV for each conversation thread and uploads it to NCMEC.</p>
+</li>
+<li>
+<p><strong>Finalize the report</strong>: Coop calls the NCMEC <code>/finish</code> endpoint to complete the submission.</p>
+</li>
+<li>
+<p><strong>Store the report</strong>: The completed report (report ID, XML, all media details) is saved in Coop’s database.</p>
+</li>
+<li>
+<p><strong>Send a preservation request</strong>: If your org has a <a href="#preservation-endpoint">Preservation endpoint</a> configured, Coop calls it with the report ID so you can preserve relevant user data.</p>
+</li>
+</ol>
+<h3 id="test-vs-production-submissions"><a class="header" href="#test-vs-production-submissions">Test vs. Production Submissions</a></h3>
+<p>Coop determines whether to submit to the NCMEC test environment or production based on whether the NCMEC queue is registered as a production queue with Coop support. Test submissions go to <code>exttest.cybertip.org</code>; production submissions go to <code>report.cybertip.org</code>.</p>
+<h2 id="webhooks"><a class="header" href="#webhooks">Webhooks</a></h2>
+<h3 id="additional-info-endpoint"><a class="header" href="#additional-info-endpoint">Additional Info Endpoint</a></h3>
+<p>Coop calls this webhook <strong>before</strong> building a CyberTip to retrieve enriched metadata for the reported user and their media. This endpoint is optional but <strong>strongly recommended</strong> since without it, Coop submits the CyberTip with only the user’s ID and whatever data was already sent to Coop via your Item API.</p>
+<p>Coop signs every request with your org’s signing key. Verify the signature before processing.</p>
+<h4 id="request"><a class="header" href="#request">Request</a></h4>
+<pre><code class="language-json">{
+  "users": [
+    { "id": "string", "typeId": "string" }
+  ],
+  "media": [
+    { "id": "string", "typeId": "string" }
+  ]
+}
+</code></pre>
+<h4 id="response"><a class="header" href="#response">Response</a></h4>
+<pre><code class="language-json">{
+  "users": [
+    {
+      "id": "string",
+      "typeId": "string",
+      "screenName": "string",
+      "email": [
+        {
+          "email": "user@example.com",
+          "type": "Home",
+          "verified": true,
+          "verificationDate": "2025-01-01T00:00:00Z"
+        }
+      ],
+      "ipCaptureEvent": [
+        {
+          "ipAddress": "192.0.2.1",
+          "eventName": "Upload",
+          "dateTime": "2025-01-01T00:00:00Z",
+          "possibleProxy": false,
+          "port": 443
+        }
+      ],
+      "data": {}
+    }
+  ],
+  "media": [
+    {
+      "id": "string",
+      "typeId": "string",
+      "missing": false,
+      "publiclyAvailable": true,
+      "fileName": "image.jpg",
+      "additionalInfo": ["string"],
+      "ipCaptureEvent": [
+        {
+          "ipAddress": "192.0.2.1",
+          "eventName": "Upload",
+          "dateTime": "2025-01-01T00:00:00Z",
+          "possibleProxy": false,
+          "port": 443
+        }
+      ],
+      "fileDetails": {
+        "hash": "abee9985862d273160d930d2ac6ddb2cc33c74e73c702bcc8183d235f6f9685a",
+        "hashType": "PDQ"
+      }
+    }
+  ],
+  "additionalFiles": [
+    {
+      "fileUrl": "https://yourplatform.com/evidence/file.pdf",
+      "fileName": "evidence.pdf",
+      "additionalInfo": ["Supporting evidence"]
+    }
+  ],
+  "messages": [
+    { "id": "string", "typeId": "string", "ipAddress": "192.0.2.1" }
+  ],
+  "additionalInfo": "string"
+}
+</code></pre>
+<h4 id="response-fields"><a class="header" href="#response-fields">Response Fields</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>users</code></td><td>Array</td><td>Must include an entry for every user in the request.</td></tr>
+<tr><td><code>users.id</code></td><td>String</td><td>Must match the <code>id</code> from the request.</td></tr>
+<tr><td><code>users.typeId</code></td><td>String</td><td>Must match the <code>typeId</code> from the request.</td></tr>
+<tr><td><code>users.screenName</code></td><td>String</td><td>The user’s screen name or username on your platform.</td></tr>
+<tr><td><code>users.email</code></td><td>Array</td><td>Known email addresses for the user. <code>type</code> may be <code>Business</code>, <code>Home</code>, or <code>Work</code>.</td></tr>
+<tr><td><code>users.ipCaptureEvent</code></td><td>Array</td><td>IP events associated with the user (e.g. logins, registrations). <code>eventName</code> may be <code>Login</code>, <code>Registration</code>, <code>Purchase</code>, <code>Upload</code>, <code>Other</code>, or <code>Unknown</code>.</td></tr>
+<tr><td><code>users.data</code></td><td>Object</td><td>Raw item data for the user.</td></tr>
+<tr><td><code>media</code></td><td>Array</td><td>Must include an entry for every media item in the request if present.</td></tr>
+<tr><td><code>media.id</code></td><td>String</td><td>Must match the <code>id</code> from the request.</td></tr>
+<tr><td><code>media.typeId</code></td><td>String</td><td>Must match the <code>typeId</code> from the request.</td></tr>
+<tr><td><code>media.missing</code></td><td>Boolean</td><td>Set to <code>true</code> if the media is no longer available. If <strong>all</strong> media items are <code>missing: true</code>, no CyberTip is filed.</td></tr>
+<tr><td><code>media.publiclyAvailable</code></td><td>Boolean</td><td>Whether the media was publicly accessible on your platform at the time of reporting.</td></tr>
+<tr><td><code>media.fileName</code></td><td>String</td><td>Original filename of the media.</td></tr>
+<tr><td><code>media.additionalInfo</code></td><td>Array&lt;String&gt;</td><td>Additional context about the media to include in the NCMEC file details.</td></tr>
+<tr><td><code>media.ipCaptureEvent</code></td><td>Array</td><td>IP events associated with this media item (e.g. the upload event).</td></tr>
+<tr><td><code>media.fileDetails</code></td><td>Object</td><td>Hash information for the file: <code>{ hash, hashType }</code>.</td></tr>
+<tr><td><code>additionalFiles</code></td><td>Array</td><td>Extra files to upload to NCMEC as supplemental evidence (e.g. screenshots).</td></tr>
+<tr><td><code>messages</code></td><td>Array</td><td>Message-level IP address data for conversation thread context.</td></tr>
+<tr><td><code>additionalInfo</code></td><td>String</td><td>Top-level freeform additional information to include in the report.</td></tr>
+</tbody>
+</table>
+</div>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>If the response does not include an entry for every user and media item in the request, Coop will throw an error and not submit the CyberTip. Your endpoint must return a response entry for each requested user and media item.
+If all media items have <code>missing: true</code>, Coop will not file the CyberTip. The job will be marked as a permanent error and will not be retried.</p>
+</blockquote>
+<h3 id="preservation-endpoint"><a class="header" href="#preservation-endpoint">Preservation Endpoint</a></h3>
+<p>Platforms that submit CyberTips may have data preservation obligations under laws like <a href="https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title18-section2258A">18 U.S.C. §
+2258A</a> and the <a href="https://www.missingkids.org/blog/2024/first-line-of-defense-guidelines-to-help-online-platforms-detect-sexually-exploited-kids">REPORT Act
+(2024)</a>, which extended content retention
+requirements to one year. Talk to your legal team to understand your organization’s specific obligations.</p>
+<p>Coop calls a preservation endpoint you build and host immediately after a CyberTip is successfully submitted. Your endpoint should trigger whatever internal workflow
+handles data retention — for example, flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the
+media included in the CyberTip, and the NCMEC-assigned report ID so you have everything you need to identify what to retain.
+Coop signs every request with your org’s signing key. Verify the signature before processing.</p>
+<h4 id="request-1"><a class="header" href="#request-1">Request</a></h4>
+<pre><code class="language-json">{
+  "user": { "id": "string", "typeId": "string" },
+  "reportedMedia": [
+    { "id": "string", "typeId": "string" }
+  ],
+  "reportId": "string"
+}
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>user</code></td><td>The user who was reported to NCMEC.</td></tr>
+<tr><td><code>reportedMedia</code></td><td>All media items that were included in the CyberTip.</td></tr>
+<tr><td><code>reportId</code></td><td>The NCMEC-assigned CyberTip report ID.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Coop only checks for a successful HTTP status code. The response body is ignored. This webhook is only called for production (non-test) CyberTip submissions.</p>
+<h2 id="retry-behavior"><a class="header" href="#retry-behavior">Retry Behavior</a></h2>
+<p>If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:</p>
+<ul>
+<li>Have not already been successfully submitted (no matching report in the database)</li>
+<li>Have fewer than 10 prior retry attempts</li>
+<li>Are not marked as a permanent error (e.g. all media missing)</li>
+<li>Were decided within the past 30 days</li>
+</ul>
+<h2 id="viewing-submitted-reports"><a class="header" href="#viewing-submitted-reports">Viewing Submitted Reports</a></h2>
+<p>After a CyberTip is submitted, the report is stored in Coop and accessible from the NCMEC Reports dashboard. The report record includes:</p>
+<ul>
+<li>The NCMEC-assigned report ID</li>
+<li>The reported user</li>
+<li>All media included in the report</li>
+<li>The full CyberTip XML</li>
+<li>Any supplemental files uploaded</li>
+<li>Any conversation thread CSVs uploaded</li>
+<li>Whether the submission was a test or production report</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="APPEALS.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="APPEALS.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
