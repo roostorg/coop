@@ -42,6 +42,8 @@ jobs:
     env:
       MDBOOK_VERSION: 0.5.2
     steps:
+      # inputs.ref is only set for manual backfills; push-to-main and tag-push events
+      # default to the triggering ref automatically
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
