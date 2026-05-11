@@ -57,6 +57,10 @@ jobs:
             DEPLOY_REF="$GITHUB_REF_NAME"
           fi
           if [[ "$GITHUB_REF_TYPE" == "tag" || "$DEPLOY_REF" =~ ^[0-9] ]]; then
+            if [[ "$DEPLOY_REF" =~ [^A-Za-z0-9._-] ]]; then
+               echo "Refusing unsafe deploy ref: $DEPLOY_REF" >&2
+               exit 1
+            fi
             echo "path=$DEPLOY_REF" >> "$GITHUB_OUTPUT"
           else
             echo "path=latest" >> "$GITHUB_OUTPUT"
