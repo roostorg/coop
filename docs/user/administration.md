@@ -26,15 +26,15 @@ Coop uses role-based access controls to ensure the right people can access the r
 
 Coop comes with seven predefined roles:
 
-| User Role | Access Manual Review Tool | View all Queues | Create, Delete and Edit Queues | Create, Delete and Edit Rules | Access NCMEC data | Access Insights |
-| :---- | :---- | :---- | :---- | :---- | :---- | :---- |
-| Admin | Yes | Yes | Yes | Yes | Yes | Yes |
-| Rules Manager | No | No | No | Yes | No | Yes |
-| Moderator Manager | Yes | Yes | Yes | No | Yes | No |
-| Child Safety Moderator | Yes | No | No | No | Yes | No |
-| Moderator | Yes | No | No | No | No | No |
-| Analyst | No | No | No | No | No | Yes |
-| External Moderator | Yes | No | No | No | No | No |
+| User Role              | Access Manual Review Tool | View all Queues | Create, Delete and Edit Queues | Create, Delete and Edit Rules | Access NCMEC data | Access Insights |
+| :--------------------- | :------------------------ | :-------------- | :----------------------------- | :---------------------------- | :---------------- | :-------------- |
+| Admin                  | Yes                       | Yes             | Yes                            | Yes                           | Yes               | Yes             |
+| Rules Manager          | No                        | No              | No                             | Yes                           | No                | Yes             |
+| Moderator Manager      | Yes                       | Yes             | Yes                            | No                            | Yes               | No              |
+| Child Safety Moderator | Yes                       | No              | No                             | No                            | Yes               | No              |
+| Moderator              | Yes                       | No              | No                             | No                            | No                | No              |
+| Analyst                | No                        | No              | No                             | No                            | No                | Yes             |
+| External Moderator     | Yes                       | No              | No                             | No                            | No                | No              |
 
 **Admin**
 Admins manage their entire organization. They have full control over all resources and settings within Coop.
@@ -72,11 +72,11 @@ Coop supports single sign-on via Okta SAML.
 
 1. Create a [custom SAML application](https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm) in Okta with the following settings:
 
-   | Setting | Value |
-   | :------ | :---- |
-   | Single sign-on URL | Your organization's callback URL (e.g. `https://your-coop-instance.com/login/saml/12345/callback`). Find this in Coop under **Settings → SSO**. |
-   | Audience URI (SP Entity ID) | Your Coop instance base URL (e.g. `https://your-coop-instance.com`). |
-   | `email` attribute (in **Attribute Statements**) | `email`. This depends on your identity provider's attribute mappings (e.g. Google SSO may use "Primary Email"). |
+   | Setting                                         | Value                                                                                                                                           |
+   | :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Single sign-on URL                              | Your organization's callback URL (e.g. `https://your-coop-instance.com/login/saml/12345/callback`). Find this in Coop under **Settings → SSO**. |
+   | Audience URI (SP Entity ID)                     | Your Coop instance base URL (e.g. `https://your-coop-instance.com`).                                                                            |
+   | `email` attribute (in **Attribute Statements**) | `email`. This depends on your identity provider's attribute mappings (e.g. Google SSO may use "Primary Email").                                 |
 
 2. In the **Feedback** tab, check **I'm a software vendor. I'd like to integrate my app with Okta**.
 3. In your app's settings, go to the **Sign On** tab. Under **SAML Signing Certificates → SHA-2**, click **Actions → View IdP metadata**.
@@ -114,27 +114,30 @@ const pem = `-----BEGIN PUBLIC KEY-----
 ...your key...
 -----END PUBLIC KEY-----`;
 
-const pemHeader = "-----BEGIN PUBLIC KEY-----";
-const pemFooter = "-----END PUBLIC KEY-----";
-const publicKeyPem = pem.substring(pemHeader.length, pem.length - pemFooter.length);
+const pemHeader = '-----BEGIN PUBLIC KEY-----';
+const pemFooter = '-----END PUBLIC KEY-----';
+const publicKeyPem = pem.substring(
+  pemHeader.length,
+  pem.length - pemFooter.length,
+);
 
-const publicKeyBuffer = Buffer.from(publicKeyPem, "base64");
-const requestBodyBuffer = Buffer.from(req.body, "utf8");
-const signature = Buffer.from(req.headers["coop-signature"], "base64");
+const publicKeyBuffer = Buffer.from(publicKeyPem, 'base64');
+const requestBodyBuffer = Buffer.from(req.body, 'utf8');
+const signature = Buffer.from(req.headers['coop-signature'], 'base64');
 
 const publicKey = await crypto.subtle.importKey(
-  "spki",
+  'spki',
   publicKeyBuffer,
-  { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-256" } },
+  { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } },
   false,
-  ["verify"]
+  ['verify'],
 );
 
 const isValid = await crypto.subtle.verify(
-  "RSASSA-PKCS1-v1_5",
+  'RSASSA-PKCS1-v1_5',
   publicKey,
   signature,
-  requestBodyBuffer
+  requestBodyBuffer,
 );
 ```
 

@@ -1,6 +1,6 @@
 # Automated Routing & Enforcement
 
-Coop supports automatically routing tasks to queues with [Routing Rules](#routing-rules) and automatically performing actions with [Proactive Rules](#proactive-rules). 
+Coop supports automatically routing tasks to queues with [Routing Rules](#routing-rules) and automatically performing actions with [Proactive Rules](#proactive-rules).
 
 ## Rules
 
