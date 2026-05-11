@@ -1,6 +1,11 @@
 # Summary
 
+- [Getting Started](README.md)
+
+---
+
 - [User Guide](user/README.md)
+  - [Basic Concepts](user/concepts.md)
   - [Automated Routing & Enforcement](user/automation.md)
   - [Manual Review & Enforcement](user/manual-review.md)
   - [Investigation](user/investigation.md)
@@ -8,15 +13,18 @@
   - [Appeals](user/appeals.md)
   - [Metrics & Reporting](user/metrics.md)
   - [Administration](user/administration.md)
+
+---
+
 - [Development Guide](development/README.md)
-  - [Getting Started](development/getting-started.md)
-  - [Concepts & Architecture](development/concepts.md)
-  - [Contributing](development/contributing.md)
+  - [Local Development](development/local.md)
+  - [Architecture](development/architecture.md)
+  - [API Authentication](development/api-auth.md)
+
+---
+
 - [Integrations Guide](integrations/README.md)
   - [Google Content Safety API](integrations/google-content-safety.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
   - [NCMEC Reporting](integrations/ncmec.md)
-  - [Zentropi](integrations/zentropi.md)
-  - [Model Cards](integrations/model-cards.md)
-  - [Bring Your Own Integration](integrations/bring-your-own.md)
