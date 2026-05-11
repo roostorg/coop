@@ -55,6 +55,10 @@ jobs:
           # For manual backfill, use the input ref; otherwise derive from the triggering ref
           DEPLOY_REF="${{ inputs.ref }}"
           if [[ -z "$DEPLOY_REF" ]]; then
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" && "$GITHUB_REF_NAME" != "main" ]]; then
+              echo "Dispatching from a non-main branch requires a ref input (e.g. a tag name)" >&2
+              exit 1
+            fi
             DEPLOY_REF="$GITHUB_REF_NAME"
           fi
           if [[ "$GITHUB_REF_TYPE" == "tag" || "$DEPLOY_REF" =~ ^[0-9] ]]; then
