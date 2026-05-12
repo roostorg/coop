@@ -540,10 +540,9 @@ class RuleAPI {
     // use SERIALIZABLE to make the update + backtest cancelation logically
     // linearizable w/r/t concurrently started backtests, but that's overkill.
     try {
-      await this.kysely
-        .transaction()
-        .setIsolationLevel('repeatable read')
-        .execute(async (trx) => {
+      await this.kyselyTransactionWithRetry(
+        { isolationLevel: 'repeatable read' },
+        async (trx) => {
           await kyselyUpdateRule(trx, {
             id,
             orgId,
@@ -566,7 +565,8 @@ class RuleAPI {
           if (cancelRunningBacktests) {
             await kyselyCancelRunningBacktestsForRule(trx, id);
           }
-        });
+        },
+      );
     } catch (e) {
       throw isUniqueViolationError(e)
         ? makeRuleNameExistsError({ shouldErrorSpan: true })
@@ -590,7 +590,7 @@ class RuleAPI {
     const { id, orgId } = opts;
 
     try {
-      await this.kysely.transaction().execute(async (trx) => {
+      await this.kyselyTransactionWithRetry(async (trx) => {
         await kyselyDeleteRule(trx, id, orgId);
       });
     } catch (exception) {

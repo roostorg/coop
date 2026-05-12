@@ -6,6 +6,10 @@ import {
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 
@@ -17,10 +21,14 @@ const userStrikeThresholdSelection = [
 ] as const;
 
 export default class UserStrikeOperations {
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
+
   constructor(
     private readonly pgQuery: Kysely<ModerationConfigServicePg>,
     private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
-  ) {}
+  ) {
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+  }
 
   async getUserStrikeThresholds(opts: {
     orgId: string;
@@ -101,7 +109,7 @@ export default class UserStrikeOperations {
       actions: readonly string[];
     }[];
   }) {
-    await this.pgQuery.transaction().execute(async (trx) => {
+    await this.transactionWithRetry(async (trx) => {
       await trx
         .deleteFrom('public.user_strike_thresholds')
         .where('org_id', '=', opts.orgId)

@@ -24,6 +24,10 @@ import {
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys, safePick } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { WEEK_MS } from '../../../utils/time.js';
@@ -141,6 +145,7 @@ export default class QueueOperations {
   private readonly getBullAppealWorker: Cached<
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -148,6 +153,7 @@ export default class QueueOperations {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     redis: RedisConnection,
   ) {
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
     const getOrCreateBullQueue_ = getOrCreateBullQueue<StoredManualReviewJob>;
@@ -246,7 +252,7 @@ export default class QueueOperations {
     }
 
     try {
-      return await this.pgQuery.transaction().execute(async (transaction) => {
+      return await this.transactionWithRetry(async (transaction) => {
         // In newer versions of kysely, this is greatly simplified with
         // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
         // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
@@ -322,7 +328,7 @@ export default class QueueOperations {
       autoCloseJobs,
     } = input;
 
-    return this.pgQuery.transaction().execute(async (transaction) => {
+    return this.transactionWithRetry(async (transaction) => {
       const [updatedQueue, _, __] = await Promise.all([
         transaction
           .updateTable('manual_review_tool.manual_review_queues')
@@ -379,10 +385,9 @@ export default class QueueOperations {
 
     await queue.obliterate({ force: true });
 
-    const [{ numDeletedRows }, _] = await this.pgQuery
-      .transaction()
-      .execute(async (transaction) => {
-        return Promise.all([
+    const [{ numDeletedRows }, _] = await this.transactionWithRetry(
+      async (transaction) =>
+        Promise.all([
           transaction
             .deleteFrom('manual_review_tool.manual_review_queues')
             .where('id', '=', queueId)
@@ -392,8 +397,8 @@ export default class QueueOperations {
             .deleteFrom('manual_review_tool.users_and_accessible_queues')
             .where('queue_id', '=', queueId)
             .execute(),
-        ]);
-      });
+        ]),
+    );
 
     return numDeletedRows === 1n;
   }
@@ -406,10 +411,9 @@ export default class QueueOperations {
 
     await queue.obliterate({ force: true });
 
-    const [{ numDeletedRows }, _] = await this.pgQuery
-      .transaction()
-      .execute(async (transaction) => {
-        return Promise.all([
+    const [{ numDeletedRows }, _] = await this.transactionWithRetry(
+      async (transaction) =>
+        Promise.all([
           transaction
             .deleteFrom('manual_review_tool.manual_review_queues')
             .where('id', '=', queueId)
@@ -419,8 +423,8 @@ export default class QueueOperations {
             .deleteFrom('manual_review_tool.users_and_accessible_queues')
             .where('queue_id', '=', queueId)
             .execute(),
-        ]);
-      });
+        ]),
+    );
 
     return numDeletedRows === 1n;
   }
