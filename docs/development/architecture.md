@@ -57,6 +57,10 @@ coop/
 └── docs/                      # Documentation
 ```
 
+## Backend Service Registration
+
+Coop's backend uses [BottleJS](https://github.com/young-steveo/bottlejs) for dependency injection, enabling lazy loading, middleware hooks, and decorators. New services are registered in [`server/iocContainer/index.ts`](https://github.com/roostorg/coop/blob/main/server/iocContainer/index.ts) — that's the starting point when adding a new service and making it available to the rest of the application.
+
 # Coop Core Components
 
 ## API
@@ -558,8 +562,7 @@ API keys authenticate programmatic requests to REST endpoints. All API requests 
 - Keys are 32-byte random values, SHA-256 hashed before storage
 - Each key is scoped to a single team (ie. if you have different teams in the same organization whose data should not mix)
 - Last-used timestamp tracked for auditing
-- Keys can be rotated (creates new key, deactivates old)  
-
+- Keys can be rotated (creates new key, deactivates old)
 
 Files:
 

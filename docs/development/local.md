@@ -206,6 +206,17 @@ Generated files:
 
 Schema changes trigger recompilation of both client and server. If you experience regeneration loops, stop watch mode and run manually.
 
+Backend GraphQL definitions are annotated with `/* GraphQL */` at the start of each block and are mostly in `/server/graphql/`. Frontend GraphQL is defined alongside the components that use it, so a file may use queries not defined within it.
+
+## Management Scripts
+
+Two utility scripts in `server/bin/` help with common operations:
+
+- **`npm run create-org`** — creates a new organization with an admin user and API key.
+- **`npm run get-invite`** — retrieves the signup link for a user who has been invited via the UI.
+
+See `server/bin/README.md` for detailed usage and examples.
+
 ## HMA Development
 
 HMA is not started automatically with `npm run up`. Start it separately if you're doing hash matching: `docker compose up --build -d hma`
