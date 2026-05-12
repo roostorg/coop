@@ -29,10 +29,10 @@ You can set up Rules that target specific locations. For location matching to wo
 
 ## Third-party integrations
 
-Connect to free safety-oriented APIs like Google Content Safety API, OpenAI Moderation API, Zentropi CoPE, and more at the click of a button. We've built several integrations into Coop; just enter your API key. See [Integrations](../integrations/README.md) for information.
+Connect to free safety-oriented APIs like Google Content Safety API, OpenAI Moderation API, Zentropi CoPE, and more at the click of a button. We've built several integrations into Coop; just enter your API key. Each integration includes a model card for consistent, comparable information about how it works.
+
+See [Integrations](../integrations/) for information.
 
 ## Custom integrations
 
 Platforms deploying Coop can add any signal through a custom integration; for example, if they've built their own machine learning models or have internal data that Coop can't access. See [Custom Integrations](../integrations/custom.md) for information.
-
----

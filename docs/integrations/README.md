@@ -1,6 +1,8 @@
-# Integrations Guide
+# Integrations
 
-Coop supports **plugin-style integrations**: authors can ship integrations as separate packages (e.g. npm), and adopters can enable them via a **config file** without changing Coop source code. At startup the platform loads each enabled plugin and uses its manifest for metadata (title, docs, logos, model card, config fields). Adopters do not edit enums, server registries, or client logo maps. You just install the package and edit integrations config file.
+Connect to free safety-oriented APIs like Google Content Safety API, OpenAI Moderation API, Zentropi CoPE, and more at the click of a button. We've built several integrations into Coop; just enter your API key.
+
+## Built-in integrations
 
 For specific integration information, see that integration's documentation:
 
@@ -9,3 +11,9 @@ For specific integration information, see that integration's documentation:
 - [NCMEC Reporting](ncmec.md)
 - [OpenAI Moderation API](openai-moderation.md)
 - [Zentropi CoPE](zentropi-cope.md)
+
+## Model cards
+
+Each integration includes a model card for consistent, comparable information about how it works.
+
+<!-- TODO: expand this section! -->
