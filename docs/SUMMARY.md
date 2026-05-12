@@ -26,6 +26,7 @@
 
 - [Integrations Guide](integrations/README.md)
   - [Google Content Safety API](integrations/google-content-safety.md)
-  - [OpenAI Moderation API](integrations/openai-moderation.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
   - [NCMEC Reporting](integrations/ncmec.md)
+  - [OpenAI Moderation API](integrations/openai-moderation.md)
+  - [Zentropi CoPE](integrations/zentropi-cope.md)
