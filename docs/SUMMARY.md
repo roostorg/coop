@@ -6,8 +6,9 @@
 
 - [User Guide](user/README.md)
   - [Basic Concepts](user/concepts.md)
-  - [Automated Routing & Enforcement](user/automation.md)
+  - [Automated Routing & Enforcement](user/rules.md)
   - [Manual Review & Enforcement](user/manual-review.md)
+  - [Signals](user/signals.md)
   - [Investigation](user/investigation.md)
   - [Bulk Actioning](user/bulk-actioning.md)
   - [Appeals](user/appeals.md)
@@ -20,13 +21,15 @@
   - [Local Development](development/local.md)
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)
+  - [Data Warehouse Abstraction](development/data-warehouse.md)
   - [Deployment](development/deployment.md)
 
 ---
 
-- [Integrations Guide](integrations/README.md)
+- [Integrations](integrations/README.md)
   - [Google Content Safety API](integrations/google-content-safety.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
   - [NCMEC Reporting](integrations/ncmec.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
   - [Zentropi CoPE](integrations/zentropi-cope.md)
+  - [Custom](integrations/custom.md)

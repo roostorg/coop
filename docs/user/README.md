@@ -16,15 +16,4 @@ This simplified diagram can help you better understand how data flows between a 
 
 [![Simple Diagram](../images/diagram-simple.svg)](../images/diagram-simple.svg)
 
-Coop's functionality can be broken down into several key areas:
-
-- [Basic Concepts](concepts.md)
-- [Automated Routing & Enforcement](automation.md)
-- [Manual Review & Enforcement](manual-review.md)
-- [Investigation](investigation.md)
-- [Bulk Actioning](bulk-actioning.md)
-- [Appeals](appeals.md)
-- [Metrics & Reporting](metrics.md)
-- [Administration](administration.md)
-
 We recommend you begin by familiarizing yourself with Coop's [basic concepts](concepts.md).
