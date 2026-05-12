@@ -10,9 +10,9 @@ jobs:
     name: Checklist job
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
       - name: Checklist
-        uses: ethanresnick/pr-checklists@v1
+        uses: ethanresnick/pr-checklists@4fcf5dc226d3b7eddb209e58fdbd8226f4d179d3  # v1 (no patch tags published)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

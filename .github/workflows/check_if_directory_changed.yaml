@@ -22,13 +22,13 @@ jobs:
     steps:
       # We need to checkout the main branch to compare it against the current
       # branch
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           fetch-depth: 1
           sparse-checkout: '${{ inputs.directory }}'
           ref: ${{ github.base_ref || 'main' }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           sparse-checkout: '${{ inputs.directory }}'
           fetch-depth: 1
