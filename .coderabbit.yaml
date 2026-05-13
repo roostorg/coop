@@ -1,20 +1,8 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 #
-# CodeRabbit configuration for Coop. Schema:
-# https://docs.coderabbit.ai/reference/configuration
-#
-# Review guidance lives in `.github/copilot-instructions.md` and `AGENTS.md`.
-# CodeRabbit's Code Guidelines feature picks both files up automatically (their
-# default `knowledge_base.code_guidelines.file_patterns` includes
-# `.github/copilot-instructions.md` and `**/AGENTS.md`), so we do not duplicate
-# the prose here. Update the markdown files; CodeRabbit will follow.
-#
-# This file only carries settings that cannot be expressed in markdown:
-# review profile, auto-review behavior, path filters, and which of CodeRabbit's
-# bundled tools we want enabled.
-
-language: en-US
-early_access: false
+# Review rules live in `.github/copilot-instructions.md` and `AGENTS.md` —
+# CodeRabbit picks both up automatically. This file only carries settings that
+# differ from CodeRabbit's defaults.
 
 reviews:
   profile: chill
@@ -29,9 +17,8 @@ reviews:
     drafts: false
     base_branches:
       - main
-
-  # Skip generated artifacts, lockfiles, and vendored content. These are either
-  # codegen output (`npm run generate`) or not human-authored.
+    labels:
+      - '!dependabot'
   path_filters:
     - '!**/generated.ts'
     - '!**/package-lock.json'
@@ -40,15 +27,11 @@ reviews:
     - '!**/build/**'
     - '!**/*.snap'
 
-  # ESLint and Prettier already run in CI (see AGENTS.md > "CI"). Disable the
-  # bundled formatters/linters so CodeRabbit does not duplicate that output.
-  # Keep security-oriented tools (secret scanning, SAST, IaC) enabled.
+  # Lint runs in CI; disable CodeRabbit's bundled linters to avoid duplicates.
   tools:
     eslint:
       enabled: false
     biome:
-      enabled: false
-    prettier:
       enabled: false
     markdownlint:
       enabled: false
@@ -62,17 +45,3 @@ reviews:
       enabled: false
     languagetool:
       enabled: false
-    ast-grep:
-      enabled: false
-    gitleaks:
-      enabled: true
-    semgrep:
-      enabled: true
-    checkov:
-      enabled: true
-
-knowledge_base:
-  # Code Guidelines is on by default; stated explicitly so a future reader sees
-  # that the substantive review rules come from the markdown files above.
-  code_guidelines:
-    enabled: true

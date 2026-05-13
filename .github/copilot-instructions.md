@@ -5,7 +5,7 @@ These instructions apply to AI tools when they review pull requests in this repo
 ## Repository at a glance
 
 - Node (`.nvmrc`), TypeScript throughout.
-- Four independent packages, **not an npm workspace**: `/` (root), `/server` (Express + Apollo GraphQL, ESM), `/client` (React + Vite + Apollo Client, Ant Design + Tailwind), `/db` (Postgres/ClickHouse/Scylla migration runner), `/migrator` (CLI).
+- Independent packages, **not an npm workspace** — each has its own `package.json` and lockfile. Main ones: `/` (root), `/server` (Express + Apollo GraphQL, ESM), `/client` (React + Vite + Apollo Client, Ant Design + Tailwind), `/db` (Postgres/ClickHouse/Scylla migration runner), `/migrator` (CLI).
 - Server uses BottleJS dependency injection wired in `server/iocContainer/`.
 - GraphQL is authored inline in resolvers with `/* GraphQL */` markers and compiled by `npm run generate` into `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. Both `generated.ts` files are codegen output.
 
