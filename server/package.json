@@ -83,7 +83,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.2.4",
     "jsonwebtoken": "^9.0.3",
-    "kysely": "^0.28.16",
+    "kysely": "^0.28.17",
     "latlon-geohash": "^2.0.0",
     "lodash": "^4.18.1",
     "lru_map": "^0.4.1",
@@ -164,6 +164,10 @@
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
     },
     "uuid": "^14.0.0",
-    "fast-xml-parser": "^5.7.0"
+    "fast-xml-parser": "^5.8.0",
+    "axios": "^1.16.0",
+    "fast-uri": "^3.1.2",
+    "protobufjs": "^7.5.8",
+    "@protobufjs/utf8": "^1.1.1"
   }
 }
