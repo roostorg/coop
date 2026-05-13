@@ -11,18 +11,18 @@
   "license": "ISC",
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.75.0",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.217.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.217.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.76.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.218.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.218.0",
     "@opentelemetry/propagator-aws-xray": "^2.2.0",
     "@opentelemetry/resource-detector-aws": "^2.15.0",
     "@opentelemetry/resource-detector-container": "^0.8.5",
     "@opentelemetry/resources": "^2.7.0",
     "@opentelemetry/sdk-metrics": "^2.7.0",
-    "@opentelemetry/sdk-node": "^0.217.0",
+    "@opentelemetry/sdk-node": "^0.218.0",
     "@opentelemetry/sdk-trace-base": "^2.7.0",
-    "@opentelemetry/semantic-conventions": "^1.40.0",
-    "@opentelemetry/winston-transport": "^0.25.0"
+    "@opentelemetry/semantic-conventions": "^1.41.1",
+    "@opentelemetry/winston-transport": "^0.28.0"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
