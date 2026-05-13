@@ -1,11 +1,7 @@
-# docs in `main` get built into `/latest`, docs from tags get built into a subdirectory
-# matching the tag name (e.g. `/0.1`). Automatically runs when updating the docs, editing
-# this workflow, or pushing a new tag.
-#
-# Does not handle directly publishing to GitHub Pages; just updates the `gh-pages` branch to
-# let GitHub build and deploy from that branch.
+# Builds docs from main (as /latest) and from every version tag on each trigger,
+# deploying the combined output to GitHub Pages in one shot.
 
-name: Update docs with mdbook
+name: Update docs with mdBook
 
 on:
   push:
@@ -15,25 +11,17 @@ on:
       - '.github/workflows/mdbook.yml'
     tags:
       - '[0-9]*'
-
-  # Allows you to run this workflow manually from the Actions tab.
-  # To backfill an old version, pass the tag as the `ref` input so the new
-  # workflow file runs from main but checks out docs from the specified tag.
   workflow_dispatch:
-    inputs:
-      ref:
-        description: 'Tag to build and deploy docs from (e.g. 0.1); leave empty for latest main'
-        required: false
-        type: string
 
-# Write access needed to push to the gh-pages branch
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# Allow only one concurrent deployment; do NOT cancel in-progress runs so
+# production deployments are always allowed to complete.
 concurrency:
-  group: 'mdbook'
+  group: 'pages'
   cancel-in-progress: false
 
 jobs:
@@ -43,33 +31,11 @@ jobs:
     env:
       MDBOOK_VERSION: 0.5.2
     steps:
-      # inputs.ref is only set for manual backfills; push-to-main and tag-push events
-      # default to the triggering ref automatically
+      # fetch-depth: 0 is required to access all tags for versioned builds
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
-
-      - name: Determine deployment path
-        id: deploy-path
-        run: |
-          # For manual backfill, use the input ref; otherwise derive from the triggering ref
-          DEPLOY_REF="${{ inputs.ref }}"
-          if [[ -z "$DEPLOY_REF" ]]; then
-            if [[ "${{ github.event_name }}" == "workflow_dispatch" && "$GITHUB_REF_NAME" != "main" ]]; then
-              echo "Dispatching from a non-main branch requires a ref input (e.g. a tag name)" >&2
-              exit 1
-            fi
-            DEPLOY_REF="$GITHUB_REF_NAME"
-          fi
-          if [[ "$GITHUB_REF_TYPE" == "tag" || "$DEPLOY_REF" =~ ^[0-9] ]]; then
-            if [[ "$DEPLOY_REF" =~ [^A-Za-z0-9._-] ]]; then
-               echo "Refusing unsafe deploy ref: $DEPLOY_REF" >&2
-               exit 1
-            fi
-            echo "path=$DEPLOY_REF" >> "$GITHUB_OUTPUT"
-          else
-            echo "path=latest" >> "$GITHUB_OUTPUT"
-          fi
+          ref: main
+          fetch-depth: 0
 
       - name: Cache mdBook binary
         id: cache-mdbook
@@ -84,46 +50,50 @@ jobs:
           ARCH="x86_64-unknown-linux-gnu"
           ARCHIVE="mdbook-v${MDBOOK_VERSION}-${ARCH}.tar.gz"
           URL="https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/${ARCHIVE}"
-          mkdir -p mdbook-bin
-          curl -sSL -o mdbook.tar.gz "$URL"
-          tar -xzf mdbook.tar.gz -C mdbook-bin
+          mkdir --parents mdbook-bin
+          curl --silent --show-error --location --output mdbook.tar.gz "$URL"
+          tar --extract --gzip --file mdbook.tar.gz --directory mdbook-bin
           rm mdbook.tar.gz
 
-      - name: Build with mdBook
-        run: ${{ github.workspace }}/mdbook-bin/mdbook build docs
-
-      - name: Deploy to GitHub Pages
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Build docs
         run: |
-          DEPLOY_PATH="${{ steps.deploy-path.outputs.path }}"
+          MDBOOK="${{ github.workspace }}/mdbook-bin/mdbook"
+          SITE="${{ github.workspace }}/_site"
+          mkdir --parents "$SITE"
 
-          # Clone the gh-pages branch, or initialize it if this is the first deployment
-          if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
-            git clone --depth=1 --single-branch --branch gh-pages \
-              "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-              _gh-pages
-          else
-            mkdir _gh-pages
-            git -C _gh-pages init
-            git -C _gh-pages checkout --orphan gh-pages
-            git -C _gh-pages remote add origin \
-              "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          fi
+          "$MDBOOK" build docs --dest-dir "$SITE/latest"
 
-          touch _gh-pages/.nojekyll
+          for tag in $(git tag --list '[0-9]*' | sort --version-sort); do
+            git worktree add "_worktree_${tag}" "$tag"
+            "$MDBOOK" build "_worktree_${tag}/docs" --dest-dir "$SITE/$tag"
+            git worktree remove "_worktree_${tag}"
+          done
 
-          # Deploy the versioned docs
-          rm -rf "_gh-pages/${DEPLOY_PATH}"
-          cp -r docs/book "_gh-pages/${DEPLOY_PATH}"
+          {
+            printf '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+            printf '  <meta charset="UTF-8">\n'
+            printf '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+            printf '  <title>Coop Documentation</title>\n'
+            printf '</head>\n<body>\n<h1>Coop Documentation</h1>\n<ul>\n'
+            printf '  <li><a href="latest/">Latest</a></li>\n'
+            for tag in $(git tag --list '[0-9]*' | sort --version-sort --reverse); do
+              printf '  <li><a href="%s/">%s</a></li>\n' "$tag" "$tag"
+            done
+            printf '</ul>\n</body>\n</html>\n'
+          } > "$SITE/index.html"
 
-          # Regenerate the root version index
-          (cd _gh-pages && tree -d -L 1 -H . -T "Coop Documentation" -o index.html --noreport)
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
 
-          # Commit and push
-          git -C _gh-pages config user.name "github-actions[bot]"
-          git -C _gh-pages config user.email "github-actions[bot]@users.noreply.github.com"
-          git -C _gh-pages add --all
-          git -C _gh-pages diff --staged --quiet || \
-            git -C _gh-pages commit --message "Deploy docs: ${DEPLOY_PATH}"
-          git -C _gh-pages push origin gh-pages
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
