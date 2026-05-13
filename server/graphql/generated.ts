@@ -1655,9 +1655,8 @@ export type GQLItemInput = {
 export type GQLItemSubmissions = {
   readonly __typename?: 'ItemSubmissions';
   /**
-   * True when this submission was synthesized server-side from creator /
-   * action references rather than a real Content API submission. Treat
-   * `latest.data` as empty when set.
+   * True when this item was synthesized server-side from indirect references
+   * rather than a real submission. `latest.data` is empty when set.
    */
   readonly isSynthetic?: Maybe<Scalars['Boolean']['output']>;
   readonly latest: GQLItem;
