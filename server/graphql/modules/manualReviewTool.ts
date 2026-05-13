@@ -72,6 +72,11 @@ const typeDefs = /* GraphQL */ `
   type ItemSubmissions {
     latest: Item!
     prior: [Item!]
+    """
+    True when this item was synthesized server-side from indirect references
+    rather than a real submission. \`latest.data\` is empty when set.
+    """
+    isSynthetic: Boolean
   }
 
   type ItemWithParents {

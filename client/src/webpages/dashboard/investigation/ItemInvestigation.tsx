@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/types';
-import { Input } from 'antd';
+import { Alert, Input } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -67,6 +67,7 @@ gql`
 
   query GetItemsWithId($id: ID!, $typeId: ID) {
     itemsWithId(itemId: $id, typeId: $typeId, returnFirstResultOnly: true) {
+      isSynthetic
       latest {
         ... on ItemBase {
           id
@@ -352,9 +353,31 @@ export default function ItemInvestigation(props: {
       );
     }
 
-    const item = eligibleItems.find(
-      (it) => it.id === selectedItem?.id && it.type.id === selectedItem.typeId,
-    )!;
+    const selectedWrapper = eligibleItemsResult.find(
+      (wrapper) =>
+        wrapper.latest.id === selectedItem?.id &&
+        wrapper.latest.type.id === selectedItem.typeId,
+    );
+    if (!selectedWrapper) {
+      return (
+        <InvestigationError message="Could not match selected item to investigation results." />
+      );
+    }
+    const item = selectedWrapper.latest;
+    const isSynthetic = selectedWrapper.isSynthetic === true;
+    const syntheticBanner = isSynthetic ? (
+      <Alert
+        type="info"
+        showIcon
+        className="w-full mb-4"
+        message="No submission record found for this user"
+        description={
+          'Your integration has never sent this user to the Content API, so we have no profile data to show. ' +
+          'The history below (actions, strikes, related content) is derived from items where this id appears as the author. ' +
+          'To populate the user profile, POST the user to the items endpoint with the matching user type id.'
+        }
+      />
+    ) : null;
 
     const {
       itemTypes: allItemTypes,
@@ -389,6 +412,7 @@ export default function ItemInvestigation(props: {
       case 'UserItem':
         return (
           <div className="flex flex-col w-full mb-8">
+            {syntheticBanner}
             <ManualReviewJobPrimaryUserComponent
               user={
                 item

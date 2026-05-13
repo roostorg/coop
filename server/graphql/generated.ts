@@ -1654,6 +1654,12 @@ export type GQLItemInput = {
 
 export type GQLItemSubmissions = {
   readonly __typename?: 'ItemSubmissions';
+  /**
+   * True when this submission was synthesized server-side from creator /
+   * action references rather than a real Content API submission. Treat
+   * `latest.data` as empty when set.
+   */
+  readonly isSynthetic?: Maybe<Scalars['Boolean']['output']>;
   readonly latest: GQLItem;
   readonly prior?: Maybe<ReadonlyArray<GQLItem>>;
 };
@@ -9380,6 +9386,11 @@ export type GQLItemSubmissionsResolvers<
   ParentType extends GQLResolversParentTypes['ItemSubmissions'] =
     GQLResolversParentTypes['ItemSubmissions'],
 > = {
+  isSynthetic?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
   latest?: Resolver<GQLResolversTypes['Item'], ParentType, ContextType>;
   prior?: Resolver<
     Maybe<ReadonlyArray<GQLResolversTypes['Item']>>,

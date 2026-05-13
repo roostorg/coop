@@ -35,6 +35,17 @@ export interface UserStrikeActionsInput {
   limit?: number;
 }
 
+export interface InferredUserIdentityInput {
+  orgId: string;
+  itemId: string;
+  lookbackWindowMs?: number;
+}
+
+export interface InferredUserIdentityRecord {
+  itemTypeId: string;
+  lastSeenAt: Date;
+}
+
 export interface IActionExecutionsAdapter {
   getItemActionHistory(
     input: ItemActionHistoryInput,
@@ -43,5 +54,9 @@ export interface IActionExecutionsAdapter {
   getRecentUserStrikeActions(
     input: UserStrikeActionsInput,
   ): Promise<ReadonlyArray<UserStrikeActionRecord>>;
-}
 
+  /** Infer the user `itemTypeId` for an id with no submission record. */
+  findInferredUserIdentity(
+    input: InferredUserIdentityInput,
+  ): Promise<InferredUserIdentityRecord | null>;
+}

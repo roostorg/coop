@@ -1587,6 +1587,12 @@ export type GQLItemInput = {
 
 export type GQLItemSubmissions = {
   readonly __typename: 'ItemSubmissions';
+  /**
+   * True when this submission was synthesized server-side from creator /
+   * action references rather than a real Content API submission. Treat
+   * `latest.data` as empty when set.
+   */
+  readonly isSynthetic?: Maybe<Scalars['Boolean']['output']>;
   readonly latest: GQLItem;
   readonly prior?: Maybe<ReadonlyArray<GQLItem>>;
 };
@@ -6763,6 +6769,7 @@ export type GQLGetItemsWithIdQuery = {
   readonly __typename: 'Query';
   readonly itemsWithId: ReadonlyArray<{
     readonly __typename: 'ItemSubmissions';
+    readonly isSynthetic?: boolean | null;
     readonly latest:
       | {
           readonly __typename: 'ContentItem';
@@ -29756,6 +29763,7 @@ export type GQLGetOrgDataQueryResult = Apollo.QueryResult<
 export const GQLGetItemsWithIdDocument = gql`
   query GetItemsWithId($id: ID!, $typeId: ID) {
     itemsWithId(itemId: $id, typeId: $typeId, returnFirstResultOnly: true) {
+      isSynthetic
       latest {
         ... on ItemBase {
           id

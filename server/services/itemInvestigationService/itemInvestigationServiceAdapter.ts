@@ -1,9 +1,10 @@
 import { ReadableStream } from 'node:stream/web';
 import type { ItemIdentifier } from '@roostorg/types';
+
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
+import { type IContentApiRequestsAdapter } from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
 import { type Scylla } from '../../scylla/index.js';
-import type { ContentApiRequestLogEntry } from '../analyticsLoggers/ContentApiLogger.js';
-import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type CorrelationId } from '../../utils/correlationIds.js';
 import { mapAsyncIterable } from '../../utils/iterables.js';
 import { __throw } from '../../utils/misc.js';
@@ -11,6 +12,8 @@ import {
   type PublicMethodNames,
   type ReplaceDeep,
 } from '../../utils/typescript-types.js';
+import type { ContentApiRequestLogEntry } from '../analyticsLoggers/ContentApiLogger.js';
+import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   itemSubmissionWithTypeIdentifierToItemSubmission,
   type ItemSubmissionWithTypeIdentifier,
@@ -22,12 +25,7 @@ import {
   ItemInvestigationService,
   type SubmissionsForItemWithTypeIdentifier,
 } from './itemInvestigationService.js';
-import {
-  type IActionExecutionsAdapter,
-} from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
-import {
-  type IContentApiRequestsAdapter,
-} from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
+import { synthesizeUserItemFromCreatorReferences } from './synthesizeUserItemFromCreatorReferences.js';
 
 type AdaptedReturnType<T extends PublicMethodNames<ItemInvestigationService>> =
   ReplaceDeep<
@@ -57,8 +55,8 @@ export class ItemInvestigationServiceAdapter {
     scylla: Scylla<ScyllaRelations>,
     tracer: Dependencies['Tracer'],
     partialItemsService: Dependencies['PartialItemsService'],
-    actionExecutionsAdapter: IActionExecutionsAdapter,
-    contentApiRequestsAdapter: IContentApiRequestsAdapter,
+    private readonly actionExecutionsAdapter: IActionExecutionsAdapter,
+    private readonly contentApiRequestsAdapter: IContentApiRequestsAdapter,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     meter: Dependencies['Meter'],
   ) {
@@ -279,6 +277,40 @@ export class ItemInvestigationServiceAdapter {
     itemSubmissionTime: Date | undefined;
   }) {
     return this.service.getItemActionHistory(opts);
+  }
+
+  /** See `synthesizeUserItemFromCreatorReferences.ts`. */
+  async synthesizeUserItemFromCreatorReferences(opts: {
+    orgId: string;
+    itemId: string;
+    knownUserTypeId?: string;
+  }): Promise<SubmissionsForItem | null> {
+    return synthesizeUserItemFromCreatorReferences({
+      ...opts,
+      scyllaCreatorRefExists: async (input) =>
+        this.#hasAnySubmissionsCreatedBy(input.orgId, input.creatorIdentifier),
+      actionExecutionsAdapter: this.actionExecutionsAdapter,
+      contentApiRequestsAdapter: this.contentApiRequestsAdapter,
+      moderationConfigService: this.moderationConfigService,
+    });
+  }
+
+  async #hasAnySubmissionsCreatedBy(
+    orgId: string,
+    creatorIdentifier: ItemIdentifier,
+  ): Promise<boolean> {
+    const stream = this.service.getItemSubmissionsByCreator({
+      orgId,
+      itemCreatorIdentifier: creatorIdentifier,
+      limit: 1,
+      latestSubmissionsOnly: true,
+    });
+
+    // Early-return calls `.return()` on the iterator so the Scylla cursor closes.
+    for await (const _unused of stream) {
+      return true;
+    }
+    return false;
   }
 
   #adaptInternalStreamToItemSubmissionsForItem(

@@ -1,19 +1,23 @@
+import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
+import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
+import type SafeTracer from '../../../utils/SafeTracer.js';
+import { SIX_MONTHS_MS } from '../../../utils/time.js';
+import { formatClickhouseQuery } from '../utils/clickhouseSql.js';
 import {
   type IActionExecutionsAdapter,
+  type InferredUserIdentityInput,
+  type InferredUserIdentityRecord,
   type ItemActionHistoryInput,
   type ItemActionHistoryRecord,
   type UserStrikeActionRecord,
   type UserStrikeActionsInput,
 } from './IActionExecutionsAdapter.js';
-import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
-import type SafeTracer from '../../../utils/SafeTracer.js';
-import { formatClickhouseQuery } from '../utils/clickhouseSql.js';
-import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 
 interface ClickhouseActionExecutionRow {
   ts: string;
   item_id: string | null;
   item_type_id: string | null;
+  item_type_kind: string;
   item_creator_id: string | null;
   item_creator_type_id: string | null;
   actor_id: string | null;
@@ -24,9 +28,7 @@ interface ClickhouseActionExecutionRow {
   action_source?: string;
 }
 
-export class ClickhouseActionExecutionsAdapter
-  implements IActionExecutionsAdapter
-{
+export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapter {
   constructor(
     private readonly warehouse: IDataWarehouse,
     private readonly tracer: SafeTracer,
@@ -119,7 +121,10 @@ export class ClickhouseActionExecutionsAdapter
       ${limit != null ? `LIMIT ${Number(limit)}` : ''}
     `;
 
-    const rows = (await this.query(sql, params)) as ClickhouseActionExecutionRow[];
+    const rows = (await this.query(
+      sql,
+      params,
+    )) as ClickhouseActionExecutionRow[];
 
     return rows
       .filter((row) => row.item_id && row.item_type_id)
@@ -130,6 +135,76 @@ export class ClickhouseActionExecutionsAdapter
         source: row.action_source ?? 'user-strike-action-execution',
         occurredAt: new Date(row.ts),
       }));
+  }
+
+  async findInferredUserIdentity(
+    input: InferredUserIdentityInput,
+  ): Promise<InferredUserIdentityRecord | null> {
+    const { orgId, itemId, lookbackWindowMs = SIX_MONTHS_MS } = input;
+
+    const lookbackStart = new Date(Date.now() - Math.max(1, lookbackWindowMs));
+    const lookbackStartDate = lookbackStart.toISOString().slice(0, 10);
+
+    // Filter projected-type-id NULL/empty rows in SQL so a single LIMIT 1
+    // suffices — pulling a page and skipping in JS would miss valid older
+    // rows whenever the most-recent N candidates all happen to be NULL.
+    const sql = `
+      SELECT
+        ts,
+        item_id,
+        item_type_id,
+        item_type_kind,
+        item_creator_id,
+        item_creator_type_id
+      FROM analytics.ACTION_EXECUTIONS
+      WHERE org_id = ?
+        AND ds >= toDate(?)
+        AND (
+          (
+            lower(item_id) = lower(?)
+            AND item_type_kind = 'USER'
+            AND item_type_id IS NOT NULL
+            AND item_type_id != ''
+          )
+          OR (
+            lower(item_creator_id) = lower(?)
+            AND item_creator_type_id IS NOT NULL
+            AND item_creator_type_id != ''
+          )
+        )
+      ORDER BY ts DESC
+      LIMIT 1
+    `;
+
+    const rows = await this.query<ClickhouseActionExecutionRow>(sql, [
+      orgId,
+      lookbackStartDate,
+      itemId,
+      itemId,
+    ]);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const row = rows[0];
+    const matchesAsUserAction =
+      row.item_type_kind === 'USER' &&
+      row.item_id != null &&
+      row.item_id.toLowerCase() === itemId.toLowerCase();
+
+    const userTypeId = matchesAsUserAction
+      ? row.item_type_id
+      : row.item_creator_type_id;
+
+    if (!userTypeId) {
+      return null;
+    }
+
+    return {
+      itemTypeId: userTypeId,
+      lastSeenAt: new Date(row.ts),
+    };
   }
 
   private parseJsonArray(
@@ -171,11 +246,7 @@ export class ClickhouseActionExecutionsAdapter
     params: readonly unknown[],
   ): Promise<readonly T[]> {
     const formatted = formatClickhouseQuery(statement, params);
-    const response = await this.warehouse.query(
-      formatted,
-      this.tracer,
-    );
+    const response = await this.warehouse.query(formatted, this.tracer);
     return response as readonly T[];
   }
 }
-
