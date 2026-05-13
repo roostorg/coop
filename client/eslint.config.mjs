@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
-import { FlatCompat } from '@eslint/eslintrc';
 import { fixupConfigRules } from '@eslint/compat';
+import { FlatCompat } from '@eslint/eslintrc';
 
 const require = createRequire(import.meta.url);
 const { ignorePatterns: _, ...legacyConfig } = require('./.eslintrc.cjs');
@@ -18,12 +18,16 @@ export default [
       'eslint.config.mjs',
       'eslint/**',
       'tailwind.config.js',
+      'postcss.config.js',
+      '.storybook/**',
       '**/*.stories.tsx',
       'vite.config.ts',
       'vite-env.d.ts',
     ],
   },
   ...flatConfigs.map((config) =>
-    config.files ? config : { ...config, files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'] },
+    config.files
+      ? config
+      : { ...config, files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'] },
   ),
 ];
