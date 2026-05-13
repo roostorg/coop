@@ -167,12 +167,3 @@ updates:
         applies-to: 'version-updates'
         patterns:
           - '*'
-
-  - package-ecosystem: 'github-actions'
-    directory: '/'
-    schedule:
-      interval: 'weekly'
-    groups:
-      github-actions:
-        patterns:
-          - '*'
