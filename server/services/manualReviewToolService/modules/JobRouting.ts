@@ -314,12 +314,16 @@ export default class JobRouting {
    * @returns A promise that resolves to a boolean indicating the success of the
    *   operation.
    */
-  async deleteRoutingRule(input: { id: string }): Promise<boolean> {
-    const { id } = input;
+  async deleteRoutingRule(input: {
+    id: string;
+    orgId: string;
+  }): Promise<boolean> {
+    const { id, orgId } = input;
     const result = await this.transactionWithRetry(async (trx) =>
       trx
         .deleteFrom('manual_review_tool.routing_rules')
         .where('id', '=', id)
+        .where('org_id', '=', orgId)
         .executeTakeFirst(),
     );
     return result.numDeletedRows === 1n;

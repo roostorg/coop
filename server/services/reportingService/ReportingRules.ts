@@ -317,11 +317,27 @@ export default class ReportingRules {
     });
   }
 
-  async deleteReportingRule(input: { id: string; orgId: string }) {
+  async deleteReportingRule(input: {
+    id: string;
+    orgId: string;
+  }): Promise<boolean> {
     const { id, orgId } = input;
 
     return this.transactionWithRetry(async (trx) => {
-      // Drop joins before the rule row to avoid orphans; scope by org_id.
+      // Verify ownership inside the txn before touching any join rows.
+      // Skipping this would let a foreign-org `id` wipe that other org's
+      // join rows (the join tables have no org column) before the scoped
+      // parent delete no-ops.
+      const owned = await trx
+        .selectFrom('reporting_rules.reporting_rules')
+        .select('id')
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+      if (owned === undefined) {
+        return false;
+      }
+
       await trx
         .deleteFrom('reporting_rules.reporting_rules_to_item_types')
         .where('reporting_rule_id', '=', id)
@@ -344,7 +360,7 @@ export default class ReportingRules {
         .executeTakeFirst();
 
       return deleteResult.numDeletedRows === 1n;
-    }).catch((_error) => false);
+    });
   }
 
   async #getReportingRulesBypassCache(

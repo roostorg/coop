@@ -586,13 +586,13 @@ class RuleAPI {
     return buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps);
   }
 
-  async deleteRule(opts: { id: string; orgId: string }) {
+  async deleteRule(opts: { id: string; orgId: string }): Promise<boolean> {
     const { id, orgId } = opts;
 
     try {
-      await this.kyselyTransactionWithRetry(async (trx) => {
-        await kyselyDeleteRule(trx, id, orgId);
-      });
+      return await this.kyselyTransactionWithRetry(async (trx) =>
+        kyselyDeleteRule(trx, id, orgId),
+      );
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
@@ -600,7 +600,6 @@ class RuleAPI {
       }
       return false;
     }
-    return true;
   }
 
   async getAllRuleInsights(orgId: string) {

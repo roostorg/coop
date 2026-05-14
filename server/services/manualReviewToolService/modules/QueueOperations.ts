@@ -385,19 +385,30 @@ export default class QueueOperations {
 
     await queue.obliterate({ force: true });
 
-    const [{ numDeletedRows }, _] = await this.transactionWithRetry(
-      async (transaction) =>
-        Promise.all([
-          transaction
-            .deleteFrom('manual_review_tool.manual_review_queues')
-            .where('id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .executeTakeFirstOrThrow(),
-          transaction
-            .deleteFrom('manual_review_tool.users_and_accessible_queues')
-            .where('queue_id', '=', queueId)
-            .execute(),
-        ]),
+    const numDeletedRows = await this.transactionWithRetry(
+      async (transaction) => {
+        // Delete the queue scoped by org first. If it doesn't belong to the
+        // caller's org, no rows are touched and we bail before deleting any
+        // join rows. `users_and_accessible_queues` has no `org_id` column,
+        // so an unscoped delete would otherwise wipe another org's access
+        // rows when the parent delete matches 0 rows.
+        const queueDelete = await transaction
+          .deleteFrom('manual_review_tool.manual_review_queues')
+          .where('id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+
+        if (queueDelete.numDeletedRows === 0n) {
+          return 0n;
+        }
+
+        await transaction
+          .deleteFrom('manual_review_tool.users_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .execute();
+
+        return queueDelete.numDeletedRows;
+      },
     );
 
     return numDeletedRows === 1n;
@@ -411,19 +422,27 @@ export default class QueueOperations {
 
     await queue.obliterate({ force: true });
 
-    const [{ numDeletedRows }, _] = await this.transactionWithRetry(
-      async (transaction) =>
-        Promise.all([
-          transaction
-            .deleteFrom('manual_review_tool.manual_review_queues')
-            .where('id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .executeTakeFirstOrThrow(),
-          transaction
-            .deleteFrom('manual_review_tool.users_and_accessible_queues')
-            .where('queue_id', '=', queueId)
-            .execute(),
-        ]),
+    // See `deleteManualReviewQueue` for why this is serialized + ownership-
+    // checked. Same pattern, just without the default-queue guard.
+    const numDeletedRows = await this.transactionWithRetry(
+      async (transaction) => {
+        const queueDelete = await transaction
+          .deleteFrom('manual_review_tool.manual_review_queues')
+          .where('id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+
+        if (queueDelete.numDeletedRows === 0n) {
+          return 0n;
+        }
+
+        await transaction
+          .deleteFrom('manual_review_tool.users_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .execute();
+
+        return queueDelete.numDeletedRows;
+      },
     );
 
     return numDeletedRows === 1n;

@@ -216,13 +216,21 @@ describe('JobRouting tests', () => {
       policyQueue,
       noPolicyQueue,
       async cleanup() {
-        await manualReviewToolService.deleteRoutingRule({ id: rule.id });
-        await manualReviewToolService.deleteRoutingRule({ id: policyRule.id });
+        await manualReviewToolService.deleteRoutingRule({
+          id: rule.id,
+          orgId: org.id,
+        });
+        await manualReviewToolService.deleteRoutingRule({
+          id: policyRule.id,
+          orgId: org.id,
+        });
         await manualReviewToolService.deleteRoutingRule({
           id: policyNotProvidedRule.id,
+          orgId: org.id,
         });
         await manualReviewToolService.deleteRoutingRule({
           id: sourceTypeRule.id,
+          orgId: org.id,
         });
         await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
           org.id,
@@ -672,7 +680,10 @@ describe('JobRouting tests', () => {
         })
         .then(
           async (result) => {
-            await manualReviewToolService.deleteRoutingRule({ id: result.id });
+            await manualReviewToolService.deleteRoutingRule({
+              id: result.id,
+              orgId: org.id,
+            });
             throw new Error("Promise should've rejected!");
           },
           (_e) => {
