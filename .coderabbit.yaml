@@ -24,7 +24,6 @@ reviews:
       - '!dependabot'
   path_filters:
     - '!**/generated.ts'
-    - '!**/package-lock.json'
     - '!**/node_modules/**'
     - '!**/dist/**'
     - '!**/build/**'
