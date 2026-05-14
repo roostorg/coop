@@ -10,9 +10,9 @@ import { MapperKind, mapSchema } from '@graphql-tools/utils';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
-  SEMATTRS_EXCEPTION_MESSAGE,
-  SEMATTRS_EXCEPTION_STACKTRACE,
-  SEMATTRS_EXCEPTION_TYPE,
+  ATTR_EXCEPTION_MESSAGE,
+  ATTR_EXCEPTION_STACKTRACE,
+  ATTR_EXCEPTION_TYPE,
 } from '@opentelemetry/semantic-conventions';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
@@ -340,7 +340,7 @@ export default async function makeApiServer(deps: Dependencies) {
     }),
   );
 
-  passport.serializeUser((user: any, done) => {
+  passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
@@ -487,11 +487,11 @@ export default async function makeApiServer(deps: Dependencies) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
 
         // I don't know if these attributes are necessary, with recordException
-        span.setAttribute(SEMATTRS_EXCEPTION_MESSAGE, err.message);
+        span.setAttribute(ATTR_EXCEPTION_MESSAGE, err.message);
         if (err.stack) {
-          span.setAttribute(SEMATTRS_EXCEPTION_STACKTRACE, err.stack);
+          span.setAttribute(ATTR_EXCEPTION_STACKTRACE, err.stack);
         }
-        span.setAttribute(SEMATTRS_EXCEPTION_TYPE, err.name);
+        span.setAttribute(ATTR_EXCEPTION_TYPE, err.name);
 
         const errors = (() => {
           if (err instanceof AggregateError) {

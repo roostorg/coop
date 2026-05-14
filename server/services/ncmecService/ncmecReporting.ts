@@ -1736,62 +1736,31 @@ export default class NcmecReporting {
   #fileAnnotationArrayToNCMECFileAnnotation(
     fileAnnotations?: readonly NCMECFileAnnotationType[],
   ): FileAnnotations {
-    return {
-      ...(fileAnnotations?.includes(
-        NCMECFileAnnotation.ANIME_DRAWING_VIRTUAL_HENTAI,
-      )
-        ? {
-            animeDrawingVirtualHentai: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.POTENTIAL_MEME)
-        ? {
-            potentialMeme: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.VIRAL)
-        ? {
-            viral: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(
-        NCMECFileAnnotation.POSSIBLE_SELF_PRODUCTION,
-      )
-        ? {
-            possibleSelfProduction: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.PHYSICAL_HARM)
-        ? {
-            physicalHarm: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.VIOLENCE_GORE)
-        ? {
-            violenceGore: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.BESTIALITY)
-        ? {
-            bestiality: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.LIVE_STREAMING)
-        ? {
-            liveStreaming: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.INFANT)
-        ? {
-            infant: undefined,
-          }
-        : {}),
-      ...(fileAnnotations?.includes(NCMECFileAnnotation.GENERATIVE_AI)
-        ? {
-            generativeAi: undefined,
-          }
-        : {}),
+    // Map each NCMEC annotation enum value to the corresponding XML field
+    // name. Iterating through the table avoids one logical branch per
+    // annotation, which previously pushed cyclomatic complexity over the
+    // configured ESLint limit and made the function hard to extend when new
+    // annotation types are added.
+    const annotationFieldByType: Record<NCMECFileAnnotationType, keyof FileAnnotations> = {
+      [NCMECFileAnnotation.ANIME_DRAWING_VIRTUAL_HENTAI]:
+        'animeDrawingVirtualHentai',
+      [NCMECFileAnnotation.POTENTIAL_MEME]: 'potentialMeme',
+      [NCMECFileAnnotation.VIRAL]: 'viral',
+      [NCMECFileAnnotation.POSSIBLE_SELF_PRODUCTION]: 'possibleSelfProduction',
+      [NCMECFileAnnotation.PHYSICAL_HARM]: 'physicalHarm',
+      [NCMECFileAnnotation.VIOLENCE_GORE]: 'violenceGore',
+      [NCMECFileAnnotation.BESTIALITY]: 'bestiality',
+      [NCMECFileAnnotation.LIVE_STREAMING]: 'liveStreaming',
+      [NCMECFileAnnotation.INFANT]: 'infant',
+      [NCMECFileAnnotation.GENERATIVE_AI]: 'generativeAi',
     };
+
+    const result: FileAnnotations = {};
+    for (const annotation of fileAnnotations ?? []) {
+      const field = annotationFieldByType[annotation];
+      result[field] = undefined;
+    }
+    return result;
   }
 
   async #uploadFileDetails(

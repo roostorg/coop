@@ -25,11 +25,14 @@ export default inject(
           throw new Error('No last_insert timestamp found for the table');
         }
 
-        // When last_insert is null (fresh deploy), do a full backfill
-        const isInitialBackfill = lastTimestamp.last_insert == null;
-        const oneMinutePrevious = isInitialBackfill
-          ? new Date(0)
-          : new Date(lastTimestamp.last_insert.valueOf() - MINUTE_MS);
+        // On a fresh deploy the row is seeded with Postgres `-infinity`,
+        // which `pg-types` parses to the JS number `-Infinity`. In that case
+        // `new Date(-Infinity - MINUTE_MS)` would be an Invalid Date, so fall
+        // back to epoch and do a full backfill.
+        const lastInsertMs = lastTimestamp.last_insert.valueOf();
+        const oneMinutePrevious = Number.isFinite(lastInsertMs)
+          ? new Date(lastInsertMs - MINUTE_MS)
+          : new Date(0);
 
         const insertedRows = await trx
           .insertInto('manual_review_tool.dim_mrt_decisions_materialized')

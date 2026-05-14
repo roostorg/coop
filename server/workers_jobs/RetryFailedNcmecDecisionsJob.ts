@@ -48,10 +48,7 @@ export default inject(
       const orgId = row.org_id;
       const itemId = row.job_payload.payload.item.itemId;
       const itemTypeId = row.job_payload.payload.item.itemTypeIdentifier.id;
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (usersByOrg[orgId] === undefined) {
-        usersByOrg[orgId] = await userManagementService.getUsersForOrg(orgId);
-      }
+      usersByOrg[orgId] ??= await userManagementService.getUsersForOrg(orgId);
       const user = usersByOrg[orgId].find((it) => it.id === itemId);
       if (itemType === undefined || itemType.kind !== 'USER') {
         await ncmecService.insertOrUpdateNcmecReportError({

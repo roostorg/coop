@@ -65,9 +65,5 @@ export function takeLast<
   for (const it of sortCriteria) {
     outer = outer.orderBy(it.column, it.order);
   }
-  return outer as SelectQueryBuilder<
-    DB & { [K in typeof SUBQUERY_ALIAS]: O },
-    typeof SUBQUERY_ALIAS,
-    O
-  >;
+  return outer;
 }
