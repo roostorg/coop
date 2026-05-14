@@ -56,7 +56,7 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
     <div className="flex flex-col mb-4 text-start">
       <div className="self-start mb-2 text-base font-medium">Other Actions</div>
       <div
-        className={`flex flex-col max-h-[360px] max-w-[240px] border border-solid p-4 rounded-md border-gray-200 bg-white overflow-auto`}
+        className={`flex flex-col w-full max-h-[360px] border border-solid p-4 rounded-md border-gray-200 bg-white overflow-auto`}
       >
         {groupedActions.map((groupedAction, i) => (
           <div className="flex flex-col" key={groupedAction.action.id}>

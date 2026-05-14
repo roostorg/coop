@@ -1451,7 +1451,7 @@ function ManualReviewJobReviewImpl(props: {
         // dashboard a few levels up
         className="flex flex-row w-full pl-12 -ml-12"
       >
-        <div className="flex flex-col flex-1 pb-12 pr-8 overflow-y-auto">
+        <div className="flex flex-col flex-1 min-w-0 pb-12 pr-8 overflow-y-auto">
           {!closedJob && queue ? (
             <div className="flex flex-col items-start mb-8">
               <div className="flex flex-row self-stretch justify-between">
@@ -1481,15 +1481,18 @@ function ManualReviewJobReviewImpl(props: {
             : null}
           <div
             ref={reportedUserRef}
-            className="flex flex-row justify-between mt-8"
+            className="flex flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1 min-w-0 mt-8"
           >
-            <div className="self-start text-lg font-bold">
+            <div className="self-start text-lg font-bold whitespace-nowrap">
               {isAppeal ? 'Appealed ' : 'Reported '} {reportedItem.type.name}
             </div>
-            <CopyTextComponent
-              value={reportedItem.id}
-              displayValue={`ID: ${reportedItem.id}`}
-            />
+            <div className="min-w-0 max-w-full">
+              <CopyTextComponent
+                value={reportedItem.id}
+                displayValue={`ID: ${reportedItem.id}`}
+                wrapText
+              />
+            </div>
           </div>
           <div className="my-2 divider" />
           {contentArea()}

@@ -241,11 +241,11 @@ export default function ItemAction(props: {
       <div className="flex flex-col items-start mb-2">
         <div className="text-base font-semibold">{title}</div>
       </div>
-      <div className="flex flex-row gap-4">
+      <div className="flex flex-row flex-wrap items-end gap-4">
         <div className="flex flex-col items-start">
           <div>
             <Select
-              className="w-80"
+              className="w-80 max-w-full"
               mode="multiple"
               maxTagCount={1}
               placeholder="Select action"
@@ -266,7 +266,7 @@ export default function ItemAction(props: {
         <div className="flex flex-col items-start">
           <div>
             <PolicyDropdown
-              className="w-80"
+              className="w-80 max-w-full"
               policies={policiesMemo}
               maxTagCount={1}
               onChange={policiesDropdownOnChange}

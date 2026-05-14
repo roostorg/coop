@@ -58,7 +58,7 @@ export default function CopyTextComponent(props: {
             <span
               className={`font-normal ${
                 isError ? 'text-red-400' : 'text-slate-400'
-              } ${wrapText ? '' : 'whitespace-nowrap'}`}
+              } ${wrapText ? 'break-all min-w-0' : 'whitespace-nowrap'}`}
             >
               {displayValue}
             </span>

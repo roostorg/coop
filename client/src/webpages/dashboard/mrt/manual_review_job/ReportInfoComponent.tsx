@@ -151,11 +151,14 @@ export default function ReportInfoComponent(props: {
                 <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
                   {isAppeal ? 'Actioned ' : 'Reported '}Item
                 </th>
-                <td className="flex py-1 align-top gap-2 text-start text-slate-500">
-                  {reportedItem.type.name}:{' '}
+                <td className="flex flex-wrap py-1 align-top gap-x-2 gap-y-0 text-start text-slate-500 break-all">
+                  <span className="whitespace-nowrap">
+                    {reportedItem.type.name}:
+                  </span>
                   <CopyTextComponent
                     value={reportedItem.id}
                     displayValue={reportedItem.id}
+                    wrapText
                   />
                 </td>
               </tr>

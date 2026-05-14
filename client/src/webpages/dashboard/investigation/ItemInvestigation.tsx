@@ -438,8 +438,8 @@ export default function ItemInvestigation(props: {
         Input an Item ID to see which Coop rules it matched against, why they
         matched, and what actions those rules applied to the item.
       </div>
-      <div className="flex items-start justify-between w-full gap-4">
-        <div className="flex flex-row items-end mb-6">
+      <div className="flex flex-wrap items-start justify-between w-full gap-4">
+        <div className="flex flex-row flex-wrap items-end mb-6">
           <div className="flex flex-col items-start mr-2">
             <div className="mb-2 font-bold">Item ID</div>
             <Input
