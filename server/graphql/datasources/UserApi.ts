@@ -1,5 +1,4 @@
 import { type Exception } from '@opentelemetry/api';
-import { type PassportContext } from 'graphql-passport';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
@@ -12,15 +11,16 @@ import {
   CoopError,
   ErrorType,
   makeBadRequestError,
-  makeInternalServerError,
   makeNotFoundError,
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
+import { type PassportGqlContext } from '../utils/passportContext.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
 import { type GraphQLRuleParent } from './ruleKyselyPersistence.js';
+import { verifyEmailPasswordCredentials } from './userApiCredentials.js';
 import {
   kyselyUserAddFavoriteRule,
   kyselyUserFindByEmail,
@@ -48,6 +48,7 @@ class UserAPI {
     private readonly tracer: Dependencies['Tracer'],
     private readonly userManagementService: Dependencies['UserManagementService'],
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
+    private readonly orgSettingsService: Dependencies['OrgSettingsService'],
   ) {}
 
   async getGraphQLUserFromId(opts: {
@@ -71,26 +72,27 @@ class UserAPI {
     return kyselyUserFindByIds(this.kyselyPg, ids);
   }
 
-  async login(params: any, context: PassportContext<GraphQLUserParent, any>) {
-    const credentials = safePick(params.input, ['email', 'password']);
+  async login(params: any, context: PassportGqlContext) {
+    const { email, password } = safePick(params.input, ['email', 'password']);
 
-    // NB: this will throw for bad credentials; will be handled in the resolver.
-    const { user } = await context.authenticate('graphql-local', credentials);
-
-    if (!user) {
-      throw makeInternalServerError('Unknown error during login attempt', {
-        shouldErrorSpan: true,
-      });
-    }
+    const user = await verifyEmailPasswordCredentials(
+      {
+        kyselyPg: this.kyselyPg,
+        orgSettingsService: this.orgSettingsService,
+        tracer: this.tracer,
+      },
+      String(email),
+      String(password),
+    );
 
     await context.login(user);
 
     return user;
   }
 
-  async logout(context: any) {
+  async logout(context: PassportGqlContext) {
     try {
-      context.logout();
+      await context.logout();
       return true;
     } catch (_) {
       return false;
@@ -387,7 +389,13 @@ function userValidationFailureToBadRequestError(
 }
 
 export default inject(
-  ['KyselyPg', 'Tracer', 'UserManagementService', 'ModerationConfigService'],
+  [
+    'KyselyPg',
+    'Tracer',
+    'UserManagementService',
+    'ModerationConfigService',
+    'OrgSettingsService',
+  ],
   UserAPI,
 );
 export type { UserAPI };
