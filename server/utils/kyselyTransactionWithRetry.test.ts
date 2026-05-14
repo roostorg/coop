@@ -3,21 +3,42 @@ import { type Kysely } from 'kysely';
 import { makeKyselyTransactionWithRetry } from './kyselyTransactionWithRetry.js';
 
 /**
- * Per-attempt behavior: throw to simulate a transaction failure on that
- * attempt, or return to let the wrapper's callback run normally.
+ * Per-attempt behavior. `throw-after-callback` is the realistic 40001 shape
+ * (failure at commit, callback already ran) and the case where retries
+ * re-execute any side effects the callback performed.
  */
-type AttemptBehavior = () => Promise<void>;
+type AttemptBehavior =
+  | { phase: 'success' }
+  | { phase: 'throw-before-callback'; error: unknown }
+  | { phase: 'throw-after-callback'; error: unknown };
+
+const success = (): AttemptBehavior => ({ phase: 'success' });
+const throwBeforeCallback = (error: unknown): AttemptBehavior => ({
+  phase: 'throw-before-callback',
+  error,
+});
+const throwAfterCallback = (error: unknown): AttemptBehavior => ({
+  phase: 'throw-after-callback',
+  error,
+});
+
+type FakeKyselyResult = {
+  fakeKysely: Kysely<unknown>;
+  getAttemptCount: () => number;
+  getCallbackInvocationCount: () => number;
+  getLastIsolationLevel: () => string | undefined;
+};
 
 /**
  * Minimal `Kysely` stand-in. `kysely.transaction()[.setIsolationLevel].execute(cb)`
  * is the only API the wrapper touches, so we only model that surface.
  */
-function makeFakeKysely(behaviors: readonly AttemptBehavior[]): {
-  fakeKysely: Kysely<unknown>;
-  getAttemptCount: () => number;
-  getLastIsolationLevel: () => string | undefined;
-} {
+function makeFakeKysely(
+  behaviors: readonly AttemptBehavior[],
+  callback?: () => Promise<void>,
+): FakeKyselyResult {
   let attemptCount = 0;
+  let callbackInvocationCount = 0;
   let lastIsolationLevel: string | undefined;
 
   const makeBuilder = (isolationLevel: string | undefined) => ({
@@ -34,8 +55,19 @@ function makeFakeKysely(behaviors: readonly AttemptBehavior[]): {
         );
       }
 
-      await behavior();
-      return cb({});
+      if (behavior.phase === 'throw-before-callback') {
+        throw behavior.error;
+      }
+
+      callbackInvocationCount = callbackInvocationCount + 1;
+      const result = await cb({});
+      if (callback !== undefined) {
+        await callback();
+      }
+      if (behavior.phase === 'throw-after-callback') {
+        throw behavior.error;
+      }
+      return result;
     },
   });
 
@@ -46,15 +78,8 @@ function makeFakeKysely(behaviors: readonly AttemptBehavior[]): {
   return {
     fakeKysely,
     getAttemptCount: () => attemptCount,
+    getCallbackInvocationCount: () => callbackInvocationCount,
     getLastIsolationLevel: () => lastIsolationLevel,
-  };
-}
-
-const noop: AttemptBehavior = async () => {};
-
-function throwing(error: unknown): AttemptBehavior {
-  return async () => {
-    throw error;
   };
 }
 
@@ -64,35 +89,64 @@ function makeSerializationFailure(): Error & { code: string } {
 
 describe('makeKyselyTransactionWithRetry', () => {
   test('returns the callback result on first-attempt success', async () => {
-    const { fakeKysely, getAttemptCount } = makeFakeKysely([noop]);
+    const { fakeKysely, getAttemptCount, getCallbackInvocationCount } =
+      makeFakeKysely([success()]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
     const result = await transactionWithRetry(async () => 'ok');
 
     expect(result).toBe('ok');
     expect(getAttemptCount()).toBe(1);
+    expect(getCallbackInvocationCount()).toBe(1);
   });
 
-  test('retries on serialization failure (SQLSTATE 40001) and eventually succeeds', async () => {
-    const { fakeKysely, getAttemptCount } = makeFakeKysely([
-      throwing(makeSerializationFailure()),
-      noop,
-    ]);
+  test('retries on serialization failure thrown before the callback runs', async () => {
+    const { fakeKysely, getAttemptCount, getCallbackInvocationCount } =
+      makeFakeKysely([
+        throwBeforeCallback(makeSerializationFailure()),
+        success(),
+      ]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
     const result = await transactionWithRetry(async () => 'ok-after-retry');
 
     expect(result).toBe('ok-after-retry');
     expect(getAttemptCount()).toBe(2);
+    expect(getCallbackInvocationCount()).toBe(1);
   });
 
-  test('gives up after 3 attempts and rethrows the last serialization failure', async () => {
+  test('retries on serialization failure surfaced after the callback runs (e.g. at commit)', async () => {
+    // Realistic 40001 scenario: the callback has already issued its queries
+    // when COMMIT fails. The wrapper retries the entire callback, so the
+    // callback runs twice. This test documents that observable behavior — any
+    // non-database side effect inside the callback would have run twice here.
+    const { fakeKysely, getAttemptCount, getCallbackInvocationCount } =
+      makeFakeKysely([
+        throwAfterCallback(makeSerializationFailure()),
+        success(),
+      ]);
+
+    const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
+    let callbackRuns = 0;
+    const result = await transactionWithRetry(async () => {
+      callbackRuns = callbackRuns + 1;
+      return 'committed-on-second-try';
+    });
+
+    expect(result).toBe('committed-on-second-try');
+    expect(getAttemptCount()).toBe(2);
+    expect(getCallbackInvocationCount()).toBe(2);
+    expect(callbackRuns).toBe(2);
+  });
+
+  test('gives up after 3 attempts of post-callback 40001 and rethrows the last failure', async () => {
     const finalFailure = makeSerializationFailure();
-    const { fakeKysely, getAttemptCount } = makeFakeKysely([
-      throwing(makeSerializationFailure()),
-      throwing(makeSerializationFailure()),
-      throwing(finalFailure),
-    ]);
+    const { fakeKysely, getAttemptCount, getCallbackInvocationCount } =
+      makeFakeKysely([
+        throwAfterCallback(makeSerializationFailure()),
+        throwAfterCallback(makeSerializationFailure()),
+        throwAfterCallback(finalFailure),
+      ]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
     await expect(transactionWithRetry(async () => 'unreachable')).rejects.toBe(
@@ -100,15 +154,15 @@ describe('makeKyselyTransactionWithRetry', () => {
     );
 
     expect(getAttemptCount()).toBe(3);
+    expect(getCallbackInvocationCount()).toBe(3);
   });
 
-  test('does not retry on non-serialization pg errors', async () => {
+  test('does not retry on non-serialization pg errors raised before the callback', async () => {
     const uniqueViolation = Object.assign(new Error('unique violation'), {
       code: '23505',
     });
-    const { fakeKysely, getAttemptCount } = makeFakeKysely([
-      throwing(uniqueViolation),
-    ]);
+    const { fakeKysely, getAttemptCount, getCallbackInvocationCount } =
+      makeFakeKysely([throwBeforeCallback(uniqueViolation)]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
     await expect(transactionWithRetry(async () => 'unreachable')).rejects.toBe(
@@ -116,24 +170,29 @@ describe('makeKyselyTransactionWithRetry', () => {
     );
 
     expect(getAttemptCount()).toBe(1);
+    expect(getCallbackInvocationCount()).toBe(0);
   });
 
   test('does not retry on plain (non-pg) errors thrown by the callback', async () => {
+    // The callback itself throws — the fake records the invocation and the
+    // wrapper sees the error without ever reaching the post-callback hook.
     const appError = new Error('business logic error');
-    const { fakeKysely, getAttemptCount } = makeFakeKysely([
-      throwing(appError),
-    ]);
+    const { fakeKysely, getAttemptCount, getCallbackInvocationCount } =
+      makeFakeKysely([success()]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
-    await expect(transactionWithRetry(async () => 'unreachable')).rejects.toBe(
-      appError,
-    );
+    await expect(
+      transactionWithRetry(async () => {
+        throw appError;
+      }),
+    ).rejects.toBe(appError);
 
     expect(getAttemptCount()).toBe(1);
+    expect(getCallbackInvocationCount()).toBe(1);
   });
 
   test('applies isolationLevel when supplied via options overload', async () => {
-    const { fakeKysely, getLastIsolationLevel } = makeFakeKysely([noop]);
+    const { fakeKysely, getLastIsolationLevel } = makeFakeKysely([success()]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
     await transactionWithRetry(
@@ -145,7 +204,7 @@ describe('makeKyselyTransactionWithRetry', () => {
   });
 
   test('omits setIsolationLevel when options.isolationLevel is not provided', async () => {
-    const { fakeKysely, getLastIsolationLevel } = makeFakeKysely([noop]);
+    const { fakeKysely, getLastIsolationLevel } = makeFakeKysely([success()]);
 
     const transactionWithRetry = makeKyselyTransactionWithRetry(fakeKysely);
     await transactionWithRetry(async () => 'ok');

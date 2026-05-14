@@ -314,22 +314,15 @@ export default class JobRouting {
    * @returns A promise that resolves to a boolean indicating the success of the
    *   operation.
    */
-  async deleteRoutingRule(input: { id: string }) {
+  async deleteRoutingRule(input: { id: string }): Promise<boolean> {
     const { id } = input;
-    await this.transactionWithRetry(async (trx) => {
-      try {
-        await trx
-          .deleteFrom('manual_review_tool.routing_rules')
-          .where('id', '=', id)
-          .executeTakeFirstOrThrow();
-
-        return true;
-      } catch (error) {
-        return false;
-      }
-    });
-
-    return true;
+    const result = await this.transactionWithRetry(async (trx) =>
+      trx
+        .deleteFrom('manual_review_tool.routing_rules')
+        .where('id', '=', id)
+        .executeTakeFirst(),
+    );
+    return result.numDeletedRows === 1n;
   }
 
   async reorderRoutingRules(

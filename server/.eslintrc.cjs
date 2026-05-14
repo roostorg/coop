@@ -103,9 +103,9 @@ const restrictedSyntax = [
     selector: rawKyselyTransactionSelector,
     message:
       'Use `makeKyselyTransactionWithRetry` (from utils/kyselyTransactionWithRetry.js) ' +
-      'instead of calling `kysely.transaction()` directly. The wrapper retries on Postgres ' +
-      'serialization failures (SQLSTATE 40001), which are always safe to retry by ' +
-      'definition. Direct `kysely.transaction().execute(...)` bypasses that safety net.',
+      'instead of calling `kysely.transaction()` directly — it retries on SQLSTATE 40001. ' +
+      'Callbacks must be retry-safe: any non-DB side effects (HTTP, queue publishes, etc.) ' +
+      'must be idempotent or deferred until after commit.',
   },
   {
     selector: badHttpClientsImportSelector,

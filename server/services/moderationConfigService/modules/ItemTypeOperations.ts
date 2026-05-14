@@ -611,23 +611,24 @@ export default class ItemTypeOperations {
           return [];
         }
 
+        // Reads use `trx` so they share the `repeatable read` snapshot.
         return action.appliesToAllItemsOfKind.length > 0
           ? getItemTypeVersionsBaseQuery({
               orgId,
               currentVersionsOnly: true,
-              pgQuery,
+              pgQuery: trx,
             })
               .where('kind', 'in', action.appliesToAllItemsOfKind)
               .execute()
           : getItemTypeVersionsBaseQuery({
               orgId,
               currentVersionsOnly: true,
-              pgQuery,
+              pgQuery: trx,
             })
               .where(
                 'id',
                 'in',
-                pgQuery
+                trx
                   .selectFrom('public.actions_and_item_types')
                   .select('item_type_id')
                   .where('action_id', '=', actionId),

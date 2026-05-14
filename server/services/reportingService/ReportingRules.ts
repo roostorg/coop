@@ -285,14 +285,15 @@ export default class ReportingRules {
         }
       }
 
+      // Fallback reads go through `trx` and key on the rule's `id`.
       return {
         ...updatedReportingRule,
         itemTypeIds:
-          itemTypeIds ?? (await this.#getItemTypeIdsForReportingRule(orgId)),
+          itemTypeIds ?? (await this.#getItemTypeIdsForReportingRule(id, trx)),
         actionIds:
-          actionIds ?? (await this.#getActionIdsForReportingRule(orgId)),
+          actionIds ?? (await this.#getActionIdsForReportingRule(id, trx)),
         policyIds:
-          policyIds ?? (await this.#getPolicyIdsForReportingRule(orgId)),
+          policyIds ?? (await this.#getPolicyIdsForReportingRule(id, trx)),
       };
     }).catch((e) => {
       if (isReportingRuleNameExistsError(e)) {
@@ -316,15 +317,33 @@ export default class ReportingRules {
     });
   }
 
-  async deleteReportingRule(input: { id: string }) {
-    const { id } = input;
+  async deleteReportingRule(input: { id: string; orgId: string }) {
+    const { id, orgId } = input;
 
     return this.transactionWithRetry(async (trx) => {
+      // Drop joins before the rule row to avoid orphans; scope by org_id.
       await trx
         .deleteFrom('reporting_rules.reporting_rules_to_item_types')
         .where('reporting_rule_id', '=', id)
         .execute();
-      return true;
+
+      await trx
+        .deleteFrom('reporting_rules.reporting_rules_to_actions')
+        .where('reporting_rule_id', '=', id)
+        .execute();
+
+      await trx
+        .deleteFrom('reporting_rules.reporting_rules_to_policies')
+        .where('reporting_rule_id', '=', id)
+        .execute();
+
+      const deleteResult = await trx
+        .deleteFrom('reporting_rules.reporting_rules')
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+
+      return deleteResult.numDeletedRows === 1n;
     }).catch((_error) => false);
   }
 

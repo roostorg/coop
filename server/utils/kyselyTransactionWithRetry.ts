@@ -11,17 +11,16 @@ type TransactionWithRetryOptions = {
 };
 
 /**
- * Returns a `transactionWithRetry` helper bound to the given Kysely instance.
- * The returned function wraps `kysely.transaction().execute(callback)` and
- * automatically retries (up to 3 attempts) on Postgres serialization failures
- * (SQLSTATE `40001`), which are always safe to retry by definition. All other
- * errors are propagated immediately.
+ * Wraps `kysely.transaction().execute(callback)` and retries (up to 3
+ * attempts) on Postgres serialization failures (SQLSTATE `40001`). Other
+ * errors propagate. Optionally accepts `{ isolationLevel }` as a first arg.
  *
- * Callers may optionally pass `{ isolationLevel }` as a first argument to
- * configure the transaction (e.g. `'repeatable read'`).
+ * Callbacks must be retry-safe: on a 40001 the whole callback is re-run,
+ * including any non-database side effects (HTTP calls, queue publishes, etc.)
+ * — make them idempotent or defer them until after commit. Serialization
+ * failures can also surface at commit, so this applies even to DB-only bodies.
  *
- * Prefer this over calling `kysely.transaction().execute(...)` directly — it's
- * enforced by the `no-restricted-syntax` rule in `.eslintrc.cjs`.
+ * Enforced over raw `kysely.transaction()` by `no-restricted-syntax`.
  */
 export function makeKyselyTransactionWithRetry<T>(kysely: Kysely<T>) {
   async function transactionWithRetry<R>(
