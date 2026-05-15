@@ -15,6 +15,7 @@ To get Coop running:
 1. **Ensure you have prerequisites** installed, including `nvm`, `docker`, and the correct version of Node.js.
 
    ```sh
+   # coop/
    nvm --version && nvm install && nvm use
    docker --version
    ```
@@ -34,6 +35,7 @@ To get Coop running:
 2. **Start all backing services**; see [Docker Services](local.md#docker-services) for ports and more details.
 
    ```sh
+   # coop/
    npm run up
    ```
 
@@ -42,6 +44,7 @@ To get Coop running:
 3. **Install dependencies** with `npm` in the root folder and for each sub-package.
 
    ```sh
+   # coop/
    npm install
    (cd db && npm install)
    (cd server && npm install)
@@ -51,6 +54,7 @@ To get Coop running:
 4. **Copy `.env.example` files to `.env`** in `db/`, `server/`, and `client/`. The example defaults work for local development and demoing out of the box. See [Environment Setup](local.md#environment-setup) for details of the available options.
 
    ```sh
+   # coop/
    cp db/.env.example db/.env
    cp server/.env.example server/.env
    cp client/.env.example client/.env
@@ -59,6 +63,7 @@ To get Coop running:
 5. **Create databases** and run migrations to ensure they're set up correctly:
 
    ```sh
+   # coop/
    npm run db:create -- --env staging --db api-server-pg
    npm run db:create -- --env staging --db scylla
    npm run db:create -- --env staging --db clickhouse
@@ -71,7 +76,11 @@ To get Coop running:
 6. **Copy static asset files** using the script in the `server/` folder:
 
    ```sh
-   cd server && npm run copy-assets
+   # coop/
+   cd server
+
+   # coop/server/
+   npm run copy-assets
    ```
 
 7. **Create an organization and admin user** using the `create-org` script from the `server/` folder, providing the appropriate details.
@@ -79,20 +88,25 @@ To get Coop running:
    For example:
 
    ```sh
+   # coop/server/
    npm run create-org -- \
      --name "Your Organization" \
-     --email "email@example.com" \
      --website "https://example.com" \
+     --email "email@example.com" \
      --firstName "Jane" \
      --lastName "Doe" \
      --password "correct-horse-battery-staple"
    ```
 
-8. Finally, **start the application**! See [Running the Application](local.md#running-the-application) for additional options.
+   This will output your org ID and initial API key; copy them somewhere secure for safe keeping.
+
+8. Finally, **start the application**! See [Running the Application](local.md#running-the-application) for additional options, including how to start different components individually for debugging.
+
+   From the project root folder (you may need to `cd ..` first if you're still in `server/`:
 
    ```sh
-   npm run server:start   # Terminal 1
-   npm run client:start   # Terminal 2
+   # coop/
+   npm run start
    ```
 
-Log in at [localhost:3000](http://localhost:3000) using the credentials printed by `create-org`. The initial page load may take a moment.
+   Log in at [localhost:3000](http://localhost:3000) using the credentials you provided when running `create-org`. The initial page load may take a moment.
