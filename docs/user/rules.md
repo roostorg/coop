@@ -1,51 +1,63 @@
 # Automated Routing & Enforcement
 
-Coop supports automatically routing tasks to queues with [Routing Rules](#routing-rules) and automatically performing actions with [Proactive Rules](#proactive-rules).
+Coop supports automatically routing tasks to review queues with [Routing Rules](#routing-rules) and automatically performing actions with [Proactive Rules](#proactive-rules).
 
 ## Rules
 
-Both types of rules are created from common building blocks, including [Matching Banks](#matching-banks) and [Signals](#signals). Each rule is configured to run only on the specified item types that are configured for your platform; for example, you might have text-based rules for posts and comments, and hash-matching rules for avatars and embedded images.
+Both types of rules are built from the same building blocks: conditions that reference [Signals](signals.md) and [Matching Banks](#matching-banks). Each rule is scoped to one or more item types, so you can have text-based rules for posts and comments, hash-matching rules for images and videos, or location-based rules for user-submitted content with geographic metadata.
 
 ### Routing Rules
 
-Routing Rules help direct matching reports to the correct manual review queue. The rules are executed in order, with reports routed according to the first match. Configure Routing Rules in Coop under **Review Console** → **Routing**.
+Routing Rules direct incoming reports to the correct manual review queue. Configure them in Coop under **Review Console → Routing**.
 
 ![Routing Rules](../images/coop-routing-rules.png)
 
-Each Routing Rule contains one or more conditions; when all conditions are met, the report will be routed to the selected queue.
+Rules are evaluated in order, and a report is routed to the queue of the first matching rule. If no rule matches, the report goes to the default queue. Each rule contains one or more conditions; all conditions must be met for a rule to match (AND logic).
 
 ![HMA routing rule](../images/hma-routing-rule.png)
 
+Routing Rules only affect where content lands for human review; they don't take enforcement actions. Pair them with [Proactive Rules](#proactive-rules) if you also want automated actions to fire.
+
 ### Proactive Rules
 
-Proactive Rules enable Coop to perform automated enforcement. Content sent to Coop is checked against all Proactive Rules, performing configured actions according to each matching rule. Configure Proactive Rules in Coop under **Automated Enforcement** → **Proactive Rules**.
+Proactive Rules automate enforcement. When content is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement → Proactive Rules**.
 
 ![Proactive Rules](../images/coop-rules.png)
 
-Each Proactive Rule contains one or more conditions; when all conditions are met, the selected action will be performed.
+Like Routing Rules, each Proactive Rule requires all conditions to be met. Unlike Routing Rules, all matching Proactive Rules fire, not just the first one. This means a single piece of content can trigger multiple automated actions if more than one rule matches.
 
 ![Proactive Rule for scam](../images/coop-scam-rule.png)
 
 ## Matching Banks
 
-Matching banks are sets of values that you can reference in your rules, including text, locations, and hashes.
+Matching banks are reusable sets of values you can reference across many rules without repeating yourself. Instead of listing 10,000 banned keywords in every rule that needs them, you define a bank once and reference it wherever needed.
 
 ![Banks](../images/coop-banks.png)
 
 ### Text Banks
 
+Text banks hold lists of exact words or phrases, or regular expressions. Use them for keyword matching and pattern detection in text fields.
+
 ![Text string bank](../images/coop-text-string-bank.png)
+
+Coop also supports variant matching to catch evasion attempts, for example treating `h3||0` and `helllllllloooo` as matches for `hello`. See [Signals → Text analysis](signals.md#text-analysis) for details on text signal types.
 
 ![Regex bank](../images/coop-regex-bank.png)
 
 ### Hash Banks
 
+Hash banks hold perceptual fingerprints of known harmful media. Coop uses these in conjunction with HMA to match images and videos against databases of known CSAM, NCII, TVEC, and any custom content you fingerprint. See [Hasher-Matcher-Actioner (HMA)](../integrations/hma.md) for setup.
+
 ![Hash bank](../images/hma-ui-coop-banks.png)
 
 ### Location Banks
 
+Location banks hold lists of [geohashes](https://en.wikipedia.org/wiki/Geohash) or Google Maps Places references. Use them to apply different rules to specific geographic areas, for example stricter content policies on college campuses, or targeted enforcement in particular regions.
+
 ![Location bank](../images/coop-location-bank.png)
+
+For location matching to work, include a geohash in every item you send to Coop representing the location of the user who created the content.
 
 ## Signals
 
-![API Keys: Coop uses APIs to authenticate requests. UI allows rotating the key and adding a webhook signature verification key](../images/coop-integrations.png)
+Signals are what rule conditions actually evaluate. A signal takes an item field and returns a score, which the rule condition compares against a threshold. See [Signals](signals.md) for more information.
