@@ -112,7 +112,7 @@ function assertIdShape(name: string, value: string) {
 assertIdShape('orgId', argv.orgId);
 assertIdShape('queueId', argv.queueId);
 
-if (argv.limit <= 0 || !Number.isFinite(argv.limit) || argv.limit > 100_000) {
+if (!Number.isInteger(argv.limit) || argv.limit <= 0 || argv.limit > 100_000) {
   throw new Error(
     `--limit must be a positive integer <= 100000, got ${argv.limit}`,
   );
@@ -167,35 +167,70 @@ async function loadCandidates(
 ): Promise<Candidate[]> {
   banner('Loading candidates from manual_review_tool.job_creations');
 
-  const allCreations = await container.KyselyPg.selectFrom(
-    'manual_review_tool.job_creations',
-  )
-    .select(['id', 'item_id', 'item_type_id', 'created_at', 'policy_ids'])
-    .where('org_id', '=', argv.orgId)
-    .where('queue_id', '=', argv.queueId)
-    .where('created_at', '>=', since)
-    .orderBy('created_at', 'desc')
-    .limit(argv.limit * 4) // overfetch to allow per-item dedup before applying limit
-    .execute();
-  console.log(`Loaded ${allCreations.length} job_creations rows`);
-
+  // Page through job_creations newest-first with a (created_at, id) cursor,
+  // deduping by (item_type_id, item_id) and stopping once we have at least
+  // `argv.limit` distinct items or the table is exhausted. This avoids the
+  // pitfall of a fixed overfetch silently missing recoverable items when
+  // the same item was re-enqueued many times.
+  const PAGE_SIZE = 1000;
   const byItem = new Map<string, Candidate>();
-  for (const row of allCreations) {
-    const key = `${row.item_type_id}\x00${row.item_id}`;
-    const existing = byItem.get(key);
-    if (
-      existing == null ||
-      new Date(row.created_at).getTime() > existing.latestCreatedAt.getTime()
-    ) {
-      byItem.set(key, {
-        itemId: row.item_id,
-        itemTypeId: row.item_type_id,
-        latestJobId: row.id as JobId,
-        latestCreatedAt: new Date(row.created_at),
-        policyIds: row.policy_ids ?? [],
-      });
+  let totalRowsLoaded = 0;
+  let cursorCreatedAt: Date | null = null;
+  let cursorId: string | null = null;
+
+  while (byItem.size < argv.limit) {
+    let q = container.KyselyPg.selectFrom('manual_review_tool.job_creations')
+      .select(['id', 'item_id', 'item_type_id', 'created_at', 'policy_ids'])
+      .where('org_id', '=', argv.orgId)
+      .where('queue_id', '=', argv.queueId)
+      .where('created_at', '>=', since);
+
+    if (cursorCreatedAt != null && cursorId != null) {
+      const cAt = cursorCreatedAt;
+      const cId = cursorId;
+      q = q.where((eb) =>
+        eb.or([
+          eb('created_at', '<', cAt),
+          eb.and([eb('created_at', '=', cAt), eb('id', '<', cId)]),
+        ]),
+      );
     }
+
+    const page = await q
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(PAGE_SIZE)
+      .execute();
+
+    if (page.length === 0) break;
+    totalRowsLoaded += page.length;
+
+    for (const row of page) {
+      const key = `${row.item_type_id}\x00${row.item_id}`;
+      const existing = byItem.get(key);
+      if (
+        existing == null ||
+        new Date(row.created_at).getTime() > existing.latestCreatedAt.getTime()
+      ) {
+        byItem.set(key, {
+          itemId: row.item_id,
+          itemTypeId: row.item_type_id,
+          latestJobId: row.id as JobId,
+          latestCreatedAt: new Date(row.created_at),
+          policyIds: row.policy_ids ?? [],
+        });
+      }
+    }
+
+    const last = page[page.length - 1];
+    cursorCreatedAt = new Date(last.created_at);
+    cursorId = last.id;
+
+    if (page.length < PAGE_SIZE) break;
   }
+  console.log(
+    `Loaded ${totalRowsLoaded} job_creations rows across paginated reads`,
+  );
   console.log(`Deduplicated to ${byItem.size} distinct items`);
 
   if (byItem.size === 0) return [];
