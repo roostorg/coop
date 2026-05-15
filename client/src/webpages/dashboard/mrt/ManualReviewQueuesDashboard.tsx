@@ -356,10 +356,11 @@ export default function ManualReviewQueuesDashboard() {
     queues,
     deleteAllJobsModalInfo?.id,
   );
-  // Trim guards against trailing whitespace from copy/paste; comparison is exact.
+  // Trim both sides; the comparison is otherwise exact (case- and
+  // whitespace-sensitive in the middle of the string).
   const deleteAllJobsConfirmEnabled =
     deleteAllJobsTargetName != null &&
-    deleteAllJobsConfirmText.trim() === deleteAllJobsTargetName;
+    deleteAllJobsConfirmText.trim() === deleteAllJobsTargetName.trim();
   const deleteAllJobsModal = (
     <CoopModal
       title={
@@ -557,6 +558,10 @@ export default function ManualReviewQueuesDashboard() {
               canSort: false,
             }
           : undefined,
+        previewJobsViewEnabled &&
+        userHasPermissions(data?.me?.permissions, [
+          GQLUserPermission.EditMrtQueues,
+        ]) &&
         columnVisibility.previewJobs
           ? {
               Header: '',
@@ -565,7 +570,7 @@ export default function ManualReviewQueuesDashboard() {
             }
           : undefined,
       ]),
-    [data?.me?.permissions, columnVisibility],
+    [data?.me?.permissions, columnVisibility, previewJobsViewEnabled],
   );
   const dataValues = useMemo(
     () =>
@@ -800,16 +805,20 @@ export default function ManualReviewQueuesDashboard() {
             {(Object.keys(columnLabels) as ColumnId[])
               .filter((columnId) => {
                 // deleteJobs is admin-only (irreversible); previewJobs uses
-                // the regular queue-edit permission.
+                // the regular queue-edit permission and requires the feature
+                // flag — both must be true to show the toggle.
                 if (columnId === 'deleteJobs') {
                   return userHasPermissions(data?.me?.permissions, [
                     GQLUserPermission.ManageOrg,
                   ]);
                 }
-                if (columnId === 'previewJobs' && previewJobsViewEnabled) {
-                  return userHasPermissions(data?.me?.permissions, [
-                    GQLUserPermission.EditMrtQueues,
-                  ]);
+                if (columnId === 'previewJobs') {
+                  return (
+                    previewJobsViewEnabled &&
+                    userHasPermissions(data?.me?.permissions, [
+                      GQLUserPermission.EditMrtQueues,
+                    ])
+                  );
                 }
                 return true;
               })
