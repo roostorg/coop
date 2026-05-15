@@ -299,11 +299,15 @@ export default function NCMECReviewUser(
   const [selectedMedia, setSelectedMedia] = useState<NCMECMediaState[]>(
     ncmecDecisions
       ? allMediaItemsWithUrls.map((media) => {
+          // Match on (id, typeId) only — media URLs in this codebase are
+          // signed/ephemeral and don't round-trip byte-identical across
+          // fetches, so adding `url` to the predicate drops every prior
+          // classification. Multi-media-per-item gets the first decision;
+          // fixing that needs a stable per-media identifier (follow-up).
           const decision = ncmecDecisions.find(
             (decision) =>
               media.contentItem.id === decision.id &&
-              media.contentItem.type.id === decision.typeId &&
-              media.urlInfo.url === decision.url,
+              media.contentItem.type.id === decision.typeId,
           );
           if (decision) {
             return {
