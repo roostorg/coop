@@ -101,27 +101,41 @@ describe('NCMEC reporting', () => {
   describe('clampIncidentDateTimeToPast', () => {
     const NOW_MS = Date.UTC(2026, 0, 15, 12, 0, 0);
 
-    it('clamps future timestamps to now - 1s', () => {
+    it('clamps future timestamps to now - 1s and reports wasClamped=true', () => {
       const future = new Date(NOW_MS + 60_000).toISOString();
-      expect(clampIncidentDateTimeToPast(future, NOW_MS)).toBe(
-        new Date(NOW_MS - 1000).toISOString(),
-      );
+      expect(clampIncidentDateTimeToPast(future, NOW_MS)).toEqual({
+        value: new Date(NOW_MS - 1000).toISOString(),
+        wasClamped: true,
+      });
     });
 
-    it('leaves past timestamps untouched (canonicalized to UTC ISO)', () => {
+    it('leaves canonical UTC past timestamps untouched and reports wasClamped=false', () => {
       const pastMs = NOW_MS - 60_000;
       const past = new Date(pastMs).toISOString();
-      expect(clampIncidentDateTimeToPast(past, NOW_MS)).toBe(past);
+      expect(clampIncidentDateTimeToPast(past, NOW_MS)).toEqual({
+        value: past,
+        wasClamped: false,
+      });
     });
 
     it('handles non-UTC ISO offsets via numeric (not lexicographic) compare', () => {
-      // 2026-01-15T11:30:00-01:00 === 2026-01-15T12:30:00Z (30 min in the future);
-      // a lex compare against "2026-01-15T11:59:59.000Z" would mis-classify this
-      // as past because the string sorts earlier.
+      // 11:30:00-01:00 === 12:30:00Z (30 min after NOW); lex compare would
+      // classify it as past since the string sorts earlier than 11:59:59Z.
       const futureWithOffset = '2026-01-15T11:30:00-01:00';
-      expect(clampIncidentDateTimeToPast(futureWithOffset, NOW_MS)).toBe(
-        new Date(NOW_MS - 1000).toISOString(),
-      );
+      expect(clampIncidentDateTimeToPast(futureWithOffset, NOW_MS)).toEqual({
+        value: new Date(NOW_MS - 1000).toISOString(),
+        wasClamped: true,
+      });
+    });
+
+    it('does not flag wasClamped when a non-UTC past timestamp is merely normalized to Z', () => {
+      // 11:30:00+02:00 === 09:30:00Z (in the past, but round-trips to a
+      // different string). String inequality would have false-flagged it.
+      const pastWithOffset = '2026-01-15T11:30:00+02:00';
+      expect(clampIncidentDateTimeToPast(pastWithOffset, NOW_MS)).toEqual({
+        value: '2026-01-15T09:30:00.000Z',
+        wasClamped: false,
+      });
     });
 
     it('throws on invalid timestamps', () => {

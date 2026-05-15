@@ -832,8 +832,6 @@ export class HmaService {
         handleResponseBody: 'as-json',
       });
     } else {
-      // Guarded by the precondition above: when `url` is absent, both `file`
-      // and `contentType` are guaranteed to be set.
       if (!file || !contentType) {
         throw new Error(
           'addContentToBank reached file-upload branch without file/contentType',

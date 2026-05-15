@@ -395,12 +395,9 @@ const NCMEC_INTERNET_DETAIL_TYPES = [
 type NcmecInternetDetailTypeSetting =
   (typeof NCMEC_INTERNET_DETAIL_TYPES)[number];
 
-/**
- * Pull the documented NCMEC status fields out of a parsed response body
- * regardless of which wrapper element (`reportResponse`, `uploadResponse`,
- * `fileinfoResponse`, ...) NCMEC used. Returns `undefined` if neither field
- * is present so callers can fall back to a minimal error message.
- */
+/** Extract NCMEC's `responseCode`/`responseDescription` from any wrapper
+ * element (`reportResponse`, `uploadResponse`, ...). Either field may be
+ * `undefined` when not present. */
 function extractNcmecResponseStatus(body: unknown): {
   responseCode?: string;
   responseDescription?: string;
@@ -442,13 +439,9 @@ function extractNcmecResponseStatus(body: unknown): {
   return {};
 }
 
-/**
- * Build an error message for a non-2xx CyberTip response. In production we
- * surface only NCMEC's documented `responseCode` / `responseDescription`
- * (per coding rules: don't echo arbitrary upstream bodies into logs/errors,
- * they may contain reportable content). With `NCMEC_DEBUG=1` the full
- * truncated body is appended for local diagnosis.
- */
+/** Error message for a failed CyberTip response. In production only NCMEC's
+ * documented codes are surfaced (the body may echo reportable content); the
+ * full truncated body is appended only with `NCMEC_DEBUG=1`. */
 export function summarizeCyberTipFailure(
   route: string,
   status: number,
@@ -479,19 +472,14 @@ export function summarizeCyberTipFailure(
   return parts.join(', ');
 }
 
-/**
- * Clamp a media `createdAt` ISO timestamp to "now - 1s" if it's in the future
- * against our wall clock. NCMEC rejects `<incidentDateTime>` values that are
- * ahead of their server clock; this absorbs small skew while preserving the
- * caller's original timestamp when it's already in the past.
- *
- * Uses numeric `Date` comparison (not lexicographic string compare) so it
- * stays correct for non-canonical ISO inputs (e.g. timezone offsets, no `Z`).
- */
+/** Clamp a `createdAt` ISO to "now - 1s" if it's ahead of our clock — NCMEC
+ * rejects `<incidentDateTime>` in the future. `value` is always canonicalized
+ * to UTC ISO; `wasClamped` reflects the numeric (not string) comparison so
+ * callers don't misreport plain UTC normalization as a clamp. */
 export function clampIncidentDateTimeToPast(
   maxCreatedAt: string,
   nowMs: number = Date.now(),
-): string {
+): { value: string; wasClamped: boolean } {
   const maxCreatedAtMs = new Date(maxCreatedAt).getTime();
   if (Number.isNaN(maxCreatedAtMs)) {
     throw new Error(
@@ -499,7 +487,12 @@ export function clampIncidentDateTimeToPast(
     );
   }
   const ceilingMs = nowMs - 1000;
-  return new Date(Math.min(maxCreatedAtMs, ceilingMs)).toISOString();
+  const wasClamped = maxCreatedAtMs > ceilingMs;
+  const finalMs = wasClamped ? ceilingMs : maxCreatedAtMs;
+  return {
+    value: new Date(finalMs).toISOString(),
+    wasClamped,
+  };
 }
 
 export function buildInternetDetailsFromOrgSetting(
@@ -1334,9 +1327,9 @@ export default class NcmecReporting {
             throw new Error('No media in report');
           }
 
-          const clampedIncidentDateTime =
+          const { value: clampedIncidentDateTime, wasClamped } =
             clampIncidentDateTimeToPast(maxCreatedAt);
-          if (clampedIncidentDateTime !== maxCreatedAt) {
+          if (wasClamped) {
             ncmecDebugLog('incidentDateTime.clamped', {
               originalCreatedAt: maxCreatedAt,
               clampedTo: clampedIncidentDateTime,

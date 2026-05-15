@@ -1,13 +1,8 @@
 import { jsonStringify } from '../../utils/encoding.js';
 
-// Opt-in debugging utilities for the NCMEC submission flow. Activate by
-// setting `NCMEC_DEBUG=1` on a dev machine. Logs structured one-liners to
-// stderr and dumps XML/JSON payloads to `ncmec-reports/` (gitignored) so the
-// exact bytes we sent to NCMEC can be replayed via curl.
-//
-// Disabled in `NODE_ENV=production` so we cannot accidentally leak reportable
-// content in shared environments. Never log credentials or request/response
-// headers from this module.
+// Opt-in debug logs + XML/JSON dumps for NCMEC submissions. Gated on
+// `NCMEC_DEBUG=1` and `NODE_ENV !== 'production'` so we cannot leak
+// reportable content in shared environments. Never log credentials.
 
 export function ncmecDebugEnabled(): boolean {
   return (
