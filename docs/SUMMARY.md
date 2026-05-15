@@ -11,8 +11,8 @@
   - [Signals](user/signals.md)
   - [Investigation](user/investigation.md)
   - [Bulk Actioning](user/bulk-actioning.md)
-  - [Appeals](user/appeals.md)
   - [Reports](user/reports.md)
+  - [Appeals](user/appeals.md)
   - [Metrics & Reporting](user/metrics.md)
   - [Administration](user/administration.md)
 
