@@ -8,6 +8,7 @@ import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
+import { UserPermission } from '../../userManagementService/index.js';
 import {
   bullJobIdtoExternalJobId,
   itemIdToBullJobId,
@@ -199,6 +200,35 @@ describe('QueueOperations', () => {
           actionsToToggle.map((it) => it.id).includes(it),
         ),
       ).toEqual(false);
+    },
+  );
+
+  // Regression: `deleteAllJobsFromQueue` is irreversible and used to accept
+  // EDIT_MRT_QUEUES (held by moderator managers) -- that gap accidentally
+  // cleared a production queue. It now requires MANAGE_ORG.
+  testWithQueueAndActions()(
+    'deleteAllJobsFromQueue rejects EDIT_MRT_QUEUES without MANAGE_ORG',
+    async ({ org, queue, mrtService }) => {
+      await expect(
+        mrtService.deleteAllJobsFromQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          userPermissions: [UserPermission.EDIT_MRT_QUEUES],
+        }),
+      ).rejects.toMatchObject({ name: 'DeleteAllJobsUnauthorizedError' });
+    },
+  );
+
+  testWithQueueAndActions()(
+    'deleteAllJobsFromQueue accepts MANAGE_ORG',
+    async ({ org, queue, mrtService }) => {
+      await expect(
+        mrtService.deleteAllJobsFromQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          userPermissions: [UserPermission.MANAGE_ORG],
+        }),
+      ).resolves.toBeUndefined();
     },
   );
 });

@@ -2400,6 +2400,11 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
+    // Admin-only: irreversible (pending payloads only live in Redis).
+    // Recovery is via `server/bin/recover-mrt-queue.ts`.
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('Only org admins can delete all jobs from a queue');
+    }
     try {
       await context.services.ManualReviewToolService.deleteAllJobsFromQueue({
         orgId: user.orgId,
