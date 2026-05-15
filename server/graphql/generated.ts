@@ -4390,6 +4390,7 @@ export type GQLSubmitNcmecReportDecisionComponent =
   };
 
 export type GQLSubmitNcmecReportInput = {
+  readonly additionalInfo?: InputMaybe<Scalars['String']['input']>;
   readonly escalateToHighPriority?: InputMaybe<Scalars['String']['input']>;
   readonly incidentType: GQLNcmecIncidentType;
   readonly reportedMedia: ReadonlyArray<GQLNcmecMediaInput>;

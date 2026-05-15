@@ -1225,6 +1225,10 @@ export default async function getBottle() {
                             decision.escalateToHighPriority.trim(),
                         }
                       : {}),
+                    ...(decision.additionalInfo != null &&
+                    decision.additionalInfo.trim() !== ''
+                      ? { additionalInfo: decision.additionalInfo.trim() }
+                      : {}),
                   },
                   isTest,
                 );

@@ -30,6 +30,7 @@ import {
   getFieldValueForRole,
   getFieldValueOrValues,
 } from '../../../../../../utils/itemUtils';
+import { isTypingInEditableElement } from '../../../../../../utils/misc';
 import { titleCaseEnumString } from '../../../../../../utils/string';
 import { jsonStringify } from '../../../../../../utils/typescript-types';
 import ManualReviewJobContentBlurableVideo from '../../ManualReviewJobContentBlurableVideo';
@@ -134,9 +135,9 @@ function getUrlsFromItem(
         }
         return Array.isArray(valueOrValues)
           ? valueOrValues.map((it) => ({
-            url: it.value.url,
-            mediaType: it.type,
-          }))
+              url: it.value.url,
+              mediaType: it.type,
+            }))
           : { url: valueOrValues.value.url, mediaType: valueOrValues.type };
       })
       .flat(),
@@ -161,7 +162,9 @@ export function getMatchedBanksForMediaUrl(
       | { value: { url?: string; matchedBanks?: string[] }; type: string }[]
       | undefined;
     if (valueOrValues === undefined) continue;
-    const values = Array.isArray(valueOrValues) ? valueOrValues : [valueOrValues];
+    const values = Array.isArray(valueOrValues)
+      ? valueOrValues
+      : [valueOrValues];
     for (const tagged of values) {
       const v = tagged.value;
       if (v?.url === mediaUrl) {
@@ -203,7 +206,7 @@ export default function NCMECReviewUser(
     payload: NCMECJobPayloadQueryResult;
     showMessages?: boolean;
   } & (
-      | {
+    | {
         isActionable: false;
         ncmecDecisions?: readonly {
           readonly id: string;
@@ -213,13 +216,13 @@ export default function NCMECReviewUser(
           readonly industryClassification: GQLNcmecIndustryClassification;
         }[];
       }
-      | {
+    | {
         isActionable: true;
         submitDecision: (input: GQLDecisionSubmission) => Promise<void>;
         skipToNextJob: () => Promise<void>;
         ncmecDecisions: undefined;
       }
-    ),
+  ),
 ) {
   const { orgId, payload, isActionable, ncmecDecisions, showMessages } = props;
   const { item, allMediaItems } = payload;
@@ -267,9 +270,9 @@ export default function NCMECReviewUser(
                   : undefined;
               return threadId
                 ? {
-                  id: threadId.id,
-                  typeId: threadId.typeId,
-                }
+                    id: threadId.id,
+                    typeId: threadId.typeId,
+                  }
                 : undefined;
             }),
           ),
@@ -285,10 +288,10 @@ export default function NCMECReviewUser(
   >(
     allMediaItemsWithUrls.length > 0
       ? {
-        itemId: allMediaItemsWithUrls[0].contentItem.id,
-        urlInfo: allMediaItemsWithUrls[0].urlInfo,
-        itemTypeId: allMediaItemsWithUrls[0].contentItem.type.id,
-      }
+          itemId: allMediaItemsWithUrls[0].contentItem.id,
+          urlInfo: allMediaItemsWithUrls[0].urlInfo,
+          itemTypeId: allMediaItemsWithUrls[0].contentItem.type.id,
+        }
       : undefined,
   );
   // Selected Media = media that has been selected to be included in the
@@ -296,28 +299,28 @@ export default function NCMECReviewUser(
   const [selectedMedia, setSelectedMedia] = useState<NCMECMediaState[]>(
     ncmecDecisions
       ? allMediaItemsWithUrls.map((media) => {
-        const decision = ncmecDecisions.find(
-          (decision) =>
-            media.contentItem.id === decision.id &&
-            media.contentItem.type.id === decision.typeId,
-        );
-        if (decision) {
+          const decision = ncmecDecisions.find(
+            (decision) =>
+              media.contentItem.id === decision.id &&
+              media.contentItem.type.id === decision.typeId,
+          );
+          if (decision) {
+            return {
+              itemId: decision.id,
+              itemTypeId: decision.typeId,
+              urlInfo: media.urlInfo,
+              category: decision.industryClassification,
+              labels: [...decision.fileAnnotations],
+            };
+          }
           return {
-            itemId: decision.id,
-            itemTypeId: decision.typeId,
+            itemId: media.contentItem.id,
+            itemTypeId: media.contentItem.type.id,
             urlInfo: media.urlInfo,
-            category: decision.industryClassification,
-            labels: [...decision.fileAnnotations],
+            category: 'None',
+            labels: [],
           };
-        }
-        return {
-          itemId: media.contentItem.id,
-          itemTypeId: media.contentItem.type.id,
-          urlInfo: media.urlInfo,
-          category: 'None',
-          labels: [],
-        };
-      })
+        })
       : [],
   );
   const [selectedThreadsWithMessages, setSelectedThreadsWithMessages] =
@@ -326,6 +329,11 @@ export default function NCMECReviewUser(
     GQLNcmecIncidentType.ChildPornography,
   );
   const [escalateToHighPriority, setEscalateToHighPriority] = useState('');
+  const [escalateChecked, setEscalateChecked] = useState(false);
+  const [additionalInfo, setAdditionalInfo] = useState('');
+  const trimmedEscalate = escalateToHighPriority.trim();
+  const trimmedAdditionalInfo = additionalInfo.trim();
+  const escalateMissingReason = escalateChecked && trimmedEscalate === '';
   const [sendReportModalVisible, setSendReportModalVisible] = useState(false);
   const [deselectAndIgnoreModalVisible, setDeselectAndIgnoreModalVisible] =
     useState(false);
@@ -355,9 +363,11 @@ export default function NCMECReviewUser(
         </div>
         <CopyTextComponent
           value={erroredMedia.map((it) => it.id).join(',')}
-          displayValue={`${erroredMedia.length} video${erroredMedia.length === 1 ? '' : 's'
-            } or image${erroredMedia.length === 1 ? '' : 's'
-            } failed to load. Click here to copy a list of the IDs that failed to load.`}
+          displayValue={`${erroredMedia.length} video${
+            erroredMedia.length === 1 ? '' : 's'
+          } or image${
+            erroredMedia.length === 1 ? '' : 's'
+          } failed to load. Click here to copy a list of the IDs that failed to load.`}
           isError={true}
         />
         {isActionable ? (
@@ -580,22 +590,24 @@ export default function NCMECReviewUser(
           >
             <div className="overflow-hidden shadow-lg rounded-2xl w-fit">
               {!loading &&
-                moderatorSafetyBlurLevel != null &&
-                moderatorSafetyGrayscale != null ? (
+              moderatorSafetyBlurLevel != null &&
+              moderatorSafetyGrayscale != null ? (
                 media.urlInfo.mediaType === 'IMAGE' ? (
                   <img
-                    className={`object-scale-down w-64 h-48 rounded-2xl ${unblurAllMediaInConfirmation
+                    className={`object-scale-down w-64 h-48 rounded-2xl ${
+                      unblurAllMediaInConfirmation
                         ? 'blur-0'
                         : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength]
-                      } ${moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+                    } ${moderatorSafetyGrayscale ? 'grayscale' : ''}`}
                     alt=""
                     src={media.urlInfo.url}
                   />
                 ) : (
                   <ManualReviewJobContentBlurableVideo
                     url={media.urlInfo.url}
-                    className={`object-scale-down w-64 h-48 rounded-2xl ${moderatorSafetyGrayscale ? 'grayscale' : ''
-                      }`}
+                    className={`object-scale-down w-64 h-48 rounded-2xl ${
+                      moderatorSafetyGrayscale ? 'grayscale' : ''
+                    }`}
                     options={{
                       shouldBlur:
                         !unblurAllMediaInConfirmation &&
@@ -640,6 +652,7 @@ export default function NCMECReviewUser(
       footer={[
         {
           title: 'Submit Report',
+          disabled: escalateMissingReason,
           onClick: async () => {
             await props.submitDecision({
               submitNcmecReport: {
@@ -658,8 +671,11 @@ export default function NCMECReviewUser(
                   }),
                 reportedMessages: selectedThreadsWithMessages,
                 incidentType,
-                ...(escalateToHighPriority.trim() !== ''
-                  ? { escalateToHighPriority: escalateToHighPriority.trim() }
+                ...(escalateChecked && trimmedEscalate !== ''
+                  ? { escalateToHighPriority: trimmedEscalate }
+                  : {}),
+                ...(trimmedAdditionalInfo !== ''
+                  ? { additionalInfo: trimmedAdditionalInfo }
                   : {}),
               },
             });
@@ -706,11 +722,12 @@ export default function NCMECReviewUser(
         <div className="!my-4 divider" />
         <div className="text-base font-bold">Messages</div>
         ${selectedThreadsWithMessages.map((thread) => (
-            <div key={thread.threadId}>
-              {thread.threadId}: {thread.reportedContent.length} reported
-            </div>
-          ))}
-        ` : undefined}
+          <div key={thread.threadId}>
+            {thread.threadId}: {thread.reportedContent.length} reported
+          </div>
+        ))}
+        `
+          : undefined}
 
         <div className="!my-4 divider" />
         <div className="flex flex-col gap-2">
@@ -730,23 +747,67 @@ export default function NCMECReviewUser(
           </select>
         </div>
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor="escalateToHighPriority"
-            className="text-base font-bold"
-          >
-            Escalate as High Priority (optional)
+          <label className="flex items-center gap-2 text-base font-bold">
+            <input
+              type="checkbox"
+              checked={escalateChecked}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setEscalateChecked(next);
+                if (!next) {
+                  setEscalateToHighPriority('');
+                }
+              }}
+            />
+            Escalate as High Priority
+          </label>
+          {escalateChecked ? (
+            <>
+              <label
+                htmlFor="escalateToHighPriority"
+                className="text-sm font-medium"
+              >
+                Reason for escalation (required)
+              </label>
+              <textarea
+                id="escalateToHighPriority"
+                maxLength={3000}
+                value={escalateToHighPriority}
+                onChange={(e) => setEscalateToHighPriority(e.target.value)}
+                placeholder="e.g. immediate risk to child."
+                className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                rows={3}
+              />
+              <div className="flex items-center justify-between">
+                {escalateMissingReason ? (
+                  <span className="text-xs text-red-600">
+                    A reason is required when escalating.
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <span className="text-xs text-slate-500">
+                  {escalateToHighPriority.length}/3000 characters
+                </span>
+              </div>
+            </>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="ncmecAdditionalInfo" className="text-base font-bold">
+            Additional details (optional)
           </label>
           <textarea
-            id="escalateToHighPriority"
+            id="ncmecAdditionalInfo"
             maxLength={3000}
-            value={escalateToHighPriority}
-            onChange={(e) => setEscalateToHighPriority(e.target.value)}
-            placeholder="e.g. immediate risk to child. Supplying a value will escalate the report."
+            value={additionalInfo}
+            onChange={(e) => setAdditionalInfo(e.target.value)}
+            placeholder="Any other context/notes to be added to the report."
             className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             rows={3}
           />
           <span className="text-xs text-slate-500">
-            {escalateToHighPriority.length}/3000 characters
+            {additionalInfo.length}/3000 characters
           </span>
         </div>
       </div>
@@ -800,7 +861,8 @@ export default function NCMECReviewUser(
           e.repeat ||
           sendReportModalVisible ||
           deselectAndIgnoreModalVisible ||
-          isLabelSelectorInInspectedMediaVisible
+          isLabelSelectorInInspectedMediaVisible ||
+          isTypingInEditableElement(e.target)
         ) {
           return;
         } else if (moveToQueueMenuVisible) {
@@ -968,13 +1030,13 @@ export default function NCMECReviewUser(
             threadId={mediaInDetailViewThread?.id}
             threadInfo={
               threadInfo?.partialItems.__typename ===
-                'PartialItemsSuccessResponse'
+              'PartialItemsSuccessResponse'
                 ? (threadInfo.partialItems.items.find(
-                  (it) =>
-                    it.__typename === 'ThreadItem' &&
-                    it.id === mediaInDetailViewThread?.id &&
-                    it.type.id === mediaInDetailViewThread?.typeId,
-                ) as GQLThreadItem)
+                    (it) =>
+                      it.__typename === 'ThreadItem' &&
+                      it.id === mediaInDetailViewThread?.id &&
+                      it.type.id === mediaInDetailViewThread?.typeId,
+                  ) as GQLThreadItem)
                 : undefined
             }
             threadLoading={threadLoading}
@@ -983,9 +1045,11 @@ export default function NCMECReviewUser(
             <div className="self-start pt-2">
               <CopyTextComponent
                 value={erroredMedia.map((it) => it.id).join(',')}
-                displayValue={`${erroredMedia.length} video${erroredMedia.length === 1 ? '' : 's'
-                  } or image${erroredMedia.length === 1 ? '' : 's'
-                  } failed to load. Click here to copy a list of the IDs that failed to load.`}
+                displayValue={`${erroredMedia.length} video${
+                  erroredMedia.length === 1 ? '' : 's'
+                } or image${
+                  erroredMedia.length === 1 ? '' : 's'
+                } failed to load. Click here to copy a list of the IDs that failed to load.`}
                 isError={true}
               />
             </div>

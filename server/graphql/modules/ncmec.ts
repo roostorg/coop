@@ -36,6 +36,13 @@ const VALID_NCMEC_INTERNET_DETAIL_TYPES: readonly string[] = [
   'PEER_TO_PEER',
 ];
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
+function isValidContactEmail(value: string): boolean {
+  return value.length <= MAX_EMAIL_LENGTH && EMAIL_PATTERN.test(value);
+}
+
 const typeDefs = /* GraphQL */ `
   type Query {
     ncmecReportById(reportId: ID!): NCMECReport
@@ -281,6 +288,24 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
+
+    const username = input.username?.trim() ?? '';
+    const password = input.password ?? '';
+    if (username === '' || password === '') {
+      throw userInputError('Username and password are required.');
+    }
+    const contactEmail = input.contactEmail?.trim() ?? '';
+    if (contactEmail === '') {
+      throw userInputError(
+        'Reporter contact email is required for NCMEC reporting.',
+      );
+    }
+    if (!isValidContactEmail(contactEmail)) {
+      throw userInputError(
+        'Reporter contact email is not a valid email address.',
+      );
+    }
+
     const defaultInternetDetailType =
       input.defaultInternetDetailType == null
         ? null
@@ -290,15 +315,17 @@ const Mutation: GQLMutationResolvers = {
               trimmed !== '' &&
               !VALID_NCMEC_INTERNET_DETAIL_TYPES.includes(trimmed)
             ) {
-              throw userInputError(`defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`);
+              throw userInputError(
+                `defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`,
+              );
             }
             return trimmed === '' ? null : trimmed;
           })();
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
-      username: input.username,
-      password: input.password,
-      contactEmail: input.contactEmail ?? null,
+      username,
+      password,
+      contactEmail,
       moreInfoUrl: input.moreInfoUrl ?? null,
       companyTemplate: input.companyTemplate ?? null,
       legalUrl: input.legalUrl ?? null,

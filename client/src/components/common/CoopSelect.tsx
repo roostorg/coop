@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import TextToken from '../../webpages/dashboard/components/TextToken';
 
+import { isTypingInEditableElement } from '../../utils/misc';
+
 export default function CoopSelect<T extends string>(props: {
   options: {
     value: T;
@@ -148,6 +150,9 @@ export default function CoopSelect<T extends string>(props: {
       if (disabled) {
         return;
       }
+      if (isTypingInEditableElement(event.target)) {
+        return;
+      }
       if (!isMenuVisible) {
         if (event.key === openDropdownKeyBinding) {
           setIsMenuVisible(true);
@@ -272,8 +277,8 @@ export default function CoopSelect<T extends string>(props: {
                   selectedOptions.includes(option.value)
                     ? 'bg-coop-lightblue'
                     : focusedOption === option.value
-                    ? 'bg-slate-100'
-                    : 'bg-white'
+                      ? 'bg-slate-100'
+                      : 'bg-white'
                 } hover:bg-coop-lightblue-hover whitespace-nowrap`}
                 onClick={() => toggleOption(option.value)}
               >

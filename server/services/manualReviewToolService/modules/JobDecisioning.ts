@@ -80,6 +80,7 @@ export type ManualReviewDecisionComponent =
       reportedMessages: readonly NCMECThreadReport[];
       incidentType: string;
       escalateToHighPriority?: string;
+      additionalInfo?: string;
     }
   | {
       type: 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE';

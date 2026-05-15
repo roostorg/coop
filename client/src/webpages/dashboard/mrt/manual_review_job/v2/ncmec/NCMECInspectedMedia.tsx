@@ -21,6 +21,7 @@ import {
   GQLUserItemType,
 } from '../../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
+import { isTypingInEditableElement } from '../../../../../../utils/misc';
 import FieldsComponent from '../ManualReviewJobFieldsComponent';
 import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImageComponent';
 import NCMECLabelSelector from './NCMECLabelSelector';
@@ -119,6 +120,9 @@ export default function NCMECInspectedMedia(props: {
       if (disableKeyboardShortcuts || isLabelSelectorInInspectedMediaVisible) {
         return;
       }
+      if (isTypingInEditableElement(event.target)) {
+        return;
+      }
       const currentCategory = state?.category;
       const newCategory = (() => {
         switch (event.key) {
@@ -167,21 +171,24 @@ export default function NCMECInspectedMedia(props: {
   const navigationButtons = (
     <div className="flex items-center justify-between w-full mb-3">
       <div
-        className={`cursor-pointer py-1 px-3 rounded border border-solid ${index === 0
+        className={`cursor-pointer py-1 px-3 rounded border border-solid ${
+          index === 0
             ? 'text-slate-300 border-slate-100'
             : 'text-coop-blue border-coop-blue hover:border-coop-blue hover:bg-coop-lightblue'
-          }`}
+        }`}
         onClick={goToPreviousMedia}
       >
         <ArrowLeftOutlined className="pr-1 text-xs" /> Previous
       </div>
-      <div className="text-sm text-slate-500">{`${index + 1
-        } / ${totalLength}`}</div>
+      <div className="text-sm text-slate-500">{`${
+        index + 1
+      } / ${totalLength}`}</div>
       <div
-        className={`cursor-pointer py-1 px-3 rounded border border-solid ${index === totalLength - 1
+        className={`cursor-pointer py-1 px-3 rounded border border-solid ${
+          index === totalLength - 1
             ? 'text-slate-300 border-slate-100'
             : 'text-coop-blue border-coop-blue hover:border-coop-blue hover:bg-coop-lightblue'
-          }`}
+        }`}
         onClick={goToNextMedia}
       >
         Next <ArrowRightOutlined className="pl-1 text-xs" />
@@ -190,22 +197,22 @@ export default function NCMECInspectedMedia(props: {
   );
   const threadInfoFields = threadInfo
     ? threadInfo.type.baseFields
-      .map(
-        (itemTypeField) =>
-          ({
-            ...itemTypeField,
-            value: threadInfo.data[itemTypeField.name],
-          }) as ItemTypeFieldFieldData,
-      )
-      .filter((field) => {
-        return isContainerType(field.type)
-          ? !isMediaType(field.container!.valueScalarType) &&
-          field.container!.valueScalarType !== ScalarTypes.RELATED_ITEM &&
-          threadInfo.data[field.name] !== undefined
-          : !isMediaType(field.type) &&
-          field.type !== ScalarTypes.RELATED_ITEM &&
-          threadInfo.data[field.name] !== undefined;
-      })
+        .map(
+          (itemTypeField) =>
+            ({
+              ...itemTypeField,
+              value: threadInfo.data[itemTypeField.name],
+            }) as ItemTypeFieldFieldData,
+        )
+        .filter((field) => {
+          return isContainerType(field.type)
+            ? !isMediaType(field.container!.valueScalarType) &&
+                field.container!.valueScalarType !== ScalarTypes.RELATED_ITEM &&
+                threadInfo.data[field.name] !== undefined
+            : !isMediaType(field.type) &&
+                field.type !== ScalarTypes.RELATED_ITEM &&
+                threadInfo.data[field.name] !== undefined;
+        })
     : [];
   const threadComponent = (() => {
     if (threadLoading) {
@@ -319,10 +326,10 @@ export default function NCMECInspectedMedia(props: {
               fields={fieldData.filter((field) => {
                 return isContainerType(field.type)
                   ? !isMediaType(field.container!.valueScalarType) &&
-                  field.container!.valueScalarType !==
-                  ScalarTypes.RELATED_ITEM
+                      field.container!.valueScalarType !==
+                        ScalarTypes.RELATED_ITEM
                   : !isMediaType(field.type) &&
-                  field.type !== ScalarTypes.RELATED_ITEM;
+                      field.type !== ScalarTypes.RELATED_ITEM;
               })}
               itemTypeId={fullNcmecContentItem.contentItem.type.id}
             />
