@@ -2,7 +2,7 @@
 
 Overview of Coop's system architecture for developers and operators.
 
-### Overview
+## Overview
 
 Coop is built as a monorepo with a React frontend, Node.js backend, and multi-database architecture designed for high-throughput content moderation at scale. Coop:
 
@@ -34,7 +34,7 @@ Coop is built as a monorepo with a React frontend, Node.js backend, and multi-da
 | **Auth**          | Passport.js, express-session, SAML (SSO)                  |
 | **Observability** | OpenTelemetry                                             |
 
-## Directory structure
+### Directory structure
 
 ```
 coop/
