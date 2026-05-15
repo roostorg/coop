@@ -163,6 +163,12 @@ export default function NCMECSettings() {
       toast.error('Contact Email is required for NCMEC reporting.');
       return;
     }
+    // Mirror the server's MAX_EMAIL_LENGTH in server/graphql/modules/ncmec.ts
+    // so we reject before the network round-trip.
+    if (trimmedContactEmail.length > 254) {
+      toast.error('Contact Email must be 254 characters or fewer.');
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedContactEmail)) {
       toast.error('Contact Email is not a valid email address.');
       return;

@@ -1,4 +1,5 @@
 import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
+import { isTypingInEditableElement } from '@/utils/misc';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import {
   ArrowLeftOutlined,
@@ -21,7 +22,6 @@ import {
   GQLUserItemType,
 } from '../../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
-import { isTypingInEditableElement } from '../../../../../../utils/misc';
 import FieldsComponent from '../ManualReviewJobFieldsComponent';
 import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImageComponent';
 import NCMECLabelSelector from './NCMECLabelSelector';

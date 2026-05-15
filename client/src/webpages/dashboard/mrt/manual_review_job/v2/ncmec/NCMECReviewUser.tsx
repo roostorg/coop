@@ -1,3 +1,4 @@
+import { isTypingInEditableElement } from '@/utils/misc';
 import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, TaggedScalar } from '@roostorg/types';
@@ -30,7 +31,6 @@ import {
   getFieldValueForRole,
   getFieldValueOrValues,
 } from '../../../../../../utils/itemUtils';
-import { isTypingInEditableElement } from '../../../../../../utils/misc';
 import { titleCaseEnumString } from '../../../../../../utils/string';
 import { jsonStringify } from '../../../../../../utils/typescript-types';
 import ManualReviewJobContentBlurableVideo from '../../ManualReviewJobContentBlurableVideo';
@@ -302,7 +302,8 @@ export default function NCMECReviewUser(
           const decision = ncmecDecisions.find(
             (decision) =>
               media.contentItem.id === decision.id &&
-              media.contentItem.type.id === decision.typeId,
+              media.contentItem.type.id === decision.typeId &&
+              media.urlInfo.url === decision.url,
           );
           if (decision) {
             return {
@@ -717,17 +718,17 @@ export default function NCMECReviewUser(
         <div className="!my-4 divider" />
         <div className="text-base font-bold">Media</div>
         {selectedMediaConfirmationGrid}
-        {selectedThreadsWithMessages.length > 0
-          ? `
-        <div className="!my-4 divider" />
-        <div className="text-base font-bold">Messages</div>
-        ${selectedThreadsWithMessages.map((thread) => (
-          <div key={thread.threadId}>
-            {thread.threadId}: {thread.reportedContent.length} reported
-          </div>
-        ))}
-        `
-          : undefined}
+        {selectedThreadsWithMessages.length > 0 ? (
+          <>
+            <div className="!my-4 divider" />
+            <div className="text-base font-bold">Messages</div>
+            {selectedThreadsWithMessages.map((thread) => (
+              <div key={thread.threadId}>
+                {thread.threadId}: {thread.reportedContent.length} reported
+              </div>
+            ))}
+          </>
+        ) : null}
 
         <div className="!my-4 divider" />
         <div className="flex flex-col gap-2">

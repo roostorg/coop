@@ -1,8 +1,7 @@
+import { isTypingInEditableElement } from '@/utils/misc';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import TextToken from '../../webpages/dashboard/components/TextToken';
-
-import { isTypingInEditableElement } from '../../utils/misc';
 
 export default function CoopSelect<T extends string>(props: {
   options: {

@@ -32,7 +32,11 @@ import {
   type FormDataLikeWithStreams,
 } from '../networkingService/index.js';
 import { type NcmecReportingServicePg } from './dbTypes.js';
-import { ncmecDebugDump, ncmecDebugLog } from './ncmecDebug.js';
+import {
+  ncmecDebugDump,
+  ncmecDebugEnabled,
+  ncmecDebugLog,
+} from './ncmecDebug.js';
 
 export const NCMECEvent = makeEnumLike([
   'Login',
@@ -390,6 +394,113 @@ const NCMEC_INTERNET_DETAIL_TYPES = [
 ] as const;
 type NcmecInternetDetailTypeSetting =
   (typeof NCMEC_INTERNET_DETAIL_TYPES)[number];
+
+/**
+ * Pull the documented NCMEC status fields out of a parsed response body
+ * regardless of which wrapper element (`reportResponse`, `uploadResponse`,
+ * `fileinfoResponse`, ...) NCMEC used. Returns `undefined` if neither field
+ * is present so callers can fall back to a minimal error message.
+ */
+function extractNcmecResponseStatus(body: unknown): {
+  responseCode?: string;
+  responseDescription?: string;
+} {
+  if (!body || typeof body !== 'object') {
+    return {};
+  }
+  const readText = (value: unknown): string | undefined => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (
+      value &&
+      typeof value === 'object' &&
+      '_text' in (value as Record<string, unknown>)
+    ) {
+      const inner = (value as { _text: unknown })._text;
+      return typeof inner === 'string' ? inner : undefined;
+    }
+    return undefined;
+  };
+  const truncate = (value: string | undefined): string | undefined =>
+    value && value.length > 200 ? `${value.slice(0, 200)}…` : value;
+
+  for (const wrapper of Object.values(body as Record<string, unknown>)) {
+    if (!wrapper || typeof wrapper !== 'object') {
+      continue;
+    }
+    const obj = wrapper as Record<string, unknown>;
+    const responseCode = readText(obj.responseCode);
+    const responseDescription = readText(obj.responseDescription);
+    if (responseCode != null || responseDescription != null) {
+      return {
+        responseCode,
+        responseDescription: truncate(responseDescription),
+      };
+    }
+  }
+  return {};
+}
+
+/**
+ * Build an error message for a non-2xx CyberTip response. In production we
+ * surface only NCMEC's documented `responseCode` / `responseDescription`
+ * (per coding rules: don't echo arbitrary upstream bodies into logs/errors,
+ * they may contain reportable content). With `NCMEC_DEBUG=1` the full
+ * truncated body is appended for local diagnosis.
+ */
+export function summarizeCyberTipFailure(
+  route: string,
+  status: number,
+  body: unknown,
+): string {
+  const { responseCode, responseDescription } =
+    extractNcmecResponseStatus(body);
+  const parts: string[] = [
+    `CyberTip request to ${route} failed: status=${status}`,
+  ];
+  if (responseCode != null) {
+    parts.push(`responseCode=${responseCode}`);
+  }
+  if (responseDescription != null) {
+    parts.push(`responseDescription=${responseDescription}`);
+  }
+  if (ncmecDebugEnabled()) {
+    let snippet: string;
+    try {
+      const serialized = jsonStringify(body ?? null);
+      snippet =
+        serialized.length > 500 ? `${serialized.slice(0, 500)}…` : serialized;
+    } catch {
+      snippet = '<unserializable>';
+    }
+    parts.push(`body=${snippet}`);
+  }
+  return parts.join(', ');
+}
+
+/**
+ * Clamp a media `createdAt` ISO timestamp to "now - 1s" if it's in the future
+ * against our wall clock. NCMEC rejects `<incidentDateTime>` values that are
+ * ahead of their server clock; this absorbs small skew while preserving the
+ * caller's original timestamp when it's already in the past.
+ *
+ * Uses numeric `Date` comparison (not lexicographic string compare) so it
+ * stays correct for non-canonical ISO inputs (e.g. timezone offsets, no `Z`).
+ */
+export function clampIncidentDateTimeToPast(
+  maxCreatedAt: string,
+  nowMs: number = Date.now(),
+): string {
+  const maxCreatedAtMs = new Date(maxCreatedAt).getTime();
+  if (Number.isNaN(maxCreatedAtMs)) {
+    throw new Error(
+      `Invalid media createdAt timestamp for incidentDateTime: ${maxCreatedAt}`,
+    );
+  }
+  const ceilingMs = nowMs - 1000;
+  return new Date(Math.min(maxCreatedAtMs, ceilingMs)).toISOString();
+}
 
 export function buildInternetDetailsFromOrgSetting(
   defaultInternetDetailType: string | null | undefined,
@@ -1223,11 +1334,8 @@ export default class NcmecReporting {
             throw new Error('No media in report');
           }
 
-          // NCMEC requires `<incidentDateTime>` be in the past against their
-          // server clock; clamp to "now - 1s" to absorb clock skew.
-          const nowMinusOneSec = new Date(Date.now() - 1000).toISOString();
           const clampedIncidentDateTime =
-            maxCreatedAt > nowMinusOneSec ? nowMinusOneSec : maxCreatedAt;
+            clampIncidentDateTimeToPast(maxCreatedAt);
           if (clampedIncidentDateTime !== maxCreatedAt) {
             ncmecDebugLog('incidentDateTime.clamped', {
               originalCreatedAt: maxCreatedAt,
@@ -2018,19 +2126,8 @@ export default class NcmecReporting {
         });
 
         if (!response.ok) {
-          // Don't log the request body/headers: they contain reportable content and basic-auth.
-          const responseSnippet = (() => {
-            try {
-              const serialized = jsonStringify(response.body ?? null);
-              return serialized.length > 500
-                ? `${serialized.slice(0, 500)}…`
-                : serialized;
-            } catch {
-              return '<unserializable>';
-            }
-          })();
           throw new Error(
-            `CyberTip request to ${route} failed: status=${response.status}, body=${responseSnippet}`,
+            summarizeCyberTipFailure(route, response.status, response.body),
           );
         }
         return response;

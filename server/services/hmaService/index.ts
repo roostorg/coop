@@ -806,8 +806,10 @@ export class HmaService {
   ): Promise<BankContentResponse> {
     const { file, contentType, url, metadata } = options;
 
-    if (!file && !url) {
-      throw new Error('Either file or url must be provided');
+    if (!url && (!file || !contentType)) {
+      throw new Error(
+        'Either url or (file + contentType) must be provided to addContentToBank',
+      );
     }
 
     let response;
@@ -830,9 +832,15 @@ export class HmaService {
         handleResponseBody: 'as-json',
       });
     } else {
-      // File upload
+      // Guarded by the precondition above: when `url` is absent, both `file`
+      // and `contentType` are guaranteed to be set.
+      if (!file || !contentType) {
+        throw new Error(
+          'addContentToBank reached file-upload branch without file/contentType',
+        );
+      }
       const formData = new FormData();
-      formData.append(contentType!, file!);
+      formData.append(contentType, file);
 
       if (metadata) {
         if (metadata.content_id)
