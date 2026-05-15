@@ -831,7 +831,7 @@ function ManualReviewJobReviewImpl(props: {
   const otherReports =
     reportHistory.length > 1 ? (
       <MergedReportsComponent
-        primaryReportedAt={job.createdAt}
+        primaryReportId={reportHistory[0]?.reportId}
         reportHistory={reportHistory}
       />
     ) : null;
