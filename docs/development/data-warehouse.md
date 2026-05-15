@@ -4,7 +4,7 @@
 
 The data warehouse abstraction allows you to use **any data warehouse** (Clickhouse, PostgreSQL, BigQuery, Redshift, Databricks, etc.) without changing application code. Define your warehouse settings by changing one environment variable.
 
-## Quick Start
+## Quick start
 
 ```typescript
 import { inject, type Dependencies } from '../iocContainer/index.js';
@@ -26,12 +26,11 @@ export default inject(['DataWarehouse'], MyService);
 
 ## Configuration
 
-Select adapters with `WAREHOUSE_ADAPTER` and (optionally) `ANALYTICS_ADAPTER`.  
-Legacy deployments can keep using `DATA_WAREHOUSE_PROVIDER`; it is still accepted as a fallback.
+Select adapters with `WAREHOUSE_ADAPTER` and (optionally) `ANALYTICS_ADAPTER`. Legacy deployments can keep using `DATA_WAREHOUSE_PROVIDER`; it is still accepted as a fallback.
 
 ### PostgreSQL
 
-```bash
+```sh
 WAREHOUSE_ADAPTER=postgresql
 ANALYTICS_ADAPTER=postgresql
 # Legacy fallback:
@@ -43,9 +42,9 @@ DATABASE_USER=postgres
 DATABASE_PASSWORD=password
 ```
 
-### Clickhouse
+### ClickHouse
 
-```bash
+```sh
 WAREHOUSE_ADAPTER=clickhouse
 # Optional: override analytics adapter
 # ANALYTICS_ADAPTER=clickhouse
@@ -62,9 +61,9 @@ CLICKHOUSE_PROTOCOL=http
 # ANALYTICS_ADAPTER=noop
 ```
 
-## How It Works
+## How it works
 
-### Three Interfaces
+### Three interfaces
 
 **1. IDataWarehouse** - Raw SQL queries
 
@@ -91,7 +90,7 @@ await analytics.bulkWrite('RULE_EXECUTIONS', [
 ]);
 ```
 
-### How Loggers Work
+### How loggers work
 
 **All analytics loggers use the abstraction:**
 
@@ -114,12 +113,12 @@ export default inject(['DataWarehouseAnalytics'], RuleExecutionLogger);
 
 1. Service calls `logger.logRuleExecutions(data)`
 2. Logger calls `analytics.bulkWrite('RULE_EXECUTIONS', data)`
-3. For **Clickhouse**: Chunked JSONEachRow inserts over HTTP (default batches of 500 rows)
+3. For **ClickHouse**: Chunked JSONEachRow inserts over HTTP (default batches of 500 rows)
 4. For **PostgreSQL**: Buffers → COPY or batch INSERT
 
 **No warehouse-specific code in loggers!** They just call `bulkWrite()`.
 
-### Data Flow
+### Data flow
 
 #### Clickhouse / PostgreSQL (direct)
 
@@ -135,7 +134,7 @@ HTTP JSONEachRow (Clickhouse) or batched INSERT (PostgreSQL)
 Analytics tables
 ```
 
-## Required Tables
+## Required tables
 
 All warehouses need these tables. Schema types defined in `/server/storage/dataWarehouse/IDataWarehouseAnalytics.ts`.
 
@@ -146,12 +145,11 @@ All warehouses need these tables. Schema types defined in `/server/storage/dataW
 - `ITEM_MODEL_SCORES_LOG` - ML model prediction logs
 - `CONTENT_API_REQUESTS` - API request logs
 
-ClickHouse DDL lives alongside the rest of our migrations at  
-`db/src/scripts/clickhouse/`. Add new files there when the schema evolves.
+ClickHouse DDL lives alongside the rest of our migrations at `db/src/scripts/clickhouse/`. Add new files there when the schema evolves.
 
 **Migration examples:**
 
-### Clickhouse
+### ClickHouse
 
 ```sql
 CREATE TABLE rule_executions (
@@ -183,7 +181,7 @@ CREATE TABLE rule_executions (
 
 **Full schema:** See `/server/storage/dataWarehouse/IDataWarehouseAnalytics.ts` lines 23-140.
 
-## Implementing a Custom Warehouse
+## Implementing a custom warehouse
 
 ### Step 1: Implement an `IWarehouseAdapter` plugin
 
@@ -294,7 +292,7 @@ export class MyAnalyticsAdapter implements IAnalyticsAdapter {
 
 Update `DataWarehouseFactory.createDataWarehouse`, `createKyselyDialect`, and `createAnalyticsAdapter` to instantiate your plugins. The factory wraps them in bridges so the rest of the application only speaks the generic interfaces.
 
-### Step 5: Create Analytics Tables
+### Step 5: Create analytics tables
 
 All warehouses need the same tables (schema in `IDataWarehouseAnalytics.ts`):
 
@@ -312,9 +310,9 @@ CREATE TABLE rule_executions (
 );
 ```
 
-### Step 6: Configure and Run
+### Step 6: Configure and run
 
-```bash
+```sh
 export WAREHOUSE_ADAPTER=your-warehouse
 # Optional overrides
 # export ANALYTICS_ADAPTER=your-warehouse
@@ -326,7 +324,7 @@ export YOUR_WAREHOUSE_HOST=localhost
 npm start
 ```
 
-## How Services Consume Analytics Data
+## How services consume analytics data
 
 Services query analytics data using `DataWarehouseDialect`:
 
@@ -398,7 +396,7 @@ server/services/analyticsQueries/   # Warehouse-agnostic queries
 ## References
 
 - **Schema types:** `/server/storage/dataWarehouse/IDataWarehouseAnalytics.ts`
-- **Clickhouse:** `server/plugins/warehouse` and `server/plugins/analytics` adapters
+- **ClickHouse:** `server/plugins/warehouse` and `server/plugins/analytics` adapters
 - **PostgreSQL migrations:** `db/src/scripts/api-server-pg/` (app DB); analytics tables may live in a dedicated analytics database per deployment
 - **Loggers:** `/server/services/analyticsLoggers/`
 - **Queries:** `/server/services/analyticsQueries/`

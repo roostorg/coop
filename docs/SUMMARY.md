@@ -7,7 +7,7 @@
 - [User Guide](user/README.md)
   - [Basic Concepts](user/concepts.md)
   - [Automated Routing & Enforcement](user/rules.md)
-  - [Manual Review & Enforcement](user/manual-review.md)
+  - [Manual Review & Enforcement](user/review-console.md)
   - [Signals](user/signals.md)
   - [Investigation](user/investigation.md)
   - [Bulk Actioning](user/bulk-actioning.md)

@@ -48,4 +48,4 @@ Matching banks are sets of values that you can reference in your rules, includin
 
 ## Signals
 
-- Integrations
+![API Keys: Coop uses APIs to authenticate requests. UI allows rotating the key and adding a webhook signature verification key](../images/coop-integrations.png)

@@ -1,8 +1,11 @@
 # Getting Started
 
-Get set up with Coop for the first time for local development or demoing.
+Quickly get set up with Coop for the first time for local development or demoing.
 
-See [Local Development](local.md) for prerequisites, configuration details, troubleshooting, and more. You may also want to familiarize yourself with Coop's [Basic Concepts](../user/concepts.md) for additional context. This guide assumes some familiarity with the command line, e.g. using a Terminal with `bash` or `zsh`.
+> [!NOTE]
+> You may also want to familiarize yourself with Coop's [Basic Concepts](../user/concepts.md) for additional context.
+
+This guide assumes some familiarity with the command line, e.g. using a Terminal with `bash` or `zsh`. See [Local Development](local.md) for prerequisites, configuration details, troubleshooting, and more. You may also wish to learn more about Coop's [Architecture](architecture.md).
 
 To get Coop running:
 
@@ -32,16 +35,7 @@ To get Coop running:
 
    If you get an error instead, see [Prerequisites](local.md#prerequisites).
 
-2. **Start all backing services**; see [Docker Services](local.md#docker-services) for ports and more details.
-
-   ```sh
-   # coop/
-   npm run up
-   ```
-
-   Wait for PostgreSQL, ClickHouse, ScyllaDB, and Redis to be healthy before continuing; you can check progress with `docker ps`.
-
-3. **Install dependencies** with `npm` in the root folder and for each sub-package.
+2. **Install dependencies** with `npm` in the root folder and for each sub-package.
 
    ```sh
    # coop/
@@ -51,7 +45,7 @@ To get Coop running:
    (cd client && npm install)
    ```
 
-4. **Copy `.env.example` files to `.env`** in `db/`, `server/`, and `client/`. The example defaults work for local development and demoing out of the box. See [Environment Setup](local.md#environment-setup) for details of the available options.
+3. **Copy example environment files** in `db/`, `server/`, and `client/`. The defaults work out of the box for local development and demoing. See [Environment Setup](local.md#environment-setup) for more details.
 
    ```sh
    # coop/
@@ -59,6 +53,15 @@ To get Coop running:
    cp server/.env.example server/.env
    cp client/.env.example client/.env
    ```
+
+4. **Start all backing services**, including databases and queues. See [Docker Services](local.md#docker-services) for ports and more details.
+
+   ```sh
+   # coop/
+   npm run up
+   ```
+
+   Wait for PostgreSQL, ClickHouse, ScyllaDB, and Redis to be healthy before continuing; you can check progress with `docker ps`.
 
 5. **Create databases** and run migrations to ensure they're set up correctly:
 
@@ -102,9 +105,12 @@ To get Coop running:
 
 8. Finally, **start the application**! See [Running the Application](local.md#running-the-application) for additional options, including how to start different components individually for debugging.
 
-   From the project root folder (you may need to `cd ..` first if you're still in `server/`:
+   Switch back to the project root folder if you're still in `server/`, then start the server and client:
 
    ```sh
+   # coop/server
+   cd ..
+
    # coop/
    npm run start
    ```

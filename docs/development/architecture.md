@@ -1,21 +1,28 @@
-# Coop Architecture
+# Architecture
 
-This document provides an overview of Coop's system architecture for developers and operators.
+Overview of Coop's system architecture for developers and operators.
 
 ### Overview
 
 Coop is built as a monorepo with a React frontend, Node.js backend, and multi-database architecture designed for high-throughput content moderation at scale. Coop:
 
-- Lets operations and policy teams manage settings, like which queue to send reports to, or \# of strikes per enforcement, without requiring engineers to change backend code
-- Supports both automation and a manual review process
-- Provides intuitive UI with role-based access control permissioning
-- Includes an embedded media player for image and video
-- Best-practice wellness features built-in
-- Uses webhook-based architecture to link effects with events
-- Logs an audit trail of actions taken, metadata about the action (incl. When it happened and who it was performed by), and the corresponding policy
-- Dev/staging env for manual testing and automated integration tests
+- Lets operations and policy teams manage settings, like which queue to send reports to, or number of strikes per enforcement, without requiring engineers to change backend code
 
-### Technology Stack
+- Supports both automation and a manual review process
+
+- Provides intuitive UI with role-based access control permissioning
+
+- Includes an embedded media player for image and video
+
+- Contains built-in best-practice wellness features
+
+- Uses webhook-based architecture to link effects with events
+
+- Logs an audit trail of actions taken, metadata about the action (incl. When it happened and who it was performed by), and the corresponding policy
+
+- Supports dev/staging environments for manual testing and automated integration tests
+
+### Technology stack
 
 | Layer             | Technologies                                              |
 | :---------------- | :-------------------------------------------------------- |
@@ -27,7 +34,7 @@ Coop is built as a monorepo with a React frontend, Node.js backend, and multi-da
 | **Auth**          | Passport.js, express-session, SAML (SSO)                  |
 | **Observability** | OpenTelemetry                                             |
 
-## **Directory Structure**
+## Directory structure
 
 ```
 coop/
@@ -57,11 +64,9 @@ coop/
 └── docs/                      # Documentation
 ```
 
-## Backend Service Registration
+## Backend service registration
 
-Coop's backend uses [BottleJS](https://github.com/young-steveo/bottlejs) for dependency injection, enabling lazy loading, middleware hooks, and decorators. New services are registered in [`server/iocContainer/index.ts`](https://github.com/roostorg/coop/blob/main/server/iocContainer/index.ts) — that's the starting point when adding a new service and making it available to the rest of the application.
-
-# Coop Core Components
+Coop's backend uses [BottleJS](https://github.com/young-steveo/bottlejs) for dependency injection, enabling lazy loading, middleware hooks, and decorators. New services are registered in [`server/iocContainer/index.ts`](https://github.com/roostorg/coop/blob/main/server/iocContainer/index.ts); that's the starting point when adding a new service and making it available to the rest of the application.
 
 ## API
 
@@ -70,9 +75,9 @@ Coop accepts both synchronous and asynchronous input.
 - Synchronous input is handled via REST APIs and supports item submission, action execution, reporting workflows, policy retrieval, and related operations.
 - Asynchronous input is handled via BullMQ job queues backed by Redis.
 
-All API requests require an organization API key passed via the x-api-key header.
+All API requests require an organization API key passed via the `x-api-key` header.
 
-### Content Submission
+### Content submission
 
 - **File**: `/server/routes/content/ContentRoutes.ts`
 - **Route**: `Post /api/v1/content/`
@@ -96,7 +101,7 @@ Accepts any item (eg: content, user, thread) but only accepts a single item at a
 }
 ```
 
-### Item Submission
+### Item submission
 
 - **File**: `/server/routes/items/ItemRoutes.ts`
 - **Route**: `POST /api/v1/items/async/`
@@ -123,7 +128,7 @@ Accepts one or more arbitrary items (users, threads, etc.). All processing is as
 }
 ```
 
-### Action Execution
+### Action execution
 
 - **File**: `/server/routes/action/ActionRoutes.ts`
 - **Route**: `POST /api/v1/actions`
@@ -209,7 +214,7 @@ Appeals allow users to contest actions taken against items. Appeals include the 
 
 ```json
 {
-  "appealId": "customer-internal-appeal-id",
+  "appealId": "platform-internal-appeal-id",
   "appealedBy": {
     "typeId": "appealer-user-type-id",
     "id": "appealer-user-id"
@@ -229,7 +234,7 @@ Appeals allow users to contest actions taken against items. Appeals include the 
 }
 ```
 
-### Supporting API Endpoints
+### Supporting API endpoints
 
 - **Policies**: `GET /api/v1/policies/`
 - **User Scores**: `GET /api/v1/user_scores`
@@ -254,47 +259,45 @@ All API errors use a consistent JSON structure:
 }
 ```
 
-## Rules Engine
+## Rules
 
-When an item is submitted, Coop retrieves all [rules](RULES.md) associated with the item’s type. Each rule is evaluated by recursively processing its `conditionSet`, extracting values from the item, optionally passing them through signals, and comparing results using configured comparators.
+Coop supports two sets of [rules](RULES.md). Each has separate code paths, storage tables, and UI surfaces.
 
-Key characteristics:
+### Proactive Rules
 
-- Conditions are evaluated in ascending cost order
-- Short-circuiting is applied based on conjunction type (AND / OR / XOR)
-- Expensive signals are skipped when earlier conditions fail
-- Actions are deduplicated before execution
+When an item is submitted, Coop retrieves all [Proactive Rules](../user/rules.md#proactive-rules) associated with the item’s type. Proactive Rules act in parallel to determine automatic actions, including potentially sending the item to the review console.
 
-For rules in actionable environments (e.g., `LIVE`, `MANUAL`), actions are published via the `ActionPublisher`, which handles:
+Each rule is evaluated by recursively processing its `conditionSet`, extracting values from the item, optionally passing them through signals, and comparing results using configured comparators.
 
-- Customer webhooks
-- MRT enqueueing
-- NCMEC routing
+Rule status: `LIVE`, `DRAFT`, `BACKGROUND`, `EXPIRED`
 
-**Location**: `/server/rule_engine`
+- Code: `/server/models/rules/RuleModel.ts`
+- Storage tables:
+  - `manual_review_tool.routing_rules`
+  - `manual_review_tool.routing_rules_to_item_types`
+  - `manual_review_tool.routing_rules_history`
+  - `manual_review_tool.appeal_routing_rules`
+  - `manual_review_tool.appeal_routing_rules_to_item_types`
+- UI: `/client/src/webpages/dashboard/rules/`
 
-**Rule structure:** `/server/models/rules/RuleModel.ts`
+### Routing Rules
 
-```typescript
-Rule {
-  id: string;
-  name: string;
-  status: RuleStatus;
-  ruleType: RuleType;
-  conditionSet: ConditionSet;
-  orgId: string;
-  tags: string[];
-  maxDailyActions: number;
-}
-```
+When a report is submitted or a proactive rule sends an item to the review console, it is evaluated by [Routing Rules](../user/rules.md#routing-rules). The first routing rule that succeeds routes the item into the appropriate queue awaiting review as a job.
 
-## Manual Review Tool (MRT)
+- Code: `/server/services/manualReviewToolService/modules/JobRouting.ts`
+- Storage tables:
+  - `public.rules`
+  - `public.rules_and_actions`
+  - `public.rules_and_item_types`
+  - `public.rules_and_policies`
+  - `public.rules_history`
+- UI: `/client/src/webpages/dashboard/mrt/queue_routing/`
 
-The Manual Review Tool (MRT) is a BullMQ-backed queue system used for human review. Items enter MRT via rule actions or user reports. Each job is enriched with context (user scores, related items) and routes them to named queues via routing rules configured in the UI. Moderators claim tasks via exclusive locks (so only one person can claim one task) and submit decisions (aka take actions), which trigger downstream callbacks or reporting workflows (ie. NCMEC).
+## Review Console
 
-### Queue Management
+The [Review Console](../user/review-console.md) (sometimes referred to as "manual review tool" or "MRT" in the codebase) is a BullMQ-backed queue system used for human review. Items enter the review console as a [Job](../user/concepts.md#jobs) via rule actions or user reports. Each Job is enriched with context (user scores, related items) and routed to a named queue via routing rules configured in the UI. Moderators claim Jobs via exclusive locks (so only one person can claim one Job) and make decisions by performing [Actions](../user/concepts.md#actions), which trigger downstream callbacks or reporting workflows (ie. NCMEC).
 
-#### Queue Operations
+### Queue operations
 
 **File**: `/server/services/manualReviewToolService/modules/QueueOperations.ts`
 
@@ -303,7 +306,7 @@ Jobs can be enqueued from:
 - Rules engine execution
 - User reports
 - Post-action workflows
-- MRT internal jobs
+- Review Console internal jobs
 
 **Users:**
 
@@ -367,12 +370,12 @@ async submitDecision(opts: SubmitDecisionInput): Promise<SubmitDecisionResponse>
 
 ## Actions
 
-Actions are created when a rule matches or a moderator submits a decision. Coop determines _when_ an action should occur; the customer determines _what_ happens as a result (label / warn / ban / remove content etc). The actual action is taken by the customer after being triggered through Coop.
+Actions are performed when a rule matches or a moderator submits a decision.
 
 Action types:
 
-- CUSTOMER_DEFINED_ACTION: POST webhook to customer infrastructure
-- ENQUEUE_TO_MRT: Add item to the manual review queue
+- CUSTOMER_DEFINED_ACTION: POST webhook to platform infrastructure
+- ENQUEUE_TO_MRT: Send to the review console
 - ENQUEUE_TO_NCMEC: Route to NCMEC reporting queue
 
 **Webhook structure:**
@@ -394,10 +397,10 @@ Failed webhook deliveries retry five times with exponential back off.
 
 Coop uses a multiple database storage system:
 
-- **PostgreSQL** stores configuration, rules, users, sessions, and MRT decisions with ACID guarantees.
-- **Redis (via BullMQ)** powers MRT job queues, caching, and aggregation counters for very low latency.
+- **PostgreSQL** stores configuration, rules, users, sessions, and decisions with ACID guarantees.
+- **Redis (via BullMQ)** powers review console job queues, caching, and aggregation counters for very low latency.
 - **ScyllaDb (5.2)** stores item submission history for high-throughput writes with materialized views for varied access patterns.
-- **Clickhouse** serves as the analytics warehouse for rule executions, actions and user statistics.
+- **ClickHouse** serves as the analytics warehouse for rule executions, actions and user statistics.
 
 ### PostgreSQL
 
@@ -416,7 +419,7 @@ ACID compliant storage for config, auth, rules, and operational data including:
 
 Used as low-latency hot cache for:
 
-- **MRT**: BullMQ job queues
+- **Review Console**: BullMQ job queues
 - **Caching**: Sets, Sorted Sets, Lua scripts
 - **Distributed counters**
 
@@ -447,7 +450,7 @@ Databases and key tables
 
 Signals are scoring or evaluation functions used by rules. They range from simple text matching to third-party ML services.
 
-The rules engine calls signals when evaluating conditions that need a score. Signals run in cost order (e.g. text matching will run early). If an early condition fails, the expensive signals are skipped. Results are memoized and cached for 30 seconds for reuse. Signals extend a shared base class and define metadata, cost, and execution logic.
+The rules engine calls signals when evaluating conditions that need a score. Results are memoized and cached for reuse. Signals extend a shared base class and define metadata and execution logic.
 
 File: `/server/services/signalsService`
 
@@ -468,31 +471,7 @@ abstract class SignalBase<Input, OutputType, MatchingValue, Type> {
 }
 ```
 
-# Services Required
-
-- PostgreSQL
-- Redis
-- Clickhouse
-- ScyllaDb
-- Metrics
-  - Jaeger
-  - Open Telemetry
-
 # Configuration
-
-Server configuration lives in `/server/.env.example`
-
-- Database: PostgreSQL
-- Analytics, Warehouse: Clickhouse
-- Redis: Redis
-- Scylla: Scylla
-
-Rules
-
-- Configured in frontend via GraphQL/dashboard UI
-- Rate limiting via maxDailyActions for each rule
-- Rule status: `LIVE`, `DRAFT`, `BACKGROUND`, `EXPIRED`
-- Signals: Configured in the rules front-end
 
 User roles
 
@@ -512,43 +491,9 @@ Permissions
 - EDIT_MRT_QUEUES: ADMIN, MODERATOR_MANAGER
 - VIEW_CHILD_SAFETY_DATA: ADMIN, MODERATOR_MANAGER, CHILD_SAFETY_MODERATOR
 
-# Action Rules vs Routing Rules
-
-Coop supports two sets of [rules](RULES.md). Each has separate code paths, storage tables, and UI surfaces.
-
-1. [Automated Action rules](RULES.md#automated-action-rules): All rules act in parallel on all events to determine auto actions and MRT decisioning
-2. [Routing rules](RULES.md#routing-rules): First routing rule that succeeds routes the MRT bound event into the appropriate queue awaiting review, the rest are executed in order.
-
-## Rules Engine Rules
-
-Code: `/server/models/rules/RuleModel.ts`
-
-UI: `/client/src/webpages/dashboard/rules/`
-
-Storage tables:
-
-- public.rules
-- public.rules_and_actions
-- public.rules_and_item_types
-- public.rules_and_policies
-- public.rules_history
-
-## Routing Rules
-
-Code: `/server/services/manualReviewToolService/modules/JobRouting.ts`
-UI: `/client/src/webpages/dashboard/mrt/queue_routing/`
-
-Storage tables:
-
-- manual_review_tool.routing_rules
-- manual_review_tool.routing_rules_to_item_types
-- manual_review_tool.routing_rules_history
-- manual_review_tool.appeal_routing_rules
-- manual_review_tool.appeal_routing_rules_to_item_types
-
 ## Authentication
 
-Coop supports three authentication methods: API key authentication for programmatic access, and session-based.
+Coop supports three authentication methods: API key authentication for programmatic access, session-based, and SAML/SSO.
 
 ### API Key Authentication
 
@@ -577,13 +522,15 @@ Session authentication is used for dashboard UI access via GraphQL.
 2. Passport's GraphQLLocalStrategy validates email/password
 3. Password verified via bcrypt comparison
 4. On success, user serialized to session via passport.serializeUser()
-5. Session stored in PostgreSQL via connect-pg-simple  
-   Session configuration:
+5. Session stored in PostgreSQL via connect-pg-simple
+
+Session configuration:
 
 - Store: PostgreSQL-backed
 - Cookie: Secure flag in production, 30-day expiry
-- Session secret: process.env.SESSION_SECRET  
-  Files: `/server/api.ts`
+- Session secret: process.env.SESSION_SECRET
+
+Files: `/server/api.ts`
 
 ### SAML/SSO Authentication
 
@@ -594,12 +541,15 @@ Enterprise SSO uses SAML with per-organization configuration.
 3. User redirected to configured SAML provider
 4. Provider authenticates and posts assertion to callback URL
 5. User email extracted from SAML assertion
-6. User record looked up and session created  
-   Configuration (per org in org_settings table):
+6. User record looked up and session created
+
+Configuration (per org in org_settings table):
 
 - saml_enabled: Boolean flag
 - sso_url: SAML entry point URL
 - cert: Certificate for validation
-  Files:  
-  `/server/api.ts (lines 142-227)`  
-  `/server/services/SSOService/SSOService.ts`
+
+Files:
+
+- `/server/api.ts`
+- `/server/services/SSOService/SSOService.ts`

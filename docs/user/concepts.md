@@ -58,9 +58,11 @@ The id field will be your unique identifier for the Item, and the typeId field w
 
 ## Actions
 
-Actions in Coop represent any action you can perform on Items. Some common Trust & Safety-related examples include Delete, Ban, Mute, and Send to Moderator. If you want to add non-T\&S-related actions as well, such as Promote, Add to Trending, Mark as Trustworthy, or Approve Transaction, you absolutely can! You can add any automated action to Coop.
+Actions in Coop represent any action you can perform on Items. Some common Trust & Safety-related examples include _Delete_, _Ban_, _Mute_, and _Send to Moderator_. If you want to add non-T&S-related actions as well, such as _Promote_, _Add to Trending_, _Mark as Trustworthy_, or _Approve Transaction_, you absolutely can! You can add any automated action to Coop.
 
-Each Action must map to an API endpoint that you expose to Coop. For example, if you create a Delete Action in Coop, you must provide an API endpoint (i.e. a URL and ideally an authentication scheme) to which Coop can send POST requests. That way, when any of these Actions is triggered through Coop (either through the Moderator Console or Automated Rules), Coop will send you the corresponding POST request, at which point the Action will actually get executed on your servers.
+In the Review Console, available Actions are exposed as _Decisions_ to be made on each Job.
+
+Each Action must map to an API endpoint that you expose to Coop. For example, if you create a _Delete_ Action in Coop, you must provide an API endpoint (i.e. a URL and ideally an authentication scheme) to which Coop can send POST requests. That way, when any of these Actions is triggered through Coop (either through the Review Console or Automated Rules), Coop will send you the corresponding POST request, at which point the Action will actually get executed on your servers.
 
 The second step in your setup process will be defining these Actions in the Coop dashboard.
 
@@ -129,6 +131,10 @@ Policies can have sub-policies underneath them, so the Violence policy could hav
 It is often useful (and in some cases, required by the EU's Digital Services Act) to tie every Action you take to one or more specific Policies. For example, you could Delete a comment under your Hate Speech policy, or you could Delete it under your Spam policy. Coop allows you to track those differences and measure how many Actions you've taken for each Policy. That way, you can see how effectively you're enforcing each Policy over time, identify Policies for which your enforcement is poor or degrading, and report performance metrics to your leadership (or to regulators in the form of a DSA Transparency Report).
 
 You can create and manage your Policies in the Policies Dashboard, and you can fetch them programmatically through the Policies API.
+
+## Jobs
+
+Jobs are created when a Report is routed to a Queue in the Review Console. Each Job displays information about the Report, the reported Item, and the Item's Author. Jobs can be skipped (leaving them in the queue), or a Decision can be made by the reviewer. Decisions include _Ignore_ (do not action) _Enqueue to NCMEC_ (if configured), _Move_ to another queue, and all available Actions for the queue.
 
 ## Reports
 
