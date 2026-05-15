@@ -65,16 +65,12 @@ export async function waitForItemInClickHouse(
       const rows = await deps.DataWarehouse.query(
         `SELECT item_id, item_type_id, event
            FROM analytics.CONTENT_API_REQUESTS
-          WHERE org_id = {orgId:String}
-            AND item_id = {itemId:String}
-            AND item_type_id = {itemTypeId:String}
+          WHERE org_id = ?
+            AND item_id = ?
+            AND item_type_id = ?
           LIMIT 1`,
         deps.Tracer,
-        [
-          { name: 'orgId', value: orgId },
-          { name: 'itemId', value: itemIdentifier.id },
-          { name: 'itemTypeId', value: itemIdentifier.typeId },
-        ],
+        [orgId, itemIdentifier.id, itemIdentifier.typeId],
       );
       return rows.length > 0 ? rows[0] : null;
     },

@@ -60,9 +60,9 @@ describe('Items submission (integration)', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await itemTypeCleanup?.();
-    await orgCleanup?.();
-    await harness?.shutdown();
+    await itemTypeCleanup();
+    await orgCleanup();
+    await harness.shutdown();
   }, 30_000);
 
   test('submitted item lands in Scylla and ClickHouse', async () => {

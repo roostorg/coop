@@ -6,6 +6,11 @@
  * Requires the docker-compose stack from `npm run up` and migrations applied
  * via `npm run db:update`.
  */
+// Load .env before any module that reads process.env (notably the IoC
+// container). The unit-test `npm test` path goes through dotenv via its
+// NODE_OPTIONS; `test:integ` does not, so we do it here.
+import 'dotenv/config';
+
 import * as superTest from 'supertest';
 
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
@@ -29,7 +34,6 @@ export async function makeIntegrationServer(): Promise<IntegrationServer> {
   // or shutdown, so we don't await it here.
   const workerRun = deps.ItemProcessingWorker.run(workerAbort.signal);
   workerRun.catch((err) => {
-     
     console.error('ItemProcessingWorker exited with error', err);
   });
 
@@ -40,7 +44,17 @@ export async function makeIntegrationServer(): Promise<IntegrationServer> {
       workerAbort.abort();
       await deps.ItemProcessingWorker.shutdown();
       await shutdownServer();
-      await deps.closeSharedResourcesForShutdown();
+      // BullMQ's Worker.close() already closes the shared ioredis connection,
+      // which makes `closeSharedResourcesForShutdown` throw "Connection is
+      // closed" when it tries to `quit()` redis a second time. The error is
+      // benign — every shared resource is already torn down — so we swallow
+      // it here rather than leak the failure into afterAll.
+      await deps.closeSharedResourcesForShutdown().catch((err) => {
+        if (err instanceof Error && err.message === 'Connection is closed.') {
+          return;
+        }
+        throw err;
+      });
     },
   };
 }
