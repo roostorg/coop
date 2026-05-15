@@ -8,12 +8,9 @@ import {
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
 import {
-  CoopError,
-  ErrorType,
   makeBadRequestError,
   makeNotFoundError,
   makeUnauthorizedError,
-  type ErrorInstanceData,
 } from '../../utils/errors.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
@@ -21,6 +18,11 @@ import { type PassportGqlContext } from '../utils/passportContext.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
 import { type GraphQLRuleParent } from './ruleKyselyPersistence.js';
 import { verifyEmailPasswordCredentials } from './userApiCredentials.js';
+import {
+  makeChangePasswordIncorrectPasswordError,
+  makeChangePasswordNotAllowedError,
+  makeSignUpUserExistsError,
+} from './userApiErrors.js';
 import {
   kyselyUserAddFavoriteRule,
   kyselyUserFindByEmail,
@@ -94,7 +96,12 @@ class UserAPI {
     try {
       await context.logout();
       return true;
-    } catch (_) {
+    } catch (e) {
+      // Session teardown is best-effort: surface the failure to the active
+      // tracing span (mirrors the pattern used elsewhere in this file and in
+      // `verifyEmailPasswordCredentials`) but still report `false` to the
+      // client so a stale session doesn't block the logout response.
+      this.tracer.logActiveSpanFailedIfAny(e);
       return false;
     }
   }
@@ -400,68 +407,16 @@ export default inject(
 );
 export type { UserAPI };
 
-export type UserErrorType =
-  | 'LoginUserDoesNotExistError'
-  | 'LoginIncorrectPasswordError'
-  | 'LoginSsoRequiredError'
-  | 'CannotDeleteDefaultUserError'
-  | 'ChangePasswordIncorrectPasswordError'
-  | 'ChangePasswordNotAllowedError';
-
-export const makeLoginUserDoesNotExistError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'User with this email does not exist.',
-    name: 'LoginUserDoesNotExistError',
-    ...data,
-  });
-
-export const makeLoginIncorrectPasswordError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'Incorrect password.',
-    name: 'LoginIncorrectPasswordError',
-    ...data,
-  });
-
-export const makeLoginSsoRequiredError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'SSO Login is Required',
-    name: 'LoginSsoRequiredError',
-    ...data,
-  });
-
-export type SignUpErrorType = 'SignUpUserExistsError';
-
-export const makeSignUpUserExistsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.UniqueViolation],
-    title: 'User with this email already exists.',
-    name: 'SignUpUserExistsError',
-    ...data,
-  });
-
-export const makeChangePasswordIncorrectPasswordError = (
-  data: ErrorInstanceData,
-) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'Current password is incorrect.',
-    name: 'ChangePasswordIncorrectPasswordError',
-    ...data,
-  });
-
-export const makeChangePasswordNotAllowedError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 403,
-    type: [ErrorType.Unauthorized],
-    title: 'Password change is not allowed for this user.',
-    name: 'ChangePasswordNotAllowedError',
-    ...data,
-  });
+// Re-export for backward compatibility with other modules that historically
+// imported these from `UserApi`. New code should import directly from
+// `./userApiErrors`.
+export {
+  makeChangePasswordIncorrectPasswordError,
+  makeChangePasswordNotAllowedError,
+  makeLoginIncorrectPasswordError,
+  makeLoginSsoRequiredError,
+  makeLoginUserDoesNotExistError,
+  makeSignUpUserExistsError,
+  type SignUpErrorType,
+  type UserErrorType,
+} from './userApiErrors.js';

@@ -5,7 +5,7 @@ import {
   makeLoginIncorrectPasswordError,
   makeLoginSsoRequiredError,
   makeLoginUserDoesNotExistError,
-} from './UserApi.js';
+} from './userApiErrors.js';
 import {
   kyselyUserFindByEmail,
   type GraphQLUserParent,

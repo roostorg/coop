@@ -22,7 +22,7 @@ import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import { makeLoginUserDoesNotExistError } from './graphql/datasources/UserApi.js';
+import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
 import {
   kyselyUserFindByEmail,
   kyselyUserFindById,
@@ -382,12 +382,11 @@ export default async function makeApiServer(deps: Dependencies) {
     '/graphql',
     express.json(),
     expressMiddleware(apolloServer, {
-      context: async ({ req, res }) =>
-        ({
-          ...buildPassportContext(req, res),
-          services: makeGqlServices(deps),
-          dataSources: deps.DataSources,
-        }),
+      context: async ({ req, res }) => ({
+        ...buildPassportContext(req, res),
+        services: makeGqlServices(deps),
+        dataSources: deps.DataSources,
+      }),
     }),
   );
 
