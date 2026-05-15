@@ -19,14 +19,6 @@ import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
 
-export const ncmecProdQueues = [
-  '08d99d80-fda3-11ee-93c7-2de73bc8984f',
-  '63d2e0d0-ea93-11ed-800c-990ec859ff6d',
-  'c97f8120-f1e7-11ee-b69a-8b0608a5cb1c',
-  '4e4d04a0-dcac-11ee-a507-bd7289da2601',
-  '0d2811b0-21e2-11ef-b6ce-43fd0fde2b7f',
-];
-
 export class NcmecService {
   private readonly ncmecReporting: NcmecReporting;
   private readonly ncmecEnqueueToMrt: NcmecEnqueueToMrt;
@@ -234,8 +226,7 @@ export class NcmecService {
         ncmec_additional_info_endpoint:
           params.ncmecAdditionalInfoEndpoint ?? undefined,
         default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
-        default_internet_detail_type:
-          params.defaultInternetDetailType ?? null,
+        default_internet_detail_type: params.defaultInternetDetailType ?? null,
         terms_of_service: params.termsOfService ?? null,
         contact_person_email: params.contactPersonEmail ?? null,
         contact_person_first_name: params.contactPersonFirstName ?? null,

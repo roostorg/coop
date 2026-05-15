@@ -141,7 +141,6 @@ import {
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
   makeNcmecService,
-  ncmecProdQueues,
   type NcmecService,
 } from '../services/ncmecService/index.js';
 import {
@@ -833,7 +832,6 @@ export default async function getBottle() {
         decisionComponents,
         relatedActions,
         job,
-        queueId,
         reviewerId,
         reviewerEmail,
         decisionReason,
@@ -1198,7 +1196,13 @@ export default async function getBottle() {
                     };
                   }),
                 );
-                const isTest = !ncmecProdQueues.includes(queueId);
+                // Submissions go to the NCMEC test endpoint
+                // (exttest.cybertip.org) unless the deployment is explicitly
+                // configured for production via NCMEC_ENV=production. Operators
+                // are responsible for matching this to whether the credentials
+                // configured in Settings → NCMEC are production or test
+                // credentials issued by NCMEC.
+                const isTest = process.env.NCMEC_ENV !== 'production';
                 await container.NcmecService.submitReport(
                   {
                     reportedUser: {
