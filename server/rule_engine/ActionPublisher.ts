@@ -328,25 +328,33 @@ class ActionPublisher {
           )?.latestSubmission;
         };
 
-        // Synthesize a minimal USER submission when no prior submission
-        // exists. CONTENT/THREAD enqueues need real `data` to resolve the
-        // creator, so they fall through to the existing error path.
+        // Recover when no submission exists for the target. USER: synthesize
+        // a minimal submission from the id alone. CONTENT: infer the creator
+        // via warehouse references so we can still enqueue the right user.
+        // THREAD has no single "owner" so we refuse.
         const getFullItemOrSyntheticUser = async () => {
           const fullItem = await getFullItem();
           if (fullItem) {
             return fullItem;
           }
-          if (targetItem.itemType.kind !== 'USER') {
-            return undefined;
+          if (targetItem.itemType.kind === 'USER') {
+            const userItemType = await this.getItemTypeEventuallyConsistent({
+              orgId,
+              typeSelector: { id: targetItem.itemType.id },
+            });
+            if (!userItemType || userItemType.kind !== 'USER') {
+              return undefined;
+            }
+            return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
           }
-          const userItemType = await this.getItemTypeEventuallyConsistent({
-            orgId,
-            typeSelector: { id: targetItem.itemType.id },
-          });
-          if (!userItemType || userItemType.kind !== 'USER') {
-            return undefined;
+          if (targetItem.itemType.kind === 'CONTENT') {
+            const inferred =
+              await this.itemInvestigationService.synthesizeUserItemFromCreatorReferences(
+                { orgId, itemId: targetItem.itemId },
+              );
+            return inferred?.latestSubmission;
           }
-          return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
+          return undefined;
         };
         const actionSource = getSourceType(
           correlationId,

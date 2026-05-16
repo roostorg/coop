@@ -50,11 +50,7 @@ function makeIsolatedPublisher(opts: IsolatedPublisherOptions) {
   } as unknown as Dependencies['UserStrikeService'];
   const getItemTypeEventuallyConsistent =
     opts.getItemTypeEventuallyConsistent ??
-    (jest
-      .fn()
-      .mockResolvedValue(
-        undefined,
-      ));
+    jest.fn().mockResolvedValue(undefined);
   const publisher = new ActionPublisher(
     actionExecutionLogger,
     makeNoopTracer(),
@@ -489,16 +485,100 @@ describe('ActionPublisher', () => {
       );
     });
 
-    it('fails loudly when ENQUEUE_TO_NCMEC targets a CONTENT item with no submission', async () => {
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-      const enqueueForHumanReviewIfApplicable = jest.fn();
+    it('infers the creator and enqueues to NCMEC for a CONTENT target with no submission', async () => {
+      const enqueueForHumanReviewIfApplicable = jest
+        .fn()
+        .mockResolvedValue({ status: 'ENQUEUED' });
+      const userItemType = {
+        id: 'user-type-3',
+        kind: 'USER' as const,
+        name: 'User',
+        version: '1',
+        schemaVariant: 'DEFAULT',
+        schema: [],
+        schemaFieldRoles: {},
+      };
+      const synthesizeUserItemFromCreatorReferences = jest
+        .fn()
+        .mockResolvedValue({
+          latestSubmission: {
+            itemId: 'inferred-creator-id',
+            itemType: userItemType,
+            data: {},
+            submissionId: 'synthetic:inferred-creator-id',
+            submissionTime: undefined,
+            creator: undefined,
+          },
+        });
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
         fetchHTTP: jest.fn(),
         ncmecService: { enqueueForHumanReviewIfApplicable },
         itemInvestigationService: {
           getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          synthesizeUserItemFromCreatorReferences,
+        },
+      });
+
+      const results = await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-ncmec-inferred',
+              orgId: 'org-synth',
+              name: 'Enqueue for NCMEC Review',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.ENQUEUE_TO_NCMEC,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-synth',
+          correlationId:
+            'manual-action-run:inferred-ncmec' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Post',
+            },
+          },
+        },
+      );
+
+      expect(results).toEqual([expect.objectContaining({ success: true })]);
+      expect(synthesizeUserItemFromCreatorReferences).toHaveBeenCalledWith({
+        orgId: 'org-synth',
+        itemId: 'phantom-content-id',
+      });
+      expect(enqueueForHumanReviewIfApplicable).toHaveBeenCalledTimes(1);
+      const enqueueArg = enqueueForHumanReviewIfApplicable.mock.calls[0]?.[0];
+      expect(enqueueArg.item.itemId).toBe('inferred-creator-id');
+      expect(enqueueArg.item.itemTypeIdentifier.id).toBe('user-type-3');
+      expect(logActionExecutions).toHaveBeenCalledWith(
+        expect.objectContaining({ failed: false }),
+      );
+    });
+
+    it('fails loudly when ENQUEUE_TO_NCMEC targets a CONTENT item with no submission and no inferable creator', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const enqueueForHumanReviewIfApplicable = jest.fn();
+      const synthesizeUserItemFromCreatorReferences = jest
+        .fn()
+        .mockResolvedValue(null);
+      const { publisher, logActionExecutions } = makeIsolatedPublisher({
+        fetchHTTP: jest.fn(),
+        ncmecService: { enqueueForHumanReviewIfApplicable },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          synthesizeUserItemFromCreatorReferences,
         },
       });
 
@@ -535,6 +615,7 @@ describe('ActionPublisher', () => {
       );
 
       expect(results).toEqual([expect.objectContaining({ success: false })]);
+      expect(synthesizeUserItemFromCreatorReferences).toHaveBeenCalled();
       expect(enqueueForHumanReviewIfApplicable).not.toHaveBeenCalled();
       expect(logActionExecutions).toHaveBeenCalledWith(
         expect.objectContaining({ failed: true }),
