@@ -132,7 +132,7 @@ Accepts one or more arbitrary items (users, threads, etc.). All processing is as
 
 - **File**: `/server/routes/action/ActionRoutes.ts`
 - **Route**: `POST /api/v1/actions`
-- **Header**: `x-api-key: \<org-api-key\>`
+- **Header**: `x-api-key: <org-api-key>`
 
 **Example request body (JSON):**
 

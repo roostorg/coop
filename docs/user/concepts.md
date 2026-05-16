@@ -125,4 +125,4 @@ The User Score is calculated based on the ratio of penalties to submissions:
 
 - User has 100 submissions
 - 2 actions taken with "medium" penalty (3 points each) \= 6 penalty points
-- Penalty rate = 6/100 = 6% → Score: 4
+- Penalty rate = 6/100 = 6% → Score: 3
