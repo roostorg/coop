@@ -167,18 +167,28 @@ async function loadCandidates(
 ): Promise<Candidate[]> {
   banner('Loading candidates from manual_review_tool.job_creations');
 
-  // Page through job_creations newest-first with a (created_at, id) cursor,
-  // deduping by (item_type_id, item_id) and stopping once we have at least
-  // `argv.limit` distinct items or the table is exhausted. This avoids the
-  // pitfall of a fixed overfetch silently missing recoverable items when
-  // the same item was re-enqueued many times.
+  // Page newest-first, dedupe by (item_type_id, item_id), and check decisions
+  // per page so we stop on undecided count not distinct count, which could
+  // be all-decided.
   const PAGE_SIZE = 1000;
+  // Chunked to stay under Postgres's 65,535 bind-parameter cap.
+  const DECISION_CHUNK = 500;
   const byItem = new Map<string, Candidate>();
+  const checkedGuids = new Set<string>();
+  const decidedGuids = new Set<string>();
   let totalRowsLoaded = 0;
   let cursorCreatedAt: Date | null = null;
   let cursorId: string | null = null;
 
-  while (byItem.size < argv.limit) {
+  const countUndecided = () => {
+    let n = 0;
+    for (const c of byItem.values()) {
+      if (!decidedGuids.has(jobIdToGuid(c.latestJobId))) n++;
+    }
+    return n;
+  };
+
+  while (true) {
     let q = container.KyselyPg.selectFrom('manual_review_tool.job_creations')
       .select(['id', 'item_id', 'item_type_id', 'created_at', 'policy_ids'])
       .where('org_id', '=', argv.orgId)
@@ -226,27 +236,38 @@ async function loadCandidates(
     cursorCreatedAt = new Date(last.created_at);
     cursorId = last.id;
 
+    // Resolve decisions for any guids we haven't checked yet, chunked to
+    // stay under Postgres's 65,535 bind-parameter ceiling.
+    const newGuids: string[] = [];
+    for (const c of byItem.values()) {
+      const guid = jobIdToGuid(c.latestJobId);
+      if (!checkedGuids.has(guid)) {
+        checkedGuids.add(guid);
+        newGuids.push(guid);
+      }
+    }
+    for (let i = 0; i < newGuids.length; i += DECISION_CHUNK) {
+      const chunk = newGuids.slice(i, i + DECISION_CHUNK);
+      const decisionRows = await container.KyselyPg.selectFrom(
+        'manual_review_tool.manual_review_decisions',
+      )
+        .select(['id'])
+        .where('org_id', '=', argv.orgId)
+        .where('id', 'in', chunk)
+        .execute();
+      for (const r of decisionRows) decidedGuids.add(r.id);
+    }
+
+    if (countUndecided() >= argv.limit) break;
     if (page.length < PAGE_SIZE) break;
   }
+
   console.log(
     `Loaded ${totalRowsLoaded} job_creations rows across paginated reads`,
   );
   console.log(`Deduplicated to ${byItem.size} distinct items`);
 
   if (byItem.size === 0) return [];
-
-  // Decisions are keyed by the GUID portion of the JobId.
-  const guids = Array.from(byItem.values()).map((c) =>
-    jobIdToGuid(c.latestJobId),
-  );
-  const decisionRows = await container.KyselyPg.selectFrom(
-    'manual_review_tool.manual_review_decisions',
-  )
-    .select(['id'])
-    .where('org_id', '=', argv.orgId)
-    .where('id', 'in', guids)
-    .execute();
-  const decidedGuids = new Set(decisionRows.map((r) => r.id));
 
   const candidates = Array.from(byItem.values())
     .filter((c) => !decidedGuids.has(jobIdToGuid(c.latestJobId)))

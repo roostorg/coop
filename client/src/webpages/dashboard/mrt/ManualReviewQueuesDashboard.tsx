@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 
-import CopyTextComponent from '../../../components/common/CopyTextComponent';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import CoopButton from '../components/CoopButton';
 import CoopModal from '../components/CoopModal';
@@ -20,6 +19,7 @@ import TabBar from '../components/TabBar';
 import { ColumnProps, DefaultColumnFilter } from '../components/table/filters';
 import { dateSort, integerSort, stringSort } from '../components/table/sort';
 import Table from '../components/table/Table';
+import CopyTextComponent from '@/components/common/CopyTextComponent';
 
 import {
   GQLUserPermission,
