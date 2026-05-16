@@ -11,6 +11,7 @@ import {
   type MatchingRule,
   type Policy,
 } from '../services/analyticsLoggers/index.js';
+import { makeSyntheticUserSubmission } from '../services/itemInvestigationService/index.js';
 import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
@@ -121,6 +122,7 @@ class ActionPublisher {
     private ncmecService: Dependencies['NcmecService'],
     private itemInvestigationService: Dependencies['ItemInvestigationService'],
     private userStrikeService: Dependencies['UserStrikeService'],
+    private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {}
 
   /**
@@ -325,6 +327,27 @@ class ActionPublisher {
             })
           )?.latestSubmission;
         };
+
+        // Synthesize a minimal USER submission when no prior submission
+        // exists. CONTENT/THREAD enqueues need real `data` to resolve the
+        // creator, so they fall through to the existing error path.
+        const getFullItemOrSyntheticUser = async () => {
+          const fullItem = await getFullItem();
+          if (fullItem) {
+            return fullItem;
+          }
+          if (targetItem.itemType.kind !== 'USER') {
+            return undefined;
+          }
+          const userItemType = await this.getItemTypeEventuallyConsistent({
+            orgId,
+            typeSelector: { id: targetItem.itemType.id },
+          });
+          if (!userItemType || userItemType.kind !== 'USER') {
+            return undefined;
+          }
+          return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
+        };
         const actionSource = getSourceType(
           correlationId,
         ) as ActionExecutionSourceType;
@@ -390,10 +413,12 @@ class ActionPublisher {
 
               return true;
             case ActionType.ENQUEUE_TO_MRT:
-              const fullItemForMrt = await getFullItem();
+              const fullItemForMrt = await getFullItemOrSyntheticUser();
               if (!fullItemForMrt) {
                 throw new Error(
-                  "Actions without full item submissions can't be enqueued to MRT yet",
+                  `Cannot enqueue to MRT: no submission record for ${targetItem.itemType.kind} ` +
+                    `item ${targetItem.itemId} (type ${targetItem.itemType.id}). ` +
+                    `POST the item to the items endpoint first.`,
                 );
               }
 
@@ -431,10 +456,12 @@ class ActionPublisher {
 
               return true;
             case ActionType.ENQUEUE_TO_NCMEC:
-              const fullItemForNcmec = await getFullItem();
+              const fullItemForNcmec = await getFullItemOrSyntheticUser();
               if (!fullItemForNcmec) {
                 throw new Error(
-                  "Actions without full item submissions can't be enqueued to NCMEC yet",
+                  `Cannot enqueue to NCMEC: no submission record for ${targetItem.itemType.kind} ` +
+                    `item ${targetItem.itemId} (type ${targetItem.itemType.id}). ` +
+                    `POST the item to the items endpoint first.`,
                 );
               }
 
@@ -573,6 +600,23 @@ class ActionPublisher {
           }
         } catch (e) {
           span.recordException(e as Exception);
+          // Log to stderr so operators see action failures without having
+          // to pull traces. Identifiers only, no item `data`.
+          // eslint-disable-next-line no-console
+          console.error(
+            jsonStringify({
+              event: 'actionPublisher.publishAction.failed',
+              orgId,
+              actionId: action.id,
+              actionName: action.name,
+              actionType: action.actionType,
+              itemId: targetItem.itemId,
+              itemTypeId: targetItem.itemType.id,
+              itemTypeKind: targetItem.itemType.kind,
+              correlationId,
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          );
           return false;
         }
       },
@@ -590,6 +634,7 @@ export default inject(
     'NcmecService',
     'ItemInvestigationService',
     'UserStrikeService',
+    'getItemTypeEventuallyConsistent',
   ],
   ActionPublisher,
 );
