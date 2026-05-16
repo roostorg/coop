@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# Review rules live in `.github/copilot-instructions.md` and `AGENTS.md` —
+# CodeRabbit picks both up automatically. This file only carries settings that
+# differ from CodeRabbit's defaults.
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+    ignore_usernames:
+      - 'dependabot[bot]'
+      - 'dependabot-preview[bot]'
+    labels:
+      - '!dependabot'
+  path_filters:
+    - '!**/generated.ts'
+    - '!**/node_modules/**'
+    - '!**/dist/**'
+    - '!**/build/**'
+    - '!**/*.snap'
+
+  # Cross-cutting rules live in .github/copilot-instructions.md.
+  path_instructions:
+    - path: 'server/graphql/modules/**'
+      instructions: |
+        - N+1: flag `await` inside loops over user-supplied IDs. DataLoader or
+          a single batched query is the fix.
+        - IDOR / authorization: verify each resolver checks that the caller
+          owns or can access the specific resource ID, not just that they are
+          authenticated.
+        - Input validation: GraphQL schema shape is not enough — look for
+          length, range, allowlist, and canonicalization checks on resolver
+          arguments.
+        - Schema stability: removing or renaming a GraphQL type or field
+          breaks Apollo cache and downstream consumers. Additive changes are
+          usually safe; removals deserve a migration plan.
+
+    - path: 'server/api.ts'
+      instructions: |
+        Auth, session, CSRF, CORS, and rate-limit middleware live here.
+        AGENTS.md requires a maintainer for changes to this file — surface
+        them even when the diff is small. Flag any change that disables a
+        security control.
+
+    - path: 'server/**/Clickhouse*.ts'
+      instructions: |
+        Raw SQL is expected in the ClickHouse adapter files. Flag any string
+        interpolation of user input — bound parameters are required.
+
+    - path: 'server/scylla/**'
+      instructions: |
+        Cassandra driver queries must use bound parameters. Flag string-built
+        CQL with user input.
+
+    - path: 'server/iocContainer/**'
+      instructions: |
+        Services are registered here for BottleJS DI. Direct imports of
+        service singletons elsewhere bypass test mocking and should be flagged.
+
+    - path: 'db/src/scripts/**'
+      instructions: |
+        Migrations are forward-only. Editing a migration that has already
+        shipped is a red flag — add a new forward migration instead. Postgres
+        role grants must use `CURRENT_USER`. New filenames use the
+        `date -u +"%Y.%m.%dT%H.%M.%S"` prefix.
+
+    - path: 'client/**/*.{ts,tsx}'
+      instructions: |
+        - XSS: flag `dangerouslySetInnerHTML`, `innerHTML`, `document.write`,
+          `javascript:` URLs, and unsanitized `href`/`src` from user input.
+          Prefer `textContent`; sanitize with DOMPurify when raw HTML is
+          unavoidable.
+        - Token storage: auth tokens belong in HttpOnly, Secure, SameSite
+          cookies — flag `localStorage` or `sessionStorage` use for tokens.
+        - Open redirects: redirecting to a user-supplied URL without an
+          allowlist is risky.
+
+    - path: '**/{package.json,package-lock.json}'
+      instructions: |
+        Dependency additions, removals, or upgrades (including transitive
+        bumps) require human approval for license (Apache 2.0) and CVE review
+        per AGENTS.md > "Human-approval-required actions". Surface every
+        change so reviewers don't miss it.
+
+  # ESLint runs in CI; the others overlap with it or surface style noise.
+  tools:
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    markdownlint:
+      enabled: false
+    oxc:
+      enabled: false
+    languagetool:
+      enabled: false

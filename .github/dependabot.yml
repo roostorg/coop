@@ -10,24 +10,30 @@
 version: 2
 updates:
   # Enable version updates for Docker
-  - package-ecosystem: "docker"
+  - package-ecosystem: 'docker'
     directories:
-      - "/"
-      - "/client"
-      - "/db"
-      - "/hma"
-      - "/nodejs-instrumentation"
+      - '/'
+      - '/client'
+      - '/db'
+      - '/hma'
+      - '/nodejs-instrumentation'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
 
   # Enable version updates for npm
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
@@ -52,6 +58,9 @@ updates:
     directory: '/db'
     schedule:
       interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
@@ -76,6 +85,9 @@ updates:
     directory: '/migrator'
     schedule:
       interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
@@ -100,6 +112,9 @@ updates:
     directory: '/server'
     schedule:
       interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
@@ -124,6 +139,9 @@ updates:
     directory: '/client'
     schedule:
       interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
@@ -148,6 +166,9 @@ updates:
     directory: '/nodejs-instrumentation'
     schedule:
       interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
