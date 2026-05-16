@@ -189,6 +189,8 @@ export type NCMECReportParams = {
   escalateToHighPriority?: string;
   /** Optional free-text notes; if present must be non-blank and max 3000 chars. */
   additionalInfo?: string;
+  /** MRT decision id; when set, failures are recorded to `ncmec_reports_errors`. */
+  jobId?: string;
 };
 
 // Key insertion order in these object literals must match the NCMEC XSD
@@ -1651,6 +1653,17 @@ export default class NcmecReporting {
             message: jsonStringify({ reportParams, isTest }),
           });
           span.recordException(e as Exception);
+          if (reportParams.jobId !== undefined) {
+            await this.#recordSubmissionError({
+              jobId: reportParams.jobId,
+              userId: reportParams.reportedUser.id,
+              userTypeId: reportParams.reportedUser.typeId,
+              error:
+                e instanceof Error
+                  ? e.message
+                  : 'Unknown NCMEC submission error',
+            });
+          }
           return 'FAILURE';
         }
       },
@@ -2059,6 +2072,56 @@ export default class NcmecReporting {
 
     const responseJson = response.body as CyberTipFinishResponse;
     return responseJson.reportDoneResponse.reportId;
+  }
+
+  /** Best-effort write of a failed-submission row. Swallows its own DB errors
+   * so a follow-on failure can't turn a NCMEC FAILURE into an unhandled
+   * exception. */
+  async #recordSubmissionError(opts: {
+    jobId: string;
+    userId: string;
+    userTypeId: string;
+    error: string;
+  }) {
+    try {
+      // user_id/user_type_id are varchar(255); trim so an over-long org id
+      // can't make this failure-recording write itself fail.
+      const safeUserId = opts.userId.slice(0, 255);
+      const safeUserTypeId = opts.userTypeId.slice(0, 255);
+      const retryCountRow = await this.pgQuery
+        .selectFrom('ncmec_reporting.ncmec_reports_errors')
+        .select('retry_count')
+        .where('job_id', '=', opts.jobId)
+        .executeTakeFirst();
+      const nextRetryCount = retryCountRow ? retryCountRow.retry_count + 1 : 1;
+      await this.pgQuery
+        .insertInto('ncmec_reporting.ncmec_reports_errors')
+        .values({
+          job_id: opts.jobId,
+          user_id: safeUserId,
+          user_type_id: safeUserTypeId,
+          status: 'RETRYABLE_ERROR',
+          last_error: opts.error,
+          retry_count: nextRetryCount,
+        })
+        .onConflict((oc) =>
+          oc.columns(['job_id']).doUpdateSet({
+            retry_count: nextRetryCount,
+            last_error: opts.error,
+            status: 'RETRYABLE_ERROR',
+          }),
+        )
+        .execute();
+    } catch (e: unknown) {
+      // eslint-disable-next-line no-restricted-syntax
+      logErrorJson({
+        error: e,
+        message: jsonStringify({
+          context: 'recordSubmissionError',
+          jobId: opts.jobId,
+        }),
+      });
+    }
   }
 
   async #sendCyberTipRequest(input: {

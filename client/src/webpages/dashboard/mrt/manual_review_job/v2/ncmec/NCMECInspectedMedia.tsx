@@ -342,11 +342,12 @@ export default function NCMECInspectedMedia(props: {
             </div>
           ) : undefined}
           <div className="pb-2 text-base font-bold text-start">User</div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 min-w-0 w-full">
             <ManualReviewJobMagnifyImageComponent
               itemIdentifier={{ id: user.id, typeId: user.type.id }}
               imageUrl={profilePicUrl?.url}
               label={displayName ? `${displayName} (${user.id})` : user.id}
+              labelTruncationType="wrap"
               fallbackComponent={
                 <UserAlt4 className="p-3 fill-slate-500 w-11" />
               }

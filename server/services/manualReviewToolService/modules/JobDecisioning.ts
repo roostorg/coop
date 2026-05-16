@@ -470,6 +470,85 @@ export default class JobDecisioning {
     );
   }
 
+  async getNcmecDecisionsForOrg(opts: { orgId: string; limit?: number }) {
+    const { orgId, limit = 500 } = opts;
+    const allNcmecDecisions = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_decisions')
+      .where('org_id', '=', orgId)
+      .where(({ eb, selectFrom }) => {
+        return eb.exists(
+          selectFrom(
+            sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
+              'decision_component',
+            ),
+          )
+            .selectAll()
+            .where(
+              sql<string>`decision_component->>'type'`,
+              '=',
+              'SUBMIT_NCMEC_REPORT',
+            ),
+        );
+      })
+      .select([
+        'org_id',
+        'decision_components',
+        'job_payload',
+        'id',
+        'queue_id',
+        'reviewer_id',
+        'created_at',
+      ])
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .execute();
+    return filterNullOrUndefined(
+      allNcmecDecisions.map((it) => {
+        if (
+          'policyIds' in it.job_payload &&
+          'submissionId' in it.job_payload.payload.item
+        ) {
+          return { ...it, job_payload: it.job_payload };
+        }
+        return undefined;
+      }),
+    );
+  }
+
+  /** Single-decision lookup gated on the caller's org. Returns `undefined` if
+   * the decision doesn't exist or belongs to a different org (callers should
+   * treat both cases as "not found" — never confirm cross-org existence). */
+  async getNcmecDecisionByIdForOrg(opts: {
+    orgId: string;
+    decisionId: string;
+  }) {
+    const { orgId, decisionId } = opts;
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_decisions')
+      .where('id', '=', decisionId)
+      .where('org_id', '=', orgId)
+      .select([
+        'org_id',
+        'decision_components',
+        'job_payload',
+        'id',
+        'queue_id',
+        'reviewer_id',
+        'created_at',
+      ])
+      .executeTakeFirst();
+    if (!row) {
+      return undefined;
+    }
+    if (
+      !('policyIds' in row.job_payload) ||
+      !('submissionId' in row.job_payload.payload.item)
+    ) {
+      return undefined;
+    }
+    return { ...row, job_payload: row.job_payload };
+  }
+
   async getIgnoreCallbackForOrg(orgId: string): Promise<string | undefined> {
     const settings = await this.pgQuery
       .selectFrom('manual_review_tool.manual_review_tool_settings')

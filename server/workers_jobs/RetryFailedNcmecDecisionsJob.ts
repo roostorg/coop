@@ -1,9 +1,8 @@
-import { makeDateString } from '@roostorg/types';
 import _ from 'lodash';
 import { v1 as uuidv1 } from 'uuid';
 
 import { inject } from '../iocContainer/utils.js';
-import { getFieldValueForRole } from '../services/itemProcessingService/index.js';
+import { buildSubmitReportParamsFromDecision } from '../services/ncmecService/index.js';
 import { toCorrelationId } from '../utils/correlationIds.js';
 
 export default inject(
@@ -97,76 +96,24 @@ export default inject(
         return;
       }
       try {
-        const displayName = getFieldValueForRole(
-          itemType.schema,
-          itemType.schemaFieldRoles,
-          'displayName',
-          data,
-        );
-        const profilePicUrl = getFieldValueForRole(
-          itemType.schema,
-          itemType.schemaFieldRoles,
-          'profileIcon',
-          data,
-        );
-
-        const allMedia = row.job_payload.payload.allMediaItems;
-        const media = await Promise.all(
-          submitNcmecReportDecisionComponent.reportedMedia.map(async (it) => {
-            const reportedItem = allMedia.find(
-              (payloadMedia) => payloadMedia.contentItem.itemId === it.id,
-            );
-            if (reportedItem === undefined) {
-              throw new Error('Unable to find reported media in job payload');
-            }
-            const itemType = await getItemTypeEventuallyConsistent({
-              orgId,
-              typeSelector: reportedItem.contentItem.itemTypeIdentifier,
-            });
-            if (itemType === undefined) {
-              throw new Error('Unable to find item type for reported media');
-            }
-
-            const createdAt =
-              getFieldValueForRole(
-                itemType.schema,
-                itemType.schemaFieldRoles,
-                'createdAt',
-                reportedItem.contentItem.data,
-              ) ?? makeDateString(new Date().toISOString());
-            if (createdAt === undefined) {
-              throw new Error('No created at for reported media');
-            }
-
-            return {
-              id: it.id,
-              typeId: it.typeId,
-              url: it.url,
-              createdAt,
-              industryClassification: it.industryClassification,
-              fileAnnotations: it.fileAnnotations,
-            };
-          }),
-        );
+        const reportParams = await buildSubmitReportParamsFromDecision({
+          orgId,
+          reviewerId: row.reviewer_id,
+          reportedItemId: itemId,
+          reportedItemTypeId: itemTypeId,
+          reportedUserItemType: itemType,
+          reportedUserData: data,
+          allMediaItems: row.job_payload.payload.allMediaItems,
+          decisionComponent: submitNcmecReportDecisionComponent,
+          // Old decisions predate the incidentType column; fall back to the
+          // most common incident type so they remain submittable on retry.
+          fallbackIncidentType:
+            'Child Pornography (possession, manufacture, and distribution)',
+          jobId: row.job_payload.id,
+          getItemTypeEventuallyConsistent,
+        });
         const reportResult = await ncmecService.submitReport(
-          {
-            reportedUser: {
-              id: itemId,
-              typeId: itemTypeId,
-              ...(displayName ? { displayName } : {}),
-              ...(profilePicUrl ? { profilePicture: profilePicUrl.url } : {}),
-            },
-            orgId,
-            media,
-            reviewerId: row.reviewer_id,
-            threads: submitNcmecReportDecisionComponent.reportedMessages,
-            // Use the stored incidentType if available, otherwise default to the most common one
-            // The type says it's required, but old decisions in the DB won't have it
-
-            incidentType:
-              submitNcmecReportDecisionComponent.incidentType ||
-              'Child Pornography (possession, manufacture, and distribution)',
-          },
+          reportParams,
           false,
         );
         if (
