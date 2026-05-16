@@ -1,4 +1,5 @@
-/* eslint-disable max-lines */
+/* eslint-disable max-lines -- scenarios share the `makeIsolatedPublisher`
+ * harness; splitting would duplicate ~100 lines of setup. */
 /**
  * Unit tests for ActionPublisher to verify action execution logging behavior.
  *

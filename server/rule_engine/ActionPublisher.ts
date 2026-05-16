@@ -328,24 +328,36 @@ class ActionPublisher {
           )?.latestSubmission;
         };
 
-        // Recover when no submission exists for the target. USER: synthesize
-        // a minimal submission from the id alone. CONTENT: infer the creator
-        // via warehouse references so we can still enqueue the right user.
-        // THREAD has no single "owner" so we refuse.
-        const getFullItemOrSyntheticUser = async () => {
+        // USER target with no record: synthesize a minimal submission from
+        // the id. Returns undefined for non-USER targets — callers acting on
+        // the content itself (e.g., MRT) must not substitute a user.
+        const getFullItemOrSyntheticUserForUserTarget = async () => {
+          const fullItem = await getFullItem();
+          if (fullItem) {
+            return fullItem;
+          }
+          if (targetItem.itemType.kind !== 'USER') {
+            return undefined;
+          }
+          const userItemType = await this.getItemTypeEventuallyConsistent({
+            orgId,
+            typeSelector: { id: targetItem.itemType.id },
+          });
+          if (!userItemType || userItemType.kind !== 'USER') {
+            return undefined;
+          }
+          return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
+        };
+
+        // NCMEC-only: also infers the creator for CONTENT targets so the
+        // report is filed against the right user. THREAD has no owner.
+        const getFullItemOrSyntheticUserForNcmec = async () => {
           const fullItem = await getFullItem();
           if (fullItem) {
             return fullItem;
           }
           if (targetItem.itemType.kind === 'USER') {
-            const userItemType = await this.getItemTypeEventuallyConsistent({
-              orgId,
-              typeSelector: { id: targetItem.itemType.id },
-            });
-            if (!userItemType || userItemType.kind !== 'USER') {
-              return undefined;
-            }
-            return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
+            return getFullItemOrSyntheticUserForUserTarget();
           }
           if (targetItem.itemType.kind === 'CONTENT') {
             const inferred =
@@ -420,8 +432,9 @@ class ActionPublisher {
               }
 
               return true;
-            case ActionType.ENQUEUE_TO_MRT:
-              const fullItemForMrt = await getFullItemOrSyntheticUser();
+            case ActionType.ENQUEUE_TO_MRT: {
+              const fullItemForMrt =
+                await getFullItemOrSyntheticUserForUserTarget();
               if (!fullItemForMrt) {
                 throw new Error(
                   `Cannot enqueue to MRT: no submission record for ${targetItem.itemType.kind} ` +
@@ -463,8 +476,10 @@ class ActionPublisher {
               });
 
               return true;
-            case ActionType.ENQUEUE_TO_NCMEC:
-              const fullItemForNcmec = await getFullItemOrSyntheticUser();
+            }
+            case ActionType.ENQUEUE_TO_NCMEC: {
+              const fullItemForNcmec =
+                await getFullItemOrSyntheticUserForNcmec();
               if (!fullItemForNcmec) {
                 throw new Error(
                   `Cannot enqueue to NCMEC: no submission record for ${targetItem.itemType.kind} ` +
@@ -498,6 +513,7 @@ class ActionPublisher {
               });
 
               return true;
+            }
             case ActionType.ENQUEUE_AUTHOR_TO_MRT:
               const fullItemForAuthor = await getFullItem();
               if (
