@@ -47,7 +47,7 @@ In Coop, to uniquely identify a particular Item, use an (Item ID, Item Type ID) 
 
 In those circumstances, the (Item ID, Item Type ID) pair is needed to uniquely identify the correct Item. It’s recommended to send your Items in the following shape:
 
-```json
+```ts
 item: {
   id: string;
   typeId: string;
@@ -84,7 +84,7 @@ Jobs are created when a Report is routed to a Queue in the Review Console. Each 
 
 ## Reports
 
-Reports are created when a user on your platform flags an Item as potentially harmful. The Report API is used for manual review, whether it’s in response to a user flag or just to trigger manual labeling. When a user flags an Item on your platform and you send it to the Report API, Coop adds it to a Review Queue so that your moderators can review it and decide what to do with it. Those items will automatically be added to Review Queues and users will be able to claim them in the manual review tool.
+Reports are created when a user on your platform flags an Item as potentially harmful. The Report API is used for manual review, whether it’s in response to a user flag or just to trigger manual labeling. When a user flags an Item on your platform and you send it to the Report API, Coop adds it to a Review Queue so that your moderators can review it and decide what to do with it. Those items will automatically be added to Review Queues and users will be able to claim them in the Review Console.
 
 Read more about [reports](reports.md).
 

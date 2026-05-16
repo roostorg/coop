@@ -42,8 +42,8 @@ coop/
 │   └── src/
 │       ├── webpages/         # Page components
 │       ├── graphql/          # GraphQL queries/mutations
-│       └── components/       # Shared UI components
-│       └── utils/                    # Utility Functions
+│       ├── components/       # Shared UI components
+│       └── utils/            # Utility Functions
 │
 ├── server/                    # Node.js backend
 │   ├── bin/                  # CLI scripts
@@ -585,7 +585,7 @@ User roles
 - MODERATOR_MANAGER: Managers MRT queues
 - MODERATOR: Reviews assigned queues
 - CHILD_SAFETY_MODERATOR: Access to NCMEC data
-- EXTERNAL_MODERATOR: View only MRT access
+- EXTERNAL_MODERATOR: View-only MRT access
 
 Permissions
 

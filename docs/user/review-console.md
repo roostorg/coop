@@ -26,7 +26,7 @@ When creating or editing a queue, you can configure **Reviewer Access** to deter
 
 ## Job view
 
-![A review job in Coop with user data redacted. Shows what time the report was received, what kind of item it is, who created the report and for what reason, the # of reports on the task, and information about the post itself. Users can add internal comments for their teammates and view the policy to check what enforcement guidelines are. There is a list of decisions users can make on the task and a button to skip the task](../images/coop-task-view.png)
+![A review job in Coop with user data redacted. Shows what time the report was received, what kind of item it is, who created the report and for what reason, the number of reports on the job, and information about the post itself. Users can add internal comments for their teammates and view the policy to check what enforcement guidelines are. There is a list of decisions users can make on the job and a button to skip the job](../images/coop-task-view.png)
 
 Each **job** in a queue displays the report and everything Coop knows about the flagged content or user being reviewed. Each job has its own URL and can be shared with anyone at your organization who has access to Coop.
 
