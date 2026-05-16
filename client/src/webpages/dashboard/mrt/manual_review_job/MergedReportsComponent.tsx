@@ -42,7 +42,6 @@ export default function MergedReportsComponent(props: {
           ...reportHistory.slice(matchIdx + 1),
         ];
       }
-      return reportHistory;
     }
     return reportHistory.slice(1);
   }, [primaryReportId, reportHistory]);
