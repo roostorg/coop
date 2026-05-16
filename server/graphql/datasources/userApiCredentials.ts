@@ -43,12 +43,7 @@ export async function verifyEmailPasswordCredentials(
       user.orgId,
     );
 
-    if (
-      samlSettings?.saml_enabled &&
-      // We allow Coop users to log in with email/password even if SSO is
-      // enabled so Coop employees can manage user accounts.
-      email.split('@')[1] !== 'getcoop.com'
-    ) {
+    if (samlSettings?.saml_enabled) {
       throw makeLoginSsoRequiredError({
         detail:
           'SAML is enabled for this organization. Password login is disabled.',

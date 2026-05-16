@@ -77,14 +77,26 @@ class UserAPI {
   async login(params: any, context: PassportGqlContext) {
     const { email, password } = safePick(params.input, ['email', 'password']);
 
+    // Reject missing/empty credentials as a bad request before verifying.
+    if (
+      typeof email !== 'string' ||
+      email.length === 0 ||
+      typeof password !== 'string' ||
+      password.length === 0
+    ) {
+      throw makeBadRequestError('Email and password are required.', {
+        shouldErrorSpan: true,
+      });
+    }
+
     const user = await verifyEmailPasswordCredentials(
       {
         kyselyPg: this.kyselyPg,
         orgSettingsService: this.orgSettingsService,
         tracer: this.tracer,
       },
-      String(email),
-      String(password),
+      email,
+      password,
     );
 
     await context.login(user);
