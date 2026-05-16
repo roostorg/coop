@@ -8,6 +8,11 @@ import {
 import { type UserItemType } from '../moderationConfigService/types/itemTypes.js';
 import { type NCMECReportParams } from './ncmecReporting.js';
 
+/** NCMEC's accepted "Incident Type Category" string used as a safe fallback
+ * for legacy decisions whose DB row predates the `incidentType` column. */
+export const LEGACY_FALLBACK_INCIDENT_TYPE =
+  'Child Pornography (possession, manufacture, and distribution)';
+
 /** Single source of truth for assembling the NCMEC `submitReport` payload
  * from a SUBMIT_NCMEC_REPORT decision component. Three call sites use this:
  *  - the IoC `onRecordDecision` flow (initial submission after a reviewer's
@@ -52,7 +57,10 @@ export interface BuildSubmitReportParamsInput {
       fileAnnotations: NCMECReportParams['media'][number]['fileAnnotations'];
     }>;
     reportedMessages: NCMECReportParams['threads'];
-    incidentType: string;
+    /** Optional because legacy DB rows predate the `incidentType` column on
+     * `decision_components`; callers should pass `fallbackIncidentType` when
+     * they want a safe default. */
+    incidentType?: string;
     escalateToHighPriority?: string;
     additionalInfo?: string;
   };
@@ -112,6 +120,10 @@ export async function buildSubmitReportParamsFromDecision(
       if (mediaItemType === undefined) {
         throw new Error('Unable to find item type for reported media');
       }
+      // Fall back to "now" when the source row is missing `createdAt`.
+      // This keeps retries submittable for legacy data (predates the field)
+      // better to send the retry timestamp than to permanently block the
+      // report from being submitted to NCMEC at all.
       const createdAt =
         getFieldValueForRole(
           mediaItemType.schema,
@@ -133,9 +145,10 @@ export async function buildSubmitReportParamsFromDecision(
     }),
   );
 
+  const trimmedIncidentType = (decisionComponent.incidentType ?? '').trim();
   const incidentType =
-    decisionComponent.incidentType.trim() !== ''
-      ? decisionComponent.incidentType
+    trimmedIncidentType !== ''
+      ? trimmedIncidentType
       : (fallbackIncidentType ?? '');
 
   return {

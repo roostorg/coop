@@ -535,13 +535,21 @@ const Org: GQLOrgResolvers = {
           throw new Error('NCMEC user item type is not of kind USER');
         }
         const errorRow = errorByJobId.get(d.job_payload.id);
+        // Map the DB string through a known-set check before returning so a
+        // future migration adding a new status value can't take down the
+        // entire `failedNcmecSubmissions` field via GraphQL enum validation.
+        const status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR' | 'NEVER_ATTEMPTED' =
+          errorRow?.status === 'RETRYABLE_ERROR' ||
+          errorRow?.status === 'PERMANENT_ERROR'
+            ? errorRow.status
+            : 'NEVER_ATTEMPTED';
         return {
           decisionId: d.id,
           ts: d.created_at,
           reviewerId: d.reviewer_id ?? null,
           userId,
           userItemType: itemType,
-          status: errorRow?.status ?? 'NEVER_ATTEMPTED',
+          status,
           retryCount: errorRow?.retry_count ?? 0,
           lastError: errorRow?.last_error ?? null,
         };

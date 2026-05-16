@@ -17,12 +17,7 @@ function makeDeps(overrides: Partial<RetryDeps> = {}): RetryDeps {
     ncmecReporting: {
       submitReport: fail('submitReport'),
     } as unknown as RetryDeps['ncmecReporting'],
-    getItemTypeEventuallyConsistent: fail(
-      'getItemTypeEventuallyConsistent',
-    ),
-    insertOrUpdateNcmecReportError: fail(
-      'insertOrUpdateNcmecReportError',
-    ),
+    getItemTypeEventuallyConsistent: fail('getItemTypeEventuallyConsistent'),
     ...overrides,
   };
 }

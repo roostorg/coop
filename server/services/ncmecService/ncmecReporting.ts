@@ -2,7 +2,7 @@
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/types';
 import _Ajv from 'ajv';
-import { type Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
 import { FormData } from 'undici';
 import { js2xml } from 'xml-js';
@@ -2088,12 +2088,8 @@ export default class NcmecReporting {
       // can't make this failure-recording write itself fail.
       const safeUserId = opts.userId.slice(0, 255);
       const safeUserTypeId = opts.userTypeId.slice(0, 255);
-      const retryCountRow = await this.pgQuery
-        .selectFrom('ncmec_reporting.ncmec_reports_errors')
-        .select('retry_count')
-        .where('job_id', '=', opts.jobId)
-        .executeTakeFirst();
-      const nextRetryCount = retryCountRow ? retryCountRow.retry_count + 1 : 1;
+      // Atomic increment in `doUpdateSet` avoids the read-modify-write race
+      // when two retries land on the same job_id concurrently.
       await this.pgQuery
         .insertInto('ncmec_reporting.ncmec_reports_errors')
         .values({
@@ -2102,11 +2098,11 @@ export default class NcmecReporting {
           user_type_id: safeUserTypeId,
           status: 'RETRYABLE_ERROR',
           last_error: opts.error,
-          retry_count: nextRetryCount,
+          retry_count: 1,
         })
         .onConflict((oc) =>
           oc.columns(['job_id']).doUpdateSet({
-            retry_count: nextRetryCount,
+            retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
             last_error: opts.error,
             status: 'RETRYABLE_ERROR',
           }),

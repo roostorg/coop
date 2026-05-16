@@ -1124,7 +1124,7 @@ export default async function getBottle() {
                   actorEmail: reviewerEmail,
                 });
                 break;
-              case 'SUBMIT_NCMEC_REPORT':
+              case 'SUBMIT_NCMEC_REPORT': {
                 if (job.payload.kind !== 'NCMEC') {
                   throw new Error(
                     'Attempting to submit a NCMEC report for a non-NCMEC job',
@@ -1184,6 +1184,7 @@ export default async function getBottle() {
                   });
                 }
                 break;
+              }
               case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE': {
                 const reportHistory =
                   'reportHistory' in job.payload

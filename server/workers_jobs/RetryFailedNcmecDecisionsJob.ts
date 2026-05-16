@@ -2,7 +2,10 @@ import _ from 'lodash';
 import { v1 as uuidv1 } from 'uuid';
 
 import { inject } from '../iocContainer/utils.js';
-import { buildSubmitReportParamsFromDecision } from '../services/ncmecService/index.js';
+import {
+  buildSubmitReportParamsFromDecision,
+  LEGACY_FALLBACK_INCIDENT_TYPE,
+} from '../services/ncmecService/index.js';
 import { toCorrelationId } from '../utils/correlationIds.js';
 
 export default inject(
@@ -105,10 +108,7 @@ export default inject(
           reportedUserData: data,
           allMediaItems: row.job_payload.payload.allMediaItems,
           decisionComponent: submitNcmecReportDecisionComponent,
-          // Old decisions predate the incidentType column; fall back to the
-          // most common incident type so they remain submittable on retry.
-          fallbackIncidentType:
-            'Child Pornography (possession, manufacture, and distribution)',
+          fallbackIncidentType: LEGACY_FALLBACK_INCIDENT_TYPE,
           jobId: row.job_payload.id,
           getItemTypeEventuallyConsistent,
         });

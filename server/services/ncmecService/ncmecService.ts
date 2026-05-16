@@ -1,6 +1,6 @@
 import { type ItemIdentifier } from '@roostorg/types';
 import _Ajv from 'ajv-draft-04';
-import { type Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
@@ -76,8 +76,6 @@ export class NcmecService {
         manualReviewToolService: this.manualReviewToolService,
         ncmecReporting: this.ncmecReporting,
         getItemTypeEventuallyConsistent: this.getItemTypeEventuallyConsistent,
-        insertOrUpdateNcmecReportError: async (errOpts) =>
-          this.insertOrUpdateNcmecReportError(errOpts),
       },
       opts,
     );
@@ -192,11 +190,9 @@ export class NcmecService {
     // can't make this failure-recording write itself fail.
     const safeUserId = opts.userId.slice(0, 255);
     const safeUserTypeId = opts.userTypeId.slice(0, 255);
-    const retryCountRow = await this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports_errors')
-      .select('retry_count')
-      .where('job_id', '=', opts.jobId)
-      .executeTakeFirst();
+    // Atomic increment in `doUpdateSet` avoids the read-modify-write race
+    // when two callers (e.g. background retry job + user-clicked Retry)
+    // attempt to record an error for the same job_id concurrently.
     return this.pgQuery
       .insertInto('ncmec_reporting.ncmec_reports_errors')
       .values({
@@ -205,11 +201,11 @@ export class NcmecService {
         user_type_id: safeUserTypeId,
         status: opts.status,
         last_error: opts.error,
-        retry_count: retryCountRow ? retryCountRow.retry_count + 1 : 1,
+        retry_count: 1,
       })
       .onConflict((oc) =>
         oc.columns(['job_id']).doUpdateSet({
-          retry_count: retryCountRow ? retryCountRow.retry_count + 1 : 1,
+          retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
           last_error: opts.error,
           status: opts.status,
         }),

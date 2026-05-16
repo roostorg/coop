@@ -5,4 +5,7 @@ export {
 
 export { NCMECIncidentType } from './ncmecReporting.js';
 export { filterDecisionsToFailedSubmissions } from './ncmecSubmissionFilters.js';
-export { buildSubmitReportParamsFromDecision } from './buildSubmitReportParamsFromDecision.js';
+export {
+  buildSubmitReportParamsFromDecision,
+  LEGACY_FALLBACK_INCIDENT_TYPE,
+} from './buildSubmitReportParamsFromDecision.js';

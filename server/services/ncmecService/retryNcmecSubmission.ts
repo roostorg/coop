@@ -1,6 +1,9 @@
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ManualReviewToolService } from '../manualReviewToolService/manualReviewToolService.js';
-import { buildSubmitReportParamsFromDecision } from './buildSubmitReportParamsFromDecision.js';
+import {
+  buildSubmitReportParamsFromDecision,
+  LEGACY_FALLBACK_INCIDENT_TYPE,
+} from './buildSubmitReportParamsFromDecision.js';
 import type NcmecReporting from './ncmecReporting.js';
 
 /** Result of a retry attempt. Distinct cases let the GraphQL layer return a
@@ -17,13 +20,6 @@ export interface RetryDeps {
   manualReviewToolService: ManualReviewToolService;
   ncmecReporting: NcmecReporting;
   getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'];
-  insertOrUpdateNcmecReportError: (opts: {
-    jobId: string;
-    userId: string;
-    userTypeId: string;
-    status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
-    error: string;
-  }) => Promise<unknown>;
 }
 
 /** Retries a previously-failed NCMEC submission for the given decision.
@@ -98,10 +94,7 @@ export async function retryNcmecSubmission(
       reportedUserData: decisionRow.job_payload.payload.item.data,
       allMediaItems: decisionRow.job_payload.payload.allMediaItems,
       decisionComponent: submitNcmecReportComponent,
-      // Mirror the legacy retry-job behaviour for old DB rows that predate
-      // the incidentType column.
-      fallbackIncidentType:
-        'Child Pornography (possession, manufacture, and distribution)',
+      fallbackIncidentType: LEGACY_FALLBACK_INCIDENT_TYPE,
       jobId: decisionRow.job_payload.id,
       getItemTypeEventuallyConsistent: deps.getItemTypeEventuallyConsistent,
     });
@@ -112,25 +105,15 @@ export async function retryNcmecSubmission(
   }
 
   const isTest = process.env.NCMEC_ENV !== 'production';
-  // submitReport never throws and records its own errors via jobId; we just
-  // translate the result code and upgrade UNSUPPORTED_ORG/ALL_MEDIA_MISSING
-  // to PERMANENT_ERROR.
+  // submitReport records its own RETRYABLE_ERROR row via jobId when it throws
+  // and returns 'FAILURE' / 'UNSUPPORTED_ORG' / 'ALL_MEDIA_MISSING' for
+  // explicit non-success cases. The defensive try/catch here only translates
+  // those outcomes for the caller — error persistence stays centralized in
+  // submitReport so we never double-write or downgrade RETRYABLE to PERMANENT.
   try {
     const result = await deps.ncmecReporting.submitReport(reportParams, isTest);
     if (result === 'SUCCESS') {
       return { kind: 'success' };
-    }
-    try {
-      await deps.insertOrUpdateNcmecReportError({
-        jobId: decisionRow.job_payload.id,
-        userId: itemId,
-        userTypeId: itemTypeId,
-        status: 'PERMANENT_ERROR',
-        error: result,
-      });
-    } catch {
-      // Already logged in the service; swallow so the user sees the NCMEC
-      // error rather than a raw Postgres message.
     }
     return { kind: 'permanent_error', error: result };
   } catch (e: unknown) {

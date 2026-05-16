@@ -19,6 +19,9 @@ export default function Table(
     customMaxHeight?: `max-h-[${number}px]`;
     disableFilter?: boolean;
     containerClassName?: string;
+    /** Force the horizontal scrollbar to always render. Opt-in because tables
+     * that always fit the viewport would otherwise show an unnecessary scrollbar. */
+    alwaysShowScrollbar?: boolean;
   } & (
     | {
         isCollapsed?: boolean;
@@ -38,6 +41,7 @@ export default function Table(
     customMaxHeight,
     disableFilter,
     containerClassName,
+    alwaysShowScrollbar,
   } = props;
   const {
     isCollapsed = undefined,
@@ -85,9 +89,9 @@ export default function Table(
       </div>
       <div className="w-full min-w-0 border border-gray-200 border-solid rounded-md">
         <div
-          className={`min-w-0 overflow-x-scroll overflow-y-auto rounded-md scrollbar-show ${
-            customMaxHeight ?? 'max-h-[1200px]'
-          }`}
+          className={`min-w-0 overflow-x-auto overflow-y-auto rounded-md ${
+            alwaysShowScrollbar ? 'scrollbar-show' : ''
+          } ${customMaxHeight ?? 'max-h-[1200px]'}`}
         >
           <table {...getTableProps()} className="w-full">
             <thead className="sticky top-0 z-10 bg-slate-50">

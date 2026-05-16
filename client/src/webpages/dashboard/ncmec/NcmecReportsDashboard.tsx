@@ -8,6 +8,41 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 
+/** Anchor that lazily creates a Blob URL on click and revokes it shortly
+ * after the download is triggered. Avoids leaking Blob URLs on every render
+ * (the previous inline `URL.createObjectURL` pattern leaked one per row per
+ * re-render, which adds up on a long-lived dashboard). */
+function BlobDownloadLink(props: {
+  fileName: string;
+  contents: string;
+  mimeType: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const { fileName, contents, mimeType, children, className } = props;
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      const url = URL.createObjectURL(new Blob([contents], { type: mimeType }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Revoke after the browser has had a chance to start the download.
+      // Revoking immediately can cancel the download in some browsers.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    },
+    [contents, fileName, mimeType],
+  );
+  return (
+    <a href="#" onClick={handleClick} className={className}>
+      {children}
+    </a>
+  );
+}
+
 import CopyTextComponent from '../../../components/common/CopyTextComponent';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import CoopButton from '../components/CoopButton';
@@ -27,9 +62,9 @@ import {
   useGQLGetNcmecReportLazyQuery,
   useGQLPermissionsQuery,
   useGQLRetryNcmecSubmissionMutation,
-} from '../../../graphql/generated';
-import { userHasPermissions } from '../../../routing/permissions';
-import { filterNullOrUndefined } from '../../../utils/collections';
+} from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
 
 gql`
   fragment NCMECReportValues on NCMECReport {
@@ -422,16 +457,13 @@ export default function NcmecReportsDashboard() {
               <div key={report.reportId} className="flex flex-row">
                 <CopyTextComponent value={report.reportId} />
                 <div className="pl-2">
-                  <a
-                    href={URL.createObjectURL(
-                      new Blob([formatXml(report.reportXml)], {
-                        type: 'text/plain',
-                      }),
-                    )}
-                    download={`ncmec_report_${report.reportId}.xml`}
+                  <BlobDownloadLink
+                    fileName={`ncmec_report_${report.reportId}.xml`}
+                    contents={formatXml(report.reportXml)}
+                    mimeType="text/plain"
                   >
                     <DownloadOutlined />
-                  </a>
+                  </BlobDownloadLink>
                 </div>
               </div>
             ),
@@ -447,16 +479,13 @@ export default function NcmecReportsDashboard() {
                     <div key={media.id} className="flex flex-row">
                       <CopyTextComponent value={`ID: ${media.id}`} />
                       <div className="pl-2">
-                        <a
-                          href={URL.createObjectURL(
-                            new Blob([formatXml(media.xml)], {
-                              type: 'text/plain',
-                            }),
-                          )}
-                          download={`ncmec_report_${report.reportId}_media_${media.id}.xml`}
+                        <BlobDownloadLink
+                          fileName={`ncmec_report_${report.reportId}_media_${media.id}.xml`}
+                          contents={formatXml(media.xml)}
+                          mimeType="text/plain"
                         >
                           <DownloadOutlined />
-                        </a>
+                        </BlobDownloadLink>
                       </div>
                     </div>
                   ))}
@@ -475,16 +504,13 @@ export default function NcmecReportsDashboard() {
                       className="flex flex-row"
                     >
                       <div className="pl-2">
-                        <a
-                          href={URL.createObjectURL(
-                            new Blob([formatXml(additionalFile.xml)], {
-                              type: 'text/plain',
-                            }),
-                          )}
-                          download={`ncmec_report_additional_file_${additionalFile.ncmecFileId}.xml`}
+                        <BlobDownloadLink
+                          fileName={`ncmec_report_additional_file_${additionalFile.ncmecFileId}.xml`}
+                          contents={formatXml(additionalFile.xml)}
+                          mimeType="text/plain"
                         >
                           <DownloadOutlined className="pr-1" />
-                        </a>
+                        </BlobDownloadLink>
                       </div>
                       <div className="overflow-ellipsis">
                         {`URL: ${additionalFile.url}`}
@@ -507,16 +533,13 @@ export default function NcmecReportsDashboard() {
                     >
                       {`${reportedMessage.fileName}`}
                       <div className="pl-2">
-                        <a
-                          href={URL.createObjectURL(
-                            new Blob([reportedMessage.csv], {
-                              type: 'text/csv',
-                            }),
-                          )}
-                          download={`${reportedMessage.fileName}`}
+                        <BlobDownloadLink
+                          fileName={reportedMessage.fileName}
+                          contents={reportedMessage.csv}
+                          mimeType="text/csv"
                         >
                           <DownloadOutlined />
-                        </a>
+                        </BlobDownloadLink>
                       </div>
                     </div>
                   ))}
@@ -652,8 +675,10 @@ export default function NcmecReportsDashboard() {
         <div className="flex flex-col w-full min-w-0 max-w-full">
           <Table
             // Override Table's default `w-fit` so its internal overflow-x-auto
-            // can scroll the table when columns overflow the viewport.
+            // can scroll the table when columns overflow the viewport, and
+            // force the horizontal scrollbar to render.
             containerClassName="w-full min-w-0"
+            alwaysShowScrollbar
             columns={columns}
             data={tableData ?? []}
             topLeftComponent={

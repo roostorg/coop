@@ -471,7 +471,15 @@ export default class JobDecisioning {
   }
 
   async getNcmecDecisionsForOrg(opts: { orgId: string; limit?: number }) {
-    const { orgId, limit = 500 } = opts;
+    const { orgId } = opts;
+    // Clamp `limit` so callers can't request an unreasonable number of rows;
+    // default of 500 matches the previous behavior. Non-numeric values fall
+    // back to the default via Number.isFinite.
+    const requestedLimit = opts.limit ?? 500;
+    const safeLimit =
+      Number.isFinite(requestedLimit) && requestedLimit > 0
+        ? Math.min(Math.floor(requestedLimit), 500)
+        : 500;
     const allNcmecDecisions = await this.pgQuery
       .selectFrom('manual_review_tool.manual_review_decisions')
       .where('org_id', '=', orgId)
@@ -500,7 +508,7 @@ export default class JobDecisioning {
         'created_at',
       ])
       .orderBy('created_at', 'desc')
-      .limit(limit)
+      .limit(safeLimit)
       .execute();
     return filterNullOrUndefined(
       allNcmecDecisions.map((it) => {
@@ -538,6 +546,15 @@ export default class JobDecisioning {
       ])
       .executeTakeFirst();
     if (!row) {
+      return undefined;
+    }
+    // Only return decisions that actually contain a SUBMIT_NCMEC_REPORT
+    // component so callers get the same `not_found` shape for both
+    // "wrong-org" and "wrong-decision-type" lookups.
+    const hasNcmecComponent = row.decision_components.some(
+      (component) => component.type === 'SUBMIT_NCMEC_REPORT',
+    );
+    if (!hasNcmecComponent) {
       return undefined;
     }
     if (
