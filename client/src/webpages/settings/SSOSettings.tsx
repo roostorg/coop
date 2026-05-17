@@ -10,7 +10,7 @@ import { gql } from '@apollo/client';
 import { Clipboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -40,7 +40,6 @@ gql`
 export default function SSOSettings() {
   const [ssoUrl, setSsoUrl] = useState<string | undefined>(undefined);
   const [ssoCert, setSsoCert] = useState<string | undefined>(undefined);
-  const navigate = useNavigate();
 
   const { data, loading, error } = useGQLGetSsoCredentialsQuery();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -65,9 +64,9 @@ export default function SSOSettings() {
     return <FullScreenLoading />;
   }
 
-  if (!userHasPermissions(data?.me?.permissions, [GQLUserPermission.ManageOrg])) {
-    navigate('/dashboard/settings');
-    return null;
+  const permissions = data?.me?.permissions;
+  if (permissions && !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+    return <Navigate to="/dashboard/settings" replace />;
   }
 
   if (error) {

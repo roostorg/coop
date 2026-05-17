@@ -20,7 +20,7 @@ import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -81,7 +81,6 @@ type NcmecSettings = {
 };
 
 export default function NCMECSettings() {
-  const navigate = useNavigate();
   const [settings, setSettings] = useState<NcmecSettings>({
     username: '',
     password: '',
@@ -145,9 +144,9 @@ export default function NCMECSettings() {
     return <FullScreenLoading />;
   }
 
-  if (!userHasPermissions(data?.me?.permissions, [GQLUserPermission.ManageOrg])) {
-    navigate('/dashboard/settings');
-    return null;
+  const permissions = data?.me?.permissions;
+  if (permissions && !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+    return <Navigate to="/dashboard/settings" replace />;
   }
 
   if (error) {

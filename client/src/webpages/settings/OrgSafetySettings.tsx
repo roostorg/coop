@@ -14,7 +14,7 @@ import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -55,7 +55,6 @@ type SafetySettings = {
 };
 
 export default function ManualReviewSafetySettings() {
-  const navigate = useNavigate();
   const [safetySettings, setSafetySettings] = useState<SafetySettings>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
@@ -96,13 +95,17 @@ export default function ManualReviewSafetySettings() {
     return <FullScreenLoading />;
   }
 
-  if (!userHasPermissions(data?.me?.permissions, [GQLUserPermission.ManageOrg])) {
-    navigate('/dashboard/settings');
-    return null;
+  const permissions = data?.me?.permissions;
+  if (permissions && !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+    return <Navigate to="/dashboard/settings" replace />;
   }
 
-  if (error || !data?.myOrg?.defaultInterfacePreferences) {
-    throw error ?? new Error('Could not load wellness settings');
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.myOrg?.defaultInterfacePreferences) {
+    throw new Error('Could not load wellness settings');
   }
 
   return (

@@ -497,7 +497,7 @@ const Org: GQLOrgResolvers = {
   },
   async defaultInterfacePreferences(org, _, context) {
     const user = context.getUser();
-    if (!user) {
+    if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('Authenticated user required');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
