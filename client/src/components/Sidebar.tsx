@@ -105,12 +105,22 @@ export default function Sidebar(props: SidebarProps) {
     }
   }, [menuItems, pathname, settingsMenuItems, setSelectedMenuItem]);
 
+  const accessibleSettingsSubItems = useMemo(
+    () =>
+      settingsMenuItems[0]?.subItems?.filter((item) =>
+        item.requiredPermissions.every(
+          (perm) => permissions?.includes(perm) ?? false,
+        ),
+      ) ?? [],
+    [settingsMenuItems, permissions],
+  );
+
   const isSettingsSelected = useMemo(
     () =>
-      settingsMenuItems[0]?.subItems?.some(
+      accessibleSettingsSubItems.some(
         (item) => item.title === selectedMenuItem,
-      ) ?? false,
-    [selectedMenuItem, settingsMenuItems],
+      ),
+    [selectedMenuItem, accessibleSettingsSubItems],
   );
 
   const isDescendant = (
@@ -247,7 +257,7 @@ export default function Sidebar(props: SidebarProps) {
       }}
     >
       <div className="flex flex-col gap-[4px] m-[16px]">
-        {settingsMenuItems[0]?.subItems?.map((item) => (
+        {accessibleSettingsSubItems.map((item) => (
           <Link
             key={item.title}
             to={`settings/${item.urlPath}`}
@@ -323,7 +333,8 @@ export default function Sidebar(props: SidebarProps) {
               menuItemName: 'Log Out' as const,
               onClick: async () => logout(),
             })}
-          {!(collapsed && selectedMenuItem === 'Account') &&
+          {accessibleSettingsSubItems.length > 0 &&
+            !(collapsed && selectedMenuItem === 'Account') &&
             footerButton({
               icon: CogFilled,
               menuItemName: 'Settings' as const,
