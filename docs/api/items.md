@@ -57,6 +57,16 @@ The shape of `data` must match your Item Type's schema. Common field types:
 | Datetime              | ISO 8601 string (e.g. `"2024-01-15T10:30:00.000Z"`) |
 | Related Item          | `{ "id": "...", "typeId": "..." }` object           |
 
+### Media access
+
+All media fields (image, audio, video) are submitted as URL references. Coop does not upload or store media content directly.
+
+When an item is submitted, Coop fetches each media URL at that time to run signal processing (HMA hashing, Content Safety analysis, etc.). Media is not re-fetched when a moderator opens the job; instead, the browser loads it directly from the original URL at review time.
+
+Fetches are unauthenticated GET requests. Coop does not forward your API key or any credential to the media URL.
+
+For private or access-controlled media, use pre-signed URLs (e.g. S3 pre-signed URLs). Because the browser loads media directly at review time—potentially hours or days after submission—pre-signed URLs must remain valid for the entire window during which a job could sit in a queue, not just long enough for submission-time signal processing.
+
 ## Response
 
 | Status            | Meaning                                       |
