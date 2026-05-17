@@ -65,14 +65,13 @@ export default function SSOSettings() {
     return <FullScreenLoading />;
   }
 
-  if (error) {
-    return <div />;
+  if (!userHasPermissions(data?.me?.permissions, [GQLUserPermission.ManageOrg])) {
+    navigate('/dashboard/settings');
+    return null;
   }
 
-  const requiredPermissions = [GQLUserPermission.ManageOrg];
-  const permissions = data?.me?.permissions;
-  if (!userHasPermissions(permissions, requiredPermissions)) {
-    navigate('/settings');
+  if (error) {
+    return <div />;
   }
 
   const copyText = (text: string) => {

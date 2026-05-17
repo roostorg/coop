@@ -5,13 +5,16 @@ import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  GQLUserPermission,
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -22,6 +25,9 @@ import {
 
 gql`
   query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
     myOrg {
       defaultInterfacePreferences {
         moderatorSafetyMuteVideo
@@ -49,6 +55,7 @@ type SafetySettings = {
 };
 
 export default function ManualReviewSafetySettings() {
+  const navigate = useNavigate();
   const [safetySettings, setSafetySettings] = useState<SafetySettings>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
@@ -87,6 +94,11 @@ export default function ManualReviewSafetySettings() {
 
   if (loading) {
     return <FullScreenLoading />;
+  }
+
+  if (!userHasPermissions(data?.me?.permissions, [GQLUserPermission.ManageOrg])) {
+    navigate('/dashboard/settings');
+    return null;
   }
 
   if (error || !data?.myOrg?.defaultInterfacePreferences) {

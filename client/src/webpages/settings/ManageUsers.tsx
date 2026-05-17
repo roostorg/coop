@@ -440,12 +440,14 @@ export default function ManageUsers() {
     return <FullScreenLoading />;
   }
 
+  const permissions = data?.me?.permissions;
+  if (!permissions || !userHasPermissions(permissions, requiredPermissions)) {
+    navigate('/dashboard/settings');
+    return null;
+  }
+
   if (error) {
     throw error;
-  }
-  const permissions = data!.me?.permissions;
-  if (!permissions || !userHasPermissions(permissions, requiredPermissions)) {
-    navigate('/settings');
   }
 
   const {

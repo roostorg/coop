@@ -24236,6 +24236,10 @@ export type GQLNcmecOrgSettingsQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLNcmecOrgSettingsQuery = {
   readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
   readonly ncmecOrgSettings?: {
     readonly __typename: 'NcmecOrgSettings';
     readonly username: string;
@@ -24283,6 +24287,10 @@ export type GQLOrgDefaultSafetySettingsQueryVariables = Exact<{
 
 export type GQLOrgDefaultSafetySettingsQuery = {
   readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly defaultInterfacePreferences: {
@@ -42591,6 +42599,9 @@ export type GQLInviteUserMutationOptions = Apollo.BaseMutationOptions<
 >;
 export const GQLNcmecOrgSettingsDocument = gql`
   query NcmecOrgSettings {
+    me {
+      permissions
+    }
     ncmecOrgSettings {
       username
       password
@@ -42761,6 +42772,9 @@ export type GQLUpdateNcmecOrgSettingsMutationOptions =
   >;
 export const GQLOrgDefaultSafetySettingsDocument = gql`
   query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
     myOrg {
       defaultInterfacePreferences {
         moderatorSafetyMuteVideo
