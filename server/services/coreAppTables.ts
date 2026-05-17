@@ -6,7 +6,7 @@ import { type UserRole } from './userManagementService/index.js';
 export type BacktestStatusDb = 'RUNNING' | 'COMPLETE' | 'CANCELED';
 
 /** Postgres enum for users.login_methods. */
-export type LoginMethod = 'password' | 'saml';
+export type LoginMethod = 'password' | 'saml' | 'oidc';
 
 export type CoreAppTablesPg = {
   'public.orgs': {

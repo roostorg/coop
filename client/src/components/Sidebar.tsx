@@ -45,7 +45,7 @@ const MenuItemNames = makeEnumLike([
   'Users',
   'Wellness',
   'NCMEC Settings',
-  'SSO',
+  'SSO Settings',
   'Organization',
 ]);
 

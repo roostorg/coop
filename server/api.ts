@@ -22,7 +22,11 @@ import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
+import * as oidcClient from 'openid-client';
 
+import {
+  discoverOidcConfig,
+} from './services/SSOService/index.js';
 import {
   makeLoginIncorrectPasswordError,
   makeLoginSsoRequiredError,
@@ -31,6 +35,7 @@ import {
 import {
   kyselyUserFindByEmail,
   kyselyUserFindById,
+  kyselyUserUpdateLoginMethods,
 } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
@@ -78,6 +83,17 @@ function getCPUInfo() {
   };
 }
 
+declare module "express-session" {
+  interface SessionData {
+    oidc: {
+      code_verifier: string;
+      state: string;
+      org_id: string;
+    };
+  }
+}
+
+
 async function getCPUUsage() {
   const stats1 = getCPUInfo();
   const startIdle = stats1.idle;
@@ -89,6 +105,7 @@ async function getCPUUsage() {
   const endTotal = stats2.total;
   return 1 - (endIdle - startIdle) / (endTotal - startTotal);
 }
+
 
 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 const env = process.env.NODE_ENV || 'development';
@@ -207,11 +224,8 @@ export default async function makeApiServer(deps: Dependencies) {
           done(null, {
             entryPoint: samlSettings.sso_url as string,
             idpCert: samlSettings.cert as string,
-            // I could use UI_URL here but technically the API could be hosted
-            // on a different domain in the future so hopefully this is more
-            // robust, not that it will likely matter.
-            callbackUrl: `${deps.ConfigService.uiUrl}/api/v1/saml/login/${orgId}/callback`,
-            issuer: deps.ConfigService.uiUrl,
+            callbackUrl: deps.SSOService.getSSOSamlCallbackUrl(orgId),
+            issuer: deps.SSOService.getSSOSamlIssuer(),
           });
         },
       },
@@ -227,6 +241,17 @@ export default async function makeApiServer(deps: Dependencies) {
             return done(
               makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
             );
+          }
+
+          if (!user.loginMethods.includes('saml')) {
+            const updatedUser = await kyselyUserUpdateLoginMethods(
+              KyselyPg,
+              user.id,
+              [...user.loginMethods, 'saml'],
+            );
+            if (updatedUser != null) {
+              return done(null, updatedUser);
+            }
           }
 
           return done(null, user);
@@ -250,6 +275,17 @@ export default async function makeApiServer(deps: Dependencies) {
             return done(
               makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
             );
+          }
+
+          if (!user.loginMethods.includes('saml')) {
+            const updatedUser = await kyselyUserUpdateLoginMethods(
+              KyselyPg,
+              user.id,
+              [...user.loginMethods, 'saml'],
+            );
+            if (updatedUser != null) {
+              return done(null, updatedUser);
+            }
           }
 
           return done(null, user);
@@ -281,6 +317,125 @@ export default async function makeApiServer(deps: Dependencies) {
     },
   );
 
+  app.get('/oidc/login/callback', async (req, res, next) => {
+    if (req.query.error) {
+      return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=${req.query.error}`);
+    }
+    try {
+      const sessionData = req.session.oidc;
+
+      if (!sessionData || !sessionData.code_verifier || !sessionData.state || !sessionData.org_id) {
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=session_expired`);
+      }
+
+      const { code_verifier: codeVerifier, state, org_id: orgId } = sessionData;
+      // Clear session OIDC state immediately (one-time use)
+      delete req.session.oidc;
+
+      const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
+      if (!oidcSettings || !oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] Missing or incomplete OIDC settings for org', orgId);
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
+      }
+
+      const config = await discoverOidcConfig(
+        oidcSettings.issuer_url,
+        oidcSettings.client_id,
+        oidcSettings.client_secret,
+      );
+
+      // Reconstruct callback URL with code/state from IdP redirect.
+      // authorizationCodeGrant needs: base = registered redirect_uri, query = code+state from IdP.
+      const currentUrl = new URL(req.originalUrl, deps.ConfigService.apiUrl);
+
+      const checks = { pkceCodeVerifier: codeVerifier, expectedState: state };
+
+      const tokens = await oidcClient.authorizationCodeGrant(config, currentUrl, checks);
+
+      const claims = tokens.claims();
+      let email: string | undefined = claims?.email as string | undefined;
+
+      if (!email) {
+        const userinfo = await oidcClient.fetchUserInfo(config, tokens.access_token, claims!.sub);
+        email = userinfo.email;
+      }
+
+      if (!email) {
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] No email in token claims or userinfo');
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
+      }
+
+      const user = await kyselyUserFindByEmail(KyselyPg, String(email));
+
+      if (!user || user.orgId !== orgId) {
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] User not found or org mismatch', { email, orgId, userOrgId: user?.orgId });
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
+      });
+    } catch (e) {
+      return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`);
+    }
+  });
+
+  app.post('/oidc/login/:orgId', async (req, res, next) => {
+    try {
+      const { orgId } = req.params;
+      const oidcSettings = await deps.OrgSettingsService.getOidcSettings(orgId);
+      
+      if (!oidcSettings || oidcSettings.oidc_enabled !== true) {
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=oidc_not_enabled`);
+      }
+      if (!oidcSettings.client_id || !oidcSettings.client_secret || !oidcSettings.issuer_url) {
+        // eslint-disable-next-line no-console
+        console.error('[OIDC] Missing credentials for org', orgId, { hasClientId: Boolean(oidcSettings.client_id), hasSecret: Boolean(oidcSettings.client_secret), hasIssuer: Boolean(oidcSettings.issuer_url) });
+        return res.redirect(`${deps.ConfigService.uiUrl}/login/sso?error=oidc_misconfigured`);
+      }
+
+      const callbackUrl = deps.SSOService.getSSOOidcCallbackUrl();
+      const config = await discoverOidcConfig(
+        oidcSettings.issuer_url,
+        oidcSettings.client_id,
+        oidcSettings.client_secret,
+      );
+
+      const codeVerifier = oidcClient.randomPKCECodeVerifier();
+      const codeChallenge = await oidcClient.calculatePKCECodeChallenge(codeVerifier);
+      const state = oidcClient.randomState();
+
+      const params = new URLSearchParams({
+        redirect_uri: callbackUrl,
+        scope: 'openid email',
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+        state,
+      });
+
+      const redirectTo = oidcClient.buildAuthorizationUrl(config, params);
+
+      // Store the OIDC verifier/state in the server-side session store. The
+      // browser cookie only contains the opaque session identifier.
+      req.session.oidc = { code_verifier: codeVerifier, state, org_id: orgId };
+
+      // Explicitly save before redirecting — with saveUninitialized:false and an
+      // async store (connect-pg-simple), the redirect can reach the browser before
+      // the session row is committed, causing the callback to find an empty session.
+      req.session.save((err) => {
+        if (err) return next(err);
+        res.redirect(redirectTo.href);
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+
   passport.use(
     new GraphQLLocalStrategy(async (email, password, done) => {
       try {
@@ -294,17 +449,15 @@ export default async function makeApiServer(deps: Dependencies) {
           user.orgId,
         );
 
-        if (
-          samlSettings?.saml_enabled &&
-          // We allow Coop users to log in with email/password even if SSO is
-          // enabled
-          // so Coop employees can manage user accounts
-          String(email).split('@')[1] !== 'getcoop.com'
-        ) {
+        const oidcSettings = await deps.OrgSettingsService.getOidcSettings(
+          user.orgId,
+        );
+
+        if (samlSettings?.saml_enabled === true || oidcSettings?.oidc_enabled === true) {
           return done(
             makeLoginSsoRequiredError({
               detail:
-                'SAML is enabled for this organization. Password login is disabled.',
+                'SSO is enabled for this organization. Password login is disabled.',
               shouldErrorSpan: true,
             }),
           );
