@@ -41,6 +41,9 @@ build/
 *.tsbuildinfo
 
 .claude/
+.playwright-mcp/
+.codex/
+.workspaces/
 
 # NCMEC report XML files (contain sensitive data)
 ncmec-reports/
