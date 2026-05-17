@@ -259,7 +259,7 @@ See `server/bin/README.md` for detailed usage and examples.
 
 ## HMA development
 
-HMA is not started automatically with `npm run up`. Start it separately if you're doing hash matching: `docker compose up --build -d hma`
+HMA is started automatically with `npm run up` along with the other backing services.
 
 HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:9876`. No additional environment setup is needed for local development.
 
