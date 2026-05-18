@@ -18,7 +18,8 @@
     "lint": "eslint \"./**/*.{ts,tsx,js}\"",
     "runWorkerOrJob": "node --loader ts-node/esm --require dotenv/config bin/run-worker-or-job.ts",
     "create-org": "node --loader ts-node/esm --require dotenv/config bin/create-org-and-user.ts",
-    "get-invite": "node --loader ts-node/esm --require dotenv/config bin/get-invite-token.ts"
+    "get-invite": "node --loader ts-node/esm --require dotenv/config bin/get-invite-token.ts",
+    "atproto:setup": "node --loader ts-node/esm --require dotenv/config bin/atproto-setup.ts"
   },
   "author": "Roostorg",
   "license": "ISC",
