@@ -29,7 +29,7 @@ Both sets of credentials must be obtained from NCMEC by [registering as an ESP](
 
 3. **NCMEC org settings configured**: set via **Settings → NCMEC** (Admin only). See [NCMEC Settings](#ncmec-settings) below.
 
-4. **A dedicated NCMEC manual review queue named "NCMEC Review"**: Coop routes NCMEC jobs to the queue specified in your NCMEC settings. Whether decisions made from this queue submit real CyberTips or go to NCMEC's sandbox is controlled by the `NCMEC_ENV` environment variable on the Coop server — see [Test vs. Production Submissions](#test-vs-production-submissions).
+4. **A dedicated NCMEC manual review queue** (for example, named `NCMEC Review`): Coop routes NCMEC jobs to the queue specified in your NCMEC settings. Whether decisions made from this queue submit real CyberTips or go to NCMEC's sandbox is controlled by the `NCMEC_ENV` environment variable on the Coop server; see [Test vs. Production Submissions](#test-vs-production-submissions).
 
 5. **An Additional Info endpoint** (optional, but strongly recommended): a webhook Coop calls before submitting a CyberTip to fetch enriched metadata: email addresses, screen names, IP capture events, and per-media details. Without this, Coop submits the CyberTip with only the user ID and basic information from the Item data.
 
@@ -37,13 +37,13 @@ Both sets of credentials must be obtained from NCMEC by [registering as an ESP](
 
 ### Hash Matching (HMA)
 
-If you want to automatically detect known CSAM via hash matching, you need a **separate** set of credentials for NCMEC's Hash Sharing API — distinct from the CyberTipline credentials above. See [Hash Banks in the User Guide](/docs/USER_GUIDE.md#hash-banks) for more detailed setup. Both credential sets are obtained from NCMEC when registering as an ESP, but they authenticate against different APIs and are configured in different places: Hash Sharing credentials go into HMA's own configuration (its curator UI or the `TX_NCMEC_CREDENTIALS` env var on the HMA service), while CyberTipline credentials are configured in the Coop settings UI.
+If you want to automatically detect known CSAM via hash matching, you need a **separate** set of credentials for NCMEC's Hash Sharing API (distinct from the CyberTipline credentials above). See [Hasher-Matcher-Actioner (HMA)](hma.md) for more detailed setup. Both credential sets are obtained from NCMEC when registering as an ESP, but they authenticate against different APIs and are configured in different places: Hash Sharing credentials go into HMA's own configuration (its curator UI or the `TX_NCMEC_CREDENTIALS` env var on the HMA service), while CyberTipline credentials are configured in the Coop settings UI.
 
 ## NCMEC Settings
 
 Configure NCMEC reporting under **Settings → NCMEC** (`/dashboard/settings/ncmec`).
 
-![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](./images/coop-ncmec-settings.png)
+![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](../images/coop-ncmec-settings.png)
 
 | Setting                                  | Description                                                                                                                                                                                                                                         |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -97,9 +97,9 @@ HMA syncs hashes from NCMEC via NCMEC's [Hash Sharing API](https://report.cybert
 4. In Coop's **Matching Banks**, the NCMEC-sourced bank will be available to reference in rules.
 5. How you set things up depends on your use case:
 
-- If items are submitted by user reports (`POST /api/v1/report`): create a routing rule with the NCMEC hash match logic and assign it to the NCMEC queue.
+- If items are submitted by [user reports](../api/report.md): create a routing rule with the NCMEC hash match logic and assign it to the NCMEC queue.
 
-- If items are submitted via the items API `(POST /api/v1/items/async/)` and you want Coop to proactively flag matches without a user report: you need an automated enforcement rule with the image hash condition and a "Enqueue to NCMEC" action.
+- If items are submitted via the [items API](../api/items.md) and you want Coop to proactively flag matches without a user report: you need an automated enforcement rule with the image hash condition and a "Enqueue to NCMEC" action.
 
 ### 2. Novel CSAM Detection (Content Safety API)
 
@@ -142,9 +142,9 @@ This user-centric aggregation means that even if a user has uploaded many pieces
 
 ## Reviewing an NCMEC Job
 
-The NCMEC job UI is distinct from standard review tasks. It is designed around the user and all of their associated media.
+The NCMEC job UI is distinct from standard review jobs. It is designed around the user and all of their associated media.
 
-![Coop's NCMEC Reporting task view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors](./images/coop-ncmec-job.png)
+![Coop's NCMEC Reporting job view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors](../images/coop-ncmec-job.png)
 
 ### Incident Type
 
@@ -197,9 +197,9 @@ Once the reviewer has classified all media and selected the incident type, they 
 
 When a reviewer submits a CyberTip, Coop performs the following steps:
 
-1. **Fetch additional info** — Coop calls your [Additional Info endpoint](#additional-info-endpoint) to retrieve enriched metadata: user email, screen name, IP capture events, and per-media details.
+1. **Fetch additional info**: Coop calls your [Additional Info endpoint](#additional-info-endpoint) to retrieve enriched metadata: user email, screen name, IP capture events, and per-media details.
 
-2. **Build the CyberTip XML** — Coop assembles the full report:
+2. **Build the CyberTip XML**: Coop assembles the full report:
    - **escalateToHighPriority**: this is a boolean that marks the report as high priority (ie. there is abuse happening now) that NCMEC prioritizes when triaging.
    - **Incident summary**: the incident type selected by the reviewer, and the timestamp of the most recently created media item as the `incidentDateTime`.
 
@@ -374,7 +374,7 @@ Platforms that submit CyberTips may have data preservation obligations under law
 requirements to one year. Talk to your legal team to understand your organization's specific obligations.
 
 Coop calls a preservation endpoint you build and host immediately after a CyberTip is successfully submitted. Your endpoint should trigger whatever internal workflow
-handles data retention — for example, flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the
+handles data retention, for example flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the
 media included in the CyberTip, and the NCMEC-assigned report ID so you have everything you need to identify what to retain.
 Coop signs every request with your org's signing key. Verify the signature before processing.
 

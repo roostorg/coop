@@ -35,30 +35,30 @@ const pem = `-----BEGIN PUBLIC KEY-----
 ...your key...
 -----END PUBLIC KEY-----`;
 
-const pemHeader = "-----BEGIN PUBLIC KEY-----";
-const pemFooter = "-----END PUBLIC KEY-----";
+const pemHeader = '-----BEGIN PUBLIC KEY-----';
+const pemFooter = '-----END PUBLIC KEY-----';
 const publicKeyPem = pem.substring(
   pemHeader.length,
-  pem.length - pemFooter.length
+  pem.length - pemFooter.length,
 );
 
-const publicKeyBuffer = Buffer.from(publicKeyPem, "base64");
-const requestBodyBuffer = Buffer.from(req.body, "utf8");
-const signature = Buffer.from(req.headers["coop-signature"], "base64");
+const publicKeyBuffer = Buffer.from(publicKeyPem, 'base64');
+const requestBodyBuffer = Buffer.from(req.body, 'utf8');
+const signature = Buffer.from(req.headers['coop-signature'], 'base64');
 
 const publicKey = await crypto.subtle.importKey(
-  "spki",
+  'spki',
   publicKeyBuffer,
-  { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-256" } },
+  { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } },
   false,
-  ["verify"]
+  ['verify'],
 );
 
 const isValid = await crypto.subtle.verify(
-  "RSASSA-PKCS1-v1_5",
+  'RSASSA-PKCS1-v1_5',
   publicKey,
   signature,
-  requestBodyBuffer
+  requestBodyBuffer,
 );
 ```
 
