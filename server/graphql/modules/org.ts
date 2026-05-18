@@ -676,6 +676,10 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
 
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw forbiddenError('User does not have permission to manage SSO settings');
+    }
+
     return context.services.OrgSettingsService.updateSamlSettings({
       orgId: user.orgId,
       ssoUrl: input.ssoUrl,

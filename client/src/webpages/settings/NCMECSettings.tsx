@@ -99,7 +99,7 @@ export default function NCMECSettings() {
     contactPersonPhone: '',
   });
 
-  const { loading, error, data } = useGQLNcmecOrgSettingsQuery();
+  const { loading, error, data } = useGQLNcmecOrgSettingsQuery({ errorPolicy: 'all' });
 
   const [updateSettings, { loading: isUpdateLoading }] =
     useGQLUpdateNcmecOrgSettingsMutation({
@@ -145,7 +145,7 @@ export default function NCMECSettings() {
   }
 
   const permissions = data?.me?.permissions;
-  if (permissions && !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
     return <Navigate to="/dashboard/settings" replace />;
   }
 

@@ -61,7 +61,7 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyMuteVideo: true,
   });
 
-  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery();
+  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({ errorPolicy: 'all' });
 
   const [saveSafetySettings, { loading: isSafetySettingsMutationLoading }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
@@ -96,7 +96,7 @@ export default function ManualReviewSafetySettings() {
   }
 
   const permissions = data?.me?.permissions;
-  if (permissions && !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
     return <Navigate to="/dashboard/settings" replace />;
   }
 
