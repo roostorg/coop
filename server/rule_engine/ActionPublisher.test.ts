@@ -499,24 +499,26 @@ describe('ActionPublisher', () => {
         schema: [],
         schemaFieldRoles: {},
       };
-      const synthesizeUserItemFromCreatorReferences = jest
-        .fn()
-        .mockResolvedValue({
-          latestSubmission: {
-            itemId: 'inferred-creator-id',
-            itemType: userItemType,
-            data: {},
-            submissionId: 'synthetic:inferred-creator-id',
-            submissionTime: undefined,
-            creator: undefined,
-          },
-        });
+      // The real helper resolves the creator id from ACTION_EXECUTIONS and
+      // then synthesizes a submission keyed on *the creator's* id (not the
+      // content's id). The mock mirrors that shape so the test exercises a
+      // payload production can actually produce.
+      const synthesizeUserItemFromContentTarget = jest.fn().mockResolvedValue({
+        latestSubmission: {
+          itemId: 'creator-user-id-7',
+          itemType: userItemType,
+          data: {},
+          submissionId: 'synthetic:creator-user-id-7',
+          submissionTime: undefined,
+          creator: undefined,
+        },
+      });
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
         fetchHTTP: jest.fn(),
         ncmecService: { enqueueForHumanReviewIfApplicable },
         itemInvestigationService: {
           getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
-          synthesizeUserItemFromCreatorReferences,
+          synthesizeUserItemFromContentTarget,
         },
       });
 
@@ -553,13 +555,14 @@ describe('ActionPublisher', () => {
       );
 
       expect(results).toEqual([expect.objectContaining({ success: true })]);
-      expect(synthesizeUserItemFromCreatorReferences).toHaveBeenCalledWith({
+      expect(synthesizeUserItemFromContentTarget).toHaveBeenCalledWith({
         orgId: 'org-synth',
         itemId: 'phantom-content-id',
+        itemTypeId: 'content-type-1',
       });
       expect(enqueueForHumanReviewIfApplicable).toHaveBeenCalledTimes(1);
       const enqueueArg = enqueueForHumanReviewIfApplicable.mock.calls[0]?.[0];
-      expect(enqueueArg.item.itemId).toBe('inferred-creator-id');
+      expect(enqueueArg.item.itemId).toBe('creator-user-id-7');
       expect(enqueueArg.item.itemTypeIdentifier.id).toBe('user-type-3');
       expect(logActionExecutions).toHaveBeenCalledWith(
         expect.objectContaining({ failed: false }),
@@ -571,7 +574,7 @@ describe('ActionPublisher', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const enqueueForHumanReviewIfApplicable = jest.fn();
-      const synthesizeUserItemFromCreatorReferences = jest
+      const synthesizeUserItemFromContentTarget = jest
         .fn()
         .mockResolvedValue(null);
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
@@ -579,7 +582,7 @@ describe('ActionPublisher', () => {
         ncmecService: { enqueueForHumanReviewIfApplicable },
         itemInvestigationService: {
           getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
-          synthesizeUserItemFromCreatorReferences,
+          synthesizeUserItemFromContentTarget,
         },
       });
 
@@ -616,7 +619,7 @@ describe('ActionPublisher', () => {
       );
 
       expect(results).toEqual([expect.objectContaining({ success: false })]);
-      expect(synthesizeUserItemFromCreatorReferences).toHaveBeenCalled();
+      expect(synthesizeUserItemFromContentTarget).toHaveBeenCalled();
       expect(enqueueForHumanReviewIfApplicable).not.toHaveBeenCalled();
       expect(logActionExecutions).toHaveBeenCalledWith(
         expect.objectContaining({ failed: true }),

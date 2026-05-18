@@ -329,8 +329,8 @@ class ActionPublisher {
         };
 
         // USER target with no record: synthesize a minimal submission from
-        // the id. Returns undefined for non-USER targets — callers acting on
-        // the content itself (e.g., MRT) must not substitute a user.
+        // the id. Returns undefined for non-USER targets — MRT needs the
+        // real content submission, so it must fail loudly for CONTENT.
         const getFullItemOrSyntheticUserForUserTarget = async () => {
           const fullItem = await getFullItem();
           if (fullItem) {
@@ -349,24 +349,27 @@ class ActionPublisher {
           return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
         };
 
-        // NCMEC-only: also infers the creator for CONTENT targets so the
-        // report is filed against the right user. THREAD has no owner.
+        // NCMEC fallback: USER target → synthetic user (as above); CONTENT
+        // target → resolve the creator via ACTION_EXECUTIONS and synthesize a
+        // user submission keyed on the creator id. THREAD has no single
+        // owner, so we refuse.
         const getFullItemOrSyntheticUserForNcmec = async () => {
-          const fullItem = await getFullItem();
-          if (fullItem) {
-            return fullItem;
+          const userTarget = await getFullItemOrSyntheticUserForUserTarget();
+          if (userTarget) {
+            return userTarget;
           }
-          if (targetItem.itemType.kind === 'USER') {
-            return getFullItemOrSyntheticUserForUserTarget();
+          if (targetItem.itemType.kind !== 'CONTENT') {
+            return undefined;
           }
-          if (targetItem.itemType.kind === 'CONTENT') {
-            const inferred =
-              await this.itemInvestigationService.synthesizeUserItemFromCreatorReferences(
-                { orgId, itemId: targetItem.itemId },
-              );
-            return inferred?.latestSubmission;
-          }
-          return undefined;
+          const inferred =
+            await this.itemInvestigationService.synthesizeUserItemFromContentTarget(
+              {
+                orgId,
+                itemId: targetItem.itemId,
+                itemTypeId: targetItem.itemType.id,
+              },
+            );
+          return inferred?.latestSubmission;
         };
         const actionSource = getSourceType(
           correlationId,
