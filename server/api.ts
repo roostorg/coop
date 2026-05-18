@@ -187,8 +187,9 @@ export default async function makeApiServer(deps: Dependencies) {
             );
           }
 
-          const samlSettings =
-            await deps.OrgSettingsService.getSamlSettings(orgId);
+          const samlSettings = await deps.OrgSettingsService.getSamlSettings(
+            orgId,
+          );
 
           if (!samlSettings)
             return done(
@@ -294,13 +295,7 @@ export default async function makeApiServer(deps: Dependencies) {
           user.orgId,
         );
 
-        if (
-          samlSettings?.saml_enabled &&
-          // We allow Coop users to log in with email/password even if SSO is
-          // enabled
-          // so Coop employees can manage user accounts
-          String(email).split('@')[1] !== 'getcoop.com'
-        ) {
+        if (samlSettings?.saml_enabled) {
           return done(
             makeLoginSsoRequiredError({
               detail:
@@ -429,10 +424,10 @@ export default async function makeApiServer(deps: Dependencies) {
           code: extensions.type.includes(ErrorType.Unauthenticated)
             ? 'UNAUTHENTICATED'
             : extensions.type.includes(ErrorType.Unauthorized)
-              ? 'FORBIDDEN'
-              : extensions.type.includes(ErrorType.InvalidUserInput)
-                ? 'BAD_USER_INPUT'
-                : 'INTERNAL_SERVER_ERROR',
+            ? 'FORBIDDEN'
+            : extensions.type.includes(ErrorType.InvalidUserInput)
+            ? 'BAD_USER_INPUT'
+            : 'INTERNAL_SERVER_ERROR',
         },
         message: sanitizedErrorTitle,
       };
