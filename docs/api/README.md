@@ -4,7 +4,7 @@ Learn about the Coop API, including the REST API endpoints your platform uses to
 
 All endpoints require an API key passed as an HTTP header on every request:
 
-```
+```http
 X-API-KEY: <<apiKey>>
 Content-Type: application/json
 ```

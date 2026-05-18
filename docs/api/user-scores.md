@@ -6,11 +6,11 @@ For details on how scores are calculated and what thresholds map to which score 
 
 ## Endpoint
 
-```
+```http
 GET /api/v1/user_scores
 ```
 
-Authentication: `X-API-KEY` header. See [API Keys and Authentication](../development/api-auth.md).
+Authentication: `X-API-KEY` header. See [API Keys & Authentication](../development/api-auth.md).
 
 ## Query parameters
 
@@ -21,7 +21,7 @@ Authentication: `X-API-KEY` header. See [API Keys and Authentication](../develop
 
 **Example request:**
 
-```
+```http
 GET /api/v1/user_scores?id=user-123&typeId=your-user-type-id
 ```
 
@@ -33,8 +33,12 @@ Returns the user's score as a number between 1 and 5.
 3
 ```
 
+HTTP statuses:
+
 | Status            | Meaning                                        |
 | :---------------- | :--------------------------------------------- |
 | `200 OK`          | Score returned successfully                    |
 | `400 Bad Request` | Missing or invalid `id` or `typeId` parameters |
-| `401 / 403`       | Authentication failure                         |
+| `401` or `403`    | Authentication failure                         |
+
+See [Errors](errors.md) for the full error response format.

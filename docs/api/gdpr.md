@@ -1,14 +1,14 @@
-# GDPR Deletion
+# GDPR Deletion API
 
 Delete a user's personal data from Coop. Use this endpoint to fulfill GDPR "right to erasure" requests from EU residents whose data Coop has processed.
 
 ## Endpoint
 
-```
+```http
 POST /api/v1/gdpr/delete
 ```
 
-Authentication: `X-API-KEY` header. See [API Keys and Authentication](../development/api-auth.md).
+Authentication: `X-API-KEY` header. See [API Keys & Authentication](../development/api-auth.md).
 
 ## Request
 
@@ -30,23 +30,25 @@ You can include multiple users in a single request.
 
 ## Response
 
+Returns a unique ID for this deletion request, for your records.
+
 ```json
 {
   "requestId": "deletion-request-uuid"
 }
 ```
 
-| Field       | Description                                             |
-| :---------- | :------------------------------------------------------ |
-| `requestId` | A unique ID for this deletion request, for your records |
+HTTP responses:
 
 | Status            | Meaning                                        |
 | :---------------- | :--------------------------------------------- |
 | `201 Created`     | Deletion request accepted; returns `requestId` |
-| `400 Bad Request` | Validation failure — see [Errors](errors.md)   |
-| `401 / 403`       | Authentication failure                         |
+| `400 Bad Request` | Validation failure; see [Errors](errors.md)    |
+| `401` or `403`    | Authentication failure                         |
 
 Deletion is processed asynchronously. The `requestId` can be used to correlate this request with any downstream processing or audit logs.
+
+See [Errors](errors.md) for the full error response format.
 
 ## Notes
 

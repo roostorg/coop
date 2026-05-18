@@ -6,7 +6,7 @@ When Coop triggers an Action—either through an automated rule or a moderator's
 
 For each Action you define in Coop, provide a publicly accessible callback URL and any authentication headers your endpoint requires (e.g. an API key Coop should send). Coop includes these headers on every outgoing request to that endpoint.
 
-To verify that an incoming request actually came from Coop, check the `Coop-Signature` header. See [API Keys and Authentication](../development/api-auth.md) for the signature verification algorithm.
+To verify that an incoming request actually came from Coop, check the `Coop-Signature` header. See [API Keys & Authentication](../development/api-auth.md) for the signature verification algorithm.
 
 Failed deliveries are retried up to five times with exponential backoff.
 

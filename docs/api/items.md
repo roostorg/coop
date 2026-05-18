@@ -1,4 +1,4 @@
-# Submit Items
+# Submit Items API
 
 Send content to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured [Automated Rules](../user/rules.md).
 
@@ -6,11 +6,11 @@ Submit items when they are created, edited, reported, or otherwise need to be re
 
 ## Endpoint
 
-```
+```http
 POST /api/v1/items/async/
 ```
 
-Authentication: `X-API-KEY` header. See [API Keys and Authentication](../development/api-auth.md).
+Authentication: `X-API-KEY` header. See [API Keys & Authentication](../development/api-auth.md).
 
 ## Request
 
@@ -72,8 +72,8 @@ For private or access-controlled media, use pre-signed URLs (e.g. S3 pre-signed 
 | Status            | Meaning                                       |
 | :---------------- | :-------------------------------------------- |
 | `202 Accepted`    | Items received and queued for rule evaluation |
-| `400 Bad Request` | Validation failure — see [Errors](errors.md)  |
-| `401 / 403`       | Authentication failure                        |
+| `400 Bad Request` | Validation failure; see [Errors](errors.md)   |
+| `401` or `403`    | Authentication failure                        |
 
 See [Errors](errors.md) for the full error response format.
 
@@ -89,6 +89,9 @@ If the `data` object for an item contains an `images` field consisting of an arr
 ## Notes
 
 - **Asynchronous Processing**: This endpoint is designed for high-volume asynchronous processing. Submissions are enqueued in Redis (via BullMQ) and processed by background workers.
+
 - **Immediate Results**: If your implementation strictly requires synchronous processing (receiving rule results in the same HTTP response), use the legacy `POST /api/v1/content/` endpoint. Note that the legacy endpoint does not support batched submissions or automated HMA image hashing.
+
 - **Action Callbacks**: If a rule matches and triggers an action, Coop sends a POST request to your [action callback endpoint](actions.md).
+
 - **Basic Concepts**: For background on Item Types and how items are identified in Coop, see [Basic Concepts](../user/concepts.md).

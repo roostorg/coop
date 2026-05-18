@@ -6,11 +6,11 @@ For the full workflow—what Coop does with a report, routing rules, NCMEC handl
 
 ## Endpoint
 
-```
+```http
 POST /api/v1/report
 ```
 
-Authentication: `X-API-KEY` header. See [API Keys and Authentication](../development/api-auth.md).
+Authentication: `X-API-KEY` header. See [API Keys & Authentication](../development/api-auth.md).
 
 ## Request
 
@@ -96,6 +96,8 @@ Authentication: `X-API-KEY` header. See [API Keys and Authentication](../develop
 
 ## Response
 
+Returns a unique Coop-assigned ID for the report on success.
+
 ```json
 { "reportId": "report-uuid" }
 ```
@@ -104,8 +106,12 @@ Authentication: `X-API-KEY` header. See [API Keys and Authentication](../develop
 | :--------- | :----- | :-------------------------------------------- |
 | `reportId` | String | A unique ID for this report, assigned by Coop |
 
-| Status            | Meaning                                      |
-| :---------------- | :------------------------------------------- |
-| `201 Created`     | Report received; returns a `reportId`        |
-| `400 Bad Request` | Validation failure — see [Errors](errors.md) |
-| `401 / 403`       | Authentication failure                       |
+HTTP statuses:
+
+| Status            | Meaning                                     |
+| :---------------- | :------------------------------------------ |
+| `201 Created`     | Report received; returns a `reportId`       |
+| `400 Bad Request` | Validation failure; see [Errors](errors.md) |
+| `401` or `403`    | Authentication failure                      |
+
+See [Errors](errors.md) for the full error response format.
