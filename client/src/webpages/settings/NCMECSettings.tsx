@@ -12,17 +12,23 @@ import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import type { GQLNcmecInternetDetailType } from '@/graphql/generated';
 import {
+  GQLUserPermission,
   useGQLNcmecOrgSettingsQuery,
   useGQLUpdateNcmecOrgSettingsMutation,
 } from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 gql`
   query NcmecOrgSettings {
+    me {
+      permissions
+    }
     ncmecOrgSettings {
       username
       password
@@ -93,7 +99,7 @@ export default function NCMECSettings() {
     contactPersonPhone: '',
   });
 
-  const { loading, error, data } = useGQLNcmecOrgSettingsQuery();
+  const { loading, error, data } = useGQLNcmecOrgSettingsQuery({ errorPolicy: 'all' });
 
   const [updateSettings, { loading: isUpdateLoading }] =
     useGQLUpdateNcmecOrgSettingsMutation({
@@ -136,6 +142,11 @@ export default function NCMECSettings() {
 
   if (loading) {
     return <FullScreenLoading />;
+  }
+
+  const permissions = data?.me?.permissions;
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+    return <Navigate to="/dashboard/settings" replace />;
   }
 
   if (error) {

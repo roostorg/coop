@@ -4,7 +4,7 @@ import type {
   GQLNcmecOrgSettings,
   GQLQueryResolvers,
 } from '../generated.js';
-import { unauthenticatedError, userInputError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError, userInputError } from '../utils/errors.js';
 
 /** Input shape for updateNcmecOrgSettings; matches NcmecOrgSettingsInput in schema (used so resolver type-checks even if generated types are stale). */
 type NcmecOrgSettingsInputShape = {
@@ -267,6 +267,9 @@ const Query: GQLQueryResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw forbiddenError('User does not have permission to view NCMEC settings');
+    }
     const settings = await context.services.NcmecService.getNcmecOrgSettings(
       user.orgId,
     );
@@ -279,6 +282,9 @@ const Mutation: GQLMutationResolvers = {
     const user = context.getUser();
     if (!user) {
       throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw forbiddenError('User does not have permission to update NCMEC settings');
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
     const defaultInternetDetailType =
