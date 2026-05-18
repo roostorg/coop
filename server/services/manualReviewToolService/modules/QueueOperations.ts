@@ -837,7 +837,9 @@ export default class QueueOperations {
     userPermissions: readonly UserPermission[];
   }) {
     const { orgId, queueId, userPermissions } = opts;
-    if (!userPermissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
+    // Admin-only (MANAGE_ORG). `obliterate` wipes pending payloads from
+    // Redis irreversibly; recovery is via `server/bin/recover-mrt-queue.ts`.
+    if (!userPermissions.includes(UserPermission.MANAGE_ORG)) {
       throw makeDeleteAllJobsInsufficientPermissionsError({
         shouldErrorSpan: true,
       });
