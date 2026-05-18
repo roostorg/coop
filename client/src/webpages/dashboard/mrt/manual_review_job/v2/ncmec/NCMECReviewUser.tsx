@@ -651,6 +651,7 @@ export default function NCMECReviewUser(
 
   const sendReportModal = isActionable ? (
     <CoopModal
+      className="!w-[64rem] !max-w-[90vw]"
       visible={sendReportModalVisible}
       onClose={() => setSendReportModalVisible(false)}
       title="Confirm & Send NCMEC Report"
@@ -689,31 +690,26 @@ export default function NCMECReviewUser(
         },
       ]}
     >
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full min-w-0">
         <div className="!my-4 divider" />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-start">
-            <div className="text-base font-bold">Suspect</div>
-            <div className="flex flex-row items-center mr-12">
+        <div className="flex items-start justify-between gap-4 min-w-0">
+          <div className="flex items-start gap-4 text-start min-w-0 flex-1">
+            <div className="text-base font-bold shrink-0 pt-1">Suspect</div>
+            <div className="flex flex-row items-start min-w-0 flex-1">
               {profilePicUrl ? (
                 <img
                   alt="profile pic"
-                  className="w-10 h-10 border-2 border-solid rounded-full border-slate-400"
+                  className="w-10 h-10 border-2 border-solid rounded-full border-slate-400 shrink-0"
                   src={profilePicUrl.url}
                 />
               ) : null}
-              {displayName ? (
-                <div className="ml-3 font-bold truncate text-slate-700">
-                  {displayName} ({item.id})
-                </div>
-              ) : (
-                <div className="ml-3 font-bold truncate text-slate-700">
-                  {item.id}
-                </div>
-              )}
+              <div className="ml-3 font-bold text-slate-700 break-all min-w-0 flex-1">
+                {displayName ? `${displayName} (${item.id})` : item.id}
+              </div>
             </div>
           </div>
           <Button
+            className="shrink-0"
             onClick={() => setUnblurAllMediaInConfirmation((prev) => !prev)}
           >
             {unblurAllMediaInConfirmation ? 'Blur All' : 'Unblur All'}

@@ -2,7 +2,7 @@
 import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
-import { makeDateString, type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/types';
 import {
   types as scyllaTypes,
   type Host as ScyllaHost,
@@ -108,7 +108,6 @@ import makeHmaService, {
 } from '../services/hmaService/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
-  getFieldValueForRole,
   itemSubmissionWithTypeIdentifierToItemSubmission,
   type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
@@ -140,6 +139,7 @@ import {
   // eslint-disable-next-line import/no-restricted-paths
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
+  buildSubmitReportParamsFromDecision,
   makeNcmecService,
   type NcmecService,
 } from '../services/ncmecService/index.js';
@@ -1124,7 +1124,7 @@ export default async function getBottle() {
                   actorEmail: reviewerEmail,
                 });
                 break;
-              case 'SUBMIT_NCMEC_REPORT':
+              case 'SUBMIT_NCMEC_REPORT': {
                 if (job.payload.kind !== 'NCMEC') {
                   throw new Error(
                     'Attempting to submit a NCMEC report for a non-NCMEC job',
@@ -1138,64 +1138,19 @@ export default async function getBottle() {
                 if (itemType === undefined || itemType.kind !== 'USER') {
                   throw new Error('Item Type for User does not exist');
                 }
-                const displayName = getFieldValueForRole(
-                  itemType.schema,
-                  itemType.schemaFieldRoles,
-                  'displayName',
-                  data,
-                );
-                const profilePicUrl = getFieldValueForRole(
-                  itemType.schema,
-                  itemType.schemaFieldRoles,
-                  'profileIcon',
-                  data,
-                );
-
-                const allMedia = job.payload.allMediaItems;
-                const media = await Promise.all(
-                  decision.reportedMedia.map(async (it) => {
-                    const reportedItem = allMedia.find(
-                      (payloadMedia) =>
-                        payloadMedia.contentItem.itemId === it.id,
-                    );
-                    if (reportedItem === undefined) {
-                      throw new Error(
-                        'Unable to find reported media in job payload',
-                      );
-                    }
-                    const itemType =
-                      await container.getItemTypeEventuallyConsistent({
-                        orgId,
-                        typeSelector:
-                          reportedItem.contentItem.itemTypeIdentifier,
-                      });
-                    if (itemType === undefined) {
-                      throw new Error(
-                        'Unable to find item type for reported media',
-                      );
-                    }
-
-                    const createdAt =
-                      getFieldValueForRole(
-                        itemType.schema,
-                        itemType.schemaFieldRoles,
-                        'createdAt',
-                        reportedItem.contentItem.data,
-                      ) ?? makeDateString(new Date().toISOString());
-                    if (createdAt === undefined) {
-                      throw new Error('No created at for reported media');
-                    }
-
-                    return {
-                      id: it.id,
-                      typeId: it.typeId,
-                      url: it.url,
-                      createdAt,
-                      industryClassification: it.industryClassification,
-                      fileAnnotations: it.fileAnnotations,
-                    };
-                  }),
-                );
+                const reportParams = await buildSubmitReportParamsFromDecision({
+                  orgId,
+                  reviewerId,
+                  reportedItemId: itemId,
+                  reportedItemTypeId: itemTypeIdentifier.id,
+                  reportedUserItemType: itemType,
+                  reportedUserData: data,
+                  allMediaItems: job.payload.allMediaItems,
+                  decisionComponent: decision,
+                  jobId: job.id,
+                  getItemTypeEventuallyConsistent:
+                    container.getItemTypeEventuallyConsistent,
+                });
                 // Submissions go to the NCMEC test endpoint
                 // (exttest.cybertip.org) unless the deployment is explicitly
                 // configured for production via NCMEC_ENV=production. Operators
@@ -1203,35 +1158,7 @@ export default async function getBottle() {
                 // configured in Settings → NCMEC are production or test
                 // credentials issued by NCMEC.
                 const isTest = process.env.NCMEC_ENV !== 'production';
-                await container.NcmecService.submitReport(
-                  {
-                    reportedUser: {
-                      id: itemId,
-                      typeId: itemTypeIdentifier.id,
-                      ...(displayName ? { displayName } : {}),
-                      ...(profilePicUrl
-                        ? { profilePicture: profilePicUrl.url }
-                        : {}),
-                    },
-                    threads: decision.reportedMessages,
-                    orgId,
-                    media,
-                    reviewerId,
-                    incidentType: decision.incidentType,
-                    ...(decision.escalateToHighPriority != null &&
-                    decision.escalateToHighPriority.trim() !== ''
-                      ? {
-                          escalateToHighPriority:
-                            decision.escalateToHighPriority.trim(),
-                        }
-                      : {}),
-                    ...(decision.additionalInfo != null &&
-                    decision.additionalInfo.trim() !== ''
-                      ? { additionalInfo: decision.additionalInfo.trim() }
-                      : {}),
-                  },
-                  isTest,
-                );
+                await container.NcmecService.submitReport(reportParams, isTest);
                 const actionAndPolicy =
                   await container.NcmecService.getNCMECActionsToRunAndPolicies(
                     orgId,
@@ -1257,6 +1184,7 @@ export default async function getBottle() {
                   });
                 }
                 break;
+              }
               case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE': {
                 const reportHistory =
                   'reportHistory' in job.payload

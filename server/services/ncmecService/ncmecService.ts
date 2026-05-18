@@ -1,6 +1,6 @@
-import type { ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/types';
 import _Ajv from 'ajv-draft-04';
-import { type Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
@@ -18,6 +18,10 @@ import {
 import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
+import {
+  retryNcmecSubmission,
+  type RetryNcmecSubmissionResult,
+} from './retryNcmecSubmission.js';
 
 export class NcmecService {
   private readonly ncmecReporting: NcmecReporting;
@@ -57,6 +61,24 @@ export class NcmecService {
 
   async submitReport(reportParams: NCMECReportParams, isTest: boolean) {
     return this.ncmecReporting.submitReport(reportParams, isTest);
+  }
+
+  /** Org-scoped retry for a previously-failed NCMEC submission. See
+   * `retryNcmecSubmission.ts` for the orchestration; this is a thin wrapper
+   * that supplies dependencies. */
+  async retrySubmission(opts: {
+    orgId: string;
+    decisionId: string;
+    requestingReviewerId: string;
+  }): Promise<RetryNcmecSubmissionResult> {
+    return retryNcmecSubmission(
+      {
+        manualReviewToolService: this.manualReviewToolService,
+        ncmecReporting: this.ncmecReporting,
+        getItemTypeEventuallyConsistent: this.getItemTypeEventuallyConsistent,
+      },
+      opts,
+    );
   }
 
   async hasNCMECReportingEnabled(orgId: string) {
@@ -128,10 +150,32 @@ export class NcmecService {
   }
 
   async getNcmecErrorsForJobIds(jobIds: string[]) {
+    if (jobIds.length === 0) {
+      return [];
+    }
     return this.pqQueryReadReplica
       .selectFrom('ncmec_reporting.ncmec_reports_errors')
-      .select(['job_id', 'retry_count', 'user_id', 'user_type_id', 'status'])
+      .select([
+        'job_id',
+        'retry_count',
+        'user_id',
+        'user_type_id',
+        'status',
+        'last_error',
+      ])
       .where('job_id', 'in', jobIds)
+      .execute();
+  }
+
+  /** Returns the `(user_id, user_item_type_id)` pairs that already have a
+   * successful NCMEC submission for this org. Used to filter MRT decisions
+   * down to "failed" submissions (those without a matching report row). */
+  async getSuccessfulSubmissionKeysForOrg(orgId: string) {
+    return this.pqQueryReadReplica
+      .selectFrom('ncmec_reporting.ncmec_reports')
+      .select(['user_id as userId', 'user_item_type_id as userItemTypeId'])
+      .where('org_id', '=', orgId)
+      .groupBy(['user_id', 'user_item_type_id'])
       .execute();
   }
 
@@ -142,24 +186,26 @@ export class NcmecService {
     status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
     error: string;
   }) {
-    const retryCountRow = await this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports_errors')
-      .select('retry_count')
-      .where('job_id', '=', opts.jobId)
-      .executeTakeFirst();
+    // user_id/user_type_id are varchar(255); trim so an over-long org id
+    // can't make this failure-recording write itself fail.
+    const safeUserId = opts.userId.slice(0, 255);
+    const safeUserTypeId = opts.userTypeId.slice(0, 255);
+    // Atomic increment in `doUpdateSet` avoids the read-modify-write race
+    // when two callers (e.g. background retry job + user-clicked Retry)
+    // attempt to record an error for the same job_id concurrently.
     return this.pgQuery
       .insertInto('ncmec_reporting.ncmec_reports_errors')
       .values({
         job_id: opts.jobId,
-        user_id: opts.userId,
-        user_type_id: opts.userTypeId,
+        user_id: safeUserId,
+        user_type_id: safeUserTypeId,
         status: opts.status,
         last_error: opts.error,
-        retry_count: retryCountRow ? retryCountRow.retry_count + 1 : 1,
+        retry_count: 1,
       })
       .onConflict((oc) =>
         oc.columns(['job_id']).doUpdateSet({
-          retry_count: retryCountRow ? retryCountRow.retry_count + 1 : 1,
+          retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
           last_error: opts.error,
           status: opts.status,
         }),

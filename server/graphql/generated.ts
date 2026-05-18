@@ -2519,6 +2519,12 @@ export type GQLMutation = {
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
   readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
+  /**
+   * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
+   * retry decisions that belong to their own org. Returns success on a fresh
+   * successful submission, or an error with a user-safe summary on failure.
+   */
+  readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2750,6 +2756,10 @@ export type GQLMutationResetPasswordArgs = {
   input: GQLResetPasswordInput;
 };
 
+export type GQLMutationRetryNcmecSubmissionArgs = {
+  decisionId: Scalars['ID']['input'];
+};
+
 export type GQLMutationRotateApiKeyArgs = {
   input: GQLRotateApiKeyInput;
 };
@@ -2946,6 +2956,33 @@ export type GQLNcmecContentItem = {
   readonly isReported: Scalars['Boolean']['output'];
 };
 
+/**
+ * An NCMEC submission that was decisioned in the MRT but never produced a
+ * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+ * reviewers can see and retry failed submissions in the same place as
+ * successful reports. The userId + userItemTypeId pair uniquely identifies
+ * the reported user; decisionId is the stable handle for retrying.
+ */
+export type GQLNcmecFailedSubmission = {
+  readonly __typename?: 'NcmecFailedSubmission';
+  readonly decisionId: Scalars['ID']['output'];
+  readonly lastError?: Maybe<Scalars['String']['output']>;
+  readonly retryCount: Scalars['Int']['output'];
+  readonly reviewerId?: Maybe<Scalars['String']['output']>;
+  readonly status: GQLNcmecFailedSubmissionStatus;
+  readonly ts: Scalars['DateTime']['output'];
+  readonly userId: Scalars['String']['output'];
+  readonly userItemType: GQLUserItemType;
+};
+
+export const GQLNcmecFailedSubmissionStatus = {
+  NeverAttempted: 'NEVER_ATTEMPTED',
+  PermanentError: 'PERMANENT_ERROR',
+  RetryableError: 'RETRYABLE_ERROR',
+} as const;
+
+export type GQLNcmecFailedSubmissionStatus =
+  (typeof GQLNcmecFailedSubmissionStatus)[keyof typeof GQLNcmecFailedSubmissionStatus];
 export const GQLNcmecFileAnnotation = {
   AnimeDrawingVirtualHentai: 'ANIME_DRAWING_VIRTUAL_HENTAI',
   Bestiality: 'BESTIALITY',
@@ -3111,6 +3148,12 @@ export type GQLOrg = {
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
   readonly email: Scalars['String']['output'];
+  /**
+   * NCMEC decisions that did not produce a successful CyberTip report. Returned
+   * alongside ncmecReports on the dashboard so reviewers can see the full
+   * submission status (successful + failed) in one place and retry failures.
+   */
+  readonly failedNcmecSubmissions: ReadonlyArray<GQLNcmecFailedSubmission>;
   readonly hasAppealsEnabled: Scalars['Boolean']['output'];
   readonly hasNCMECReportingEnabled: Scalars['Boolean']['output'];
   readonly hasPartialItemsEndpoint: Scalars['Boolean']['output'];
@@ -3869,6 +3912,16 @@ export type GQLResolvedJobCount = {
   readonly queueId?: Maybe<Scalars['String']['output']>;
   readonly reviewerId?: Maybe<Scalars['String']['output']>;
   readonly time: Scalars['String']['output'];
+};
+
+export type GQLRetryNcmecSubmissionResponse = {
+  readonly __typename?: 'RetryNcmecSubmissionResponse';
+  /**
+   * Human-readable error summary if the retry failed. Never includes raw
+   * NCMEC response bodies; safe to render in the UI.
+   */
+  readonly error?: Maybe<Scalars['String']['output']>;
+  readonly success: Scalars['Boolean']['output'];
 };
 
 export type GQLRotateApiKeyError = GQLError & {
@@ -6000,6 +6053,12 @@ export type GQLResolversTypes = {
       contentItem: GQLResolversTypes['Item'];
     }
   >;
+  NcmecFailedSubmission: ResolverTypeWrapper<
+    Omit<GQLNcmecFailedSubmission, 'userItemType'> & {
+      userItemType: GQLResolversTypes['UserItemType'];
+    }
+  >;
+  NcmecFailedSubmissionStatus: GQLNcmecFailedSubmissionStatus;
   NcmecFileAnnotation: GQLNcmecFileAnnotation;
   NcmecIndustryClassification: GQLNcmecIndustryClassification;
   NcmecInternetDetailType: GQLNcmecInternetDetailType;
@@ -6100,6 +6159,7 @@ export type GQLResolversTypes = {
   RequestDemoInterest: GQLRequestDemoInterest;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: ResolverTypeWrapper<GQLResolvedJobCount>;
+  RetryNcmecSubmissionResponse: ResolverTypeWrapper<GQLRetryNcmecSubmissionResponse>;
   RotateApiKeyError: ResolverTypeWrapper<GQLRotateApiKeyError>;
   RotateApiKeyInput: GQLRotateApiKeyInput;
   RotateApiKeyResponse: ResolverTypeWrapper<
@@ -6705,6 +6765,9 @@ export type GQLResolversParentTypes = {
   NcmecContentItem: Omit<GQLNcmecContentItem, 'contentItem'> & {
     contentItem: GQLResolversParentTypes['Item'];
   };
+  NcmecFailedSubmission: Omit<GQLNcmecFailedSubmission, 'userItemType'> & {
+    userItemType: GQLResolversParentTypes['UserItemType'];
+  };
   NcmecManualReviewJobPayload: NcmecManualReviewJobPayload;
   NcmecMediaInput: GQLNcmecMediaInput;
   NcmecOrgSettings: GQLNcmecOrgSettings;
@@ -6789,6 +6852,7 @@ export type GQLResolversParentTypes = {
   RequestDemoInput: GQLRequestDemoInput;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: GQLResolvedJobCount;
+  RetryNcmecSubmissionResponse: GQLRetryNcmecSubmissionResponse;
   RotateApiKeyError: GQLRotateApiKeyError;
   RotateApiKeyInput: GQLRotateApiKeyInput;
   RotateApiKeyResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['RotateApiKeyResponse'];
@@ -10876,6 +10940,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationResetPasswordArgs, 'input'>
   >;
+  retryNcmecSubmission?: Resolver<
+    GQLResolversTypes['RetryNcmecSubmissionResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationRetryNcmecSubmissionArgs, 'decisionId'>
+  >;
   rotateApiKey?: Resolver<
     GQLResolversTypes['RotateApiKeyResponse'],
     ParentType,
@@ -11171,6 +11241,37 @@ export type GQLNcmecContentItemResolvers<
   isReported?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type GQLNcmecFailedSubmissionResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['NcmecFailedSubmission'] =
+    GQLResolversParentTypes['NcmecFailedSubmission'],
+> = {
+  decisionId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
+  lastError?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  retryCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  reviewerId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<
+    GQLResolversTypes['NcmecFailedSubmissionStatus'],
+    ParentType,
+    ContextType
+  >;
+  ts?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
+  userId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  userItemType?: Resolver<
+    GQLResolversTypes['UserItemType'],
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLNcmecManualReviewJobPayloadResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['NcmecManualReviewJobPayload'] =
@@ -11427,6 +11528,11 @@ export type GQLOrgResolvers<
     ContextType
   >;
   email?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  failedNcmecSubmissions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['NcmecFailedSubmission']>,
+    ParentType,
+    ContextType
+  >;
   hasAppealsEnabled?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -12691,6 +12797,15 @@ export type GQLResolvedJobCountResolvers<
     ContextType
   >;
   time?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type GQLRetryNcmecSubmissionResponseResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['RetryNcmecSubmissionResponse'] =
+    GQLResolversParentTypes['RetryNcmecSubmissionResponse'],
+> = {
+  error?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
+  success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type GQLRotateApiKeyErrorResolvers<
@@ -14652,6 +14767,7 @@ export type GQLResolvers<ContextType = Context> = {
   NCMECReportedThread?: GQLNcmecReportedThreadResolvers<ContextType>;
   NcmecAdditionalFile?: GQLNcmecAdditionalFileResolvers<ContextType>;
   NcmecContentItem?: GQLNcmecContentItemResolvers<ContextType>;
+  NcmecFailedSubmission?: GQLNcmecFailedSubmissionResolvers<ContextType>;
   NcmecManualReviewJobPayload?: GQLNcmecManualReviewJobPayloadResolvers<ContextType>;
   NcmecOrgSettings?: GQLNcmecOrgSettingsResolvers<ContextType>;
   NcmecReportedMediaDetails?: GQLNcmecReportedMediaDetailsResolvers<ContextType>;
@@ -14699,6 +14815,7 @@ export type GQLResolvers<ContextType = Context> = {
   ReportingRuleNameExistsError?: GQLReportingRuleNameExistsErrorResolvers<ContextType>;
   ReportingRulePassRateData?: GQLReportingRulePassRateDataResolvers<ContextType>;
   ResolvedJobCount?: GQLResolvedJobCountResolvers<ContextType>;
+  RetryNcmecSubmissionResponse?: GQLRetryNcmecSubmissionResponseResolvers<ContextType>;
   RotateApiKeyError?: GQLRotateApiKeyErrorResolvers<ContextType>;
   RotateApiKeyResponse?: GQLRotateApiKeyResponseResolvers<ContextType>;
   RotateApiKeySuccessResponse?: GQLRotateApiKeySuccessResponseResolvers<ContextType>;

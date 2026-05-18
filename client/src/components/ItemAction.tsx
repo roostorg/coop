@@ -1,21 +1,21 @@
-import ActionParametersModal, {
-  defaultValuesForParameters,
-} from '@/components/ActionParametersModal';
-import { type ActionParameterValues } from '@/components/ActionParameterInputs';
-import { type JsonObject } from 'type-fest';
 import {
-  type GQLActionParameter,
   namedOperations,
   useGQLBulkActionExecutionMutation,
   useGQLBulkActionsFormDataQuery,
+  type GQLActionParameter,
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
-import { ItemIdentifier } from '@roostorg/types';
 import Pencil from '@/icons/lni/Education/pencil.svg?react';
+import { ItemIdentifier } from '@roostorg/types';
 import { Button, Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { useCallback, useMemo, useState } from 'react';
+import { type JsonObject } from 'type-fest';
 
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
 import CoopModal from '@/webpages/dashboard/components/CoopModal';
@@ -50,7 +50,9 @@ export default function ItemAction(props: {
       const anyFailed = results.some((r) => r.success === false);
       if (anyFailed) {
         setModalBody(
-          'One or more actions failed. The callback URL may have returned an error. If your org requires a policy for decisions, select a policy and try again.',
+          'One or more actions failed. Check server logs for details. ' +
+            'If the action posts to a callback URL, the URL may have returned an error. ' +
+            'If your org requires a policy for decisions, select a policy and try again.',
         );
       } else {
         setModalBody('Actions submitted successfully.');
@@ -76,7 +78,9 @@ export default function ItemAction(props: {
   const [moderatorNote, setModeratorNote] = useState<string>('');
 
   const eligibleActions: EligibleAction[] = (queryData?.myOrg?.actions ?? [])
-    .filter((it) => it.itemTypes.map((t) => t.id).includes(itemIdentifier.typeId))
+    .filter((it) =>
+      it.itemTypes.map((t) => t.id).includes(itemIdentifier.typeId),
+    )
     .map((it) => ({
       id: it.id,
       name: it.name,
@@ -211,7 +215,8 @@ export default function ItemAction(props: {
               Object.keys(parametersByActionId).length > 0
                 ? (parametersByActionId as unknown as JsonObject)
                 : undefined,
-            note: moderatorNote.trim() === '' ? undefined : moderatorNote.trim(),
+            note:
+              moderatorNote.trim() === '' ? undefined : moderatorNote.trim(),
           },
         },
       }),
