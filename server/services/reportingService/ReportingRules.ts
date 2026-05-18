@@ -11,6 +11,10 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys } from '../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../utils/string.js';
 import {
@@ -79,6 +83,7 @@ const reportingRuleSelection = [
 
 export default class ReportingRules {
   private readonly reportingRulesCache;
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ReportingServicePg>;
 
   constructor(private readonly pgQuery: Kysely<ReportingServicePg>) {
     this.reportingRulesCache = cached({
@@ -86,6 +91,7 @@ export default class ReportingRules {
         this.#getReportingRulesBypassCache(orgId, pgQuery),
       directives: { freshUntilAge: 10 },
     });
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
   }
 
   async getReportingRules(opts: {
@@ -111,72 +117,69 @@ export default class ReportingRules {
       policyIds,
     } = input;
 
-    return this.pgQuery
-      .transaction()
-      .execute(async (trx) => {
-        const reportingRule = await trx
-          .insertInto('reporting_rules.reporting_rules')
-          .values({
-            id: uuidv1(),
-            org_id: orgId,
-            name,
-            description: replaceEmptyStringWithNull(description),
-            status,
-            condition_set: conditionSet,
-            creator_id: creatorId,
+    return this.transactionWithRetry(async (trx) => {
+      const reportingRule = await trx
+        .insertInto('reporting_rules.reporting_rules')
+        .values({
+          id: uuidv1(),
+          org_id: orgId,
+          name,
+          description: replaceEmptyStringWithNull(description),
+          status,
+          condition_set: conditionSet,
+          creator_id: creatorId,
+        })
+        .returning(reportingRuleSelection)
+        .executeTakeFirstOrThrow();
+
+      await trx
+        .insertInto('reporting_rules.reporting_rules_to_item_types')
+        .values(
+          itemTypeIds.map((itemTypeId) => ({
+            reporting_rule_id: reportingRule.id,
+            item_type_id: itemTypeId,
+          })),
+        )
+        .execute();
+
+      await trx
+        .insertInto('reporting_rules.reporting_rules_to_actions')
+        .values(
+          actionIds.map((actionId) => ({
+            action_id: actionId,
+            reporting_rule_id: reportingRule.id,
+          })),
+        )
+        .execute();
+
+      if (policyIds.length > 0) {
+        await trx
+          .insertInto('reporting_rules.reporting_rules_to_policies')
+          .values(
+            policyIds.map((policyId) => ({
+              policy_id: policyId,
+              reporting_rule_id: reportingRule.id,
+            })),
+          )
+          .execute();
+      }
+
+      return {
+        ...reportingRule,
+        itemTypeIds,
+        actionIds,
+        policyIds,
+      };
+    }).catch((e) => {
+      throw isReportingRuleNameExistsError(e)
+        ? makeReportingRuleNameExistsError({
+            detail:
+              'The reporting rule was not created because a rule with this name already exists.',
+            cause: e,
+            shouldErrorSpan: true,
           })
-          .returning(reportingRuleSelection)
-          .executeTakeFirstOrThrow();
-
-        await trx
-          .insertInto('reporting_rules.reporting_rules_to_item_types')
-          .values(
-            itemTypeIds.map((itemTypeId) => ({
-              reporting_rule_id: reportingRule.id,
-              item_type_id: itemTypeId,
-            })),
-          )
-          .execute();
-
-        await trx
-          .insertInto('reporting_rules.reporting_rules_to_actions')
-          .values(
-            actionIds.map((actionId) => ({
-              action_id: actionId,
-              reporting_rule_id: reportingRule.id,
-            })),
-          )
-          .execute();
-
-        if (policyIds.length > 0) {
-          await trx
-            .insertInto('reporting_rules.reporting_rules_to_policies')
-            .values(
-              policyIds.map((policyId) => ({
-                policy_id: policyId,
-                reporting_rule_id: reportingRule.id,
-              })),
-            )
-            .execute();
-        }
-
-        return {
-          ...reportingRule,
-          itemTypeIds,
-          actionIds,
-          policyIds,
-        };
-      })
-      .catch((e) => {
-        throw isReportingRuleNameExistsError(e)
-          ? makeReportingRuleNameExistsError({
-              detail:
-                'The reporting rule was not created because a rule with this name already exists.',
-              cause: e,
-              shouldErrorSpan: true,
-            })
-          : e;
-      });
+        : e;
+    });
   }
 
   async updateReportingRule(
@@ -194,141 +197,170 @@ export default class ReportingRules {
       policyIds,
     } = input;
 
-    return this.pgQuery
-      .transaction()
-      .execute(async (trx) => {
-        const updatedReportingRule = await trx
-          .updateTable('reporting_rules.reporting_rules')
-          .set({
-            ...(conditionSet ? { condition_set: conditionSet } : {}),
-            ...removeUndefinedKeys({
-              name,
-              description: replaceEmptyStringWithNull(description),
-              status,
-            }),
-          })
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .returning(reportingRuleSelection)
-          .executeTakeFirstOrThrow();
+    return this.transactionWithRetry(async (trx) => {
+      const updatedReportingRule = await trx
+        .updateTable('reporting_rules.reporting_rules')
+        .set({
+          ...(conditionSet ? { condition_set: conditionSet } : {}),
+          ...removeUndefinedKeys({
+            name,
+            description: replaceEmptyStringWithNull(description),
+            status,
+          }),
+        })
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .returning(reportingRuleSelection)
+        .executeTakeFirstOrThrow();
 
-        if (itemTypeIds) {
-          await trx
-            .deleteFrom('reporting_rules.reporting_rules_to_item_types')
-            .where(({ eb, and }) =>
-              and([
-                eb('reporting_rule_id', '=', id),
-                eb('item_type_id', 'not in', itemTypeIds),
-              ]),
-            )
-            .execute();
-
-          await trx
-            .insertInto('reporting_rules.reporting_rules_to_item_types')
-            .values(
-              itemTypeIds.map((itemTypeId) => ({
-                reporting_rule_id: id,
-                item_type_id: itemTypeId,
-              })),
-            )
-            .onConflict((oc) =>
-              oc.columns(['reporting_rule_id', 'item_type_id']).doNothing(),
-            )
-            .execute();
-        }
-
-        if (actionIds) {
-          await trx
-            .deleteFrom('reporting_rules.reporting_rules_to_actions')
-            .where(({ eb, and }) =>
-              and([
-                eb('reporting_rule_id', '=', id),
-                eb('action_id', 'not in', actionIds),
-              ]),
-            )
-            .execute();
-
-          await trx
-            .insertInto('reporting_rules.reporting_rules_to_actions')
-            .values(
-              actionIds.map((actionId) => ({
-                reporting_rule_id: id,
-                action_id: actionId,
-              })),
-            )
-            .onConflict((oc) =>
-              oc.columns(['reporting_rule_id', 'action_id']).doNothing(),
-            )
-            .execute();
-        }
-
-        if (policyIds) {
-          await trx
-            .deleteFrom('reporting_rules.reporting_rules_to_policies')
-            .where('reporting_rule_id', '=', id)
-            .execute();
-
-          if (policyIds.length > 0) {
-            await trx
-              .insertInto('reporting_rules.reporting_rules_to_policies')
-              .values(
-                policyIds.map((policyId) => ({
-                  reporting_rule_id: id,
-                  policy_id: policyId,
-                })),
-              )
-              .onConflict((oc) =>
-                oc.columns(['reporting_rule_id', 'policy_id']).doNothing(),
-              )
-              .execute();
-          }
-        }
-
-        return {
-          ...updatedReportingRule,
-          itemTypeIds:
-            itemTypeIds ?? (await this.#getItemTypeIdsForReportingRule(orgId)),
-          actionIds:
-            actionIds ?? (await this.#getActionIdsForReportingRule(orgId)),
-          policyIds:
-            policyIds ?? (await this.#getPolicyIdsForReportingRule(orgId)),
-        };
-      })
-      .catch((e) => {
-        if (isReportingRuleNameExistsError(e)) {
-          throw makeReportingRuleNameExistsError({
-            detail:
-              'The update for this reporting rule was not recorded because the new name already exists as the name of another rule.',
-            cause: e,
-            shouldErrorSpan: true,
-          });
-        }
-
-        if (isReportingRuleNotFoundError(e)) {
-          throw makeReportingRuleNotFoundError({
-            detail: 'The reporting rule does not exist.',
-            cause: e,
-            shouldErrorSpan: true,
-          });
-        }
-
-        throw e;
-      });
-  }
-
-  async deleteReportingRule(input: { id: string }) {
-    const { id } = input;
-
-    return this.pgQuery
-      .transaction()
-      .execute(async (trx) => {
+      if (itemTypeIds) {
         await trx
           .deleteFrom('reporting_rules.reporting_rules_to_item_types')
+          .where(({ eb, and }) =>
+            and([
+              eb('reporting_rule_id', '=', id),
+              eb('item_type_id', 'not in', itemTypeIds),
+            ]),
+          )
+          .execute();
+
+        await trx
+          .insertInto('reporting_rules.reporting_rules_to_item_types')
+          .values(
+            itemTypeIds.map((itemTypeId) => ({
+              reporting_rule_id: id,
+              item_type_id: itemTypeId,
+            })),
+          )
+          .onConflict((oc) =>
+            oc.columns(['reporting_rule_id', 'item_type_id']).doNothing(),
+          )
+          .execute();
+      }
+
+      if (actionIds) {
+        await trx
+          .deleteFrom('reporting_rules.reporting_rules_to_actions')
+          .where(({ eb, and }) =>
+            and([
+              eb('reporting_rule_id', '=', id),
+              eb('action_id', 'not in', actionIds),
+            ]),
+          )
+          .execute();
+
+        await trx
+          .insertInto('reporting_rules.reporting_rules_to_actions')
+          .values(
+            actionIds.map((actionId) => ({
+              reporting_rule_id: id,
+              action_id: actionId,
+            })),
+          )
+          .onConflict((oc) =>
+            oc.columns(['reporting_rule_id', 'action_id']).doNothing(),
+          )
+          .execute();
+      }
+
+      if (policyIds) {
+        await trx
+          .deleteFrom('reporting_rules.reporting_rules_to_policies')
           .where('reporting_rule_id', '=', id)
           .execute();
-        return true;
-      })
-      .catch((_error) => false);
+
+        if (policyIds.length > 0) {
+          await trx
+            .insertInto('reporting_rules.reporting_rules_to_policies')
+            .values(
+              policyIds.map((policyId) => ({
+                reporting_rule_id: id,
+                policy_id: policyId,
+              })),
+            )
+            .onConflict((oc) =>
+              oc.columns(['reporting_rule_id', 'policy_id']).doNothing(),
+            )
+            .execute();
+        }
+      }
+
+      // Fallback reads go through `trx` and key on the rule's `id`.
+      return {
+        ...updatedReportingRule,
+        itemTypeIds:
+          itemTypeIds ?? (await this.#getItemTypeIdsForReportingRule(id, trx)),
+        actionIds:
+          actionIds ?? (await this.#getActionIdsForReportingRule(id, trx)),
+        policyIds:
+          policyIds ?? (await this.#getPolicyIdsForReportingRule(id, trx)),
+      };
+    }).catch((e) => {
+      if (isReportingRuleNameExistsError(e)) {
+        throw makeReportingRuleNameExistsError({
+          detail:
+            'The update for this reporting rule was not recorded because the new name already exists as the name of another rule.',
+          cause: e,
+          shouldErrorSpan: true,
+        });
+      }
+
+      if (isReportingRuleNotFoundError(e)) {
+        throw makeReportingRuleNotFoundError({
+          detail: 'The reporting rule does not exist.',
+          cause: e,
+          shouldErrorSpan: true,
+        });
+      }
+
+      throw e;
+    });
+  }
+
+  async deleteReportingRule(input: {
+    id: string;
+    orgId: string;
+  }): Promise<boolean> {
+    const { id, orgId } = input;
+
+    return this.transactionWithRetry(async (trx) => {
+      // Verify ownership inside the txn before touching any join rows.
+      // Skipping this would let a foreign-org `id` wipe that other org's
+      // join rows (the join tables have no org column) before the scoped
+      // parent delete no-ops.
+      const owned = await trx
+        .selectFrom('reporting_rules.reporting_rules')
+        .select('id')
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+      if (owned === undefined) {
+        return false;
+      }
+
+      await trx
+        .deleteFrom('reporting_rules.reporting_rules_to_item_types')
+        .where('reporting_rule_id', '=', id)
+        .execute();
+
+      await trx
+        .deleteFrom('reporting_rules.reporting_rules_to_actions')
+        .where('reporting_rule_id', '=', id)
+        .execute();
+
+      await trx
+        .deleteFrom('reporting_rules.reporting_rules_to_policies')
+        .where('reporting_rule_id', '=', id)
+        .execute();
+
+      const deleteResult = await trx
+        .deleteFrom('reporting_rules.reporting_rules')
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+
+      return deleteResult.numDeletedRows === 1n;
+    });
   }
 
   async #getReportingRulesBypassCache(

@@ -8,12 +8,7 @@ import {
 import { type TaggedItemData } from './itemTypeFields.js';
 import { type ConditionSet, type LeafCondition } from './rules.js';
 
-/**
- * Outcome + result types for condition evaluation. Lived on
- * `models/rules/RuleModel.ts` (via `ruleTypes.ts`) for historical reasons but
- * they don't depend on Sequelize — moving them here keeps them importable from
- * Sequelize-free code paths once the `models/*Model.ts` files are deleted.
- */
+/** Outcome + result types for condition evaluation. */
 
 export enum ConditionCompletionOutcome {
   PASSED = 'PASSED',
