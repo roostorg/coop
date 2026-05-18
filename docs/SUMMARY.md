@@ -28,13 +28,13 @@
 ---
 
 - [API Reference](api/README.md)
-  - [Submit Items](api/items.md)
-  - [Report API](api/report.md)
-  - [Appeal API](api/appeal.md)
-  - [Handle Moderation Actions](api/actions.md)
+  - [Items](api/items.md)
+  - [Report](api/report.md)
+  - [Appeal](api/appeal.md)
   - [Policies](api/policies.md)
   - [User Scores](api/user-scores.md)
   - [GDPR Deletion](api/gdpr.md)
+  - [Handling Actions](api/actions.md)
   - [Errors](api/errors.md)
 
 ---

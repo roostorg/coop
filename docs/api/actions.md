@@ -1,4 +1,4 @@
-# Handle Moderation Actions
+# Handling Actions
 
 When Coop triggers an Action—either through an automated rule or a moderator's decision in the Review Console—it sends a POST request to the callback URL you configured for that Action. Your server receives this request and performs the corresponding operation.
 

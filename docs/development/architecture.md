@@ -70,24 +70,20 @@ Coop's backend uses [BottleJS](https://github.com/young-steveo/bottlejs) for dep
 
 ## API
 
-Coop accepts both synchronous and asynchronous input via REST APIs. All API requests require an organization API key passed via the `x-api-key` header.
+Coop accepts content via REST APIs. All API requests require an organization API key passed via the `x-api-key` header.
 
-For the adopter-facing API reference, including full request/response schemas and field tables, see [API Reference](../api/README.md).
+See the [API Reference](../api/) for details including all endpoints and request/response schemas.
 
-### Item submission
+### Items & Report
 
-The primary way to send data to Coop is via the [Submit Items API](../api/items.md).
+The primary ways to send data to Coop are via the [Items API](../api/items.md) and [Report API](../api/report.md).
 
-- **Route**: `POST /api/v1/items/async/`
-- **Asynchronous**: Submissions are queued for processing. Automated rules run in the background.
-- **Batched**: You can submit multiple items (content, users, threads) in a single request.
+Submit can be thought of as the automatic enforcement, and proactive way for automatic enforcement rules to run.
+Report are essentially pure manual review, and the routing rules help assign it to the right queue
 
 ### Action execution
 
-When an action is triggered, Coop can send a webhook to your platform. See [Handle Moderation Actions](../api/actions.md) for details on the webhook format and how to process it.
-
-- **Route**: `POST /api/v1/actions`
-- **Authentication**: Verified via `Coop-Signature` header.
+When an action is triggered, Coop sends a webhook to your platform. See [Handling Actions](../api/actions.md) for details on the webhook format and how to process it.
 
 ## Rules
 
