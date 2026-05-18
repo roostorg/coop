@@ -25,6 +25,7 @@ import {
   ItemInvestigationService,
   type SubmissionsForItemWithTypeIdentifier,
 } from './itemInvestigationService.js';
+import { synthesizeUserItemFromContentTarget } from './synthesizeUserItemFromContentTarget.js';
 import { synthesizeUserItemFromCreatorReferences } from './synthesizeUserItemFromCreatorReferences.js';
 
 type AdaptedReturnType<T extends PublicMethodNames<ItemInvestigationService>> =
@@ -286,6 +287,22 @@ export class ItemInvestigationServiceAdapter {
     knownUserTypeId?: string;
   }): Promise<SubmissionsForItem | null> {
     return synthesizeUserItemFromCreatorReferences({
+      ...opts,
+      scyllaCreatorRefExists: async (input) =>
+        this.#hasAnySubmissionsCreatedBy(input.orgId, input.creatorIdentifier),
+      actionExecutionsAdapter: this.actionExecutionsAdapter,
+      contentApiRequestsAdapter: this.contentApiRequestsAdapter,
+      moderationConfigService: this.moderationConfigService,
+    });
+  }
+
+  /** See `synthesizeUserItemFromContentTarget.ts`. */
+  async synthesizeUserItemFromContentTarget(opts: {
+    orgId: string;
+    itemId: string;
+    itemTypeId: string;
+  }): Promise<SubmissionsForItem | null> {
+    return synthesizeUserItemFromContentTarget({
       ...opts,
       scyllaCreatorRefExists: async (input) =>
         this.#hasAnySubmissionsCreatedBy(input.orgId, input.creatorIdentifier),
