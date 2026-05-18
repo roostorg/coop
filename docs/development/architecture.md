@@ -74,16 +74,13 @@ Coop accepts content via REST APIs. All API requests require an organization API
 
 See the [API Reference](../api/) for details including all endpoints and request/response schemas.
 
-### Items & Report
+### Sending to Coop
 
-The primary ways to send data to Coop are via the [Items API](../api/items.md) and [Report API](../api/report.md).
+Content comes into Coop via a platform sending items to the [Items API](../api/items.md) for automated enforcement, and user reports to the [Report API](../api/report.md) to be routed to the Review Console.
 
-Submit can be thought of as the automatic enforcement, and proactive way for automatic enforcement rules to run.
-Report are essentially pure manual review, and the routing rules help assign it to the right queue
+### Actions from Coop
 
-### Action execution
-
-When an action is triggered, Coop sends a webhook to your platform. See [Handling Actions](../api/actions.md) for details on the webhook format and how to process it.
+When an action is triggered by a proactive rule or moderator decision, Coop sends a webhook back to the organization's platform. See [Handling Actions](../api/actions.md) for details on the webhook format and how to process it.
 
 ## Rules
 
