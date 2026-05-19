@@ -20,4 +20,8 @@ You can find or rotate your API key under **Settings** → **API Keys** in the C
 | `GET /api/v1/user_scores`    | [User Scores](user-scores.md): fetch a user's moderation score |
 | `POST /api/v1/gdpr/delete`   | [GDPR Deletion](gdpr.md): delete a user's data                 |
 
-See [Handling Actions](actions.md) for information about receiving action webhooks from Coop. See [Errors](errors.md) for information error responses from Coop.
+See also:
+
+- [Handling Actions](actions.md): information about receiving action webhooks from Coop
+- [Partial Items API](../api/partial-items.md): support Coop fetching Items and their attributes on demand
+- [Errors](errors.md): details of error responses from Coop

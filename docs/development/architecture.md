@@ -78,6 +78,8 @@ See the [API Reference](../api/) for details including all endpoints and request
 
 Content comes into Coop via a platform sending items to the [Items API](../api/items.md) for automated enforcement, and user reports to the [Report API](../api/report.md) to be routed to the Review Console.
 
+To backfill historical data, fetch related items in the review console that haven't yet been sent to Coop, and ensure items are up-to-date when viewed, platforms can use the [Partial Items API](../api/partial-items.md).
+
 ### Actions from Coop
 
 When an action is triggered by a proactive rule or moderator decision, Coop sends a webhook back to the organization's platform. See [Handling Actions](../api/actions.md) for details on the webhook format and how to process it.

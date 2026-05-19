@@ -1,8 +1,8 @@
 # Submit Items API
 
-Send content to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured [Automated Rules](../user/rules.md).
+Send [Items](../user/concepts.md#item) to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured [Proactive Rules](../user/rules.md#proactive-rules).
 
-Submit items when they are created, edited, reported, or otherwise need to be re-evaluated. You should also submit items retroactively if you configure new rules after launch.
+Submit items when they are created, edited, reported, or otherwise need to be re-evaluated. You should also submit items retroactively if you configure new rules after launch. To support Coop fetching Items and their attributes on demand, see the [Partial Items API](../api/partial-items.md).
 
 ## Endpoint
 
