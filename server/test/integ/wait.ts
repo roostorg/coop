@@ -37,6 +37,18 @@ export async function waitFor<T>(
  * that service falls back to the partial-items endpoint and the data warehouse
  * if Scylla returns nothing, which would mask a real Scylla write failure as a
  * passing test.
+ *
+ * Filtering by `item_identifier` alone matches the production lookup path
+ * (`ItemInvestigationService.getItemByIdentifier`), which leans on the
+ * secondary index on `item_identifier`. The table's partition key is
+ * `(org_id, synthetic_thread_id)`, so a partial-partition-key restriction
+ * (`org_id = ?` without `synthetic_thread_id`) would need `ALLOW FILTERING`.
+ * Callers should still assert on `org_id` after the row comes back to guard
+ * against the theoretical cross-org collision.
+ *
+ * Query errors are intentionally NOT swallowed — a structural Scylla error
+ * (bad query, schema drift) should surface immediately instead of polling
+ * itself into a misleading timeout.
  */
 export async function waitForItemInScylla(
   deps: Pick<Dependencies, 'Scylla'>,
@@ -59,7 +71,7 @@ export async function waitForItemInScylla(
             itemIdentifierToScyllaItemIdentifier(opts.itemIdentifier),
           ],
         ],
-      }).catch(() => []);
+      });
       return rows.length > 0 ? rows[0] : null;
     },
     { timeoutMs: opts.timeoutMs },
