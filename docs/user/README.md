@@ -21,8 +21,8 @@ We recommend beginning by familiarizing yourself with Coop's [basic concepts](co
 
 2. Define your [Item Types](administration.md#item-types); the kinds of content or users on your platform (posts, comments, profiles, etc.)
 
-3. Define your [Actions](administration.md#actions) and expose callback endpoints so Coop can trigger enforcement on your platform; see [Handle Actions](../api/actions.md) for the webhook format
+3. Define your [Actions](administration.md#actions) and expose callback endpoints so Coop can trigger enforcement on your platform; see [Handling Actions](../api/actions.md) for the webhook format
 
 4. Begin submitting items to Coop via the [Items API](../api/items.md) so they run through your proactive rules
 
-5. Submit user reports via the [Reports API](../api/reports.md) to route them into review queues for your moderators
+5. Submit user reports via the [Report API](../api/report.md) to route them into review queues for your moderators
