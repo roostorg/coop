@@ -53,7 +53,7 @@ Coop expects a response in the following format:
 
 ```json
 {
-  items: [
+  "items": [
     {
       "id": "abc123", // the `id` Coop provided in the request body
       "typeId": "def456", // the `typeId` Coop provided in the request body
