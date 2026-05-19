@@ -1,6 +1,8 @@
 # Welcome
 
-Welcome to the Coop documentation! These docs are split into a few guides, depending on who you are and what you're looking for:
+Welcome to the Coop documentation! For the Coop source code and basic information, [check out Coop on GitHub](https://github.com/roostorg/coop).
+
+These docs are split into a few guides, depending on who you are and what you're looking for:
 
 - [User Guide](user/): learn about Coop, its functionality, and the user interface
 - [Development Guide](development/): get Coop running and learn how to navigate the code
