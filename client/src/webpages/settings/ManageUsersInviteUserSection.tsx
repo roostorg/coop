@@ -4,6 +4,7 @@ import {
   useGQLHasNcmecReportingEnabledQuery,
   useGQLInviteUserMutation,
 } from '@/graphql/generated';
+import { HOST_URL } from '@/lib/config';
 import { titleCaseEnumString } from '@/utils/string';
 import { gql } from '@apollo/client';
 import { useState } from 'react';
@@ -78,8 +79,7 @@ export default function ManageUsersInviteUserSection() {
 
   const copyInviteLink = () => {
     if (inviteToken) {
-      const uiUrl = import.meta.env.VITE_UI_URL ?? window.location.origin;
-      const signupUrl = `${uiUrl}/signup/${inviteToken}`;
+      const signupUrl = `${HOST_URL}/signup/${inviteToken}`;
       navigator.clipboard.writeText(signupUrl);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
@@ -118,9 +118,7 @@ export default function ManageUsersInviteUserSection() {
                 <input
                   type="text"
                   readOnly
-                  value={`${
-                    import.meta.env.VITE_UI_URL ?? window.location.origin
-                  }/signup/${inviteToken}`}
+                  value={`${HOST_URL}/signup/${inviteToken}`}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono bg-gray-50"
                   onClick={(e) => e.currentTarget.select()}
                 />

@@ -15,10 +15,7 @@ export default function IframeContentDisplayComponent(props: {
   const { contentUrl } = props;
 
   const contentProxyUrl =
-    import.meta.env.VITE_CONTENT_PROXY_URL ??
-    (import.meta.env.MODE === 'production'
-      ? 'https://content.getcoop.com'
-      : 'http://localhost:4000');
+    import.meta.env.VITE_CONTENT_PROXY_URL ?? 'http://localhost:4000';
 
   const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [isTranslating, setIsTranslating] = useState(false);

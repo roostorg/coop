@@ -5,6 +5,7 @@ import { Textarea } from '@/coop-ui/Textarea';
 import { toast } from '@/coop-ui/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Heading, Text } from '@/coop-ui/Typography';
+import { HOST_URL } from '@/lib/config';
 import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { Clipboard } from 'lucide-react';
@@ -76,7 +77,7 @@ export default function SSOSettings() {
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
   };
-  const callbackUri = `https://getcoop.com/api/v1/saml/login/${data?.myOrg?.id}/callback`;
+  const callbackUri = `${HOST_URL}/api/v1/saml/login/${data?.myOrg?.id}/callback`;
 
   return (
     <div className="flex flex-col w-3/5 gap-4 text-start">
@@ -122,7 +123,7 @@ export default function SSOSettings() {
           id="SpEntityId"
           type={'text'}
           className={'tracking-widest'}
-          value={'https://getcoop.com'}
+          value={HOST_URL}
           disabled
           endSlot={
             <div className="flex">
@@ -132,7 +133,7 @@ export default function SSOSettings() {
                     variant="white"
                     size="icon"
                     className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
-                    onClick={() => copyText('https://getcoop.com')}
+                    onClick={() => copyText(HOST_URL)}
                   >
                     <Clipboard />
                   </Button>

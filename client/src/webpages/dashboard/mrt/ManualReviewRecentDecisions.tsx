@@ -1,6 +1,7 @@
 import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
 import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
 import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
+import { HOST_URL } from '@/lib/config';
 import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
@@ -576,7 +577,7 @@ export default function ManualReviewRecentDecisions() {
           item.reviewer,
           item.queue,
           item.createdAt,
-          `https://getcoop.com/dashboard/manual_review/recent?jobId=${item.jobId}`,
+          `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
         ]);
 
         // Combine the headers and rows into a CSV string
@@ -623,7 +624,7 @@ export default function ManualReviewRecentDecisions() {
             getReviewerName(skip.userId),
             getQueueName(skip.queueId),
             parseDatetimeToReadableStringInUTC(new Date(skip.ts)),
-            `https://getcoop.com/dashboard/manual_review/recent?jobId=${skip.jobId}`,
+            `${HOST_URL}/dashboard/manual_review/recent?jobId=${skip.jobId}`,
           ];
         });
         // Define the CSV headers
