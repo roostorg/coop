@@ -105,11 +105,8 @@ export async function retryNcmecSubmission(
   }
 
   const isTest = process.env.NCMEC_ENV !== 'production';
-  // submitReport records its own RETRYABLE_ERROR row via jobId when it throws
-  // and returns 'FAILURE' / 'UNSUPPORTED_ORG' / 'ALL_MEDIA_MISSING' for
-  // explicit non-success cases. The defensive try/catch here only translates
-  // those outcomes for the caller — error persistence stays centralized in
-  // submitReport so we never double-write or downgrade RETRYABLE to PERMANENT.
+  // submitReport owns `ncmec_reports_errors` writes via `jobId` so retries
+  // always update retry_count/last_error. Don't double-write here.
   try {
     const result = await deps.ncmecReporting.submitReport(reportParams, isTest);
     if (result === 'SUCCESS') {

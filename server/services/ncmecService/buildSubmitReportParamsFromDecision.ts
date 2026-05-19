@@ -108,7 +108,9 @@ export async function buildSubmitReportParamsFromDecision(
   const media = await Promise.all(
     decisionComponent.reportedMedia.map(async (it) => {
       const reportedItem = allMediaItems.find(
-        (m) => m.contentItem.itemId === it.id,
+        (m) =>
+          m.contentItem.itemId === it.id &&
+          m.contentItem.itemTypeIdentifier.id === it.typeId,
       );
       if (reportedItem === undefined) {
         throw new Error('Unable to find reported media in job payload');

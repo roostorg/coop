@@ -1317,6 +1317,16 @@ export default class NcmecReporting {
           }
 
           if (testOrgs.includes(reportParams.orgId)) {
+            if (reportParams.jobId !== undefined) {
+              await this.#recordSubmissionError({
+                jobId: reportParams.jobId,
+                userId: reportParams.reportedUser.id,
+                userTypeId: reportParams.reportedUser.typeId,
+                status: 'PERMANENT_ERROR',
+                error:
+                  'Org is on the NCMEC test allowlist; reports are suppressed.',
+              });
+            }
             return 'UNSUPPORTED_ORG';
           }
 
@@ -1405,6 +1415,16 @@ export default class NcmecReporting {
               ),
           );
           if (additionalInfo === 'ALL_MEDIA_MISSING') {
+            if (reportParams.jobId !== undefined) {
+              await this.#recordSubmissionError({
+                jobId: reportParams.jobId,
+                userId: reportParams.reportedUser.id,
+                userTypeId: reportParams.reportedUser.typeId,
+                status: 'PERMANENT_ERROR',
+                error:
+                  'All reportable media is missing from storage; nothing to submit.',
+              });
+            }
             return 'ALL_MEDIA_MISSING';
           }
           // This should be validated in getNCMECAdditionalInfo so the ! is safe
@@ -2082,12 +2102,14 @@ export default class NcmecReporting {
     userId: string;
     userTypeId: string;
     error: string;
+    status?: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
   }) {
     try {
       // user_id/user_type_id are varchar(255); trim so an over-long org id
       // can't make this failure-recording write itself fail.
       const safeUserId = opts.userId.slice(0, 255);
       const safeUserTypeId = opts.userTypeId.slice(0, 255);
+      const status = opts.status ?? 'RETRYABLE_ERROR';
       // Atomic increment in `doUpdateSet` avoids the read-modify-write race
       // when two retries land on the same job_id concurrently.
       await this.pgQuery
@@ -2096,7 +2118,7 @@ export default class NcmecReporting {
           job_id: opts.jobId,
           user_id: safeUserId,
           user_type_id: safeUserTypeId,
-          status: 'RETRYABLE_ERROR',
+          status,
           last_error: opts.error,
           retry_count: 1,
         })
@@ -2104,7 +2126,7 @@ export default class NcmecReporting {
           oc.columns(['job_id']).doUpdateSet({
             retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
             last_error: opts.error,
-            status: 'RETRYABLE_ERROR',
+            status,
           }),
         )
         .execute();

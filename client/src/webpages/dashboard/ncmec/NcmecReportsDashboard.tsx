@@ -1,12 +1,42 @@
 import { toast } from '@/coop-ui/Toast';
+import {
+  GQLUserPermission,
+  useGQLAllNcmecReportsQuery,
+  useGQLGetNcmecReportLazyQuery,
+  useGQLPermissionsQuery,
+  useGQLRetryNcmecSubmissionMutation,
+} from '@/graphql/generated';
 import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
 import { AuditOutlined, DownloadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Checkbox, Input, Tag, Tooltip } from 'antd';
 import { format } from 'date-fns';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
+
+import CopyTextComponent from '../../../components/common/CopyTextComponent';
+import FullScreenLoading from '../../../components/common/FullScreenLoading';
+import CoopButton from '../components/CoopButton';
+import DashboardHeader from '../components/DashboardHeader';
+import {
+  ColumnProps,
+  DateRangeColumnFilter,
+  DefaultColumnFilter,
+  SelectColumnFilter,
+} from '../components/table/filters';
+import { stringSort } from '../components/table/sort';
+import Table from '../components/table/Table';
 
 /** Anchor that lazily creates a Blob URL on click and revokes it shortly
  * after the download is triggered. Avoids leaking Blob URLs on every render
@@ -16,12 +46,12 @@ function BlobDownloadLink(props: {
   fileName: string;
   contents: string;
   mimeType: string;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   const { fileName, contents, mimeType, children, className } = props;
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
+    (event: ReactMouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       const url = URL.createObjectURL(new Blob([contents], { type: mimeType }));
       const a = document.createElement('a');
@@ -42,29 +72,6 @@ function BlobDownloadLink(props: {
     </a>
   );
 }
-
-import CopyTextComponent from '../../../components/common/CopyTextComponent';
-import FullScreenLoading from '../../../components/common/FullScreenLoading';
-import CoopButton from '../components/CoopButton';
-import DashboardHeader from '../components/DashboardHeader';
-import {
-  ColumnProps,
-  DateRangeColumnFilter,
-  DefaultColumnFilter,
-  SelectColumnFilter,
-} from '../components/table/filters';
-import { stringSort } from '../components/table/sort';
-import Table from '../components/table/Table';
-
-import {
-  GQLUserPermission,
-  useGQLAllNcmecReportsQuery,
-  useGQLGetNcmecReportLazyQuery,
-  useGQLPermissionsQuery,
-  useGQLRetryNcmecSubmissionMutation,
-} from '@/graphql/generated';
-import { userHasPermissions } from '@/routing/permissions';
-import { filterNullOrUndefined } from '@/utils/collections';
 
 gql`
   fragment NCMECReportValues on NCMECReport {
@@ -426,9 +433,11 @@ export default function NcmecReportsDashboard() {
 
   const tableData = useMemo(() => {
     // Successful reports come from `ncmecReports`; if the user is searching by
-    // a specific report id we substitute the lazy-fetched single report.
+    // a specific report id we substitute the lazy-fetched single report — but
+    // only when that fetched report actually matches the current `searchId`,
+    // otherwise editing the input after a fetch would show stale data.
     const successfulReportsSource =
-      searchId && ncmecReportData && ncmecReportData.ncmecReportById
+      searchId && ncmecReportData?.ncmecReportById?.reportId === searchId
         ? [ncmecReportData.ncmecReportById]
         : (ncmecReports ?? []);
 
@@ -445,10 +454,14 @@ export default function NcmecReportsDashboard() {
           // Sort key: numeric ms since epoch on the underlying timestamp.
           tsMs: new Date(report.ts).getTime(),
           row: {
-            // Plain strings here back the SelectColumnFilter dropdowns.
+            // `date` is `YYYY-MM-DD` for the dateRange comparator.
             values: {
+              date: format(new Date(report.ts), 'yyyy-MM-dd'),
               reviewer: reviewerName,
               status: 'Successful' as const,
+              reportId: report.reportId,
+              userId: report.userId,
+              userItemType: report.userItemType.name,
             },
             date: <div>{format(new Date(report.ts), 'MM/dd/yy h:mm a')}</div>,
             reviewer: <div className="whitespace-nowrap">{reviewerName}</div>,
@@ -547,8 +560,8 @@ export default function NcmecReportsDashboard() {
               </div>
             ),
             isTest: <div>{report.isTest ? 'True' : 'False'}</div>,
-            lastError: null as React.ReactNode,
-            action: null as React.ReactNode,
+            lastError: null as ReactNode,
+            action: null as ReactNode,
           },
         };
       });
@@ -565,9 +578,15 @@ export default function NcmecReportsDashboard() {
           return {
             tsMs: new Date(failed.ts).getTime(),
             row: {
+              // `reportId` is empty: failed submissions have no CyberTip id,
+              // so the text filter treats them as non-matching when used.
               values: {
+                date: format(new Date(failed.ts), 'yyyy-MM-dd'),
                 reviewer: reviewerName,
                 status: 'Failed' as const,
+                reportId: '',
+                userId: failed.userId,
+                userItemType: failed.userItemType.name,
               },
               date: <div>{format(new Date(failed.ts), 'MM/dd/yy h:mm a')}</div>,
               reviewer: <div className="whitespace-nowrap">{reviewerName}</div>,
