@@ -19,15 +19,10 @@ import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
-import { buildContext, GraphQLLocalStrategy } from 'graphql-passport';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import {
-  makeLoginIncorrectPasswordError,
-  makeLoginSsoRequiredError,
-  makeLoginUserDoesNotExistError,
-} from './graphql/datasources/UserApi.js';
+import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
 import {
   kyselyUserFindByEmail,
   kyselyUserFindById,
@@ -35,11 +30,11 @@ import {
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
+import { buildPassportContext } from './graphql/utils/passportContext.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
-import { passwordMatchesHash } from './services/userManagementService/index.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
@@ -281,65 +276,6 @@ export default async function makeApiServer(deps: Dependencies) {
     },
   );
 
-  passport.use(
-    new GraphQLLocalStrategy(async (email, password, done) => {
-      try {
-        const user = await kyselyUserFindByEmail(KyselyPg, String(email));
-        if (user == null) {
-          return done(
-            makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-          );
-        }
-        const samlSettings = await deps.OrgSettingsService.getSamlSettings(
-          user.orgId,
-        );
-
-        if (
-          samlSettings?.saml_enabled &&
-          // We allow Coop users to log in with email/password even if SSO is
-          // enabled
-          // so Coop employees can manage user accounts
-          String(email).split('@')[1] !== 'getcoop.com'
-        ) {
-          return done(
-            makeLoginSsoRequiredError({
-              detail:
-                'SAML is enabled for this organization. Password login is disabled.',
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-
-        if (!user.loginMethods.includes('password')) {
-          return done(
-            makeLoginIncorrectPasswordError({
-              detail: 'Password is not set for user.',
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-
-        // `loginMethods` includes 'password', so the DB CHECK constraint
-        // guarantees `user.password` is non-null here.
-        if (
-          user.password != null &&
-          (await passwordMatchesHash(String(password), user.password))
-        ) {
-          done(null, user);
-        } else {
-          done(makeLoginIncorrectPasswordError({ shouldErrorSpan: true }));
-        }
-      } catch (e) {
-        deps.Tracer.logActiveSpanFailedIfAny(e);
-        return done(
-          makeInternalServerError('Unknown error during login attempt', {
-            shouldErrorSpan: true,
-          }),
-        );
-      }
-    }),
-  );
-
   passport.serializeUser((user: any, done) => {
     done(null, user.id);
   });
@@ -446,12 +382,11 @@ export default async function makeApiServer(deps: Dependencies) {
     '/graphql',
     express.json(),
     expressMiddleware(apolloServer, {
-      context: async ({ req, res }) =>
-        ({
-          ...buildContext({ req, res }),
-          services: makeGqlServices(deps),
-          dataSources: deps.DataSources,
-        }) as unknown as Context,
+      context: async ({ req, res }) => ({
+        ...buildPassportContext(req, res),
+        services: makeGqlServices(deps),
+        dataSources: deps.DataSources,
+      }),
     }),
   );
 

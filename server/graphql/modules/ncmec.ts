@@ -4,7 +4,11 @@ import type {
   GQLNcmecOrgSettings,
   GQLQueryResolvers,
 } from '../generated.js';
-import { forbiddenError, unauthenticatedError, userInputError } from '../utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from '../utils/errors.js';
 
 /** Input shape for updateNcmecOrgSettings; matches NcmecOrgSettingsInput in schema (used so resolver type-checks even if generated types are stale). */
 type NcmecOrgSettingsInputShape = {
@@ -36,6 +40,13 @@ const VALID_NCMEC_INTERNET_DETAIL_TYPES: readonly string[] = [
   'PEER_TO_PEER',
 ];
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
+function isValidContactEmail(value: string): boolean {
+  return value.length <= MAX_EMAIL_LENGTH && EMAIL_PATTERN.test(value);
+}
+
 const typeDefs = /* GraphQL */ `
   type Query {
     ncmecReportById(reportId: ID!): NCMECReport
@@ -50,6 +61,12 @@ const typeDefs = /* GraphQL */ `
     updateNcmecOrgSettings(
       input: NcmecOrgSettingsInput!
     ): UpdateNcmecOrgSettingsResponse!
+    """
+    Retries a previously-failed NCMEC submission. Org-scoped: callers can only
+    retry decisions that belong to their own org. Returns success on a fresh
+    successful submission, or an error with a user-safe summary on failure.
+    """
+    retryNcmecSubmission(decisionId: ID!): RetryNcmecSubmissionResponse!
   }
 
   enum NcmecInternetDetailType {
@@ -101,6 +118,39 @@ const typeDefs = /* GraphQL */ `
 
   type UpdateNcmecOrgSettingsResponse {
     success: Boolean!
+  }
+
+  type RetryNcmecSubmissionResponse {
+    success: Boolean!
+    """
+    Human-readable error summary if the retry failed. Never includes raw
+    NCMEC response bodies; safe to render in the UI.
+    """
+    error: String
+  }
+
+  enum NcmecFailedSubmissionStatus {
+    RETRYABLE_ERROR
+    PERMANENT_ERROR
+    NEVER_ATTEMPTED
+  }
+
+  """
+  An NCMEC submission that was decisioned in the MRT but never produced a
+  successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+  reviewers can see and retry failed submissions in the same place as
+  successful reports. The userId + userItemTypeId pair uniquely identifies
+  the reported user; decisionId is the stable handle for retrying.
+  """
+  type NcmecFailedSubmission {
+    decisionId: ID!
+    ts: DateTime!
+    reviewerId: String
+    userId: String!
+    userItemType: UserItemType!
+    status: NcmecFailedSubmissionStatus!
+    retryCount: Int!
+    lastError: String
   }
 
   type NCMECReportedMedia {
@@ -287,6 +337,24 @@ const Mutation: GQLMutationResolvers = {
       throw forbiddenError('User does not have permission to update NCMEC settings');
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
+
+    const username = input.username?.trim() ?? '';
+    const password = input.password ?? '';
+    if (username === '' || password === '') {
+      throw userInputError('Username and password are required.');
+    }
+    const contactEmail = input.contactEmail?.trim() ?? '';
+    if (contactEmail === '') {
+      throw userInputError(
+        'Reporter contact email is required for NCMEC reporting.',
+      );
+    }
+    if (!isValidContactEmail(contactEmail)) {
+      throw userInputError(
+        'Reporter contact email is not a valid email address.',
+      );
+    }
+
     const defaultInternetDetailType =
       input.defaultInternetDetailType == null
         ? null
@@ -296,15 +364,17 @@ const Mutation: GQLMutationResolvers = {
               trimmed !== '' &&
               !VALID_NCMEC_INTERNET_DETAIL_TYPES.includes(trimmed)
             ) {
-              throw userInputError(`defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`);
+              throw userInputError(
+                `defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`,
+              );
             }
             return trimmed === '' ? null : trimmed;
           })();
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
-      username: input.username,
-      password: input.password,
-      contactEmail: input.contactEmail ?? null,
+      username,
+      password,
+      contactEmail,
       moreInfoUrl: input.moreInfoUrl ?? null,
       companyTemplate: input.companyTemplate ?? null,
       legalUrl: input.legalUrl ?? null,
@@ -320,6 +390,31 @@ const Mutation: GQLMutationResolvers = {
     });
 
     return { success: true };
+  },
+  async retryNcmecSubmission(_, { decisionId }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes('VIEW_CHILD_SAFETY_DATA')) {
+      throw forbiddenError(
+        'VIEW_CHILD_SAFETY_DATA permission required to retry NCMEC submissions.',
+      );
+    }
+    const result = await context.services.NcmecService.retrySubmission({
+      orgId: user.orgId,
+      decisionId,
+      requestingReviewerId: user.id,
+    });
+    if (result.kind === 'success') {
+      return { success: true, error: null };
+    }
+    if (result.kind === 'not_found') {
+      // Don't disclose whether the decision exists in another org. Surface
+      // the same response as a missing decision.
+      return { success: false, error: 'Decision not found.' };
+    }
+    return { success: false, error: result.error };
   },
 };
 
