@@ -18,7 +18,6 @@ const REVIEWER_ERROR_MESSAGES = {
 // throw sites stay opaque until classified explicitly.
 const ALREADY_REVIEWER_FRIENDLY: ReadonlySet<string> = new Set([
   'No media in report',
-  'Insufficient settings',
   'Organization does not have a NCMEC preservation endpoint',
   'NCMEC report requires a non-empty reporter contact email; configure it in Settings → NCMEC.',
   'escalateToHighPriority must be non-blank when supplied and at most 3000 characters',
@@ -31,6 +30,7 @@ const REVIEWER_PREFIX_RULES: readonly {
   category: keyof typeof REVIEWER_ERROR_MESSAGES;
 }[] = [
   { prefix: 'NCMEC reports are not enabled for org', category: 'CONFIG' },
+  { prefix: 'Insufficient settings', category: 'CONFIG' },
   { prefix: 'org id not found', category: 'CONFIG' },
   { prefix: 'Unable to find reported media in job payload', category: 'MEDIA' },
   { prefix: 'Unable to find item type for reported media', category: 'MEDIA' },

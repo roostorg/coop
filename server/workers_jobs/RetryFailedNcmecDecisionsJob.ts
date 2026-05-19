@@ -8,6 +8,8 @@ import {
   summarizeNcmecErrorForReviewer,
 } from '../services/ncmecService/index.js';
 import { toCorrelationId } from '../utils/correlationIds.js';
+import { jsonStringify } from '../utils/encoding.js';
+import { logErrorJson } from '../utils/logging.js';
 
 export default inject(
   [
@@ -180,6 +182,19 @@ export default inject(
           // its retry_count.
           return;
         }
+        // Preserve the full detail in logs before we replace it
+        // with the reviewer-friendly summary on the row.
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({
+          error: e,
+          message: jsonStringify({
+            context: 'RetryFailedNcmecDecisionsJob.processDecisionRetry',
+            jobId: row.job_payload.id,
+            orgId,
+            userId: itemId,
+            userTypeId: itemTypeId,
+          }),
+        });
         await ncmecService.insertOrUpdateNcmecReportError({
           jobId: row.job_payload.id,
           userId: itemId,

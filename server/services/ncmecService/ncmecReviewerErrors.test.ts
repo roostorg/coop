@@ -37,9 +37,6 @@ describe('summarizeNcmecErrorForReviewer', () => {
     expect(
       summarizeNcmecErrorForReviewer(new Error('No media in report')),
     ).toBe('No media in report');
-    expect(
-      summarizeNcmecErrorForReviewer(new Error('Insufficient settings')),
-    ).toBe('Insufficient settings');
   });
 
   it('classifies missing-config throws to a config category', () => {
@@ -50,6 +47,17 @@ describe('summarizeNcmecErrorForReviewer', () => {
     ).toMatch(/configuration is incomplete/);
     expect(
       summarizeNcmecErrorForReviewer(new Error('org id not found')),
+    ).toMatch(/configuration is incomplete/);
+    // 'Insufficient settings' (and any variant with additional detail
+    // appended) is routed through CONFIG rather than passed through, so
+    // reviewers get the "check Settings → NCMEC" guidance.
+    expect(
+      summarizeNcmecErrorForReviewer(new Error('Insufficient settings')),
+    ).toMatch(/configuration is incomplete/);
+    expect(
+      summarizeNcmecErrorForReviewer(
+        new Error('Insufficient settings: missing username'),
+      ),
     ).toMatch(/configuration is incomplete/);
   });
 
