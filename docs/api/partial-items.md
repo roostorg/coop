@@ -21,6 +21,7 @@ Here's an example of a POST request that Coop would send to this endpoint:
 curl --request POST \
     --url https://your-platform.example.com/partial-items \
     --header 'Content-Type: application/json' \
+    --header 'Coop-Signature: t=1234567890,v1=5f7d8e9...' \
     --data '{
         "items": [
             {
@@ -50,14 +51,14 @@ Your platform returns information about the item to Coop in its response. Even i
 
 Coop expects a response in the following format:
 
-```ts
+```json
 {
   items: [
     {
-      id: "abc123", // the `id` Coop provided in the request body
-      typeId: "def456", // the `typeId` Coop provided in the request body
-      data: { // the same `data` JSON object you'd provide if you had sent this Item via the Items API
-        text: "some text uploaded by a user"
+      "id": "abc123", // the `id` Coop provided in the request body
+      "typeId": "def456", // the `typeId` Coop provided in the request body
+      "data": { // the same `data` JSON object you'd provide if you had sent this Item via the Items API
+        "text": "some text uploaded by a user"
         // ... all other fields in your Item Type
       },
     },
