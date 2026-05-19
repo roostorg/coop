@@ -98,6 +98,11 @@ export default inject(
         });
         return;
       }
+      // Tracks whether submitReport was invoked. submitReport persists its
+      // own error rows when reportParams.jobId is set, so this worker only
+      // records errors from the pre-submitReport phase (payload-build /
+      // item-type resolution) to avoid double-incrementing retry_count.
+      let submitReportInvoked = false;
       try {
         const reportParams = await buildSubmitReportParamsFromDecision({
           orgId,
@@ -112,69 +117,68 @@ export default inject(
           jobId: row.job_payload.id,
           getItemTypeEventuallyConsistent,
         });
+        submitReportInvoked = true;
         const reportResult = await ncmecService.submitReport(
           reportParams,
           false,
         );
         if (
           reportResult === 'UNSUPPORTED_ORG' ||
-          reportResult === 'ALL_MEDIA_MISSING'
+          reportResult === 'ALL_MEDIA_MISSING' ||
+          reportResult === 'FAILURE'
         ) {
-          await ncmecService.insertOrUpdateNcmecReportError({
-            jobId: row.job_payload.id,
-            userId: itemId,
-            userTypeId: itemTypeId,
-            status: 'PERMANENT_ERROR',
-            error: reportResult,
-          });
           return;
         }
-        if (reportResult === 'SUCCESS') {
-          const actionAndPolicy =
-            await ncmecService.getNCMECActionsToRunAndPolicies(orgId);
-          if (
-            actionAndPolicy != null &&
-            actionAndPolicy.actionsToRunIds != null
-          ) {
-            const actions = await moderationConfigService.getActions({
+        const actionAndPolicy =
+          await ncmecService.getNCMECActionsToRunAndPolicies(orgId);
+        if (
+          actionAndPolicy != null &&
+          actionAndPolicy.actionsToRunIds != null
+        ) {
+          const actions = await moderationConfigService.getActions({
+            orgId,
+            ids: actionAndPolicy.actionsToRunIds,
+          });
+          const policies = await moderationConfigService.getPolicies({
+            orgId,
+            readFromReplica: true,
+          });
+          const correlationId = toCorrelationId({
+            type: 'mrt-decision',
+            id: uuidv1(),
+          });
+          await actionPublisher.publishActions(
+            actions.map((action) => ({
+              action,
+              matchingRules: undefined,
+              ruleEnvironment: undefined,
+              policies: policies.filter((policy) => {
+                return actionAndPolicy.policyIds.includes(policy.id);
+              }),
+            })),
+            {
               orgId,
-              ids: actionAndPolicy.actionsToRunIds,
-            });
-            const policies = await moderationConfigService.getPolicies({
-              orgId,
-              readFromReplica: true,
-            });
-            const correlationId = toCorrelationId({
-              type: 'mrt-decision',
-              id: uuidv1(),
-            });
-            await actionPublisher.publishActions(
-              actions.map((action) => ({
-                action,
-                matchingRules: undefined,
-                ruleEnvironment: undefined,
-                policies: policies.filter((policy) => {
-                  return actionAndPolicy.policyIds.includes(policy.id);
-                }),
-              })),
-              {
-                orgId,
-                correlationId,
-                targetItem: {
-                  itemId,
-                  itemType: {
-                    id: itemType.id,
-                    kind: itemType.kind,
-                    name: itemType.name,
-                  },
+              correlationId,
+              targetItem: {
+                itemId,
+                itemType: {
+                  id: itemType.id,
+                  kind: itemType.kind,
+                  name: itemType.name,
                 },
-                actorId: row.reviewer_id,
-                actorEmail: user?.email,
               },
-            );
-          }
+              actorId: row.reviewer_id,
+              actorEmail: user?.email,
+            },
+          );
         }
       } catch (e: unknown) {
+        if (submitReportInvoked) {
+          // submitReport already wrote its own ncmec_reports_errors row.
+          // Don't double-write here; let the next batch pick the row up via
+          // its retry_count.
+          return;
+        }
         await ncmecService.insertOrUpdateNcmecReportError({
           jobId: row.job_payload.id,
           userId: itemId,

@@ -1289,16 +1289,25 @@ export default class NcmecReporting {
       },
       // eslint-disable-next-line complexity
       async (span) => {
-        span.setAttribute(`ncmecReportParams`, jsonStringify(reportParams));
-        ncmecDebugLog('submitReport.start', {
-          isTest,
+        const logSafeReportParams = {
           orgId: reportParams.orgId,
+          reviewerId: reportParams.reviewerId,
           reportedUserId: reportParams.reportedUser.id,
+          reportedUserTypeId: reportParams.reportedUser.typeId,
           mediaCount: reportParams.media.length,
           threadsCount: reportParams.threads.length,
           incidentType: reportParams.incidentType,
-          hasEscalation: Boolean(reportParams.escalateToHighPriority),
-          hasAdditionalInfo: Boolean(reportParams.additionalInfo),
+          hasEscalation: Boolean(reportParams.escalateToHighPriority?.trim()),
+          hasAdditionalInfo: Boolean(reportParams.additionalInfo?.trim()),
+          jobId: reportParams.jobId,
+        };
+        span.setAttribute(
+          `ncmecReportParams`,
+          jsonStringify(logSafeReportParams),
+        );
+        ncmecDebugLog('submitReport.start', {
+          isTest,
+          ...logSafeReportParams,
         });
 
         // We try/catch this whole process in order to do custom logging on
@@ -1330,14 +1339,22 @@ export default class NcmecReporting {
             return 'UNSUPPORTED_ORG';
           }
 
-          const maxCreatedAt = _.maxBy(
-            reportParams.media,
-            'createdAt',
-          )?.createdAt;
-
-          if (!maxCreatedAt) {
+          if (reportParams.media.length === 0) {
             throw new Error('No media in report');
           }
+          const latestMedia = _.maxBy(reportParams.media, (m) => {
+            const ms = Date.parse(m.createdAt);
+            if (Number.isNaN(ms)) {
+              throw new Error(
+                `Invalid media createdAt timestamp for incidentDateTime: ${m.createdAt}`,
+              );
+            }
+            return ms;
+          });
+          if (latestMedia === undefined) {
+            throw new Error('No media in report');
+          }
+          const maxCreatedAt = latestMedia.createdAt;
 
           const { value: clampedIncidentDateTime, wasClamped } =
             clampIncidentDateTimeToPast(maxCreatedAt);
@@ -1670,7 +1687,10 @@ export default class NcmecReporting {
           // eslint-disable-next-line no-restricted-syntax
           logErrorJson({
             error: e,
-            message: jsonStringify({ reportParams, isTest }),
+            message: jsonStringify({
+              reportParams: logSafeReportParams,
+              isTest,
+            }),
           });
           span.recordException(e as Exception);
           if (reportParams.jobId !== undefined) {
@@ -2105,10 +2125,6 @@ export default class NcmecReporting {
     status?: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
   }) {
     try {
-      // user_id/user_type_id are varchar(255); trim so an over-long org id
-      // can't make this failure-recording write itself fail.
-      const safeUserId = opts.userId.slice(0, 255);
-      const safeUserTypeId = opts.userTypeId.slice(0, 255);
       const status = opts.status ?? 'RETRYABLE_ERROR';
       // Atomic increment in `doUpdateSet` avoids the read-modify-write race
       // when two retries land on the same job_id concurrently.
@@ -2116,8 +2132,8 @@ export default class NcmecReporting {
         .insertInto('ncmec_reporting.ncmec_reports_errors')
         .values({
           job_id: opts.jobId,
-          user_id: safeUserId,
-          user_type_id: safeUserTypeId,
+          user_id: opts.userId,
+          user_type_id: opts.userTypeId,
           status,
           last_error: opts.error,
           retry_count: 1,

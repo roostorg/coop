@@ -105,12 +105,23 @@ export async function buildSubmitReportParamsFromDecision(
     reportedUserData,
   );
 
+  // Pre-index allMediaItems by (itemId, typeId) so the per-decisionComponent
+  // lookup below is O(1) instead of O(n) for every reportedMedia entry. The
+  // composite key avoids the same-id-different-type collision the lookup
+  // already guards against.
+  const mediaIndexKey = (itemId: string, typeId: string) =>
+    `${itemId}\u0000${typeId}`;
+  const mediaByIdAndType = new Map(
+    allMediaItems.map((m) => [
+      mediaIndexKey(m.contentItem.itemId, m.contentItem.itemTypeIdentifier.id),
+      m,
+    ]),
+  );
+
   const media = await Promise.all(
     decisionComponent.reportedMedia.map(async (it) => {
-      const reportedItem = allMediaItems.find(
-        (m) =>
-          m.contentItem.itemId === it.id &&
-          m.contentItem.itemTypeIdentifier.id === it.typeId,
+      const reportedItem = mediaByIdAndType.get(
+        mediaIndexKey(it.id, it.typeId),
       );
       if (reportedItem === undefined) {
         throw new Error('Unable to find reported media in job payload');
