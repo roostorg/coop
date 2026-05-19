@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-987ce046.js";
+            window.path_to_searchindex_js = "../searchindex-f8f74aed.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6b4c15b4.js"></script>
+        <script src="../toc-b1393162.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 <p>When Coop triggers an Action—either through an automated rule or a moderator’s decision in the Review Console—it sends a POST request to the callback URL you configured for that Action. Your server receives this request and performs the corresponding operation.</p>
 <h2 id="setting-up-your-callback-endpoint"><a class="header" href="#setting-up-your-callback-endpoint">Setting up your callback endpoint</a></h2>
 <p>For each Action you define in Coop, provide a publicly accessible callback URL and any authentication headers your endpoint requires (e.g. an API key Coop should send). Coop includes these headers on every outgoing request to that endpoint.</p>
-<p>To verify that an incoming request actually came from Coop, check the <code>Coop-Signature</code> header. See <a href="../development/api-auth.html">API Keys &amp; Authentication</a> for the signature verification algorithm.</p>
+<p>To verify that an incoming request actually came from Coop, check the <code>Coop-Signature</code> header. See <a href="../development/api-auth.html#verifying-incoming-requests-from-coop">API Keys &amp; Authentication</a> for the signature verification algorithm and a code example.</p>
 <p>Failed deliveries are retried up to five times with exponential backoff.</p>
 <h2 id="request-body"><a class="header" href="#request-body">Request body</a></h2>
 <pre><code class="language-json">{
@@ -247,7 +247,7 @@
 </tbody>
 </table>
 </div>
-<h2 id="appeal-decision-callback"><a class="header" href="#appeal-decision-callback">Appeal Decision Callback</a></h2>
+<h2 id="appeal-decision-callback"><a class="header" href="#appeal-decision-callback">Appeal decision callback</a></h2>
 <p>When a moderator reviews an appeal in the Review Console and makes a decision, Coop sends a POST request to the Appeal callback URL configured in your Appeals Dashboard.</p>
 <pre><code class="language-json">{
   "appealId": "your-appeal-id",
@@ -282,7 +282,7 @@
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../api/errors.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../api/partial-items.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -296,7 +296,7 @@
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../api/errors.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../api/partial-items.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

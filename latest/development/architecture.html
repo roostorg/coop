@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-987ce046.js";
+            window.path_to_searchindex_js = "../searchindex-f8f74aed.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6b4c15b4.js"></script>
+        <script src="../toc-b1393162.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -257,6 +257,7 @@
 <p>See the <a href="../api/">API Reference</a> for details including all endpoints and request/response schemas.</p>
 <h3 id="sending-to-coop"><a class="header" href="#sending-to-coop">Sending to Coop</a></h3>
 <p>Content comes into Coop via a platform sending items to the <a href="../api/items.html">Items API</a> for automated enforcement, and user reports to the <a href="../api/report.html">Report API</a> to be routed to the Review Console.</p>
+<p>To backfill historical data, fetch related items in the review console that haven’t yet been sent to Coop, and ensure items are up-to-date when viewed, platforms can use the <a href="../api/partial-items.html">Partial Items API</a>.</p>
 <h3 id="actions-from-coop"><a class="header" href="#actions-from-coop">Actions from Coop</a></h3>
 <p>When an action is triggered by a proactive rule or moderator decision, Coop sends a webhook back to the organization’s platform. See <a href="../api/actions.html">Handling Actions</a> for details on the webhook format and how to process it.</p>
 <h2 id="rules"><a class="header" href="#rules">Rules</a></h2>
