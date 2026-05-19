@@ -141,3 +141,90 @@ describe('ClickhouseActionExecutionsAdapter.findInferredUserIdentity', () => {
     expect(sentSql).toContain('org-99');
   });
 });
+
+describe('ClickhouseActionExecutionsAdapter.findContentCreatorIdentity', () => {
+  it('returns null when no rows match', async () => {
+    const { adapter } = makeAdapter([]);
+
+    const result = await adapter.findContentCreatorIdentity({
+      orgId: 'org-1',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-1',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('projects the creator id + type id from the most-recent CONTENT row', async () => {
+    const ts = '2026-05-10T12:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_creator_id: 'user-42',
+        item_creator_type_id: 'user-type-A',
+      },
+    ]);
+
+    const result = await adapter.findContentCreatorIdentity({
+      orgId: 'org-1',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-1',
+    });
+
+    expect(result).toEqual({
+      creatorId: 'user-42',
+      creatorTypeId: 'user-type-A',
+      lastSeenAt: new Date(ts),
+    });
+  });
+
+  it('returns null when the row has empty creator fields', async () => {
+    const { adapter } = makeAdapter([
+      {
+        ts: '2026-05-10T12:00:00.000Z',
+        item_creator_id: null,
+        item_creator_type_id: 'user-type-A',
+      },
+    ]);
+
+    const result = await adapter.findContentCreatorIdentity({
+      orgId: 'org-1',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-1',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('filters to CONTENT rows with non-empty creator columns and uses LIMIT 1', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.findContentCreatorIdentity({
+      orgId: 'org-1',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-1',
+    });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain('analytics.ACTION_EXECUTIONS');
+    expect(sentSql).toContain("item_type_kind = 'CONTENT'");
+    expect(sentSql).toContain('item_creator_id IS NOT NULL');
+    expect(sentSql).toContain("item_creator_id != ''");
+    expect(sentSql).toContain('item_creator_type_id IS NOT NULL');
+    expect(sentSql).toContain("item_creator_type_id != ''");
+    expect(sentSql).toContain('LIMIT 1');
+  });
+
+  it('passes the item type id to disambiguate from other content with the same id', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.findContentCreatorIdentity({
+      orgId: 'org-1',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-PHOTO',
+    });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain('content-type-PHOTO');
+  });
+});

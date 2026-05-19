@@ -11,6 +11,7 @@ import {
   type MatchingRule,
   type Policy,
 } from '../services/analyticsLoggers/index.js';
+import { makeSyntheticUserSubmission } from '../services/itemInvestigationService/index.js';
 import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
@@ -121,6 +122,7 @@ class ActionPublisher {
     private ncmecService: Dependencies['NcmecService'],
     private itemInvestigationService: Dependencies['ItemInvestigationService'],
     private userStrikeService: Dependencies['UserStrikeService'],
+    private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {}
 
   /**
@@ -325,6 +327,50 @@ class ActionPublisher {
             })
           )?.latestSubmission;
         };
+
+        // USER target with no record: synthesize a minimal submission from
+        // the id. Returns undefined for non-USER targets — MRT needs the
+        // real content submission, so it must fail loudly for CONTENT.
+        const getFullItemOrSyntheticUserForUserTarget = async () => {
+          const fullItem = await getFullItem();
+          if (fullItem) {
+            return fullItem;
+          }
+          if (targetItem.itemType.kind !== 'USER') {
+            return undefined;
+          }
+          const userItemType = await this.getItemTypeEventuallyConsistent({
+            orgId,
+            typeSelector: { id: targetItem.itemType.id },
+          });
+          if (!userItemType || userItemType.kind !== 'USER') {
+            return undefined;
+          }
+          return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
+        };
+
+        // NCMEC fallback: USER target → synthetic user (as above); CONTENT
+        // target → resolve the creator via ACTION_EXECUTIONS and synthesize a
+        // user submission keyed on the creator id. THREAD has no single
+        // owner, so we refuse.
+        const getFullItemOrSyntheticUserForNcmec = async () => {
+          const userTarget = await getFullItemOrSyntheticUserForUserTarget();
+          if (userTarget) {
+            return userTarget;
+          }
+          if (targetItem.itemType.kind !== 'CONTENT') {
+            return undefined;
+          }
+          const inferred =
+            await this.itemInvestigationService.synthesizeUserItemFromContentTarget(
+              {
+                orgId,
+                itemId: targetItem.itemId,
+                itemTypeId: targetItem.itemType.id,
+              },
+            );
+          return inferred?.latestSubmission;
+        };
         const actionSource = getSourceType(
           correlationId,
         ) as ActionExecutionSourceType;
@@ -389,11 +435,14 @@ class ActionPublisher {
               }
 
               return true;
-            case ActionType.ENQUEUE_TO_MRT:
-              const fullItemForMrt = await getFullItem();
+            case ActionType.ENQUEUE_TO_MRT: {
+              const fullItemForMrt =
+                await getFullItemOrSyntheticUserForUserTarget();
               if (!fullItemForMrt) {
                 throw new Error(
-                  "Actions without full item submissions can't be enqueued to MRT yet",
+                  `Cannot enqueue to MRT: no submission record for ${targetItem.itemType.kind} ` +
+                    `item ${targetItem.itemId} (type ${targetItem.itemType.id}). ` +
+                    `POST the item to the items endpoint first.`,
                 );
               }
 
@@ -430,11 +479,15 @@ class ActionPublisher {
               });
 
               return true;
-            case ActionType.ENQUEUE_TO_NCMEC:
-              const fullItemForNcmec = await getFullItem();
+            }
+            case ActionType.ENQUEUE_TO_NCMEC: {
+              const fullItemForNcmec =
+                await getFullItemOrSyntheticUserForNcmec();
               if (!fullItemForNcmec) {
                 throw new Error(
-                  "Actions without full item submissions can't be enqueued to NCMEC yet",
+                  `Cannot enqueue to NCMEC: no submission record for ${targetItem.itemType.kind} ` +
+                    `item ${targetItem.itemId} (type ${targetItem.itemType.id}). ` +
+                    `POST the item to the items endpoint first.`,
                 );
               }
 
@@ -463,6 +516,7 @@ class ActionPublisher {
               });
 
               return true;
+            }
             case ActionType.ENQUEUE_AUTHOR_TO_MRT:
               const fullItemForAuthor = await getFullItem();
               if (
@@ -573,6 +627,23 @@ class ActionPublisher {
           }
         } catch (e) {
           span.recordException(e as Exception);
+          // Log to stderr so operators see action failures without having
+          // to pull traces. Identifiers only, no item `data`.
+          // eslint-disable-next-line no-console
+          console.error(
+            jsonStringify({
+              event: 'actionPublisher.publishAction.failed',
+              orgId,
+              actionId: action.id,
+              actionName: action.name,
+              actionType: action.actionType,
+              itemId: targetItem.itemId,
+              itemTypeId: targetItem.itemType.id,
+              itemTypeKind: targetItem.itemType.kind,
+              correlationId,
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          );
           return false;
         }
       },
@@ -590,6 +661,7 @@ export default inject(
     'NcmecService',
     'ItemInvestigationService',
     'UserStrikeService',
+    'getItemTypeEventuallyConsistent',
   ],
   ActionPublisher,
 );

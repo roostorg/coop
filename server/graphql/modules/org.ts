@@ -1,5 +1,8 @@
 /* eslint-disable max-lines */
 
+import { GraphQLError } from 'graphql';
+
+import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { __throw } from '../../utils/misc.js';
 import {
@@ -10,10 +13,9 @@ import {
   type GQLPendingInvite,
   type GQLQueryResolvers,
 } from '../generated.js';
-import { GraphQLError } from 'graphql';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { type Context } from '../resolvers.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type Org {
@@ -44,6 +46,12 @@ const typeDefs = /* GraphQL */ `
     hasNCMECReportingEnabled: Boolean!
     hasAppealsEnabled: Boolean!
     ncmecReports: [NCMECReport!]!
+    """
+    NCMEC decisions that did not produce a successful CyberTip report. Returned
+    alongside ncmecReports on the dashboard so reviewers can see the full
+    submission status (successful + failed) in one place and retry failures.
+    """
+    failedNcmecSubmissions: [NcmecFailedSubmission!]!
     requiresPolicyForDecisionsInMrt: Boolean!
     requiresDecisionReasonInMrt: Boolean!
     previewJobsViewEnabled: Boolean!
@@ -88,7 +96,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union CreateOrgResponse =
-      CreateOrgSuccessResponse
+    | CreateOrgSuccessResponse
     | OrgWithEmailExistsError
     | OrgWithNameExistsError
 
@@ -206,8 +214,14 @@ const Query: GQLQueryResolvers = {
 type ResolveOrgActionsContext = {
   getUser: () => { orgId: string } | null | undefined;
   services: {
-    ModerationConfigService: Pick<Context['services']['ModerationConfigService'], 'getActions'>;
-    NcmecService: Pick<Context['services']['NcmecService'], 'hasNCMECReportingEnabled'>;
+    ModerationConfigService: Pick<
+      Context['services']['ModerationConfigService'],
+      'getActions'
+    >;
+    NcmecService: Pick<
+      Context['services']['NcmecService'],
+      'hasNCMECReportingEnabled'
+    >;
   };
 };
 
@@ -264,7 +278,9 @@ const Org: GQLOrgResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to view pending invites');
+      throw forbiddenError(
+        'User does not have permission to view pending invites',
+      );
     }
 
     const invites =
@@ -464,6 +480,81 @@ const Org: GQLOrgResolvers = {
       }),
     );
   },
+  async failedNcmecSubmissions(org, _, context) {
+    const user = context.getUser();
+    if (!user || user.orgId !== org.id) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes('VIEW_CHILD_SAFETY_DATA')) {
+      throw forbiddenError(
+        'VIEW_CHILD_SAFETY_DATA permission required to view NCMEC submissions.',
+      );
+    }
+
+    // Pull all SUBMIT_NCMEC_REPORT decisions for the org, then subtract those
+    // that already produced a successful report. Whatever remains is "failed"
+    // (either retryable, permanently failed, or pending background retry).
+    const [decisions, successfulKeys] = await Promise.all([
+      context.services.ManualReviewToolService.getNcmecDecisionsForOrg({
+        orgId: user.orgId,
+      }),
+      context.services.NcmecService.getSuccessfulSubmissionKeysForOrg(
+        user.orgId,
+      ),
+    ]);
+
+    const decisionsWithKey = decisions.map((d) => ({
+      decision: d,
+      userId: d.job_payload.payload.item.itemId,
+      userItemTypeId: d.job_payload.payload.item.itemTypeIdentifier.id,
+    }));
+    const failedDecisions = filterDecisionsToFailedSubmissions(
+      decisionsWithKey,
+      successfulKeys,
+    );
+
+    if (failedDecisions.length === 0) {
+      return [];
+    }
+
+    const jobIds = failedDecisions.map(
+      ({ decision }) => decision.job_payload.id,
+    );
+    const [errorRows, allItemTypes] = await Promise.all([
+      context.services.NcmecService.getNcmecErrorsForJobIds(jobIds),
+      context.services.ModerationConfigService.getItemTypes({
+        orgId: user.orgId,
+      }),
+    ]);
+    const errorByJobId = new Map(errorRows.map((e) => [e.job_id, e]));
+    const itemTypeById = new Map(allItemTypes.map((it) => [it.id, it]));
+
+    return failedDecisions.map(({ decision: d, userId, userItemTypeId }) => {
+      const itemType = itemTypeById.get(userItemTypeId);
+      if (!itemType || itemType.kind !== 'USER') {
+        throw new Error('NCMEC user item type is not of kind USER');
+      }
+      const errorRow = errorByJobId.get(d.job_payload.id);
+      // Map the DB string through a known-set check before returning so a
+      // future migration adding a new status value can't take down the
+      // entire `failedNcmecSubmissions` field via GraphQL enum validation.
+      const status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR' | 'NEVER_ATTEMPTED' =
+        errorRow?.status === 'RETRYABLE_ERROR' ||
+        errorRow?.status === 'PERMANENT_ERROR'
+          ? errorRow.status
+          : 'NEVER_ATTEMPTED';
+      return {
+        decisionId: d.id,
+        ts: d.created_at,
+        reviewerId: d.reviewer_id ?? null,
+        userId,
+        userItemType: itemType,
+        status,
+        retryCount: errorRow?.retry_count ?? 0,
+        lastError: errorRow?.last_error ?? null,
+      };
+    });
+  },
   async requiresPolicyForDecisionsInMrt(org, _, context) {
     return context.services.ManualReviewToolService.getRequiresPolicyForDecisions(
       org.id,
@@ -519,7 +610,9 @@ const Org: GQLOrgResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to manage SSO settings');
+      throw forbiddenError(
+        'User does not have permission to manage SSO settings',
+      );
     }
 
     const settings = await context.services.OrgSettingsService.getSamlSettings(
@@ -539,7 +632,9 @@ const Org: GQLOrgResolvers = {
     }
 
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to manage SSO settings');
+      throw forbiddenError(
+        'User does not have permission to manage SSO settings',
+      );
     }
 
     const settings = await context.services.OrgSettingsService.getSamlSettings(

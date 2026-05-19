@@ -243,6 +243,7 @@ const typeDefs = /* GraphQL */ `
     reportedMessages: [NcmecThreadInput!]!
     incidentType: NCMECIncidentType!
     escalateToHighPriority: String
+    additionalInfo: String
   }
 
   enum AppealDecision {
@@ -2204,6 +2205,7 @@ const Mutation: GQLMutationResolvers = {
                 ...decision,
                 escalateToHighPriority:
                   decision.escalateToHighPriority ?? undefined,
+                additionalInfo: decision.additionalInfo ?? undefined,
               };
 
             default:

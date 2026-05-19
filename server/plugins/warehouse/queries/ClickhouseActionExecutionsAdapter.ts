@@ -4,6 +4,8 @@ import type SafeTracer from '../../../utils/SafeTracer.js';
 import { SIX_MONTHS_MS } from '../../../utils/time.js';
 import { formatClickhouseQuery } from '../utils/clickhouseSql.js';
 import {
+  type ContentCreatorIdentityInput,
+  type ContentCreatorIdentityRecord,
   type IActionExecutionsAdapter,
   type InferredUserIdentityInput,
   type InferredUserIdentityRecord,
@@ -203,6 +205,64 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
 
     return {
       itemTypeId: userTypeId,
+      lastSeenAt: new Date(row.ts),
+    };
+  }
+
+  async findContentCreatorIdentity(
+    input: ContentCreatorIdentityInput,
+  ): Promise<ContentCreatorIdentityRecord | null> {
+    const {
+      orgId,
+      itemId,
+      itemTypeId,
+      lookbackWindowMs = SIX_MONTHS_MS,
+    } = input;
+
+    const lookbackStart = new Date(Date.now() - Math.max(1, lookbackWindowMs));
+    const lookbackStartDate = lookbackStart.toISOString().slice(0, 10);
+
+    // Filter empty creator rows in SQL so LIMIT 1 always returns a usable row
+    // when one exists; otherwise the most recent action on this content could
+    // legitimately have no creator and hide older rows that do.
+    const sql = `
+      SELECT
+        ts,
+        item_creator_id,
+        item_creator_type_id
+      FROM analytics.ACTION_EXECUTIONS
+      WHERE org_id = ?
+        AND ds >= toDate(?)
+        AND lower(item_id) = lower(?)
+        AND item_type_id = ?
+        AND item_type_kind = 'CONTENT'
+        AND item_creator_id IS NOT NULL
+        AND item_creator_id != ''
+        AND item_creator_type_id IS NOT NULL
+        AND item_creator_type_id != ''
+      ORDER BY ts DESC
+      LIMIT 1
+    `;
+
+    const rows = await this.query<ClickhouseActionExecutionRow>(sql, [
+      orgId,
+      lookbackStartDate,
+      itemId,
+      itemTypeId,
+    ]);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const row = rows[0];
+    if (!row.item_creator_id || !row.item_creator_type_id) {
+      return null;
+    }
+
+    return {
+      creatorId: row.item_creator_id,
+      creatorTypeId: row.item_creator_type_id,
       lastSeenAt: new Date(row.ts),
     };
   }
