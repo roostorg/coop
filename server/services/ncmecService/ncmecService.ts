@@ -186,10 +186,6 @@ export class NcmecService {
     status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
     error: string;
   }) {
-    // user_id/user_type_id are varchar(255); trim so an over-long org id
-    // can't make this failure-recording write itself fail.
-    const safeUserId = opts.userId.slice(0, 255);
-    const safeUserTypeId = opts.userTypeId.slice(0, 255);
     // Atomic increment in `doUpdateSet` avoids the read-modify-write race
     // when two callers (e.g. background retry job + user-clicked Retry)
     // attempt to record an error for the same job_id concurrently.
@@ -197,8 +193,8 @@ export class NcmecService {
       .insertInto('ncmec_reporting.ncmec_reports_errors')
       .values({
         job_id: opts.jobId,
-        user_id: safeUserId,
-        user_type_id: safeUserTypeId,
+        user_id: opts.userId,
+        user_type_id: opts.userTypeId,
         status: opts.status,
         last_error: opts.error,
         retry_count: 1,

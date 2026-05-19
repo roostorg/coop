@@ -112,6 +112,12 @@ export async function retryNcmecSubmission(
     if (result === 'SUCCESS') {
       return { kind: 'success' };
     }
+    // 'FAILURE' is the catch-and-retry path inside submitReport surface as
+    // retryable so the scheduled retry job keeps picking it up.
+    // Only the explicitly non-retryable results map to permanent_error.
+    if (result === 'FAILURE') {
+      return { kind: 'retryable_error', error: result };
+    }
     return { kind: 'permanent_error', error: result };
   } catch (e: unknown) {
     const error = e instanceof Error ? e.message : 'Unknown error';
