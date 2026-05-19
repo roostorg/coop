@@ -4,6 +4,7 @@ export {
 } from './ncmecService.js';
 
 export { NCMECIncidentType } from './ncmecReporting.js';
+export { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 export { filterDecisionsToFailedSubmissions } from './ncmecSubmissionFilters.js';
 export {
   buildSubmitReportParamsFromDecision,

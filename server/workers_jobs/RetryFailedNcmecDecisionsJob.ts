@@ -5,6 +5,7 @@ import { inject } from '../iocContainer/utils.js';
 import {
   buildSubmitReportParamsFromDecision,
   LEGACY_FALLBACK_INCIDENT_TYPE,
+  summarizeNcmecErrorForReviewer,
 } from '../services/ncmecService/index.js';
 import { toCorrelationId } from '../utils/correlationIds.js';
 
@@ -184,10 +185,7 @@ export default inject(
           userId: itemId,
           userTypeId: itemTypeId,
           status: 'RETRYABLE_ERROR',
-          error:
-            typeof e === 'object' && e !== null && 'message' in e
-              ? (e as Error).message
-              : 'Unknown error',
+          error: summarizeNcmecErrorForReviewer(e),
         });
       }
     };

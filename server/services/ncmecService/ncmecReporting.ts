@@ -37,6 +37,7 @@ import {
   ncmecDebugEnabled,
   ncmecDebugLog,
 } from './ncmecDebug.js';
+import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 
 export const NCMECEvent = makeEnumLike([
   'Login',
@@ -1698,10 +1699,7 @@ export default class NcmecReporting {
               jobId: reportParams.jobId,
               userId: reportParams.reportedUser.id,
               userTypeId: reportParams.reportedUser.typeId,
-              error:
-                e instanceof Error
-                  ? e.message
-                  : 'Unknown NCMEC submission error',
+              error: summarizeNcmecErrorForReviewer(e),
             });
           }
           return 'FAILURE';
