@@ -41,20 +41,56 @@ export async function makeIntegrationServer(): Promise<IntegrationServer> {
     deps,
     request,
     async shutdown() {
+      // Best-effort teardown: run every step even if an earlier one throws,
+      // so we don't leak the server or shared resources into the next test.
       workerAbort.abort();
-      await deps.ItemProcessingWorker.shutdown();
-      await shutdownServer();
-      // BullMQ's Worker.close() already closes the shared ioredis connection,
-      // which makes `closeSharedResourcesForShutdown` throw "Connection is
-      // closed" when it tries to `quit()` redis a second time. The error is
-      // benign — every shared resource is already torn down — so we swallow
-      // it here rather than leak the failure into afterAll.
-      await deps.closeSharedResourcesForShutdown().catch((err) => {
-        if (err instanceof Error && err.message === 'Connection is closed.') {
-          return;
+
+      const runStep = async (
+        fn: () => Promise<void>,
+      ): Promise<unknown | null> => {
+        try {
+          await fn();
+          return null;
+        } catch (err) {
+          return err;
         }
-        throw err;
-      });
+      };
+
+      // Awaited left-to-right inside the array literal, so steps still run
+      // sequentially — closeSharedResourcesForShutdown depends on the worker
+      // having closed its Redis connection first.
+      const teardownErrors = [
+        await runStep(async () => {
+          await deps.ItemProcessingWorker.shutdown();
+        }),
+        await runStep(async () => {
+          await shutdownServer();
+        }),
+        await runStep(async () => {
+          // BullMQ's Worker.close() already closes the shared ioredis
+          // connection, which makes closeSharedResourcesForShutdown throw
+          // "Connection is closed" when it tries to quit() redis a second
+          // time. That specific error is benign — every shared resource is
+          // already torn down — so we swallow it here rather than leak the
+          // failure into afterAll.
+          await deps.closeSharedResourcesForShutdown().catch((err) => {
+            if (
+              err instanceof Error &&
+              err.message === 'Connection is closed.'
+            ) {
+              return;
+            }
+            throw err;
+          });
+        }),
+      ].filter((e): e is unknown => e !== null);
+
+      if (teardownErrors.length > 0) {
+        throw new AggregateError(
+          teardownErrors,
+          'Integration server shutdown failed',
+        );
+      }
     },
   };
 }

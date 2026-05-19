@@ -21,10 +21,10 @@ import { waitForItemInClickHouse, waitForItemInScylla } from './wait.js';
 
 describe('Items submission (integration)', () => {
   const orgId = uid();
-  let harness: IntegrationServer;
+  let harness: IntegrationServer | undefined;
   let apiKey: string;
-  let orgCleanup: () => Promise<void>;
-  let itemTypeCleanup: () => Promise<void>;
+  let orgCleanup: (() => Promise<void>) | undefined;
+  let itemTypeCleanup: (() => Promise<void>) | undefined;
   let itemTypeId: string;
 
   beforeAll(async () => {
@@ -60,12 +60,18 @@ describe('Items submission (integration)', () => {
   }, 60_000);
 
   afterAll(async () => {
-    await itemTypeCleanup();
-    await orgCleanup();
-    await harness.shutdown();
+    // Guard each step so a failure in `beforeAll` doesn't trigger a second,
+    // misleading "X is not a function" error here that masks the root cause.
+    try {
+      await itemTypeCleanup?.();
+      await orgCleanup?.();
+    } finally {
+      await harness?.shutdown();
+    }
   }, 30_000);
 
   test('submitted item lands in Scylla and ClickHouse', async () => {
+    if (!harness) throw new Error('harness was not initialized');
     const itemId = uid();
 
     await harness.request
@@ -78,11 +84,12 @@ describe('Items submission (integration)', () => {
       })
       .expect(202);
 
-    const scyllaItem = await waitForItemInScylla(harness.deps, {
+    const scyllaRow = await waitForItemInScylla(harness.deps, {
       orgId,
       itemIdentifier: { id: itemId, typeId: itemTypeId },
     });
-    expect(scyllaItem.latestSubmission).toBeDefined();
+    expect(scyllaRow).toBeDefined();
+    expect(scyllaRow.org_id).toBe(orgId);
 
     const chRow = await waitForItemInClickHouse(harness.deps, {
       orgId,

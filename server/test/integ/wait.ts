@@ -8,6 +8,7 @@
 import { type ItemIdentifier } from '@roostorg/types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { itemIdentifierToScyllaItemIdentifier } from '../../scylla/index.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_INTERVAL_MS = 250;
@@ -31,8 +32,14 @@ export async function waitFor<T>(
   }
 }
 
+/**
+ * Query Scylla directly rather than going through ItemInvestigationService:
+ * that service falls back to the partial-items endpoint and the data warehouse
+ * if Scylla returns nothing, which would mask a real Scylla write failure as a
+ * passing test.
+ */
 export async function waitForItemInScylla(
-  deps: Pick<Dependencies, 'ItemInvestigationService'>,
+  deps: Pick<Dependencies, 'Scylla'>,
   opts: {
     orgId: string;
     itemIdentifier: ItemIdentifier;
@@ -40,12 +47,21 @@ export async function waitForItemInScylla(
   },
 ) {
   return waitFor(
-    `item ${opts.itemIdentifier.id} in Scylla`,
-    async () =>
-      deps.ItemInvestigationService.getItemByIdentifier({
-        orgId: opts.orgId,
-        itemIdentifier: opts.itemIdentifier,
-      }),
+    `item ${opts.itemIdentifier.id} in Scylla item_submission_by_thread`,
+    async () => {
+      const rows = await deps.Scylla.select({
+        from: 'item_submission_by_thread',
+        select: '*',
+        where: [
+          [
+            'item_identifier',
+            '=',
+            itemIdentifierToScyllaItemIdentifier(opts.itemIdentifier),
+          ],
+        ],
+      }).catch(() => []);
+      return rows.length > 0 ? rows[0] : null;
+    },
     { timeoutMs: opts.timeoutMs },
   );
 }
