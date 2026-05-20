@@ -1,6 +1,7 @@
 {
   "name": "client",
   "version": "1.0.0",
+  "type": "module",
   "description": "Coop Client app",
   "scripts": {
     "analyze": "npm run build && source-map-explorer 'build/static/js/*.js'",
