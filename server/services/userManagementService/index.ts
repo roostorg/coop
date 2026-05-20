@@ -10,5 +10,4 @@ export {
   UserPermissionsForRole,
   UserRole,
   getPermissionsForRole,
-  hasPermission,
 } from './permissioning.js';

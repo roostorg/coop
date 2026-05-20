@@ -10,9 +10,11 @@ import FormHeader from '../components/FormHeader';
 import FormSectionHeader from '../components/FormSectionHeader';
 
 import {
+  GQLUserPermission,
   useGQLAppealSettingsQuery,
   useGQLUpdateAppealSettingsMutation,
 } from '../../../graphql/generated';
+import { userHasPermissions } from '../../../routing/permissions';
 import { prettyPrintJsonValue } from '../../../utils/string';
 
 gql`
@@ -23,7 +25,7 @@ gql`
       appealsCallbackBody
     }
     me {
-      role
+      permissions
     }
   }
 
@@ -86,6 +88,10 @@ export default function ManualReviewAppealSettings() {
   if (loading) {
     return <FullScreenLoading />;
   }
+
+  const canManageOrg = userHasPermissions(data?.me?.permissions, [
+    GQLUserPermission.ManageOrg,
+  ]);
 
   const onUpdateAppealSettings = async () =>
     updateAppealSettings({
@@ -169,15 +175,15 @@ export default function ManualReviewAppealSettings() {
       <CoopButton
         title="Save Settings"
         disabled={
-          data?.me?.role !== 'ADMIN' ||
+          !canManageOrg ||
           !appealsCallbackUrl ||
           !validateJSON(appealsCallbackHeaders) ||
           !validateJSON(appealsCallbackBody)
         }
         loading={updateLoading}
         disabledTooltipTitle={(() => {
-          if (data?.me?.role !== 'ADMIN') {
-            return "To edit these settings, ask your organization's admin to upgrade your role to Admin.";
+          if (!canManageOrg) {
+            return 'You do not have permission to edit appeal settings. Ask your organization administrator for access.';
           }
           if (!appealsCallbackUrl) {
             return 'The Callback URL is required.';

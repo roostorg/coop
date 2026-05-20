@@ -1,7 +1,4 @@
-import {
-  hasPermission,
-  UserPermission,
-} from '../../services/userManagementService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   isNonEmptyArray,
@@ -127,10 +124,9 @@ const RoutingRule: GQLRoutingRuleResolvers = {
       throw unauthenticatedError('User required');
     }
 
-    const userCanEditMRTQueues = hasPermission(
-      UserPermission.EDIT_MRT_QUEUES,
-      user.role,
-    );
+    const userCanEditMRTQueues = user
+      .getPermissions()
+      .includes(UserPermission.EDIT_MRT_QUEUES);
 
     const queueSelector = {
       orgId: user.orgId,

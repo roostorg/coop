@@ -4890,6 +4890,7 @@ export const GQLUserPermission = {
   EditMrtQueues: 'EDIT_MRT_QUEUES',
   ManageOrg: 'MANAGE_ORG',
   ManagePolicies: 'MANAGE_POLICIES',
+  ManageRoles: 'MANAGE_ROLES',
   ManuallyActionContent: 'MANUALLY_ACTION_CONTENT',
   MutateLiveRules: 'MUTATE_LIVE_RULES',
   MutateNonLiveRules: 'MUTATE_NON_LIVE_RULES',
@@ -9468,7 +9469,7 @@ export type GQLAppealSettingsQuery = {
   } | null;
   readonly me?: {
     readonly __typename: 'User';
-    readonly role?: GQLUserRole | null;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
   } | null;
 };
 
@@ -12267,7 +12268,7 @@ export type GQLManualReviewJobInfoQuery = {
   readonly me?: {
     readonly __typename: 'User';
     readonly id: string;
-    readonly role?: GQLUserRole | null;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly reviewableQueues: ReadonlyArray<{
       readonly __typename: 'ManualReviewQueue';
       readonly id: string;
@@ -31524,7 +31525,7 @@ export const GQLAppealSettingsDocument = gql`
       appealsCallbackBody
     }
     me {
-      role
+      permissions
     }
   }
 `;
@@ -33762,7 +33763,7 @@ export const GQLManualReviewJobInfoDocument = gql`
           ...JobFields
         }
       }
-      role
+      permissions
     }
   }
   ${GQLItemTypeFragmentFragmentDoc}

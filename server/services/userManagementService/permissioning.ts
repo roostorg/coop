@@ -48,6 +48,10 @@ export enum UserPermission {
   // Allows users to use Investigation tool
   VIEW_INVESTIGATION = 'VIEW_INVESTIGATION',
   VIEW_RULES_DASHBOARD = 'VIEW_RULES_DASHBOARD',
+  // Allows a user to view, rename, and edit role permissions in their org.
+  // Granted to ADMIN by default; carved out as a separate capability so role
+  // editing can be delegated without granting full MANAGE_ORG (see issue #406).
+  MANAGE_ROLES = 'MANAGE_ROLES',
 }
 
 const UserRoles = [
@@ -79,7 +83,14 @@ export const UserRole = makeEnumLike(UserRoles);
 export type UserRole = keyof typeof UserRole;
 
 /**
- * Maps UserRoles to all the UserPermissions that each Role has
+ * Maps UserRoles to all the UserPermissions that each Role has.
+ *
+ * This map is the canonical seed for a user's permissions and is consumed by
+ * `getPermissionsForRole` in the persistence layer when building the
+ * `getPermissions()` accessor on a user. **Do not branch on a role string**
+ * elsewhere in the codebase — capability checks must go through
+ * `user.getPermissions().includes(...)` so that future per-org role editing
+ * (issue #406) Just Works without further refactors.
  */
 export const UserPermissionsForRole = new Map<UserRole, UserPermission[]>([
   [UserRole.ADMIN, Object.values(UserPermission)],
@@ -146,11 +157,15 @@ export const UserPermissionsForRole = new Map<UserRole, UserPermission[]>([
   [UserRole.EXTERNAL_MODERATOR, [UserPermission.VIEW_MRT]],
 ]);
 
-// all defined.
-export function hasPermission(permission: UserPermission, role: UserRole) {
-  return getPermissionsForRole(role).includes(permission);
-}
-
+/**
+ * Resolves the permission set for a role from {@link UserPermissionsForRole}.
+ *
+ * **Only the persistence layer should call this** (to build the per-user
+ * `getPermissions()` accessor at user-load time). Resolvers and services
+ * must use `user.getPermissions().includes(...)` or
+ * `invoker.permissions.includes(...)` so that runtime authz is capability-
+ * driven, not role-string-driven.
+ */
 export function getPermissionsForRole(role: UserRole) {
   return UserPermissionsForRole.get(role) ?? [];
 }
