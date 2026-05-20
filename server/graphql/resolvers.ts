@@ -38,6 +38,7 @@ import { resolvers as textBankResolvers } from './modules/textBank.js';
 import { resolvers as userResolvers } from './modules/user.js';
 import { forbiddenError, unauthenticatedError } from './utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
+import { UserPermission } from '../services/userManagementService/index.js';
 import { type PassportGqlContext } from './utils/passportContext.js';
 
 export type Context = PassportGqlContext & {
@@ -173,7 +174,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to generate password reset tokens',
       );
@@ -210,7 +211,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError('User does not have permission to invite users');
     }
 
@@ -226,7 +227,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError('User does not have permission to delete invites');
     }
 
@@ -238,7 +239,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError('User does not have permission to approve users');
     }
 
@@ -250,7 +251,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError('User does not have permission to reject users');
     }
 

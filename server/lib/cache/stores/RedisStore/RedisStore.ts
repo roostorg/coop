@@ -213,7 +213,7 @@ export default class RedisStore<
       // that's what's actually stored in redis.
       ([entryStringsOrNull]) =>
         entryStringsOrNull
-          .filter(Boolean)
+          .filter((it): it is string => it !== null)
           .map((it) => deserializeEntry<T, U, V>(it)),
     );
   }
