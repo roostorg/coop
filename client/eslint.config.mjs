@@ -17,8 +17,8 @@ export default [
       '.eslintrc.cjs',
       'eslint.config.mjs',
       'eslint/**',
-      'tailwind.config.js',
-      'postcss.config.js',
+      'tailwind.config.mjs',
+      'postcss.config.mjs',
       '.storybook/**',
       '**/*.stories.tsx',
       'vite.config.ts',
@@ -26,7 +26,6 @@ export default [
       // Build output (gitignored) and tooling config not in tsconfig.
       'build/**',
       '.storybook/**',
-      'postcss.config.js',
     ],
   },
   ...flatConfigs.map((config) =>
