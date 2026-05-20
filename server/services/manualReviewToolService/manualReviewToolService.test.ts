@@ -238,4 +238,174 @@ describe('Manual Review Tool Service', () => {
 
     it.skip('should reject duplicate decisions on jobs dequeued again after the lock expires', async () => {});
   });
+
+  // Issue #389: when an org sets `requires_policy_for_decisions`, submitDecision
+  // must reject CUSTOM_ACTION decisions with no policies. The UI already blocks
+  // this; the server-side check closes the API-bypass gap.
+  describe('requires_policy_for_decisions enforcement', () => {
+    function makeDummyJob() {
+      return {
+        createdAt: new Date(),
+        policyIds: [] as string[],
+        payload: {
+          kind: 'DEFAULT',
+          reportHistory: [] as ReportHistory,
+          item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
+            submissionId: makeSubmissionId(),
+            submissionTime: new Date(),
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+            data: {} as NormalizedItemData,
+            itemTypeIdentifier: {
+              id: uuidv1(),
+              version: new Date().toISOString(),
+              schemaVariant: 'original',
+            },
+            creator: {
+              id: uuidv1(),
+              typeId: uuidv1(),
+            },
+            itemId: uuidv1(),
+          }),
+          enqueueSourceInfo: { kind: 'REPORT' },
+        },
+      } as const;
+    }
+
+    const orgId = 'e7c89ce7729';
+    const queueId = '1';
+    // Pulled from the staging seed data — any CUSTOM_ACTION row on this org
+    // will do; the action-id validation runs before our flag check.
+    const seededActionId = '1873b2f15cc';
+
+    const setRequiresPolicyForDecisions = async (value: boolean) => {
+      await mrtService.upsertDefaultSettings({ orgId });
+      await mrtService['pgQuery']
+        .updateTable('manual_review_tool.manual_review_tool_settings')
+        .set({ requires_policy_for_decisions: value })
+        .where('org_id', '=', orgId)
+        .execute();
+    };
+
+    beforeAll(async () => {
+      // The queue row must exist before addJob, but no other test in this
+      // file owns its lifecycle, so we seed it here idempotently.
+      await mrtService['pgQuery']
+        .insertInto('manual_review_tool.manual_review_queues')
+        .values({
+          id: queueId,
+          name: 'integ-test-queue',
+          description: null,
+          org_id: orgId,
+          is_default_queue: false,
+          is_appeals_queue: false,
+          auto_close_jobs: false,
+        })
+        .onConflict((oc) => oc.doNothing())
+        .execute();
+    });
+
+    afterEach(async () => {
+      // Reset so the flag doesn't leak into other tests in this file or
+      // subsequent runs that reuse the seeded org.
+      await setRequiresPolicyForDecisions(false);
+    });
+
+    it('rejects a CUSTOM_ACTION decision with no policies when the flag is on', async () => {
+      await setRequiresPolicyForDecisions(true);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyJob();
+      const itemId = jobPayload.payload.item.itemId;
+      const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await expect(
+        mrtService.submitDecision({
+          queueId,
+          reportHistory: [],
+          jobId: dequeuedJob.job.id,
+          lockToken: dequeuedJob.lockToken,
+          decisionComponents: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: seededActionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          relatedActions: [],
+          reviewerId,
+          reviewerEmail,
+          orgId,
+        }),
+      ).rejects.toThrow(
+        /requires every decision to include at least one policy/i,
+      );
+    });
+
+    it('allows a CUSTOM_ACTION decision with policies when the flag is on', async () => {
+      await setRequiresPolicyForDecisions(true);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyJob();
+      const itemId = jobPayload.payload.item.itemId;
+      const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await mrtService.submitDecision({
+        queueId,
+        reportHistory: [],
+        jobId: dequeuedJob.job.id,
+        lockToken: dequeuedJob.lockToken,
+        decisionComponents: [
+          {
+            type: 'CUSTOM_ACTION',
+            actions: [{ id: seededActionId }],
+            policies: [{ id: uuidv1() }],
+            itemIds: [itemId],
+            itemTypeId,
+          },
+        ],
+        relatedActions: [],
+        reviewerId,
+        reviewerEmail,
+        orgId,
+      });
+    });
+  });
 });

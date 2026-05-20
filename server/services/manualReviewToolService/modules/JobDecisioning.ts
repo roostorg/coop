@@ -196,6 +196,33 @@ export default class JobDecisioning {
       if (validActions.length === 0) {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
       }
+
+      // Issue #389: orgs that opt into `requires_policy_for_decisions` enforce
+      // that every CUSTOM_ACTION decision names at least one policy, so
+      // reviewers can't accidentally land actions outside the org's documented
+      // moderation policy. The flag is read via GraphQL as
+      // `Org.requiresPolicyForDecisionsInMrt`; the UI can disable submit on
+      // the client, but server-side enforcement is what makes the integrity
+      // guarantee real. Only CUSTOM_ACTION decisions carry policies —
+      // appeal/ignore/NCMEC/auto-close decisions are out of scope.
+      const settingsRow = await this.pgQuery
+        .selectFrom('manual_review_tool.manual_review_tool_settings')
+        .select(['requires_policy_for_decisions'])
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+      if (settingsRow?.requires_policy_for_decisions) {
+        const customActionDecisionMissingPolicy = decisions.find(
+          (decision) =>
+            decision.type === 'CUSTOM_ACTION' && decision.policies.length === 0,
+        );
+        if (customActionDecisionMissingPolicy != null) {
+          throw makeMissingRequiredPolicyForDecisionError({
+            detail:
+              'This org requires every decision to include at least one policy.',
+            shouldErrorSpan: true,
+          });
+        }
+      }
     }
 
     const removeJob = async () =>
@@ -593,7 +620,8 @@ export type SubmitDecisionErrorType =
   | 'JobHasAlreadyBeenSubmittedError'
   | 'SubmittedJobActionNotFoundError'
   | 'NoJobWithIdInQueueError'
-  | 'RecordingJobDecisionFailedError';
+  | 'RecordingJobDecisionFailedError'
+  | 'MissingRequiredPolicyForDecisionError';
 
 export const makeJobHasAlreadyBeenSubmittedError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -628,5 +656,17 @@ export const makeNoJobWithIdInQueueError = (data: ErrorInstanceData) =>
     type: [ErrorType.NotFound],
     title: String(data.detail),
     name: 'NoJobWithIdInQueueError',
+    ...data,
+  });
+
+export const makeMissingRequiredPolicyForDecisionError = (
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title:
+      'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
+    name: 'MissingRequiredPolicyForDecisionError',
     ...data,
   });
