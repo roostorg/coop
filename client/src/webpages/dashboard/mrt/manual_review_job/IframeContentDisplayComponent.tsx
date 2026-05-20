@@ -15,7 +15,8 @@ export default function IframeContentDisplayComponent(props: {
   const { contentUrl } = props;
 
   const contentProxyUrl =
-    import.meta.env.VITE_CONTENT_PROXY_URL ?? 'http://localhost:4000';
+    import.meta.env.VITE_CONTENT_PROXY_URL?.trim() ??
+    (import.meta.env.DEV ? 'http://localhost:4000' : window.location.origin);
 
   const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [isTranslating, setIsTranslating] = useState(false);

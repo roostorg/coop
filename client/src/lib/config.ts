@@ -23,8 +23,9 @@ export const HOST_URL: string =
  * Base URL of the published Coop documentation site.
  *
  * Configure with `VITE_DOCS_URL` at build time to point at a fork's or
- * mirror's docs. Defaults to the official mdBook site published from this
- * repository's `docs/` folder.
+ * mirror's docs. The default value lives in `client/.env.example` and is
+ * applied via the standard `.env` copy step; this code-level fallback only
+ * kicks in if the variable is missing entirely from the build environment.
  */
 export const DOCS_URL: string =
   import.meta.env.VITE_DOCS_URL ?? 'https://roostorg.github.io/coop/latest';
