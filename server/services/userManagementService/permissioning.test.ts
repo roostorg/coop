@@ -49,5 +49,22 @@ describe('permissioning', () => {
     it('returns an empty array for an unknown role rather than throwing', () => {
       expect(getPermissionsForRole('NOT_A_ROLE')).toEqual([]);
     });
+
+    it('returns a fresh array on every call so the canonical seed cannot be corrupted', () => {
+      const first = getPermissionsForRole(UserRole.ADMIN);
+      const second = getPermissionsForRole(UserRole.ADMIN);
+      // Different array references prove callers can't share state — even
+      // if a caller hands the array off to code that mutates it, the next
+      // call will get a fresh copy and authz won't drift across requests.
+      expect(first).not.toBe(second);
+      expect(first).toEqual(second);
+
+      // Also assert the resolver can't accidentally hand back the seed
+      // map's literal value: the seed is a Map, and the inner array is the
+      // value stored under UserRole.ADMIN. We cannot reach into that Map
+      // from here without breaking encapsulation, but the reference check
+      // above is sufficient to guarantee the spread happens on every call.
+      expect(first).toContain(UserPermission.MANAGE_ROLES);
+    });
   });
 });

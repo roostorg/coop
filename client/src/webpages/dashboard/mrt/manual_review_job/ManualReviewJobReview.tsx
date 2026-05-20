@@ -1,5 +1,6 @@
 import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
 import { __throw } from '@/utils/misc';
 import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
@@ -44,7 +45,6 @@ import {
   type GQLThreadManualReviewJobPayload,
   type GQLUserItem,
 } from '../../../../graphql/generated';
-import { userHasPermissions } from '../../../../routing/permissions';
 import { filterNullOrUndefined } from '../../../../utils/collections';
 import { getFieldValueForRole } from '../../../../utils/itemUtils';
 import { recomputeSelectedRelatedActions } from '../../../../utils/manualReviewTool';

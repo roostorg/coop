@@ -1,3 +1,4 @@
+import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { Input, notification } from 'antd';
 import Link from 'antd/lib/typography/Link';
@@ -14,7 +15,6 @@ import {
   useGQLAppealSettingsQuery,
   useGQLUpdateAppealSettingsMutation,
 } from '../../../graphql/generated';
-import { userHasPermissions } from '../../../routing/permissions';
 import { prettyPrintJsonValue } from '../../../utils/string';
 
 gql`

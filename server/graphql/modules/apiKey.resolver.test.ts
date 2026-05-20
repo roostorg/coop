@@ -16,6 +16,17 @@ describe('apiKey resolvers', () => {
   }
 
   describe('Query.apiKey', () => {
+    it('throws unauthenticatedError when caller is not authenticated', async () => {
+      const { ctx, getActiveApiKeyForOrg } = makeCtx([
+        UserPermission.MANAGE_ORG,
+      ]);
+      const unauthenticatedCtx = { ...ctx, getUser: () => null };
+      await expect(Query.apiKey({}, {}, unauthenticatedCtx)).rejects.toThrow(
+        'Authenticated user required',
+      );
+      expect(getActiveApiKeyForOrg).not.toHaveBeenCalled();
+    });
+
     it('throws forbiddenError when caller lacks MANAGE_ORG', async () => {
       const { ctx, getActiveApiKeyForOrg } = makeCtx([UserPermission.VIEW_MRT]);
       await expect(Query.apiKey({}, {}, ctx)).rejects.toThrow(

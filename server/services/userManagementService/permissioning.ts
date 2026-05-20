@@ -165,7 +165,12 @@ export const UserPermissionsForRole = new Map<UserRole, UserPermission[]>([
  * must use `user.getPermissions().includes(...)` or
  * `invoker.permissions.includes(...)` so that runtime authz is capability-
  * driven, not role-string-driven.
+ *
+ * Returns a fresh array on every call so callers cannot accidentally mutate
+ * the canonical seed in {@link UserPermissionsForRole} and corrupt authz for
+ * later users/requests.
  */
-export function getPermissionsForRole(role: UserRole) {
-  return UserPermissionsForRole.get(role) ?? [];
+export function getPermissionsForRole(role: UserRole): UserPermission[] {
+  const seed = UserPermissionsForRole.get(role);
+  return seed ? [...seed] : [];
 }

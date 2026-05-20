@@ -99,15 +99,30 @@ describe('user resolvers', () => {
       ) => Promise<string | null>;
     };
 
+    // Narrow the resolver's `Promise<string | null>` to a string and decode
+    // the JWT in one place so individual tests stay focused on the assertions
+    // that matter to them. Throws (and fails the test) if the resolver
+    // unexpectedly returns null or jwt.verify yields a string payload.
+    async function decodeReadMeJWT(
+      token: string | null,
+    ): Promise<jwt.JwtPayload> {
+      expect(token).not.toBeNull();
+      if (token == null) {
+        throw new Error('readMeJWT returned null');
+      }
+      const decoded = jwt.verify(token, TEST_JWT_SECRET);
+      if (typeof decoded === 'string') {
+        throw new Error('readMeJWT decoded to a string payload');
+      }
+      return decoded;
+    }
+
     it('returns a JWT with null apiKey/publicSigningKey for non-MANAGE_ORG callers', async () => {
       const { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem } =
         makeReadMeCtx([UserPermission.VIEW_MRT]);
-      const token = await User.readMeJWT(userParent, {}, ctx);
-      expect(token).not.toBeNull();
-      const payload = jwt.verify(token as string, TEST_JWT_SECRET) as Record<
-        string,
-        unknown
-      >;
+      const payload = await decodeReadMeJWT(
+        await User.readMeJWT(userParent, {}, ctx),
+      );
       expect(payload.apiKey).toBeNull();
       expect(payload.publicSigningKey).toBeNull();
       expect(payload.email).toBe('t@example.com');
@@ -120,16 +135,25 @@ describe('user resolvers', () => {
     it('embeds org secrets in the JWT for MANAGE_ORG callers', async () => {
       const { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem } =
         makeReadMeCtx([UserPermission.MANAGE_ORG]);
-      const token = await User.readMeJWT(userParent, {}, ctx);
-      expect(token).not.toBeNull();
-      const payload = jwt.verify(token as string, TEST_JWT_SECRET) as Record<
-        string,
-        unknown
-      >;
+      const payload = await decodeReadMeJWT(
+        await User.readMeJWT(userParent, {}, ctx),
+      );
       expect(payload.apiKey).toBe('org-api-key-SHOULD-NEVER-LEAK');
       expect(payload.publicSigningKey).toBe('SIGNING_KEY_PEM');
       expect(getActivatedApiKeyForOrg).toHaveBeenCalledWith('org-1');
       expect(getPublicSigningKeyPem).toHaveBeenCalledWith('org-1');
+    });
+
+    it('returns null and skips the orgAPI when the parent user does not match the authenticated user', async () => {
+      // The identity guard must short-circuit before any secret lookup —
+      // otherwise a privileged user could query readMeJWT against another
+      // user's parent and surface their org secrets in the resulting JWT.
+      const { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem } =
+        makeReadMeCtx([UserPermission.MANAGE_ORG]);
+      const otherUser = { ...userParent, id: 'different-user' };
+      await expect(User.readMeJWT(otherUser, {}, ctx)).resolves.toBeNull();
+      expect(getActivatedApiKeyForOrg).not.toHaveBeenCalled();
+      expect(getPublicSigningKeyPem).not.toHaveBeenCalled();
     });
   });
 });
