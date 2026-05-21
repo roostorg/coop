@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import os from 'node:os';
 import path from 'path';
 import { ApolloServer } from '@apollo/server';
@@ -33,7 +32,7 @@ import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
-import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
+import { safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
@@ -91,7 +90,7 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
-  const { KyselyPg } = deps;
+  const { KyselyPg, KyselyPgPool } = deps;
 
   app.use(cors());
 
@@ -127,29 +126,10 @@ export default async function makeApiServer(deps: Dependencies) {
   /**
    * Passport & User Session Configuration
    */
-  const {
-    DATABASE_HOST,
-    DATABASE_PORT = 5432,
-    DATABASE_NAME,
-    DATABASE_USER,
-    DATABASE_PASSWORD,
-  } = process.env;
-
-  const conObject = {
-    host: DATABASE_HOST,
-    port: Number(DATABASE_PORT),
-    user: DATABASE_USER,
-    password: DATABASE_PASSWORD,
-    database: DATABASE_NAME,
-    // NB: `rejectUnauthorized: false` keeps the connection encrypted but skips
-    // certificate validation.
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
-  };
-
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ conObject }),
+      store: new sessionStore({ pool: KyselyPgPool }),
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
