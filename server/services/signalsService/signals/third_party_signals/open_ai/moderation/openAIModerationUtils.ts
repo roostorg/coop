@@ -24,6 +24,8 @@ export type OpenAiModelName =
   | 'hate'
   | 'hate/threatening'
   | 'self-harm'
+  | 'self-harm/instructions'
+  | 'self-harm/intent'
   | 'sexual'
   | 'sexual/minors'
   | 'violence'
@@ -38,7 +40,12 @@ export type OpenAiModelName =
  */
 export type OpenAiImageModelName = Extract<
   OpenAiModelName,
-  'self-harm' | 'sexual' | 'violence' | 'violence/graphic'
+  | 'self-harm'
+  | 'self-harm/instructions'
+  | 'self-harm/intent'
+  | 'sexual'
+  | 'violence'
+  | 'violence/graphic'
 >;
 
 const OPEN_AI_MODERATION_MODEL = 'omni-moderation-latest';

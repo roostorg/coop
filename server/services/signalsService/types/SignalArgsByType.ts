@@ -29,6 +29,10 @@ export type SignalArgsByType = Satisfies<
     [SignalType.OPEN_AI_HATE_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_HATE_THREATENING_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SELF_HARM_IMAGE_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SELF_HARM_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SEXUAL_IMAGE_MODEL]: undefined;
     [SignalType.OPEN_AI_SEXUAL_MINORS_TEXT_MODEL]: undefined;
@@ -67,6 +71,10 @@ export type RuntimeSignalArgsByType = Satisfies<
     [SignalType.OPEN_AI_HATE_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_HATE_THREATENING_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SELF_HARM_IMAGE_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL]: undefined;
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SELF_HARM_TEXT_MODEL]: undefined;
     [SignalType.OPEN_AI_SEXUAL_IMAGE_MODEL]: undefined;
     [SignalType.OPEN_AI_SEXUAL_MINORS_TEXT_MODEL]: undefined;
