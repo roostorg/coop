@@ -16,13 +16,14 @@
  *   npm run atproto:demo -- --api-key <key> --post-type-id <id>
  *
  * Options:
- *   --api-key        Coop API key (from `npm run create-org`)           [required]
- *   --post-type-id   Bluesky Post item type ID (from atproto:setup)     [required]
- *   --user-type-id   Bluesky User item type ID (from atproto:setup); enables mock report submission
- *   --coop-url       Base URL of the Coop server  [default: http://localhost:3000]
- *   --rate-limit     Max posts submitted per minute                     [default: 100]
- *   --dry-run        Print submissions without sending them to Coop
- *   --langs          Comma-separated language codes to filter (e.g. en,es)
+ *   --api-key             Coop API key (from `npm run create-org`)           [required]
+ *   --post-type-id        Bluesky Post item type ID (from atproto:setup)     [required]
+ *   --user-type-id        Bluesky User item type ID (from atproto:setup); enables mock report submission
+ *   --coop-url            Base URL of the Coop server  [default: http://localhost:3000]
+ *   --rate-limit          Max posts submitted per minute                     [default: 100]
+ *   --report-rate-limit   Max reports submitted per minute (requires --user-type-id) [default: 1]
+ *   --dry-run             Print submissions without sending them to Coop
+ *   --langs               Comma-separated language codes to filter (e.g. en,es)
  */
 
 import process from 'node:process';
@@ -53,6 +54,7 @@ const postTypeId = getArg('--post-type-id');
 const userTypeId = getArg('--user-type-id');
 const coopUrl = getArg('--coop-url') ?? 'http://localhost:3000';
 const rateLimit = Number(getArg('--rate-limit') ?? '100');
+const reportRateLimit = Number(getArg('--report-rate-limit') ?? '1');
 const dryRun = hasFlag('--dry-run');
 const langsFilter = getArg('--langs')
   ? new Set((getArg('--langs') as string).split(',').map((l) => l.trim()))
@@ -162,26 +164,6 @@ class RateLimiter {
   }
 }
 
-// --- Post sample buffer (for report submission) -----------------------------
-
-interface SampledPost {
-  did: string;
-  rkey: string;
-  record: BlueskyPost;
-}
-
-const SAMPLE_BUFFER_MAX = 20;
-const sampleBuffer: SampledPost[] = [];
-
-function addToSampleBuffer(post: SampledPost) {
-  if (sampleBuffer.length < SAMPLE_BUFFER_MAX) {
-    sampleBuffer.push(post);
-  } else {
-    const idx = Math.floor(Math.random() * SAMPLE_BUFFER_MAX);
-    sampleBuffer[idx] = post;
-  }
-}
-
 // --- Submission logic --------------------------------------------------------
 
 interface CoopItem {
@@ -246,12 +228,16 @@ async function submitToCoop(item: CoopItem): Promise<void> {
   }
 }
 
-async function submitReport(post: SampledPost): Promise<string> {
-  const item = await postToCoopItem(post.did, post.rkey, post.record);
+async function submitReport(
+  did: string,
+  rkey: string,
+  record: BlueskyPost,
+): Promise<string> {
+  const item = await postToCoopItem(did, rkey, record);
   const payload = {
     reporter: {
       kind: 'user',
-      id: post.did,
+      id: did,
       typeId: userTypeId,
     },
     reportedAt: new Date().toISOString(),
@@ -293,9 +279,11 @@ let submitted = 0;
 let skipped = 0;
 let errors = 0;
 let reportsSubmitted = 0;
+let reportsSkipped = 0;
 let reportErrors = 0;
 
 const limiter = new RateLimiter(rateLimit);
+const reportLimiter = new RateLimiter(reportRateLimit);
 
 function logStatus(action: string, text: string) {
   const preview = text.length > 60 ? text.slice(0, 57) + '…' : text;
@@ -311,7 +299,7 @@ function connect() {
     console.log(`  Language filter: ${[...langsFilter].join(', ')}`);
   }
   if (userTypeId) {
-    console.log(`  Report submission: enabled (1/min)`);
+    console.log(`  Report submission: enabled (${reportRateLimit}/min)`);
   } else {
     console.log(
       `  Report submission: disabled (pass --user-type-id to enable)`,
@@ -357,10 +345,28 @@ function connect() {
         }
       }
 
-      // Sample into the report buffer (independent of rate limit)
-      addToSampleBuffer({ did: msg.did, rkey: msg.commit.rkey, record });
+      // Report submission (independent of item rate limit)
+      if (userTypeId) {
+        if (reportLimiter.tryConsume()) {
+          submitReport(msg.did, msg.commit.rkey, record)
+            .then((reportId) => {
+              reportsSubmitted++;
+              console.log(
+                `[${new Date().toISOString()}] Report submitted: ${reportId}`,
+              );
+            })
+            .catch((err: unknown) => {
+              reportErrors++;
+              console.error(
+                `[${new Date().toISOString()}] ERROR submitting report: ${String(err)}`,
+              );
+            });
+        } else {
+          reportsSkipped++;
+        }
+      }
 
-      // Rate limit
+      // Item submission
       if (!limiter.tryConsume()) {
         skipped++;
         return;
@@ -404,43 +410,13 @@ function connect() {
 // Print running totals every 60 seconds
 setInterval(() => {
   console.log(
-    `[${new Date().toISOString()}] Status — submitted: ${submitted}, skipped: ${skipped}, errors: ${errors}, reports: ${reportsSubmitted}, report errors: ${reportErrors}`,
+    `[${new Date().toISOString()}] Status — submitted: ${submitted}, skipped: ${skipped}, errors: ${errors}, reports: ${reportsSubmitted}, reports skipped: ${reportsSkipped}, report errors: ${reportErrors}`,
   );
-}, 60_000);
-
-// Submit one mock report per minute from the sample buffer
-setInterval(() => {
-  if (!userTypeId) {
-    console.log(
-      `[${new Date().toISOString()}] Report: skipping (--user-type-id not set)`,
-    );
-    return;
-  }
-  if (sampleBuffer.length === 0) {
-    console.log(
-      `[${new Date().toISOString()}] Report: buffer empty, skipping this interval`,
-    );
-    return;
-  }
-  const idx = Math.floor(Math.random() * sampleBuffer.length);
-  const post = sampleBuffer[idx];
-  sampleBuffer.length = 0;
-  submitReport(post)
-    .then((reportId) => {
-      reportsSubmitted++;
-      console.log(`[${new Date().toISOString()}] Report submitted: ${reportId}`);
-    })
-    .catch((err: unknown) => {
-      reportErrors++;
-      console.error(
-        `[${new Date().toISOString()}] ERROR submitting report: ${String(err)}`,
-      );
-    });
 }, 60_000);
 
 process.on('SIGINT', () => {
   console.log(
-    `\nShutting down. Submitted: ${submitted}, Skipped: ${skipped}, Errors: ${errors}, Reports: ${reportsSubmitted}, Report errors: ${reportErrors}`,
+    `\nShutting down. Submitted: ${submitted}, Skipped: ${skipped}, Errors: ${errors}, Reports: ${reportsSubmitted}, Reports skipped: ${reportsSkipped}, Report errors: ${reportErrors}`,
   );
   process.exit(0);
 });

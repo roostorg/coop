@@ -274,8 +274,8 @@ Feed a local Coop instance with real content from the [AT Protocol](https://atpr
      --user-type-id <userTypeId>
    ```
 
-Posts from the Bluesky firehose will appear as submitted items. With `--user-type-id` set, one mock report is also submitted per minute using a random post from the firehose, routed to your default queue. Omit `--user-type-id` to skip report submission.
+Posts from the Bluesky firehose will appear as submitted items. With `--user-type-id` set, posts are also submitted as mock reports at a separate rate, routed to your default queue. Omit `--user-type-id` to skip report submission entirely.
 
-Pass `--rate-limit <n>` to adjust the item submission cap (default: 100/min). Use `--dry-run` to preview submissions without sending them.
+Pass `--rate-limit <n>` to adjust the item submission cap (default: 100/min) and `--report-rate-limit <n>` for the report cap (default: 1/min). Use `--dry-run` to preview submissions without sending them.
 
 See `atproto-demo.mts` for the full list of options.
