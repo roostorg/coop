@@ -36,8 +36,10 @@ describe('createPgPool', () => {
 
   test('forwards caller config to pg.Pool without mutating it', async () => {
     const config = { host: '127.0.0.1', port: 1, keepAlive: false };
+    const snapshot = structuredClone(config);
     const pool = createPgPool(config);
     try {
+      expect(config).toEqual(snapshot);
       expect(
         (pool as unknown as { options: { keepAlive?: boolean } }).options
           .keepAlive,

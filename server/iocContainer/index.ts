@@ -444,30 +444,38 @@ export default async function getBottle() {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
   const getPgPoolTuning = () => {
-    const statementTimeoutMs = process.env.DATABASE_STATEMENT_TIMEOUT_MS;
+    const statementTimeoutMs =
+      process.env.DATABASE_STATEMENT_TIMEOUT_MS?.trim();
     const keepAliveInitialDelayMs =
-      process.env.DATABASE_KEEPALIVE_INITIAL_DELAY_MS;
+      process.env.DATABASE_KEEPALIVE_INITIAL_DELAY_MS?.trim();
     return {
       // pg's default is 10s, which churns connections during quiet periods.
-      idleTimeoutMillis: parseInt(
-        process.env.DATABASE_POOL_IDLE_TIMEOUT_MS ?? '300000',
+      idleTimeoutMillis: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_IDLE_TIMEOUT_MS',
+        300000,
       ),
       // pg's default is 0 (wait forever); fail fast if the db is unreachable.
-      connectionTimeoutMillis: parseInt(
-        process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS ?? '15000',
+      connectionTimeoutMillis: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_CONNECTION_TIMEOUT_MS',
+        15000,
       ),
       // Client-side bound on long-running queries.
-      query_timeout: parseInt(
-        process.env.DATABASE_QUERY_TIMEOUT_MS ?? '1000000',
+      query_timeout: safeGetEnvNonNegativeInt(
+        'DATABASE_QUERY_TIMEOUT_MS',
+        1000000,
       ),
       // Optional server-side bound; defense in depth alongside `query_timeout`.
       // Unset => Postgres' own default (no limit).
-      ...(statementTimeoutMs !== undefined && {
-        statement_timeout: parseInt(statementTimeoutMs),
+      ...(statementTimeoutMs && {
+        statement_timeout: safeGetEnvNonNegativeInt(
+          'DATABASE_STATEMENT_TIMEOUT_MS',
+          0,
+        ),
       }),
       // Kill sessions sitting idle inside an open transaction (holding locks).
-      idle_in_transaction_session_timeout: parseInt(
-        process.env.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS ?? '300000',
+      idle_in_transaction_session_timeout: safeGetEnvNonNegativeInt(
+        'DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS',
+        300000,
       ),
       // Recycle each client after N seconds to dodge stale connections.
       // 0 = never expire (default).
@@ -480,7 +488,7 @@ export default async function getBottle() {
       // set DATABASE_KEEPALIVE=false to disable.
       keepAlive:
         process.env.DATABASE_KEEPALIVE?.trim().toLowerCase() !== 'false',
-      ...(keepAliveInitialDelayMs !== undefined && {
+      ...(keepAliveInitialDelayMs && {
         keepAliveInitialDelayMillis: safeGetEnvNonNegativeInt(
           'DATABASE_KEEPALIVE_INITIAL_DELAY_MS',
           0,

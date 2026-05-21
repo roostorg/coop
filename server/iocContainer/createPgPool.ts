@@ -15,7 +15,7 @@ export function createPgPool(config: pg.PoolConfig): pg.Pool {
 
   // Log-only; do NOT re-throw.
   pool.on('error', (err) => {
-    // eslint-disable-next-line no-restricted-syntax
+    // eslint-disable-next-line no-restricted-syntax -- boot-time logger; runs before tracer init
     logErrorJson({
       message: 'Postgres pool idle-client error (pool will reconnect lazily)',
       error: err,
