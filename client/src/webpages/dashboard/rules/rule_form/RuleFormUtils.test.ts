@@ -12,9 +12,9 @@ import {
   shouldConditionPromptForComparatorAndThreshold,
 } from './RuleFormUtils';
 
-jest.mock('./RuleFormUtils', () => {
-  const origin = jest.requireActual('./RuleFormUtils');
-  return { ...origin, getConditionInputScalarType: jest.fn() };
+vi.mock('./RuleFormUtils', async () => {
+  const origin = await vi.importActual('./RuleFormUtils');
+  return { ...origin, getConditionInputScalarType: vi.fn() };
 });
 
 // NB: See docs above shouldConditionPromptForComparatorAndThreshold
@@ -73,9 +73,7 @@ describe('Test Rule Form Utils', () => {
         eligibleSignals: [sampleSignal],
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue([sampleSignal] as any);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
@@ -92,9 +90,7 @@ describe('Test Rule Form Utils', () => {
         signal: sampleSignal,
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue([sampleSignal] as any);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
@@ -119,9 +115,7 @@ describe('Test Rule Form Utils', () => {
         },
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        nonBooleanSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue([nonBooleanSignal] as any);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
