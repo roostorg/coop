@@ -100,7 +100,12 @@ export async function runOpenAiModerationImpl(
   const credential = await getOpenAiCredentials(orgId);
 
   if (!credential?.apiKey) {
-    throw new Error('Missing API credentials');
+    // Permanent: without an API key, this signal can never determine a score
+    // for this org; retrying the same call yields the same failure. Caching
+    // the rejection avoids hammering the credential lookup within a request.
+    throw makeSignalPermanentError('Missing API credentials', {
+      shouldErrorSpan: true,
+    });
   }
 
   const response = await getOpenAiModerationScores({
@@ -130,7 +135,12 @@ export async function runOpenAiModerationImageImpl(
   const credential = await getOpenAiCredentials(orgId);
 
   if (!credential?.apiKey) {
-    throw new Error('Missing API credentials');
+    // Permanent: without an API key, this signal can never determine a score
+    // for this org; retrying the same call yields the same failure. Caching
+    // the rejection avoids hammering the credential lookup within a request.
+    throw makeSignalPermanentError('Missing API credentials', {
+      shouldErrorSpan: true,
+    });
   }
 
   // OpenAI's API fetches the image from the URL itself, so we just pass the
@@ -181,8 +191,12 @@ export async function getOpenAiModerationScores(
 > {
   const { apiKey, text, imageUrl } = req;
   if (text == null && imageUrl == null) {
-    throw new Error(
+    // Permanent: with neither text nor imageUrl there is nothing to score, and
+    // a retry on the same input would fail the same way. In practice this is
+    // a caller bug (the typed entry points always pass one or the other).
+    throw makeSignalPermanentError(
       'OpenAI moderation request must include `text` or `imageUrl`',
+      { shouldErrorSpan: true },
     );
   }
   // omni-moderation-latest's multimodal input is an array of typed parts.
