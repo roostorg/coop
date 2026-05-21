@@ -17,6 +17,12 @@ import {
   type FetchOpenAiModerationScores,
 } from './openAIModerationUtils.js';
 
+/**
+ * OpenAI text-moderation signal scoring whether text encourages or provides
+ * instructions for self-harm (suicide, cutting, eating disorders, etc.).
+ * Routes through omni-moderation-latest and returns the
+ * `self-harm/instructions` category score (0..1).
+ */
 export default class OpenAiSelfHarmInstructionsTextSignal extends SignalBase<
   ScalarTypes['STRING'],
   { scalarType: ScalarTypes['NUMBER'] }
@@ -97,6 +103,10 @@ export default class OpenAiSelfHarmInstructionsTextSignal extends SignalBase<
     return true;
   }
 
+  /**
+   * Fetches the omni-moderation `self-harm/instructions` score for the text
+   * and returns it as a number between 0 and 1.
+   */
   async run(input: SignalInput<ScalarTypes['STRING']>) {
     return runOpenAiModerationImpl(
       this.getOpenAiCredentials,

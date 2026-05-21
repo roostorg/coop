@@ -17,6 +17,12 @@ import {
   type FetchOpenAiModerationScores,
 } from './openAIModerationUtils.js';
 
+/**
+ * OpenAI text-moderation signal scoring whether text expresses the speaker's
+ * intent to engage in acts of self-harm (suicide, cutting, eating disorders,
+ * etc.). Routes through omni-moderation-latest and returns the
+ * `self-harm/intent` category score (0..1).
+ */
 export default class OpenAiSelfHarmIntentTextSignal extends SignalBase<
   ScalarTypes['STRING'],
   { scalarType: ScalarTypes['NUMBER'] }
@@ -97,6 +103,10 @@ export default class OpenAiSelfHarmIntentTextSignal extends SignalBase<
     return true;
   }
 
+  /**
+   * Fetches the omni-moderation `self-harm/intent` score for the text and
+   * returns it as a number between 0 and 1.
+   */
   async run(input: SignalInput<ScalarTypes['STRING']>) {
     return runOpenAiModerationImpl(
       this.getOpenAiCredentials,
