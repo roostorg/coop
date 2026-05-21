@@ -42,18 +42,16 @@ gql`
 export default function OrgSettings() {
   const navigate = useNavigate();
   const { data, loading, error } = useGQLOrgSettingsQuery();
-  const [updateOrgInfo, { loading: isUpdating }] = useGQLUpdateOrgInfoMutation(
-    {
-      onCompleted: () => {
-        toast.success('Organization information updated successfully');
-      },
-      onError: (err) => {
-        const errorMessage =
-          err.message ?? 'Failed to update organization information';
-        toast.error(errorMessage);
-      },
+  const [updateOrgInfo, { loading: isUpdating }] = useGQLUpdateOrgInfoMutation({
+    onCompleted: () => {
+      toast.success('Organization information updated successfully');
     },
-  );
+    onError: (err) => {
+      const errorMessage =
+        err.message ?? 'Failed to update organization information';
+      toast.error(errorMessage);
+    },
+  });
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -144,16 +142,14 @@ export default function OrgSettings() {
   const requiredPermissions = [GQLUserPermission.ManageOrg];
   const permissions = data?.me?.permissions;
   if (!userHasPermissions(permissions, requiredPermissions)) {
-    navigate('/settings');
+    navigate('/dashboard/settings');
     return null;
   }
 
   const isEmailValid = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const isWebsiteValid =
-    websiteUrl && /^https?:\/\/.+\..+/.test(websiteUrl);
+  const isWebsiteValid = websiteUrl && /^https?:\/\/.+\..+/.test(websiteUrl);
   const isOnCallEmailValid =
-    !onCallAlertEmail ||
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(onCallAlertEmail);
+    !onCallAlertEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(onCallAlertEmail);
   const isSaveButtonDisabled =
     !name?.trim() ||
     !isEmailValid ||
@@ -267,4 +263,3 @@ export default function OrgSettings() {
     </>
   );
 }
-

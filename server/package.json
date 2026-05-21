@@ -19,7 +19,9 @@
     "runWorkerOrJob": "node --loader ts-node/esm --require dotenv/config bin/run-worker-or-job.ts",
     "create-org": "node --loader ts-node/esm --require dotenv/config bin/create-org-and-user.ts",
     "get-invite": "node --loader ts-node/esm --require dotenv/config bin/get-invite-token.ts",
-    "atproto:setup": "node --loader ts-node/esm --require dotenv/config bin/atproto-setup.ts"
+    "recover-mrt-queue": "node --loader ts-node/esm --require dotenv/config bin/recover-mrt-queue.ts",
+    "atproto:setup": "node --loader ts-node/esm --require dotenv/config bin/atproto-setup.ts",
+    "atproto:demo": "node --loader ts-node/esm bin/atproto-demo.mts"
   },
   "author": "Roostorg",
   "license": "ISC",
@@ -79,7 +81,6 @@
     "generic-pool": "^3.8.2",
     "graphql": "^16.13.2",
     "graphql-depth-limit": "^1.1.0",
-    "graphql-passport": "^0.6.4",
     "graphql-scalars": "^1.19.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.2.4",

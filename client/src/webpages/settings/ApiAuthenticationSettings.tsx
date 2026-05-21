@@ -5,11 +5,6 @@ import { Link } from '@/coop-ui/Link';
 import { Textarea } from '@/coop-ui/Textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Heading, Text } from '@/coop-ui/Typography';
-import {
-  useGQLApiAuthQuery,
-  useGQLRotateApiKeyMutation,
-  useGQLRotateWebhookSigningKeyMutation,
-} from '../../graphql/generated';
 import { Clipboard, Eye, EyeClosed, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -17,9 +12,13 @@ import { useNavigate } from 'react-router-dom';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 
-import { GQLUserPermission } from '../../graphql/generated';
+import {
+  GQLUserPermission,
+  useGQLApiAuthQuery,
+  useGQLRotateApiKeyMutation,
+  useGQLRotateWebhookSigningKeyMutation,
+} from '../../graphql/generated';
 import { userHasPermissions } from '../../routing/permissions';
-
 
 const ApiAuthenticationSettings = () => {
   const { data, loading, error, refetch } = useGQLApiAuthQuery();
@@ -62,7 +61,9 @@ const ApiAuthenticationSettings = () => {
             variant="outline"
             size="sm"
             className="mt-3"
-            onClick={async () => { await refetch(); }}
+            onClick={async () => {
+              await refetch();
+            }}
           >
             Retry
           </Button>
@@ -74,7 +75,7 @@ const ApiAuthenticationSettings = () => {
   const requiredPermissions = [GQLUserPermission.ManageOrg];
   const permissions = data?.me?.permissions;
   if (!userHasPermissions(permissions, requiredPermissions)) {
-    navigate('/settings');
+    navigate('/dashboard/settings');
     return null;
   }
 
@@ -83,7 +84,14 @@ const ApiAuthenticationSettings = () => {
     return (
       <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
         <Text size="SM">Unable to load organization. Please try again.</Text>
-        <Button variant="outline" size="sm" className="mt-3" onClick={async () => { await refetch(); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={async () => {
+            await refetch();
+          }}
+        >
           Retry
         </Button>
       </div>
@@ -92,11 +100,16 @@ const ApiAuthenticationSettings = () => {
 
   const apiKey = data?.apiKey;
   const { publicSigningKey } = org;
-  
+
   // Show the new API key if we have one, otherwise show a message about the existing key
-  const displayApiKey = newApiKey ?? (apiKey === 'API key exists (hidden for security)' ? 'API key exists (hidden for security)' : 'No API key available');
+  const displayApiKey =
+    newApiKey ??
+    (apiKey === 'API key exists (hidden for security)'
+      ? 'API key exists (hidden for security)'
+      : 'No API key available');
   const isNewKey = Boolean(newApiKey);
-  const isKeyHidden = !newApiKey && apiKey === 'API key exists (hidden for security)';
+  const isKeyHidden =
+    !newApiKey && apiKey === 'API key exists (hidden for security)';
 
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -105,7 +118,7 @@ const ApiAuthenticationSettings = () => {
   const handleRotateApiKey = async () => {
     setIsRotating(true);
     setRotationError(null);
-    
+
     try {
       const result = await rotateApiKey({
         variables: {
@@ -116,11 +129,15 @@ const ApiAuthenticationSettings = () => {
         },
       });
 
-      if (result.data?.rotateApiKey.__typename === 'RotateApiKeySuccessResponse') {
+      if (
+        result.data?.rotateApiKey.__typename === 'RotateApiKeySuccessResponse'
+      ) {
         setNewApiKey(result.data.rotateApiKey.apiKey);
         await refetch();
       } else if (result.data?.rotateApiKey.__typename === 'RotateApiKeyError') {
-        setRotationError(result.data.rotateApiKey.detail ?? 'Failed to rotate API key');
+        setRotationError(
+          result.data.rotateApiKey.detail ?? 'Failed to rotate API key',
+        );
       }
     } catch (err) {
       setRotationError('An error occurred while rotating the API key');
@@ -214,11 +231,12 @@ const ApiAuthenticationSettings = () => {
             {isRotating ? 'Rotating...' : 'Rotate Key'}
           </Button>
         </div>
-        
+
         {newApiKey && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
             <Text size="SM" className="text-green-800 mb-2">
-              New API key generated successfully! Please copy and store it securely.
+              New API key generated successfully! Please copy and store it
+              securely.
             </Text>
             <Input
               type="text"
@@ -238,7 +256,7 @@ const ApiAuthenticationSettings = () => {
             />
           </div>
         )}
-        
+
         {rotationError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <Text size="SM" className="text-red-800">
@@ -246,15 +264,15 @@ const ApiAuthenticationSettings = () => {
             </Text>
           </div>
         )}
-        
+
         <Input
           id="apiKey"
           type={apiKeyVisible && isNewKey ? 'text' : 'password'}
           className={apiKeyVisible && isNewKey ? 'tracking-widest' : undefined}
           value={
-            isNewKey && apiKeyVisible 
-              ? displayApiKey 
-              : isKeyHidden 
+            isNewKey && apiKeyVisible
+              ? displayApiKey
+              : isKeyHidden
                 ? '••••••••••••••••••••••••••••••••••••••••'
                 : displayApiKey
           }
@@ -283,19 +301,29 @@ const ApiAuthenticationSettings = () => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  {isNewKey ? 'Copy to clipboard' : 'Key is hidden for security'}
+                  {isNewKey
+                    ? 'Copy to clipboard'
+                    : 'Key is hidden for security'}
                 </TooltipContent>
               </Tooltip>
             </div>
           }
         />
-        
+
         {isNewKey && (
           <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg
+                  className="h-5 w-5 text-yellow-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
               <div className="ml-3">
@@ -304,8 +332,9 @@ const ApiAuthenticationSettings = () => {
                 </h3>
                 <div className="mt-2 text-sm text-yellow-700">
                   <p>
-                    This is the only time you'll see your API key in plain text. 
-                    We only store a hash value for security. Please copy and save this key securely.
+                    This is the only time you'll see your API key in plain text.
+                    We only store a hash value for security. Please copy and
+                    save this key securely.
                   </p>
                 </div>
               </div>
@@ -401,7 +430,7 @@ const ApiAuthenticationSettings = () => {
           }
         />
       </div>
-      
+
       {/* API Key rotation confirmation dialog */}
       {showRotationDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -410,8 +439,9 @@ const ApiAuthenticationSettings = () => {
               Rotate API Key
             </Heading>
             <Text size="SM" className="mb-6">
-              Are you sure you want to rotate your API key? This will generate a new key and 
-              deactivate the current one. Make sure to update any applications using the current key.
+              Are you sure you want to rotate your API key? This will generate a
+              new key and deactivate the current one. Make sure to update any
+              applications using the current key.
             </Text>
             <div className="flex gap-3 justify-end">
               <Button
@@ -442,9 +472,9 @@ const ApiAuthenticationSettings = () => {
               Generate new webhook verification key
             </Heading>
             <Text size="SM" className="mb-6">
-              This will generate a new webhook signature verification key. The current key will stop
-              working for verifying new webhook requests. Update your systems with the new key after
-              generating it.
+              This will generate a new webhook signature verification key. The
+              current key will stop working for verifying new webhook requests.
+              Update your systems with the new key after generating it.
             </Text>
             <div className="flex gap-3 justify-end">
               <Button

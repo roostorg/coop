@@ -32,7 +32,7 @@ export enum ErrorType {
   // To replace the above once we migrate the submission endpoint
   DataInvalidForItemType = '/errors/data-invalid-for-item-type',
   FieldRolesInvalidForItemType = '/errors/field-roles-invalid-for-item-type',
-  AttemptingToDeleteDefaultUserType = 'errors/attempting-to-delete-default-user-type',
+  AttemptingToDeleteDefaultUserType = '/errors/attempting-to-delete-default-user-type',
 
   // Rule + Rule evaluation Errors
   AttemptingToMutateActiveRule = '/errors/attempting-to-mutate-active-rule',

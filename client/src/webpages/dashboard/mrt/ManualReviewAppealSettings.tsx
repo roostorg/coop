@@ -1,3 +1,4 @@
+import { DOCS_URL } from '@/lib/config';
 import { gql } from '@apollo/client';
 import { Input, notification } from 'antd';
 import Link from 'antd/lib/typography/Link';
@@ -117,10 +118,8 @@ export default function ManualReviewAppealSettings() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         appeal. See the{' '}
-        <Link href="https://docs.getcoop.com/docs/appeal-api">
-          documentation
-        </Link>{' '}
-        for more information.
+        <Link href={`${DOCS_URL}/api/appeal.html`}>documentation</Link> for more
+        information.
       </div>
       {callbackSectionHeader('Headers (Optional)')}
       <div className="mb-4 text-base text-zinc-900">

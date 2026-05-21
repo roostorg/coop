@@ -8,6 +8,7 @@ src = "."
 build-dir = "./book"
 
 [output.html]
+site-url = "/coop/latest/"
 edit-url-template = "https://github.com/roostorg/coop/edit/main/docs/{path}"
 git-repository-url = "https://github.com/roostorg/coop"
 

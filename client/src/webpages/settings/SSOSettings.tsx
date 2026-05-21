@@ -5,12 +5,13 @@ import { Textarea } from '@/coop-ui/Textarea';
 import { toast } from '@/coop-ui/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Heading, Text } from '@/coop-ui/Typography';
+import { HOST_URL } from '@/lib/config';
 import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { Clipboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -40,9 +41,10 @@ gql`
 export default function SSOSettings() {
   const [ssoUrl, setSsoUrl] = useState<string | undefined>(undefined);
   const [ssoCert, setSsoCert] = useState<string | undefined>(undefined);
-  const navigate = useNavigate();
 
-  const { data, loading, error } = useGQLGetSsoCredentialsQuery();
+  const { data, loading, error } = useGQLGetSsoCredentialsQuery({
+    errorPolicy: 'all',
+  });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [updateSSOCredentials, { loading: updateLoading, error: updateError }] =
     useGQLUpdateSsoCredentialsMutation();
@@ -65,20 +67,22 @@ export default function SSOSettings() {
     return <FullScreenLoading />;
   }
 
-  if (error) {
-    return <div />;
+  const permissions = data?.me?.permissions;
+  if (
+    !permissions ||
+    !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])
+  ) {
+    return <Navigate to="/dashboard/settings" replace />;
   }
 
-  const requiredPermissions = [GQLUserPermission.ManageOrg];
-  const permissions = data?.me?.permissions;
-  if (!userHasPermissions(permissions, requiredPermissions)) {
-    navigate('/settings');
+  if (error) {
+    return <div />;
   }
 
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
   };
-  const callbackUri = `https://getcoop.com/api/v1/saml/login/${data?.myOrg?.id}/callback`;
+  const callbackUri = `${HOST_URL}/api/v1/saml/login/${data?.myOrg?.id}/callback`;
 
   return (
     <div className="flex flex-col w-3/5 gap-4 text-start">
@@ -124,7 +128,7 @@ export default function SSOSettings() {
           id="SpEntityId"
           type={'text'}
           className={'tracking-widest'}
-          value={'https://getcoop.com'}
+          value={HOST_URL}
           disabled
           endSlot={
             <div className="flex">
@@ -134,7 +138,7 @@ export default function SSOSettings() {
                     variant="white"
                     size="icon"
                     className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
-                    onClick={() => copyText('https://getcoop.com')}
+                    onClick={() => copyText(HOST_URL)}
                   >
                     <Clipboard />
                   </Button>
