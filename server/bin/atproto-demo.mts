@@ -18,6 +18,7 @@
  * Options:
  *   --api-key        Coop API key (from `npm run create-org`)           [required]
  *   --post-type-id   Bluesky Post item type ID (from atproto:setup)     [required]
+ *   --user-type-id   Bluesky User item type ID (from atproto:setup); enables mock report submission
  *   --coop-url       Base URL of the Coop server  [default: http://localhost:3000]
  *   --rate-limit     Max posts submitted per minute                     [default: 100]
  *   --dry-run        Print submissions without sending them to Coop
@@ -49,6 +50,7 @@ function hasFlag(flag: string): boolean {
 
 const apiKey = getArg('--api-key');
 const postTypeId = getArg('--post-type-id');
+const userTypeId = getArg('--user-type-id');
 const coopUrl = getArg('--coop-url') ?? 'http://localhost:3000';
 const rateLimit = Number(getArg('--rate-limit') ?? '100');
 const dryRun = hasFlag('--dry-run');
@@ -244,11 +246,54 @@ async function submitToCoop(item: CoopItem): Promise<void> {
   }
 }
 
+async function submitReport(post: SampledPost): Promise<string> {
+  const item = await postToCoopItem(post.did, post.rkey, post.record);
+  const payload = {
+    reporter: {
+      kind: 'user',
+      id: post.did,
+      typeId: userTypeId,
+    },
+    reportedAt: new Date().toISOString(),
+    reportedItem: item,
+    reportedForReason: {
+      reason: 'Automatically flagged for demo purposes.',
+    },
+  };
+
+  if (dryRun) {
+    console.log(
+      `[${new Date().toISOString()}] DRY RUN report:`,
+      JSON.stringify(payload, null, 2),
+    );
+    return 'dry-run';
+  }
+
+  const response = await fetch(`${coopUrl}/api/v1/report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey as string,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Coop returned ${response.status}: ${body}`);
+  }
+
+  const data = (await response.json()) as { reportId: string };
+  return data.reportId;
+}
+
 // --- Main -------------------------------------------------------------------
 
 let submitted = 0;
 let skipped = 0;
 let errors = 0;
+let reportsSubmitted = 0;
+let reportErrors = 0;
 
 const limiter = new RateLimiter(rateLimit);
 
@@ -352,13 +397,38 @@ function connect() {
 // Print running totals every 60 seconds
 setInterval(() => {
   console.log(
-    `[${new Date().toISOString()}] Status — submitted: ${submitted}, skipped: ${skipped}, errors: ${errors}`,
+    `[${new Date().toISOString()}] Status — submitted: ${submitted}, skipped: ${skipped}, errors: ${errors}, reports: ${reportsSubmitted}, report errors: ${reportErrors}`,
   );
+}, 60_000);
+
+// Submit one mock report per minute from the sample buffer
+setInterval(() => {
+  if (!userTypeId) return;
+  if (sampleBuffer.length === 0) {
+    console.log(
+      `[${new Date().toISOString()}] Report: buffer empty, skipping this interval`,
+    );
+    return;
+  }
+  const idx = Math.floor(Math.random() * sampleBuffer.length);
+  const post = sampleBuffer[idx];
+  sampleBuffer.length = 0;
+  submitReport(post)
+    .then((reportId) => {
+      reportsSubmitted++;
+      console.log(`[${new Date().toISOString()}] Report submitted: ${reportId}`);
+    })
+    .catch((err: unknown) => {
+      reportErrors++;
+      console.error(
+        `[${new Date().toISOString()}] ERROR submitting report: ${String(err)}`,
+      );
+    });
 }, 60_000);
 
 process.on('SIGINT', () => {
   console.log(
-    `\nShutting down. Submitted: ${submitted}, Skipped: ${skipped}, Errors: ${errors}`,
+    `\nShutting down. Submitted: ${submitted}, Skipped: ${skipped}, Errors: ${errors}, Reports: ${reportsSubmitted}, Report errors: ${reportErrors}`,
   );
   process.exit(0);
 });
