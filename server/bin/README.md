@@ -251,6 +251,8 @@ Usage:
 cd server && npm run atproto:setup -- --org-id <orgId>
 ```
 
+The script prints a **Bluesky Post item type ID** and a **Bluesky User item type ID** — copy both for use with `atproto:demo`.
+
 ## atproto-demo.mts
 
 Feed a local Coop instance with real content from the [AT Protocol](https://atproto.com/) (Bluesky) firehose.
@@ -261,14 +263,19 @@ Feed a local Coop instance with real content from the [AT Protocol](https://atpr
    cd server && npm run atproto:setup -- --org-id <orgId>
    ```
 
-   Copy the **Bluesky Post item type ID** printed at the end.
+   Copy both the **Post item type ID** and the **User item type ID** from the output.
 
 2. Start the firehose connector (in a separate terminal):
 
    ```sh
-   npm run atproto:demo -- --api-key <apiKey> --post-type-id <postTypeId>
+   npm run atproto:demo -- \
+     --api-key <apiKey> \
+     --post-type-id <postTypeId> \
+     --user-type-id <userTypeId>
    ```
 
-Posts from the Bluesky firehose will appear in the review queue as they arrive. The connector defaults to 10 submissions per minute; pass `--rate-limit <n>` to adjust. Use `--dry-run` to preview submissions without sending them.
+Posts from the Bluesky firehose will appear as submitted items. With `--user-type-id` set, one mock report is also submitted per minute using a random post from the firehose, routed to your default queue. Omit `--user-type-id` to skip report submission.
+
+Pass `--rate-limit <n>` to adjust the item submission cap (default: 100/min). Use `--dry-run` to preview submissions without sending them.
 
 See `atproto-demo.mts` for the full list of options.
