@@ -42,9 +42,7 @@ export default function SSOSettings() {
   const [ssoUrl, setSsoUrl] = useState<string | undefined>(undefined);
   const [ssoCert, setSsoCert] = useState<string | undefined>(undefined);
 
-  const { data, loading, error } = useGQLGetSsoCredentialsQuery({
-    errorPolicy: 'all',
-  });
+  const { data, loading, error } = useGQLGetSsoCredentialsQuery({ errorPolicy: 'all' });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [updateSSOCredentials, { loading: updateLoading, error: updateError }] =
     useGQLUpdateSsoCredentialsMutation();
@@ -68,10 +66,7 @@ export default function SSOSettings() {
   }
 
   const permissions = data?.me?.permissions;
-  if (
-    !permissions ||
-    !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])
-  ) {
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
     return <Navigate to="/dashboard/settings" replace />;
   }
 

@@ -9,8 +9,8 @@ import {
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
-import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { userHasPermissions } from '@/routing/permissions';
+import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -61,9 +61,7 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyMuteVideo: true,
   });
 
-  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({
-    errorPolicy: 'all',
-  });
+  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({ errorPolicy: 'all' });
 
   const [saveSafetySettings, { loading: isSafetySettingsMutationLoading }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
@@ -98,10 +96,7 @@ export default function ManualReviewSafetySettings() {
   }
 
   const permissions = data?.me?.permissions;
-  if (
-    !permissions ||
-    !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])
-  ) {
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
     return <Navigate to="/dashboard/settings" replace />;
   }
 
@@ -124,11 +119,11 @@ export default function ManualReviewSafetySettings() {
           Default Wellness Settings
         </Heading>
         <Text size="SM" className="mb-12">
-          Configure your organization's default wellness settings. When a new
-          user joins your team and needs to use Coop, these settings will be
-          applied by default to maintain their safety and well-being. If a user
-          wants to override these settings, they can do so in their personal
-          Wellness settings.
+        Configure your organization's default wellness settings. When a new
+        user joins your team and needs to use Coop, these settings
+        will be applied by default to maintain their safety and well-being.
+        If a user wants to override these settings, they can do so in
+        their personal Wellness settings.
         </Text>
         <div className="flex gap-12 mb-8">
           <div className="flex flex-col gap-5 w-64 pt-10">

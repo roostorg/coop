@@ -118,8 +118,10 @@ export default function ManualReviewAppealSettings() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         appeal. See the{' '}
-        <Link href={`${DOCS_URL}/api/appeal.html`}>documentation</Link> for more
-        information.
+        <Link href={`${DOCS_URL}/api/appeal.html`}>
+          documentation
+        </Link>{' '}
+        for more information.
       </div>
       {callbackSectionHeader('Headers (Optional)')}
       <div className="mb-4 text-base text-zinc-900">

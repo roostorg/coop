@@ -318,9 +318,7 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('User required.');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError(
-        'User does not have permission to view NCMEC settings',
-      );
+      throw forbiddenError('User does not have permission to view NCMEC settings');
     }
     const settings = await context.services.NcmecService.getNcmecOrgSettings(
       user.orgId,
@@ -336,9 +334,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError(
-        'User does not have permission to update NCMEC settings',
-      );
+      throw forbiddenError('User does not have permission to update NCMEC settings');
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
 

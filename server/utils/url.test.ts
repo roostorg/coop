@@ -20,9 +20,7 @@ describe('URL Tests', () => {
 
     test('Allow arbitrary external URLs', () => {
       expect(() => validateUrl('https://example.com')).not.toThrow();
-      expect(() =>
-        validateUrl('https://api.example.org/webhook'),
-      ).not.toThrow();
+      expect(() => validateUrl('https://api.example.org/webhook')).not.toThrow();
     });
   });
 

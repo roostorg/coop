@@ -518,15 +518,14 @@ export default function ManageUsers() {
                     ))}
                 </Select>
               </div>
-
+              
               <div className="divider !mb-6 !mt-8" />
-
+              
               {/* Reset Password Section */}
               <div className="flex flex-col items-start">
                 <div className="text-xl font-bold mb-4">Reset Password</div>
                 <div className="mb-3 text-sm text-gray-600">
-                  Generate a password reset link for this user. An email will be
-                  sent if email service is configured.
+                  Generate a password reset link for this user. An email will be sent if email service is configured.
                 </div>
                 <CoopButton
                   title="Generate Reset Link"
@@ -535,12 +534,10 @@ export default function ManageUsers() {
                   onClick={onGeneratePasswordReset}
                   loading={generateTokenLoading}
                 />
-
+                
                 {passwordResetToken && (
                   <div className="mt-4 flex flex-col gap-2 w-full">
-                    <div className="text-sm font-semibold">
-                      Password Reset Link:
-                    </div>
+                    <div className="text-sm font-semibold">Password Reset Link:</div>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -562,9 +559,9 @@ export default function ManageUsers() {
                   </div>
                 )}
               </div>
-
+              
               <div className="divider !mb-6 !mt-8" />
-
+              
               {/* Roles Description Section */}
               <div className="text-xl font-bold mb-4">Role Descriptions</div>
               <div className="flex flex-col text-start">
