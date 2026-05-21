@@ -3,6 +3,7 @@
 Instructions for AI coding agents working on Coop. `README.md` is for humans; this file is for machines. The nearest `AGENTS.md` to the edited file wins; explicit user prompts override everything.
 
 This file inherits from the ROOST community policy — read it once:
+
 - [ROOST community `AGENTS.md`](https://github.com/roostorg/community/blob/main/software-development-practices/agents.md) — pan-org agent rules (dependency approval, CI/CD approval, small diffs, PR standards).
 - [ROOST `CONTRIBUTING.md`](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) — contribution standards (explainable, reviewable, digestible).
 
@@ -47,8 +48,14 @@ npm run db:update -- --env staging --db api-server-pg
 npm run db:update -- --env staging --db scylla
 npm run db:update -- --env staging --db clickhouse
 
-# Create organization and admin user
-npm run create-org
+# Create organization and admin user (all flags required)
+npm run create-org -- \
+  --name "Test Org" \
+  --email "admin@example.com" \
+  --website "example.com" \
+  --firstName "Admin" \
+  --lastName "User" \
+  --password "your-password"
 
 # Start dev servers (separate terminals recommended)
 npm run client:start        # React dev server
@@ -99,14 +106,14 @@ docker compose run --rm test
 
 Individual checks:
 
-| CI job | Local command |
-| --- | --- |
-| `check_generated_graphql` | `docker compose run --rm codegen-check` |
-| `check_api_server` (lint) | `docker compose run --rm backend npm run lint` |
-| `check_api_server` (build) | `docker compose run --rm backend npm run build` |
-| `run_frontend_checks_if_changed` (lint) | `docker compose run --rm client npm run lint` |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build` |
-| `check_api_server` (test) | `docker compose run --rm test` |
+| CI job                                   | Local command                                   |
+| ---------------------------------------- | ----------------------------------------------- |
+| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
+| `check_api_server` (test)                | `docker compose run --rm test`                  |
 
 Tear down:
 
@@ -186,9 +193,11 @@ Stop and get explicit human approval before:
 ## Commit attribution
 
 Agent-authored commits should include a `Co-Authored-By` trailer naming the agent, e.g.:
+
 ```
 Co-Authored-By: <agent-name>
 ```
+
 Coop is open source and contributions flow upstream; attribution matters for maintainer trust.
 
 ## Don't
