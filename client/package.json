@@ -7,7 +7,7 @@
     "start": "vite --port 3000",
     "build": "vite build",
     "test": "vitest --passWithNoTests",
-    "test:prepush": "vitest --watchAll=false --passWithNoTests",
+    "test:prepush": "vitest run --passWithNoTests",
     "check:prepush": "npm run build && npm run test:prepush",
     "lint": "tsc --noEmit && eslint ./src",
     "storybook": "storybook dev -p 6006",
