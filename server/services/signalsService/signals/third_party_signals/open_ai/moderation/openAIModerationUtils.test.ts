@@ -60,4 +60,14 @@ describe('getOpenAiModerationScores request body shape', () => {
       ],
     });
   });
+
+  it('throws a SignalPermanentError when neither text nor imageUrl is provided', async () => {
+    // Defensive guard — the typed entry points always pass one or the other,
+    // so this only fires on caller bugs. Classified as permanent because a
+    // retry with the same arguments yields the same failure.
+    const { fetchHTTP } = makeFetchHTTPCapturing();
+    await expect(
+      getOpenAiModerationScores(fetchHTTP, tracer, { apiKey: 'sk-test' }),
+    ).rejects.toThrow(/text.*imageUrl/);
+  });
 });

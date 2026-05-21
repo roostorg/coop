@@ -197,7 +197,7 @@ Stop and get explicit human approval before:
 
 Agent-authored commits should include a `Co-Authored-By` trailer naming the agent, e.g.:
 
-```
+```text
 Co-Authored-By: <agent-name>
 ```
 
