@@ -17,7 +17,7 @@ import {
   type SignalInput,
 } from '../../../SignalBase.js';
 
-export type SupportedOpenAiInput = ScalarTypes['STRING'];
+export type SupportedOpenAiInput = ScalarTypes['STRING'] | ScalarTypes['IMAGE'];
 
 export type OpenAiModelName =
   | 'hate'
@@ -27,6 +27,20 @@ export type OpenAiModelName =
   | 'sexual/minors'
   | 'violence'
   | 'violence/graphic';
+
+/**
+ * Categories that OpenAI's omni-moderation model scores for image inputs.
+ * Other categories (e.g., hate, sexual/minors) are text-only — feeding an image
+ * to those returns zero/undefined and would be misleading.
+ *
+ * See https://platform.openai.com/docs/guides/moderation#content-classifications
+ */
+export type OpenAiImageModelName = Extract<
+  OpenAiModelName,
+  'self-harm' | 'sexual' | 'violence' | 'violence/graphic'
+>;
+
+const OPEN_AI_MODERATION_MODEL = 'omni-moderation-latest';
 
 export function openAiModerationDocsUrl() {
   return 'https://beta.openai.com/docs/guides/moderation/overview';
@@ -90,8 +104,40 @@ export async function runOpenAiModerationImpl(
   }
 
   const response = await getOpenAiModerationScores({
-    text: value.value,
     apiKey: credential.apiKey,
+    text: value.value,
+  });
+
+  if (response.length === 0) {
+    throw new Error('Empty OpenAI results');
+  }
+
+  const scores = response[0];
+  const score = scores.category_scores[modelName];
+  return {
+    score: Number(score),
+    outputType: { scalarType: ScalarTypes.NUMBER },
+  };
+}
+
+export async function runOpenAiModerationImageImpl(
+  getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+  input: SignalInput<ScalarTypes['IMAGE']>,
+  getOpenAiModerationScores: FetchOpenAiModerationScores,
+  modelName: OpenAiImageModelName,
+) {
+  const { value, orgId } = input;
+  const credential = await getOpenAiCredentials(orgId);
+
+  if (!credential?.apiKey) {
+    throw new Error('Missing API credentials');
+  }
+
+  // OpenAI's API fetches the image from the URL itself, so we just pass the
+  // signal input's URL straight through (no buffer/base64 encoding needed).
+  const response = await getOpenAiModerationScores({
+    apiKey: credential.apiKey,
+    imageUrl: value.value.url,
   });
 
   if (response.length === 0) {
@@ -123,7 +169,7 @@ type OpenAiModerationResponse = {
 export async function getOpenAiModerationScores(
   fetchHTTP: FetchHTTP,
   tracer: SafeTracer,
-  req: { apiKey: string; text: string },
+  req: { apiKey: string; text?: string; imageUrl?: string },
 ): Promise<
   ReadonlyDeep<
     {
@@ -133,8 +179,29 @@ export async function getOpenAiModerationScores(
     }[]
   >
 > {
-  const { apiKey, text } = req;
-  const reqBody = { input: text };
+  const { apiKey, text, imageUrl } = req;
+  if (text == null && imageUrl == null) {
+    throw new Error(
+      'OpenAI moderation request must include `text` or `imageUrl`',
+    );
+  }
+  // omni-moderation-latest's multimodal input is an array of typed parts.
+  // We use the array shape unconditionally (rather than the legacy plain
+  // string form) so the text and image paths are symmetric.
+  const input: (
+    | { type: 'text'; text: string }
+    | {
+        type: 'image_url';
+        image_url: { url: string };
+      }
+  )[] = [];
+  if (text != null) {
+    input.push({ type: 'text', text });
+  }
+  if (imageUrl != null) {
+    input.push({ type: 'image_url', image_url: { url: imageUrl } });
+  }
+  const reqBody = { model: OPEN_AI_MODERATION_MODEL, input };
   try {
     const response = await fetchHTTP({
       url: 'https://api.openai.com/v1/moderations',
