@@ -1,3 +1,4 @@
+import { HOST_URL } from '@/lib/config';
 import { ItemTypeKind } from '@roostorg/types';
 import zipObject from 'lodash/zipObject';
 
@@ -163,13 +164,13 @@ function generateCurlRequest(
 
   switch (apiRoute) {
     case 'Items API':
-      return `curl --request POST --url https://getcoop.com/api/v1/items/async --header 'x-api-key: APIKEY' --header 'Content-Type: application/json' --data '${JSON.stringify(
+      return `curl --request POST --url ${HOST_URL}/api/v1/items/async --header 'x-api-key: APIKEY' --header 'Content-Type: application/json' --data '${JSON.stringify(
         data,
         null,
         4,
       )}'`;
     case 'Reports API':
-      return `curl --request POST --url https://getcoop.com/api/v1/report --header 'x-api-key: APIKEY' --header 'Content-Type: application/json' --data '${JSON.stringify(
+      return `curl --request POST --url ${HOST_URL}/api/v1/report --header 'x-api-key: APIKEY' --header 'Content-Type: application/json' --data '${JSON.stringify(
         data,
         null,
         4,
@@ -197,7 +198,7 @@ data = ${JSON.stringify(data, null, 4)
         .replace(/true/g, 'True')
         .replace(/false/g, 'False')}
 response = requests.post(
-  'https://getcoop.com/api/v1/items/async',
+  '${HOST_URL}/api/v1/items/async',
   headers=headers,
   json=data
 )
@@ -214,7 +215,7 @@ headers = {
 data = ${JSON.stringify(data, null, 4)}
 
 response = requests.post(
-  'https://getcoop.com/api/v1/report',
+  '${HOST_URL}/api/v1/report',
   headers=headers,
   json=data
 )
@@ -236,7 +237,7 @@ function generateNodeJsRequest(
   ${JSON.stringify(data, null, 4)};
 
 const response = await fetch(
-  "https://getcoop.com/api/v1/items/async",
+  "${HOST_URL}/api/v1/items/async",
   {
     method: 'post',
     body: JSON.stringify(body),
@@ -253,7 +254,7 @@ console.log(response.status);
       return `const body = ${JSON.stringify(data, null, 4)}
 
 const response = await fetch(
-  "https://getcoop.com/api/v1/report",
+  "${HOST_URL}/api/v1/report",
   {
     method: 'post',
     body: JSON.stringify(body),
@@ -291,7 +292,7 @@ $headers = [
 
 $body = ${data};
 
-$response = $client->request('POST', 'https://getcoop.com/api/v1/items/async', [
+$response = $client->request('POST', '${HOST_URL}/api/v1/items/async', [
   'headers' => $headers,
   'json' => $body,
 ]);
@@ -312,7 +313,7 @@ $headers = [
 $body = ${data};
   
 
-$response = $client->request('POST', 'https://getcoop.com/api/v1/report', [
+$response = $client->request('POST', '${HOST_URL}/api/v1/report', [
   'headers' => $headers,
   'json' => $body,
 ]);

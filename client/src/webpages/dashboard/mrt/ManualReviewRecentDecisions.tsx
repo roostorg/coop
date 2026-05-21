@@ -1,6 +1,7 @@
 import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
 import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
 import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
+import { HOST_URL } from '@/lib/config';
 import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
@@ -32,8 +33,8 @@ import {
 } from '../../../utils/time';
 import { jsonParse } from '../../../utils/typescript-types';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
-import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
 import { JOB_FRAGMENT } from './manual_review_job/jobFragment';
+import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
 import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
@@ -221,9 +222,11 @@ export default function ManualReviewRecentDecisions() {
 
   useEffect(() => {
     const decision =
-      allDecisionsData?.getRecentDecisions.find((it) => it.id === decisionId) ??
+      (allDecisionsData?.getRecentDecisions.find(
+        (it) => it.id === decisionId,
+      ) ??
       decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision.id ===
-        decisionId
+        decisionId)
         ? decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision
         : undefined;
     if (decision) {
@@ -430,9 +433,9 @@ export default function ManualReviewRecentDecisions() {
         decisionColorNamePairs: decisionData.decisions
           .map((decision) => getDecisionColorNamePairs(decision, isSelected))
           .flat(),
-        policies: decisionData.decisions
-           
-          .flatMap((decision) => getPoliciesFromDecision(decision)),
+        policies: decisionData.decisions.flatMap((decision) =>
+          getPoliciesFromDecision(decision),
+        ),
         reviewer: getReviewerName(decisionData.reviewerId),
         queue: getQueueName(decisionData.queueId),
         decisionTime: decisionData.createdAt,
@@ -576,7 +579,7 @@ export default function ManualReviewRecentDecisions() {
           item.reviewer,
           item.queue,
           item.createdAt,
-          `https://getcoop.com/dashboard/manual_review/recent?jobId=${item.jobId}`,
+          `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
         ]);
 
         // Combine the headers and rows into a CSV string
@@ -623,7 +626,7 @@ export default function ManualReviewRecentDecisions() {
             getReviewerName(skip.userId),
             getQueueName(skip.queueId),
             parseDatetimeToReadableStringInUTC(new Date(skip.ts)),
-            `https://getcoop.com/dashboard/manual_review/recent?jobId=${skip.jobId}`,
+            `${HOST_URL}/dashboard/manual_review/recent?jobId=${skip.jobId}`,
           ];
         });
         // Define the CSV headers
@@ -662,7 +665,7 @@ export default function ManualReviewRecentDecisions() {
         queueIds: input.queueIds,
         startTime: input.dateRange?.startDate,
         endTime: input.dateRange?.endDate,
-         
+
         decisions: decisionOrActions?.map((it) => {
           switch (it.type) {
             case 'CUSTOM_ACTION':
