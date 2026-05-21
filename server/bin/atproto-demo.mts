@@ -310,6 +310,13 @@ function connect() {
   if (langsFilter) {
     console.log(`  Language filter: ${[...langsFilter].join(', ')}`);
   }
+  if (userTypeId) {
+    console.log(`  Report submission: enabled (1/min)`);
+  } else {
+    console.log(
+      `  Report submission: disabled (pass --user-type-id to enable)`,
+    );
+  }
   console.log('');
 
   // Node 24 ships native WebSocket (WHATWG). Cast to any here because
@@ -403,7 +410,12 @@ setInterval(() => {
 
 // Submit one mock report per minute from the sample buffer
 setInterval(() => {
-  if (!userTypeId) return;
+  if (!userTypeId) {
+    console.log(
+      `[${new Date().toISOString()}] Report: skipping (--user-type-id not set)`,
+    );
+    return;
+  }
   if (sampleBuffer.length === 0) {
     console.log(
       `[${new Date().toISOString()}] Report: buffer empty, skipping this interval`,
