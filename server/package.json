@@ -92,7 +92,7 @@
     "openai": "^4.24.0",
     "p-limit": "^4.0.0",
     "passport": "^0.7.0",
-    "pg": "^8.8.0",
+    "pg": "^8.20.0",
     "pg-cursor": "^2.7.4",
     "pipeline-segment": "^0.0.6",
     "safe-stable-stringify": "^2.4.2",
