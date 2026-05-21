@@ -160,6 +160,26 @@ class RateLimiter {
   }
 }
 
+// --- Post sample buffer (for report submission) -----------------------------
+
+interface SampledPost {
+  did: string;
+  rkey: string;
+  record: BlueskyPost;
+}
+
+const SAMPLE_BUFFER_MAX = 20;
+const sampleBuffer: SampledPost[] = [];
+
+function addToSampleBuffer(post: SampledPost) {
+  if (sampleBuffer.length < SAMPLE_BUFFER_MAX) {
+    sampleBuffer.push(post);
+  } else {
+    const idx = Math.floor(Math.random() * SAMPLE_BUFFER_MAX);
+    sampleBuffer[idx] = post;
+  }
+}
+
 // --- Submission logic --------------------------------------------------------
 
 interface CoopItem {
@@ -284,6 +304,9 @@ function connect() {
           return;
         }
       }
+
+      // Sample into the report buffer (independent of rate limit)
+      addToSampleBuffer({ did: msg.did, rkey: msg.commit.rkey, record });
 
       // Rate limit
       if (!limiter.tryConsume()) {
