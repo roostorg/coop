@@ -125,6 +125,18 @@ export async function runOpenAiModerationImpl(
   };
 }
 
+/**
+ * Image-input counterpart to {@link runOpenAiModerationImpl}. Fetches an
+ * omni-moderation score for the given category against the signal's image
+ * URL.
+ *
+ * Constrains `modelName` to {@link OpenAiImageModelName} so callers can't
+ * accidentally request a category OpenAI only scores against text — those
+ * would silently return zero.
+ *
+ * OpenAI fetches the image from the URL itself, so we just pass the signal
+ * input's URL through with no buffering or base64 encoding on our side.
+ */
 export async function runOpenAiModerationImageImpl(
   getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
   input: SignalInput<ScalarTypes['IMAGE']>,

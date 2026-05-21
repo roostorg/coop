@@ -17,6 +17,12 @@ import {
   type FetchOpenAiModerationScores,
 } from './openAIModerationUtils.js';
 
+/**
+ * OpenAI image-moderation signal scoring whether an image depicts death,
+ * violence, or serious physical injury in extreme graphic detail. Routes
+ * through omni-moderation-latest's multimodal endpoint and returns the
+ * `violence/graphic` category score (0..1).
+ */
 export default class OpenAiGraphicViolenceImageSignal extends SignalBase<
   ScalarTypes['IMAGE'],
   { scalarType: ScalarTypes['NUMBER'] }
@@ -97,6 +103,10 @@ export default class OpenAiGraphicViolenceImageSignal extends SignalBase<
     return true;
   }
 
+  /**
+   * Fetches the omni-moderation `violence/graphic` score for the image and
+   * returns it as a number between 0 and 1.
+   */
   async run(input: SignalInput<ScalarTypes['IMAGE']>) {
     return runOpenAiModerationImageImpl(
       this.getOpenAiCredentials,

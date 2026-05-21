@@ -17,6 +17,11 @@ import {
   type FetchOpenAiModerationScores,
 } from './openAIModerationUtils.js';
 
+/**
+ * OpenAI image-moderation signal scoring whether an image promotes,
+ * glorifies, or celebrates violence. Routes through omni-moderation-latest's
+ * multimodal endpoint and returns the `violence` category score (0..1).
+ */
 export default class OpenAiViolenceImageSignal extends SignalBase<
   ScalarTypes['IMAGE'],
   { scalarType: ScalarTypes['NUMBER'] }
@@ -97,6 +102,10 @@ export default class OpenAiViolenceImageSignal extends SignalBase<
     return true;
   }
 
+  /**
+   * Fetches the omni-moderation `violence` score for the image and returns it
+   * as a number between 0 and 1.
+   */
   async run(input: SignalInput<ScalarTypes['IMAGE']>) {
     return runOpenAiModerationImageImpl(
       this.getOpenAiCredentials,

@@ -17,6 +17,12 @@ import {
   type FetchOpenAiModerationScores,
 } from './openAIModerationUtils.js';
 
+/**
+ * OpenAI image-moderation signal scoring whether an image is meant to arouse
+ * sexual excitement or depicts sexual activity (excluding sex education and
+ * wellness content). Routes through omni-moderation-latest's multimodal
+ * endpoint and returns the `sexual` category score (0..1).
+ */
 export default class OpenAiSexualImageSignal extends SignalBase<
   ScalarTypes['IMAGE'],
   { scalarType: ScalarTypes['NUMBER'] }
@@ -97,6 +103,10 @@ export default class OpenAiSexualImageSignal extends SignalBase<
     return true;
   }
 
+  /**
+   * Fetches the omni-moderation `sexual` score for the image and returns it
+   * as a number between 0 and 1.
+   */
   async run(input: SignalInput<ScalarTypes['IMAGE']>) {
     return runOpenAiModerationImageImpl(
       this.getOpenAiCredentials,
