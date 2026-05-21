@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import _ from 'lodash';
 
-import getBottle from '../iocContainer/index.js';
-import { type Dependencies } from '../iocContainer/index.js';
+import getBottle, { type Dependencies } from '../iocContainer/index.js';
 import { logErrorJson } from '../utils/logging.js';
 import { type WorkerOrJob } from '../workers_jobs/index.js';
 
