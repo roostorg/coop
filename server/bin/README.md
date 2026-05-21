@@ -241,6 +241,23 @@ npm run recover-mrt-queue -- \
 
 ---
 
+## atproto-proxy.mts
+
+Content proxy for the MRT job review iframe. The review UI embeds post content in an iframe via a proxy URL (default: `http://localhost:4000`). bsky.app blocks direct embedding with `X-Frame-Options: SAMEORIGIN`, so this script fetches post data from the Bluesky public API instead and renders it as a standalone HTML page. It also handles blur and grayscale postMessage events sent by the review UI's wellness settings.
+
+Run this alongside `atproto:demo` in a separate terminal:
+
+```sh
+cd server && npm run atproto:proxy
+```
+
+You also need to set `VITE_CONTENT_URL_PATTERN=bsky.app` in `client/.env` so the review UI knows to show the iframe for Bluesky post URLs.
+
+**Options:**
+- `--port` — port to listen on (default: `4000`)
+
+---
+
 ## atproto-setup.ts
 
 Creates the AT Protocol (Bluesky) item types needed by the atproto demo firehose connector. Run this once after `npm run create-org` to register the item types, then pass the printed item type IDs to `npm run atproto:demo`.
