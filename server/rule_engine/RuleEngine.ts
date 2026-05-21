@@ -7,21 +7,22 @@ import {
 } from '../condition_evaluator/conditionSet.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
-import { type PlainRuleWithLatestVersion } from '../models/rules/ruleTypes.js';
 import { evaluateAggregationRuntimeArgsForItem } from '../services/aggregationsService/index.js';
+import { type RuleExecutionCorrelationId } from '../services/analyticsLoggers/index.js';
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
 import {
-  type Action,
   ConditionCompletionOutcome,
-  type ConditionSet,
   RuleStatus,
+  type Action,
+  type ConditionSet,
+  type PlainRuleWithLatestVersion,
 } from '../services/moderationConfigService/index.js';
-import { type RuleExecutionCorrelationId } from '../services/analyticsLoggers/index.js';
 import {
   type CorrelationId,
   type CorrelationIdType,
 } from '../utils/correlationIds.js';
 import { equalLengthZip } from '../utils/fp-helpers.js';
+import { logErrorJson } from '../utils/logging.js';
 import { safePick } from '../utils/misc.js';
 import type SafeTracer from '../utils/SafeTracer.js';
 import {
@@ -113,7 +114,6 @@ class RuleEngine {
       enabledRules,
       (rule) => rule.status === RuleStatus.LIVE,
     );
-
 
     const evaluationContext = this.makeRuleExecutionContext({
       orgId: itemSubmission.itemType.orgId,
@@ -215,7 +215,6 @@ class RuleEngine {
       ),
     );
 
-
     const rulesToResults = new Map(equalLengthZip(rules, ruleResults));
 
     const passingRules = [...rulesToResults.entries()]
@@ -226,17 +225,14 @@ class RuleEngine {
 
     const actionableRulesToActions = new Map(
       await Promise.all(
-        actionableRules.map(
-          async (rule) => {
-            const actions = (await this.getRuleActionsEventuallyConsistent({
-              orgId: evaluationContext.org.id,
-              ruleId: rule.id,
-            })) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
-            
-            
-            return [rule, actions] as const;
-          }
-        ),
+        actionableRules.map(async (rule) => {
+          const actions = (await this.getRuleActionsEventuallyConsistent({
+            orgId: evaluationContext.org.id,
+            ruleId: rule.id,
+          })) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
+
+          return [rule, actions] as const;
+        }),
       ),
     );
 
@@ -249,24 +245,34 @@ class RuleEngine {
       rules.map((it) => it.id),
     );
 
-    const logRuleExecutionsPromise = this.ruleExecutionLogger.logRuleExecutions(
-      [...rulesToResults.entries()].map(([rule, result]) => ({
-        orgId: org.id,
-        rule: {
-          id: rule.id,
-          name: rule.name,
-          version: rule.latestVersion.version,
-          tags: rule.tags,
-        },
-        ruleInput,
-        environment,
-        result: result.conditionResults,
-        correlationId: executionsCorrelationId,
-        passed: result.passed,
-        policies: policiesByRule[rule.id] ?? [],
-      })),
-      sync,
-    );
+    // Catch at construction; awaited below via Promise.all.
+    const logRuleExecutionsPromise = this.ruleExecutionLogger
+      .logRuleExecutions(
+        [...rulesToResults.entries()].map(([rule, result]) => ({
+          orgId: org.id,
+          rule: {
+            id: rule.id,
+            name: rule.name,
+            version: rule.latestVersion.version,
+            tags: rule.tags,
+          },
+          ruleInput,
+          environment,
+          result: result.conditionResults,
+          correlationId: executionsCorrelationId,
+          passed: result.passed,
+          policies: policiesByRule[rule.id] ?? [],
+        })),
+        sync,
+      )
+      .catch((err) => {
+        this.tracer.logActiveSpanFailedIfAny(err);
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({
+          message: `logRuleExecutions failed orgId=${org.id} environment=${environment} correlationId=${executionsCorrelationId}`,
+          error: err,
+        });
+      });
 
     if (!shouldRunActions) {
       await logRuleExecutionsPromise;
@@ -391,7 +397,6 @@ class RuleEngine {
       );
     }
   }
-
 }
 
 export default inject(

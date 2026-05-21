@@ -7,6 +7,7 @@ import { type Dependencies } from '../../iocContainer/index.js';
 import { serializeDerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import { type ContentItemType } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 
 const { omit } = _;
@@ -21,7 +22,7 @@ describe('POST Content', () => {
     shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
     apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
     orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
-    models: Dependencies['Sequelize'],
+    userCleanup: Awaited<ReturnType<typeof createUser>>['cleanup'],
     ModerationConfigService: Dependencies['ModerationConfigService'],
     ApiKeyService: Dependencies['ApiKeyService'],
     analytics: Dependencies['DataWarehouseAnalytics'],
@@ -32,15 +33,12 @@ describe('POST Content', () => {
       request,
       shutdown,
       deps: {
-        Sequelize: models,
         DataWarehouseAnalytics: analytics,
         ModerationConfigService,
         ApiKeyService,
         KyselyPg,
       },
     } = await makeMockedServer());
-
-    const { User } = models;
 
     ({ apiKey, cleanup: orgCleanup } = await createOrg(
       { KyselyPg, ModerationConfigService, ApiKeyService },
@@ -81,19 +79,12 @@ describe('POST Content', () => {
       schemaFieldRoles: {},
     });
 
-    await User.create({
+    ({ cleanup: userCleanup } = await createUser(KyselyPg, orgId, {
       id: userId,
-      orgId,
-      password: faker.random.alphaNumeric(),
-      firstName: faker.name.firstName(),
-      lastName: faker.name.lastName(),
-      email: faker.internet.email(),
-      loginMethods: ['password'],
-    });
+    }));
   });
 
   afterAll(async () => {
-    const { User } = models;
     await orgCleanup();
     await ModerationConfigService.deleteItemType({
       orgId,
@@ -103,7 +94,7 @@ describe('POST Content', () => {
       orgId,
       itemTypeId: contentType2.id,
     });
-    await User.destroy({ where: { id: userId } });
+    await userCleanup();
     await shutdown();
   });
 
@@ -187,26 +178,29 @@ describe('POST Content', () => {
   // But I ran it manually once and it works.
   test.skip('should return the requested derived fields', async () => {
     const seedOrgId = 'e7c89ce7729';
-    const contentTypeId = uid();
+    const contentType = await ModerationConfigService.createContentType(
+      seedOrgId,
+      {
+        name: 'tes333t',
+        description: faker.datatype.string(),
+        schema: [
+          {
+            name: 'video',
+            type: 'VIDEO',
+            required: false,
+            container: null,
+          },
+        ],
+        schemaFieldRoles: {},
+      },
+    );
     const fieldId = serializeDerivedFieldSpec({
-      source: { type: 'CONTENT_FIELD', name: 'video', contentTypeId },
+      source: {
+        type: 'CONTENT_FIELD',
+        name: 'video',
+        contentTypeId: contentType.id,
+      },
       derivationType: 'VIDEO_TRANSCRIPTION',
-    });
-
-    const contentType = await models.ItemType.create({
-      id: contentTypeId,
-      name: 'tes333t',
-      description: faker.datatype.string(),
-      orgId: seedOrgId,
-      fields: [
-        {
-          name: 'video',
-          type: 'VIDEO',
-          required: false,
-          container: null,
-        },
-      ],
-      kind: 'CONTENT',
     });
 
     try {
@@ -226,7 +220,7 @@ describe('POST Content', () => {
         .expect(200)
         .expect(({ body }) => {
           expect(body.derivedFields[fieldId].field.source.contentTypeId).toBe(
-            contentTypeId,
+            contentType.id,
           );
 
           expect(body.derivedFields[fieldId].value).toMatchInlineSnapshot(
@@ -249,7 +243,10 @@ describe('POST Content', () => {
           throw e;
         });
     } finally {
-      await contentType.destroy();
+      await ModerationConfigService.deleteItemType({
+        orgId: seedOrgId,
+        itemTypeId: contentType.id,
+      });
     }
   });
 

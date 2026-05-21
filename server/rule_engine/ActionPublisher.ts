@@ -11,6 +11,7 @@ import {
   type MatchingRule,
   type Policy,
 } from '../services/analyticsLoggers/index.js';
+import { makeSyntheticUserSubmission } from '../services/itemInvestigationService/index.js';
 import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
@@ -56,6 +57,15 @@ export type ActionExecutionData<
   actorId?: string;
   reportedItems?: ItemIdentifier[];
   jobId?: string;
+  /**
+   * Validated moderator-supplied runtime parameter values for this action,
+   * propagated into the audit log alongside the action itself. Persisted as
+   * JSON in `analytics.ACTION_EXECUTIONS.parameters` so reviewers can see
+   * exactly what the action ran with.
+   */
+  parameterValues?: Record<string, unknown>;
+  /** Optional moderator note. Persisted in `analytics.ACTION_EXECUTIONS.actor_note`. */
+  actorNote?: string;
 };
 
 export type ActionResult<T extends ActionTargetItem> = {
@@ -68,8 +78,8 @@ export function getUserFromActionTarget(it: ActionTargetItem) {
   return it.itemType.kind === 'USER'
     ? { id: it.itemId, typeId: it.itemType.id }
     : isFullSubmission(it)
-    ? it.creator
-    : undefined;
+      ? it.creator
+      : undefined;
 }
 
 /**
@@ -91,8 +101,8 @@ export function getUserFromActionTargetItem(it: ActionTargetItem) {
   return it.itemType.kind === 'USER'
     ? { id: it.itemId, typeId: it.itemType.id }
     : isFullSubmission(it)
-    ? it.creator
-    : undefined;
+      ? it.creator
+      : undefined;
 }
 
 /**
@@ -112,6 +122,7 @@ class ActionPublisher {
     private ncmecService: Dependencies['NcmecService'],
     private itemInvestigationService: Dependencies['ItemInvestigationService'],
     private userStrikeService: Dependencies['UserStrikeService'],
+    private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {}
 
   /**
@@ -144,10 +155,23 @@ class ActionPublisher {
       actorId?: string;
       actorEmail?: string;
       decisionReason?: string;
+      /**
+       * Optional moderator-authored note explaining why the action(s) ran.
+       * Forwarded to CUSTOM_ACTION webhooks as `actorNote` and persisted by
+       * the audit logger (PR 3).
+       */
+      actorNote?: string;
     },
   ): Promise<ActionResult<U>[]> {
-    const { orgId, correlationId, targetItem, sync, actorId, actorEmail } =
-      executionContext;
+    const {
+      orgId,
+      correlationId,
+      targetItem,
+      sync,
+      actorId,
+      actorEmail,
+      actorNote,
+    } = executionContext;
 
     // Apply user strikes from the actions that were triggered.
     // we do this without awaiting to not block the action publishing
@@ -211,6 +235,7 @@ class ActionPublisher {
                 reportedItems,
                 relatedRules,
                 customMrtApiParamDecisionPayload,
+                actorNote,
               );
             },
           );
@@ -241,6 +266,11 @@ class ActionPublisher {
                 correlationId,
                 actorId,
                 jobId,
+                // Audit-trail context: persist what the moderator supplied
+                // alongside the action itself so reviewers can see why and
+                // with what values it ran (PR 3 for #377).
+                parameterValues: customMrtApiParamDecisionPayload,
+                actorNote,
               },
             ],
             failed: success === false,
@@ -272,6 +302,7 @@ class ActionPublisher {
       string,
       string | boolean | unknown
     >,
+    actorNote?: string,
   ): Promise<boolean> {
     return this.tracer.addActiveSpan(
       { resource: 'actionPublisher', operation: 'publishAction' },
@@ -295,6 +326,50 @@ class ActionPublisher {
               latestSubmissionOnly: true,
             })
           )?.latestSubmission;
+        };
+
+        // USER target with no record: synthesize a minimal submission from
+        // the id. Returns undefined for non-USER targets — MRT needs the
+        // real content submission, so it must fail loudly for CONTENT.
+        const getFullItemOrSyntheticUserForUserTarget = async () => {
+          const fullItem = await getFullItem();
+          if (fullItem) {
+            return fullItem;
+          }
+          if (targetItem.itemType.kind !== 'USER') {
+            return undefined;
+          }
+          const userItemType = await this.getItemTypeEventuallyConsistent({
+            orgId,
+            typeSelector: { id: targetItem.itemType.id },
+          });
+          if (!userItemType || userItemType.kind !== 'USER') {
+            return undefined;
+          }
+          return makeSyntheticUserSubmission(targetItem.itemId, userItemType);
+        };
+
+        // NCMEC fallback: USER target → synthetic user (as above); CONTENT
+        // target → resolve the creator via ACTION_EXECUTIONS and synthesize a
+        // user submission keyed on the creator id. THREAD has no single
+        // owner, so we refuse.
+        const getFullItemOrSyntheticUserForNcmec = async () => {
+          const userTarget = await getFullItemOrSyntheticUserForUserTarget();
+          if (userTarget) {
+            return userTarget;
+          }
+          if (targetItem.itemType.kind !== 'CONTENT') {
+            return undefined;
+          }
+          const inferred =
+            await this.itemInvestigationService.synthesizeUserItemFromContentTarget(
+              {
+                orgId,
+                itemId: targetItem.itemId,
+                itemTypeId: targetItem.itemType.id,
+              },
+            );
+          return inferred?.latestSubmission;
         };
         const actionSource = getSourceType(
           correlationId,
@@ -321,6 +396,10 @@ class ActionPublisher {
                 action: { id: action.id },
                 custom: customBodyWithMrtParams,
                 actorEmail,
+                // Top-level (not nested under `custom`) so the moderator note
+                // can't collide with a user-defined parameter named
+                // `actorNote`. Omitted from the body entirely when absent.
+                ...(actorNote !== undefined ? { actorNote } : {}),
               };
 
               const response = await this.fetchHTTP({
@@ -356,11 +435,14 @@ class ActionPublisher {
               }
 
               return true;
-            case ActionType.ENQUEUE_TO_MRT:
-              const fullItemForMrt = await getFullItem();
+            case ActionType.ENQUEUE_TO_MRT: {
+              const fullItemForMrt =
+                await getFullItemOrSyntheticUserForUserTarget();
               if (!fullItemForMrt) {
                 throw new Error(
-                  "Actions without full item submissions can't be enqueued to MRT yet",
+                  `Cannot enqueue to MRT: no submission record for ${targetItem.itemType.kind} ` +
+                    `item ${targetItem.itemId} (type ${targetItem.itemType.id}). ` +
+                    `POST the item to the items endpoint first.`,
                 );
               }
 
@@ -397,11 +479,15 @@ class ActionPublisher {
               });
 
               return true;
-            case ActionType.ENQUEUE_TO_NCMEC:
-              const fullItemForNcmec = await getFullItem();
+            }
+            case ActionType.ENQUEUE_TO_NCMEC: {
+              const fullItemForNcmec =
+                await getFullItemOrSyntheticUserForNcmec();
               if (!fullItemForNcmec) {
                 throw new Error(
-                  "Actions without full item submissions can't be enqueued to NCMEC yet",
+                  `Cannot enqueue to NCMEC: no submission record for ${targetItem.itemType.kind} ` +
+                    `item ${targetItem.itemId} (type ${targetItem.itemType.id}). ` +
+                    `POST the item to the items endpoint first.`,
                 );
               }
 
@@ -430,6 +516,7 @@ class ActionPublisher {
               });
 
               return true;
+            }
             case ActionType.ENQUEUE_AUTHOR_TO_MRT:
               const fullItemForAuthor = await getFullItem();
               if (
@@ -540,6 +627,23 @@ class ActionPublisher {
           }
         } catch (e) {
           span.recordException(e as Exception);
+          // Log to stderr so operators see action failures without having
+          // to pull traces. Identifiers only, no item `data`.
+          // eslint-disable-next-line no-console
+          console.error(
+            jsonStringify({
+              event: 'actionPublisher.publishAction.failed',
+              orgId,
+              actionId: action.id,
+              actionName: action.name,
+              actionType: action.actionType,
+              itemId: targetItem.itemId,
+              itemTypeId: targetItem.itemType.id,
+              itemTypeKind: targetItem.itemType.kind,
+              correlationId,
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          );
           return false;
         }
       },
@@ -557,7 +661,8 @@ export default inject(
     'NcmecService',
     'ItemInvestigationService',
     'UserStrikeService',
+    'getItemTypeEventuallyConsistent',
   ],
   ActionPublisher,
 );
-export { type ActionPublisher };
+export { ActionPublisher };

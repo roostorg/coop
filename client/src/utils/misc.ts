@@ -93,3 +93,15 @@ export type OmitRecursively<T extends any, K extends PropertyKey> = Omit<
 export const __throw = (x: unknown): never => {
   throw x;
 };
+
+/** Used by global keyboard handlers to avoid hijacking single-key shortcuts while a form control has focus. */
+export function isTypingInEditableElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    return true;
+  }
+  return target.isContentEditable;
+}

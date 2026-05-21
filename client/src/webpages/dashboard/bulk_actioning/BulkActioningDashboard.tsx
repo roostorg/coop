@@ -4,7 +4,12 @@ import orderBy from 'lodash/orderBy';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
+import { type JsonObject } from 'type-fest';
 
+import ActionParameterInputs, {
+  type ActionParameterValues,
+  findMissingRequiredParameters,
+} from '../../../components/ActionParameterInputs';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import { selectFilterByLabelOption } from '../components/antDesignUtils';
 import CoopButton from '../components/CoopButton';
@@ -40,6 +45,21 @@ gql`
         ... on ActionBase {
           id
           name
+          parameters {
+            name
+            displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
+          }
         }
         ... on CustomAction {
           itemTypes {
@@ -103,6 +123,10 @@ export default function BulkActioningDashboard() {
   const [selectedActionIds, setSelectedActionIds] = useState<string[]>([]);
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<string[]>([]);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [parametersByActionId, setParametersByActionId] = useState<
+    Record<string, ActionParameterValues>
+  >({});
+  const [moderatorNote, setModeratorNote] = useState<string>('');
 
   const { data: queryData, loading: queryLoading } =
     useGQLBulkActionsFormDataQuery();
@@ -125,6 +149,8 @@ export default function BulkActioningDashboard() {
     setInputIds([]);
     setSelectedActionIds([]);
     setSelectedPolicyIds([]);
+    setParametersByActionId({});
+    setModeratorNote('');
     bulkActionMutationReset();
   };
 
@@ -148,6 +174,14 @@ export default function BulkActioningDashboard() {
           actionIds: selectedActionIds,
           itemIds: inputIds,
           policyIds: selectedPolicyIds ?? [],
+          // See `ItemAction.tsx` for why this cast is necessary; the runtime
+          // shape is JSON-serializable but TS can't infer it from the
+          // discriminated parameter-type union without a heavy generic.
+          parameters:
+            Object.keys(parametersByActionId).length > 0
+              ? (parametersByActionId as unknown as JsonObject)
+              : undefined,
+          note: moderatorNote.trim() === '' ? undefined : moderatorNote.trim(),
         },
       },
     });
@@ -205,6 +239,25 @@ export default function BulkActioningDashboard() {
           ),
         )
       : [];
+
+  // Plain non-memoized derivations: cheap to compute every render and
+  // unconditional `useMemo` would have to live above the `if (queryLoading)`
+  // early return, which would force restructuring this whole file.
+  const selectedActionsWithParams = actions.filter(
+    (action) =>
+      selectedActionIds.includes(action.id) && action.parameters.length > 0,
+  );
+  const missingRequiredLabels: string[] = (() => {
+    const out: string[] = [];
+    for (const action of selectedActionsWithParams) {
+      const missing = findMissingRequiredParameters(
+        action.parameters,
+        parametersByActionId[action.id] ?? {},
+      );
+      out.push(...missing.map((label) => `"${action.name}" → ${label}`));
+    }
+    return out;
+  })();
 
   const actionSelector = (
     <Select<string[]>
@@ -386,7 +439,15 @@ export default function BulkActioningDashboard() {
               disabled={
                 !inputIds.length ||
                 !selectedItemTypeId ||
-                !selectedActionIds.length
+                !selectedActionIds.length ||
+                missingRequiredLabels.length > 0
+              }
+              disabledTooltipTitle={
+                missingRequiredLabels.length > 0
+                  ? `Fill in required details: ${missingRequiredLabels.join(
+                      ', ',
+                    )}`
+                  : undefined
               }
             />
           }
@@ -413,6 +474,54 @@ export default function BulkActioningDashboard() {
         }
       />
       {actionSelector}
+      {selectedActionsWithParams.length > 0 && (
+        <div className="mt-6 flex flex-col gap-4">
+          <FormSectionHeader
+            title="Action Details"
+            subtitle="Fill in the details below for each selected action that needs them."
+          />
+          {selectedActionsWithParams.map((action) => (
+            <div
+              key={action.id}
+              className="rounded-xl border border-gray-200 p-3"
+            >
+              <div className="mb-2 text-sm font-semibold">
+                "{action.name}" details
+              </div>
+              <ActionParameterInputs
+                parameters={action.parameters}
+                values={parametersByActionId[action.id] ?? {}}
+                onChange={(next) =>
+                  setParametersByActionId((prev) => ({
+                    ...prev,
+                    [action.id]: next,
+                  }))
+                }
+                idPrefix={`bulk-action-${action.id}`}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {selectedActionIds.length > 0 && (
+        <div className="mt-6 flex flex-col">
+          <label
+            htmlFor="bulk-actioning-moderator-note"
+            className="mb-1 text-sm font-medium text-gray-700"
+          >
+            Note (optional)
+          </label>
+          <Input.TextArea
+            id="bulk-actioning-moderator-note"
+            placeholder="Sent to the action's webhook as `actorNote` and persisted to the audit log."
+            rows={2}
+            maxLength={5000}
+            value={moderatorNote}
+            onChange={(e) => setModeratorNote(e.target.value)}
+            className="w-3/4"
+          />
+        </div>
+      )}
       <div className="flex h-px mt-12 bg-slate-200 mb-9" />
       <FormSectionHeader
         title="Policy"

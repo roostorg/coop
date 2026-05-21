@@ -843,20 +843,28 @@ export function getSignalName(
  */
 export function flattenRuleExecutionSampleForCSV(
   topLevelKey: string | null,
-  json: object,
+  json: object | null | undefined,
 ) {
   let result: { [key: string]: string } = {};
+  if (json == null || Array.isArray(json)) {
+    if (topLevelKey != null) {
+      result[topLevelKey] = json == null ? '' : JSON.stringify(json);
+    }
+    return result;
+  }
   Object.entries(json).forEach(([key, value]) => {
-    if (typeof value === 'object') {
+    const fullKey = topLevelKey ? `${topLevelKey}:${key}` : key;
+    if (value != null && typeof value === 'object' && !Array.isArray(value)) {
       result = {
         ...omit(result, key),
-        ...flattenRuleExecutionSampleForCSV(
-          topLevelKey ? `${topLevelKey}:${key}` : key,
-          value,
-        ),
+        ...flattenRuleExecutionSampleForCSV(fullKey, value),
       };
+    } else if (Array.isArray(value)) {
+      result[fullKey] = JSON.stringify(value);
+    } else if (value == null) {
+      result[fullKey] = '';
     } else {
-      result[topLevelKey ? `${topLevelKey}:${key}` : key] = value;
+      result[fullKey] = value;
     }
   });
   return result;

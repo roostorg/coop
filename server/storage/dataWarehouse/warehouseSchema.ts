@@ -294,6 +294,18 @@ type ActionExecutionsRow = {
   POLICIES: ReadonlyDeep<ActionExecutionPolicy[]>;
   FAILED: boolean;
   JOB_ID: string | null;
+  /**
+   * JSON-encoded `name -> value` map of moderator-supplied parameter values
+   * for this execution. Empty object when no parameters were supplied (the
+   * common case for actions without a parameter spec).
+   */
+  PARAMETERS: JsonOf<Record<string, unknown>>;
+  /**
+   * Optional free-text note from the moderator. Surfaces in the audit trail
+   * alongside `actor_id` so reviewers can see why an action ran without
+   * cross-referencing other systems.
+   */
+  ACTOR_NOTE: string | null;
   TS: ColumnType<WarehouseDate, number, never>;
   DS: ColumnType<FilterableWarehouseDate, string, never>;
 };

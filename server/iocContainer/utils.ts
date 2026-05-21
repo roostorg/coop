@@ -691,3 +691,24 @@ export function safeGetEnvInt(varName: string, defaultValue: number): number {
   }
   return parsed;
 }
+
+/**
+ * Like `safeGetEnvInt` but allows `0`. Use when zero is a meaningful value
+ * (e.g. disabling retries, no timeout).
+ */
+export function safeGetEnvNonNegativeInt(
+  varName: string,
+  defaultValue: number,
+): number {
+  const raw = process.env[varName];
+  if (raw === undefined) return defaultValue;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Invalid env var ${varName}: expected a non-negative integer, got ${jsonStringify(raw)}. Using default value ${defaultValue}.`,
+    );
+    return defaultValue;
+  }
+  return parsed;
+}

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS signal_auth_service.zentropi_configs (
     labeler_versions JSONB DEFAULT '[]'
 );
 
-ALTER TABLE signal_auth_service.zentropi_configs OWNER TO postgres;
+ALTER TABLE signal_auth_service.zentropi_configs OWNER TO CURRENT_USER;
 
 ALTER TABLE ONLY signal_auth_service.zentropi_configs
     ADD CONSTRAINT zentropi_configs_pkey PRIMARY KEY (org_id);

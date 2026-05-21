@@ -132,6 +132,15 @@ process.on('uncaughtException', (err, _) => {
   process.exit(1);
 });
 
+// Log but don't exit; a stray rejection shouldn't kill the server.
+process.on('unhandledRejection', (reason) => {
+  // eslint-disable-next-line no-restricted-syntax
+  logErrorJson({
+    message: 'UnhandledRejection',
+    error: reason instanceof Error ? reason : new Error(String(reason)),
+  });
+});
+
 process.once('SIGTERM', shutdownOnce);
 process.once('SIGINT', shutdownOnce);
 

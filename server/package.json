@@ -18,7 +18,8 @@
     "lint": "eslint \"./**/*.{ts,tsx,js}\"",
     "runWorkerOrJob": "node --loader ts-node/esm --require dotenv/config bin/run-worker-or-job.ts",
     "create-org": "node --loader ts-node/esm --require dotenv/config bin/create-org-and-user.ts",
-    "get-invite": "node --loader ts-node/esm --require dotenv/config bin/get-invite-token.ts"
+    "get-invite": "node --loader ts-node/esm --require dotenv/config bin/get-invite-token.ts",
+    "recover-mrt-queue": "node --loader ts-node/esm --require dotenv/config bin/recover-mrt-queue.ts"
   },
   "author": "Roostorg",
   "license": "ISC",
@@ -78,12 +79,11 @@
     "generic-pool": "^3.8.2",
     "graphql": "^16.13.2",
     "graphql-depth-limit": "^1.1.0",
-    "graphql-passport": "^0.6.4",
     "graphql-scalars": "^1.19.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.2.4",
     "jsonwebtoken": "^9.0.3",
-    "kysely": "^0.28.16",
+    "kysely": "^0.28.17",
     "latlon-geohash": "^2.0.0",
     "lodash": "^4.18.1",
     "lru_map": "^0.4.1",
@@ -96,7 +96,6 @@
     "pg-cursor": "^2.7.4",
     "pipeline-segment": "^0.0.6",
     "safe-stable-stringify": "^2.4.2",
-    "sequelize": "^6.37.8",
     "size-limited-map": "^2.0.0",
     "stream-json": "^1.8.0",
     "stream-to-async-iterator": "^1.0.0",
@@ -165,6 +164,10 @@
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
     },
     "uuid": "^14.0.0",
-    "fast-xml-parser": "^5.7.0"
+    "fast-xml-parser": "^5.8.0",
+    "axios": "^1.16.0",
+    "fast-uri": "^3.1.2",
+    "protobufjs": "^7.5.8",
+    "@protobufjs/utf8": "^1.1.1"
   }
 }

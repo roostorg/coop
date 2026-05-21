@@ -3,10 +3,11 @@
  */
 
 /* eslint-disable max-classes-per-file */
+import { type Kysely } from 'kysely';
+
 import {
   ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
   NoOpAnalyticsAdapter,
-  type AnalyticsEventInput,
   type IAnalyticsAdapter,
 } from '../../plugins/analytics/index.js';
 import {
@@ -71,6 +72,24 @@ export type DataWarehouseConfig =
       analyticsProvider?: AnalyticsProvider;
     };
 
+class NoOpKyselyDialect implements IDataWarehouseDialect {
+  getKyselyInstance(): Kysely<any> {
+    // Return a proxy so services can hold a Kysely reference without
+    // crashing at startup; any attempt to build or execute a query throws.
+    return new Proxy({} as Kysely<any>, {
+      get(_target, prop) {
+        if (prop === 'destroy') return async () => {};
+        if (prop === 'then') return undefined; // not thenable
+        if (typeof prop === 'symbol') return undefined;
+        return () => {
+          throw new Error('NoOp dialect: Kysely queries are not supported');
+        };
+      },
+    });
+  }
+  async destroy(): Promise<void> {}
+}
+
 class WarehouseAdapterBridge implements IDataWarehouse {
   constructor(
     private readonly provider: DataWarehouseProvider,
@@ -100,7 +119,7 @@ class WarehouseAdapterBridge implements IDataWarehouse {
     return this.adapter.transaction(async (warehouseQuery) => {
       return fn(async (statement, parameters = []) => {
         const rows = await warehouseQuery(statement, parameters);
-        return Array.from(rows) as unknown[];
+        return Array.from(rows);
       });
     });
   }
@@ -135,7 +154,7 @@ class AnalyticsAdapterBridge implements IDataWarehouseAnalytics {
   ): Promise<void> {
     await this.adapter.writeEvents(
       tableName,
-      rows as readonly AnalyticsEventInput[],
+      rows,
       config?.batchTimeout !== undefined
         ? { batchTimeout: config.batchTimeout }
         : undefined,
@@ -225,7 +244,7 @@ export class DataWarehouseFactory {
       case 'postgresql':
         throw new Error('PostgreSQL Kysely dialect not yet implemented');
       case 'noop':
-        throw new Error('NoOp provider does not support Kysely dialect');
+        return new NoOpKyselyDialect();
       default:
         return assertUnreachable(
           config,
@@ -244,8 +263,7 @@ export class DataWarehouseFactory {
     config: DataWarehouseConfig,
     dialect?: IDataWarehouseDialect,
   ): IDataWarehouseAnalytics {
-    const analyticsProvider =
-      config.analyticsProvider ?? (config.provider as AnalyticsProvider);
+    const analyticsProvider = config.analyticsProvider ?? config.provider;
 
     switch (analyticsProvider) {
       case 'noop':

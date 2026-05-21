@@ -27,6 +27,7 @@ import {
   GQLConditionConjunction,
   GQLRuleStatus,
   GQLUserPermission,
+  namedOperations,
   useGQLContentRuleFormConfigQuery,
   useGQLCreateContentRuleMutation,
   useGQLCreateUserRuleMutation,
@@ -41,7 +42,6 @@ import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { DAY, HOUR, MONTH, WEEK } from '../../../../utils/time';
 import { ModalInfo } from '../../types/ModalInfo';
-import { RULES_QUERY } from '../dashboard/RulesDashboard';
 import TextTokenInput from '../TextTokenInput';
 import {
   ConditionInput,
@@ -644,7 +644,7 @@ export default function RuleForm() {
   const onDeleteRule = (id: string) => {
     deleteRule({
       variables: { id },
-      refetchQueries: [{ query: RULES_QUERY }],
+      refetchQueries: [namedOperations.Query.Rules],
     });
   };
 
@@ -918,7 +918,7 @@ export default function RuleForm() {
           expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
         },
       },
-      refetchQueries: [{ query: RULES_QUERY }],
+      refetchQueries: [namedOperations.Query.Rules],
     });
   };
 
@@ -943,7 +943,7 @@ export default function RuleForm() {
         },
       },
       refetchQueries: [
-        { query: RULES_QUERY },
+        namedOperations.Query.Rules,
         { query: RULE_QUERY, variables: { id } },
       ],
     });
@@ -965,7 +965,7 @@ export default function RuleForm() {
           expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
         },
       },
-      refetchQueries: [{ query: RULES_QUERY }],
+      refetchQueries: [namedOperations.Query.Rules],
     });
   };
 
@@ -989,7 +989,7 @@ export default function RuleForm() {
         },
       },
       refetchQueries: [
-        { query: RULES_QUERY },
+        namedOperations.Query.Rules,
         { query: RULE_QUERY, variables: { id } },
       ],
     });
@@ -1870,7 +1870,8 @@ export default function RuleForm() {
   */
 
   return (
-    <div className="flex flex-col test-start">
+    // relative to prevent overflow/scrolling issues; see issue #168
+    <div className="flex flex-col test-start relative">
       <Helmet>
         <title>{id == null ? 'Create Rule' : 'Update Rule'}</title>
       </Helmet>

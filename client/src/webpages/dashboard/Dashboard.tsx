@@ -570,7 +570,7 @@ export default function Dashboard() {
       title: 'Policies' as const,
       urlPath: 'policies',
       icon: SparklesFilled,
-      requiredPermissions: [GQLUserPermission.ManageOrg],
+      requiredPermissions: [GQLUserPermission.ManagePolicies],
     },
     !isDemoOrg && {
       title: 'Review Console' as const,
@@ -649,7 +649,7 @@ export default function Dashboard() {
             }
           : null,
         {
-          title: 'Employee Safety' as const,
+          title: 'Wellness' as const,
           urlPath: 'org_safety_settings',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
@@ -739,14 +739,16 @@ export default function Dashboard() {
                   : '/dashboard'
               }
             >
-              <div className="w-full max-w-[1800px]">
+              {/* min-w-0 lets descendants' overflow-x-auto scroll instead of
+                  the whole page when content is wider than the viewport. */}
+              <div className="w-full max-w-[1800px] min-w-0">
                 {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
               </div>
             </ErrorBoundary>
           </div>
         </>
       ) : (
-        <main className="flex flex-col flex-grow overflow-y-auto min-h-0">
+        <main className="flex flex-col flex-grow overflow-auto min-h-0">
           <div className="p-10">
             <ErrorBoundary
               key={pathname}
@@ -754,7 +756,7 @@ export default function Dashboard() {
               buttonTitle={currentRouteHandle?.error?.buttonTitle}
               buttonLinkPath={currentRouteHandle?.error?.buttonLinkPath}
             >
-              <div className="w-full max-w-[1800px]">
+              <div className="w-full max-w-[1800px] min-w-0">
                 <Outlet />
               </div>
             </ErrorBoundary>

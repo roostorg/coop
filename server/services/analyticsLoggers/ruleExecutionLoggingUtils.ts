@@ -1,7 +1,6 @@
 import { type ReadonlyDeep } from 'type-fest';
 
 import { isConditionSet } from '../../condition_evaluator/condition.js';
-import { type LocationArea } from '../../models/types/locationArea.js';
 import { type DerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import {
   type ConditionResult,
@@ -20,6 +19,7 @@ import {
   type NonEmptyArray,
   type ReplaceDeep,
 } from '../../utils/typescript-types.js';
+import { type LocationArea } from '../moderationConfigService/index.js';
 
 type ConditionResultAsLogged = ReplaceDeep<
   ConditionResult,

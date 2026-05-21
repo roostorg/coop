@@ -19,6 +19,9 @@ export default function Table(
     customMaxHeight?: `max-h-[${number}px]`;
     disableFilter?: boolean;
     containerClassName?: string;
+    /** Force the horizontal scrollbar to always render. Opt-in because tables
+     * that always fit the viewport would otherwise show an unnecessary scrollbar. */
+    alwaysShowScrollbar?: boolean;
   } & (
     | {
         isCollapsed?: boolean;
@@ -38,6 +41,7 @@ export default function Table(
     customMaxHeight,
     disableFilter,
     containerClassName,
+    alwaysShowScrollbar,
   } = props;
   const {
     isCollapsed = undefined,
@@ -63,7 +67,9 @@ export default function Table(
   };
 
   return (
-    <div className={`flex flex-col items-start max-w-full mb-8 ${containerClassName ?? 'w-fit'}`}>
+    <div
+      className={`flex flex-col items-start max-w-full mb-8 ${containerClassName ?? 'w-fit'}`}
+    >
       <div
         className={`flex w-full pb-2 items-start gap-4 ${
           topLeftComponent || topRightComponent
@@ -81,11 +87,11 @@ export default function Table(
         )}
         {topRightComponent}
       </div>
-      <div className="w-full border border-gray-200 border-solid rounded-md">
+      <div className="w-full min-w-0 border border-gray-200 border-solid rounded-md">
         <div
-          className={`overflow-x-auto overflow-y-auto rounded-md ${
-            customMaxHeight ?? 'max-h-[1200px]'
-          }`}
+          className={`min-w-0 overflow-x-auto overflow-y-auto rounded-md ${
+            alwaysShowScrollbar ? 'scrollbar-show' : ''
+          } ${customMaxHeight ?? 'max-h-[1200px]'}`}
         >
           <table {...getTableProps()} className="w-full">
             <thead className="sticky top-0 z-10 bg-slate-50">
@@ -128,8 +134,8 @@ export default function Table(
                             index === 0
                               ? 'rounded-tl-md'
                               : index === headerGroup.headers.length - 1
-                              ? 'rounded-tr-md'
-                              : ''
+                                ? 'rounded-tr-md'
+                                : ''
                           }`}
                         >
                           <div className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3">
@@ -179,8 +185,8 @@ export default function Table(
                               rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
                             }`
                         : rowIndex % 2 === 0
-                        ? 'bg-white'
-                        : 'bg-slate-50'
+                          ? 'bg-white'
+                          : 'bg-slate-50'
                     }
                     onClick={() => selectRow(row, rowIndex)}
                   >
@@ -205,8 +211,8 @@ export default function Table(
                               rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
                             }`
                         : rowIndex % 2 === 0
-                        ? 'bg-white'
-                        : 'bg-slate-50'
+                          ? 'bg-white'
+                          : 'bg-slate-50'
                     }
                     onClick={() => selectRow(row, rowIndex)}
                   >

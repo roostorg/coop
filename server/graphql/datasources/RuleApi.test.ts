@@ -35,7 +35,7 @@ describe('RuleAPI', () => {
       uid(),
     );
     const { user, cleanup: userCleanup } = await createUser(
-      deps.Sequelize,
+      deps.KyselyPg,
       org.id,
     );
     const { itemTypes, cleanup: itemTypesCleanup } =
@@ -264,14 +264,17 @@ describe('RuleAPI', () => {
       );
 
       const now = new Date();
-      await deps.Sequelize.Backtest.create({
-        id: uid(),
-        ruleId: rule.id,
-        creatorId: user.id,
-        sampleDesiredSize: 10,
-        sampleStartAt: now,
-        sampleEndAt: now,
-      });
+      await deps.KyselyPg.insertInto('public.backtests')
+        .values({
+          id: uid(),
+          rule_id: rule.id,
+          creator_id: user.id,
+          sample_desired_size: 10,
+          sample_start_at: now,
+          sample_end_at: now,
+          updated_at: now,
+        })
+        .execute();
 
       await expect(
         deps.RuleAPIDataSource.updateContentRule({

@@ -79,7 +79,7 @@ describe('userValidation', () => {
     test('rejects unknown loginMethods entry', () => {
       const result = validateUserCreateInput({
         ...validInput,
-        loginMethods: ['saml', 'oauth' as never],
+        loginMethods: ['saml', 'oauth'],
       });
       expect(result.ok).toBe(false);
       if (!result.ok) {

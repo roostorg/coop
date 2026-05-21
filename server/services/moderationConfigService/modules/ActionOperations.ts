@@ -17,6 +17,11 @@ import { assertUnreachable, removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Action, type CustomAction } from '../index.js';
 import { type ItemTypeKind } from '../types/itemTypes.js';
+import {
+  type RawActionParameterInput,
+  serializeParameters,
+  validateActionParameters,
+} from './actionParametersValidation.js';
 
 function assertCustomAction(action: Action): asserts action is CustomAction {
   if (action.actionType !== 'CUSTOM_ACTION') {
@@ -25,6 +30,37 @@ function assertCustomAction(action: Action): asserts action is CustomAction {
     );
   }
 }
+
+// Seeded once per org by upsertBuiltInActions; not creatable/editable via the
+// CRUD APIs, which are scoped to action_type='CUSTOM_ACTION'.
+export const BUILT_IN_ACTIONS = [
+  {
+    actionType: 'ENQUEUE_TO_MRT',
+    name: 'Enqueue Item to Manual Review',
+    description:
+      'Sends the matched item directly to a manual review queue, routed by the org\u2019s MRT routing rules.',
+    appliesToAllItemsOfKind: ['CONTENT', 'USER', 'THREAD'] as const,
+  },
+  {
+    actionType: 'ENQUEUE_AUTHOR_TO_MRT',
+    name: 'Enqueue Author for Manual Review',
+    description:
+      'Sends the author of the matched content to a manual review queue, with the matched item attached as context.',
+    appliesToAllItemsOfKind: ['CONTENT'] as const,
+  },
+  {
+    actionType: 'ENQUEUE_TO_NCMEC',
+    name: 'Enqueue for NCMEC Review',
+    description:
+      'Sends the user associated with the matched item to the NCMEC review flow, gathering their media for reporting.',
+    appliesToAllItemsOfKind: ['CONTENT', 'USER'] as const,
+  },
+] as const satisfies readonly {
+  actionType: Exclude<Action['actionType'], 'CUSTOM_ACTION'>;
+  name: string;
+  description: string;
+  appliesToAllItemsOfKind: readonly ItemTypeKind[];
+}[];
 
 const actionDbSelection = [
   'id',
@@ -87,8 +123,14 @@ export default class ActionOperations {
       callbackUrlBody: JsonObject | null;
       applyUserStrikes?: boolean;
       itemTypeIds?: readonly string[];
+      // AJV narrows this to `readonly ActionParameter[]` and rejects nulls /
+      // unknown fields; the GraphQL input shape is wider (nullable optionals)
+      // so we accept arbitrary property bags here.
+      parameters?: readonly RawActionParameterInput[] | null;
     },
   ): Promise<CustomAction> {
+    const parameters = validateActionParameters(input.parameters ?? null);
+
     return this.transactionWithRetry(async (trx) => {
       try {
         const query = trx
@@ -104,6 +146,7 @@ export default class ActionOperations {
             callback_url_body: input.callbackUrlBody,
             penalty: 'NONE',
             apply_user_strikes: input.applyUserStrikes ?? false,
+            custom_mrt_api_params: serializeParameters(parameters),
             updated_at: new Date(),
           })
           .returning(actionDbSelection);
@@ -135,6 +178,56 @@ export default class ActionOperations {
     });
   }
 
+  // Idempotent: existing built-ins are detected by (org_id, action_type).
+  async upsertBuiltInActions(orgId: string): Promise<readonly Action[]> {
+    return this.transactionWithRetry(async (trx) => {
+      const existingByType = new Set(
+        (
+          (await trx
+            .selectFrom('public.actions')
+            .select('action_type as actionType')
+            .where('org_id', '=', orgId)
+            .where('action_type', '!=', 'CUSTOM_ACTION')
+            .execute()) as { actionType: Action['actionType'] }[]
+        ).map((row) => row.actionType),
+      );
+
+      const toInsert = BUILT_IN_ACTIONS.filter(
+        (b) => !existingByType.has(b.actionType),
+      ).map((b) => ({
+        id: uid(),
+        name: b.name,
+        description: b.description,
+        org_id: orgId,
+        action_type: b.actionType,
+        callback_url: null,
+        callback_url_headers: null,
+        callback_url_body: null,
+        penalty: 'NONE' as const,
+        apply_user_strikes: false,
+        applies_to_all_items_of_kind: [...b.appliesToAllItemsOfKind],
+        updated_at: new Date(),
+      }));
+
+      if (toInsert.length > 0) {
+        await trx
+          .insertInto('public.actions')
+          .values(toInsert)
+          .onConflict((oc) => oc.doNothing())
+          .execute();
+      }
+
+      const refreshed = (await trx
+        .selectFrom('public.actions')
+        .select(actionDbSelection)
+        .where('org_id', '=', orgId)
+        .where('action_type', '!=', 'CUSTOM_ACTION')
+        .execute()) as ActionDbResult[];
+
+      return refreshed.map((row) => this.#dbResultToAction(row));
+    });
+  }
+
   async updateCustomAction(opts: {
     orgId: string;
     actionId: string;
@@ -145,10 +238,16 @@ export default class ActionOperations {
       callbackUrlHeaders?: JsonObject | null;
       callbackUrlBody?: JsonObject | null;
       applyUserStrikes?: boolean;
+      // `undefined` = leave unchanged. Pass `[]` to clear all parameters.
+      parameters?: readonly RawActionParameterInput[] | null;
     };
     itemTypeIds?: readonly string[] | undefined;
   }): Promise<CustomAction> {
     const { orgId, actionId, patch, itemTypeIds } = opts;
+    const validatedParameters =
+      patch.parameters === undefined
+        ? undefined
+        : validateActionParameters(patch.parameters);
     return this.transactionWithRetry(async (trx) => {
       const existing = (await trx
         .selectFrom('public.actions')
@@ -169,6 +268,10 @@ export default class ActionOperations {
         callback_url_headers: patch.callbackUrlHeaders,
         callback_url_body: patch.callbackUrlBody,
         apply_user_strikes: patch.applyUserStrikes,
+        custom_mrt_api_params:
+          validatedParameters === undefined
+            ? undefined
+            : serializeParameters(validatedParameters),
       });
       const hasUserFields = Object.keys(setPayload).length > 0;
       const touchesJunction = itemTypeIds !== undefined;

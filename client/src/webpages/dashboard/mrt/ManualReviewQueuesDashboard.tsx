@@ -1,10 +1,11 @@
 import { StarFilled, TapFilled } from '@/icons';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import Star from '@/icons/lni/Web and Technology/star.svg?react';
+import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
+import Input from 'antd/lib/input';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
@@ -18,6 +19,7 @@ import TabBar from '../components/TabBar';
 import { ColumnProps, DefaultColumnFilter } from '../components/table/filters';
 import { dateSort, integerSort, stringSort } from '../components/table/sort';
 import Table from '../components/table/Table';
+import CopyTextComponent from '@/components/common/CopyTextComponent';
 
 import {
   GQLUserPermission,
@@ -116,41 +118,61 @@ type DeleteAllJobsModalInfo = {
   visible: boolean;
 };
 
+function getQueueName(
+  queues: ReadonlyArray<{ id: string; name: string }> | null | undefined,
+  id: string | undefined,
+): string | null {
+  if (queues == null || id == null) return null;
+  return queues.find((it) => it.id === id)?.name ?? null;
+}
+
 const MRTQueuesDashboardTabs = ['DEFAULT', 'APPEALS'] as const;
 type MRTQueuesDashboardTab = (typeof MRTQueuesDashboardTabs)[number];
 
 // Utility function to format time ago
 const formatTimeAgo = (date: string | Date | null | undefined): string => {
   if (!date) return 'N/A';
-  
+
   const now = new Date().getTime();
   const then = new Date(date).getTime();
   const diffMs = now - then;
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-  
+
   if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  if (diffMins < 60)
+    return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  if (diffHours < 24)
+    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
   return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
 };
 
 // Get color class based on age
 const getAgeColorClass = (date: string | Date | null | undefined): string => {
   if (!date) return 'text-gray-500';
-  
+
   const now = new Date().getTime();
   const then = new Date(date).getTime();
   const diffHours = (now - then) / 3600000;
-  
+
   if (diffHours > 24) return 'text-red-600 font-semibold'; // Over 1 day - red
   if (diffHours > 4) return 'text-orange-600'; // Over 4 hours - orange
   return 'text-green-600'; // Under 4 hours - green
 };
 
 // Column visibility configuration
-type ColumnId = 'favoriteQueues' | 'id' | 'name' | 'description' | 'oldestTaskAge' | 'pendingJobCount' | 'startReviewing' | 'mutations' | 'deleteJobs' | 'previewJobs';
+type ColumnId =
+  | 'favoriteQueues'
+  | 'id'
+  | 'name'
+  | 'description'
+  | 'oldestTaskAge'
+  | 'pendingJobCount'
+  | 'startReviewing'
+  | 'mutations'
+  | 'deleteJobs'
+  | 'previewJobs';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'mrt-queues-column-visibility';
 
@@ -197,7 +219,9 @@ export default function ManualReviewQueuesDashboard() {
   });
 
   // Column visibility state
-  const [columnVisibility, setColumnVisibility] = useState<Record<ColumnId, boolean>>(() => {
+  const [columnVisibility, setColumnVisibility] = useState<
+    Record<ColumnId, boolean>
+  >(() => {
     try {
       const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
       if (stored) {
@@ -212,14 +236,17 @@ export default function ManualReviewQueuesDashboard() {
   // Save column visibility to localStorage whenever it changes
   useEffect(() => {
     try {
-      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+      localStorage.setItem(
+        COLUMN_VISIBILITY_STORAGE_KEY,
+        JSON.stringify(columnVisibility),
+      );
     } catch (e) {
       // Failed to save to localStorage
     }
   }, [columnVisibility]);
 
   const toggleColumnVisibility = useCallback((columnId: ColumnId) => {
-    setColumnVisibility(prev => ({ ...prev, [columnId]: !prev[columnId] }));
+    setColumnVisibility((prev) => ({ ...prev, [columnId]: !prev[columnId] }));
   }, []);
 
   const [columnsMenuVisible, setColumnsMenuVisible] = useState(false);
@@ -271,6 +298,10 @@ export default function ManualReviewQueuesDashboard() {
   const [modalInfo, setModalInfo] = useState<DeleteRowModalInfo | null>(null);
   const [deleteAllJobsModalInfo, setDeleteAllJobsModalInfo] =
     useState<DeleteAllJobsModalInfo | null>(null);
+  const [deleteAllJobsConfirmText, setDeleteAllJobsConfirmText] = useState('');
+  useEffect(() => {
+    setDeleteAllJobsConfirmText('');
+  }, [deleteAllJobsModalInfo?.id, deleteAllJobsModalInfo?.visible]);
   const [deleteAllJobsFromQueue] = useGQLDeleteAllJobsFromQueueMutation({
     onError: () => {},
     onCompleted: async () => refetch(),
@@ -321,14 +352,21 @@ export default function ManualReviewQueuesDashboard() {
     />
   );
 
+  const deleteAllJobsTargetName = getQueueName(
+    queues,
+    deleteAllJobsModalInfo?.id,
+  );
+  // Trim both sides; the comparison is otherwise exact (case- and
+  // whitespace-sensitive in the middle of the string).
+  const deleteAllJobsConfirmEnabled =
+    deleteAllJobsTargetName != null &&
+    deleteAllJobsConfirmText.trim() === deleteAllJobsTargetName.trim();
   const deleteAllJobsModal = (
     <CoopModal
       title={
-        queues == null || modalInfo == null
+        deleteAllJobsTargetName == null
           ? 'Delete All Jobs From Queue'
-          : `Delete All Jobs From '${
-              queues.find((it) => it.id === modalInfo.id)!.name
-            }'`
+          : `Delete All Jobs From '${deleteAllJobsTargetName}'`
       }
       visible={deleteAllJobsModalInfo?.visible ?? false}
       footer={[
@@ -339,7 +377,9 @@ export default function ManualReviewQueuesDashboard() {
         },
         {
           title: 'Confirm',
+          disabled: !deleteAllJobsConfirmEnabled,
           onClick: () => {
+            if (!deleteAllJobsConfirmEnabled) return;
             deleteAllJobsFromQueue({
               variables: { queueId: deleteAllJobsModalInfo!.id },
             });
@@ -348,8 +388,27 @@ export default function ManualReviewQueuesDashboard() {
         },
       ]}
     >
-      Are you sure you want to delete all jobs from this queue? You can't undo
-      this action. For larger queues, this can take a few minutes.
+      <div className="space-y-3">
+        <p>
+          You are about to delete all jobs from{' '}
+          <strong>{deleteAllJobsTargetName ?? 'this queue'}</strong>. This wipes
+          the queue&apos;s pending items in Redis and{' '}
+          <strong>cannot be undone from the UI</strong>. Recovery is only
+          possible by re-running the items through{' '}
+          <code>npm run recover-mrt-queue</code> on the server.
+        </p>
+        <p>
+          To confirm, type the queue name{' '}
+          <strong>{deleteAllJobsTargetName ?? ''}</strong> below:
+        </p>
+        <Input
+          value={deleteAllJobsConfirmText}
+          onChange={(event) => setDeleteAllJobsConfirmText(event.target.value)}
+          placeholder={deleteAllJobsTargetName ?? 'queue name'}
+          aria-label="Type the queue name to confirm deletion"
+          autoFocus
+        />
+      </div>
     </CoopModal>
   );
 
@@ -412,83 +471,106 @@ export default function ManualReviewQueuesDashboard() {
   );
 
   const columns = useMemo(
-    () => filterNullOrUndefined([
-      columnVisibility.favoriteQueues ? {
-        Header: '',
-        accessor: 'favoriteQueues',
-        canSort: false,
-      } : undefined,
-      columnVisibility.id ? {
-        Header: 'ID',
-        accessor: 'id',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'id',
-            placeholder: 'Queue ID',
-          }),
-        filter: 'text',
-        sortType: stringSort,
-      } : undefined,
-      columnVisibility.name ? {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-            placeholder: 'My Queue',
-          }),
-        filter: 'text',
-        sortType: stringSort,
-      } : undefined,
-      columnVisibility.description ? {
-        Header: 'Description',
-        accessor: 'description',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'description',
-          }),
-        filter: 'text',
-        sortType: stringSort,
-      } : undefined,
-      columnVisibility.oldestTaskAge ? {
-        Header: 'Oldest Task Age',
-        accessor: 'oldestTaskAge',
-        sortType: dateSort('oldestJobCreatedAt'),
-      } : undefined,
-      columnVisibility.pendingJobCount ? {
-        Header: 'Pending Jobs',
-        accessor: 'pendingJobCount',
-        sortType: integerSort,
-      } : undefined,
-      columnVisibility.startReviewing ? {
-        Header: '',
-        accessor: 'startReviewing',
-        canSort: false,
-      } : undefined,
-      columnVisibility.mutations ? {
-        Header: '',
-        accessor: 'mutations',
-        canSort: false,
-      } : undefined,
-      userHasPermissions(data?.me?.permissions, [
-        GQLUserPermission.EditMrtQueues,
-      ]) && columnVisibility.deleteJobs
-        ? {
-            Header: '',
-            accessor: 'deleteJobs',
-            canSort: false,
-          }
-        : undefined,
-      columnVisibility.previewJobs ? {
-        Header: '',
-        accessor: 'previewJobs',
-        canSort: false,
-      } : undefined,
-    ]),
-    [data?.me?.permissions, columnVisibility],
+    () =>
+      filterNullOrUndefined([
+        columnVisibility.favoriteQueues
+          ? {
+              Header: '',
+              accessor: 'favoriteQueues',
+              canSort: false,
+            }
+          : undefined,
+        columnVisibility.id
+          ? {
+              Header: 'ID',
+              accessor: 'id',
+              Filter: (props: ColumnProps) =>
+                DefaultColumnFilter({
+                  columnProps: props,
+                  accessor: 'id',
+                  placeholder: 'Queue ID',
+                }),
+              filter: 'text',
+              sortType: stringSort,
+            }
+          : undefined,
+        columnVisibility.name
+          ? {
+              Header: 'Name',
+              accessor: 'name',
+              Filter: (props: ColumnProps) =>
+                DefaultColumnFilter({
+                  columnProps: props,
+                  accessor: 'name',
+                  placeholder: 'My Queue',
+                }),
+              filter: 'text',
+              sortType: stringSort,
+            }
+          : undefined,
+        columnVisibility.description
+          ? {
+              Header: 'Description',
+              accessor: 'description',
+              Filter: (props: ColumnProps) =>
+                DefaultColumnFilter({
+                  columnProps: props,
+                  accessor: 'description',
+                }),
+              filter: 'text',
+              sortType: stringSort,
+            }
+          : undefined,
+        columnVisibility.oldestTaskAge
+          ? {
+              Header: 'Oldest Task Age',
+              accessor: 'oldestTaskAge',
+              sortType: dateSort('oldestJobCreatedAt'),
+            }
+          : undefined,
+        columnVisibility.pendingJobCount
+          ? {
+              Header: 'Pending Jobs',
+              accessor: 'pendingJobCount',
+              sortType: integerSort,
+            }
+          : undefined,
+        columnVisibility.startReviewing
+          ? {
+              Header: '',
+              accessor: 'startReviewing',
+              canSort: false,
+            }
+          : undefined,
+        columnVisibility.mutations
+          ? {
+              Header: '',
+              accessor: 'mutations',
+              canSort: false,
+            }
+          : undefined,
+        userHasPermissions(data?.me?.permissions, [
+          GQLUserPermission.ManageOrg,
+        ]) && columnVisibility.deleteJobs
+          ? {
+              Header: '',
+              accessor: 'deleteJobs',
+              canSort: false,
+            }
+          : undefined,
+        previewJobsViewEnabled &&
+        userHasPermissions(data?.me?.permissions, [
+          GQLUserPermission.EditMrtQueues,
+        ]) &&
+        columnVisibility.previewJobs
+          ? {
+              Header: '',
+              accessor: 'previewJobs',
+              canSort: false,
+            }
+          : undefined,
+      ]),
+    [data?.me?.permissions, columnVisibility, previewJobsViewEnabled],
   );
   const dataValues = useMemo(
     () =>
@@ -496,7 +578,14 @@ export default function ManualReviewQueuesDashboard() {
         ? filterNullOrUndefined(queues)
             .filter((it) => it.isAppealsQueue === (selectedTab === 'APPEALS'))
             .map(
-              ({ id, name, description, pendingJobCount, isDefaultQueue, oldestJobCreatedAt }) => {
+              ({
+                id,
+                name,
+                description,
+                pendingJobCount,
+                isDefaultQueue,
+                oldestJobCreatedAt,
+              }) => {
                 const rulesForQueue =
                   routingRules?.filter((it) => it.destinationQueue.id === id) ??
                   [];
@@ -566,7 +655,7 @@ export default function ManualReviewQueuesDashboard() {
                     />
                   ),
                   ...(userHasPermissions(data?.me?.permissions, [
-                    GQLUserPermission.EditMrtQueues,
+                    GQLUserPermission.ManageOrg,
                   ])
                     ? {
                         deleteJobs: (
@@ -656,7 +745,7 @@ export default function ManualReviewQueuesDashboard() {
                 />
               </div>
             ),
-            id: <div>{values.id}</div>,
+            id: <CopyTextComponent value={values.id} />,
             name: (
               <div className="ContentTypesDashboard-type-name">
                 {values.name}
@@ -689,7 +778,8 @@ export default function ManualReviewQueuesDashboard() {
     return <FullScreenLoading />;
   }
 
-  const visibleColumnsCount = Object.values(columnVisibility).filter(Boolean).length;
+  const visibleColumnsCount =
+    Object.values(columnVisibility).filter(Boolean).length;
 
   // Columns button component
   const columnsButton = (
@@ -700,7 +790,9 @@ export default function ManualReviewQueuesDashboard() {
             ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
-        icon={<GridAlt className="inline-block w-4 h-4 mr-2" fill="currentColor" />}
+        icon={
+          <GridAlt className="inline-block w-4 h-4 mr-2" fill="currentColor" />
+        }
         onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
       >
         Columns
@@ -712,11 +804,21 @@ export default function ManualReviewQueuesDashboard() {
           <div className="flex flex-col px-4 py-2">
             {(Object.keys(columnLabels) as ColumnId[])
               .filter((columnId) => {
-                // Only show deleteJobs and previewJobs if user has permissions
-                if (columnId === 'deleteJobs' || (columnId === 'previewJobs' && previewJobsViewEnabled)) {
+                // deleteJobs is admin-only (irreversible); previewJobs uses
+                // the regular queue-edit permission and requires the feature
+                // flag — both must be true to show the toggle.
+                if (columnId === 'deleteJobs') {
                   return userHasPermissions(data?.me?.permissions, [
-                    GQLUserPermission.EditMrtQueues,
+                    GQLUserPermission.ManageOrg,
                   ]);
+                }
+                if (columnId === 'previewJobs') {
+                  return (
+                    previewJobsViewEnabled &&
+                    userHasPermissions(data?.me?.permissions, [
+                      GQLUserPermission.EditMrtQueues,
+                    ])
+                  );
                 }
                 return true;
               })
@@ -801,7 +903,12 @@ export default function ManualReviewQueuesDashboard() {
       {tabs.length > 1 ? tabBar : null}
       {
         /* @ts-ignore */
-        <Table columns={columns} data={tableData} topLeftComponent={columnsButton} containerClassName="w-full" />
+        <Table
+          columns={columns}
+          data={tableData}
+          topLeftComponent={columnsButton}
+          containerClassName="w-full"
+        />
       }
       {deleteModal}
       {deleteAllJobsModal}

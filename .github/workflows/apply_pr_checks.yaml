@@ -28,20 +28,20 @@ jobs:
     if: needs.check_for_server_changes.outputs.result == 'true' || needs.check_for_client_changes.outputs.result == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
       - name: Check generated GraphQL is up to date
         run: docker compose run --rm --quiet-pull codegen-check
 
   check_migration_order:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           # this is needed to fetch the main branch
           ref: ${{ github.base_ref || 'main' }}
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           # this is needed to fetch the main branch
           fetch-depth: 1
@@ -119,7 +119,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Lint
         run: docker compose run --rm --quiet-pull backend npm run lint
@@ -141,7 +141,7 @@ jobs:
 
       - name: Test Report
         if: always() # run this step even if previous step failed
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5  # v1.9.1
         continue-on-error: true
         with:
           name: JEST Tests # Name of the check run which will be created
@@ -155,7 +155,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Lint client
         run: docker compose run --rm --quiet-pull client npm run lint

@@ -211,8 +211,6 @@ export default class NcmecEnqueueToMrt {
       },
       input.targetQueueId,
     );
-    // eslint-disable-next-line no-console
-    console.log('[NCMEC] ✅ Successfully created NCMEC manual review job!');
     return { status: 'ENQUEUED' };
   }
 

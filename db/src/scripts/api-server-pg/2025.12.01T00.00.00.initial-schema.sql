@@ -22,7 +22,7 @@ SET row_security = off;
 CREATE SCHEMA jobs;
 
 
-ALTER SCHEMA jobs OWNER TO postgres;
+ALTER SCHEMA jobs OWNER TO CURRENT_USER;
 
 --
 -- Name: manual_review_tool; Type: SCHEMA; Schema: -; Owner: postgres
@@ -31,7 +31,7 @@ ALTER SCHEMA jobs OWNER TO postgres;
 CREATE SCHEMA manual_review_tool;
 
 
-ALTER SCHEMA manual_review_tool OWNER TO postgres;
+ALTER SCHEMA manual_review_tool OWNER TO CURRENT_USER;
 
 --
 -- Name: models_service; Type: SCHEMA; Schema: -; Owner: postgres
@@ -40,7 +40,7 @@ ALTER SCHEMA manual_review_tool OWNER TO postgres;
 CREATE SCHEMA models_service;
 
 
-ALTER SCHEMA models_service OWNER TO postgres;
+ALTER SCHEMA models_service OWNER TO CURRENT_USER;
 
 --
 -- Name: ncmec_reporting; Type: SCHEMA; Schema: -; Owner: postgres
@@ -49,7 +49,7 @@ ALTER SCHEMA models_service OWNER TO postgres;
 CREATE SCHEMA ncmec_reporting;
 
 
-ALTER SCHEMA ncmec_reporting OWNER TO postgres;
+ALTER SCHEMA ncmec_reporting OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rules; Type: SCHEMA; Schema: -; Owner: postgres
@@ -58,7 +58,7 @@ ALTER SCHEMA ncmec_reporting OWNER TO postgres;
 CREATE SCHEMA reporting_rules;
 
 
-ALTER SCHEMA reporting_rules OWNER TO postgres;
+ALTER SCHEMA reporting_rules OWNER TO CURRENT_USER;
 
 --
 -- Name: signal_auth_service; Type: SCHEMA; Schema: -; Owner: postgres
@@ -67,7 +67,7 @@ ALTER SCHEMA reporting_rules OWNER TO postgres;
 CREATE SCHEMA signal_auth_service;
 
 
-ALTER SCHEMA signal_auth_service OWNER TO postgres;
+ALTER SCHEMA signal_auth_service OWNER TO CURRENT_USER;
 
 --
 -- Name: signals_service; Type: SCHEMA; Schema: -; Owner: postgres
@@ -76,7 +76,7 @@ ALTER SCHEMA signal_auth_service OWNER TO postgres;
 CREATE SCHEMA signals_service;
 
 
-ALTER SCHEMA signals_service OWNER TO postgres;
+ALTER SCHEMA signals_service OWNER TO CURRENT_USER;
 
 --
 -- Name: user_management_service; Type: SCHEMA; Schema: -; Owner: postgres
@@ -85,7 +85,7 @@ ALTER SCHEMA signals_service OWNER TO postgres;
 CREATE SCHEMA user_management_service;
 
 
-ALTER SCHEMA user_management_service OWNER TO postgres;
+ALTER SCHEMA user_management_service OWNER TO CURRENT_USER;
 
 --
 -- Name: user_statistics_service; Type: SCHEMA; Schema: -; Owner: postgres
@@ -94,7 +94,7 @@ ALTER SCHEMA user_management_service OWNER TO postgres;
 CREATE SCHEMA user_statistics_service;
 
 
-ALTER SCHEMA user_statistics_service OWNER TO postgres;
+ALTER SCHEMA user_statistics_service OWNER TO CURRENT_USER;
 
 --
 -- Name: appeals_routing_rule_status; Type: TYPE; Schema: manual_review_tool; Owner: postgres
@@ -105,7 +105,7 @@ CREATE TYPE manual_review_tool.appeals_routing_rule_status AS ENUM (
 );
 
 
-ALTER TYPE manual_review_tool.appeals_routing_rule_status OWNER TO postgres;
+ALTER TYPE manual_review_tool.appeals_routing_rule_status OWNER TO CURRENT_USER;
 
 --
 -- Name: routing_rule_status; Type: TYPE; Schema: manual_review_tool; Owner: postgres
@@ -116,7 +116,7 @@ CREATE TYPE manual_review_tool.routing_rule_status AS ENUM (
 );
 
 
-ALTER TYPE manual_review_tool.routing_rule_status OWNER TO postgres;
+ALTER TYPE manual_review_tool.routing_rule_status OWNER TO CURRENT_USER;
 
 --
 -- Name: action_type; Type: TYPE; Schema: public; Owner: postgres
@@ -132,7 +132,7 @@ CREATE TYPE public.action_type AS ENUM (
 );
 
 
-ALTER TYPE public.action_type OWNER TO postgres;
+ALTER TYPE public.action_type OWNER TO CURRENT_USER;
 
 --
 -- Name: backtest_status; Type: TYPE; Schema: public; Owner: postgres
@@ -145,7 +145,7 @@ CREATE TYPE public.backtest_status AS ENUM (
 );
 
 
-ALTER TYPE public.backtest_status OWNER TO postgres;
+ALTER TYPE public.backtest_status OWNER TO CURRENT_USER;
 
 --
 -- Name: enum_conditions_type; Type: TYPE; Schema: public; Owner: postgres
@@ -157,7 +157,7 @@ CREATE TYPE public.enum_conditions_type AS ENUM (
 );
 
 
-ALTER TYPE public.enum_conditions_type OWNER TO postgres;
+ALTER TYPE public.enum_conditions_type OWNER TO CURRENT_USER;
 
 --
 -- Name: enum_jobs_status; Type: TYPE; Schema: public; Owner: postgres
@@ -169,7 +169,7 @@ CREATE TYPE public.enum_jobs_status AS ENUM (
 );
 
 
-ALTER TYPE public.enum_jobs_status OWNER TO postgres;
+ALTER TYPE public.enum_jobs_status OWNER TO CURRENT_USER;
 
 --
 -- Name: enum_rule_alarm_status; Type: TYPE; Schema: public; Owner: postgres
@@ -182,7 +182,7 @@ CREATE TYPE public.enum_rule_alarm_status AS ENUM (
 );
 
 
-ALTER TYPE public.enum_rule_alarm_status OWNER TO postgres;
+ALTER TYPE public.enum_rule_alarm_status OWNER TO CURRENT_USER;
 
 --
 -- Name: enum_rules_condition_set_conjunction; Type: TYPE; Schema: public; Owner: postgres
@@ -196,7 +196,7 @@ CREATE TYPE public.enum_rules_condition_set_conjunction AS ENUM (
 );
 
 
-ALTER TYPE public.enum_rules_condition_set_conjunction OWNER TO postgres;
+ALTER TYPE public.enum_rules_condition_set_conjunction OWNER TO CURRENT_USER;
 
 --
 -- Name: enum_rules_status; Type: TYPE; Schema: public; Owner: postgres
@@ -211,7 +211,7 @@ CREATE TYPE public.enum_rules_status AS ENUM (
 );
 
 
-ALTER TYPE public.enum_rules_status OWNER TO postgres;
+ALTER TYPE public.enum_rules_status OWNER TO CURRENT_USER;
 
 --
 -- Name: enum_signals_type; Type: TYPE; Schema: public; Owner: postgres
@@ -229,7 +229,7 @@ CREATE TYPE public.enum_signals_type AS ENUM (
 );
 
 
-ALTER TYPE public.enum_signals_type OWNER TO postgres;
+ALTER TYPE public.enum_signals_type OWNER TO CURRENT_USER;
 
 --
 -- Name: item_type_kind; Type: TYPE; Schema: public; Owner: postgres
@@ -242,7 +242,7 @@ CREATE TYPE public.item_type_kind AS ENUM (
 );
 
 
-ALTER TYPE public.item_type_kind OWNER TO postgres;
+ALTER TYPE public.item_type_kind OWNER TO CURRENT_USER;
 
 --
 -- Name: login_method_enum; Type: TYPE; Schema: public; Owner: postgres
@@ -254,7 +254,7 @@ CREATE TYPE public.login_method_enum AS ENUM (
 );
 
 
-ALTER TYPE public.login_method_enum OWNER TO postgres;
+ALTER TYPE public.login_method_enum OWNER TO CURRENT_USER;
 
 --
 -- Name: model_family; Type: TYPE; Schema: public; Owner: postgres
@@ -268,7 +268,7 @@ CREATE TYPE public.model_family AS ENUM (
 );
 
 
-ALTER TYPE public.model_family OWNER TO postgres;
+ALTER TYPE public.model_family OWNER TO CURRENT_USER;
 
 --
 -- Name: model_status; Type: TYPE; Schema: public; Owner: postgres
@@ -281,7 +281,7 @@ CREATE TYPE public.model_status AS ENUM (
 );
 
 
-ALTER TYPE public.model_status OWNER TO postgres;
+ALTER TYPE public.model_status OWNER TO CURRENT_USER;
 
 --
 -- Name: ncmec_report_error_status; Type: TYPE; Schema: public; Owner: postgres
@@ -293,7 +293,7 @@ CREATE TYPE public.ncmec_report_error_status AS ENUM (
 );
 
 
-ALTER TYPE public.ncmec_report_error_status OWNER TO postgres;
+ALTER TYPE public.ncmec_report_error_status OWNER TO CURRENT_USER;
 
 --
 -- Name: policy_type; Type: TYPE; Schema: public; Owner: postgres
@@ -317,7 +317,7 @@ CREATE TYPE public.policy_type AS ENUM (
 );
 
 
-ALTER TYPE public.policy_type OWNER TO postgres;
+ALTER TYPE public.policy_type OWNER TO CURRENT_USER;
 
 --
 -- Name: rule_type; Type: TYPE; Schema: public; Owner: postgres
@@ -329,7 +329,7 @@ CREATE TYPE public.rule_type AS ENUM (
 );
 
 
-ALTER TYPE public.rule_type OWNER TO postgres;
+ALTER TYPE public.rule_type OWNER TO CURRENT_USER;
 
 --
 -- Name: text_bank_type; Type: TYPE; Schema: public; Owner: postgres
@@ -341,7 +341,7 @@ CREATE TYPE public.text_bank_type AS ENUM (
 );
 
 
-ALTER TYPE public.text_bank_type OWNER TO postgres;
+ALTER TYPE public.text_bank_type OWNER TO CURRENT_USER;
 
 --
 -- Name: unknown_type; Type: TYPE; Schema: public; Owner: postgres
@@ -353,7 +353,7 @@ CREATE TYPE public.unknown_type AS ENUM (
 );
 
 
-ALTER TYPE public.unknown_type OWNER TO postgres;
+ALTER TYPE public.unknown_type OWNER TO CURRENT_USER;
 
 --
 -- Name: user_penalty_severity; Type: TYPE; Schema: public; Owner: postgres
@@ -368,7 +368,7 @@ CREATE TYPE public.user_penalty_severity AS ENUM (
 );
 
 
-ALTER TYPE public.user_penalty_severity OWNER TO postgres;
+ALTER TYPE public.user_penalty_severity OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rule_status; Type: TYPE; Schema: reporting_rules; Owner: postgres
@@ -382,7 +382,7 @@ CREATE TYPE reporting_rules.reporting_rule_status AS ENUM (
 );
 
 
-ALTER TYPE reporting_rules.reporting_rule_status OWNER TO postgres;
+ALTER TYPE reporting_rules.reporting_rule_status OWNER TO CURRENT_USER;
 
 --
 -- Name: check_org_id(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -400,7 +400,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.check_org_id() OWNER TO postgres;
+ALTER FUNCTION public.check_org_id() OWNER TO CURRENT_USER;
 
 --
 -- Name: inherit_user_strike_count(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -430,7 +430,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.inherit_user_strike_count() OWNER TO postgres;
+ALTER FUNCTION public.inherit_user_strike_count() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_action_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -445,7 +445,7 @@ CREATE FUNCTION public.update_action_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_action_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_action_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_action_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -461,7 +461,7 @@ CREATE FUNCTION public.update_action_versions_view_trigger() RETURNS trigger
 $$;
 
 
-ALTER FUNCTION public.update_action_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_action_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_api_keys_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -477,7 +477,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.update_api_keys_updated_at() OWNER TO postgres;
+ALTER FUNCTION public.update_api_keys_updated_at() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_appeals_routing_rule_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -492,7 +492,7 @@ CREATE FUNCTION public.update_appeals_routing_rule_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_appeals_routing_rule_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_appeals_routing_rule_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_appeals_routing_rule_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -508,7 +508,7 @@ CREATE FUNCTION public.update_appeals_routing_rule_versions_view_trigger() RETUR
 $$;
 
 
-ALTER FUNCTION public.update_appeals_routing_rule_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_appeals_routing_rule_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_content_type_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -523,7 +523,7 @@ CREATE FUNCTION public.update_content_type_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_content_type_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_content_type_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_content_type_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -539,7 +539,7 @@ CREATE FUNCTION public.update_content_type_versions_view_trigger() RETURNS trigg
 $$;
 
 
-ALTER FUNCTION public.update_content_type_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_content_type_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_descendants_user_strike_count(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -575,7 +575,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.update_descendants_user_strike_count() OWNER TO postgres;
+ALTER FUNCTION public.update_descendants_user_strike_count() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_item_type_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -590,7 +590,7 @@ CREATE FUNCTION public.update_item_type_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_item_type_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_item_type_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_item_type_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -606,7 +606,7 @@ CREATE FUNCTION public.update_item_type_versions_view_trigger() RETURNS trigger
 $$;
 
 
-ALTER FUNCTION public.update_item_type_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_item_type_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_policy_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -621,7 +621,7 @@ CREATE FUNCTION public.update_policy_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_policy_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_policy_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_policy_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -637,7 +637,7 @@ CREATE FUNCTION public.update_policy_versions_view_trigger() RETURNS trigger
 $$;
 
 
-ALTER FUNCTION public.update_policy_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_policy_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_reporting_rule_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -652,7 +652,7 @@ CREATE FUNCTION public.update_reporting_rule_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_reporting_rule_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_reporting_rule_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_reporting_rule_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -668,7 +668,7 @@ CREATE FUNCTION public.update_reporting_rule_versions_view_trigger() RETURNS tri
 $$;
 
 
-ALTER FUNCTION public.update_reporting_rule_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_reporting_rule_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_routing_rule_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -683,7 +683,7 @@ CREATE FUNCTION public.update_routing_rule_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_routing_rule_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_routing_rule_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_routing_rule_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -699,7 +699,7 @@ CREATE FUNCTION public.update_routing_rule_versions_view_trigger() RETURNS trigg
 $$;
 
 
-ALTER FUNCTION public.update_routing_rule_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_routing_rule_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_rule_versions_view(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -730,7 +730,7 @@ CREATE FUNCTION public.update_rule_versions_view() RETURNS void
 $$;
 
 
-ALTER FUNCTION public.update_rule_versions_view() OWNER TO postgres;
+ALTER FUNCTION public.update_rule_versions_view() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_rule_versions_view_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -746,7 +746,7 @@ CREATE FUNCTION public.update_rule_versions_view_trigger() RETURNS trigger
 $$;
 
 
-ALTER FUNCTION public.update_rule_versions_view_trigger() OWNER TO postgres;
+ALTER FUNCTION public.update_rule_versions_view_trigger() OWNER TO CURRENT_USER;
 
 --
 -- Name: update_signing_keys_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -762,7 +762,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.update_signing_keys_updated_at() OWNER TO postgres;
+ALTER FUNCTION public.update_signing_keys_updated_at() OWNER TO CURRENT_USER;
 
 --
 -- Name: versioning(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -977,7 +977,7 @@ END;
 $_$;
 
 
-ALTER FUNCTION public.versioning() OWNER TO postgres;
+ALTER FUNCTION public.versioning() OWNER TO CURRENT_USER;
 
 --
 -- Name: jsonb_object_union(jsonb); Type: AGGREGATE; Schema: public; Owner: postgres
@@ -990,7 +990,7 @@ CREATE AGGREGATE public.jsonb_object_union(jsonb) (
 );
 
 
-ALTER AGGREGATE public.jsonb_object_union(jsonb) OWNER TO postgres;
+ALTER AGGREGATE public.jsonb_object_union(jsonb) OWNER TO CURRENT_USER;
 
 SET default_tablespace = '';
 
@@ -1006,7 +1006,7 @@ CREATE TABLE jobs.scheduled_jobs_info (
 );
 
 
-ALTER TABLE jobs.scheduled_jobs_info OWNER TO postgres;
+ALTER TABLE jobs.scheduled_jobs_info OWNER TO CURRENT_USER;
 
 --
 -- Name: appeals_routing_rule_history; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1026,7 +1026,7 @@ CREATE TABLE manual_review_tool.appeals_routing_rule_history (
 );
 
 
-ALTER TABLE manual_review_tool.appeals_routing_rule_history OWNER TO postgres;
+ALTER TABLE manual_review_tool.appeals_routing_rule_history OWNER TO CURRENT_USER;
 
 --
 -- Name: appeals_routing_rules; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1047,7 +1047,7 @@ CREATE TABLE manual_review_tool.appeals_routing_rules (
 );
 
 
-ALTER TABLE manual_review_tool.appeals_routing_rules OWNER TO postgres;
+ALTER TABLE manual_review_tool.appeals_routing_rules OWNER TO CURRENT_USER;
 
 --
 -- Name: appeals_routing_rule_versions; Type: MATERIALIZED VIEW; Schema: manual_review_tool; Owner: postgres
@@ -1100,7 +1100,7 @@ CREATE MATERIALIZED VIEW manual_review_tool.appeals_routing_rule_versions AS
   WITH DATA;
 
 
-ALTER TABLE manual_review_tool.appeals_routing_rule_versions OWNER TO postgres;
+ALTER TABLE manual_review_tool.appeals_routing_rule_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: appeals_routing_rule_latest_versions; Type: VIEW; Schema: manual_review_tool; Owner: postgres
@@ -1113,7 +1113,7 @@ CREATE VIEW manual_review_tool.appeals_routing_rule_latest_versions AS
   WHERE (appeals_routing_rule_versions.is_current = true);
 
 
-ALTER TABLE manual_review_tool.appeals_routing_rule_latest_versions OWNER TO postgres;
+ALTER TABLE manual_review_tool.appeals_routing_rule_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: appeals_routing_rules_to_item_types; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1125,7 +1125,7 @@ CREATE TABLE manual_review_tool.appeals_routing_rules_to_item_types (
 );
 
 
-ALTER TABLE manual_review_tool.appeals_routing_rules_to_item_types OWNER TO postgres;
+ALTER TABLE manual_review_tool.appeals_routing_rules_to_item_types OWNER TO CURRENT_USER;
 
 --
 -- Name: manual_review_decisions; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1147,7 +1147,7 @@ CREATE TABLE manual_review_tool.manual_review_decisions (
 ALTER TABLE ONLY manual_review_tool.manual_review_decisions ALTER COLUMN created_at SET STATISTICS 1500;
 
 
-ALTER TABLE manual_review_tool.manual_review_decisions OWNER TO postgres;
+ALTER TABLE manual_review_tool.manual_review_decisions OWNER TO CURRENT_USER;
 
 --
 -- Name: dim_mrt_decisions; Type: VIEW; Schema: manual_review_tool; Owner: postgres
@@ -1216,7 +1216,7 @@ CREATE VIEW manual_review_tool.dim_mrt_decisions AS
   WHERE ((decisions.item_id IS NOT NULL) AND (decisions.item_type_id IS NOT NULL));
 
 
-ALTER TABLE manual_review_tool.dim_mrt_decisions OWNER TO postgres;
+ALTER TABLE manual_review_tool.dim_mrt_decisions OWNER TO CURRENT_USER;
 
 --
 -- Name: dim_mrt_decisions_materialized; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1237,7 +1237,7 @@ CREATE TABLE manual_review_tool.dim_mrt_decisions_materialized (
 );
 
 
-ALTER TABLE manual_review_tool.dim_mrt_decisions_materialized OWNER TO postgres;
+ALTER TABLE manual_review_tool.dim_mrt_decisions_materialized OWNER TO CURRENT_USER;
 
 --
 -- Name: job_creations; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1256,7 +1256,7 @@ CREATE TABLE manual_review_tool.job_creations (
 ALTER TABLE ONLY manual_review_tool.job_creations ALTER COLUMN created_at SET STATISTICS 1500;
 
 
-ALTER TABLE manual_review_tool.job_creations OWNER TO postgres;
+ALTER TABLE manual_review_tool.job_creations OWNER TO CURRENT_USER;
 
 --
 -- Name: flattened_job_creations; Type: VIEW; Schema: manual_review_tool; Owner: postgres
@@ -1277,7 +1277,7 @@ CREATE VIEW manual_review_tool.flattened_job_creations AS
      LEFT JOIN LATERAL unnest(job_creations.policy_ids) policy_id(policy_id) ON (true));
 
 
-ALTER TABLE manual_review_tool.flattened_job_creations OWNER TO postgres;
+ALTER TABLE manual_review_tool.flattened_job_creations OWNER TO CURRENT_USER;
 
 --
 -- Name: job_comments; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1293,7 +1293,7 @@ CREATE TABLE manual_review_tool.job_comments (
 );
 
 
-ALTER TABLE manual_review_tool.job_comments OWNER TO postgres;
+ALTER TABLE manual_review_tool.job_comments OWNER TO CURRENT_USER;
 
 --
 -- Name: manual_review_hidden_item_fields; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1306,7 +1306,7 @@ CREATE TABLE manual_review_tool.manual_review_hidden_item_fields (
 );
 
 
-ALTER TABLE manual_review_tool.manual_review_hidden_item_fields OWNER TO postgres;
+ALTER TABLE manual_review_tool.manual_review_hidden_item_fields OWNER TO CURRENT_USER;
 
 --
 -- Name: manual_review_queues; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1326,7 +1326,7 @@ CREATE TABLE manual_review_tool.manual_review_queues (
 );
 
 
-ALTER TABLE manual_review_tool.manual_review_queues OWNER TO postgres;
+ALTER TABLE manual_review_tool.manual_review_queues OWNER TO CURRENT_USER;
 
 --
 -- Name: manual_review_tool_settings; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1342,7 +1342,7 @@ CREATE TABLE manual_review_tool.manual_review_tool_settings (
 );
 
 
-ALTER TABLE manual_review_tool.manual_review_tool_settings OWNER TO postgres;
+ALTER TABLE manual_review_tool.manual_review_tool_settings OWNER TO CURRENT_USER;
 
 --
 -- Name: moderator_skips; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1357,7 +1357,7 @@ CREATE TABLE manual_review_tool.moderator_skips (
 );
 
 
-ALTER TABLE manual_review_tool.moderator_skips OWNER TO postgres;
+ALTER TABLE manual_review_tool.moderator_skips OWNER TO CURRENT_USER;
 
 --
 -- Name: queues_and_hidden_actions; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1370,7 +1370,7 @@ CREATE TABLE manual_review_tool.queues_and_hidden_actions (
 );
 
 
-ALTER TABLE manual_review_tool.queues_and_hidden_actions OWNER TO postgres;
+ALTER TABLE manual_review_tool.queues_and_hidden_actions OWNER TO CURRENT_USER;
 
 --
 -- Name: routing_rule_history; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1390,7 +1390,7 @@ CREATE TABLE manual_review_tool.routing_rule_history (
 );
 
 
-ALTER TABLE manual_review_tool.routing_rule_history OWNER TO postgres;
+ALTER TABLE manual_review_tool.routing_rule_history OWNER TO CURRENT_USER;
 
 --
 -- Name: routing_rules; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1411,7 +1411,7 @@ CREATE TABLE manual_review_tool.routing_rules (
 );
 
 
-ALTER TABLE manual_review_tool.routing_rules OWNER TO postgres;
+ALTER TABLE manual_review_tool.routing_rules OWNER TO CURRENT_USER;
 
 --
 -- Name: routing_rule_versions; Type: MATERIALIZED VIEW; Schema: manual_review_tool; Owner: postgres
@@ -1464,7 +1464,7 @@ CREATE MATERIALIZED VIEW manual_review_tool.routing_rule_versions AS
   WITH DATA;
 
 
-ALTER TABLE manual_review_tool.routing_rule_versions OWNER TO postgres;
+ALTER TABLE manual_review_tool.routing_rule_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: routing_rule_latest_versions; Type: VIEW; Schema: manual_review_tool; Owner: postgres
@@ -1477,7 +1477,7 @@ CREATE VIEW manual_review_tool.routing_rule_latest_versions AS
   WHERE (routing_rule_versions.is_current = true);
 
 
-ALTER TABLE manual_review_tool.routing_rule_latest_versions OWNER TO postgres;
+ALTER TABLE manual_review_tool.routing_rule_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: routing_rules_to_item_types; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1489,7 +1489,7 @@ CREATE TABLE manual_review_tool.routing_rules_to_item_types (
 );
 
 
-ALTER TABLE manual_review_tool.routing_rules_to_item_types OWNER TO postgres;
+ALTER TABLE manual_review_tool.routing_rules_to_item_types OWNER TO CURRENT_USER;
 
 --
 -- Name: users_and_accessible_queues; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1501,7 +1501,7 @@ CREATE TABLE manual_review_tool.users_and_accessible_queues (
 );
 
 
-ALTER TABLE manual_review_tool.users_and_accessible_queues OWNER TO postgres;
+ALTER TABLE manual_review_tool.users_and_accessible_queues OWNER TO CURRENT_USER;
 
 --
 -- Name: users_and_favorite_mrt_queues; Type: TABLE; Schema: manual_review_tool; Owner: postgres
@@ -1514,7 +1514,7 @@ CREATE TABLE manual_review_tool.users_and_favorite_mrt_queues (
 );
 
 
-ALTER TABLE manual_review_tool.users_and_favorite_mrt_queues OWNER TO postgres;
+ALTER TABLE manual_review_tool.users_and_favorite_mrt_queues OWNER TO CURRENT_USER;
 
 --
 -- Name: models; Type: TABLE; Schema: models_service; Owner: postgres
@@ -1533,7 +1533,7 @@ CREATE TABLE models_service.models (
 );
 
 
-ALTER TABLE models_service.models OWNER TO postgres;
+ALTER TABLE models_service.models OWNER TO CURRENT_USER;
 
 --
 -- Name: org_to_partially_labeled_dataset; Type: TABLE; Schema: models_service; Owner: postgres
@@ -1545,7 +1545,7 @@ CREATE TABLE models_service.org_to_partially_labeled_dataset (
 );
 
 
-ALTER TABLE models_service.org_to_partially_labeled_dataset OWNER TO postgres;
+ALTER TABLE models_service.org_to_partially_labeled_dataset OWNER TO CURRENT_USER;
 
 --
 -- Name: unknown_labeled_items; Type: TABLE; Schema: models_service; Owner: postgres
@@ -1563,7 +1563,7 @@ CREATE TABLE models_service.unknown_labeled_items (
 );
 
 
-ALTER TABLE models_service.unknown_labeled_items OWNER TO postgres;
+ALTER TABLE models_service.unknown_labeled_items OWNER TO CURRENT_USER;
 
 --
 -- Name: ncmec_org_settings; Type: TABLE; Schema: ncmec_reporting; Owner: postgres
@@ -1587,7 +1587,7 @@ CREATE TABLE ncmec_reporting.ncmec_org_settings (
 );
 
 
-ALTER TABLE ncmec_reporting.ncmec_org_settings OWNER TO postgres;
+ALTER TABLE ncmec_reporting.ncmec_org_settings OWNER TO CURRENT_USER;
 
 --
 -- Name: ncmec_reports; Type: TABLE; Schema: ncmec_reporting; Owner: postgres
@@ -1611,7 +1611,7 @@ CREATE TABLE ncmec_reporting.ncmec_reports (
 );
 
 
-ALTER TABLE ncmec_reporting.ncmec_reports OWNER TO postgres;
+ALTER TABLE ncmec_reporting.ncmec_reports OWNER TO CURRENT_USER;
 
 --
 -- Name: ncmec_reports_errors; Type: TABLE; Schema: ncmec_reporting; Owner: postgres
@@ -1627,7 +1627,7 @@ CREATE TABLE ncmec_reporting.ncmec_reports_errors (
 );
 
 
-ALTER TABLE ncmec_reporting.ncmec_reports_errors OWNER TO postgres;
+ALTER TABLE ncmec_reporting.ncmec_reports_errors OWNER TO CURRENT_USER;
 
 --
 -- Name: actions; Type: TABLE; Schema: public; Owner: postgres
@@ -1654,7 +1654,7 @@ CREATE TABLE public.actions (
 );
 
 
-ALTER TABLE public.actions OWNER TO postgres;
+ALTER TABLE public.actions OWNER TO CURRENT_USER;
 
 --
 -- Name: actions_history; Type: TABLE; Schema: public; Owner: postgres
@@ -1675,7 +1675,7 @@ CREATE TABLE public.actions_history (
 );
 
 
-ALTER TABLE public.actions_history OWNER TO postgres;
+ALTER TABLE public.actions_history OWNER TO CURRENT_USER;
 
 --
 -- Name: action_versions; Type: MATERIALIZED VIEW; Schema: public; Owner: postgres
@@ -1728,7 +1728,7 @@ CREATE MATERIALIZED VIEW public.action_versions AS
   WITH DATA;
 
 
-ALTER TABLE public.action_versions OWNER TO postgres;
+ALTER TABLE public.action_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: action_latest_versions; Type: VIEW; Schema: public; Owner: postgres
@@ -1741,7 +1741,7 @@ CREATE VIEW public.action_latest_versions AS
   WHERE (action_versions.is_current = true);
 
 
-ALTER TABLE public.action_latest_versions OWNER TO postgres;
+ALTER TABLE public.action_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: actions_and_item_types; Type: TABLE; Schema: public; Owner: postgres
@@ -1756,7 +1756,7 @@ CREATE TABLE public.actions_and_item_types (
 );
 
 
-ALTER TABLE public.actions_and_item_types OWNER TO postgres;
+ALTER TABLE public.actions_and_item_types OWNER TO CURRENT_USER;
 
 --
 -- Name: actions_and_item_types_history; Type: TABLE; Schema: public; Owner: postgres
@@ -1769,7 +1769,7 @@ CREATE TABLE public.actions_and_item_types_history (
 );
 
 
-ALTER TABLE public.actions_and_item_types_history OWNER TO postgres;
+ALTER TABLE public.actions_and_item_types_history OWNER TO CURRENT_USER;
 
 --
 -- Name: api_keys; Type: TABLE; Schema: public; Owner: postgres
@@ -1789,7 +1789,7 @@ CREATE TABLE public.api_keys (
 );
 
 
-ALTER TABLE public.api_keys OWNER TO postgres;
+ALTER TABLE public.api_keys OWNER TO CURRENT_USER;
 
 --
 -- Name: backtests; Type: TABLE; Schema: public; Owner: postgres
@@ -1818,7 +1818,7 @@ END) STORED NOT NULL
 );
 
 
-ALTER TABLE public.backtests OWNER TO postgres;
+ALTER TABLE public.backtests OWNER TO CURRENT_USER;
 
 --
 -- Name: gdpr_delete_requests; Type: TABLE; Schema: public; Owner: postgres
@@ -1834,7 +1834,7 @@ CREATE TABLE public.gdpr_delete_requests (
 );
 
 
-ALTER TABLE public.gdpr_delete_requests OWNER TO postgres;
+ALTER TABLE public.gdpr_delete_requests OWNER TO CURRENT_USER;
 
 --
 -- Name: invite_user_tokens; Type: TABLE; Schema: public; Owner: postgres
@@ -1851,7 +1851,7 @@ CREATE TABLE public.invite_user_tokens (
 );
 
 
-ALTER TABLE public.invite_user_tokens OWNER TO postgres;
+ALTER TABLE public.invite_user_tokens OWNER TO CURRENT_USER;
 
 --
 -- Name: invite_user_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1866,7 +1866,7 @@ CREATE SEQUENCE public.invite_user_tokens_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.invite_user_tokens_id_seq OWNER TO postgres;
+ALTER TABLE public.invite_user_tokens_id_seq OWNER TO CURRENT_USER;
 
 --
 -- Name: invite_user_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -1906,7 +1906,7 @@ CREATE TABLE public.item_types (
 );
 
 
-ALTER TABLE public.item_types OWNER TO postgres;
+ALTER TABLE public.item_types OWNER TO CURRENT_USER;
 
 --
 -- Name: item_types_history; Type: TABLE; Schema: public; Owner: postgres
@@ -1932,7 +1932,7 @@ CREATE TABLE public.item_types_history (
 );
 
 
-ALTER TABLE public.item_types_history OWNER TO postgres;
+ALTER TABLE public.item_types_history OWNER TO CURRENT_USER;
 
 --
 -- Name: item_type_versions; Type: MATERIALIZED VIEW; Schema: public; Owner: postgres
@@ -2003,7 +2003,7 @@ CREATE MATERIALIZED VIEW public.item_type_versions AS
   WITH DATA;
 
 
-ALTER TABLE public.item_type_versions OWNER TO postgres;
+ALTER TABLE public.item_type_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: item_type_latest_versions; Type: VIEW; Schema: public; Owner: postgres
@@ -2016,7 +2016,7 @@ CREATE VIEW public.item_type_latest_versions AS
   WHERE (item_type_versions.is_current = true);
 
 
-ALTER TABLE public.item_type_latest_versions OWNER TO postgres;
+ALTER TABLE public.item_type_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: location_bank_locations; Type: TABLE; Schema: public; Owner: postgres
@@ -2034,7 +2034,7 @@ CREATE TABLE public.location_bank_locations (
 );
 
 
-ALTER TABLE public.location_bank_locations OWNER TO postgres;
+ALTER TABLE public.location_bank_locations OWNER TO CURRENT_USER;
 
 --
 -- Name: location_banks; Type: TABLE; Schema: public; Owner: postgres
@@ -2052,7 +2052,7 @@ CREATE TABLE public.location_banks (
 );
 
 
-ALTER TABLE public.location_banks OWNER TO postgres;
+ALTER TABLE public.location_banks OWNER TO CURRENT_USER;
 
 --
 -- Name: media_banks; Type: TABLE; Schema: public; Owner: postgres
@@ -2069,7 +2069,7 @@ CREATE TABLE public.media_banks (
 );
 
 
-ALTER TABLE public.media_banks OWNER TO postgres;
+ALTER TABLE public.media_banks OWNER TO CURRENT_USER;
 
 --
 -- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
@@ -2086,7 +2086,7 @@ CREATE TABLE public.notifications (
 );
 
 
-ALTER TABLE public.notifications OWNER TO postgres;
+ALTER TABLE public.notifications OWNER TO CURRENT_USER;
 
 --
 -- Name: org_settings; Type: TABLE; Schema: public; Owner: postgres
@@ -2112,7 +2112,7 @@ CREATE TABLE public.org_settings (
 );
 
 
-ALTER TABLE public.org_settings OWNER TO postgres;
+ALTER TABLE public.org_settings OWNER TO CURRENT_USER;
 
 --
 -- Name: orgs; Type: TABLE; Schema: public; Owner: postgres
@@ -2130,7 +2130,7 @@ CREATE TABLE public.orgs (
 );
 
 
-ALTER TABLE public.orgs OWNER TO postgres;
+ALTER TABLE public.orgs OWNER TO CURRENT_USER;
 
 --
 -- Name: policies; Type: TABLE; Schema: public; Owner: postgres
@@ -2154,7 +2154,7 @@ CREATE TABLE public.policies (
 );
 
 
-ALTER TABLE public.policies OWNER TO postgres;
+ALTER TABLE public.policies OWNER TO CURRENT_USER;
 
 --
 -- Name: policy_history; Type: TABLE; Schema: public; Owner: postgres
@@ -2171,7 +2171,7 @@ CREATE TABLE public.policy_history (
 );
 
 
-ALTER TABLE public.policy_history OWNER TO postgres;
+ALTER TABLE public.policy_history OWNER TO CURRENT_USER;
 
 --
 -- Name: policy_versions; Type: MATERIALIZED VIEW; Schema: public; Owner: postgres
@@ -2212,7 +2212,7 @@ CREATE MATERIALIZED VIEW public.policy_versions AS
   WITH DATA;
 
 
-ALTER TABLE public.policy_versions OWNER TO postgres;
+ALTER TABLE public.policy_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: policy_latest_versions; Type: VIEW; Schema: public; Owner: postgres
@@ -2225,7 +2225,7 @@ CREATE VIEW public.policy_latest_versions AS
   WHERE (policy_versions.is_current = true);
 
 
-ALTER TABLE public.policy_latest_versions OWNER TO postgres;
+ALTER TABLE public.policy_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: rules; Type: TABLE; Schema: public; Owner: postgres
@@ -2255,7 +2255,7 @@ CREATE TABLE public.rules (
 );
 
 
-ALTER TABLE public.rules OWNER TO postgres;
+ALTER TABLE public.rules OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_and_actions; Type: TABLE; Schema: public; Owner: postgres
@@ -2270,7 +2270,7 @@ CREATE TABLE public.rules_and_actions (
 );
 
 
-ALTER TABLE public.rules_and_actions OWNER TO postgres;
+ALTER TABLE public.rules_and_actions OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_and_actions_history; Type: TABLE; Schema: public; Owner: postgres
@@ -2283,7 +2283,7 @@ CREATE TABLE public.rules_and_actions_history (
 );
 
 
-ALTER TABLE public.rules_and_actions_history OWNER TO postgres;
+ALTER TABLE public.rules_and_actions_history OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_and_item_types; Type: TABLE; Schema: public; Owner: postgres
@@ -2298,7 +2298,7 @@ CREATE TABLE public.rules_and_item_types (
 );
 
 
-ALTER TABLE public.rules_and_item_types OWNER TO postgres;
+ALTER TABLE public.rules_and_item_types OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_and_item_types_history; Type: TABLE; Schema: public; Owner: postgres
@@ -2311,7 +2311,7 @@ CREATE TABLE public.rules_and_item_types_history (
 );
 
 
-ALTER TABLE public.rules_and_item_types_history OWNER TO postgres;
+ALTER TABLE public.rules_and_item_types_history OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_and_policies; Type: TABLE; Schema: public; Owner: postgres
@@ -2326,7 +2326,7 @@ CREATE TABLE public.rules_and_policies (
 );
 
 
-ALTER TABLE public.rules_and_policies OWNER TO postgres;
+ALTER TABLE public.rules_and_policies OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_and_policies_history; Type: TABLE; Schema: public; Owner: postgres
@@ -2339,7 +2339,7 @@ CREATE TABLE public.rules_and_policies_history (
 );
 
 
-ALTER TABLE public.rules_and_policies_history OWNER TO postgres;
+ALTER TABLE public.rules_and_policies_history OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_history; Type: TABLE; Schema: public; Owner: postgres
@@ -2363,7 +2363,7 @@ CREATE TABLE public.rules_history (
 );
 
 
-ALTER TABLE public.rules_history OWNER TO postgres;
+ALTER TABLE public.rules_history OWNER TO CURRENT_USER;
 
 --
 -- Name: rule_versions; Type: MATERIALIZED VIEW; Schema: public; Owner: postgres
@@ -2474,7 +2474,7 @@ CREATE MATERIALIZED VIEW public.rule_versions AS
   WITH DATA;
 
 
-ALTER TABLE public.rule_versions OWNER TO postgres;
+ALTER TABLE public.rule_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: rules_latest_versions; Type: VIEW; Schema: public; Owner: postgres
@@ -2487,7 +2487,7 @@ CREATE VIEW public.rules_latest_versions AS
   WHERE (rule_versions.is_current = true);
 
 
-ALTER TABLE public.rules_latest_versions OWNER TO postgres;
+ALTER TABLE public.rules_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: session; Type: TABLE; Schema: public; Owner: postgres
@@ -2500,7 +2500,7 @@ CREATE TABLE public.session (
 );
 
 
-ALTER TABLE public.session OWNER TO postgres;
+ALTER TABLE public.session OWNER TO CURRENT_USER;
 
 --
 -- Name: signing_keys; Type: TABLE; Schema: public; Owner: postgres
@@ -2514,7 +2514,7 @@ CREATE TABLE public.signing_keys (
 );
 
 
-ALTER TABLE public.signing_keys OWNER TO postgres;
+ALTER TABLE public.signing_keys OWNER TO CURRENT_USER;
 
 --
 -- Name: text_banks; Type: TABLE; Schema: public; Owner: postgres
@@ -2533,7 +2533,7 @@ CREATE TABLE public.text_banks (
 );
 
 
-ALTER TABLE public.text_banks OWNER TO postgres;
+ALTER TABLE public.text_banks OWNER TO CURRENT_USER;
 
 --
 -- Name: user_strike_thresholds; Type: TABLE; Schema: public; Owner: postgres
@@ -2548,7 +2548,7 @@ CREATE TABLE public.user_strike_thresholds (
 );
 
 
-ALTER TABLE public.user_strike_thresholds OWNER TO postgres;
+ALTER TABLE public.user_strike_thresholds OWNER TO CURRENT_USER;
 
 --
 -- Name: user_strike_thresholds_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -2585,7 +2585,7 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
+ALTER TABLE public.users OWNER TO CURRENT_USER;
 
 --
 -- Name: users_and_favorite_rules; Type: TABLE; Schema: public; Owner: postgres
@@ -2599,7 +2599,7 @@ CREATE TABLE public.users_and_favorite_rules (
 );
 
 
-ALTER TABLE public.users_and_favorite_rules OWNER TO postgres;
+ALTER TABLE public.users_and_favorite_rules OWNER TO CURRENT_USER;
 
 --
 -- Name: view_maintenance_metadata; Type: TABLE; Schema: public; Owner: postgres
@@ -2611,7 +2611,7 @@ CREATE TABLE public.view_maintenance_metadata (
 );
 
 
-ALTER TABLE public.view_maintenance_metadata OWNER TO postgres;
+ALTER TABLE public.view_maintenance_metadata OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rule_history; Type: TABLE; Schema: reporting_rules; Owner: postgres
@@ -2629,7 +2629,7 @@ CREATE TABLE reporting_rules.reporting_rule_history (
 );
 
 
-ALTER TABLE reporting_rules.reporting_rule_history OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rule_history OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rules; Type: TABLE; Schema: reporting_rules; Owner: postgres
@@ -2648,7 +2648,7 @@ CREATE TABLE reporting_rules.reporting_rules (
 );
 
 
-ALTER TABLE reporting_rules.reporting_rules OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rules OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rule_versions; Type: MATERIALIZED VIEW; Schema: reporting_rules; Owner: postgres
@@ -2695,7 +2695,7 @@ CREATE MATERIALIZED VIEW reporting_rules.reporting_rule_versions AS
   WITH DATA;
 
 
-ALTER TABLE reporting_rules.reporting_rule_versions OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rule_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rule_latest_versions; Type: VIEW; Schema: reporting_rules; Owner: postgres
@@ -2708,7 +2708,7 @@ CREATE VIEW reporting_rules.reporting_rule_latest_versions AS
   WHERE (reporting_rule_versions.is_current = true);
 
 
-ALTER TABLE reporting_rules.reporting_rule_latest_versions OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rule_latest_versions OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rules_to_actions; Type: TABLE; Schema: reporting_rules; Owner: postgres
@@ -2721,7 +2721,7 @@ CREATE TABLE reporting_rules.reporting_rules_to_actions (
 );
 
 
-ALTER TABLE reporting_rules.reporting_rules_to_actions OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rules_to_actions OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rules_to_item_types; Type: TABLE; Schema: reporting_rules; Owner: postgres
@@ -2734,7 +2734,7 @@ CREATE TABLE reporting_rules.reporting_rules_to_item_types (
 );
 
 
-ALTER TABLE reporting_rules.reporting_rules_to_item_types OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rules_to_item_types OWNER TO CURRENT_USER;
 
 --
 -- Name: reporting_rules_to_policies; Type: TABLE; Schema: reporting_rules; Owner: postgres
@@ -2747,7 +2747,7 @@ CREATE TABLE reporting_rules.reporting_rules_to_policies (
 );
 
 
-ALTER TABLE reporting_rules.reporting_rules_to_policies OWNER TO postgres;
+ALTER TABLE reporting_rules.reporting_rules_to_policies OWNER TO CURRENT_USER;
 
 
 --
@@ -2762,7 +2762,7 @@ CREATE TABLE signal_auth_service.open_ai_configs (
 );
 
 
-ALTER TABLE signal_auth_service.open_ai_configs OWNER TO postgres;
+ALTER TABLE signal_auth_service.open_ai_configs OWNER TO CURRENT_USER;
 
 
 --
@@ -2776,7 +2776,7 @@ CREATE TABLE signals_service.models_eligible_as_signals (
 );
 
 
-ALTER TABLE signals_service.models_eligible_as_signals OWNER TO postgres;
+ALTER TABLE signals_service.models_eligible_as_signals OWNER TO CURRENT_USER;
 
 --
 -- Name: org_default_user_interface_settings; Type: TABLE; Schema: user_management_service; Owner: postgres
@@ -2790,7 +2790,7 @@ CREATE TABLE user_management_service.org_default_user_interface_settings (
 );
 
 
-ALTER TABLE user_management_service.org_default_user_interface_settings OWNER TO postgres;
+ALTER TABLE user_management_service.org_default_user_interface_settings OWNER TO CURRENT_USER;
 
 --
 -- Name: password_reset_tokens; Type: TABLE; Schema: user_management_service; Owner: postgres
@@ -2804,7 +2804,7 @@ CREATE TABLE user_management_service.password_reset_tokens (
 );
 
 
-ALTER TABLE user_management_service.password_reset_tokens OWNER TO postgres;
+ALTER TABLE user_management_service.password_reset_tokens OWNER TO CURRENT_USER;
 
 --
 -- Name: user_interface_settings; Type: TABLE; Schema: user_management_service; Owner: postgres
@@ -2819,7 +2819,7 @@ CREATE TABLE user_management_service.user_interface_settings (
 );
 
 
-ALTER TABLE user_management_service.user_interface_settings OWNER TO postgres;
+ALTER TABLE user_management_service.user_interface_settings OWNER TO CURRENT_USER;
 
 --
 -- Name: user_scores; Type: TABLE; Schema: user_statistics_service; Owner: postgres
@@ -2833,7 +2833,7 @@ CREATE TABLE user_statistics_service.user_scores (
 );
 
 
-ALTER TABLE user_statistics_service.user_scores OWNER TO postgres;
+ALTER TABLE user_statistics_service.user_scores OWNER TO CURRENT_USER;
 
 --
 -- Name: invite_user_tokens id; Type: DEFAULT; Schema: public; Owner: postgres

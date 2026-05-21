@@ -20,13 +20,17 @@ type Action = {
     displayName: string;
   };
   policyNames: readonly string[];
+  // Marks parameterized entries so we render the Edit affordance only for
+  // those; non-parameterized actions stay visually unchanged.
+  hasParameters?: boolean;
 };
 
 export default function ManualReviewJobEnqueuedRelatedActions(props: {
   actionsData: Action[];
   onRemoveAction: (action: Action) => void;
+  onEditAction?: (action: Action) => void;
 }) {
-  const { actionsData: actions, onRemoveAction } = props;
+  const { actionsData: actions, onRemoveAction, onEditAction } = props;
 
   // Group actions by action Id and associate with list of targets on which that
   // action will be performed
@@ -40,6 +44,7 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
     targetsWithPolicies: actionsById[actionId].map((action) => ({
       target: action.target,
       policyNames: action.policyNames,
+      hasParameters: action.hasParameters ?? false,
     })),
   }));
 
@@ -51,7 +56,7 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
     <div className="flex flex-col mb-4 text-start">
       <div className="self-start mb-2 text-base font-medium">Other Actions</div>
       <div
-        className={`flex flex-col max-h-[360px] max-w-[240px] border border-solid p-4 rounded-md border-gray-200 bg-white overflow-auto`}
+        className={`flex flex-col w-full max-h-[360px] border border-solid p-4 rounded-md border-gray-200 bg-white overflow-auto`}
       >
         {groupedActions.map((groupedAction, i) => (
           <div className="flex flex-col" key={groupedAction.action.id}>
@@ -78,6 +83,15 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
                       ...groupedAction.action,
                       ...targetWithPolicies,
                     })
+                  }
+                  onEditParameters={
+                    targetWithPolicies.hasParameters && onEditAction
+                      ? () =>
+                          onEditAction({
+                            ...groupedAction.action,
+                            ...targetWithPolicies,
+                          })
+                      : undefined
                   }
                 />
               ))}

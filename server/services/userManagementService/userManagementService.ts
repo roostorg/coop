@@ -4,11 +4,6 @@ import { type Kysely } from 'kysely';
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import {
-  UserPermission,
-  type Invoker,
-  type UserRole,
-} from '../../models/types/permissioning.js';
-import {
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
@@ -17,6 +12,11 @@ import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
 import type { MrtChartConfig } from './dbTypes.js';
 import type { UserManagementPg } from './index.js';
+import {
+  UserPermission,
+  type Invoker,
+  type UserRole,
+} from './permissioning.js';
 import { hashPassword } from './utils.js';
 
 class UserManagementService {

@@ -1,6 +1,6 @@
 import { type Generated, type GeneratedAlways } from 'kysely';
 
-import { type UserRole } from '../models/types/permissioning.js';
+import { type UserRole } from './userManagementService/index.js';
 
 /** Postgres enum for backtests.status (generated column — read-only in app). */
 export type BacktestStatusDb = 'RUNNING' | 'COMPLETE' | 'CANCELED';

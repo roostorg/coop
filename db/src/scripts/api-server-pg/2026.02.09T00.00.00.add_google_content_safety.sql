@@ -8,7 +8,7 @@ CREATE TABLE signal_auth_service.google_content_safety_configs (
     api_key character varying(255) NOT NULL
 );
 
-ALTER TABLE signal_auth_service.google_content_safety_configs OWNER TO postgres;
+ALTER TABLE signal_auth_service.google_content_safety_configs OWNER TO CURRENT_USER;
 
 ALTER TABLE ONLY signal_auth_service.google_content_safety_configs
     ADD CONSTRAINT google_content_safety_configs_pkey PRIMARY KEY (org_id);

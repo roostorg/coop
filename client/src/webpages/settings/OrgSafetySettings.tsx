@@ -5,13 +5,16 @@ import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  GQLUserPermission,
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -22,6 +25,9 @@ import {
 
 gql`
   query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
     myOrg {
       defaultInterfacePreferences {
         moderatorSafetyMuteVideo
@@ -55,16 +61,16 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyMuteVideo: true,
   });
 
-  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery();
+  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({ errorPolicy: 'all' });
 
   const [saveSafetySettings, { loading: isSafetySettingsMutationLoading }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
       onCompleted: () => {
-        toast.success('Default safety settings saved!');
+        toast.success('Default wellness settings saved!');
       },
       onError: () => {
         toast.error(
-          "Your organization's safety settings failed to save. Please try again.",
+          "Your organization's wellness settings failed to save. Please try again.",
         );
       },
     });
@@ -89,26 +95,35 @@ export default function ManualReviewSafetySettings() {
     return <FullScreenLoading />;
   }
 
-  if (error || !data?.myOrg?.defaultInterfacePreferences) {
-    throw error ?? new Error('Could not load safety settings');
+  const permissions = data?.me?.permissions;
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+    return <Navigate to="/dashboard/settings" replace />;
+  }
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.myOrg?.defaultInterfacePreferences) {
+    throw new Error('Could not load wellness settings');
   }
 
   return (
     <>
       <Helmet>
-        <title>Default Organization Safety Settings</title>
+        <title>Default Wellness Settings</title>
       </Helmet>
 
       <div className="w-[700px]">
         <Heading size="2XL" className="mb-2">
-          Standardize Your Organization's Safety Settings
+          Default Wellness Settings
         </Heading>
         <Text size="SM" className="mb-12">
-        Configure your organization's default safety settings. When a new 
-        employee joins your team and needs to use Coop, these settings 
-        will be applied by default to maintain their safety and well-being. 
-        If an employee wants to override these settings, they can do so in 
-        their personal Safety Settings.
+        Configure your organization's default wellness settings. When a new
+        user joins your team and needs to use Coop, these settings
+        will be applied by default to maintain their safety and well-being.
+        If a user wants to override these settings, they can do so in
+        their personal Wellness settings.
         </Text>
         <div className="flex gap-12 mb-8">
           <div className="flex flex-col gap-5 w-64 pt-10">

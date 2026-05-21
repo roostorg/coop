@@ -8,6 +8,10 @@ import { JsonObject, JsonValue } from 'type-fest';
 
 import type { UserHistoryForGQL } from '../graphql/datasources/InvestigationApi.js';
 import type { GraphQLOrgParent } from '../graphql/datasources/orgKyselyPersistence.js';
+import type {
+  GraphQLBacktestParent,
+  GraphQLRuleParent,
+} from '../graphql/datasources/ruleKyselyPersistence.js';
 import type { GraphQLUserParent } from '../graphql/datasources/userKyselyPersistence.js';
 import type {
   ContentItemTypeResolversParentType,
@@ -18,12 +22,9 @@ import type {
   UserItemTypeResolversParentType,
 } from '../graphql/modules/itemType.js';
 import type { ReportingInsights } from '../graphql/modules/reporting.js';
-import type { HashBank } from '../models/HashBankModel.js';
-import type { Backtest } from '../models/rules/BacktestModel.js';
-import type { ItemType } from '../models/rules/ItemTypeModel.js';
-import type { Rule } from '../models/rules/RuleModel.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
+import type { HashBank } from '../services/hmaService/index.js';
 import type {
   ContentAppealReviewJobPayload,
   ContentManualReviewJobPayload,
@@ -52,6 +53,7 @@ import type {
   EnqueueToMrtAction,
   EnqueueToNcmecAction,
 } from '../services/moderationConfigService/types/actions.js';
+import type { ItemType } from '../services/moderationConfigService/types/itemTypes.js';
 import type { Notification } from '../services/notificationsService/notificationsService.js';
 import type { ReportingRuleWithoutVersion } from '../services/reportingService/ReportingRules.js';
 import type { Signal } from '../services/signalsService/index.js';
@@ -141,6 +143,7 @@ export type GQLActionBase = {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -165,6 +168,64 @@ export type GQLActionNameExistsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+/**
+ * Definition of a single runtime parameter on an action. The moderator is
+ * prompted for a value at execution time; the value is included in the
+ * webhook payload under the parameter's `name`.
+ */
+export type GQLActionParameter = {
+  readonly __typename?: 'ActionParameter';
+  /** Pre-filled value shown to the moderator. Shape matches `type`. */
+  readonly defaultValue?: Maybe<Scalars['JSON']['output']>;
+  readonly description?: Maybe<Scalars['String']['output']>;
+  readonly displayName: Scalars['String']['output'];
+  /** NUMBER only: inclusive maximum. */
+  readonly max?: Maybe<Scalars['Float']['output']>;
+  /** STRING only: inclusive maximum length in characters. */
+  readonly maxLength?: Maybe<Scalars['Int']['output']>;
+  /** NUMBER only: inclusive minimum. */
+  readonly min?: Maybe<Scalars['Float']['output']>;
+  /** Key under which the value is sent in the webhook payload. */
+  readonly name: Scalars['String']['output'];
+  readonly options?: Maybe<ReadonlyArray<GQLActionParameterOption>>;
+  readonly required: Scalars['Boolean']['output'];
+  readonly type: GQLActionParameterType;
+};
+
+export type GQLActionParameterInput = {
+  readonly defaultValue?: InputMaybe<Scalars['JSON']['input']>;
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly displayName: Scalars['String']['input'];
+  readonly max?: InputMaybe<Scalars['Float']['input']>;
+  readonly maxLength?: InputMaybe<Scalars['Int']['input']>;
+  readonly min?: InputMaybe<Scalars['Float']['input']>;
+  readonly name: Scalars['String']['input'];
+  readonly options?: InputMaybe<ReadonlyArray<GQLActionParameterOptionInput>>;
+  readonly required: Scalars['Boolean']['input'];
+  readonly type: GQLActionParameterType;
+};
+
+export type GQLActionParameterOption = {
+  readonly __typename?: 'ActionParameterOption';
+  readonly label: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
+};
+
+export type GQLActionParameterOptionInput = {
+  readonly label: Scalars['String']['input'];
+  readonly value: Scalars['String']['input'];
+};
+
+export const GQLActionParameterType = {
+  Boolean: 'BOOLEAN',
+  Multiselect: 'MULTISELECT',
+  Number: 'NUMBER',
+  Select: 'SELECT',
+  String: 'STRING',
+} as const;
+
+export type GQLActionParameterType =
+  (typeof GQLActionParameterType)[keyof typeof GQLActionParameterType];
 export const GQLActionSource = {
   AutomatedRule: 'AUTOMATED_RULE',
   ManualActionRun: 'MANUAL_ACTION_RUN',
@@ -719,6 +780,7 @@ export type GQLCreateActionInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly itemTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
+  readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
 export type GQLCreateBacktestInput = {
@@ -882,12 +944,19 @@ export type GQLCustomAction = GQLActionBase & {
   readonly callbackUrl: Scalars['String']['output'];
   readonly callbackUrlBody?: Maybe<Scalars['JSONObject']['output']>;
   readonly callbackUrlHeaders?: Maybe<Scalars['JSONObject']['output']>;
+  /**
+   * Deprecated alias for `parameters` retained for back-compat with the
+   * initial MRT-only parameter implementation. New consumers should read
+   * `parameters` instead.
+   * @deprecated Use `parameters` instead.
+   */
   readonly customMrtApiParams: ReadonlyArray<Maybe<GQLCustomMrtApiParamSpec>>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1116,6 +1185,7 @@ export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1127,6 +1197,7 @@ export type GQLEnqueueToMrtAction = GQLActionBase & {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1138,6 +1209,7 @@ export type GQLEnqueueToNcmecAction = GQLActionBase & {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly name: Scalars['String']['output'];
   readonly orgId: Scalars['String']['output'];
+  readonly parameters: ReadonlyArray<GQLActionParameter>;
   readonly penalty: GQLUserPenaltySeverity;
 };
 
@@ -1216,6 +1288,19 @@ export type GQLExecuteBulkActionInput = {
   readonly actionIds: ReadonlyArray<Scalars['String']['input']>;
   readonly itemIds: ReadonlyArray<Scalars['String']['input']>;
   readonly itemTypeId: Scalars['String']['input'];
+  /**
+   * Optional moderator-authored note explaining why this action was taken.
+   * Sent to the action's webhook as `actorNote` and persisted to the action
+   * execution audit log.
+   */
+  readonly note?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Optional map of `actionId` -> `{ paramName: value }` carrying
+   * moderator-supplied runtime parameter values. Each map is validated against
+   * the action's parameter spec server-side before publish; invalid values
+   * reject the entire request.
+   */
+  readonly parameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly policyIds: ReadonlyArray<Scalars['String']['input']>;
 };
 
@@ -1569,6 +1654,11 @@ export type GQLItemInput = {
 
 export type GQLItemSubmissions = {
   readonly __typename?: 'ItemSubmissions';
+  /**
+   * True when this item was synthesized server-side from indirect references
+   * rather than a real submission. `latest.data` is empty when set.
+   */
+  readonly isSynthetic?: Maybe<Scalars['Boolean']['output']>;
   readonly latest: GQLItem;
   readonly prior?: Maybe<ReadonlyArray<GQLItem>>;
 };
@@ -2131,7 +2221,7 @@ export type GQLManualReviewJob = {
 
 export type GQLManualReviewJobComment = {
   readonly __typename?: 'ManualReviewJobComment';
-  readonly author: GQLUser;
+  readonly author?: Maybe<GQLUser>;
   readonly commentText: Scalars['String']['output'];
   readonly createdAt: Scalars['DateTime']['output'];
   readonly id: Scalars['ID']['output'];
@@ -2429,6 +2519,12 @@ export type GQLMutation = {
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
   readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
+  /**
+   * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
+   * retry decisions that belong to their own org. Returns success on a fresh
+   * successful submission, or an error with a user-safe summary on failure.
+   */
+  readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2660,6 +2756,10 @@ export type GQLMutationResetPasswordArgs = {
   input: GQLResetPasswordInput;
 };
 
+export type GQLMutationRetryNcmecSubmissionArgs = {
+  decisionId: Scalars['ID']['input'];
+};
+
 export type GQLMutationRotateApiKeyArgs = {
   input: GQLRotateApiKeyInput;
 };
@@ -2856,6 +2956,33 @@ export type GQLNcmecContentItem = {
   readonly isReported: Scalars['Boolean']['output'];
 };
 
+/**
+ * An NCMEC submission that was decisioned in the MRT but never produced a
+ * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+ * reviewers can see and retry failed submissions in the same place as
+ * successful reports. The userId + userItemTypeId pair uniquely identifies
+ * the reported user; decisionId is the stable handle for retrying.
+ */
+export type GQLNcmecFailedSubmission = {
+  readonly __typename?: 'NcmecFailedSubmission';
+  readonly decisionId: Scalars['ID']['output'];
+  readonly lastError?: Maybe<Scalars['String']['output']>;
+  readonly retryCount: Scalars['Int']['output'];
+  readonly reviewerId?: Maybe<Scalars['String']['output']>;
+  readonly status: GQLNcmecFailedSubmissionStatus;
+  readonly ts: Scalars['DateTime']['output'];
+  readonly userId: Scalars['String']['output'];
+  readonly userItemType: GQLUserItemType;
+};
+
+export const GQLNcmecFailedSubmissionStatus = {
+  NeverAttempted: 'NEVER_ATTEMPTED',
+  PermanentError: 'PERMANENT_ERROR',
+  RetryableError: 'RETRYABLE_ERROR',
+} as const;
+
+export type GQLNcmecFailedSubmissionStatus =
+  (typeof GQLNcmecFailedSubmissionStatus)[keyof typeof GQLNcmecFailedSubmissionStatus];
 export const GQLNcmecFileAnnotation = {
   AnimeDrawingVirtualHentai: 'ANIME_DRAWING_VIRTUAL_HENTAI',
   Bestiality: 'BESTIALITY',
@@ -3021,6 +3148,12 @@ export type GQLOrg = {
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
   readonly email: Scalars['String']['output'];
+  /**
+   * NCMEC decisions that did not produce a successful CyberTip report. Returned
+   * alongside ncmecReports on the dashboard so reviewers can see the full
+   * submission status (successful + failed) in one place and retry failures.
+   */
+  readonly failedNcmecSubmissions: ReadonlyArray<GQLNcmecFailedSubmission>;
   readonly hasAppealsEnabled: Scalars['Boolean']['output'];
   readonly hasNCMECReportingEnabled: Scalars['Boolean']['output'];
   readonly hasPartialItemsEndpoint: Scalars['Boolean']['output'];
@@ -3781,6 +3914,16 @@ export type GQLResolvedJobCount = {
   readonly time: Scalars['String']['output'];
 };
 
+export type GQLRetryNcmecSubmissionResponse = {
+  readonly __typename?: 'RetryNcmecSubmissionResponse';
+  /**
+   * Human-readable error summary if the retry failed. Never includes raw
+   * NCMEC response bodies; safe to render in the UI.
+   */
+  readonly error?: Maybe<Scalars['String']['output']>;
+  readonly success: Scalars['Boolean']['output'];
+};
+
 export type GQLRotateApiKeyError = GQLError & {
   readonly __typename?: 'RotateApiKeyError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -4300,6 +4443,7 @@ export type GQLSubmitNcmecReportDecisionComponent =
   };
 
 export type GQLSubmitNcmecReportInput = {
+  readonly additionalInfo?: InputMaybe<Scalars['String']['input']>;
   readonly escalateToHighPriority?: InputMaybe<Scalars['String']['input']>;
   readonly incidentType: GQLNcmecIncidentType;
   readonly reportedMedia: ReadonlyArray<GQLNcmecMediaInput>;
@@ -4472,6 +4616,8 @@ export type GQLUpdateActionInput = {
   readonly id: Scalars['ID']['input'];
   readonly itemTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
+  /** Replace the parameter list (`[]` clears it). Omit to leave unchanged. */
+  readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
 export type GQLUpdateContentItemTypeInput = {
@@ -5382,7 +5528,7 @@ export type GQLResolversInterfaceTypes<
     | GQLSubmitNcmecReportDecisionComponent
     | GQLTransformJobAndRecreateInQueueDecisionComponent
     | GQLUserOrRelatedActionDecisionComponent;
-  Rule: Rule | Rule;
+  Rule: GraphQLRuleParent | GraphQLRuleParent;
 };
 
 /** Mapping between all available schema types and the resolvers types */
@@ -5396,6 +5542,11 @@ export type GQLResolversTypes = {
   >;
   ActionData: ResolverTypeWrapper<GQLActionData>;
   ActionNameExistsError: ResolverTypeWrapper<GQLActionNameExistsError>;
+  ActionParameter: ResolverTypeWrapper<GQLActionParameter>;
+  ActionParameterInput: GQLActionParameterInput;
+  ActionParameterOption: ResolverTypeWrapper<GQLActionParameterOption>;
+  ActionParameterOptionInput: GQLActionParameterOptionInput;
+  ActionParameterType: GQLActionParameterType;
   ActionSource: GQLActionSource;
   ActionStatisticsFilters: GQLActionStatisticsFilters;
   ActionStatisticsGroupByColumns: GQLActionStatisticsGroupByColumns;
@@ -5444,7 +5595,7 @@ export type GQLResolversTypes = {
   AppealSettings: ResolverTypeWrapper<GQLAppealSettings>;
   AppealSettingsInput: GQLAppealSettingsInput;
   AutomaticCloseDecisionComponent: ResolverTypeWrapper<GQLAutomaticCloseDecisionComponent>;
-  Backtest: ResolverTypeWrapper<Backtest>;
+  Backtest: ResolverTypeWrapper<GraphQLBacktestParent>;
   BacktestStatus: GQLBacktestStatus;
   BaseField: ResolverTypeWrapper<GQLBaseField>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
@@ -5484,7 +5635,7 @@ export type GQLResolversTypes = {
   >;
   ContentItemType: ResolverTypeWrapper<ContentItemTypeResolversParentType>;
   ContentManualReviewJobPayload: ResolverTypeWrapper<ContentManualReviewJobPayload>;
-  ContentRule: ResolverTypeWrapper<Rule>;
+  ContentRule: ResolverTypeWrapper<GraphQLRuleParent>;
   ContentSchemaFieldRoles: ResolverTypeWrapper<GQLContentSchemaFieldRoles>;
   ContentSchemaFieldRolesInput: GQLContentSchemaFieldRolesInput;
   ContentType: ResolverTypeWrapper<ItemType>;
@@ -5902,6 +6053,12 @@ export type GQLResolversTypes = {
       contentItem: GQLResolversTypes['Item'];
     }
   >;
+  NcmecFailedSubmission: ResolverTypeWrapper<
+    Omit<GQLNcmecFailedSubmission, 'userItemType'> & {
+      userItemType: GQLResolversTypes['UserItemType'];
+    }
+  >;
+  NcmecFailedSubmissionStatus: GQLNcmecFailedSubmissionStatus;
   NcmecFileAnnotation: GQLNcmecFileAnnotation;
   NcmecIndustryClassification: GQLNcmecIndustryClassification;
   NcmecInternetDetailType: GQLNcmecInternetDetailType;
@@ -6002,6 +6159,7 @@ export type GQLResolversTypes = {
   RequestDemoInterest: GQLRequestDemoInterest;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: ResolverTypeWrapper<GQLResolvedJobCount>;
+  RetryNcmecSubmissionResponse: ResolverTypeWrapper<GQLRetryNcmecSubmissionResponse>;
   RotateApiKeyError: ResolverTypeWrapper<GQLRotateApiKeyError>;
   RotateApiKeyInput: GQLRotateApiKeyInput;
   RotateApiKeyResponse: ResolverTypeWrapper<
@@ -6016,7 +6174,7 @@ export type GQLResolversTypes = {
   RoutingRule: ResolverTypeWrapper<RoutingRuleWithoutVersion>;
   RoutingRuleNameExistsError: ResolverTypeWrapper<GQLRoutingRuleNameExistsError>;
   RoutingRuleStatus: GQLRoutingRuleStatus;
-  Rule: ResolverTypeWrapper<Rule>;
+  Rule: ResolverTypeWrapper<GraphQLRuleParent>;
   RuleEnvironment: GQLRuleEnvironment;
   RuleExecutionEnqueueSourceInfo: ResolverTypeWrapper<
     Omit<GQLRuleExecutionEnqueueSourceInfo, 'rules'> & {
@@ -6042,7 +6200,7 @@ export type GQLResolversTypes = {
     }
   >;
   RuleHasRunningBacktestsError: ResolverTypeWrapper<GQLRuleHasRunningBacktestsError>;
-  RuleInsights: ResolverTypeWrapper<Rule>;
+  RuleInsights: ResolverTypeWrapper<GraphQLRuleParent>;
   RuleNameExistsError: ResolverTypeWrapper<GQLRuleNameExistsError>;
   RulePassRateData: ResolverTypeWrapper<GQLRulePassRateData>;
   RuleStatus: GQLRuleStatus;
@@ -6218,7 +6376,7 @@ export type GQLResolversTypes = {
   UserPenaltySeverity: GQLUserPenaltySeverity;
   UserPermission: GQLUserPermission;
   UserRole: GQLUserRole;
-  UserRule: ResolverTypeWrapper<Rule>;
+  UserRule: ResolverTypeWrapper<GraphQLRuleParent>;
   UserSchemaFieldRoles: ResolverTypeWrapper<GQLUserSchemaFieldRoles>;
   UserSchemaFieldRolesInput: GQLUserSchemaFieldRolesInput;
   UserStrikeBucket: ResolverTypeWrapper<GQLUserStrikeBucket>;
@@ -6241,6 +6399,10 @@ export type GQLResolversParentTypes = {
   ActionBase: GQLResolversInterfaceTypes<GQLResolversParentTypes>['ActionBase'];
   ActionData: GQLActionData;
   ActionNameExistsError: GQLActionNameExistsError;
+  ActionParameter: GQLActionParameter;
+  ActionParameterInput: GQLActionParameterInput;
+  ActionParameterOption: GQLActionParameterOption;
+  ActionParameterOptionInput: GQLActionParameterOptionInput;
   ActionStatisticsFilters: GQLActionStatisticsFilters;
   ActionStatisticsInput: GQLActionStatisticsInput;
   AddAccessibleQueuesToUserInput: GQLAddAccessibleQueuesToUserInput;
@@ -6274,7 +6436,7 @@ export type GQLResolversParentTypes = {
   AppealSettings: GQLAppealSettings;
   AppealSettingsInput: GQLAppealSettingsInput;
   AutomaticCloseDecisionComponent: GQLAutomaticCloseDecisionComponent;
-  Backtest: Backtest;
+  Backtest: GraphQLBacktestParent;
   BaseField: GQLBaseField;
   Boolean: Scalars['Boolean']['output'];
   CannotDeleteDefaultUserError: GQLCannotDeleteDefaultUserError;
@@ -6303,7 +6465,7 @@ export type GQLResolversParentTypes = {
   };
   ContentItemType: ContentItemTypeResolversParentType;
   ContentManualReviewJobPayload: ContentManualReviewJobPayload;
-  ContentRule: Rule;
+  ContentRule: GraphQLRuleParent;
   ContentSchemaFieldRoles: GQLContentSchemaFieldRoles;
   ContentSchemaFieldRolesInput: GQLContentSchemaFieldRolesInput;
   ContentType: ItemType;
@@ -6603,6 +6765,9 @@ export type GQLResolversParentTypes = {
   NcmecContentItem: Omit<GQLNcmecContentItem, 'contentItem'> & {
     contentItem: GQLResolversParentTypes['Item'];
   };
+  NcmecFailedSubmission: Omit<GQLNcmecFailedSubmission, 'userItemType'> & {
+    userItemType: GQLResolversParentTypes['UserItemType'];
+  };
   NcmecManualReviewJobPayload: NcmecManualReviewJobPayload;
   NcmecMediaInput: GQLNcmecMediaInput;
   NcmecOrgSettings: GQLNcmecOrgSettings;
@@ -6687,6 +6852,7 @@ export type GQLResolversParentTypes = {
   RequestDemoInput: GQLRequestDemoInput;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: GQLResolvedJobCount;
+  RetryNcmecSubmissionResponse: GQLRetryNcmecSubmissionResponse;
   RotateApiKeyError: GQLRotateApiKeyError;
   RotateApiKeyInput: GQLRotateApiKeyInput;
   RotateApiKeyResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['RotateApiKeyResponse'];
@@ -6696,7 +6862,7 @@ export type GQLResolversParentTypes = {
   RotateWebhookSigningKeySuccessResponse: GQLRotateWebhookSigningKeySuccessResponse;
   RoutingRule: RoutingRuleWithoutVersion;
   RoutingRuleNameExistsError: GQLRoutingRuleNameExistsError;
-  Rule: Rule;
+  Rule: GraphQLRuleParent;
   RuleExecutionEnqueueSourceInfo: Omit<
     GQLRuleExecutionEnqueueSourceInfo,
     'rules'
@@ -6720,7 +6886,7 @@ export type GQLResolversParentTypes = {
     edges: ReadonlyArray<GQLResolversParentTypes['RuleExecutionResultEdge']>;
   };
   RuleHasRunningBacktestsError: GQLRuleHasRunningBacktestsError;
-  RuleInsights: Rule;
+  RuleInsights: GraphQLRuleParent;
   RuleNameExistsError: GQLRuleNameExistsError;
   RulePassRateData: GQLRulePassRateData;
   RunRetroactionInput: GQLRunRetroactionInput;
@@ -6847,7 +7013,7 @@ export type GQLResolversParentTypes = {
     edges: ReadonlyArray<GQLResolversParentTypes['UserNotificationEdge']>;
   };
   UserOrRelatedActionDecisionComponent: GQLUserOrRelatedActionDecisionComponent;
-  UserRule: Rule;
+  UserRule: GraphQLRuleParent;
   UserSchemaFieldRoles: GQLUserSchemaFieldRoles;
   UserSchemaFieldRolesInput: GQLUserSchemaFieldRolesInput;
   UserStrikeBucket: GQLUserStrikeBucket;
@@ -6982,6 +7148,52 @@ export type GQLActionNameExistsErrorResolvers<
     ContextType
   >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLActionParameterResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ActionParameter'] =
+    GQLResolversParentTypes['ActionParameter'],
+> = {
+  defaultValue?: Resolver<
+    Maybe<GQLResolversTypes['JSON']>,
+    ParentType,
+    ContextType
+  >;
+  description?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  displayName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  max?: Resolver<Maybe<GQLResolversTypes['Float']>, ParentType, ContextType>;
+  maxLength?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  min?: Resolver<Maybe<GQLResolversTypes['Float']>, ParentType, ContextType>;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  options?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['ActionParameterOption']>>,
+    ParentType,
+    ContextType
+  >;
+  required?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  type?: Resolver<
+    GQLResolversTypes['ActionParameterType'],
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLActionParameterOptionResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ActionParameterOption'] =
+    GQLResolversParentTypes['ActionParameterOption'],
+> = {
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type GQLAddAccessibleQueuesToUserResponseResolvers<
@@ -8058,6 +8270,11 @@ export type GQLCustomActionResolvers<
   >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   orgId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  parameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ActionParameter']>,
+    ParentType,
+    ContextType
+  >;
   penalty?: Resolver<
     GQLResolversTypes['UserPenaltySeverity'],
     ParentType,
@@ -8384,6 +8601,11 @@ export type GQLEnqueueAuthorToMrtActionResolvers<
   >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   orgId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  parameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ActionParameter']>,
+    ParentType,
+    ContextType
+  >;
   penalty?: Resolver<
     GQLResolversTypes['UserPenaltySeverity'],
     ParentType,
@@ -8415,6 +8637,11 @@ export type GQLEnqueueToMrtActionResolvers<
   >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   orgId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  parameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ActionParameter']>,
+    ParentType,
+    ContextType
+  >;
   penalty?: Resolver<
     GQLResolversTypes['UserPenaltySeverity'],
     ParentType,
@@ -8446,6 +8673,11 @@ export type GQLEnqueueToNcmecActionResolvers<
   >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   orgId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  parameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ActionParameter']>,
+    ParentType,
+    ContextType
+  >;
   penalty?: Resolver<
     GQLResolversTypes['UserPenaltySeverity'],
     ParentType,
@@ -9218,6 +9450,11 @@ export type GQLItemSubmissionsResolvers<
   ParentType extends GQLResolversParentTypes['ItemSubmissions'] =
     GQLResolversParentTypes['ItemSubmissions'],
 > = {
+  isSynthetic?: Resolver<
+    Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
   latest?: Resolver<GQLResolversTypes['Item'], ParentType, ContextType>;
   prior?: Resolver<
     Maybe<ReadonlyArray<GQLResolversTypes['Item']>>,
@@ -9860,7 +10097,7 @@ export type GQLManualReviewJobCommentResolvers<
   ParentType extends GQLResolversParentTypes['ManualReviewJobComment'] =
     GQLResolversParentTypes['ManualReviewJobComment'],
 > = {
-  author?: Resolver<GQLResolversTypes['User'], ParentType, ContextType>;
+  author?: Resolver<Maybe<GQLResolversTypes['User']>, ParentType, ContextType>;
   commentText?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   createdAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
@@ -10703,6 +10940,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationResetPasswordArgs, 'input'>
   >;
+  retryNcmecSubmission?: Resolver<
+    GQLResolversTypes['RetryNcmecSubmissionResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationRetryNcmecSubmissionArgs, 'decisionId'>
+  >;
   rotateApiKey?: Resolver<
     GQLResolversTypes['RotateApiKeyResponse'],
     ParentType,
@@ -10998,6 +11241,37 @@ export type GQLNcmecContentItemResolvers<
   isReported?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type GQLNcmecFailedSubmissionResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['NcmecFailedSubmission'] =
+    GQLResolversParentTypes['NcmecFailedSubmission'],
+> = {
+  decisionId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
+  lastError?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  retryCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  reviewerId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<
+    GQLResolversTypes['NcmecFailedSubmissionStatus'],
+    ParentType,
+    ContextType
+  >;
+  ts?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
+  userId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  userItemType?: Resolver<
+    GQLResolversTypes['UserItemType'],
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLNcmecManualReviewJobPayloadResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['NcmecManualReviewJobPayload'] =
@@ -11254,6 +11528,11 @@ export type GQLOrgResolvers<
     ContextType
   >;
   email?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  failedNcmecSubmissions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['NcmecFailedSubmission']>,
+    ParentType,
+    ContextType
+  >;
   hasAppealsEnabled?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -12518,6 +12797,15 @@ export type GQLResolvedJobCountResolvers<
     ContextType
   >;
   time?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type GQLRetryNcmecSubmissionResponseResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['RetryNcmecSubmissionResponse'] =
+    GQLResolversParentTypes['RetryNcmecSubmissionResponse'],
+> = {
+  error?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
+  success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type GQLRotateApiKeyErrorResolvers<
@@ -14288,6 +14576,8 @@ export type GQLResolvers<ContextType = Context> = {
   ActionBase?: GQLActionBaseResolvers<ContextType>;
   ActionData?: GQLActionDataResolvers<ContextType>;
   ActionNameExistsError?: GQLActionNameExistsErrorResolvers<ContextType>;
+  ActionParameter?: GQLActionParameterResolvers<ContextType>;
+  ActionParameterOption?: GQLActionParameterOptionResolvers<ContextType>;
   AddAccessibleQueuesToUserResponse?: GQLAddAccessibleQueuesToUserResponseResolvers<ContextType>;
   AddCommentFailedError?: GQLAddCommentFailedErrorResolvers<ContextType>;
   AddFavoriteMRTQueueSuccessResponse?: GQLAddFavoriteMrtQueueSuccessResponseResolvers<ContextType>;
@@ -14477,6 +14767,7 @@ export type GQLResolvers<ContextType = Context> = {
   NCMECReportedThread?: GQLNcmecReportedThreadResolvers<ContextType>;
   NcmecAdditionalFile?: GQLNcmecAdditionalFileResolvers<ContextType>;
   NcmecContentItem?: GQLNcmecContentItemResolvers<ContextType>;
+  NcmecFailedSubmission?: GQLNcmecFailedSubmissionResolvers<ContextType>;
   NcmecManualReviewJobPayload?: GQLNcmecManualReviewJobPayloadResolvers<ContextType>;
   NcmecOrgSettings?: GQLNcmecOrgSettingsResolvers<ContextType>;
   NcmecReportedMediaDetails?: GQLNcmecReportedMediaDetailsResolvers<ContextType>;
@@ -14524,6 +14815,7 @@ export type GQLResolvers<ContextType = Context> = {
   ReportingRuleNameExistsError?: GQLReportingRuleNameExistsErrorResolvers<ContextType>;
   ReportingRulePassRateData?: GQLReportingRulePassRateDataResolvers<ContextType>;
   ResolvedJobCount?: GQLResolvedJobCountResolvers<ContextType>;
+  RetryNcmecSubmissionResponse?: GQLRetryNcmecSubmissionResponseResolvers<ContextType>;
   RotateApiKeyError?: GQLRotateApiKeyErrorResolvers<ContextType>;
   RotateApiKeyResponse?: GQLRotateApiKeyResponseResolvers<ContextType>;
   RotateApiKeySuccessResponse?: GQLRotateApiKeySuccessResponseResolvers<ContextType>;
