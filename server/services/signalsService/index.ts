@@ -13,6 +13,7 @@ export {
   signalIsExternal,
 } from './types/SignalId.js';
 export {
+  BuiltInExternalSignalType,
   BuiltInThirdPartySignalType,
   UserCreatedExternalSignalType,
   integrationForSignalType,

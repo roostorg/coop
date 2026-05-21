@@ -1,6 +1,10 @@
 import { type SignalSubcategory } from '@roostorg/types';
 
-import { flattenSubcategories } from './signal.js';
+import {
+  BuiltInExternalSignalType,
+  BuiltInThirdPartySignalType,
+} from '../../services/signalsService/index.js';
+import { flattenSubcategories, typeDefs } from './signal.js';
 
 describe('flattenSubcategories', () => {
   it('Should flatten Hive categories correctly', () => {
@@ -165,4 +169,53 @@ describe('flattenSubcategories', () => {
       expectedFlattenedSubcategories,
     );
   });
+});
+
+/**
+ * The GraphQL `SignalType` enum is hand-maintained inside the SDL string in
+ * this module, separate from the canonical TS `SignalType` enum-like objects
+ * in `services/signalsService/types/SignalType.ts`. Adding a new built-in
+ * signal type to the TS side compiles cleanly but silently leaves the GraphQL
+ * enum stale — and a stale GraphQL enum means the new signal is invisible to
+ * the dashboard.
+ *
+ * Every `BuiltInExternalSignalType` and `BuiltInThirdPartySignalType` value
+ * must round-trip through the GraphQL enum. We don't enforce the converse —
+ * the GraphQL enum may legitimately include `CUSTOM` (user-created) — only
+ * that every built-in is exposed.
+ */
+describe('GraphQL SignalType enum coverage', () => {
+  function extractGraphQlEnumValues(
+    sdl: string,
+    enumName: string,
+  ): Set<string> {
+    const match = sdl.match(
+      new RegExp(`enum\\s+${enumName}\\s*\\{([^}]+)\\}`, 'm'),
+    );
+    if (!match) {
+      throw new Error(`Could not find enum ${enumName} in typeDefs`);
+    }
+    return new Set(
+      match[1]
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#')),
+    );
+  }
+
+  const graphQlSignalTypes = extractGraphQlEnumValues(typeDefs, 'SignalType');
+
+  test.each(Object.keys(BuiltInExternalSignalType))(
+    'GraphQL SignalType enum includes BuiltInExternalSignalType: %s',
+    (name) => {
+      expect(graphQlSignalTypes.has(name)).toBe(true);
+    },
+  );
+
+  test.each(Object.keys(BuiltInThirdPartySignalType))(
+    'GraphQL SignalType enum includes BuiltInThirdPartySignalType: %s',
+    (name) => {
+      expect(graphQlSignalTypes.has(name)).toBe(true);
+    },
+  );
 });
