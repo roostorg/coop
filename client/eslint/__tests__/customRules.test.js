@@ -2,7 +2,7 @@ import { Linter } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
 import rule from '../no-casting-in-getFieldValueForRole.js';
 
-const linter = new Linter();
+const linter = new Linter({ configType: 'flat' });
 
 const runLint = (code) => {
   const messages = linter.verify(code, [

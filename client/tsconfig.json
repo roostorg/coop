@@ -2,7 +2,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "target": "ESNext",
-    "types": ["vite/client", "vite-plugin-svgr/client", "vitest/globals"],
+    "types": ["vite/client", "vite-plugin-svgr/client"],
     "module": "esnext",
     "strict": true,
     "esModuleInterop": true,
@@ -29,5 +29,12 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/setupTests.ts"
   ]
 }

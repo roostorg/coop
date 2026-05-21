@@ -9,7 +9,7 @@
     "test": "vitest --passWithNoTests",
     "test:prepush": "vitest run --passWithNoTests",
     "check:prepush": "npm run build && npm run test:prepush",
-    "lint": "tsc --noEmit && eslint ./src",
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && eslint ./src",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
