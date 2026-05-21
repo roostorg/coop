@@ -34,7 +34,7 @@
     "concurrently": "^9.2.1",
     "lint-staged": "^16.4.0",
     "node-worker-threads-pool": "^1.5.1",
-    "pg": "^8.20.0",
+    "pg": "^8.21.0",
     "sequelize-cli": "^6.6.5"
   },
   "engines": {
