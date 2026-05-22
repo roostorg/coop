@@ -32,7 +32,7 @@ export const ScalarTypes = makeEnumLike([
   'POLICY_ID',
   // Stored as a string at runtime. The dedicated scalar lets Coop tag a
   // schema field as an IP address so it can be surfaced as an identifier in
-  // moderation flows (see UserSchemaFieldRoles.ipAddress et al.).
+  // moderation flows (e.g., via schema-field role metadata).
   'IP_ADDRESS',
 ]);
 export type ScalarTypes = typeof ScalarTypes;
