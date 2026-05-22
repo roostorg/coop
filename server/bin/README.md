@@ -260,15 +260,21 @@ You also need to set `VITE_CONTENT_URL_PATTERN=bsky.app` in `client/.env` so the
 
 ## atproto-setup.ts
 
-Creates the AT Protocol (Bluesky) item types needed by the atproto demo firehose connector. Run this once after `npm run create-org` to register the item types, then pass the printed item type IDs to `npm run atproto:demo`.
+Creates (or updates) the AT Protocol item types needed by the atproto demo firehose connector. Run this once after `npm run create-org` to register the item types, then pass the printed item type IDs to `npm run atproto:demo`.
 
-Usage:
+**Create mode** (first run):
 
 ```sh
 cd server && npm run atproto:setup -- --org-id <orgId>
 ```
 
-The script prints a **Bluesky Post item type ID** and a **Bluesky User item type ID** — copy both for use with `atproto:demo`.
+**Update mode** (to add new fields to an existing org's item types):
+
+```sh
+cd server && npm run atproto:setup -- --org-id <orgId> --post-type-id <id> --user-type-id <id>
+```
+
+The script prints an **atproto Post item type ID** and an **atproto User item type ID** — copy both for use with `atproto:demo`.
 
 ## atproto-demo.mts
 
