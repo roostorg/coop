@@ -80,7 +80,65 @@ describe('userKyselyPersistence', () => {
             approvedByAdmin: false,
             rejectedByAdmin: false,
           });
-          expect(Array.isArray(inserted.getPermissions())).toBe(true);
+          // Fixture orgs aren't pre-seeded with `public.roles` rows, so
+          // `getPermissions()` exercises the static-default fallback here.
+          // The DB-backed path is covered by the dedicated test below.
+          const permissions = inserted.getPermissions();
+          expect(permissions).toContain('MANAGE_ORG');
+          expect(permissions).toContain('MANAGE_ROLES');
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, input.id);
+        }
+      },
+    );
+
+    testWithFixture(
+      'updating role swaps role_id so getPermissions() reflects the new role',
+      async ({ deps, org }) => {
+        const input = samlUserInput(org.id);
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        try {
+          const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+            role: UserRole.ANALYST,
+          });
+          expect(updated!.role).toBe(UserRole.ANALYST);
+          const permissions = updated!.getPermissions();
+          expect(permissions).toContain('VIEW_INSIGHTS');
+          expect(permissions).not.toContain('MANAGE_ORG');
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, input.id);
+        }
+      },
+    );
+
+    testWithFixture(
+      'getPermissions() reads from public.role_permissions when the org has saved them',
+      async ({ deps, org }) => {
+        // Seed ADMIN with a reduced permission set so the DB result is
+        // distinguishable from the static defaults — if the fallback ran,
+        // MANAGE_ROLES would appear and the test would fail.
+        const roleRow = await deps.KyselyPg.insertInto('public.roles')
+          .values({
+            org_id: org.id,
+            key: UserRole.ADMIN,
+            display_name: 'Admin',
+            is_system: true,
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await deps.KyselyPg.insertInto('public.role_permissions')
+          .values({ role_id: roleRow.id, permission: 'MANAGE_ORG' })
+          .execute();
+
+        const input = samlUserInput(org.id);
+        const inserted = await kyselyUserInsert({
+          db: deps.KyselyPg,
+          ...input,
+        });
+        try {
+          const permissions = inserted.getPermissions();
+          expect(permissions).toEqual(['MANAGE_ORG']);
+          expect(permissions).not.toContain('MANAGE_ROLES');
         } finally {
           await kyselyUserDeleteById(deps.KyselyPg, input.id);
         }

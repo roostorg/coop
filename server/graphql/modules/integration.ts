@@ -1,5 +1,6 @@
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   makeIntegrationConfigUnsupportedIntegrationError,
@@ -221,7 +222,7 @@ const Query: GQLQueryResolvers = {
       if (user == null) {
         throw unauthenticatedError('Unauthenticated User');
       }
-      if (!user.getPermissions().includes('MANAGE_ORG')) {
+      if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
         throw forbiddenError(
           'User does not have permission to view integration configs',
         );
@@ -275,7 +276,7 @@ const Mutation: GQLMutationResolvers = {
       if (user == null) {
         throw unauthenticatedError('Unauthenticated User');
       }
-      if (!user.getPermissions().includes('MANAGE_ORG')) {
+      if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
         throw forbiddenError(
           'User does not have permission to update integration configs',
         );
@@ -309,7 +310,7 @@ const Mutation: GQLMutationResolvers = {
       if (user == null) {
         throw unauthenticatedError('Unauthenticated User');
       }
-      if (!user.getPermissions().includes('MANAGE_ORG')) {
+      if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
         throw forbiddenError(
           'User does not have permission to update integration configs',
         );
