@@ -3,7 +3,7 @@
 /**
  * AT Protocol firehose connector for local Coop demos.
  *
- * Subscribes to the Bluesky Jetstream and forwards posts to a local Coop
+ * Subscribes to the AT Protocol Jetstream and forwards posts to a local Coop
  * instance as item submissions, giving you a realistic stream of content to
  * review without needing to integrate a real platform.
  *
@@ -17,8 +17,8 @@
  *
  * Options:
  *   --api-key             Coop API key (from `npm run create-org`)           [required]
- *   --post-type-id        Bluesky Post item type ID (from atproto:setup)     [required]
- *   --user-type-id        Bluesky User item type ID (from atproto:setup); enables mock report submission
+ *   --post-type-id        atproto Post item type ID (from atproto:setup)      [required]
+ *   --user-type-id        atproto User item type ID (from atproto:setup); enables mock report submission
  *   --coop-url            Base URL of the Coop server  [default: http://localhost:3000]
  *   --rate-limit          Max posts submitted per minute                     [default: 100]
  *   --report-rate-limit   Max reports submitted per minute (requires --user-type-id) [default: 1]
@@ -75,7 +75,7 @@ if (hasFlag('--help') || hasFlag('-h')) {
   process.exit(0);
 }
 
-// --- Bluesky profile cache ---------------------------------------------------
+// --- atproto profile cache ---------------------------------------------------
 
 interface BlueskyProfile {
   handle: string;
@@ -129,8 +129,8 @@ interface BlueskyPost {
   };
   embed?: {
     $type: string;
-    external?: { uri: string };
-    images?: Array<{ image: unknown; alt: string }>;
+    external?: { uri: string; title?: string; description?: string };
+    images?: Array<unknown>;
   };
 }
 
@@ -178,6 +178,10 @@ interface CoopItem {
     langs?: string;
     createdAt?: string;
     replyTo?: string;
+    embedType?: string;
+    embedUrl?: string;
+    embedTitle?: string;
+    embedDescription?: string;
   };
 }
 
@@ -208,6 +212,22 @@ async function postToCoopItem(
       ...(record.langs?.length ? { langs: record.langs.join(', ') } : {}),
       ...(record.createdAt ? { createdAt: record.createdAt } : {}),
       ...(record.reply ? { replyTo: record.reply.parent.uri } : {}),
+      ...(record.embed
+        ? {
+            embedType: record.embed.$type
+              .replace('app.bsky.embed.', '')
+              .replace('#view', ''),
+            ...(record.embed.external?.uri
+              ? { embedUrl: record.embed.external.uri }
+              : {}),
+            ...(record.embed.external?.title
+              ? { embedTitle: record.embed.external.title }
+              : {}),
+            ...(record.embed.external?.description
+              ? { embedDescription: record.embed.external.description }
+              : {}),
+          }
+        : {}),
     },
   };
 }
