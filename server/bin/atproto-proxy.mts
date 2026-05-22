@@ -3,7 +3,7 @@
 /**
  * AT Protocol content proxy for local Coop demos.
  *
- * Serves Bluesky posts as embeddable HTML pages for the MRT review iframe.
+ * Serves AT Protocol posts as embeddable HTML pages for the MRT review iframe.
  * A proxy is necessary because bsky.app sets X-Frame-Options: SAMEORIGIN,
  * preventing direct embedding.
  *
@@ -43,10 +43,34 @@ async function resolveActor(actor: string): Promise<string> {
   return data.did;
 }
 
+interface BskyEmbed {
+  $type: string;
+  // external link card
+  external?: { uri: string; title: string; description: string; thumb?: string };
+  // image grid
+  images?: Array<{
+    thumb: string;
+    fullsize: string;
+    alt: string;
+    aspectRatio?: { width: number; height: number };
+  }>;
+  // video
+  thumbnail?: string;
+  alt?: string;
+  // quote post
+  record?: {
+    author: { handle: string; displayName?: string };
+    value: { text: string };
+  };
+  // recordWithMedia: record + media (images or external)
+  media?: BskyEmbed;
+}
+
 interface BskyPost {
   uri: string;
   author: { handle: string; displayName?: string };
   record: { text: string; createdAt?: string };
+  embed?: BskyEmbed;
 }
 
 async function fetchPost(did: string, rkey: string): Promise<BskyPost> {
@@ -82,19 +106,90 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function renderPost(post: BskyPost, bskyUrl: string): string {
-  const { author, record } = post;
+function hostname(uri: string): string {
+  try {
+    return new URL(uri).hostname;
+  } catch {
+    return uri;
+  }
+}
+
+function renderEmbed(embed: BskyEmbed, postUrl: string): string {
+  const type = embed.$type;
+
+  if (type === 'app.bsky.embed.external#view' && embed.external) {
+    const { uri, title, description, thumb } = embed.external;
+    return `
+  <a class="embed-external" href="${escapeHtml(uri)}" target="_blank" rel="noopener">
+    ${thumb ? `<img class="embed-external-thumb" src="${escapeHtml(thumb)}" alt="">` : ''}
+    <div class="embed-external-meta">
+      <div class="embed-external-title">${escapeHtml(title)}</div>
+      ${description ? `<div class="embed-external-desc">${escapeHtml(description)}</div>` : ''}
+      <div class="embed-external-host">${escapeHtml(hostname(uri))}</div>
+    </div>
+  </a>`;
+  }
+
+  if (type === 'app.bsky.embed.images#view' && embed.images?.length) {
+    const imgs = embed.images
+      .slice(0, 4)
+      .map(
+        (img) =>
+          `<img src="${escapeHtml(img.thumb)}" alt="${escapeHtml(img.alt)}" loading="lazy">`,
+      )
+      .join('\n    ');
+    const gridClass = embed.images.length === 1 ? 'embed-images single' : 'embed-images';
+    return `\n  <div class="${gridClass}">\n    ${imgs}\n  </div>`;
+  }
+
+  if (type === 'app.bsky.embed.video#view') {
+    return `
+  <a class="embed-video" href="${escapeHtml(postUrl)}" target="_blank" rel="noopener">
+    ${embed.thumbnail ? `<img src="${escapeHtml(embed.thumbnail)}" alt="${escapeHtml(embed.alt ?? '')}">` : ''}
+    <div class="embed-video-play">&#9654;</div>
+  </a>`;
+  }
+
+  if (type === 'app.bsky.embed.record#view' && embed.record) {
+    const { author, value } = embed.record;
+    const qName = author.displayName ? escapeHtml(author.displayName) : '';
+    const qHandle = escapeHtml(author.handle);
+    const qText = escapeHtml(value.text).replace(/\n/g, '<br>');
+    return `
+  <div class="embed-quote">
+    <div class="embed-quote-author">
+      ${qName ? `<span class="embed-quote-name">${qName}</span>` : ''}
+      <span class="embed-quote-handle">@${qHandle}</span>
+    </div>
+    <div class="embed-quote-text">${qText}</div>
+  </div>`;
+  }
+
+  if (type === 'app.bsky.embed.recordWithMedia#view') {
+    const mediaPart = embed.media ? renderEmbed(embed.media, postUrl) : '';
+    const recordPart = embed.record
+      ? renderEmbed({ $type: 'app.bsky.embed.record#view', record: embed.record }, postUrl)
+      : '';
+    return mediaPart + recordPart;
+  }
+
+  return '';
+}
+
+function renderPost(post: BskyPost, postUrl: string): string {
+  const { author, record, embed } = post;
   const name = author.displayName ? escapeHtml(author.displayName) : '';
   const handle = escapeHtml(author.handle);
   const text = escapeHtml(record.text).replace(/\n/g, '<br>');
   const date = escapeHtml(formatDate(record.createdAt));
+  const embedHtml = embed ? renderEmbed(embed, postUrl) : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bluesky post by @${handle}</title>
+  <title>atproto post by @${handle}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -116,10 +211,58 @@ function renderPost(post: BskyPost, bskyUrl: string): string {
     .display-name { font-weight: 700; font-size: 15px; }
     .handle { color: #536471; font-size: 14px; }
     .text { font-size: 16px; margin-bottom: 12px; word-break: break-word; }
-    .meta { display: flex; align-items: center; gap: 12px; }
+    .meta { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
     .date { color: #536471; font-size: 13px; }
     .link { color: #1d9bf0; text-decoration: none; font-size: 13px; }
     .link:hover { text-decoration: underline; }
+
+    /* External link card */
+    .embed-external {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #cfd9de;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .embed-external:hover { background: #f7f9f9; }
+    .embed-external-thumb { width: 100%; max-height: 220px; object-fit: cover; }
+    .embed-external-meta { padding: 10px 12px; }
+    .embed-external-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .embed-external-desc { font-size: 13px; color: #536471; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .embed-external-host { font-size: 12px; color: #536471; }
+
+    /* Image grid */
+    .embed-images { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-radius: 8px; overflow: hidden; margin-top: 12px; }
+    .embed-images.single { grid-template-columns: 1fr; }
+    .embed-images img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+    .embed-images.single img { aspect-ratio: unset; max-height: 400px; object-fit: contain; background: #000; }
+
+    /* Video */
+    .embed-video { display: block; position: relative; border-radius: 8px; overflow: hidden; margin-top: 12px; }
+    .embed-video img { width: 100%; display: block; }
+    .embed-video-play {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; color: #fff;
+      text-shadow: 0 0 8px rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.15);
+    }
+
+    /* Quote post */
+    .embed-quote {
+      border: 1px solid #cfd9de;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .embed-quote-author { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+    .embed-quote-name { font-weight: 700; }
+    .embed-quote-handle { color: #536471; }
+    .embed-quote-text { word-break: break-word; }
   </style>
 </head>
 <body>
@@ -129,9 +272,10 @@ function renderPost(post: BskyPost, bskyUrl: string): string {
       <span class="handle">@${handle}</span>
     </div>
     <p class="text">${text}</p>
+    ${embedHtml}
     <div class="meta">
       ${date ? `<span class="date">${date}</span>` : ''}
-      <a class="link" href="${escapeHtml(bskyUrl)}" target="_blank" rel="noopener">View on Bluesky</a>
+      <a class="link" href="${escapeHtml(postUrl)}" target="_blank" rel="noopener">View on bsky.app</a>
     </div>
   </div>
   <script>
