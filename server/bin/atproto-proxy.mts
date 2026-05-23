@@ -199,8 +199,8 @@ function renderPost(post: BskyPost, postUrl: string): string {
       color: #0f1419;
       background: #fff;
       padding: 20px;
-      transition: filter 0.2s ease;
     }
+    img { filter: var(--img-filter, none); transition: filter 0.2s ease; }
     .card {
       border: 1px solid #cfd9de;
       border-radius: 12px;
@@ -292,7 +292,7 @@ function renderPost(post: BskyPost, postUrl: string): string {
       if (data.grayscale) {
         filters.push('grayscale(100%)');
       }
-      document.body.style.filter = filters.join(' ');
+      document.documentElement.style.setProperty('--img-filter', filters.length ? filters.join(' ') : 'none');
     });
   </script>
 </body>
