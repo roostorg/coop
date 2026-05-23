@@ -190,10 +190,18 @@ function renderPost(post: BskyPost, postUrl: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>atproto post by @${handle}</title>
+  <link rel="preconnect" href="https://rsms.me/">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <style>
+    :root {
+      font-family: Inter, sans-serif;
+      font-feature-settings: 'liga' 1, 'calt' 1;
+    }
+    @supports (font-variation-settings: normal) {
+      :root { font-family: InterVariable, sans-serif; }
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 15px;
       line-height: 1.5;
       color: #0f1419;
