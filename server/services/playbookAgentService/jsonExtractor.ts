@@ -105,8 +105,7 @@ type RawVerdict = {
   rationale: string;
   confidence_score: number;
   u_llm?: number;
-  ncmec_report_required?: boolean;
-  content_removal_required?: boolean;
+  additional_outputs?: Record<string, unknown>;
   queries_executed?: string[];
   supporting_evidence?: string[];
   contradicting_evidence?: string[];
@@ -114,6 +113,20 @@ type RawVerdict = {
   has_contradictory_signals?: boolean;
   is_edge_case?: boolean;
 };
+
+const CORE_VERDICT_FIELDS = new Set([
+  'verdict',
+  'rationale',
+  'confidence_score',
+  'u_llm',
+  'queries_executed',
+  'supporting_evidence',
+  'contradicting_evidence',
+  'critical_evidence_missing',
+  'has_contradictory_signals',
+  'is_edge_case',
+  'FINAL_VERDICT',
+]);
 
 /**
  * Extract a PlaybookVerdict from the raw JSON, handling both
@@ -136,8 +149,15 @@ function extractVerdictFromJson(
   if (typeof verdict !== 'string' || typeof rationale !== 'string') {
     return undefined;
   }
-  if (typeof confidenceScore !== 'number') {
+  if (typeof confidenceScore !== 'number' || !Number.isFinite(confidenceScore)) {
     return undefined;
+  }
+
+  const additionalOutputs: Record<string, unknown> = {};
+  for (const key of Object.keys(source)) {
+    if (!CORE_VERDICT_FIELDS.has(key)) {
+      additionalOutputs[key] = source[key];
+    }
   }
 
   return {
@@ -145,15 +165,8 @@ function extractVerdictFromJson(
     rationale,
     confidence_score: confidenceScore,
     u_llm:
-      typeof source['u_llm'] === 'number' ? source['u_llm'] : undefined,
-    ncmec_report_required:
-      typeof source['ncmec_report_required'] === 'boolean'
-        ? source['ncmec_report_required']
-        : undefined,
-    content_removal_required:
-      typeof source['content_removal_required'] === 'boolean'
-        ? source['content_removal_required']
-        : undefined,
+      Number.isFinite(source['u_llm']) ? (source['u_llm'] as number) : undefined,
+    additional_outputs: Object.keys(additionalOutputs).length > 0 ? additionalOutputs : undefined,
     queries_executed: Array.isArray(source['queries_executed'])
       ? (source['queries_executed'] as string[])
       : undefined,
@@ -236,8 +249,7 @@ export function extractVerdict(
       rationale: raw.rationale,
       confidenceScore: raw.confidence_score,
       uLlm: raw.u_llm ?? 0.5,
-      ncmecReportRequired: raw.ncmec_report_required,
-      contentRemovalRequired: raw.content_removal_required,
+      additionalOutputs: raw.additional_outputs,
       queriesExecuted: raw.queries_executed ?? [],
       supportingEvidence: raw.supporting_evidence ?? [],
       contradictingEvidence: raw.contradicting_evidence ?? [],

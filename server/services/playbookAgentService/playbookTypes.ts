@@ -22,19 +22,13 @@ export type SemanticVersion = {
 };
 
 export function parseSemanticVersion(input: string): SemanticVersion {
-  const parts = input.split('.');
-  if (parts.length !== 3) {
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(input);
+  if (!match) {
     throw new Error(
-      `Invalid semantic version format: '${input}'. Expected format: 'X.Y.Z'`,
+      `Invalid semantic version format: '${input}'. Expected format: 'X.Y.Z' with no leading zeros.`,
     );
   }
-  const [major, minor, patch] = parts.map(Number);
-  if ([major, minor, patch].some((n) => !Number.isInteger(n) || n < 0)) {
-    throw new Error(
-      `Invalid semantic version format: '${input}'. All parts must be non-negative integers.`,
-    );
-  }
-  return { major, minor, patch };
+  return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
 }
 
 export function formatSemanticVersion(v: SemanticVersion): string {
@@ -68,9 +62,7 @@ export function validateCatalogReference(ref: CatalogReference): void {
     );
   }
   if (
-    FORBIDDEN_CATALOG_IDS.includes(
-      ref.catalogId.toLowerCase() as (typeof FORBIDDEN_CATALOG_IDS)[number],
-    )
+    (FORBIDDEN_CATALOG_IDS as readonly string[]).includes(ref.catalogId)
   ) {
     throw new Error(
       `Catalog ID cannot be '${ref.catalogId}' — use specific versioned IDs`,
@@ -236,9 +228,10 @@ export type PlaybookVerdict = {
   readonly verdict: string;
   readonly rationale: string;
   readonly confidenceScore: number;
+  /** LLM self-reported uncertainty (0–1). Higher = less certain. */
   readonly uLlm: number;
-  readonly ncmecReportRequired?: boolean;
-  readonly contentRemovalRequired?: boolean;
+  /** Domain-specific outputs defined by the playbook's output_contract. */
+  readonly additionalOutputs?: Record<string, unknown>;
   readonly queriesExecuted: readonly string[];
   readonly supportingEvidence: readonly string[];
   readonly contradictingEvidence: readonly string[];

@@ -112,7 +112,7 @@ describe('evaluateHardRules', () => {
     expect(match!.ruleId).toBe('not_null_check');
   });
 
-  it('returns empty array for empty rules', () => {
+  it('returns undefined for empty rules', () => {
     const match = evaluateHardRules([], { some_query: makeResult([{ a: 1 }]) });
     expect(match).toBeUndefined();
   });

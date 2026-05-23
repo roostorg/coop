@@ -136,7 +136,14 @@ type RawPlaybook = {
 
 // ── Conversion helpers ──────────────────────────────────────────────────────
 
+const VALID_CATALOG_TYPES = new Set<string>(['query', 'query_bundle']);
+
 function toCatalogReference(raw: RawCatalogRef): CatalogReference {
+  if (!VALID_CATALOG_TYPES.has(raw.catalog_type)) {
+    throw new Error(
+      `Invalid catalog_type '${raw.catalog_type}' for catalog '${raw.catalog_id}'. Must be one of: ${[...VALID_CATALOG_TYPES].join(', ')}`,
+    );
+  }
   const ref: CatalogReference = {
     catalogId: raw.catalog_id,
     version: parseSemanticVersion(raw.version),
@@ -361,6 +368,20 @@ export function parsePlaybook(raw: unknown): Playbook {
   };
 
   const cc = r.confidence_computation;
+
+  function validateRange(value: number, name: string): void {
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(
+        `Invalid ${name}: ${value}. Must be a finite number in [0, 1].`,
+      );
+    }
+  }
+  validateRange(cc.llm_uncertainty_alpha, 'llm_uncertainty_alpha');
+  validateRange(cc.evidence_completeness_weight, 'evidence_completeness_weight');
+  validateRange(cc.signal_strength_weight, 'signal_strength_weight');
+  validateRange(cc.signal_agreement_weight, 'signal_agreement_weight');
+  validateRange(cc.data_quality_weight, 'data_quality_weight');
+
   const confidenceComputation: ConfidenceComputation = {
     evidenceCompletenessWeight: cc.evidence_completeness_weight,
     signalStrengthWeight: cc.signal_strength_weight,

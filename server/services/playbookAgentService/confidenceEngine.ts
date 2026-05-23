@@ -38,8 +38,8 @@ export function computeConfidence(
   playbook: Playbook,
 ): ConfidenceBreakdown {
   const cc = playbook.confidenceComputation;
-  const alpha = cc.llmUncertaintyAlpha;
-  const uLlm = verdict.uLlm;
+  const alpha = clamp(Number.isFinite(cc.llmUncertaintyAlpha) ? cc.llmUncertaintyAlpha : 0.4, 0, 1);
+  const uLlm = clamp(Number.isFinite(verdict.uLlm) ? verdict.uLlm : 0.5, 0, 1);
 
   // Identify baseline vs additional query IDs
   const baselineQueryIds = new Set(

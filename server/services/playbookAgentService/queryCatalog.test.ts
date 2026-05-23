@@ -100,8 +100,57 @@ describe('QueryCatalog', () => {
     expect(() => catalog.renderSql(entry, { x: 'hello' })).toThrow("Missing required parameter 'y'");
   });
 
-  it('reports catalog size', () => {
+  it('reports catalog size and keys', () => {
     const catalog = new QueryCatalog(entries);
     expect(catalog.size).toBe(2);
+    expect(catalog.catalogKeys).toEqual(
+      expect.arrayContaining(['query_a@1.0.0', 'query_b@2.0.0']),
+    );
+  });
+
+  it('does not match PostgreSQL casts as parameters', () => {
+    const sql = `-- catalog_id: cast_test
+-- version: 1.0.0
+SELECT created_at::date, amount::int FROM t WHERE id = :id;`;
+    const entry = parseCatalogEntry(sql);
+    expect(entry.parameters).toEqual(['id']);
+
+    const catalog = new QueryCatalog([entry]);
+    const resolved = catalog.resolveByString('cast_test@1.0.0')!;
+    const { sql: rendered, bindings } = catalog.renderSql(resolved, { id: 42 });
+    expect(rendered).toContain('::date');
+    expect(rendered).toContain('::int');
+    expect(bindings).toEqual([42]);
+  });
+
+  it('stops parsing metadata after SQL body starts', () => {
+    const sql = `-- catalog_id: meta_test
+-- version: 1.0.0
+SELECT 1;
+-- version: 2.0.0`;
+    const entry = parseCatalogEntry(sql);
+    expect(entry.version).toBe('1.0.0');
+  });
+
+  it('reuses $N placeholder for repeated parameters', () => {
+    const entry = {
+      catalogId: 'repeat_test',
+      version: '1.0.0',
+      description: '',
+      sql: 'SELECT * FROM t WHERE a = :id AND b = :id',
+      parameters: ['id'],
+    };
+    const catalog = new QueryCatalog([entry]);
+    const { sql: rendered, bindings } = catalog.renderSql(entry, { id: 99 });
+    expect(rendered).toBe('SELECT * FROM t WHERE a = $1 AND b = $1');
+    expect(bindings).toEqual([99]);
+  });
+
+  it('throws on duplicate catalog entries', () => {
+    const dupes = [
+      { catalogId: 'dup', version: '1.0.0', description: '', sql: 'SELECT 1', parameters: [] },
+      { catalogId: 'dup', version: '1.0.0', description: '', sql: 'SELECT 2', parameters: [] },
+    ];
+    expect(() => new QueryCatalog(dupes)).toThrow('Duplicate catalog entry');
   });
 });
