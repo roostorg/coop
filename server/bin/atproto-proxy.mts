@@ -200,7 +200,8 @@ function renderPost(post: BskyPost, postUrl: string): string {
       background: #fff;
       padding: 20px;
     }
-    img { filter: var(--img-filter, none); transition: filter 0.2s ease; }
+    img { filter: var(--img-filter, none); transition: filter 0.2s ease; cursor: zoom-in; }
+    img:hover { filter: none; }
     .card {
       border: 1px solid #cfd9de;
       border-radius: 12px;
