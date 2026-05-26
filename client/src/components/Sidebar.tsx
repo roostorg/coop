@@ -34,6 +34,7 @@ const MenuItemNames = makeEnumLike([
   'NCMEC Reports',
   'Policies',
   'Matching Banks',
+  'User Strikes',
   'Log Out',
   'Account',
   'Settings',
