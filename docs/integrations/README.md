@@ -20,7 +20,7 @@ For specific integration information and detailed requirements, see that integra
 [OpenAI Moderation API]: openai-moderation.md
 [Zentropi CoPE]: zentropi-cope.md
 
-[^CSAPI]: Industry and civil society third parties seeking to protect their platform against abuse can sign up to access the Content Safety API. Applications are subject to approval. [Apply for an API key](https://protectingchildren.google/toolkit-interest-form/?roost-coop) and mention in your application that you are using the Coop review tool.
+[^CSAPI]: Industry and civil society third parties seeking to protect their platform against abuse can [apply to access the Content Safety API](https://protectingchildren.google/toolkit-interest-form/?roost-coop). Mention in your application that you are using the Coop review tool. Applications are subject to approval and require accepting Google's terms and conditions.
 
 [^HMA]: You don’t need credentials or licenses for using your own hash banks, i.e. if you have your own collection of known violations. Access to each third-party hash requires access from that org; for example, NCMEC needs to provide Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank.
 
