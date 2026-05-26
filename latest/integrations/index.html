@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f8f74aed.js";
+            window.path_to_searchindex_js = "../searchindex-dc46fe15.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-b1393162.js"></script>
@@ -179,14 +179,21 @@
                         <h1 id="integrations"><a class="header" href="#integrations">Integrations</a></h1>
 <p>Connect to free safety-oriented APIs like Google Content Safety API, OpenAI Moderation API, Zentropi CoPE, and more at the click of a button. We’ve built several integrations into Coop; just enter your API key.</p>
 <h2 id="built-in-integrations"><a class="header" href="#built-in-integrations">Built-in integrations</a></h2>
-<p>For specific integration information, see that integration’s documentation:</p>
-<ul>
-<li><a href="google-content-safety.html">Google Content Safety API</a></li>
-<li><a href="hma.html">Hasher-Matcher-Actioner (HMA)</a></li>
-<li><a href="ncmec.html">NCMEC Reporting</a></li>
-<li><a href="openai-moderation.html">OpenAI Moderation API</a></li>
-<li><a href="zentropi-cope.html">Zentropi CoPE</a></li>
-</ul>
+<p>For specific integration information and detailed requirements, see that integration’s documentation:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Integration</th><th>Cost</th><th>Requirements</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="google-content-safety.html">Google Content Safety API</a></td><td>Free</td><td>API key, approval by Google<sup class="footnote-reference" id="fr-CSAPI-1"><a href="#footnote-CSAPI">1</a></sup></td></tr>
+<tr><td><a href="hma.html">Hasher-Matcher-Actioner (HMA)</a></td><td>Free</td><td>Your own hashes, and/or access to third-party hash banks<sup class="footnote-reference" id="fr-HMA-1"><a href="#footnote-HMA">2</a></sup></td></tr>
+<tr><td><a href="ncmec.html">NCMEC Reporting</a></td><td>Free</td><td>CyberTip API key, approval by NCMEC<sup class="footnote-reference" id="fr-ESP-1"><a href="#footnote-ESP">3</a></sup></td></tr>
+<tr><td><a href="openai-moderation.html">OpenAI Moderation API</a></td><td>Free<sup class="footnote-reference" id="fr-OAI-1"><a href="#footnote-OAI">4</a></sup></td><td>OpenAI API key</td></tr>
+<tr><td><a href="zentropi-cope.html">Zentropi CoPE</a></td><td>Free, paid options<sup class="footnote-reference" id="fr-Z-1"><a href="#footnote-Z">5</a></sup></td><td>Zentropi API key</td></tr>
+</tbody>
+</table>
+</div>
 <h2 id="model-cards"><a class="header" href="#model-cards">Model cards</a></h2>
 <p>Each integration includes a model card for consistent, comparable information about how it works. A model card is a short document describing a machine learning model’s intended use, behavior, and limitations; think of it as a nutrition label for AI classifiers.</p>
 <p>Each integration’s model card describes:</p>
@@ -206,6 +213,24 @@
 </table>
 </div>
 <p>No automated classifier is perfect. Model cards help you understand when to trust a signal, what manual review is required, and how to configure rules meaningfully.</p>
+<hr>
+<ol class="footnote-definition">
+<li id="footnote-CSAPI">
+<p>Industry and civil society third parties seeking to protect their platform against abuse can <a href="https://protectingchildren.google/toolkit-interest-form/?roost-coop">apply to access the Content Safety API</a>. Mention in your application that you are using the Coop review tool. Applications are subject to approval and require accepting Google’s terms and conditions. <a href="#fr-CSAPI-1">↩</a></p>
+</li>
+<li id="footnote-HMA">
+<p>You don’t need credentials or licenses for using your own hash banks, i.e. if you have your own collection of known violations. Access to each third-party hash requires access from that org; for example, NCMEC needs to provide Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank. <a href="#fr-HMA-1">↩</a></p>
+</li>
+<li id="footnote-ESP">
+<p>Requires <a href="https://esp.ncmec.org/registration">NCMEC ESP registration</a> and approval to receive CyberTip API credentials <a href="#fr-ESP-1">↩</a></p>
+</li>
+<li id="footnote-OAI">
+<p><a href="https://help.openai.com/en/articles/4936833-is-the-moderation-endpoint-free-to-use">Per OpenAI</a>, the API is completely free and does not count towards monthly usage limits. <a href="#fr-OAI-1">↩</a></p>
+</li>
+<li id="footnote-Z">
+<p>Zentropi text classifiers are free, and currently use the openly-licensed <a href="https://huggingface.co/zentropi-ai/cope-a-9b">CoPE-A-9B model</a>. The API supports all labelers you create, including free and optionally paid; see <a href="https://zentropi.ai/subscription">Zentropi pricing details</a>. <a href="#fr-Z-1">↩</a></p>
+</li>
+</ol>
 
                     </main>
 
