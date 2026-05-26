@@ -52,6 +52,12 @@ export enum UserPermission {
   // Granted to ADMIN by default; carved out as a separate capability so role
   // editing can be delegated without granting full MANAGE_ORG (see issue #406).
   MANAGE_ROLES = 'MANAGE_ROLES',
+  // Carved out from MANAGE_ORG so user management can be delegated without
+  // granting full org control (integrations, API keys, etc.).
+  MANAGE_USERS = 'MANAGE_USERS',
+  // Carved out from EDIT_MRT_QUEUES so routing-rule authorship can be
+  // delegated without granting full queue management.
+  MANAGE_ROUTING_RULES = 'MANAGE_ROUTING_RULES',
 }
 
 const UserRoles = [
@@ -126,6 +132,7 @@ export const UserPermissionsForRole = new Map<UserRole, UserPermission[]>([
       UserPermission.VIEW_MRT,
       UserPermission.VIEW_MRT_DATA,
       UserPermission.EDIT_MRT_QUEUES,
+      UserPermission.MANAGE_ROUTING_RULES,
       UserPermission.MANAGE_POLICIES,
       UserPermission.VIEW_INVESTIGATION,
       UserPermission.VIEW_RULES_DASHBOARD,

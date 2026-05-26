@@ -278,7 +278,7 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError(
         'User does not have permission to view pending invites',
       );

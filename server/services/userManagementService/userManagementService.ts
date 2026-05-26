@@ -290,7 +290,7 @@ class UserManagementService {
       );
     }
 
-    if (!invoker.permissions.includes(UserPermission.MANAGE_ORG)) {
+    if (!invoker.permissions.includes(UserPermission.MANAGE_USERS)) {
       throw makeUnauthorizedError(
         'User does not have permission to change roles',
         { shouldErrorSpan: true },

@@ -26,10 +26,15 @@ describe('user resolvers', () => {
       ) => Promise<unknown>;
     };
 
-    it('throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+    it('throws forbiddenError when caller lacks MANAGE_USERS', async () => {
       const { ctx, deleteUser } = makeCtx([
         UserPermission.VIEW_MRT,
         UserPermission.VIEW_MRT_DATA,
+        // Carrying MANAGE_ORG without MANAGE_USERS used to be enough; after
+        // the permission split for the role-editor (issue #406) user-mutation
+        // resolvers gate strictly on MANAGE_USERS, so this caller must be
+        // rejected even though they hold the legacy "highest-impact" cap.
+        UserPermission.MANAGE_ORG,
       ]);
       await expect(
         Mutation.deleteUser({}, { id: 'victim-1' }, ctx),
@@ -37,8 +42,8 @@ describe('user resolvers', () => {
       expect(deleteUser).not.toHaveBeenCalled();
     });
 
-    it('delegates to userAPI.deleteUser when caller has MANAGE_ORG', async () => {
-      const { ctx, deleteUser } = makeCtx([UserPermission.MANAGE_ORG]);
+    it('delegates to userAPI.deleteUser when caller has MANAGE_USERS', async () => {
+      const { ctx, deleteUser } = makeCtx([UserPermission.MANAGE_USERS]);
       await expect(
         Mutation.deleteUser({}, { id: 'victim-1' }, ctx),
       ).resolves.toBe(true);

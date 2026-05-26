@@ -31,6 +31,7 @@ import { resolvers as policyResolvers } from './modules/policy.js';
 import { resolvers as reportingResolvers } from './modules/reporting.js';
 import { resolvers as reportingRulesResolvers } from './modules/reportingRule.js';
 import { resolvers as retroactionResolvers } from './modules/retroaction.js';
+import { resolvers as rolesResolvers } from './modules/roles.js';
 import { resolvers as routingRulesResolvers } from './modules/routingRule.js';
 import { resolvers as ruleResolvers } from './modules/rule.js';
 import { resolvers as signalResolvers } from './modules/signal.js';
@@ -177,7 +178,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError(
         'User does not have permission to generate password reset tokens',
       );
@@ -214,7 +215,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError('User does not have permission to invite users');
     }
 
@@ -230,7 +231,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError('User does not have permission to delete invites');
     }
 
@@ -242,7 +243,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError('User does not have permission to approve users');
     }
 
@@ -254,7 +255,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError('User does not have permission to reject users');
     }
 
@@ -287,6 +288,7 @@ export default mergeResolvers([
   reportingResolvers,
   reportingRulesResolvers,
   retroactionResolvers,
+  rolesResolvers,
   routingRulesResolvers,
   ruleResolvers,
   signalResolvers,

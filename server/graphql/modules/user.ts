@@ -38,6 +38,8 @@ const typeDefs = /* GraphQL */ `
     VIEW_INVESTIGATION
     VIEW_RULES_DASHBOARD
     MANAGE_ROLES
+    MANAGE_USERS
+    MANAGE_ROUTING_RULES
   }
 
   enum UserPenaltySeverity {
@@ -218,7 +220,7 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError('User does not have permission to delete users');
     }
 

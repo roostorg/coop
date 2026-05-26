@@ -74,6 +74,8 @@ WITH role_permission_seed(role_key, permission) AS (
         ('ADMIN', 'VIEW_INVESTIGATION'),
         ('ADMIN', 'VIEW_RULES_DASHBOARD'),
         ('ADMIN', 'MANAGE_ROLES'),
+        ('ADMIN', 'MANAGE_USERS'),
+        ('ADMIN', 'MANAGE_ROUTING_RULES'),
 
         ('RULES_MANAGER', 'MUTATE_LIVE_RULES'),
         ('RULES_MANAGER', 'MUTATE_NON_LIVE_RULES'),
@@ -94,6 +96,7 @@ WITH role_permission_seed(role_key, permission) AS (
         ('MODERATOR_MANAGER', 'VIEW_MRT'),
         ('MODERATOR_MANAGER', 'VIEW_MRT_DATA'),
         ('MODERATOR_MANAGER', 'EDIT_MRT_QUEUES'),
+        ('MODERATOR_MANAGER', 'MANAGE_ROUTING_RULES'),
         ('MODERATOR_MANAGER', 'MANAGE_POLICIES'),
         ('MODERATOR_MANAGER', 'VIEW_INVESTIGATION'),
         ('MODERATOR_MANAGER', 'VIEW_RULES_DASHBOARD'),
