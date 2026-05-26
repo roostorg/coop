@@ -48,6 +48,7 @@ export type UserSchemaFieldRoles = {
   backgroundImage?: string;
   createdAt?: string;
   isDeleted?: string;
+  ipAddress?: string;
 };
 
 export type ThreadSchemaFieldRoles = {
@@ -55,6 +56,7 @@ export type ThreadSchemaFieldRoles = {
   createdAt?: string;
   creatorId?: string;
   isDeleted?: string;
+  ipAddress?: string;
 };
 
 export type ContentSchemaFieldRoles = {
@@ -62,6 +64,7 @@ export type ContentSchemaFieldRoles = {
   displayName?: string;
   creatorId?: string;
   isDeleted?: string;
+  ipAddress?: string;
 } & (
   | {
       parentId?: string;
@@ -119,6 +122,7 @@ export type FieldRoleToScalarType = {
   profileIcon: ScalarTypes['IMAGE'];
   backgroundImage: ScalarTypes['IMAGE'];
   isDeleted: ScalarTypes['BOOLEAN'];
+  ipAddress: ScalarTypes['IP_ADDRESS'];
 };
 
 export function getPartialSchemaFromOriginal(schema: ItemSchema) {

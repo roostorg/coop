@@ -53,6 +53,7 @@ export const ITEM_FRAGMENT = gql`
           profileIcon
           backgroundImage
           isDeleted
+          ipAddress
         }
       }
       ... on ContentItemType {
@@ -63,6 +64,7 @@ export const ITEM_FRAGMENT = gql`
           createdAt
           creatorId
           isDeleted
+          ipAddress
         }
       }
       ... on ThreadItemType {
@@ -71,6 +73,7 @@ export const ITEM_FRAGMENT = gql`
           createdAt
           creatorId
           isDeleted
+          ipAddress
         }
       }
     }

@@ -35,8 +35,8 @@ import {
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 export type ItemTypeResolversParentType = ItemTypeT | ItemTypeSelector;
 export type ThreadItemTypeResolversParentType =
@@ -219,6 +219,7 @@ const typeDefs = /* GraphQL */ `
     profileIcon: String
     backgroundImage: String
     isDeleted: String
+    ipAddress: String
   }
 
   type ThreadSchemaFieldRoles {
@@ -226,6 +227,7 @@ const typeDefs = /* GraphQL */ `
     createdAt: String
     creatorId: String
     isDeleted: String
+    ipAddress: String
   }
 
   type ContentSchemaFieldRoles {
@@ -235,10 +237,11 @@ const typeDefs = /* GraphQL */ `
     createdAt: String
     creatorId: String
     isDeleted: String
+    ipAddress: String
   }
 
   union SchemaFieldRoles =
-      ContentSchemaFieldRoles
+    | ContentSchemaFieldRoles
     | ThreadSchemaFieldRoles
     | UserSchemaFieldRoles
 
@@ -279,6 +282,7 @@ const typeDefs = /* GraphQL */ `
     profileIcon: String
     backgroundImage: String
     isDeleted: String
+    ipAddress: String
   }
 
   input ThreadSchemaFieldRolesInput {
@@ -286,6 +290,7 @@ const typeDefs = /* GraphQL */ `
     createdAt: String
     creatorId: String
     isDeleted: String
+    ipAddress: String
   }
 
   input ContentSchemaFieldRolesInput {
@@ -295,6 +300,7 @@ const typeDefs = /* GraphQL */ `
     createdAt: String
     creatorId: String
     isDeleted: String
+    ipAddress: String
   }
 
   input CreateUserItemTypeInput {
@@ -398,21 +404,21 @@ const typeDefs = /* GraphQL */ `
 
   # Changed to not clash with existing response
   union MutateContentItemTypeResponse =
-      MutateContentTypeSuccessResponse
+    | MutateContentTypeSuccessResponse
     | ItemTypeNameAlreadyExistsError
   union MutateUserItemTypeResponse =
-      MutateUserTypeSuccessResponse
+    | MutateUserTypeSuccessResponse
     | ItemTypeNameAlreadyExistsError
   union MutateThreadItemTypeResponse =
-      MutateThreadTypeSuccessResponse
+    | MutateThreadTypeSuccessResponse
     | ItemTypeNameAlreadyExistsError
   union PartialItemsResponse =
-      PartialItemsSuccessResponse
+    | PartialItemsSuccessResponse
     | PartialItemsMissingEndpointError
     | PartialItemsEndpointResponseError
     | PartialItemsInvalidResponseError
   union DeleteItemTypeResponse =
-      DeleteItemTypeSuccessResponse
+    | DeleteItemTypeSuccessResponse
     | CannotDeleteDefaultUserError
 
   type Query {
@@ -1079,9 +1085,9 @@ function isValidField(it: GQLFieldInput): it is Field {
     (containerType === ContainerTypes.MAP
       ? keyScalarType !== null
       : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      containerType === ContainerTypes.ARRAY
-      ? keyScalarType === null
-      : assertUnreachable(containerType));
+        containerType === ContainerTypes.ARRAY
+        ? keyScalarType === null
+        : assertUnreachable(containerType));
 
   return isValidContainerType;
 }

@@ -64,6 +64,7 @@ const typeDefs = /* GraphQL */ `
     RELATED_ITEM
     URL
     POLICY_ID
+    IP_ADDRESS
   }
 
   # This is equivalent to ScalarType, but with 'FULL_ITEM' added
@@ -82,6 +83,7 @@ const typeDefs = /* GraphQL */ `
     URL
     FULL_ITEM
     POLICY_ID
+    IP_ADDRESS
   }
 
   # !! IMPORTANT: when you add a value here, also add it to FieldType !!
@@ -106,6 +108,7 @@ const typeDefs = /* GraphQL */ `
     RELATED_ITEM
     URL
     POLICY_ID
+    IP_ADDRESS
   }
 
   enum Language {
@@ -331,7 +334,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union InviteUserTokenResponse =
-      InviteUserTokenSuccessResponse
+    | InviteUserTokenSuccessResponse
     | InviteUserTokenExpiredError
     | InviteUserTokenMissingError
 

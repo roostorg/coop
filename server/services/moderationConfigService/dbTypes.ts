@@ -32,6 +32,7 @@ export type ModerationConfigServicePg = {
     profile_icon_field: string | null;
     background_image_field: string | null;
     is_deleted_field: string | null;
+    ip_address_field: string | null;
   };
   // TODO: redefine as a union to capture the correlation of the nulls,
   // then leverage FixKyselyRowCorrelation in the ItemTypesDbResult type.
@@ -53,6 +54,7 @@ export type ModerationConfigServicePg = {
     profile_icon_field: GeneratedAlways<string | null>;
     background_image_field: GeneratedAlways<string | null>;
     is_deleted_field: GeneratedAlways<string | null>;
+    ip_address_field: GeneratedAlways<string | null>;
     version: GeneratedAlways<string>;
     is_current: GeneratedAlways<boolean>;
   };
@@ -98,7 +100,7 @@ export type ModerationConfigServicePg = {
     // whether to set `updated_at` on update or whether to just drop the column,
     // given the challenge of inerpreting the `updated_at` column on an entity
     // that has part of its data in other tables (e.g., should we update the
-    // action's updated_at when we update its set of item types?) 
+    // action's updated_at when we update its set of item types?)
     created_at: GeneratedAlways<Date>;
     updated_at: Generated<Date>;
     applies_to_all_items_of_kind: Generated<ItemTypeKind[]>;

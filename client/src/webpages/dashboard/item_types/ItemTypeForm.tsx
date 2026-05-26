@@ -642,15 +642,15 @@ export default function ItemTypeForm() {
                   !canEditItemTypes
                     ? `To edit ${readableKind} Types, ask your organization's admin to upgrade your role to Admin.`
                     : customFields.every((it) => it.name.length === 0)
-                    ? 'Please add at least one field with a name.'
-                    : customFields.some(
-                        (it) => it.role === SchemaFieldRoles.PARENT_ID,
-                      ) &&
-                      !customFields.some(
-                        (it) => it.role === SchemaFieldRoles.THREAD_ID,
-                      )
-                    ? `Content items with a Parent field must also have a Thread field.`
-                    : `Content items with a Thread field must have a Created-At field.`
+                      ? 'Please add at least one field with a name.'
+                      : customFields.some(
+                            (it) => it.role === SchemaFieldRoles.PARENT_ID,
+                          ) &&
+                          !customFields.some(
+                            (it) => it.role === SchemaFieldRoles.THREAD_ID,
+                          )
+                        ? `Content items with a Parent field must also have a Thread field.`
+                        : `Content items with a Thread field must have a Created-At field.`
                 }
                 disabledTooltipPlacement="bottomLeft"
                 onClick={async () =>
@@ -766,6 +766,7 @@ function availableRolesForItemKind(kind: ItemTypeKind): SchemaFieldRoles[] {
         SchemaFieldRoles.DISPLAY_NAME,
         SchemaFieldRoles.PARENT_ID,
         SchemaFieldRoles.IS_DELETED,
+        SchemaFieldRoles.IP_ADDRESS,
         SchemaFieldRoles.NONE,
       ];
     case 'THREAD':
@@ -774,6 +775,7 @@ function availableRolesForItemKind(kind: ItemTypeKind): SchemaFieldRoles[] {
         SchemaFieldRoles.DISPLAY_NAME,
         SchemaFieldRoles.CREATOR_ID,
         SchemaFieldRoles.IS_DELETED,
+        SchemaFieldRoles.IP_ADDRESS,
         SchemaFieldRoles.NONE,
       ];
     case 'USER':
@@ -783,6 +785,7 @@ function availableRolesForItemKind(kind: ItemTypeKind): SchemaFieldRoles[] {
         SchemaFieldRoles.PROFILE_ICON,
         SchemaFieldRoles.BACKGROUND_IMAGE,
         SchemaFieldRoles.IS_DELETED,
+        SchemaFieldRoles.IP_ADDRESS,
         SchemaFieldRoles.NONE,
       ];
   }

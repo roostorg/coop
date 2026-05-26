@@ -97,6 +97,7 @@ gql`
                   threadId
                   createdAt
                   creatorId
+                  ipAddress
                 }
               }
               ... on UserItemType {
@@ -104,6 +105,7 @@ gql`
                   displayName
                   createdAt
                   profileIcon
+                  ipAddress
                 }
               }
               ... on ThreadItemType {
@@ -111,6 +113,7 @@ gql`
                   displayName
                   createdAt
                   creatorId
+                  ipAddress
                 }
               }
             }

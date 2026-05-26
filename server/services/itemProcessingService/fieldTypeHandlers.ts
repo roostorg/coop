@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import {
   ContainerTypes,
   makeDateString,
@@ -80,10 +81,10 @@ type Handlers = {
 const scalarGetValues = <T>(value: T): [T] => [value];
 
 export const fieldTypeHandlers: Handlers = {
-// NB: for ids (including user ids), we accept numbers or strings for user
-// convenience, but we always coerce the value to a string so that we're not
-// mixing strings and numbers in the same json column in the data warehouse (which
-// could drastically reduce perf).
+  // NB: for ids (including user ids), we accept numbers or strings for user
+  // convenience, but we always coerce the value to a string so that we're not
+  // mixing strings and numbers in the same json column in the data warehouse (which
+  // could drastically reduce perf).
   [ScalarTypes.USER_ID]: {
     // TODO (COOP-745): USER_ID will be deprecated
     coerce: (v, legalItemTypeIds) => {
@@ -130,8 +131,8 @@ export const fieldTypeHandlers: Handlers = {
       return urlString
         ? urlString
         : v === ''
-        ? null
-        : new Error('This field, if given, must be a valid URL.');
+          ? null
+          : new Error('This field, if given, must be a valid URL.');
     },
     getValues: scalarGetValues,
   },
@@ -140,8 +141,8 @@ export const fieldTypeHandlers: Handlers = {
       typeof v === 'string' && !doesThrow(() => Geohash.decode(v))
         ? v
         : v === ''
-        ? null
-        : new Error('This field, if given, must be a valid geohash.'),
+          ? null
+          : new Error('This field, if given, must be a valid geohash.'),
     getValues: scalarGetValues,
   },
   [ScalarTypes.BOOLEAN]: {
@@ -190,8 +191,10 @@ export const fieldTypeHandlers: Handlers = {
       return asDateString
         ? asDateString
         : v === ''
-        ? null
-        : new Error('This field, if given, must contain a valid date string.');
+          ? null
+          : new Error(
+              'This field, if given, must contain a valid date string.',
+            );
     },
   },
   [ScalarTypes.RELATED_ITEM]: {
@@ -214,6 +217,26 @@ export const fieldTypeHandlers: Handlers = {
         ? (v satisfies { id: unknown; typeId: unknown } as RelatedItem)
         : new Error(
             "This field, if given, must be an object with a (non-empty) string 'id' and a valid 'typeId', with an optional string name.",
+          );
+    },
+    getValues: scalarGetValues,
+  },
+  [ScalarTypes.IP_ADDRESS]: {
+    // Accepts IPv4 and IPv6; rejects anything else. Leading/trailing
+    // whitespace is stripped.
+    // all-whitespace or empty string is treated as "field omitted".
+    coerce: (v) => {
+      if (typeof v !== 'string') {
+        return new Error('This field, if given, must be a string IP address.');
+      }
+      const trimmed = v.trim();
+      if (trimmed === '') {
+        return null;
+      }
+      return isIP(trimmed) > 0
+        ? trimmed
+        : new Error(
+            'This field, if given, must be a valid IPv4 or IPv6 address.',
           );
     },
     getValues: scalarGetValues,
@@ -278,15 +301,15 @@ function coerceMediaUrlInput(value: unknown) {
   return typeof value !== 'string'
     ? err
     : value === ''
-    ? null
-    : isValidUrl(value)
-    ? // NB: `value` here CANNOT be typed as a UrlString, because we have some
-      // legacy submissions in the data warehouse where the string is not a valid URL.
-      // (Usually, it's the empty string, which previously got through.)
-      // TODO: replace all those submissions in the data warehouse with `field: null`,
-      // and then update the type here/in ScalarTypeRuntimeType.
-      { url: value }
-    : err;
+      ? null
+      : isValidUrl(value)
+        ? // NB: `value` here CANNOT be typed as a UrlString, because we have some
+          // legacy submissions in the data warehouse where the string is not a valid URL.
+          // (Usually, it's the empty string, which previously got through.)
+          // TODO: replace all those submissions in the data warehouse with `field: null`,
+          // and then update the type here/in ScalarTypeRuntimeType.
+          { url: value }
+        : err;
 }
 
 function coerceIdLikeInput(value: unknown) {
@@ -296,8 +319,8 @@ function coerceIdLikeInput(value: unknown) {
   return typeof value === 'string'
     ? value
     : isFiniteNonNaNNumber(value)
-    ? String(value)
-    : new Error('This field must be a string or a number.');
+      ? String(value)
+      : new Error('This field must be a string or a number.');
 }
 
 function isFiniteNonNaNNumber(value: unknown) {

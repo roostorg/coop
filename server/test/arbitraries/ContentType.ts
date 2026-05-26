@@ -62,6 +62,19 @@ export const RelatedItemArbitrary = fc.record({
   name: fc.string(),
 });
 
+// IETF reserved documentation ranges (RFC 5737 / RFC 3849) — safe to use in
+// tests, will never collide with a real host.
+export const IpAddressArbitrary = fc.oneof(
+  fc.ipV4(),
+  fc.constantFrom(
+    '203.0.113.1',
+    '198.51.100.42',
+    '192.0.2.255',
+    '2001:db8::1',
+    '2001:db8:1234:5678::1',
+  ),
+);
+
 export const ScalarValidValuesArbitraries = {
   [ScalarTypes.AUDIO]: MediaUrlArbitrary,
   [ScalarTypes.BOOLEAN]: fc.boolean(),
@@ -79,6 +92,7 @@ export const ScalarValidValuesArbitraries = {
   [ScalarTypes.DATETIME]: DateStringArbitrary,
   [ScalarTypes.RELATED_ITEM]: RelatedItemArbitrary,
   [ScalarTypes.POLICY_ID]: IdLikeArbitrary,
+  [ScalarTypes.IP_ADDRESS]: IpAddressArbitrary,
 };
 
 export const ScalarFieldArbitrary = fc
@@ -124,18 +138,18 @@ export const MapFieldArbitrary = fc
     fc.string(),
     fc.boolean(),
   )
-  .map<Field<ContainerTypes['MAP']>>(
-    ([valueScalarType, keyScalarType, name, required]) => ({
-      name,
-      required,
-      type: ContainerTypes.MAP,
-      container: {
-        containerType: ContainerTypes.MAP,
-        keyScalarType,
-        valueScalarType,
-      },
-    }),
-  );
+  .map<
+    Field<ContainerTypes['MAP']>
+  >(([valueScalarType, keyScalarType, name, required]) => ({
+    name,
+    required,
+    type: ContainerTypes.MAP,
+    container: {
+      containerType: ContainerTypes.MAP,
+      keyScalarType,
+      valueScalarType,
+    },
+  }));
 
 export const MapFieldWithValueArbitrary = MapFieldArbitrary.chain((field) =>
   fc.tuple(
