@@ -11,7 +11,7 @@ import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
 import { DynamicPool } from 'node-worker-threads-pool';
-import pg from 'pg';
+import type pg from 'pg';
 import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
@@ -240,9 +240,15 @@ import {
   type NonEmptyArray,
   type Satisfies,
 } from '../utils/typescript-types.js';
+import { createPgPool } from './createPgPool.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
-import { isEnvTrue, register, safeGetEnvVar } from './utils.js';
+import {
+  isEnvTrue,
+  register,
+  safeGetEnvNonNegativeInt,
+  safeGetEnvVar,
+} from './utils.js';
 
 // the otel instrumentation currently intercepts require statements. support for
 // esm support is experimental so we should wait until it is stable
@@ -303,6 +309,11 @@ export interface Dependencies {
   KyselyPg: Kysely<any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   KyselyPgReadReplica: Kysely<any>;
+
+  // The shared master `pg.Pool` that `KyselyPg` is built on. Exposed so
+  // non-Kysely Postgres consumers (e.g., the express-session store) can
+  // share the same pool instead of opening their own.
+  KyselyPgPool: pg.Pool;
 
   // Similar to our Kysely services, we register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
@@ -432,22 +443,59 @@ export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
 export default async function getBottle() {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
-  const getPgPoolTuning = () => ({
-    // pg's default is 10s, which churns connections during quiet periods.
-    idleTimeoutMillis: parseInt(
-      process.env.DATABASE_POOL_IDLE_TIMEOUT_MS ?? '300000',
-    ),
-    // pg's default is 0 (wait forever); fail fast if the db is unreachable.
-    connectionTimeoutMillis: parseInt(
-      process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS ?? '15000',
-    ),
-    // Bound long-running queries instead of letting them hold a pool slot.
-    query_timeout: parseInt(process.env.DATABASE_QUERY_TIMEOUT_MS ?? '1000000'),
-    // Kill sessions sitting idle inside an open transaction (holding locks).
-    idle_in_transaction_session_timeout: parseInt(
-      process.env.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS ?? '300000',
-    ),
-  });
+  const getPgPoolTuning = () => {
+    const statementTimeoutMs =
+      process.env.DATABASE_STATEMENT_TIMEOUT_MS?.trim();
+    const keepAliveInitialDelayMs =
+      process.env.DATABASE_KEEPALIVE_INITIAL_DELAY_MS?.trim();
+    return {
+      // pg's default is 10s, which churns connections during quiet periods.
+      idleTimeoutMillis: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_IDLE_TIMEOUT_MS',
+        300000,
+      ),
+      // pg's default is 0 (wait forever); fail fast if the db is unreachable.
+      connectionTimeoutMillis: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_CONNECTION_TIMEOUT_MS',
+        15000,
+      ),
+      // Client-side bound on long-running queries.
+      query_timeout: safeGetEnvNonNegativeInt(
+        'DATABASE_QUERY_TIMEOUT_MS',
+        1000000,
+      ),
+      // Optional server-side bound; defense in depth alongside `query_timeout`.
+      // Unset => Postgres' own default (no limit).
+      ...(statementTimeoutMs && {
+        statement_timeout: safeGetEnvNonNegativeInt(
+          'DATABASE_STATEMENT_TIMEOUT_MS',
+          0,
+        ),
+      }),
+      // Kill sessions sitting idle inside an open transaction (holding locks).
+      idle_in_transaction_session_timeout: safeGetEnvNonNegativeInt(
+        'DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS',
+        300000,
+      ),
+      // Recycle each client after N seconds to dodge stale connections.
+      // 0 = never expire (default).
+      maxLifetimeSeconds: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_MAX_LIFETIME_SECONDS',
+        0,
+      ),
+      // TCP keepalive surfaces NAT/LB connection drops as pool errors
+      // (handled by `createPgPool`) rather than as hung queries. Defaults on;
+      // set DATABASE_KEEPALIVE=false to disable.
+      keepAlive:
+        process.env.DATABASE_KEEPALIVE?.trim().toLowerCase() !== 'false',
+      ...(keepAliveInitialDelayMs && {
+        keepAliveInitialDelayMillis: safeGetEnvNonNegativeInt(
+          'DATABASE_KEEPALIVE_INITIAL_DELAY_MS',
+          0,
+        ),
+      }),
+    };
+  };
 
   // NB: this is a function because safeGetEnvVar can throw, so we only want to
   // try to look up the env vars (and throw if they're missing) _if someone
@@ -483,18 +531,26 @@ export default async function getBottle() {
 
   // Pg services.
   //
+  // - 'KyselyPgPool' is the shared `pg.Pool` for the primary (writable) db.
+  //   Non-Kysely Postgres consumers (e.g. the express-session store in
+  //   `api.ts`) inject this so every connection passes through `createPgPool`.
+  //
   // - 'KyselyPg' is for issuing raw pg queries w/o sequelize (e.g., the queries
   //   that some of the our "services" issue to pg, to the non-public schemas).
   //   These queries go to our primary db, which accepts writes.
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
+  bottle.factory('KyselyPgPool', () =>
+    createPgPool(getPgMasterConnectionInfo()),
+  );
+
   bottle.factory(
     'KyselyPg',
-    () =>
+    (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
-          pool: new pg.Pool(getPgMasterConnectionInfo()),
+          pool: container.KyselyPgPool,
           cursor: Cursor,
         }),
         log: kyselyLogLevels,
@@ -506,7 +562,7 @@ export default async function getBottle() {
     () =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
-          pool: new pg.Pool({
+          pool: createPgPool({
             ...getPgMasterConnectionInfo(),
             max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
             host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),

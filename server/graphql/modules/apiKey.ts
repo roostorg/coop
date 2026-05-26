@@ -1,21 +1,11 @@
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
+import {
+  type GQLMutationResolvers,
+  type GQLQueryResolvers,
+} from '../generated.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
-
-/** Context shape required by rotateWebhookSigningKey (avoids importing resolvers). */
-type RotateWebhookSigningKeyContext = {
-  getUser: () =>
-    | {
-        orgId: string;
-        getPermissions: () => readonly string[];
-      }
-    | null
-    | undefined;
-  dataSources: {
-    orgAPI: { rotateWebhookSigningKey: (orgId: string) => Promise<string> };
-  };
-};
 
 const typeDefs = /* GraphQL */ `
   type ApiKey {
@@ -76,8 +66,8 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
-const Query: any = {
-  async apiKey(_: any, __: any, context: any) {
+const Query: GQLQueryResolvers = {
+  async apiKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
       throw unauthenticatedError('Authenticated user required');
@@ -98,8 +88,8 @@ const Query: any = {
   },
 };
 
-const Mutation: any = {
-  async rotateApiKey(_: any, { input }: any, context: any) {
+const Mutation: GQLMutationResolvers = {
+  async rotateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
       throw forbiddenError(
@@ -117,7 +107,7 @@ const Mutation: any = {
         await context.services.ApiKeyService.rotateApiKey(
           user.orgId,
           input.name,
-          input.description || null,
+          input.description ?? null,
           user.id,
         );
 
@@ -130,7 +120,7 @@ const Mutation: any = {
             description: record.description,
             isActive: record.isActive,
             createdAt: record.createdAt.toISOString(),
-            lastUsedAt: record.lastUsedAt?.toISOString() || null,
+            lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
             createdBy: record.createdBy,
           },
         },
@@ -146,17 +136,13 @@ const Mutation: any = {
           type: [ErrorType.InternalServerError],
           title: 'Failed to rotate API key',
           detail: 'An error occurred while rotating the API key',
-          name: 'InternalServerError',
+          name: 'RotateApiKeyError',
           shouldErrorSpan: true,
         }),
       );
     }
   },
-  async rotateWebhookSigningKey(
-    _: unknown,
-    __: Record<string, never>,
-    context: RotateWebhookSigningKeyContext,
-  ) {
+  async rotateWebhookSigningKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
       throw forbiddenError(
@@ -189,7 +175,7 @@ const Mutation: any = {
           type: [ErrorType.InternalServerError],
           title: 'Failed to rotate webhook signing key',
           detail: 'An error occurred while rotating the webhook signing key',
-          name: 'InternalServerError',
+          name: 'RotateWebhookSigningKeyError',
           shouldErrorSpan: true,
         }),
       );

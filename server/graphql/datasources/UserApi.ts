@@ -14,6 +14,10 @@ import {
 } from '../../utils/errors.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
+import {
+  type GQLMutationLoginArgs,
+  type GQLMutationSignUpArgs,
+} from '../generated.js';
 import { type PassportGqlContext } from '../utils/passportContext.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
 import { type GraphQLRuleParent } from './ruleKyselyPersistence.js';
@@ -74,7 +78,7 @@ class UserAPI {
     return kyselyUserFindByIds(this.kyselyPg, ids);
   }
 
-  async login(params: any, context: PassportGqlContext) {
+  async login(params: GQLMutationLoginArgs, context: PassportGqlContext) {
     const { email, password } = safePick(params.input, ['email', 'password']);
 
     // Reject missing/empty credentials as a bad request before verifying.
@@ -118,7 +122,10 @@ class UserAPI {
     }
   }
 
-  async signUp(params: any, _: any): Promise<GraphQLUserParent> {
+  async signUp(
+    params: GQLMutationSignUpArgs,
+    _: unknown,
+  ): Promise<GraphQLUserParent> {
     const { role } = params.input;
     const {
       email,
