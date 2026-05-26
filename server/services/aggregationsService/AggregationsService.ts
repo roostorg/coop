@@ -66,7 +66,14 @@ export class AggregationsService {
     const keys = getStoreKeysForAggregation(aggregation, runtimeArgs);
 
     const kvs = await this.keyValueStore.getAll(keys);
+    // The Aggregation union has only one variant ('COUNT') today, so the
+    // case label and the discriminant are trivially equal and trip
+    // no-unnecessary-condition. The switch is intentional: when a new
+    // variant is added, the existing case stops being exhaustive and the
+    // "default: assertUnreachable(...)" branch surfaces the gap at compile
+    // time. Disabling the condition rule (only) preserves that safety net.
     switch (aggregation.aggregation.type) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see comment above
       case 'COUNT':
         return Array.from(kvs.values()).reduce((acc, count) => acc + count, 0);
       default:
@@ -212,7 +219,14 @@ function getStoreKeyPrefixForAggregation(
 }
 
 function serializeAggregation(aggregation: Aggregation): string {
+  // The Aggregation union has only one variant ('COUNT') today, so the
+  // case label and the discriminant are trivially equal and trip
+  // no-unnecessary-condition. The switch is intentional: when a new
+  // variant is added, the existing case stops being exhaustive and the
+  // `default: assertUnreachable(...)` branch surfaces the gap at compile
+  // time. Disabling the condition rule (only) preserves that safety net.
   switch (aggregation.type) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see comment above
     case 'COUNT':
       return 'COUNT';
     default:

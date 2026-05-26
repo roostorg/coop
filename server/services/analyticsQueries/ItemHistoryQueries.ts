@@ -19,6 +19,11 @@ type ItemHistoryQueryFilter = {
 class ItemHistoryQueries {
   constructor(private readonly dialect: Dependencies['DataWarehouseDialect']) {}
 
+  // The data warehouse schema isn't statically modeled in TS, so we use
+  // "any" here to opt out of Kysely's column-name checking. Kysely's stricter
+  // alternatives ("Record<string, unknown>") reject the string-based column
+  // selections this query relies on.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see comment above
   private get kysely(): Kysely<any> {
     return this.dialect.getKyselyInstance();
   }
@@ -76,7 +81,7 @@ class ItemHistoryQueries {
 
     try {
       const results = await query.execute();
-      return results.map((it: any) => ({
+      return results.map((it) => ({
         itemTypeName: it.itemTypeName,
         itemTypeId: it.itemTypeId,
         userId: it.userId,

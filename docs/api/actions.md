@@ -6,7 +6,7 @@ When Coop triggers an Action—either through an automated rule or a moderator's
 
 For each Action you define in Coop, provide a publicly accessible callback URL and any authentication headers your endpoint requires (e.g. an API key Coop should send). Coop includes these headers on every outgoing request to that endpoint.
 
-To verify that an incoming request actually came from Coop, check the `Coop-Signature` header. See [API Keys & Authentication](../development/api-auth.md) for the signature verification algorithm.
+To verify that an incoming request actually came from Coop, check the `Coop-Signature` header. See [API Keys & Authentication](../development/api-auth.md#verifying-incoming-requests-from-coop) for the signature verification algorithm and a code example.
 
 Failed deliveries are retried up to five times with exponential backoff.
 
@@ -58,7 +58,7 @@ Failed deliveries are retried up to five times with exponential backoff.
 | `id`   | String | Coop's unique rule ID |
 | `name` | String | Rule name             |
 
-## Appeal Decision Callback
+## Appeal decision callback
 
 When a moderator reviews an appeal in the Review Console and makes a decision, Coop sends a POST request to the Appeal callback URL configured in your Appeals Dashboard.
 

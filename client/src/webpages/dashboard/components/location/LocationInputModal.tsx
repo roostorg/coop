@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { IS_GOOGLE_PLACES_API_CONFIGURED } from '../../../../lib/config';
 import { LocationFormLocation } from '../../../../models/locationBank';
 import CoopModal from '../CoopModal';
 import TabBar from '../TabBar';
@@ -12,6 +13,9 @@ enum LocationInputModalTab {
   GOOGLE_PLACE = 'GOOGLE_PLACE',
   LOCATION_BANK = 'LOCATION_BANK',
 }
+
+const POI_DISABLED_TOOLTIP =
+  "Points of Interest search is unavailable because this Coop instance doesn't have a Google Maps Places API key configured.";
 
 export function locationSectionHeader(header: string) {
   return <div className="my-3 text-sm">{header}</div>;
@@ -40,7 +44,9 @@ export default function LocationInputModal(props: {
   } = props;
 
   const [activeTab, setActiveTab] = useState<LocationInputModalTab>(
-    LocationInputModalTab.GOOGLE_PLACE,
+    IS_GOOGLE_PLACES_API_CONFIGURED
+      ? LocationInputModalTab.GOOGLE_PLACE
+      : LocationInputModalTab.GEOHASH,
   );
 
   return (
@@ -53,6 +59,10 @@ export default function LocationInputModal(props: {
           {
             label: 'Points of Interest',
             value: LocationInputModalTab.GOOGLE_PLACE,
+            disabled: !IS_GOOGLE_PLACES_API_CONFIGURED,
+            tooltip: !IS_GOOGLE_PLACES_API_CONFIGURED
+              ? POI_DISABLED_TOOLTIP
+              : undefined,
           },
           {
             label: 'Geohashes',

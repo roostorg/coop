@@ -1,7 +1,10 @@
 import crypto from 'node:crypto';
-import type { Kysely } from 'kysely';
+import type { Kysely, Selectable } from 'kysely';
 import { inject } from '../../iocContainer/index.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
+import { type ApiKeyServicePg } from './dbTypes.js';
+
+type ApiKeyRow = Selectable<ApiKeyServicePg['public.api_keys']>;
 
 export interface ApiKeyMetadata {
   name: string;
@@ -196,7 +199,7 @@ class ApiKeyService {
   /**
    * Maps database record to ApiKeyRecord
    */
-  private mapDbRecordToApiKeyRecord(record: any): ApiKeyRecord {
+  private mapDbRecordToApiKeyRecord(record: ApiKeyRow): ApiKeyRecord {
     return {
       id: record.id,
       orgId: record.org_id,
