@@ -120,6 +120,7 @@ export function outputTypeToComparators(outputType: GQLSignalOutputType) {
       ];
     case GQLScalarType.Url:
     case GQLScalarType.String:
+    case GQLScalarType.IpAddress:
       return outputType.__typename === 'EnumSignalOutputType' &&
         outputType.ordered
         ? orderedComparators

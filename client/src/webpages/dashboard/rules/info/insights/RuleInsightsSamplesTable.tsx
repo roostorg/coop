@@ -763,6 +763,7 @@ export function getStringFromContent(
     case GQLFieldType.Array:
     case GQLFieldType.Map:
     case GQLFieldType.PolicyId:
+    case GQLFieldType.IpAddress:
       return content.toString();
     case GQLFieldType.Image:
     case GQLFieldType.Video:
