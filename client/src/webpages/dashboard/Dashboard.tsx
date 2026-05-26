@@ -358,7 +358,8 @@ export function DashboardRoutes() {
         lazy: lazyRoute(async () => import('./policies/PolicyForm')),
       },
       {
-        path: 'user_strikes',
+        path: 'rules/user_strikes',
+        handle: { isUsingLegacyCSS: true },
         lazy: lazyRoute(
           async () => import('./userStrikes/UserStrikeDashboard'),
         ),
