@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- scenarios share the `makeIsolatedPublisher`
+ * harness; splitting would duplicate ~100 lines of setup. */
 /**
  * Unit tests for ActionPublisher to verify action execution logging behavior.
  *
@@ -10,58 +12,57 @@ import getBottle, { type Dependencies } from '../iocContainer/index.js';
 import { ActionType } from '../services/moderationConfigService/index.js';
 import { type CorrelationId } from '../utils/correlationIds.js';
 import { jsonParse } from '../utils/encoding.js';
-import ActionPublisherDefault, {
-  type ActionPublisher,
-} from './ActionPublisher.js';
+import { ActionPublisher } from './ActionPublisher.js';
 import { RuleEnvironment } from './RuleEngine.js';
 
-// Hand-rolled mocks for `makeIsolatedPublisher` below — used by tests that
-// need to inspect outgoing webhook bodies without mutating the bottle's
-// shared `ActionPublisher` instance.
-type SpanLike = {
-  setAttribute: () => void;
-  recordException: () => void;
-  isRecording: () => boolean;
-};
-type TracerLike = {
-  addActiveSpan: (_meta: unknown, fn: (span: SpanLike) => unknown) => unknown;
-  getActiveSpan: () => undefined;
+type IsolatedPublisherOptions = {
+  fetchHTTP: jest.Mock;
+  manualReviewToolService?: Partial<Dependencies['ManualReviewToolService']>;
+  ncmecService?: Partial<Dependencies['NcmecService']>;
+  itemInvestigationService?: Partial<Dependencies['ItemInvestigationService']>;
+  getItemTypeEventuallyConsistent?: Dependencies['getItemTypeEventuallyConsistent'];
 };
 
-function makeIsolatedPublisher(opts: { fetchHTTP: jest.Mock }) {
-  const tracer: TracerLike = {
-    addActiveSpan: (_meta, fn) =>
+function makeNoopTracer(): Dependencies['Tracer'] {
+  return {
+    addActiveSpan: (_meta: unknown, fn: (span: unknown) => unknown) =>
       fn({
         setAttribute: () => {},
         recordException: () => {},
         isRecording: () => false,
       }),
     getActiveSpan: () => undefined,
-  };
-  const PublisherCtor = ActionPublisherDefault as unknown as new (
-    actionExecutionLogger: { logActionExecutions: jest.Mock },
-    tracer: TracerLike,
-    fetchHTTP: jest.Mock,
-    signingKeyPairService: { sign: jest.Mock },
-    manualReviewToolService: object,
-    ncmecService: object,
-    itemInvestigationService: { getItemByIdentifier: jest.Mock },
-    userStrikeService: { applyUserStrikeFromPublishedActions: jest.Mock },
-  ) => ActionPublisher;
+  } as unknown as Dependencies['Tracer'];
+}
+
+function makeIsolatedPublisher(opts: IsolatedPublisherOptions) {
   const logActionExecutions = jest.fn().mockResolvedValue(undefined);
-  const publisher = new PublisherCtor(
-    { logActionExecutions },
-    tracer,
+  const actionExecutionLogger = {
+    logActionExecutions,
+  } as unknown as Dependencies['ActionExecutionLogger'];
+  const signingKeyPairService = {
+    sign: jest.fn().mockResolvedValue(undefined),
+  } as unknown as Dependencies['SigningKeyPairService'];
+  const itemInvestigationService = (opts.itemInvestigationService ?? {
+    getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+  }) as Dependencies['ItemInvestigationService'];
+  const userStrikeService = {
+    applyUserStrikeFromPublishedActions: jest.fn().mockResolvedValue(undefined),
+  } as unknown as Dependencies['UserStrikeService'];
+  const getItemTypeEventuallyConsistent =
+    opts.getItemTypeEventuallyConsistent ??
+    jest.fn().mockResolvedValue(undefined);
+  const publisher = new ActionPublisher(
+    actionExecutionLogger,
+    makeNoopTracer(),
     opts.fetchHTTP,
-    { sign: jest.fn().mockResolvedValue(undefined) },
-    {},
-    {},
-    { getItemByIdentifier: jest.fn().mockResolvedValue(undefined) },
-    {
-      applyUserStrikeFromPublishedActions: jest
-        .fn()
-        .mockResolvedValue(undefined),
-    },
+    signingKeyPairService,
+    (opts.manualReviewToolService ??
+      {}) as Dependencies['ManualReviewToolService'],
+    (opts.ncmecService ?? {}) as Dependencies['NcmecService'],
+    itemInvestigationService,
+    userStrikeService,
+    getItemTypeEventuallyConsistent,
   );
   return { publisher, logActionExecutions };
 }
@@ -185,9 +186,7 @@ describe('ActionPublisher', () => {
     });
 
     it('builds the CUSTOM_ACTION webhook body with parameters merged into `custom` and actorNote at the top level', async () => {
-      const fetchHTTP = jest
-        .fn()
-        .mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -248,9 +247,7 @@ describe('ActionPublisher', () => {
     });
 
     it('omits actorNote from the webhook body entirely when no note is supplied', async () => {
-      const fetchHTTP = jest
-        .fn()
-        .mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -354,6 +351,288 @@ describe('ActionPublisher', () => {
       expect(logged?.actorNote).toBe('Repeat offender');
 
       logSpy.mockRestore();
+    });
+
+    it('enqueues to NCMEC for a synthetic USER target with no item submission record', async () => {
+      const enqueueForHumanReviewIfApplicable = jest
+        .fn()
+        .mockResolvedValue({ status: 'ENQUEUED' });
+      const userItemType = {
+        id: 'user-type-1',
+        kind: 'USER' as const,
+        name: 'User',
+        version: '1',
+        schemaVariant: 'DEFAULT',
+        schema: [],
+        schemaFieldRoles: {},
+      };
+      const getItemTypeEventuallyConsistent = jest
+        .fn()
+        .mockResolvedValue(userItemType);
+      const { publisher, logActionExecutions } = makeIsolatedPublisher({
+        fetchHTTP: jest.fn(),
+        ncmecService: { enqueueForHumanReviewIfApplicable },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+        },
+        getItemTypeEventuallyConsistent,
+      });
+
+      const results = await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-ncmec',
+              orgId: 'org-synth',
+              name: 'Enqueue for NCMEC Review',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.ENQUEUE_TO_NCMEC,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-synth',
+          correlationId:
+            'manual-action-run:synthetic-ncmec' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'synthetic-user-id',
+            itemType: {
+              id: 'user-type-1',
+              kind: 'USER' as const,
+              name: 'User',
+            },
+          },
+        },
+      );
+
+      expect(results).toEqual([
+        expect.objectContaining({ success: true, actionId: 'action-ncmec' }),
+      ]);
+      expect(enqueueForHumanReviewIfApplicable).toHaveBeenCalledTimes(1);
+      const enqueueArg = enqueueForHumanReviewIfApplicable.mock.calls[0]?.[0];
+      expect(enqueueArg.item.itemId).toBe('synthetic-user-id');
+      expect(enqueueArg.item.itemTypeIdentifier.id).toBe('user-type-1');
+      expect(logActionExecutions).toHaveBeenCalledWith(
+        expect.objectContaining({ failed: false }),
+      );
+    });
+
+    it('enqueues to MRT for a synthetic USER target with no submission record', async () => {
+      const enqueue = jest.fn().mockResolvedValue(undefined);
+      const userItemType = {
+        id: 'user-type-2',
+        kind: 'USER' as const,
+        name: 'User',
+        version: '1',
+        schemaVariant: 'DEFAULT',
+        schema: [],
+        schemaFieldRoles: {},
+      };
+      const getItemTypeEventuallyConsistent = jest
+        .fn()
+        .mockResolvedValue(userItemType);
+      const { publisher, logActionExecutions } = makeIsolatedPublisher({
+        fetchHTTP: jest.fn(),
+        manualReviewToolService: { enqueue },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+        },
+        getItemTypeEventuallyConsistent,
+      });
+
+      const results = await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-mrt',
+              orgId: 'org-synth',
+              name: 'Enqueue to MRT',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.ENQUEUE_TO_MRT,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-synth',
+          correlationId:
+            'manual-action-run:synthetic-mrt' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'synthetic-user-id',
+            itemType: {
+              id: 'user-type-2',
+              kind: 'USER' as const,
+              name: 'User',
+            },
+          },
+        },
+      );
+
+      expect(results).toEqual([
+        expect.objectContaining({ success: true, actionId: 'action-mrt' }),
+      ]);
+      expect(enqueue).toHaveBeenCalledTimes(1);
+      expect(logActionExecutions).toHaveBeenCalledWith(
+        expect.objectContaining({ failed: false }),
+      );
+    });
+
+    it('infers the creator and enqueues to NCMEC for a CONTENT target with no submission', async () => {
+      const enqueueForHumanReviewIfApplicable = jest
+        .fn()
+        .mockResolvedValue({ status: 'ENQUEUED' });
+      const userItemType = {
+        id: 'user-type-3',
+        kind: 'USER' as const,
+        name: 'User',
+        version: '1',
+        schemaVariant: 'DEFAULT',
+        schema: [],
+        schemaFieldRoles: {},
+      };
+      // The real helper resolves the creator id from ACTION_EXECUTIONS and
+      // then synthesizes a submission keyed on *the creator's* id (not the
+      // content's id). The mock mirrors that shape so the test exercises a
+      // payload production can actually produce.
+      const synthesizeUserItemFromContentTarget = jest.fn().mockResolvedValue({
+        latestSubmission: {
+          itemId: 'creator-user-id-7',
+          itemType: userItemType,
+          data: {},
+          submissionId: 'synthetic:creator-user-id-7',
+          submissionTime: undefined,
+          creator: undefined,
+        },
+      });
+      const { publisher, logActionExecutions } = makeIsolatedPublisher({
+        fetchHTTP: jest.fn(),
+        ncmecService: { enqueueForHumanReviewIfApplicable },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          synthesizeUserItemFromContentTarget,
+        },
+      });
+
+      const results = await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-ncmec-inferred',
+              orgId: 'org-synth',
+              name: 'Enqueue for NCMEC Review',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.ENQUEUE_TO_NCMEC,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-synth',
+          correlationId:
+            'manual-action-run:inferred-ncmec' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Post',
+            },
+          },
+        },
+      );
+
+      expect(results).toEqual([expect.objectContaining({ success: true })]);
+      expect(synthesizeUserItemFromContentTarget).toHaveBeenCalledWith({
+        orgId: 'org-synth',
+        itemId: 'phantom-content-id',
+        itemTypeId: 'content-type-1',
+      });
+      expect(enqueueForHumanReviewIfApplicable).toHaveBeenCalledTimes(1);
+      const enqueueArg = enqueueForHumanReviewIfApplicable.mock.calls[0]?.[0];
+      expect(enqueueArg.item.itemId).toBe('creator-user-id-7');
+      expect(enqueueArg.item.itemTypeIdentifier.id).toBe('user-type-3');
+      expect(logActionExecutions).toHaveBeenCalledWith(
+        expect.objectContaining({ failed: false }),
+      );
+    });
+
+    it('fails loudly when ENQUEUE_TO_NCMEC targets a CONTENT item with no submission and no inferable creator', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const enqueueForHumanReviewIfApplicable = jest.fn();
+      const synthesizeUserItemFromContentTarget = jest
+        .fn()
+        .mockResolvedValue(null);
+      const { publisher, logActionExecutions } = makeIsolatedPublisher({
+        fetchHTTP: jest.fn(),
+        ncmecService: { enqueueForHumanReviewIfApplicable },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          synthesizeUserItemFromContentTarget,
+        },
+      });
+
+      const results = await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-ncmec-content',
+              orgId: 'org-synth',
+              name: 'Enqueue for NCMEC Review',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.ENQUEUE_TO_NCMEC,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-synth',
+          correlationId:
+            'manual-action-run:synthetic-ncmec-content' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Post',
+            },
+          },
+        },
+      );
+
+      expect(results).toEqual([expect.objectContaining({ success: false })]);
+      expect(synthesizeUserItemFromContentTarget).toHaveBeenCalled();
+      expect(enqueueForHumanReviewIfApplicable).not.toHaveBeenCalled();
+      expect(logActionExecutions).toHaveBeenCalledWith(
+        expect.objectContaining({ failed: true }),
+      );
+      expect(consoleSpy).toHaveBeenCalled();
+      const loggedLine = consoleSpy.mock.calls[0]?.[0];
+      expect(loggedLine).toEqual(
+        expect.stringContaining('action-ncmec-content'),
+      );
+      expect(loggedLine).toEqual(
+        expect.stringContaining('actionPublisher.publishAction.failed'),
+      );
+      consoleSpy.mockRestore();
     });
   });
 });

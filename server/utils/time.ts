@@ -8,6 +8,7 @@ export const HOUR_MS = MINUTE_MS * 60;
 export const DAY_MS = HOUR_MS * 24;
 export const WEEK_MS = DAY_MS * 7;
 export const MONTH_MS = DAY_MS * 30;
+export const SIX_MONTHS_MS = MONTH_MS * 6;
 export const YEAR_MS = DAY_MS * 365;
 
 // NB: we call this DateOnlyString to avoid a conflict with the DateString type

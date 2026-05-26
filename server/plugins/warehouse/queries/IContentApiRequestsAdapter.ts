@@ -25,6 +25,17 @@ export interface ContentApiImageCountRecord {
   count: number;
 }
 
+export interface InferredUserIdentityFromCreatorsInput {
+  orgId: string;
+  itemId: string;
+  lookbackWindowMs?: number;
+}
+
+export interface InferredUserIdentityFromCreatorsRecord {
+  itemTypeId: string;
+  lastSeenAt: Date;
+}
+
 export interface IContentApiRequestsAdapter {
   getSuccessfulRequestsForItem(
     orgId: string,
@@ -43,5 +54,12 @@ export interface IContentApiRequestsAdapter {
     start: Date,
     end: Date,
   ): Promise<ReadonlyArray<ContentApiImageCountRecord>>;
-}
 
+  /**
+   * Infer the user `itemTypeId` from rows where `item_creator_id = itemId`.
+   * Returns the most-recent `item_creator_type_id` or `null`.
+   */
+  findInferredUserIdentityFromCreators(
+    input: InferredUserIdentityFromCreatorsInput,
+  ): Promise<InferredUserIdentityFromCreatorsRecord | null>;
+}

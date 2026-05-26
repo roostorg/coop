@@ -34,7 +34,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
   } = props;
 
   return (
-    <div className="flex flex-col items-start max-w-[240px]">
+    <div className="flex flex-col items-start w-full min-w-0">
       <div className="flex flex-row items-center w-full pr-2 gap-3">
         <ManualReviewJobMagnifyImageComponent
           itemIdentifier={itemIdentifier}

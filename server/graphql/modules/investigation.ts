@@ -17,10 +17,12 @@ import { jsonStringify } from '../../utils/encoding.js';
 import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
 import { MONTH_MS } from '../../utils/time.js';
 import {
+  type GQLQueryItemsWithIdArgs,
   type GQLQueryResolvers,
   type GQLRuleEnvironment,
   type GQLUserHistoryResolvers,
 } from '../generated.js';
+import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
@@ -125,6 +127,56 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
+type FormattedItemSubmission = ReturnType<typeof formatItemSubmissionForGQL>;
+
+type ItemsWithIdResultEntry = {
+  latest: FormattedItemSubmission;
+  prior?: ReadonlyArray<FormattedItemSubmission>;
+  isSynthetic?: true;
+};
+
+type ItemInvestigationServiceForItemsWithId = Pick<
+  Context['services']['ItemInvestigationService'],
+  | 'getItemByIdentifier'
+  | 'getItemByTypeAgnosticIdentifier'
+  | 'synthesizeUserItemFromCreatorReferences'
+>;
+
+export type ItemsWithIdContext = {
+  getUser: () => { orgId: string } | null | undefined;
+  services: {
+    ItemInvestigationService: ItemInvestigationServiceForItemsWithId;
+  };
+};
+
+async function tryBuildSyntheticItemsWithIdResult(
+  service: Pick<
+    ItemInvestigationServiceForItemsWithId,
+    'synthesizeUserItemFromCreatorReferences'
+  >,
+  orgId: string,
+  itemId: string,
+  knownUserTypeId?: string,
+): Promise<ReadonlyArray<ItemsWithIdResultEntry> | null> {
+  const synthetic = await service.synthesizeUserItemFromCreatorReferences({
+    orgId,
+    itemId,
+    knownUserTypeId,
+  });
+
+  if (!synthetic) {
+    return null;
+  }
+
+  return [
+    {
+      latest: formatItemSubmissionForGQL(synthetic.latestSubmission),
+      prior: undefined,
+      isSynthetic: true,
+    },
+  ];
+}
+
 const UserHistory: GQLUserHistoryResolvers = {
   async executions(it, _, context) {
     const user = context.getUser();
@@ -176,6 +228,100 @@ const UserHistory: GQLUserHistoryResolvers = {
     return { countsByItemType: submissions };
   },
 };
+
+export async function resolveItemsWithId(
+  { itemId, typeId, returnFirstResultOnly }: GQLQueryItemsWithIdArgs,
+  context: ItemsWithIdContext,
+) {
+  const user = context.getUser();
+  if (user == null) {
+    throw unauthenticatedError('Unauthenticated User');
+  }
+
+  if (typeId) {
+    const item =
+      await context.services.ItemInvestigationService.getItemByIdentifier({
+        orgId: user.orgId,
+        itemIdentifier: { id: itemId, typeId },
+        latestSubmissionOnly: true,
+      });
+
+    if (item == null) {
+      const synthetic = await tryBuildSyntheticItemsWithIdResult(
+        context.services.ItemInvestigationService,
+        user.orgId,
+        itemId,
+        typeId,
+      );
+      return synthetic ?? [];
+    }
+
+    return [
+      {
+        latest: formatItemSubmissionForGQL(item.latestSubmission),
+        prior: item.priorSubmissions?.map((priorSubmission: ItemSubmission) =>
+          formatItemSubmissionForGQL(priorSubmission),
+        ),
+      },
+    ];
+  }
+
+  const itemsAsyncIterator =
+    context.services.ItemInvestigationService.getItemByTypeAgnosticIdentifier({
+      orgId: user.orgId,
+      itemId,
+      latestSubmissionOnly: true,
+    });
+
+  if (returnFirstResultOnly) {
+    const items = await asyncIterableToArrayWithTimeoutAndLimit(
+      itemsAsyncIterator,
+      25_000,
+      1,
+    );
+
+    if (items.length === 0) {
+      const synthetic = await tryBuildSyntheticItemsWithIdResult(
+        context.services.ItemInvestigationService,
+        user.orgId,
+        itemId,
+      );
+      return synthetic ?? [];
+    }
+
+    const item = items[0];
+    return [
+      {
+        latest: formatItemSubmissionForGQL(item.latestSubmission),
+        prior: item.priorSubmissions?.map((priorSubmission: ItemSubmission) =>
+          formatItemSubmissionForGQL(priorSubmission),
+        ),
+      },
+    ];
+  }
+
+  // 25s timeout caps slow upstream streams.
+  const items = await asyncIterableToArrayWithTimeout(
+    itemsAsyncIterator,
+    25_000,
+  );
+
+  if (items.length === 0) {
+    const synthetic = await tryBuildSyntheticItemsWithIdResult(
+      context.services.ItemInvestigationService,
+      user.orgId,
+      itemId,
+    );
+    return synthetic ?? [];
+  }
+
+  return items.map((it) => ({
+    latest: formatItemSubmissionForGQL(it.latestSubmission),
+    prior: it.priorSubmissions?.map((priorSubmission) =>
+      formatItemSubmissionForGQL(priorSubmission),
+    ),
+  }));
+}
 
 const Query: GQLQueryResolvers = {
   async itemSubmissions(_, { itemIdentifiers }, context) {
@@ -255,80 +401,8 @@ const Query: GQLQueryResolvers = {
       throw e;
     }
   },
-  async itemsWithId(_, { itemId, typeId, returnFirstResultOnly }, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Unauthenticated User');
-    }
-
-    if (typeId) {
-      const item =
-        await context.services.ItemInvestigationService.getItemByIdentifier({
-          orgId: user.orgId,
-          itemIdentifier: { id: itemId, typeId },
-          latestSubmissionOnly: true,
-        });
-
-      if (item == null) {
-        return [];
-      }
-
-      return [
-        {
-          latest: formatItemSubmissionForGQL(item.latestSubmission),
-          prior: item.priorSubmissions?.map((priorSubmission: ItemSubmission) =>
-            formatItemSubmissionForGQL(priorSubmission),
-          ),
-        },
-      ];
-    }
-
-    const itemsAsyncIterator =
-      context.services.ItemInvestigationService.getItemByTypeAgnosticIdentifier(
-        {
-          orgId: user.orgId,
-          itemId,
-          latestSubmissionOnly: true,
-        },
-      );
-
-    if (returnFirstResultOnly) {
-      const items = await asyncIterableToArrayWithTimeoutAndLimit(
-        itemsAsyncIterator,
-        25_000,
-        1,
-      );
-
-      if (items.length === 0) {
-        return [];
-      }
-
-      const item = items[0];
-      return [
-        {
-          latest: formatItemSubmissionForGQL(item.latestSubmission),
-          prior: item.priorSubmissions?.map((priorSubmission: ItemSubmission) =>
-            formatItemSubmissionForGQL(priorSubmission),
-          ),
-        },
-      ];
-    } else {
-      const items = await asyncIterableToArrayWithTimeout(
-        itemsAsyncIterator,
-        // Set to 25 seconds to avoid long-running requests and we
-        // want to make sure we get some results in the event of a possible
-        // timeout (which is why we're using an async iterable in the first
-        // place instead of just returning an array)
-        25_000,
-      );
-
-      return items.map((it) => ({
-        latest: formatItemSubmissionForGQL(it.latestSubmission),
-        prior: it.priorSubmissions?.map((priorSubmission) =>
-          formatItemSubmissionForGQL(priorSubmission),
-        ),
-      }));
-    }
+  async itemsWithId(_, args, context) {
+    return resolveItemsWithId(args, context);
   },
   async itemWithHistory(_, { itemIdentifier, submissionTime }, context) {
     const { id: itemId, typeId } = itemIdentifier;

@@ -1,17 +1,30 @@
 services:
   redis:
     image: redis:8.6.1-trixie
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --maxmemory
+      - '256mb'
+      - --maxmemory-policy
+      - noeviction
+    ports:
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
-    ports:
-      - '6379:6379'
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
     image: node:24.14.1-bullseye-slim
     command: bash -c 'set -e
-                      npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
-                      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
+      npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
+      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -72,6 +85,10 @@ services:
 
   scylla:
     image: scylladb/scylla:5.2
+    # Cap Scylla's footprint so it doesn't grab nearly all available RAM
+    # on small hosts (it allocates ~all "available" memory at startup by
+    # default, which starves the rest of the stack on a VPS env).
+    command: --smp 1 --memory 4G --overprovisioned 1 --developer-mode 1
     volumes:
       - scylla_data:/var/lib/scylla
     ports:
@@ -100,8 +117,8 @@ services:
       redis:
         condition: service_started
 
-  # Regenerate GraphQL types and fail if the working tree drifts. 
-  # Mirrors the `check_generated_graphql` CI job. 
+  # Regenerate GraphQL types and fail if the working tree drifts.
+  # Mirrors the `check_generated_graphql` CI job.
   # node_modules is in a dedicated volume so the install doesn't clobber the host's node_modules.
   codegen-check:
     build:
@@ -110,10 +127,10 @@ services:
       target: server_base
     working_dir: /src
     command: bash -c 'set -e
-                      && git config --global --add safe.directory /src
-                      && npm ci
-                      && npm run generate
-                      && [[ -z "$(git status --porcelain)" ]]'
+      && git config --global --add safe.directory /src
+      && npm ci
+      && npm run generate
+      && [[ -z "$(git status --porcelain)" ]]'
     volumes:
       - .:/src
       - codegen_node_modules:/src/node_modules
@@ -171,7 +188,8 @@ services:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: 'clickhouse'
     healthcheck:
-      test: ['CMD-SHELL', 'clickhouse-client --host localhost --query "SELECT 1"']
+      test:
+        ['CMD-SHELL', 'clickhouse-client --host localhost --query "SELECT 1"']
       interval: 5s
       timeout: 3s
       retries: 5

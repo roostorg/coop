@@ -1184,6 +1184,17 @@ export class ManualReviewToolService {
     return this.jobDecisioning.getNcmecDecisions(opts);
   }
 
+  async getNcmecDecisionsForOrg(opts: { orgId: string; limit?: number }) {
+    return this.jobDecisioning.getNcmecDecisionsForOrg(opts);
+  }
+
+  async getNcmecDecisionByIdForOrg(opts: {
+    orgId: string;
+    decisionId: string;
+  }) {
+    return this.jobDecisioning.getNcmecDecisionByIdForOrg(opts);
+  }
+
   async upsertDefaultSettings(opts: { orgId: string }) {
     return this.manualReviewToolSettings.upsertDefaultSettings(opts);
   }

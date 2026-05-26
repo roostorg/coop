@@ -1,3 +1,11 @@
+declare namespace Express {
+  // Extend Express.User so passport callbacks (serializeUser, etc.) see the
+  // fields we actually use without per-call `as any` casts.
+  interface User {
+    id: string;
+  }
+}
+
 declare module 'homoglyph-search';
 declare module 'nilsimsa';
 
@@ -242,6 +250,7 @@ namespace NodeJS {
     WAREHOUSE_ADAPTER?: string;
     ANALYTICS_ADAPTER?: string;
     DATA_WAREHOUSE_PROVIDER?: string;
+    NCMEC_ENV?: string;
     NODE_ENV?: string;
     EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS?: string;
     ALLOW_USER_INPUT_LOCALHOST_URIS?: string;

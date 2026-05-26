@@ -5,13 +5,16 @@ import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  GQLUserPermission,
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
@@ -22,6 +25,9 @@ import {
 
 gql`
   query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
     myOrg {
       defaultInterfacePreferences {
         moderatorSafetyMuteVideo
@@ -55,7 +61,7 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyMuteVideo: true,
   });
 
-  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery();
+  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({ errorPolicy: 'all' });
 
   const [saveSafetySettings, { loading: isSafetySettingsMutationLoading }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
@@ -89,8 +95,17 @@ export default function ManualReviewSafetySettings() {
     return <FullScreenLoading />;
   }
 
-  if (error || !data?.myOrg?.defaultInterfacePreferences) {
-    throw error ?? new Error('Could not load wellness settings');
+  const permissions = data?.me?.permissions;
+  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+    return <Navigate to="/dashboard/settings" replace />;
+  }
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.myOrg?.defaultInterfacePreferences) {
+    throw new Error('Could not load wellness settings');
   }
 
   return (

@@ -91,37 +91,53 @@ export type AnalyticsSchema = {
     error_message?: string;
   };
 
+  // Written by ContentApiLogger. Keep this shape in sync with the
+  // `bulkWrite('CONTENT_API_REQUESTS', ...)` call there so the analytics
+  // adapter can type-check the row contents at compile time.
   CONTENT_API_REQUESTS: {
     ds: string;
     ts: number;
     org_id: string;
     item_id: string;
+    item_data: string;
     item_type_id: string;
-    item_submission_id?: string;
+    item_type_kind: string;
+    item_type_name: string;
+    item_type_version: string;
+    item_type_schema: string;
+    item_type_schema_variant: string;
+    item_type_schema_field_roles?: Record<string, unknown>;
     item_creator_id?: string;
-    endpoint: string;
-    method: string;
-    correlation_id: string;
-    duration_ms: number;
-    failed: boolean;
-    error_message?: string;
+    item_creator_type_id?: string;
+    request_id: string;
+    submission_id: string;
+    event: 'REQUEST_SUCCEEDED' | 'REQUEST_FAILED';
+    failure_reason?: string;
   };
 
   // Operational tables (using warehouse for operational data)
   'REPORTING_SERVICE.REPORTS': {
     [key: string]: unknown; // Dynamic schema
   };
-  
+
   'REPORTING_SERVICE.APPEALS': {
     [key: string]: unknown; // Dynamic schema
   };
-  
+
   'USER_STATISTICS_SERVICE.USER_SCORES': {
     [key: string]: unknown; // Dynamic schema
   };
-  
+
   'USER_STATISTICS_SERVICE.SUBMISSION_STATS': {
     [key: string]: unknown; // Dynamic schema
+  };
+
+  'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS': {
+    [key: string]: unknown; // Logged by ReportingRuleExecutionLogger
+  };
+
+  'MANUAL_REVIEW_TOOL.ROUTING_RULE_EXECUTIONS': {
+    [key: string]: unknown; // Logged by RoutingRuleExecutionLogger
   };
 };
 
@@ -222,7 +238,7 @@ export const ANALYTICS_SCHEMA_DOCS = {
   },
   ACTION_EXECUTIONS: {
     description: 'Logs every action execution (moderation actions taken)',
-    partitionKey: 'ds', 
+    partitionKey: 'ds',
     sortKey: 'ts',
     indexes: ['org_id', 'action_id', 'item_id'],
   },
@@ -272,4 +288,3 @@ CREATE TABLE rule_executions (
 PARTITION BY ds
 ORDER BY (ds, ts, org_id);
 `;
-

@@ -5,6 +5,7 @@ import { type Dependencies } from '../../iocContainer/index.js';
 import { RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type RuleEvaluationContext } from '../../rule_engine/RuleEvaluator.js';
 import { equalLengthZip } from '../../utils/fp-helpers.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { safePick } from '../../utils/misc.js';
 import { type ItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
 import { type Action } from '../moderationConfigService/index.js';
@@ -126,8 +127,9 @@ export default class ReportingRuleEngine {
     // since, logically, each rule triggered the action.
     const { org, input: ruleInput } = evaluationContext;
 
-    const logRuleExecutionsPromise =
-      this.reportingRuleExecutionLogger.logReportingRuleExecutions(
+    // Catch at construction; awaited below via Promise.all.
+    const logRuleExecutionsPromise = this.reportingRuleExecutionLogger
+      .logReportingRuleExecutions(
         [...rulesToResults.entries()].map(([rule, result]) => ({
           orgId: org.id,
           reportingRule: {
@@ -145,7 +147,15 @@ export default class ReportingRuleEngine {
             [],
           policyIds: rule.policyIds,
         })),
-      );
+      )
+      .catch((err) => {
+        this.tracer.logActiveSpanFailedIfAny(err);
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({
+          message: `logReportingRuleExecutions failed orgId=${org.id} environment=${environment} correlationId=${executionsCorrelationId}`,
+          error: err,
+        });
+      });
 
     if (!shouldRunActions) {
       await logRuleExecutionsPromise;

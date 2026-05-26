@@ -159,10 +159,10 @@ function TableRowComponent(props: {
     }
     case 'USER_ID': {
       return (
-        <div className="align-top text-start">
+        <div className="align-top text-start min-w-0">
           {label ? <div className="pr-3 font-bold">{label}</div> : null}
           <Link
-            className="cursor-pointer shrink-0"
+            className="cursor-pointer break-all"
             to={`/dashboard/manual_review/investigation?id=${value.id}&typeId=${value.typeId}`}
             target="_blank"
           >

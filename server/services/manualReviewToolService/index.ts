@@ -7,6 +7,7 @@ import {
 
 export {
   ManualReviewToolService,
+  type JobId,
   type ManualReviewJob,
   type ManualReviewJobOrAppeal,
   type ManualReviewAppealJob,
@@ -20,9 +21,13 @@ export {
   type ContentManualReviewJobPayload,
   type UserManualReviewJobPayload,
   type NcmecManualReviewJobPayload,
+  type ReportHistory,
 } from './manualReviewToolService.js';
 
-export { type ManualReviewQueue } from './modules/QueueOperations.js';
+export {
+  type ManualReviewQueue,
+  jobIdToGuid,
+} from './modules/QueueOperations.js';
 
 export { type RoutingRule } from './modules/JobRouting.js';
 

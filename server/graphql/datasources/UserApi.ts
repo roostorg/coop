@@ -1,5 +1,4 @@
 import { type Exception } from '@opentelemetry/api';
-import { type PassportContext } from 'graphql-passport';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
@@ -9,18 +8,25 @@ import {
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
 import {
-  CoopError,
-  ErrorType,
   makeBadRequestError,
-  makeInternalServerError,
   makeNotFoundError,
   makeUnauthorizedError,
-  type ErrorInstanceData,
 } from '../../utils/errors.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
+import {
+  type GQLMutationLoginArgs,
+  type GQLMutationSignUpArgs,
+} from '../generated.js';
+import { type PassportGqlContext } from '../utils/passportContext.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
 import { type GraphQLRuleParent } from './ruleKyselyPersistence.js';
+import { verifyEmailPasswordCredentials } from './userApiCredentials.js';
+import {
+  makeChangePasswordIncorrectPasswordError,
+  makeChangePasswordNotAllowedError,
+  makeSignUpUserExistsError,
+} from './userApiErrors.js';
 import {
   kyselyUserAddFavoriteRule,
   kyselyUserFindByEmail,
@@ -48,6 +54,7 @@ class UserAPI {
     private readonly tracer: Dependencies['Tracer'],
     private readonly userManagementService: Dependencies['UserManagementService'],
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
+    private readonly orgSettingsService: Dependencies['OrgSettingsService'],
   ) {}
 
   async getGraphQLUserFromId(opts: {
@@ -71,33 +78,54 @@ class UserAPI {
     return kyselyUserFindByIds(this.kyselyPg, ids);
   }
 
-  async login(params: any, context: PassportContext<GraphQLUserParent, any>) {
-    const credentials = safePick(params.input, ['email', 'password']);
+  async login(params: GQLMutationLoginArgs, context: PassportGqlContext) {
+    const { email, password } = safePick(params.input, ['email', 'password']);
 
-    // NB: this will throw for bad credentials; will be handled in the resolver.
-    const { user } = await context.authenticate('graphql-local', credentials);
-
-    if (!user) {
-      throw makeInternalServerError('Unknown error during login attempt', {
+    // Reject missing/empty credentials as a bad request before verifying.
+    if (
+      typeof email !== 'string' ||
+      email.length === 0 ||
+      typeof password !== 'string' ||
+      password.length === 0
+    ) {
+      throw makeBadRequestError('Email and password are required.', {
         shouldErrorSpan: true,
       });
     }
+
+    const user = await verifyEmailPasswordCredentials(
+      {
+        kyselyPg: this.kyselyPg,
+        orgSettingsService: this.orgSettingsService,
+        tracer: this.tracer,
+      },
+      email,
+      password,
+    );
 
     await context.login(user);
 
     return user;
   }
 
-  async logout(context: any) {
+  async logout(context: PassportGqlContext) {
     try {
-      context.logout();
+      await context.logout();
       return true;
-    } catch (_) {
+    } catch (e) {
+      // Session teardown is best-effort: surface the failure to the active
+      // tracing span (mirrors the pattern used elsewhere in this file and in
+      // `verifyEmailPasswordCredentials`) but still report `false` to the
+      // client so a stale session doesn't block the logout response.
+      this.tracer.logActiveSpanFailedIfAny(e);
       return false;
     }
   }
 
-  async signUp(params: any, _: any): Promise<GraphQLUserParent> {
+  async signUp(
+    params: GQLMutationSignUpArgs,
+    _: unknown,
+  ): Promise<GraphQLUserParent> {
     const { role } = params.input;
     const {
       email,
@@ -387,73 +415,27 @@ function userValidationFailureToBadRequestError(
 }
 
 export default inject(
-  ['KyselyPg', 'Tracer', 'UserManagementService', 'ModerationConfigService'],
+  [
+    'KyselyPg',
+    'Tracer',
+    'UserManagementService',
+    'ModerationConfigService',
+    'OrgSettingsService',
+  ],
   UserAPI,
 );
 export type { UserAPI };
 
-export type UserErrorType =
-  | 'LoginUserDoesNotExistError'
-  | 'LoginIncorrectPasswordError'
-  | 'LoginSsoRequiredError'
-  | 'CannotDeleteDefaultUserError'
-  | 'ChangePasswordIncorrectPasswordError'
-  | 'ChangePasswordNotAllowedError';
-
-export const makeLoginUserDoesNotExistError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'User with this email does not exist.',
-    name: 'LoginUserDoesNotExistError',
-    ...data,
-  });
-
-export const makeLoginIncorrectPasswordError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'Incorrect password.',
-    name: 'LoginIncorrectPasswordError',
-    ...data,
-  });
-
-export const makeLoginSsoRequiredError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'SSO Login is Required',
-    name: 'LoginSsoRequiredError',
-    ...data,
-  });
-
-export type SignUpErrorType = 'SignUpUserExistsError';
-
-export const makeSignUpUserExistsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.UniqueViolation],
-    title: 'User with this email already exists.',
-    name: 'SignUpUserExistsError',
-    ...data,
-  });
-
-export const makeChangePasswordIncorrectPasswordError = (
-  data: ErrorInstanceData,
-) =>
-  new CoopError({
-    status: 401,
-    type: [ErrorType.Unauthenticated],
-    title: 'Current password is incorrect.',
-    name: 'ChangePasswordIncorrectPasswordError',
-    ...data,
-  });
-
-export const makeChangePasswordNotAllowedError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 403,
-    type: [ErrorType.Unauthorized],
-    title: 'Password change is not allowed for this user.',
-    name: 'ChangePasswordNotAllowedError',
-    ...data,
-  });
+// Re-export for backward compatibility with other modules that historically
+// imported these from `UserApi`. New code should import directly from
+// `./userApiErrors`.
+export {
+  makeChangePasswordIncorrectPasswordError,
+  makeChangePasswordNotAllowedError,
+  makeLoginIncorrectPasswordError,
+  makeLoginSsoRequiredError,
+  makeLoginUserDoesNotExistError,
+  makeSignUpUserExistsError,
+  type SignUpErrorType,
+  type UserErrorType,
+} from './userApiErrors.js';

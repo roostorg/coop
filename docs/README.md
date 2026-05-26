@@ -1,32 +1,38 @@
-# Coop Documentation
+# Welcome
 
-Welcome to the Coop documentation! This folder contains important information about contributing to and working with this project.
+Welcome to the Coop documentation! For the Coop source code and basic information, [check out Coop on GitHub](https://github.com/roostorg/coop).
 
-## Getting Started
+These docs are split into a few guides, depending on who you are and what you're looking for:
 
-New to the project? We recommend reading the documentation in this order:
+- [User Guide](user/): learn about Coop, its functionality, and the user interface
+- [Development Guide](development/): get Coop running and learn how to navigate the code
+- [API Reference](api/): technical reference for Coop's API
+- [Integrations](integrations/): specific details on included integrations
 
-1. **[Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)** - Understand our community standards
-2. **[Contributing Guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md)** - Learn how to contribute
-3. **[Concepts](CONCEPTS.md)** - Read up on the core concepts of Coop
-4. **[Development Guide](DEVELOPMENT.md)** - Set up your development environment and get started using Coop
-5. **[Coop UI](USER_GUIDE.md)** - Understand how to use and navigate the UI
+Note that the docs are versioned; other versions can be found at the [documentation site index](https://roostorg.github.io/coop/).
 
+## Contributing
 
-## Reporting a Bug or Issue
+Coop is an open source project from [ROOST](https://roost.tools) and the community. We welcome contributions and benefit from diverse perspectives and expertise in building safer online spaces.
 
-Found a bug or have a feature request? We'd love to hear from you! When opening an issue, please use our templates:
+If you're new to the project, we recommend you:
 
-* [Bug Report](https://github.com/roostorg/coop/issues/new?template=bug_report.md)
-* [Feature Request](https://github.com/roostorg/coop/issues/new?template=feature_request.md)
+- Read the [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md) to understand our community standards
+- Review the [Contributing Guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) for all ROOST projects
+- Check out the [project board](https://github.com/orgs/roostorg/projects/15) for open issues, milestones, and prioritization
 
-## Need Help?
+Writing code is not the only way to help the project. Reviewing pull requests, answering questions, providing feedback, organizing and teaching tutorials, and improving the documentation are all priceless contributions.
 
-If you can't find what you're looking for in these documents, please:
-- Check the project's main README.md
-- Open an issue with your question
-- Reach out to the maintainers
+### Report an issue
 
----
+Found a bug or have a feature request? We'd love to hear from you!
 
-Thank you for your interest in contributing to our project!
+- Search [existing issues](https://github.com/roostorg/coop/issues) to see if it's already been filed
+- Create a [new issue](https://github.com/roostorg/coop/issues/new) if it's unique
+
+## Get help
+
+If you need help with Coop or want to get in touch, you are always welcome to:
+
+- [Open a discussion](https://github.com/roostorg/coop/discussions) with the community
+- [Join our Discord server](https://discord.gg/97GQqtNAkE) to chat with contributors, adopters, and other community members

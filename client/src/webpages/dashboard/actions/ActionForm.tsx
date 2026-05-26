@@ -1,3 +1,4 @@
+import { DOCS_URL } from '@/lib/config';
 import { gql } from '@apollo/client';
 import { Input, Select } from 'antd';
 import Link from 'antd/lib/typography/Link';
@@ -322,7 +323,7 @@ export default function ActionForm() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         action. See the{' '}
-        <Link href="https://docs.getcoop.com/docs/action-api">
+        <Link href={`${DOCS_URL}/api/actions.html`}>
           documentation
         </Link>{' '}
         for more information.

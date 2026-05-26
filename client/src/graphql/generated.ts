@@ -1587,6 +1587,11 @@ export type GQLItemInput = {
 
 export type GQLItemSubmissions = {
   readonly __typename: 'ItemSubmissions';
+  /**
+   * True when this item was synthesized server-side from indirect references
+   * rather than a real submission. `latest.data` is empty when set.
+   */
+  readonly isSynthetic?: Maybe<Scalars['Boolean']['output']>;
   readonly latest: GQLItem;
   readonly prior?: Maybe<ReadonlyArray<GQLItem>>;
 };
@@ -2447,6 +2452,12 @@ export type GQLMutation = {
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
   readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
+  /**
+   * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
+   * retry decisions that belong to their own org. Returns success on a fresh
+   * successful submission, or an error with a user-safe summary on failure.
+   */
+  readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2678,6 +2689,10 @@ export type GQLMutationResetPasswordArgs = {
   input: GQLResetPasswordInput;
 };
 
+export type GQLMutationRetryNcmecSubmissionArgs = {
+  decisionId: Scalars['ID']['input'];
+};
+
 export type GQLMutationRotateApiKeyArgs = {
   input: GQLRotateApiKeyInput;
 };
@@ -2874,6 +2889,33 @@ export type GQLNcmecContentItem = {
   readonly isReported: Scalars['Boolean']['output'];
 };
 
+/**
+ * An NCMEC submission that was decisioned in the MRT but never produced a
+ * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+ * reviewers can see and retry failed submissions in the same place as
+ * successful reports. The userId + userItemTypeId pair uniquely identifies
+ * the reported user; decisionId is the stable handle for retrying.
+ */
+export type GQLNcmecFailedSubmission = {
+  readonly __typename: 'NcmecFailedSubmission';
+  readonly decisionId: Scalars['ID']['output'];
+  readonly lastError?: Maybe<Scalars['String']['output']>;
+  readonly retryCount: Scalars['Int']['output'];
+  readonly reviewerId?: Maybe<Scalars['String']['output']>;
+  readonly status: GQLNcmecFailedSubmissionStatus;
+  readonly ts: Scalars['DateTime']['output'];
+  readonly userId: Scalars['String']['output'];
+  readonly userItemType: GQLUserItemType;
+};
+
+export const GQLNcmecFailedSubmissionStatus = {
+  NeverAttempted: 'NEVER_ATTEMPTED',
+  PermanentError: 'PERMANENT_ERROR',
+  RetryableError: 'RETRYABLE_ERROR',
+} as const;
+
+export type GQLNcmecFailedSubmissionStatus =
+  (typeof GQLNcmecFailedSubmissionStatus)[keyof typeof GQLNcmecFailedSubmissionStatus];
 export const GQLNcmecFileAnnotation = {
   AnimeDrawingVirtualHentai: 'ANIME_DRAWING_VIRTUAL_HENTAI',
   Bestiality: 'BESTIALITY',
@@ -3039,6 +3081,12 @@ export type GQLOrg = {
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
   readonly email: Scalars['String']['output'];
+  /**
+   * NCMEC decisions that did not produce a successful CyberTip report. Returned
+   * alongside ncmecReports on the dashboard so reviewers can see the full
+   * submission status (successful + failed) in one place and retry failures.
+   */
+  readonly failedNcmecSubmissions: ReadonlyArray<GQLNcmecFailedSubmission>;
   readonly hasAppealsEnabled: Scalars['Boolean']['output'];
   readonly hasNCMECReportingEnabled: Scalars['Boolean']['output'];
   readonly hasPartialItemsEndpoint: Scalars['Boolean']['output'];
@@ -3799,6 +3847,16 @@ export type GQLResolvedJobCount = {
   readonly time: Scalars['String']['output'];
 };
 
+export type GQLRetryNcmecSubmissionResponse = {
+  readonly __typename: 'RetryNcmecSubmissionResponse';
+  /**
+   * Human-readable error summary if the retry failed. Never includes raw
+   * NCMEC response bodies; safe to render in the UI.
+   */
+  readonly error?: Maybe<Scalars['String']['output']>;
+  readonly success: Scalars['Boolean']['output'];
+};
+
 export type GQLRotateApiKeyError = GQLError & {
   readonly __typename: 'RotateApiKeyError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -4318,6 +4376,7 @@ export type GQLSubmitNcmecReportDecisionComponent =
   };
 
 export type GQLSubmitNcmecReportInput = {
+  readonly additionalInfo?: InputMaybe<Scalars['String']['input']>;
   readonly escalateToHighPriority?: InputMaybe<Scalars['String']['input']>;
   readonly incidentType: GQLNcmecIncidentType;
   readonly reportedMedia: ReadonlyArray<GQLNcmecMediaInput>;
@@ -6763,6 +6822,7 @@ export type GQLGetItemsWithIdQuery = {
   readonly __typename: 'Query';
   readonly itemsWithId: ReadonlyArray<{
     readonly __typename: 'ItemSubmissions';
+    readonly isSynthetic?: boolean | null;
     readonly latest:
       | {
           readonly __typename: 'ContentItem';
@@ -18376,6 +18436,21 @@ export type GQLNcmecReportValuesFragment = {
   }>;
 };
 
+export type GQLNcmecFailedSubmissionValuesFragment = {
+  readonly __typename: 'NcmecFailedSubmission';
+  readonly decisionId: string;
+  readonly ts: Date | string;
+  readonly reviewerId?: string | null;
+  readonly userId: string;
+  readonly status: GQLNcmecFailedSubmissionStatus;
+  readonly retryCount: number;
+  readonly lastError?: string | null;
+  readonly userItemType: {
+    readonly __typename: 'UserItemType';
+    readonly name: string;
+  };
+};
+
 export type GQLAllNcmecReportsQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLAllNcmecReportsQuery = {
@@ -18412,6 +18487,20 @@ export type GQLAllNcmecReportsQuery = {
         readonly csv: string;
         readonly ncmecFileId: string;
       }>;
+    }>;
+    readonly failedNcmecSubmissions: ReadonlyArray<{
+      readonly __typename: 'NcmecFailedSubmission';
+      readonly decisionId: string;
+      readonly ts: Date | string;
+      readonly reviewerId?: string | null;
+      readonly userId: string;
+      readonly status: GQLNcmecFailedSubmissionStatus;
+      readonly retryCount: number;
+      readonly lastError?: string | null;
+      readonly userItemType: {
+        readonly __typename: 'UserItemType';
+        readonly name: string;
+      };
     }>;
     readonly users: ReadonlyArray<{
       readonly __typename: 'User';
@@ -18468,6 +18557,19 @@ export type GQLGetNcmecReportQuery = {
       readonly ncmecFileId: string;
     }>;
   } | null;
+};
+
+export type GQLRetryNcmecSubmissionMutationVariables = Exact<{
+  decisionId: Scalars['ID']['input'];
+}>;
+
+export type GQLRetryNcmecSubmissionMutation = {
+  readonly __typename: 'Mutation';
+  readonly retryNcmecSubmission: {
+    readonly __typename: 'RetryNcmecSubmissionResponse';
+    readonly success: boolean;
+    readonly error?: string | null;
+  };
 };
 
 export type GQLIsWarehouseAvailableQueryVariables = Exact<{
@@ -24230,6 +24332,10 @@ export type GQLNcmecOrgSettingsQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLNcmecOrgSettingsQuery = {
   readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
   readonly ncmecOrgSettings?: {
     readonly __typename: 'NcmecOrgSettings';
     readonly username: string;
@@ -24277,6 +24383,10 @@ export type GQLOrgDefaultSafetySettingsQueryVariables = Exact<{
 
 export type GQLOrgDefaultSafetySettingsQuery = {
   readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly defaultInterfacePreferences: {
@@ -24866,6 +24976,20 @@ export const GQLNcmecReportValuesFragmentDoc = gql`
       ncmecFileId
     }
     isTest
+  }
+`;
+export const GQLNcmecFailedSubmissionValuesFragmentDoc = gql`
+  fragment NcmecFailedSubmissionValues on NcmecFailedSubmission {
+    decisionId
+    ts
+    reviewerId
+    userId
+    userItemType {
+      name
+    }
+    status
+    retryCount
+    lastError
   }
 `;
 export const GQLPolicyFieldsFragmentDoc = gql`
@@ -29756,6 +29880,7 @@ export type GQLGetOrgDataQueryResult = Apollo.QueryResult<
 export const GQLGetItemsWithIdDocument = gql`
   query GetItemsWithId($id: ID!, $typeId: ID) {
     itemsWithId(itemId: $id, typeId: $typeId, returnFirstResultOnly: true) {
+      isSynthetic
       latest {
         ... on ItemBase {
           id
@@ -37088,6 +37213,9 @@ export const GQLAllNcmecReportsDocument = gql`
       ncmecReports {
         ...NCMECReportValues
       }
+      failedNcmecSubmissions {
+        ...NcmecFailedSubmissionValues
+      }
       users {
         id
         firstName
@@ -37096,6 +37224,7 @@ export const GQLAllNcmecReportsDocument = gql`
     }
   }
   ${GQLNcmecReportValuesFragmentDoc}
+  ${GQLNcmecFailedSubmissionValuesFragmentDoc}
 `;
 
 /**
@@ -37389,6 +37518,57 @@ export type GQLGetNcmecReportSuspenseQueryHookResult = ReturnType<
 export type GQLGetNcmecReportQueryResult = Apollo.QueryResult<
   GQLGetNcmecReportQuery,
   GQLGetNcmecReportQueryVariables
+>;
+export const GQLRetryNcmecSubmissionDocument = gql`
+  mutation RetryNcmecSubmission($decisionId: ID!) {
+    retryNcmecSubmission(decisionId: $decisionId) {
+      success
+      error
+    }
+  }
+`;
+export type GQLRetryNcmecSubmissionMutationFn = Apollo.MutationFunction<
+  GQLRetryNcmecSubmissionMutation,
+  GQLRetryNcmecSubmissionMutationVariables
+>;
+
+/**
+ * __useGQLRetryNcmecSubmissionMutation__
+ *
+ * To run a mutation, you first call `useGQLRetryNcmecSubmissionMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLRetryNcmecSubmissionMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlRetryNcmecSubmissionMutation, { data, loading, error }] = useGQLRetryNcmecSubmissionMutation({
+ *   variables: {
+ *      decisionId: // value for 'decisionId'
+ *   },
+ * });
+ */
+export function useGQLRetryNcmecSubmissionMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLRetryNcmecSubmissionMutation,
+    GQLRetryNcmecSubmissionMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLRetryNcmecSubmissionMutation,
+    GQLRetryNcmecSubmissionMutationVariables
+  >(GQLRetryNcmecSubmissionDocument, options);
+}
+export type GQLRetryNcmecSubmissionMutationHookResult = ReturnType<
+  typeof useGQLRetryNcmecSubmissionMutation
+>;
+export type GQLRetryNcmecSubmissionMutationResult =
+  Apollo.MutationResult<GQLRetryNcmecSubmissionMutation>;
+export type GQLRetryNcmecSubmissionMutationOptions = Apollo.BaseMutationOptions<
+  GQLRetryNcmecSubmissionMutation,
+  GQLRetryNcmecSubmissionMutationVariables
 >;
 export const GQLIsWarehouseAvailableDocument = gql`
   query IsWarehouseAvailable {
@@ -42584,6 +42764,9 @@ export type GQLInviteUserMutationOptions = Apollo.BaseMutationOptions<
 >;
 export const GQLNcmecOrgSettingsDocument = gql`
   query NcmecOrgSettings {
+    me {
+      permissions
+    }
     ncmecOrgSettings {
       username
       password
@@ -42754,6 +42937,9 @@ export type GQLUpdateNcmecOrgSettingsMutationOptions =
   >;
 export const GQLOrgDefaultSafetySettingsDocument = gql`
   query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
     myOrg {
       defaultInterfacePreferences {
         moderatorSafetyMuteVideo
@@ -43394,6 +43580,7 @@ export const namedOperations = {
     UpdateRoutingRule: 'UpdateRoutingRule',
     ReorderRoutingRules: 'ReorderRoutingRules',
     SetMrtChartConfigurationSettings: 'SetMrtChartConfigurationSettings',
+    RetryNcmecSubmission: 'RetryNcmecSubmission',
     AddPolicies: 'AddPolicies',
     UpdatePolicy: 'UpdatePolicy',
     DeletePolicy: 'DeletePolicy',
@@ -43430,6 +43617,7 @@ export const namedOperations = {
     JobFields: 'JobFields',
     ManualReviewJobCommentFields: 'ManualReviewJobCommentFields',
     NCMECReportValues: 'NCMECReportValues',
+    NcmecFailedSubmissionValues: 'NcmecFailedSubmissionValues',
     PolicyFields: 'PolicyFields',
     RulesDashboardRuleFieldsFragment: 'RulesDashboardRuleFieldsFragment',
     SampleReportingRuleExecutionResultFields:

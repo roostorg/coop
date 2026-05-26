@@ -31,17 +31,14 @@
     "@graphql-codegen/typescript-operations": "^5.0.9",
     "@graphql-codegen/typescript-react-apollo": "^4.4.2",
     "@graphql-codegen/typescript-resolvers": "^5.1.8",
-    "concurrently": "^9.2.1",
-    "lint-staged": "^16.4.0",
-    "node-worker-threads-pool": "^1.5.1",
-    "pg": "^8.20.0",
-    "sequelize-cli": "^6.6.5"
+    "concurrently": "^9.2.1"
   },
   "engines": {
     "node": "^24.0.0"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+    "lint-staged": "^16.4.0",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",

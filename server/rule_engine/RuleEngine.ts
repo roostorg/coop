@@ -22,6 +22,7 @@ import {
   type CorrelationIdType,
 } from '../utils/correlationIds.js';
 import { equalLengthZip } from '../utils/fp-helpers.js';
+import { logErrorJson } from '../utils/logging.js';
 import { safePick } from '../utils/misc.js';
 import type SafeTracer from '../utils/SafeTracer.js';
 import {
@@ -100,19 +101,14 @@ class RuleEngine {
     executionsCorrelationId: RuleExecutionCorrelationId,
     sync: boolean = false,
   ) {
-    // enabledRules can be null when the contentType can't be found.
-    // getEnabledRulesForContentTypeEventuallyConsistent has `null` in its
-    // return type primarily in case the contentTypeId points to a content type
-    // that doesn't exist. However, even though we know that the contentTypeId
-    // is for a content type that does exist (because we have the full
-    // ContentType model object), we still must handle `null` b/c it could be
-    // that contentType was _just_ created and can't be seen yet by
-    // getEnabledRulesForContentTypeEventuallyConsistent, which, as the name
-    // implies, is eventually consistent.
+    // enabledRules will be an empty array when the contentType can't be found
+    // or has no rules attached. getEnabledRulesForItemTypeEventuallyConsistent
+    // is, as the name implies, eventually consistent, so a content type that
+    // was just created may not yet be visible.
     const enabledRules =
-      (await this.getEnabledRulesForItemTypeEventuallyConsistent(
+      await this.getEnabledRulesForItemTypeEventuallyConsistent(
         itemSubmission.itemType.id,
-      )) ?? [];
+      );
 
     const [liveRules, backgroundRules] = partition(
       enabledRules,
@@ -249,24 +245,34 @@ class RuleEngine {
       rules.map((it) => it.id),
     );
 
-    const logRuleExecutionsPromise = this.ruleExecutionLogger.logRuleExecutions(
-      [...rulesToResults.entries()].map(([rule, result]) => ({
-        orgId: org.id,
-        rule: {
-          id: rule.id,
-          name: rule.name,
-          version: rule.latestVersion.version,
-          tags: rule.tags,
-        },
-        ruleInput,
-        environment,
-        result: result.conditionResults,
-        correlationId: executionsCorrelationId,
-        passed: result.passed,
-        policies: policiesByRule[rule.id] ?? [],
-      })),
-      sync,
-    );
+    // Catch at construction; awaited below via Promise.all.
+    const logRuleExecutionsPromise = this.ruleExecutionLogger
+      .logRuleExecutions(
+        [...rulesToResults.entries()].map(([rule, result]) => ({
+          orgId: org.id,
+          rule: {
+            id: rule.id,
+            name: rule.name,
+            version: rule.latestVersion.version,
+            tags: rule.tags,
+          },
+          ruleInput,
+          environment,
+          result: result.conditionResults,
+          correlationId: executionsCorrelationId,
+          passed: result.passed,
+          policies: policiesByRule[rule.id] ?? [],
+        })),
+        sync,
+      )
+      .catch((err) => {
+        this.tracer.logActiveSpanFailedIfAny(err);
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({
+          message: `logRuleExecutions failed orgId=${org.id} environment=${environment} correlationId=${executionsCorrelationId}`,
+          error: err,
+        });
+      });
 
     if (!shouldRunActions) {
       await logRuleExecutionsPromise;

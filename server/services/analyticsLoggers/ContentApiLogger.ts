@@ -52,7 +52,7 @@ class ContentApiLogger {
     const { itemType } = itemSubmission;
     const now = new Date();
     await this.analytics.bulkWrite(
-      'CONTENT_API_REQUESTS' as any,
+      'CONTENT_API_REQUESTS',
       [
         {
           ds: getUtcDateOnlyString(now),
