@@ -31,7 +31,6 @@ import { resolvers as policyResolvers } from './modules/policy.js';
 import { resolvers as reportingResolvers } from './modules/reporting.js';
 import { resolvers as reportingRulesResolvers } from './modules/reportingRule.js';
 import { resolvers as retroactionResolvers } from './modules/retroaction.js';
-import { resolvers as rolesResolvers } from './modules/roles.js';
 import { resolvers as routingRulesResolvers } from './modules/routingRule.js';
 import { resolvers as ruleResolvers } from './modules/rule.js';
 import { resolvers as signalResolvers } from './modules/signal.js';
@@ -288,7 +287,6 @@ export default mergeResolvers([
   reportingResolvers,
   reportingRulesResolvers,
   retroactionResolvers,
-  rolesResolvers,
   routingRulesResolvers,
   ruleResolvers,
   signalResolvers,

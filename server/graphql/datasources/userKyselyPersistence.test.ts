@@ -20,10 +20,7 @@ import {
   kyselyUserUpdate,
 } from './userKyselyPersistence.js';
 
-/**
- * Builds a valid `kyselyUserInsert` input with SAML-only login (no password),
- * so we don't need bcrypt in the unit-ish happy paths.
- */
+/** SAML-only `kyselyUserInsert` input — no password keeps bcrypt out of happy paths. */
 function samlUserInput(orgId: string) {
   return {
     id: uid(),
@@ -36,6 +33,12 @@ function samlUserInput(orgId: string) {
     password: null,
   };
 }
+
+const adminRoleSeed = {
+  key: UserRole.ADMIN,
+  display_name: 'Admin',
+  is_system: true,
+} as const;
 
 describe('userKyselyPersistence', () => {
   const testWithFixture = makeTestWithFixture(async () => {
@@ -80,9 +83,7 @@ describe('userKyselyPersistence', () => {
             approvedByAdmin: false,
             rejectedByAdmin: false,
           });
-          // Fixture orgs aren't pre-seeded with `public.roles` rows, so
-          // `getPermissions()` exercises the static-default fallback here.
-          // The DB-backed path is covered by the dedicated test below.
+          // Fixture orgs lack `public.roles` rows, so this hits the fallback.
           const permissions = inserted.getPermissions();
           expect(permissions).toContain('MANAGE_ORG');
           expect(permissions).toContain('MANAGE_ROLES');
@@ -114,16 +115,9 @@ describe('userKyselyPersistence', () => {
     testWithFixture(
       'getPermissions() reads from public.role_permissions when the org has saved them',
       async ({ deps, org }) => {
-        // Seed ADMIN with a reduced permission set so the DB result is
-        // distinguishable from the static defaults — if the fallback ran,
-        // MANAGE_ROLES would appear and the test would fail.
+        // Reduced ADMIN set distinguishes DB result from the static fallback.
         const roleRow = await deps.KyselyPg.insertInto('public.roles')
-          .values({
-            org_id: org.id,
-            key: UserRole.ADMIN,
-            display_name: 'Admin',
-            is_system: true,
-          })
+          .values({ ...adminRoleSeed, org_id: org.id })
           .returning('id')
           .executeTakeFirstOrThrow();
         await deps.KyselyPg.insertInto('public.role_permissions')
@@ -136,9 +130,28 @@ describe('userKyselyPersistence', () => {
           ...input,
         });
         try {
-          const permissions = inserted.getPermissions();
-          expect(permissions).toEqual(['MANAGE_ORG']);
-          expect(permissions).not.toContain('MANAGE_ROLES');
+          expect(inserted.getPermissions()).toEqual(['MANAGE_ORG']);
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, input.id);
+        }
+      },
+    );
+
+    testWithFixture(
+      'getPermissions() returns [] (no static fallback) when the role has zero saved permissions',
+      async ({ deps, org }) => {
+        // Regression: empty `role_permissions` is least-privilege; defaults would over-grant.
+        await deps.KyselyPg.insertInto('public.roles')
+          .values({ ...adminRoleSeed, org_id: org.id })
+          .execute();
+
+        const input = samlUserInput(org.id);
+        const inserted = await kyselyUserInsert({
+          db: deps.KyselyPg,
+          ...input,
+        });
+        try {
+          expect(inserted.getPermissions()).toEqual([]);
         } finally {
           await kyselyUserDeleteById(deps.KyselyPg, input.id);
         }
@@ -371,12 +384,8 @@ describe('userKyselyPersistence', () => {
       },
     );
 
-    // NB: `kyselyUserUpdate` doesn't expose `loginMethods`, so we can't
-    // *cleanly* clear a password on a password-login user through this helper
-    // (the DB CHECK constraint — and our app-layer `validateUserCreateInput`
-    // mirror of it — requires `password IS NOT NULL ⇔ 'password' ∈ login_methods`).
-    // A SAML user already has `password: null`, so the `password: null` path
-    // is a shape-valid no-op we can verify end-to-end here.
+    // SAML users already have password: null, so `{ password: null }` is a
+    // shape-valid no-op (CHECK constraint requires password ⇔ 'password' ∈ loginMethods).
     testWithFixture(
       'password: null is a valid patch and leaves the column null on a SAML user',
       async ({ deps, org }) => {
@@ -393,10 +402,8 @@ describe('userKyselyPersistence', () => {
       },
     );
 
-    // And conversely: trying to clear a password on a password-login user
-    // without transitioning `loginMethods` must surface the DB CHECK
-    // constraint. This protects against regressions if we ever loosen
-    // `validateUserUpdatePatch`.
+    // Clearing a password on a password-login user must surface the DB
+    // CHECK constraint if `validateUserUpdatePatch` ever loosens.
     testWithFixture(
       'clearing password on a password-login user violates password_null_when_not_present',
       async ({ deps, org }) => {

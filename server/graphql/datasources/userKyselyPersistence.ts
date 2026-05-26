@@ -73,7 +73,7 @@ type UserRow = {
   created_at: Date;
   updated_at: Date;
   org_id: string;
-  permissions: UserPermission[];
+  permissions: UserPermission[] | null;
 };
 
 // `public.users.login_methods` is a `login_method_enum[]`. Node-postgres ships
@@ -91,10 +91,21 @@ const loginMethodsAsTextArray = sql<LoginMethod[]>`login_methods::text[]`.as(
 // to avoid a follow-up round-trip. Correlated subquery (rather than LEFT
 // JOIN) preserves the existing INSERT/UPDATE...RETURNING shape, which a
 // JOIN would break by forcing GROUP BY across every selected column.
-const permissionsArray = sql<UserPermission[]>`(
-  SELECT COALESCE(array_agg(rp.permission), ARRAY[]::varchar[])
-  FROM public.role_permissions rp
-  WHERE rp.role_id = public.users.role_id
+//
+// NULL when `role_id` is unset (orgs not yet migrated to DB-backed roles
+// fall back to `UserPermissionsForRole` defaults). An explicitly empty
+// array means the role exists but has no permissions, which is a valid
+// least-privilege state we MUST honor — falling back to defaults there
+// would silently over-grant permissions.
+const permissionsArray = sql<UserPermission[] | null>`(
+  CASE
+    WHEN public.users.role_id IS NULL THEN NULL
+    ELSE (
+      SELECT COALESCE(array_agg(rp.permission), ARRAY[]::varchar[])
+      FROM public.role_permissions rp
+      WHERE rp.role_id = public.users.role_id
+    )
+  END
 )`.as('permissions');
 
 const USER_COLUMNS = [
@@ -112,12 +123,10 @@ const USER_COLUMNS = [
 ] as const;
 
 function rowToGraphQLUserParent(row: UserRow): GraphQLUserParent {
-  // DB-backed permissions when the org has saved them; otherwise fall back
-  // to the static defaults so fresh orgs work before the role-editor UI ships.
-  const permissions =
-    row.permissions.length > 0
-      ? row.permissions
-      : getPermissionsForRole(row.role);
+  // DB-backed permissions when the org has them (including an explicit
+  // empty set, which means "least privilege" and must NOT escalate to
+  // defaults). Only fall back when there's no role_id at all.
+  const permissions = row.permissions ?? getPermissionsForRole(row.role);
   return {
     id: row.id,
     email: row.email,

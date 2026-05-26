@@ -40,7 +40,7 @@ export type CoreAppTablesPg = {
     login_methods: LoginMethod[];
   };
   'public.roles': {
-    id: GeneratedAlways<string>;
+    id: Generated<string>;
     org_id: string;
     key: string;
     display_name: string;
