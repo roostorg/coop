@@ -68,6 +68,9 @@ describe('getOpenAiModerationScores request body shape', () => {
     const { fetchHTTP } = makeFetchHTTPCapturing();
     await expect(
       getOpenAiModerationScores(fetchHTTP, tracer, { apiKey: 'sk-test' }),
-    ).rejects.toThrow(/text.*imageUrl/);
+    ).rejects.toMatchObject({
+      name: 'SignalPermanentError',
+      title: expect.stringMatching(/text.*imageUrl/),
+    });
   });
 });

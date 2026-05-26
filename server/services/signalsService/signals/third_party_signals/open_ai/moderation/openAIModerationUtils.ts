@@ -12,7 +12,8 @@ import { type CachedGetCredentials } from '../../../../../signalAuthService/sign
 import { Integration } from '../../../../types/Integration.js';
 import { type RecommendedThresholds } from '../../../../types/RecommendedThresholds.js';
 import { SignalPricingStructure } from '../../../../types/SignalPricingStructure.js';
-import {
+import { type SignalType } from '../../../../types/SignalType.js';
+import SignalBase, {
   type SignalDisabledInfo,
   type SignalInput,
 } from '../../../SignalBase.js';
@@ -90,6 +91,33 @@ export function openAiModerationNeedsMatchingValues() {
   return false;
 }
 
+/**
+ * Pulls the requested category's numeric score out of an OpenAI moderation
+ * response, with permanent-error guards: empty results (the response had no
+ * scoring object) and missing/non-numeric category scores both mean the
+ * signal cannot determine a score for the input, and retrying yields the
+ * same outcome — so we throw `SignalPermanentError` to cache the rejection
+ * rather than spinning on retries.
+ */
+function extractScoreOrThrow(
+  response: ReadonlyDeep<OpenAiModerationResult[]>,
+  modelName: OpenAiModelName,
+): number {
+  if (response.length === 0) {
+    throw makeSignalPermanentError('Empty OpenAI moderation results', {
+      shouldErrorSpan: true,
+    });
+  }
+  const score = response[0].category_scores[modelName];
+  if (typeof score !== 'number' || Number.isNaN(score)) {
+    throw makeSignalPermanentError(
+      `Missing or non-numeric score for category "${modelName}"`,
+      { shouldErrorSpan: true },
+    );
+  }
+  return score;
+}
+
 export async function runOpenAiModerationImpl(
   getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
   input: SignalInput<ScalarTypes['STRING']>,
@@ -113,14 +141,8 @@ export async function runOpenAiModerationImpl(
     text: value.value,
   });
 
-  if (response.length === 0) {
-    throw new Error('Empty OpenAI results');
-  }
-
-  const scores = response[0];
-  const score = scores.category_scores[modelName];
   return {
-    score: Number(score),
+    score: extractScoreOrThrow(response, modelName),
     outputType: { scalarType: ScalarTypes.NUMBER },
   };
 }
@@ -162,14 +184,8 @@ export async function runOpenAiModerationImageImpl(
     imageUrl: value.value.url,
   });
 
-  if (response.length === 0) {
-    throw new Error('Empty OpenAI results');
-  }
-
-  const scores = response[0];
-  const score = scores.category_scores[modelName];
   return {
-    score: Number(score),
+    score: extractScoreOrThrow(response, modelName),
     outputType: { scalarType: ScalarTypes.NUMBER },
   };
 }
@@ -268,4 +284,116 @@ export async function getOpenAiModerationScores(
     }
     throw e;
   }
+}
+
+/**
+ * Factory for OpenAI image-moderation signals. All four image signals
+ * (`violence`, `violence/graphic`, `self-harm`, `sexual`) share identical
+ * boilerplate: same integration, pricing, language coverage, eligible inputs,
+ * etc. — the only per-signal config is the SignalType id, display name,
+ * description, and the model category to read.
+ *
+ * Returns a `SignalBase` subclass that the IoC container instantiates with
+ * `(credentials, scores)` like any other signal class, preserving the
+ * existing registration pattern in `instantiateBuiltInSignals.ts`.
+ */
+export function makeOpenAiImageModerationSignal(config: {
+  type: SignalType;
+  displayName: string;
+  description: string;
+  modelName: OpenAiImageModelName;
+}) {
+  return class OpenAiImageModerationSignal extends SignalBase<
+    ScalarTypes['IMAGE'],
+    { scalarType: ScalarTypes['NUMBER'] }
+  > {
+    constructor(
+      protected readonly getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+      protected readonly getOpenAiScores: FetchOpenAiModerationScores,
+    ) {
+      super();
+    }
+
+    override get id() {
+      return { type: config.type };
+    }
+
+    override get displayName() {
+      return config.displayName;
+    }
+
+    override get description() {
+      return config.description;
+    }
+
+    override get docsUrl() {
+      return openAiModerationDocsUrl();
+    }
+
+    override get integration() {
+      return openAiModerationIntegration();
+    }
+
+    override get pricingStructure() {
+      return openAiModerationPricingStructure();
+    }
+
+    override get recommendedThresholds() {
+      return openAiModerationRecommendedThresholds();
+    }
+
+    override get supportedLanguages() {
+      return openAiModerationSupportedLanguages();
+    }
+
+    override get eligibleSubcategories() {
+      return openAiModerationEligibleSubcategories();
+    }
+
+    override get needsActionPenalties() {
+      return openAiModerationNeedsActionPenalties();
+    }
+
+    override get needsMatchingValues() {
+      return openAiModerationNeedsMatchingValues();
+    }
+
+    override async getDisabledInfo(orgId: string) {
+      return openAiModerationGetDisabledInfo(orgId, this.getOpenAiCredentials);
+    }
+
+    override get eligibleInputs() {
+      return [ScalarTypes.IMAGE];
+    }
+
+    override get outputType() {
+      return { scalarType: ScalarTypes.NUMBER };
+    }
+
+    // Inherits the placeholder cost convention from the existing OpenAI text
+    // signals (see OpenAiViolenceTextSignal etc.). Cost units are unitless
+    // ordering hints used by the engine to prefer cheaper signals; the
+    // current ~20 baseline reflects that OpenAI moderation is a paid
+    // remote-API call (vs. local heuristics) — not a calibrated value.
+    override getCost() {
+      return 20;
+    }
+
+    override get allowedInAutomatedRules() {
+      return true;
+    }
+
+    /**
+     * Fetches the omni-moderation `${config.modelName}` score for the image
+     * and returns it as a number between 0 and 1.
+     */
+    async run(input: SignalInput<ScalarTypes['IMAGE']>) {
+      return runOpenAiModerationImageImpl(
+        this.getOpenAiCredentials,
+        input,
+        this.getOpenAiScores,
+        config.modelName,
+      );
+    }
+  };
 }
