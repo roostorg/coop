@@ -222,13 +222,11 @@ export default function ManualReviewRecentDecisions() {
 
   useEffect(() => {
     const decision =
-      (allDecisionsData?.getRecentDecisions.find(
-        (it) => it.id === decisionId,
-      ) ??
-      decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision.id ===
-        decisionId)
+      allDecisionsData?.getRecentDecisions.find((it) => it.id === decisionId) ??
+      (decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision?.id ===
+      decisionId
         ? decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision
-        : undefined;
+        : undefined);
     if (decision) {
       setSelectedDecision(decision as GQLManualReviewDecision);
     }

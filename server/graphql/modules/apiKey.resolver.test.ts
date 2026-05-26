@@ -1,5 +1,13 @@
 import { UserPermission } from '../../services/userManagementService/index.js';
-import { Query } from './apiKey.js';
+import { Query as QueryResolvers } from './apiKey.js';
+
+const Query = QueryResolvers as {
+  apiKey: (
+    parent: unknown,
+    args: Record<string, never>,
+    ctx: unknown,
+  ) => Promise<string>;
+};
 
 describe('apiKey resolvers', () => {
   function makeCtx(permissions: readonly UserPermission[]) {
