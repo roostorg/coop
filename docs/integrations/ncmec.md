@@ -4,42 +4,29 @@ Coop is integrated with the [CyberTipline Reporting API](https://report.cybertip
 
 For the moderator review workflow, see [Child Safety Reporting](../user/child-safety.md).
 
-> [!IMPORTANT]
-> NCMEC reporting requires your organization to be registered with NCMEC as an Electronic Service Provider (ESP). You can register at [esp.ncmec.org/registration](https://esp.ncmec.org/registration).
+## Requirements
 
-## Prerequisites
+Before you can review and report content to NCMEC, you must have the following:
 
-### CyberTip reporting
+1. NCMEC [Electronic Service Provider (ESP) registration](https://esp.ncmec.org/registration) and approval.
 
-Before you can review and report content to NCMEC, you must have the following configured:
+2. **CyberTipline API credentials**: username and password from NCMEC to submit reports to the [CyberTipline API](https://report.cybertip.org/ispws/documentation/index.html).
 
-1. **CyberTipline API credentials**: a username and password for the CyberTipline API, obtained from NCMEC.
+3. **"User" ItemType with a `creatorId` field**: NCMEC jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a `creatorId` field (a `RELATED_ITEM` field referencing the User Item Type), then aggregates all media associated with that user into a single NCMEC review job.
 
-#### Two separate sets of NCMEC credentials
+4. **Dedicated NCMEC manual review queue** for Coop to route jobs to. Whether decisions made from this queue submit real CyberTips or go to NCMEC's sandbox is controlled by the `NCMEC_ENV` environment variable on the Coop server; see [Test vs. Production Submissions](#test-vs-production-submissions).
 
-Coop's NCMEC integration uses two different NCMEC APIs, each requiring its own credentials:
+5. **[Additional Info endpoint](#additional-info-endpoint)** (optional, but strongly recommended): a webhook Coop calls before submitting a CyberTip to fetch enriched metadata: email addresses, screen names, IP capture events, and per-media details. Without this, Coop submits the CyberTip with only the user ID and basic information from the Item data.
 
-|                                  | [Hash Sharing API](https://report.cybertip.org/ws-hashsharing/v2/documentation/) | [CyberTipline Reporting API](https://report.cybertip.org/ispws/documentation/index.html) |
-| -------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Purpose**                      | Pull known CSAM hashes for matching                                              | Submit CyberTip reports                                                                  |
-| **URL**                          | `report.cybertip.org/ws-hashsharing`                                             | `report.cybertip.org/ispws`                                                              |
-| **How to configure credentials** | In HMA's curator UI or via `TX_NCMEC_CREDENTIALS` env var on the HMA service     | In Coop under **Settings → NCMEC**                                                       |
+6. **[Preservation endpoint](#preservation-endpoint)** (optional): a webhook Coop calls after a successful CyberTip submission so your platform can preserve relevant user data per NCMEC requirements. Note that **Coop does not come with built-in preservation functionalities**; it will simply use the provided endpoint if configured.
 
-Both sets of credentials must be obtained from NCMEC by [registering as an ESP](https://esp.ncmec.org/registration). They may be the same account or different accounts depending on how NCMEC provisions access for your organization.
-
-2. **A User Item Type with a `creatorId` field**: NCMEC jobs are centered on a user. Coop extracts the user from a content item via a `creatorId` field (a `RELATED_ITEM` field referencing the User Item Type), then aggregates all media associated with that user into a single NCMEC review job.
-
-3. **NCMEC org settings configured**: set via **Settings** → **NCMEC** (Admin only). See [NCMEC Settings](#ncmec-settings) below.
-
-4. **A dedicated NCMEC manual review queue** (for example, named `NCMEC Review`): Coop routes NCMEC jobs to the queue specified in your NCMEC settings. Whether decisions made from this queue submit real CyberTips or go to NCMEC's sandbox is controlled by the `NCMEC_ENV` environment variable on the Coop server; see [Test vs. Production Submissions](#test-vs-production-submissions).
-
-5. **An Additional Info endpoint** (optional, but strongly recommended): a webhook Coop calls before submitting a CyberTip to fetch enriched metadata: email addresses, screen names, IP capture events, and per-media details. Without this, Coop submits the CyberTip with only the user ID and basic information from the Item data.
-
-6. **A Preservation endpoint** (optional): a webhook Coop calls after a successful CyberTip submission so your platform can preserve relevant user data per NCMEC requirements. NOTE: Coop does not come with built-in preservation functionalities.
+7. **NCMEC org settings configured** with the above via **Settings** → **NCMEC** in Coop. See [NCMEC Settings](#ncmec-settings) below for details.
 
 ### Hash Matching (HMA)
 
-If you want to automatically detect known CSAM via hash matching, you need a **separate** set of credentials for NCMEC's Hash Sharing API (distinct from the CyberTipline credentials above). See [Hasher-Matcher-Actioner (HMA)](hma.md) for more detailed setup. Both credential sets are obtained from NCMEC when registering as an ESP, but they authenticate against different APIs and are configured in different places: Hash Sharing credentials go into HMA's own configuration (its curator UI or the `TX_NCMEC_CREDENTIALS` env var on the HMA service), while CyberTipline credentials are configured in the Coop settings UI.
+To automatically detect known CSAM via hash matching, you need **Hash Sharing API credentials** from NCMEC. Configure in HMA's curator UI or via `TX_NCMEC_CREDENTIALS` env var on the HMA service.
+
+See the [Hasher-Matcher-Actioner (HMA) integration](hma.md) for details.
 
 ## NCMEC settings
 
@@ -62,38 +49,19 @@ Configure NCMEC reporting under **Settings** → **NCMEC Settings**.
 | **NCMEC Additional Info Endpoint**       | Webhook URL Coop calls before submitting a CyberTip to fetch enriched user and media metadata. See [Additional Info Endpoint](#additional-info-endpoint) below. Strongly recommended as without it, CyberTips are submitted with minimal user data. |
 | **NCMEC Preservation Endpoint**          | Webhook URL Coop calls after a successful CyberTip submission with the report ID. See [Preservation Endpoint](#preservation-endpoint) below.                                                                                                        |
 
-Saving credentials, Company Report Name, and Legal URL enables NCMEC reporting for the organization. The remaining fields are not required to submit a CyberTip, but filling them out makes reports significantly more actionable for NCMEC investigators.
+Saving credentials, Company Report Name, and Legal URL enables NCMEC reporting for the organization. The remaining fields are not _required_ to submit a CyberTip, but **filling them out makes reports significantly more actionable** for NCMEC investigators.
 
 ## Routing content to NCMEC
 
-Content is routed to the NCMEC queue through three automatic detection paths and one manual path. For the manual escalation workflow and an explanation of how jobs are aggregated once content is enqueued, see [Child Safety](../user/child-safety.md).
+Content is routed to the NCMEC queue through three automatic detection paths and one manual path. For the manual escalation workflow and an explanation of how jobs are aggregated once content is enqueued, see the [Child Safety (NCMEC)](../user/child-safety.md) user docs.
 
 ### 1. Hash-matching known CSAM (HMA)
 
-Coop integrates with Meta's [Hasher-Matcher-Actioner (HMA)](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner), which matches uploaded media against NCMEC's database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.
+Coop integrates with Meta's [Hasher-Matcher-Actioner (HMA)](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner) to match uploaded media against NCMEC's database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.
 
-See [Hasher-Matcher-Actioner (HMA)](hma.md) for integration details.
+HMA syncs hashes from NCMEC via NCMEC's [Hash Sharing API](https://report.cybertip.org/ws-hashsharing/v2/documentation/), which gives you local access to NCMEC's database of image and video fingerprints for known CSAM for fast matching.
 
-#### How it works
-
-When media is submitted to your platform, Coop calls HMA to compute a perceptual hash (PDQ for images, MD5 for video) and checks it against the hash banks configured in HMA. If a match is found against a NCMEC-sourced bank, configure a routing rule to assign the content to your NCMEC review queue automatically.
-
-HMA syncs hashes from NCMEC via NCMEC's [Hash Sharing API](https://report.cybertip.org/ws-hashsharing/v2/documentation/), a separate API from the CyberTipline reporting API. The Hash Sharing API gives you access to NCMEC's database of image and video fingerprints for known CSAM, which HMA pulls on a schedule and indexes locally for fast matching.
-
-#### Setup
-
-1. Configure NCMEC Hash Sharing API credentials in HMA (via HMA's curator UI or by setting the `TX_NCMEC_CREDENTIALS` environment variable on the HMA service).
-
-2. In HMA, create a bank sourced from the NCMEC exchange. HMA will begin syncing hashes on its background fetch schedule (every 5 minutes by default).
-
-3. In Coop, go to **Settings** → **Integrations** and add your HMA service URL.
-
-4. In Coop's **Matching Banks**, the NCMEC-sourced bank will be available to reference in rules.
-
-5. How you set things up depends on your use case:
-   - If items are submitted by [user reports](../api/report.md): create a routing rule with the NCMEC hash match logic and assign it to the NCMEC queue.
-
-   - If items are submitted via the [items API](../api/items.md) and you want Coop to proactively flag matches without a user report: you need an automated enforcement rule with the image hash condition and an "Enqueue to NCMEC" action.
+See the [Hasher-Matcher-Actioner (HMA) integration](hma.md) for details.
 
 ### 2. Novel CSAM detection (Content Safety API)
 
