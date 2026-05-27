@@ -1,4 +1,4 @@
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 
 export interface ContentApiRequestRecord {
   submissionId: string;

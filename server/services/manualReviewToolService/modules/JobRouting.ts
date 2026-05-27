@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 
 import { type ConsumerDirectives } from '../../../lib/cache/index.js';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import {
   sql,
   type CaseWhenBuilder,

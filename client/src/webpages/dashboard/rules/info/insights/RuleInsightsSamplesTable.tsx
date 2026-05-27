@@ -4,7 +4,7 @@ import {
   LinkOutlined,
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 import { Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import omit from 'lodash/omit';

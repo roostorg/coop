@@ -1,7 +1,7 @@
 // This type is intentionally more limited than the corresponding model,
 // since this service should not have any dependencies on the model instances'
 
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import {
   type JsonObject,
   type JsonValue,

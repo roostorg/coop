@@ -3,7 +3,7 @@
  * Helpers for `bin/recover-mrt-queue.ts`. Split out so the entry-point file
  * stays under the 500-line per-file lint cap; not intended for general reuse.
  */
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { v1 as uuidv1 } from 'uuid';
 
 import type getBottle from '../iocContainer/index.js';

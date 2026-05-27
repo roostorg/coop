@@ -5,7 +5,7 @@ import {
   type ContainerType,
   type Field,
   type ScalarType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import fc from 'fast-check';
 
 import { FieldArbitrary } from '../../test/arbitraries/ContentType.js';

@@ -7,7 +7,7 @@ import {
   isMediaType,
   ScalarType,
   ScalarTypeRuntimeType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import isPlainObject from 'lodash/isPlainObject';
 import { useState } from 'react';
 import ReactAudioPlayer from 'react-audio-player';

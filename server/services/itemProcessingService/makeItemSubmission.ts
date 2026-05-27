@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Opaque, type ReadonlyDeep, type UnwrapOpaque } from 'type-fest';
 import { v4 as uuidv4 } from 'uuid';
 

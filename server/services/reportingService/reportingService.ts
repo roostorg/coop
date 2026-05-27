@@ -1,5 +1,5 @@
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 

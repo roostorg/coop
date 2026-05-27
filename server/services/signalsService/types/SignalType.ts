@@ -1,4 +1,4 @@
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 
 import { enumToArbitrary } from '../../../test/propertyTestingHelpers.js';
 import { Integration } from './Integration.js';

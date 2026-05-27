@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
 import { getBottleContainerWithIOMocks } from '../../test/setupMockedServer.js';

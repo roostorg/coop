@@ -1,4 +1,4 @@
-import { RelatedItem } from '@roostorg/types';
+import { RelatedItem } from '@roostorg/coop-types';
 import groupBy from 'lodash/groupBy';
 
 import {

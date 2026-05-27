@@ -1,6 +1,6 @@
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useEffect, useRef, useState } from 'react';

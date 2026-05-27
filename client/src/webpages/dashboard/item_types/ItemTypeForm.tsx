@@ -1,6 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemTypeKind } from '@roostorg/types';
+import { ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import invert from 'lodash/invert';

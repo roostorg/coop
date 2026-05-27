@@ -11,8 +11,8 @@ import path from 'path';
 import {
   assertModelCardHasRequiredSections,
   isCoopIntegrationPlugin,
-} from '@roostorg/types';
-import type { CoopIntegrationsConfig } from '@roostorg/types';
+} from '@roostorg/coop-types';
+import type { CoopIntegrationsConfig } from '@roostorg/coop-types';
 
 import type {
   IntegrationManifestEntry,

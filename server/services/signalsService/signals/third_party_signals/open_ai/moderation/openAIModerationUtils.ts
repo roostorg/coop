@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { jsonStringify } from '../../../../../../utils/encoding.js';

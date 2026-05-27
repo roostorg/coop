@@ -1,4 +1,4 @@
-import { type SignalSubcategory } from '@roostorg/types';
+import { type SignalSubcategory } from '@roostorg/coop-types';
 
 import {
   BuiltInExternalSignalType,

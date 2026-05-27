@@ -2,7 +2,7 @@ import {
   ScalarTypes,
   type ScalarType,
   type TaggedScalar,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 
 import { hasOwn } from '../../../utils/misc.js';
 import { type NormalizedItemData } from '../../itemProcessingService/index.js';

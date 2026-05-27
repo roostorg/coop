@@ -4,7 +4,7 @@ import type {
   FieldTypeRuntimeType,
   ItemTypeKind,
   ScalarType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 
 import {
   GQLScalarType,

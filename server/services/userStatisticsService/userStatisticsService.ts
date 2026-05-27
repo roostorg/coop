@@ -2,7 +2,7 @@
  * @fileoverview This file is the public entrypoint for our user statistics
  * service.
  */
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { sql, type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 

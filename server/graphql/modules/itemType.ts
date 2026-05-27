@@ -6,7 +6,7 @@ import {
   type Field,
   type FieldType,
   type ScalarType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 
 import {
   type ContentItemType as ContentItemTypeT,

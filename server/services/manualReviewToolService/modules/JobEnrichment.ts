@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 
 import { assertUnreachable } from '../../../utils/misc.js';
 import { type Satisfies } from '../../../utils/typescript-types.js';

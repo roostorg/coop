@@ -4,7 +4,7 @@ import {
   ScalarTypes,
   type ScalarType,
   type TaggedScalar,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import { type ReadonlyDeep } from 'type-fest';
 
 import {

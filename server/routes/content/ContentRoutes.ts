@@ -1,4 +1,4 @@
-import { type ScalarTypeRuntimeType } from '@roostorg/types';
+import { type ScalarTypeRuntimeType } from '@roostorg/coop-types';
 
 import { type DerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';

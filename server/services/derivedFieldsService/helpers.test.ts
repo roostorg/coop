@@ -4,7 +4,7 @@ import {
   type ContainerType,
   type Field,
   type TaggedScalar,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import fc from 'fast-check';
 
 import { DerivedFieldSpecArbitrary } from '../../test/arbitraries/ContentType.js';

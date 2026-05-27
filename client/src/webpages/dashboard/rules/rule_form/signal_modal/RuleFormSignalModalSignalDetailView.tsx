@@ -1,4 +1,4 @@
-import { SignalSubcategory } from '@roostorg/types';
+import { SignalSubcategory } from '@roostorg/coop-types';
 import capitalize from 'lodash/capitalize';
 
 import CoopButton from '@/webpages/dashboard/components/CoopButton';

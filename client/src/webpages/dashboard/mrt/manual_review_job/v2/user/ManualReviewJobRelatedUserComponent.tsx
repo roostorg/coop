@@ -4,7 +4,7 @@ import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/ite
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
 import { LoadingOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import isEmpty from 'lodash/isEmpty';
 
 import {

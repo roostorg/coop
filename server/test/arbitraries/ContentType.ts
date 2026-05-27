@@ -5,7 +5,7 @@ import {
   type Field,
   type ScalarType,
   type ScalarTypeRuntimeType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import fc from 'fast-check';
 import Geohash from 'latlon-geohash';
 import _ from 'lodash';

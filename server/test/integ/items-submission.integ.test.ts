@@ -8,7 +8,7 @@
  * Run with: npm run test:integ
  * Requires: `npm run up && npm run db:update`
  */
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import createContentItemTypes from '../fixtureHelpers/createContentItemTypes.js';

@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 
 import { type Exception } from '@opentelemetry/api';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 

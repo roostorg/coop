@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 
-import type { CoopIntegrationsConfig } from '@roostorg/types';
+import type { CoopIntegrationsConfig } from '@roostorg/coop-types';
 
 import { jsonParse } from '../../utils/encoding.js';
 import type { JsonOf } from '../../utils/encoding.js';

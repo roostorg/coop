@@ -1,4 +1,4 @@
-import { ItemTypeKind } from '@roostorg/types';
+import { ItemTypeKind } from '@roostorg/coop-types';
 import { Tooltip } from 'antd';
 
 import { getDisplayStringForRole, SchemaFieldRoles } from './itemTypeUtils';

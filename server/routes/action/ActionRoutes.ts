@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type JsonObject, type JsonValue } from 'type-fest';
 
 import { route } from '../../utils/route-helpers.js';
