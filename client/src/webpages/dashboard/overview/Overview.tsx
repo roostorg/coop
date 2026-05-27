@@ -21,7 +21,7 @@ import {
 } from '@/icons';
 import { LookbackLength } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import { startOfHour, subDays } from 'date-fns';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';

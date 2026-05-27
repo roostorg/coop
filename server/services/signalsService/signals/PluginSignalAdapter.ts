@@ -3,7 +3,7 @@
  * signals can be registered and used in routing/enforcement rules.
  */
 
-import type { SignalSubcategory } from '@roostorg/types';
+import type { SignalSubcategory } from '@roostorg/coop-types';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { type Language } from '../../../utils/language.js';
@@ -17,7 +17,7 @@ import SignalBase, {
 import { type SignalOutputType } from '../types/SignalOutputType.js';
 import { type SignalPricingStructure } from '../types/SignalPricingStructure.js';
 
-/** Minimal descriptor shape from a plugin; matches @roostorg/types PluginSignalDescriptor. */
+/** Minimal descriptor shape from a plugin; matches @roostorg/coop-types PluginSignalDescriptor. */
 export type PluginSignalDescriptor = Readonly<{
   id: { type: string };
   displayName: string;

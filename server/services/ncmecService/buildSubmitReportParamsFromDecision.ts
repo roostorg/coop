@@ -1,4 +1,4 @@
-import { makeDateString } from '@roostorg/types';
+import { makeDateString } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {

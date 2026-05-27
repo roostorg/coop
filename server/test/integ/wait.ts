@@ -5,7 +5,7 @@
  * writes to Scylla and ClickHouse), so tests poll the data stores until the
  * row appears or a timeout elapses.
  */
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { itemIdentifierToScyllaItemIdentifier } from '../../scylla/index.js';

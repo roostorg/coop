@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ScalarTypes, type Field } from '@roostorg/types';
+import { ScalarTypes, type Field } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';

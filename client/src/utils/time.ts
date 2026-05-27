@@ -1,4 +1,4 @@
-import { DateString } from '@roostorg/types';
+import { DateString } from '@roostorg/coop-types';
 import { addDays, addHours, format, isBefore } from 'date-fns';
 
 export enum LookbackLength {

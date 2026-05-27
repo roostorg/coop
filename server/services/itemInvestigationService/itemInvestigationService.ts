@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { type Dependencies } from '../../iocContainer/index.js';

@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../types/Integration.js';

@@ -2,7 +2,7 @@ import ImageSimilarityDoesNotMatch from './ImageSimilarityDoesNotMatch.js';
 import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import { type HmaService } from '../../hmaService/index.js';
 import { type SignalInput } from './SignalBase.js';
-import { type ScalarTypes } from '@roostorg/types';
+import { type ScalarTypes } from '@roostorg/coop-types';
 
 type MatchSignalInput = SignalInput<ScalarTypes['IMAGE'], true>;
 type MatchedValuePayload = { checkedBanks: string[]; matchedBanks: string[] };

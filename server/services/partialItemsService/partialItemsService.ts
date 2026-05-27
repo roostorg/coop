@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv-draft-04';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';

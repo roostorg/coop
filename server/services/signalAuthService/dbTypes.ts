@@ -1,6 +1,6 @@
 import { type ColumnType } from 'kysely';
 
-/** JSONB config blob; shape defined per integration (see @roostorg/types StoredIntegrationConfigPayload). */
+/** JSONB config blob; shape defined per integration (see @roostorg/coop-types StoredIntegrationConfigPayload). */
 export type IntegrationConfigRow = {
   org_id: string;
   integration_id: string;

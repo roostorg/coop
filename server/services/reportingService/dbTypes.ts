@@ -1,4 +1,4 @@
-import { type ItemIdentifier, type ItemTypeKind } from '@roostorg/types';
+import { type ItemIdentifier, type ItemTypeKind } from '@roostorg/coop-types';
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';

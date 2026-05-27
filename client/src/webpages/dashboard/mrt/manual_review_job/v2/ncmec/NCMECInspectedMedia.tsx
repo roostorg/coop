@@ -8,7 +8,7 @@ import {
   InfoCircleOutlined,
   UpOutlined,
 } from '@ant-design/icons';
-import { isContainerType, isMediaType, ScalarTypes } from '@roostorg/types';
+import { isContainerType, isMediaType, ScalarTypes } from '@roostorg/coop-types';
 import { Popover } from 'antd';
 import { useEffect, useState } from 'react';
 import { JsonObject } from 'type-fest';

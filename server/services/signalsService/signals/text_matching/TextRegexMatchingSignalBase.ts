@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import SizeLimitedMap from 'size-limited-map';
 
 import { type Language } from '../../../../utils/language.js';

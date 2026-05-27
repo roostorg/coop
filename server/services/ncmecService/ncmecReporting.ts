@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import type { Exception } from '@opentelemetry/api';
-import { makeEnumLike, type ItemIdentifier } from '@roostorg/types';
+import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv';
 import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';

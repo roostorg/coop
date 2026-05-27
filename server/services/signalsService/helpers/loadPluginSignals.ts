@@ -6,7 +6,7 @@
 import { createRequire } from 'module';
 import path from 'path';
 
-import { isCoopIntegrationPlugin } from '@roostorg/types';
+import { isCoopIntegrationPlugin } from '@roostorg/coop-types';
 import PluginSignalAdapter, {
   type PluginSignalDescriptor,
 } from '../signals/PluginSignalAdapter.js';

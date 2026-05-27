@@ -10,7 +10,7 @@ import {
   type RelatedItem,
   type ScalarType,
   type ScalarTypeRuntimeType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import Geohash from 'latlon-geohash';
 import _ from 'lodash';
 import { match } from 'ts-pattern';

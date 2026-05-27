@@ -14,7 +14,7 @@ import {
   FlagFilled,
   MinusCircleFilled,
 } from '@ant-design/icons';
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 import { useEffect, useState } from 'react';
 
 import ComponentLoading from '@/components/common/ComponentLoading';

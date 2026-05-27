@@ -1,6 +1,6 @@
 import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import uniqBy from 'lodash/uniqBy';
 import { useState } from 'react';
 import { ReadonlyDeep } from 'type-fest';

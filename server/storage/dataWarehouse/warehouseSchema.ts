@@ -5,7 +5,7 @@
  * These types are used by query adapters and services to build
  * type-safe queries against the data warehouse.
  */
-import { type ItemTypeKind } from '@roostorg/types';
+import { type ItemTypeKind } from '@roostorg/coop-types';
 import { type ColumnType } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 

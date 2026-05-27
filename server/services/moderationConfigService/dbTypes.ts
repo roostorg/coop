@@ -1,4 +1,4 @@
-import { type ItemTypeKind } from '@roostorg/types';
+import { type ItemTypeKind } from '@roostorg/coop-types';
 import { type Generated, type GeneratedAlways } from 'kysely';
 import { type JsonObject, type JsonValue } from 'type-fest';
 

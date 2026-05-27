@@ -2,7 +2,7 @@ import Sparkles from '@/icons/lni/Weather/sparkles.svg?react';
 import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import { ReadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemTypeKind } from '@roostorg/types';
+import { ItemTypeKind } from '@roostorg/coop-types';
 import capitalize from 'lodash/capitalize';
 import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';

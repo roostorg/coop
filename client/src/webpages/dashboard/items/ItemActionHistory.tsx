@@ -6,7 +6,7 @@ import {
 } from '@/graphql/generated';
 import { parseDatetimeToReadableStringInCurrentTimeZone } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 

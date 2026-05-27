@@ -1,4 +1,4 @@
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Popover } from 'antd';
 import { useContext, useMemo } from 'react';
 

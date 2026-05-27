@@ -1,4 +1,4 @@
-import { type ScalarType, type TaggedScalar } from '@roostorg/types';
+import { type ScalarType, type TaggedScalar } from '@roostorg/coop-types';
 import _Ajv, { type JSONSchemaType } from 'ajv-draft-04';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';

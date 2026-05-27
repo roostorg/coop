@@ -10,7 +10,7 @@ import {
   type ModelCardField,
   type ModelCardSection,
   type ModelCardSubsection,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 
 export type { ModelCard, ModelCardField, ModelCardSection, ModelCardSubsection };
 

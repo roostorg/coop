@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { sql, type Kysely } from 'kysely';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';

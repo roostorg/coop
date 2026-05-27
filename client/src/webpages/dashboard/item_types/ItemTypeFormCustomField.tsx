@@ -1,7 +1,7 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Label } from '@/coop-ui/Label';
 import { DeleteOutlined } from '@ant-design/icons';
-import { isContainerType, type ItemTypeKind } from '@roostorg/types';
+import { isContainerType, type ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select, Tooltip } from 'antd';
 
 import { selectFilterByLabelOption } from '../components/antDesignUtils';

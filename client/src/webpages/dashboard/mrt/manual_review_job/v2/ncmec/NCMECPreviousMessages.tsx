@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { List } from 'antd';
 import { useState } from 'react';
 

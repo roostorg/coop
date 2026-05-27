@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import _ from 'lodash';
 import { uid } from 'uid';
 

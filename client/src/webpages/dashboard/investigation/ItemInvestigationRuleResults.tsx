@@ -1,4 +1,4 @@
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';

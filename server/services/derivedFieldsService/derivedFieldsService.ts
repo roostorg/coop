@@ -4,7 +4,7 @@ import {
   ScalarTypes,
   type Field,
   type ScalarType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { inject } from '../../iocContainer/index.js';

@@ -1,4 +1,4 @@
-import { type SignalSubcategory } from '@roostorg/types';
+import { type SignalSubcategory } from '@roostorg/coop-types';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
