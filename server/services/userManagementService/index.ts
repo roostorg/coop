@@ -11,3 +11,9 @@ export {
   UserRole,
   getPermissionsForRole,
 } from './permissioning.js';
+export {
+  type PermissionGroup,
+  type PermissionGroupItem,
+  getPermissionGroups,
+} from './permissionGroups.js';
+export { SystemRoleDefaults } from './systemRoleDefaults.js';
