@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3790b0d2.js";
+            window.path_to_searchindex_js = "../searchindex-5dbf5497.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-b1393162.js"></script>
@@ -180,7 +180,7 @@
 <p>Coop supports <strong>plugin-style integrations</strong>: authors can ship integrations as separate packages (e.g. npm), and adopters can enable them via a <strong>config file</strong> without changing Coop source code. At startup the platform loads each enabled plugin and uses its manifest for metadata (title, docs, logos, model card, config fields). Adopters do not edit enums, server registries, or client logo maps. You just install the package and edit integrations config file.</p>
 <h2 id="for-integration-authors"><a class="header" href="#for-integration-authors">For integration authors</a></h2>
 <p>You build a package that exports a <strong>plugin</strong> (manifest + optional signals). The manifest describes the integration: id, name, version, docs link, logos, config fields, and any signals it provides. Logos can be files in the package (served by the platform) or URLs. If the integration needs per-org config (e.g. API keys), you define the fields in the manifest and the platform renders the config form and stores values.</p>
-<p><strong>See the example package for a full reference implementation:</strong> <a href="https://github.com/roostorg/coop-integration-example"><strong><code>coop-integration-example</code></strong></a>. It includes a manifest, config field, model card, logos, and a sample signal. Use it as the template for building your own integration; the contract and types live in <code>@roostorg/types</code>.</p>
+<p><strong>See the example package for a full reference implementation:</strong> <a href="https://github.com/roostorg/coop-integration-example"><strong><code>coop-integration-example</code></strong></a>. It includes a manifest, config field, model card, logos, and a sample signal. Use it as the template for building your own integration; the contract and types live in <code>@roostorg/coop-types</code>.</p>
 <h2 id="for-adopters"><a class="header" href="#for-adopters">For adopters</a></h2>
 <ol>
 <li>
