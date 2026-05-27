@@ -197,14 +197,8 @@ export default class JobDecisioning {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
       }
 
-      // Issue #389: orgs that opt into `requires_policy_for_decisions` enforce
-      // that every CUSTOM_ACTION decision names at least one policy, so
-      // reviewers can't accidentally land actions outside the org's documented
-      // moderation policy. The flag is read via GraphQL as
-      // `Org.requiresPolicyForDecisionsInMrt`; the UI can disable submit on
-      // the client, but server-side enforcement is what makes the integrity
-      // guarantee real. Only CUSTOM_ACTION decisions carry policies —
-      // appeal/ignore/NCMEC/auto-close decisions are out of scope.
+      // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
+      // disables submit when this is on, but API/script callers can bypass that.
       const settingsRow = await this.pgQuery
         .selectFrom('manual_review_tool.manual_review_tool_settings')
         .select(['requires_policy_for_decisions'])
