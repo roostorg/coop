@@ -68,7 +68,7 @@ publish_if_needed() {
 }
 
 # Publish packages
-publish_if_needed "types" "@roostorg/types"
+publish_if_needed "types" "@roostorg/coop-types"
 publish_if_needed "migrator" "@roostorg/db-migrator"
 
 echo "✅ All packages published successfully!"

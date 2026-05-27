@@ -28,13 +28,14 @@ jobs:
       - name: Check and publish types
         run: |
           cd types
+          PKG_NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
-          echo "Checking @roostorg/types@$VERSION..."
-          
-          if npm view "@roostorg/types@$VERSION" version >/dev/null 2>&1; then
-            echo "⚠️  Version $VERSION of @roostorg/types already exists on npm - skipping"
+          echo "Checking $PKG_NAME@$VERSION..."
+
+          if npm view "$PKG_NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "⚠️  Version $VERSION of $PKG_NAME already exists on npm - skipping"
           else
-            echo "✅ Publishing @roostorg/types@$VERSION..."
+            echo "✅ Publishing $PKG_NAME@$VERSION..."
             npm ci --ignore-scripts
             npm run build
             npm publish
