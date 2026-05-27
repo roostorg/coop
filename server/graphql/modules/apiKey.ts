@@ -1,3 +1,4 @@
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
 import {
@@ -72,7 +73,7 @@ const Query: GQLQueryResolvers = {
     if (!user || !user.orgId) {
       throw unauthenticatedError('Authenticated user required');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to view the org API key',
       );
@@ -96,7 +97,7 @@ const Mutation: GQLMutationResolvers = {
         'User does not have permission to rotate the API key',
       );
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to rotate the API key',
       );
@@ -149,7 +150,7 @@ const Mutation: GQLMutationResolvers = {
         'User does not have permission to rotate the webhook signing key',
       );
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to rotate the webhook signing key',
       );

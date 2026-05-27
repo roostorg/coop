@@ -3,11 +3,12 @@ import {
   namedOperations,
   useGQLHasNcmecReportingEnabledQuery,
   useGQLInviteUserMutation,
+  useGQLRolesForOrgQuery,
 } from '@/graphql/generated';
 import { HOST_URL } from '@/lib/config';
 import { titleCaseEnumString } from '@/utils/string';
 import { gql } from '@apollo/client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import CoopButton from '../dashboard/components/CoopButton';
 import CoopInput from '../dashboard/components/CoopInput';
@@ -15,7 +16,7 @@ import CoopModal from '../dashboard/components/CoopModal';
 import CoopRadioGroup from '../dashboard/components/CoopRadioGroup';
 import FormSectionHeader from '../dashboard/components/FormSectionHeader';
 
-import { getRoleDescription } from './ManageUsersFormUtils';
+import PermissionsMatrixModal from './PermissionsMatrixModal';
 
 gql`
   query HasNcmecReportingEnabled {
@@ -40,6 +41,29 @@ export default function ManageUsersInviteUserSection() {
   const { data } = useGQLHasNcmecReportingEnabledQuery();
   const hasNCMECReportingEnabled = data?.myOrg?.hasNCMECReportingEnabled;
 
+  // Pull DB-backed role names so renames in the role editor flow through.
+  const { data: rolesData } = useGQLRolesForOrgQuery();
+  const rolesByKey = useMemo(() => {
+    const map = new Map<GQLUserRole, { displayName: string }>();
+    for (const r of rolesData?.rolesForOrg ?? []) {
+      map.set(r.key, { displayName: r.displayName });
+    }
+    return map;
+  }, [rolesData]);
+
+  const visibleRoles = useMemo(
+    () =>
+      Object.values(GQLUserRole).filter((role) =>
+        !hasNCMECReportingEnabled
+          ? role !== GQLUserRole.ChildSafetyModerator
+          : true,
+      ),
+    [hasNCMECReportingEnabled],
+  );
+
+  const labelFor = (role: GQLUserRole): string =>
+    rolesByKey.get(role)?.displayName ?? titleCaseEnumString(role);
+
   const [inviteUser, { loading, error }] = useGQLInviteUserMutation({
     refetchQueries: [namedOperations.Query.ManageUsers],
     onError: () => setInviteSentModalVisible(true),
@@ -49,32 +73,15 @@ export default function ManageUsersInviteUserSection() {
     },
   });
 
-  const rolesModal = (
-    <CoopModal
-      title="User Roles"
-      visible={roleModalVisible}
-      onClose={() => setRoleModalVisible(false)}
-    >
-      <div className="max-w-[600px]">
-        {Object.values(GQLUserRole)
-          // If the org doesn't have NCMEC reporting enabled, don't show the CHILD_SAFETY_MODERATOR role
-          .filter((role) =>
-            !hasNCMECReportingEnabled
-              ? role !== GQLUserRole.ChildSafetyModerator
-              : true,
-          )
-          .map((role, i) => (
-            <div key={i}>
-              <div className="text-lg font-bold">
-                {titleCaseEnumString(role)}
-              </div>
-              <div className="h-1" />
-              {getRoleDescription(role)}
-              <div className="h-3" />
-            </div>
-          ))}
-      </div>
-    </CoopModal>
+  const matrixRoles = useMemo(
+    () =>
+      (rolesData?.rolesForOrg ?? []).map((r) => ({
+        key: r.key,
+        displayName: r.displayName,
+        permissions: r.permissions,
+        userCount: r.userCount,
+      })),
+    [rolesData],
   );
 
   const copyInviteLink = () => {
@@ -173,17 +180,10 @@ export default function ManageUsersInviteUserSection() {
       </div>
       <div className="ml-4">
         <CoopRadioGroup
-          options={Object.values(GQLUserRole)
-            // If the org doesn't have NCMEC reporting enabled, don't show the CHILD_SAFETY_MODERATOR role
-            .filter((role) =>
-              !hasNCMECReportingEnabled
-                ? role !== GQLUserRole.ChildSafetyModerator
-                : true,
-            )
-            .map((role) => ({
-              label: titleCaseEnumString(role),
-              value: role,
-            }))}
+          options={visibleRoles.map((role) => ({
+            label: labelFor(role),
+            value: role,
+          }))}
           onChange={(e) => setRole(e.target.value as GQLUserRole)}
         />
       </div>
@@ -196,7 +196,12 @@ export default function ManageUsersInviteUserSection() {
           disabled={!email?.length || !role}
         />
       </div>
-      {rolesModal}
+      {roleModalVisible && (
+        <PermissionsMatrixModal
+          roles={matrixRoles}
+          onClose={() => setRoleModalVisible(false)}
+        />
+      )}
       {inviteSentModal}
     </div>
   );

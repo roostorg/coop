@@ -52,6 +52,12 @@ export enum UserPermission {
   // Granted to ADMIN by default; carved out as a separate capability so role
   // editing can be delegated without granting full MANAGE_ORG (see issue #406).
   MANAGE_ROLES = 'MANAGE_ROLES',
+  // Carved out from MANAGE_ORG so user management can be delegated without
+  // granting full org control (integrations, API keys, etc.).
+  MANAGE_USERS = 'MANAGE_USERS',
+  // Carved out from EDIT_MRT_QUEUES so routing-rule authorship can be
+  // delegated without granting full queue management.
+  MANAGE_ROUTING_RULES = 'MANAGE_ROUTING_RULES',
 }
 
 const UserRoles = [
@@ -83,14 +89,16 @@ export const UserRole = makeEnumLike(UserRoles);
 export type UserRole = keyof typeof UserRole;
 
 /**
- * Maps UserRoles to all the UserPermissions that each Role has.
- *
- * This map is the canonical seed for a user's permissions and is consumed by
- * `getPermissionsForRole` in the persistence layer when building the
- * `getPermissions()` accessor on a user. **Do not branch on a role string**
- * elsewhere in the codebase — capability checks must go through
- * `user.getPermissions().includes(...)` so that future per-org role editing
- * (issue #406) Just Works without further refactors.
+ * Default permission set per role. Used in two places:
+ *   1. As the seed values mirrored in the `add_roles_and_role_permissions_tables`
+ *      migration, which is what populates `public.role_permissions` for orgs
+ *      that exist at deploy time.
+ *   2. As the runtime fallback for orgs created after the migration: when
+ *      the user-load query finds no rows in `public.role_permissions` for
+ *      the user's role, `getPermissions()` reads from this map instead so
+ *      fresh orgs have working authz out of the box. Once an admin saves
+ *      role edits via the role-editor UI those rows land in the DB and
+ *      take precedence over this fallback.
  */
 export const UserPermissionsForRole = new Map<UserRole, UserPermission[]>([
   [UserRole.ADMIN, Object.values(UserPermission)],
@@ -124,6 +132,7 @@ export const UserPermissionsForRole = new Map<UserRole, UserPermission[]>([
       UserPermission.VIEW_MRT,
       UserPermission.VIEW_MRT_DATA,
       UserPermission.EDIT_MRT_QUEUES,
+      UserPermission.MANAGE_ROUTING_RULES,
       UserPermission.MANAGE_POLICIES,
       UserPermission.VIEW_INVESTIGATION,
       UserPermission.VIEW_RULES_DASHBOARD,

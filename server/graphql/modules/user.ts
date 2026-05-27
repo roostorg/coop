@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 
+import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   type GQLGetDecisionCountSettings,
   type GQLGetJobCreationCountSettings,
@@ -37,6 +38,8 @@ const typeDefs = /* GraphQL */ `
     VIEW_INVESTIGATION
     VIEW_RULES_DASHBOARD
     MANAGE_ROLES
+    MANAGE_USERS
+    MANAGE_ROUTING_RULES
   }
 
   enum UserPenaltySeverity {
@@ -217,7 +220,7 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError('User does not have permission to delete users');
     }
 
@@ -359,7 +362,7 @@ const User: GQLUserResolvers = {
       // authenticated user.
       const canSeeOrgSecrets = authedUser
         .getPermissions()
-        .includes('MANAGE_ORG');
+        .includes(UserPermission.MANAGE_ORG);
       let apiKey: string | null = null;
       let publicSigningKey: string | null = null;
       if (canSeeOrgSecrets) {
