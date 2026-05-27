@@ -48,7 +48,7 @@ See the [NCMEC CyberTipline integration](ncmec.md) for details.
 
 Once HMA is connected and hash banks are configured, the image hash signal is available in both routing rules and proactive rules.
 
-- **To route content from [user reports](../api/report.md)**, create a [routing rule](../user/rules.md#routing-rules) with the NCMEC hash match logic and set it to route to your NCMEC queue.
+- **To route content from [user reports](../api/report.md)**, create a [routing rule](../user/rules.md#routing-rules) with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.
 
   ![Routing rule using HMA hash matching](../images/hma-routing-rule.png)
 

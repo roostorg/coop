@@ -88,6 +88,10 @@ When your platform sends a user report to Coop's Report API with `reportedForRea
 }
 ```
 
+### 4. Manual escalation
+
+In any review job, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. This immediately moves the job to the NCMEC queue.
+
 ## CyberTip submission flow
 
 When a reviewer submits a CyberTip, Coop performs the following steps:
@@ -134,19 +138,13 @@ When a reviewer submits a CyberTip, Coop performs the following steps:
 
 ### Test vs. production submissions
 
-Coop routes every CyberTip submission to one of two NCMEC endpoints:
+Coop routes every CyberTip submission to one of two NCMEC endpoints determined by the `NCMEC_ENV` environment variable on the Coop server:
 
-| Endpoint           | URL                    | What happens to reports                           |
-| ------------------ | ---------------------- | ------------------------------------------------- |
-| **Test (default)** | `exttest.cybertip.org` | Discarded by NCMEC. Used for integration testing. |
-| **Production**     | `report.cybertip.org`  | Real reports routed to law enforcement.           |
+- **Unset, or any value other than `production`**: NCMEC test endpoint where reports are discarded by NCMEC. Safe default used for integration testing.
 
-The endpoint is selected by the `NCMEC_ENV` environment variable on the Coop server:
+- **`NCMEC_ENV=production`**: NCMEC production endpoint, where reports are investigated and i.e. routed to law enforcement.
 
-- **Unset, or any value other than `production`** → test endpoint. This is the safe default.
-- **`NCMEC_ENV=production`** → production endpoint.
-
-Operators are responsible for ensuring `NCMEC_ENV` matches the credentials they have configured in **Settings → NCMEC**. NCMEC issues separate test and production credentials, and submitting from an unapproved integration to the production endpoint can result in your credentials being revoked.
+Operators are responsible for ensuring `NCMEC_ENV` matches the credentials they have configured in **Settings** → **NCMEC**. NCMEC issues separate test and production credentials, and submitting from an unapproved integration to the production endpoint can result in your credentials being revoked.
 
 Reports submitted against the test endpoint are stored in Coop's database with an `is_test` flag and are only visible in the NCMEC Reports dashboard to the reviewer who submitted them. Production reports are visible to anyone in the org with the `VIEW_CHILD_SAFETY_DATA` permission.
 
@@ -154,7 +152,7 @@ Reports submitted against the test endpoint are stored in Coop's database with a
 
 ### Additional Info endpoint
 
-Coop calls this webhook **before** building a CyberTip to retrieve enriched metadata for the reported user and their media. This endpoint is optional but **strongly recommended** since without it, Coop submits the CyberTip with only the user's ID and whatever data was already sent to Coop via your Item API.
+Coop calls this webhook **before** building a CyberTip to retrieve enriched metadata for the reported user and their media. This endpoint is optional but **strongly recommended** since without it, Coop submits the CyberTip with only the user's ID and whatever data was already sent to Coop via the Items API.
 
 Coop signs every request with your org's signing key. Verify the signature before processing.
 
@@ -263,14 +261,10 @@ Coop signs every request with your org's signing key. Verify the signature befor
 
 ### Preservation endpoint
 
-Platforms that submit CyberTips may have data preservation obligations under laws like [18 U.S.C. §
-2258A](https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title18-section2258A) and the [REPORT Act
-(2024)](https://www.missingkids.org/blog/2024/first-line-of-defense-guidelines-to-help-online-platforms-detect-sexually-exploited-kids), which extended content retention
-requirements to one year. Talk to your legal team to understand your organization's specific obligations.
+Platforms that submit CyberTips may have data preservation obligations under laws like [18 U.S.C. § 2258A](https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title18-section2258A) and the [REPORT Act (2024)](https://www.missingkids.org/blog/2024/first-line-of-defense-guidelines-to-help-online-platforms-detect-sexually-exploited-kids), which extended content retention requirements to one year. Talk to your legal team to understand your organization's specific obligations.
 
-Coop calls a preservation endpoint you build and host immediately after a CyberTip is successfully submitted. Your endpoint should trigger whatever internal workflow
-handles data retention, for example flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the
-media included in the CyberTip, and the NCMEC-assigned report ID so you have everything you need to identify what to retain.
+Coop calls a preservation endpoint you build and host immediately after a CyberTip is successfully submitted. Your endpoint should trigger whatever internal workflow handles data retention, for example flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the media included in the CyberTip, and the NCMEC-assigned report ID so you have everything you need to identify what to retain.
+
 Coop signs every request with your org's signing key. Verify the signature before processing.
 
 #### Request

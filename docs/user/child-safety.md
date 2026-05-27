@@ -36,13 +36,13 @@ When content enters the NCMEC queue through any of the above paths, Coop:
 
 5. Routes the job to the configured NCMEC queue.
 
-This user-centric aggregation means that even if a user has uploaded many pieces of CSAM, a single NCMEC review job is created for the reviewer, and a single CyberTip is submitted to NCMEC rather than separate reports per piece of content.
+This user-centric aggregation means that even if a user has uploaded many pieces of CSAM, a single NCMEC review job is created for the reviewer, and a single, more actionable CyberTip is submitted to NCMEC rather than separate reports per piece of content.
 
 ## Reviewing a NCMEC job
 
 The NCMEC job UI is distinct from standard review jobs. It is designed around the user and all of their associated media.
 
-![Coop's NCMEC Reporting job view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors](../images/coop-ncmec-job.png)
+![NCMEC Reporting job view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors](../images/coop-ncmec-job.png)
 
 ### Incident Type
 
@@ -89,7 +89,7 @@ Apply one or more labels to individual media items to provide NCMEC with additio
 
 ### Submitting the CyberTip
 
-Once you have classified all media and selected the incident type, click **Submit to NCMEC**. Coop builds and submits the CyberTip automatically, including fetching enriched metadata, uploading media files, and finalizing the report with NCMEC. See [CyberTip Submission Flow](../integrations/ncmec.md#cybertip-submission-flow) for the technical details.
+Once you have classified all media and selected the incident type, select **Submit to NCMEC**. Coop builds and submits the CyberTip automatically, including fetching enriched metadata, uploading media files, and finalizing the report with NCMEC. See [CyberTip Submission Flow](../integrations/ncmec.md#cybertip-submission-flow) for the technical details.
 
 ## Viewing submitted reports
 
