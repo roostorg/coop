@@ -45,21 +45,23 @@ check_version_exists() {
 # Function to publish package if version doesn't exist
 publish_if_needed() {
     local package_dir=$1
-    local package_name=$2
-    
+
     cd "$package_dir"
-    
-    # Get current version from package.json
+
+    # Derive name and version from package.json so the script stays in sync
+    # with whatever npm publish will actually publish (avoids drift if the
+    # package is renamed without updating this script).
+    local package_name=$(node -p "require('./package.json').name")
     local version=$(node -p "require('./package.json').version")
-    
+
     echo "📦 Checking $package_name@$version..."
-    
+
     if check_version_exists "$package_name" "$version"; then
         echo "⏭️  Skipping $package_name@$version (already published)"
         cd ..
         return
     fi
-    
+
     echo "📦 Publishing $package_name@$version..."
     npm install
     npm run build
@@ -68,8 +70,8 @@ publish_if_needed() {
 }
 
 # Publish packages
-publish_if_needed "types" "@roostorg/coop-types"
-publish_if_needed "migrator" "@roostorg/db-migrator"
+publish_if_needed "types"
+publish_if_needed "migrator"
 
 echo "✅ All packages published successfully!"
 echo ""
