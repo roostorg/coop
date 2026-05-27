@@ -9,7 +9,7 @@ import { makeOpenAiImageModerationSignal } from './openAIModerationUtils.js';
  */
 const OpenAiSelfHarmImageSignal = makeOpenAiImageModerationSignal({
   type: SignalType.OPEN_AI_SELF_HARM_IMAGE_MODEL,
-  displayName: 'OpenAI Self Harm Image score',
+  displayName: 'OpenAI Self-Harm Image score',
   description: `OpenAI's model that detects self-harm, which is defined as content that promotes, encourages, or depicts acts of self-harm, such as suicide, cutting, and eating disorders. Scored against the image.
 
       This model produces a confidence score between 0 and 1, indicating the model's confidence that the image depicts self-harm.`,
