@@ -45,30 +45,63 @@ In each object in the `items` array, Coop expects the following fields:
 | `id`     | `String` | Your unique identifier for this Item                                                                                                                                                                   |
 | `typeId` | `String` | The ID of the [Item Type](../user/concepts.md#item-type) that corresponds to the Item. This will exactly match the ID of one of the Item Types you've [defined](../user/administration.md#item-types). |
 
-## Example response
+## Response requirements
 
-Your platform returns information about the item to Coop in its response. Even if it can't fetch _all_ attributes of the item (perhaps because of some limitations in your data model or query latency), your platform can just return as many attributes as you have access to. In other words, you can return a _partial_ version of the Item, even if some attributes are missing.
+Your endpoint must respond with a `2xx` status and a JSON body containing a single top-level object with an `items` array. Extra top-level keys are accepted but ignored — only `items` is consumed.
 
-Coop expects a response in the following format:
+Each entry in `items` describes one of the items Coop asked about. You can return a _partial_ version of the Item — `data` may contain only the subset of fields you have access to — but the keys below must be present and well-typed:
+
+| Property            | Type                      | Required | Description                                                                                           |
+| :------------------ | :------------------------ | :------- | :---------------------------------------------------------------------------------------------------- |
+| `id`                | `String`                  | Yes      | The `id` Coop provided in the request body.                                                           |
+| `typeId`            | `String`                  | Yes      | The `typeId` Coop provided in the request body.                                                       |
+| `data`              | `Object`                  | Yes      | The same shape you'd send via the Items API. May be empty (`{}`), but the key itself must be present. |
+| `typeVersion`       | `String`                  | No       | Specific Item Type version to target.                                                                 |
+| `typeSchemaVariant` | `"original" \| "partial"` | No       | Defaults to `partial`.                                                                                |
+
+Example response:
 
 ```json
 {
   "items": [
     {
-      "id": "abc123", // the `id` Coop provided in the request body
-      "typeId": "def456", // the `typeId` Coop provided in the request body
-      "data": { // the same `data` JSON object you'd provide if you had sent this Item via the Items API
+      "id": "abc123", // the `id` Coop provided
+      "typeId": "def456", // the `typeId` Coop provided
+      "data": {
+        // the same shape you'd send via the Items API
         "text": "some text uploaded by a user"
         // ... all other fields in your Item Type
-      },
-    },
-    ... // other items
+      }
+    }
   ]
 }
 ```
 
-Coop expects a `2xx` HTTP status from your endpoint. If it receives any non-2xx response, it treats the request as failed and the on-demand item fetch will not succeed for the user.
+If you can't find or return a particular item, **omit it** from the `items` array rather than returning an error or a sentinel value. Coop won't treat a missing item as a failure; it simply won't have data for that item. Items whose `(id, typeId)` did not appear in the request are silently dropped.
 
-If your platform can't find or return a particular item, omit it from the `items` array in your response rather than returning an error status. Coop won't treat a missing item as a failure; it simply won't have data for that item.
+A nested form is also accepted, in which `typeId` / `typeVersion` / `typeSchemaVariant` are grouped under a `type` object. The flat form above is recommended for new integrations; this form exists for parity with the Items API submission shape.
 
-The response body must be valid JSON with a top-level `items` array. A malformed response is also treated as a failure.
+```json
+{
+  "items": [
+    {
+      "id": "abc123",
+      "data": { "text": "..." },
+      "type": {
+        "id": "def456",
+        "version": "2025-01-01",
+        "schemaVariant": "partial"
+      }
+    }
+  ]
+}
+```
+
+## Troubleshooting
+
+If a request shows up in your webhook logs but doesn't update the item in Coop, the UI will surface one of these:
+
+- **`PartialItemsEndpointResponseError`** — the endpoint returned a non-2xx status.
+- **`PartialItemsInvalidResponseError`** — the body parsed as JSON but didn't match the schema above (most often a missing `data`, a missing top-level `items` key, or non-string `id` / `typeId`), _or_ it couldn't be parsed as JSON at all. When the body fails to parse, Coop's server logs include a short prefix of the response bytes — the most common cause is writing to the response twice (e.g. a middleware emitting a sentinel before the payload, producing something like `null{"items":[...]}`).
+
+If the request looks successful but the item still doesn't appear, verify that each returned item's `(id, typeId)` exactly matches what Coop asked for — mismatches are silently dropped. If you're testing through a tunnel (`localtunnel`, `ngrok`), make sure the tunnel isn't injecting a browser-warning page in place of your response.
