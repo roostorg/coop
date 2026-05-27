@@ -51,8 +51,12 @@ publish_if_needed() {
     # Derive name and version from package.json so the script stays in sync
     # with whatever npm publish will actually publish (avoids drift if the
     # package is renamed without updating this script).
-    local package_name=$(node -p "require('./package.json').name")
-    local version=$(node -p "require('./package.json').version")
+    # Declare and assign separately so `set -e` catches node -p failures
+    # (shellcheck SC2155: `local foo=$(...)` masks the subshell's exit status).
+    local package_name
+    package_name=$(node -p "require('./package.json').name")
+    local version
+    version=$(node -p "require('./package.json').version")
 
     echo "📦 Checking $package_name@$version..."
 
