@@ -67,7 +67,7 @@ See the [Hasher-Matcher-Actioner (HMA) integration](hma.md) for details.
 
 For content that hasn't been seen before and therefore has no known hash, Coop integrates with Google's Content Safety API that classifies images for potential CSAM. You can configure a Routing Rule using a Content Safety signal to route high-confidence detections directly to the NCMEC queue, or to a triage queue for human review before escalation.
 
-See [Google Content Safety API](google-content-safety.d) for integration details.
+See [Google Content Safety API](google-content-safety.md) for integration details.
 
 ### 3. Inbound report flagged as CSAM
 
