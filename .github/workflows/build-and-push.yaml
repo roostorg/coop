@@ -33,6 +33,10 @@ jobs:
           - image: coop-client
             context: ./client
             dockerfile: client/Dockerfile
+          - image: coop-migrator
+            context: .
+            dockerfile: Dockerfile
+            target: build_migrator
 
     steps:
       - uses: actions/checkout@v4
