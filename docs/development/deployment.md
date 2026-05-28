@@ -8,7 +8,7 @@ For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDK
 
 Settings live across several database tables. Many are not yet exposed in the front-end UI and can only be configured directly in the database.
 
-### Organization settings
+### Organization
 
 The `public.org_settings` table is the main catch-all for org-level feature flags and integration configuration. It controls which major features are enabled (appeals, reporting rules, multi-policy actions), integration points (SSO/SAML, the Partial Items API, appeal callbacks), and behavioral settings like how long user strikes remain active.
 
@@ -16,46 +16,46 @@ The `public.org_settings` table is the main catch-all for org-level feature flag
 
 Settings for [Appeals](../user/appeals.md) using the [Appeals API](../api/appeals.md).
 
-| Setting                   | Default | Where to configure                 |
-| :------------------------ | :------ | :--------------------------------- |
-| `has_appeals_enabled`     | `false` | Database-only                      |
-| `appeal_callback_url`     | `NULL`  | **Settings** → **Appeal Settings** |
-| `appeal_callback_headers` | `NULL`  | **Settings** → **Appeal Settings** |
-| `appeal_callback_body`    | `NULL`  | **Settings** → **Appeal Settings** |
+| Setting                   | Default | Description                                      | Where to configure                 |
+| :------------------------ | :------ | :----------------------------------------------- | :--------------------------------- |
+| `has_appeals_enabled`     | `false` | Enables the appeals feature for the org          | Database-only                      |
+| `appeal_callback_url`     | `NULL`  | Webhook URL called when an appeal is submitted   | **Settings** → **Appeal Settings** |
+| `appeal_callback_headers` | `NULL`  | Custom headers sent with appeal webhook requests | **Settings** → **Appeal Settings** |
+| `appeal_callback_body`    | `NULL`  | Custom body template for appeal webhook requests | **Settings** → **Appeal Settings** |
 
 #### Single-sign-on
 
-| Setting        | Default | Where to configure     |
-| :------------- | :------ | :--------------------- |
-| `saml_enabled` | `false` | Database-only          |
-| `sso_url`      | `NULL`  | **Settings** → **SSO** |
-| `cert`         | `NULL`  | **Settings** → **SSO** |
+| Setting        | Default | Description                                    | Where to configure     |
+| :------------- | :------ | :--------------------------------------------- | :--------------------- |
+| `saml_enabled` | `false` | Activates SAML/SSO for the org                 | Database-only          |
+| `sso_url`      | `NULL`  | The SAML identity provider endpoint            | **Settings** → **SSO** |
+| `cert`         | `NULL`  | The SAML identity provider signing certificate | **Settings** → **SSO** |
 
 #### Partial Items
 
 Custom endpoint and headers for fetching additional item data using the [Partial Items API](../api/partial-items.md).
 
-| Setting                         | Default | Where to configure |
-| :------------------------------ | :------ | :----------------- |
-| `partial_items_endpoint`        | `NULL`  | Database-only      |
-| `partial_items_request_headers` | `NULL`  | Database-only      |
+| Setting                         | Default | Description                                | Where to configure |
+| :------------------------------ | :------ | :----------------------------------------- | :----------------- |
+| `partial_items_endpoint`        | `NULL`  | Endpoint for fetching additional item data | Database-only      |
+| `partial_items_request_headers` | `NULL`  | Custom headers for partial items requests  | Database-only      |
 
 #### Proactive Rules
 
 Gates the [Proactive Rules](../user/rules.md#proactive-rules) feature.
 
-| Setting                       | Default | Where to configure |
-| :---------------------------- | :------ | :----------------- |
-| `has_reporting_rules_enabled` | `false` | Database-only      |
+| Setting                       | Default | Description                         | Where to configure |
+| :---------------------------- | :------ | :---------------------------------- | :----------------- |
+| `has_reporting_rules_enabled` | `false` | Enables the Proactive Rules feature | Database-only      |
 
 #### Others
 
-| Setting                              | Default | Where to configure |
-| :----------------------------------- | :------ | :----------------- |
-| `allow_multiple_policies_per_action` | `false` | Database-only      |
-| `user_strike_ttl_days`               | `90`    | Database-only      |
+| Setting                              | Default | Description                                   | Where to configure |
+| :----------------------------------- | :------ | :-------------------------------------------- | :----------------- |
+| `allow_multiple_policies_per_action` | `false` | Allows actions to reference multiple policies | Database-only      |
+| `user_strike_ttl_days`               | `90`    | Days before user strikes expire               | Database-only      |
 
-### Review Console settings
+### Review Console
 
 The `manual_review_tool.manual_review_tool_settings` table affects reviewer capabilities in the Review Console.
 
@@ -67,19 +67,29 @@ The `manual_review_tool.manual_review_tool_settings` table affects reviewer capa
 | `preview_jobs_view_enabled`       | `false` | Anyone who can edit queues may preview a queue without claiming a job | Database-only      |
 | `ignore_callback_url`             | `NULL`  | Where to send a webhook with item data when a job is ignored          | Database-only      |
 
-### Default reviewer interface settings
+### Wellness
 
-The `user_management_service.org_default_user_interface_settings` table stores the org-wide defaults for reviewer wellness and safety interface preferences. These values apply to new reviewers when they join; individual reviewers can override them in their own settings.
+The `user_management_service.org_default_user_interface_settings` table stores the org-wide defaults for reviewer wellness interface preferences. These values apply to new reviewers when they join; individual reviewers can override them in their own settings.
 
-| Setting                       | Default | Where to configure          |
-| :---------------------------- | :------ | :-------------------------- |
-| `moderator_safety_blur_level` | `2`     | **Settings** → **Wellness** |
-| `moderator_safety_grayscale`  | `true`  | **Settings** → **Wellness** |
-| `moderator_safety_mute_video` | `true`  | **Settings** → **Wellness** |
+| Setting                       | Default | Description                                    | Where to configure          |
+| :---------------------------- | :------ | :--------------------------------------------- | :-------------------------- |
+| `moderator_safety_blur_level` | `2`     | Default blur intensity (0–3) for new reviewers | **Settings** → **Wellness** |
+| `moderator_safety_grayscale`  | `true`  | Default grayscale mode for new reviewers       | **Settings** → **Wellness** |
+| `moderator_safety_mute_video` | `true`  | Default video mute state for new reviewers     | **Settings** → **Wellness** |
 
 <style>
   /* TODO: move this to site-wide style override */
   table {
     width: 100%;
+  }
+
+  table td,
+  table thead th {
+    padding: 0.25em 0.5em;
+  }
+
+  table td {
+    text-wrap: balance;
+    word-wrap: anywhere;
   }
 </style>
