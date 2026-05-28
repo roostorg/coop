@@ -226,12 +226,12 @@ export function generateFakeScalarFieldValue(fieldType: ScalarType) {
     case 'IP_ADDRESS':
       return `192.0.2.${Math.floor(255 * Math.random())}`;
     case 'MEDIA':
-      return {
-        url: `https://picsum.photos/${Math.floor(300 * Math.random())}/${
-          Math.floor(1000 * Math.random()) % 10
-        }`,
-        mediaType: 'IMAGE' as const,
-      };
+      // Like AUDIO/IMAGE/VIDEO, the fake value is the *input* (pre-coercion) form
+      // — a raw URL string. The server's MEDIA coercion will turn this into
+      // `{ url, mediaType }` at ingestion.
+      return `https://picsum.photos/${Math.floor(300 * Math.random())}/${
+        Math.floor(1000 * Math.random()) % 10
+      }`;
   }
 }
 
