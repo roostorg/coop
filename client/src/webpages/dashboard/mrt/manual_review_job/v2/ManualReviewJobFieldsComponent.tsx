@@ -589,7 +589,8 @@ function ContainerComponent(props: {
         className={` ${
           data.container!.valueScalarType === 'IMAGE' ||
           data.container!.valueScalarType === 'VIDEO' ||
-          data.container!.valueScalarType === 'AUDIO'
+          data.container!.valueScalarType === 'AUDIO' ||
+          data.container!.valueScalarType === 'MEDIA'
             ? ''
             : 'flex-col'
         } flex overflow-x-scroll border-slate-200 rounded p-1.5 ${
