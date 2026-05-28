@@ -21,7 +21,7 @@ ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 ENV DISABLE_ESLINT_PLUGIN=true
 RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT npm run build
 
-FROM nginx:1.27-alpine AS serve
+FROM nginx:1.27.5-alpine AS serve
 COPY --from=client_build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
