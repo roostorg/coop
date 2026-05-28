@@ -47,7 +47,7 @@ In each object in the `items` array, Coop expects the following fields:
 
 ## Response requirements
 
-Your endpoint must respond with a `2xx` status and a JSON body containing a single top-level object with an `items` array. Extra top-level keys are accepted but ignored — only `items` is consumed.
+Your endpoint must respond with a `2xx` status and a JSON body containing a single top-level object with an `items` array. Extra top-level keys are accepted but ignored; only `items` is consumed.
 
 Each entry in `items` describes one of the items Coop asked about. You can return a _partial_ version of the Item — `data` may contain only the subset of fields you have access to — but the keys below must be present and well-typed:
 
@@ -79,7 +79,7 @@ Example response:
 
 If you can't find or return a particular item, **omit it** from the `items` array rather than returning an error or a sentinel value. Coop won't treat a missing item as a failure; it simply won't have data for that item. Items whose `(id, typeId)` did not appear in the request are silently dropped.
 
-A nested form is also accepted, in which `typeId` / `typeVersion` / `typeSchemaVariant` are grouped under a `type` object. The flat form above is recommended for new integrations; this form exists for parity with the Items API submission shape.
+A nested form is also accepted in which `typeId`, `typeVersion`, and `typeSchemaVariant` are grouped under a `type` object as `id`, `version`, and `schemaVariant`. The flat form above is recommended for new integrations; this nested form only exists for parity with the Items API submission shape.
 
 ```json
 {
@@ -101,7 +101,7 @@ A nested form is also accepted, in which `typeId` / `typeVersion` / `typeSchemaV
 
 If a request shows up in your webhook logs but doesn't update the item in Coop, the UI will surface one of these:
 
-- **`PartialItemsEndpointResponseError`** — the endpoint returned a non-2xx status.
-- **`PartialItemsInvalidResponseError`** — the body parsed as JSON but didn't match the schema above (most often a missing `data`, a missing top-level `items` key, or non-string `id` / `typeId`), _or_ it couldn't be parsed as JSON at all. When the body fails to parse, Coop's server logs include a short prefix of the response bytes — the most common cause is writing to the response twice (e.g. a middleware emitting a sentinel before the payload, producing something like `null{"items":[...]}`).
+- **`PartialItemsEndpointResponseError`**: the endpoint returned a non-2xx status.
+- **`PartialItemsInvalidResponseError`**: the body parsed as JSON but didn't match the schema above (most often a missing `data`, a missing top-level `items` key, or non-string `id`/`typeId`), _or_ it couldn't be parsed as JSON at all. When the body fails to parse, Coop's server logs include a short prefix of the response bytes; the most common cause is writing to the response twice (e.g. a middleware emitting a sentinel before the payload, producing something like `null{"items":[...]}`).
 
-If the request looks successful but the item still doesn't appear, verify that each returned item's `(id, typeId)` exactly matches what Coop asked for — mismatches are silently dropped. If you're testing through a tunnel (`localtunnel`, `ngrok`), make sure the tunnel isn't injecting a browser-warning page in place of your response.
+If the request looks successful but the item still doesn't appear, verify that each returned item's `(id, typeId)` exactly matches what Coop asked for; mismatches are silently dropped. If you're testing through a tunnel (`localtunnel`, `ngrok`), make sure the tunnel isn't injecting a browser-warning page in place of your response.
