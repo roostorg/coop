@@ -130,6 +130,8 @@ export default function RuleTestModal(props: {
         return 'https://test.com/image.jpg';
       case 'VIDEO':
         return 'https://test.com/video.mp4';
+      case 'MEDIA':
+        return 'https://test.com/media.jpg';
       case 'STRING':
         return 'Some text...';
       case 'URL':

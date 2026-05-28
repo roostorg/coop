@@ -225,6 +225,13 @@ export function generateFakeScalarFieldValue(fieldType: ScalarType) {
       return `https://url.com/some-path/${Math.floor(100 * Math.random())}`;
     case 'IP_ADDRESS':
       return `192.0.2.${Math.floor(255 * Math.random())}`;
+    case 'MEDIA':
+      return {
+        url: `https://picsum.photos/${Math.floor(300 * Math.random())}/${
+          Math.floor(1000 * Math.random()) % 10
+        }`,
+        mediaType: 'IMAGE' as const,
+      };
   }
 }
 

@@ -7,6 +7,7 @@ import {
   type ContainerType,
   type ContainerTypeRuntimeType,
   type ItemIdentifier,
+  type MediaKind,
   type RelatedItem,
   type ScalarType,
   type ScalarTypeRuntimeType,
@@ -183,6 +184,10 @@ export const fieldTypeHandlers: Handlers = {
     coerce: coerceMediaUrlInput,
     getValues: scalarGetValues,
   },
+  [ScalarTypes.MEDIA]: {
+    coerce: coerceMediaInput,
+    getValues: scalarGetValues,
+  },
   [ScalarTypes.DATETIME]: {
     getValues: scalarGetValues,
     coerce(v) {
@@ -310,6 +315,69 @@ function coerceMediaUrlInput(value: unknown) {
           // and then update the type here/in ScalarTypeRuntimeType.
           { url: value }
         : err;
+}
+
+// Extension → media kind. Lowercase, no leading dot. Conservative — only
+// extensions that map unambiguously to one kind are listed, so e.g. .ogg
+// (audio or video container) stays unresolved.
+const MEDIA_EXTENSION_TO_KIND: Readonly<Record<string, MediaKind>> = {
+  // Image
+  jpg: ScalarTypes.IMAGE,
+  jpeg: ScalarTypes.IMAGE,
+  png: ScalarTypes.IMAGE,
+  gif: ScalarTypes.IMAGE,
+  webp: ScalarTypes.IMAGE,
+  bmp: ScalarTypes.IMAGE,
+  svg: ScalarTypes.IMAGE,
+  avif: ScalarTypes.IMAGE,
+  heic: ScalarTypes.IMAGE,
+  heif: ScalarTypes.IMAGE,
+  tif: ScalarTypes.IMAGE,
+  tiff: ScalarTypes.IMAGE,
+  // Video
+  mp4: ScalarTypes.VIDEO,
+  m4v: ScalarTypes.VIDEO,
+  mov: ScalarTypes.VIDEO,
+  webm: ScalarTypes.VIDEO,
+  mkv: ScalarTypes.VIDEO,
+  avi: ScalarTypes.VIDEO,
+  flv: ScalarTypes.VIDEO,
+  // Audio
+  mp3: ScalarTypes.AUDIO,
+  m4a: ScalarTypes.AUDIO,
+  wav: ScalarTypes.AUDIO,
+  aac: ScalarTypes.AUDIO,
+  flac: ScalarTypes.AUDIO,
+  opus: ScalarTypes.AUDIO,
+  wma: ScalarTypes.AUDIO,
+};
+
+/**
+ * Best-effort kind detection from a URL's pathname extension. Returns `null`
+ * when the URL is unparseable, has no extension, or has an extension we don't
+ * map. Consumers that need stronger guarantees should probe Content-Type.
+ */
+export function detectMediaKindFromUrl(url: string): MediaKind | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+  const dot = pathname.lastIndexOf('.');
+  if (dot < 0 || dot === pathname.length - 1) return null;
+  const ext = pathname.slice(dot + 1).toLowerCase();
+  return MEDIA_EXTENSION_TO_KIND[ext] ?? null;
+}
+
+function coerceMediaInput(value: unknown) {
+  const err = new Error('This field, if given, must hold a valid URL.');
+
+  if (typeof value !== 'string') return err;
+  if (value === '') return null;
+  if (!isValidUrl(value)) return err;
+
+  return { url: value, mediaType: detectMediaKindFromUrl(value) };
 }
 
 function coerceIdLikeInput(value: unknown) {

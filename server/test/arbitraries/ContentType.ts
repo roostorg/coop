@@ -56,6 +56,16 @@ export const IdLikeArbitrary = fc.string();
 
 export const MediaUrlArbitrary = fc.record({ url: fc.string() /* todo */ });
 
+export const MediaArbitrary = fc.record({
+  url: fc.string(),
+  mediaType: fc.constantFrom(
+    ScalarTypes.AUDIO,
+    ScalarTypes.IMAGE,
+    ScalarTypes.VIDEO,
+    null,
+  ),
+});
+
 export const RelatedItemArbitrary = fc.record({
   id: fc.string(),
   typeId: fc.string(),
@@ -89,6 +99,7 @@ export const ScalarValidValuesArbitraries = {
   [ScalarTypes.URL]: fc.webUrl({ validSchemes: ['http', 'https'] }),
   [ScalarTypes.USER_ID]: IdLikeArbitrary,
   [ScalarTypes.VIDEO]: MediaUrlArbitrary,
+  [ScalarTypes.MEDIA]: MediaArbitrary,
   [ScalarTypes.DATETIME]: DateStringArbitrary,
   [ScalarTypes.RELATED_ITEM]: RelatedItemArbitrary,
   [ScalarTypes.POLICY_ID]: IdLikeArbitrary,

@@ -767,6 +767,7 @@ export function getStringFromContent(
       return content.toString();
     case GQLFieldType.Image:
     case GQLFieldType.Video:
+    case GQLFieldType.Media:
       return typeof content === 'object' ? content.url : null;
     case GQLFieldType.Datetime:
       return parseDatetimeToReadableStringInCurrentTimeZone(content);
