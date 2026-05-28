@@ -40,20 +40,13 @@ Custom endpoint and headers for fetching additional item data using the [Partial
 | `partial_items_endpoint`        | `NULL`  | Endpoint for fetching additional item data | Database-only      |
 | `partial_items_request_headers` | `NULL`  | Custom headers for partial items requests  | Database-only      |
 
-#### Proactive Rules
-
-Gates the [Proactive Rules](../user/rules.md#proactive-rules) feature.
-
-| Setting                       | Default | Description                         | Where to configure |
-| :---------------------------- | :------ | :---------------------------------- | :----------------- |
-| `has_reporting_rules_enabled` | `false` | Enables the Proactive Rules feature | Database-only      |
-
 #### Others
 
-| Setting                              | Default | Description                                   | Where to configure |
-| :----------------------------------- | :------ | :-------------------------------------------- | :----------------- |
-| `allow_multiple_policies_per_action` | `false` | Allows actions to reference multiple policies | Database-only      |
-| `user_strike_ttl_days`               | `90`    | Days before user strikes expire               | Database-only      |
+| Setting                              | Default | Description                                                            | Where to configure |
+| :----------------------------------- | :------ | :--------------------------------------------------------------------- | :----------------- |
+| `has_reporting_rules_enabled`        | `false` | Enables Report Rules for proactive actions in response to user reports | Database-only      |
+| `allow_multiple_policies_per_action` | `false` | Job decisions can reference multiple policies                          | Database-only      |
+| `user_strike_ttl_days`               | `90`    | Days before user strikes expire                                        | Database-only      |
 
 ### Review Console
 
