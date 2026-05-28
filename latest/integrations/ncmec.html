@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>NCMEC Reporting - Coop Documentation</title>
+        <title>NCMEC CyberTipline - Coop Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1a437888.js";
+            window.path_to_searchindex_js = "../searchindex-c7169d13.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1393162.js"></script>
+        <script src="../toc-f7125777.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,54 +176,39 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="ncmec-reporting"><a class="header" href="#ncmec-reporting">NCMEC Reporting</a></h1>
+                        <h1 id="ncmec-cybertipline"><a class="header" href="#ncmec-cybertipline">NCMEC CyberTipline</a></h1>
 <p>Coop is integrated with the <a href="https://report.cybertip.org/ispws/documentation">CyberTipline Reporting API</a> from the National Center for Missing and Exploited Children (NCMEC). Coop handles the full lifecycle: detecting known CSAM via hash matching or AI-based rules, routing content to a dedicated NCMEC manual review queue, and submitting CyberTips with the relevant metadata.</p>
-<blockquote class="blockquote-tag blockquote-tag-important">
-<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
-<p>NCMEC reporting requires your organization to be registered with NCMEC as an Electronic Service Provider (ESP). You can register at <a href="https://esp.ncmec.org/registration">esp.ncmec.org/registration</a>.</p>
-</blockquote>
-<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
-<h3 id="cybertip-reporting"><a class="header" href="#cybertip-reporting">CyberTip Reporting</a></h3>
-<p>Before you can review and report content to NCMEC, you must have the following configured:</p>
+<p>For the moderator review workflow, see <a href="../user/child-safety.html">Child Safety Reporting</a>.</p>
+<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
+<p>Before you can review and report content to NCMEC, you must have the following:</p>
 <ol>
-<li><strong>CyberTipline API credentials</strong>: a username and password for the CyberTipline API, obtained from NCMEC.</li>
-</ol>
-<h4 id="two-separate-sets-of-ncmec-credentials"><a class="header" href="#two-separate-sets-of-ncmec-credentials">Two separate sets of NCMEC credentials</a></h4>
-<p>Coop’s NCMEC integration uses two different NCMEC APIs, each requiring its own credentials:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th></th><th><a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a></th><th><a href="https://report.cybertip.org/ispws/documentation/index.html">CyberTipline Reporting API</a></th></tr>
-</thead>
-<tbody>
-<tr><td><strong>Purpose</strong></td><td>Pull known CSAM hashes for matching</td><td>Submit CyberTip reports</td></tr>
-<tr><td><strong>URL</strong></td><td><code>report.cybertip.org/ws-hashsharing</code></td><td><code>report.cybertip.org/ispws</code></td></tr>
-<tr><td><strong>How to configure credentials</strong></td><td>In HMA’s curator UI or via <code>TX_NCMEC_CREDENTIALS</code> env var on the HMA service</td><td>In Coop under <strong>Settings → NCMEC</strong></td></tr>
-</tbody>
-</table>
-</div>
-<p>Both sets of credentials must be obtained from NCMEC by <a href="https://esp.ncmec.org/registration">registering as an ESP</a>. They may be the same account or different accounts depending on how NCMEC provisions access for your organization.</p>
-<ol start="2">
 <li>
-<p><strong>A User Item Type with a <code>creatorId</code> field</strong>: NCMEC-type jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a <code>creatorId</code> field (a <code>RELATED_ITEM</code> field referencing the User Item Type). Coop then aggregates all media associated with that user into a single NCMEC review job.</p>
+<p>NCMEC <a href="https://esp.ncmec.org/registration">Electronic Service Provider (ESP) registration</a> and approval.</p>
 </li>
 <li>
-<p><strong>NCMEC org settings configured</strong>: set via <strong>Settings → NCMEC</strong> (Admin only). See <a href="#ncmec-settings">NCMEC Settings</a> below.</p>
+<p><strong>CyberTipline API credentials</strong>: username and password from NCMEC to submit reports to the <a href="https://report.cybertip.org/ispws/documentation/index.html">CyberTipline API</a>.</p>
 </li>
 <li>
-<p><strong>A dedicated NCMEC manual review queue</strong> (for example, named <code>NCMEC Review</code>): Coop routes NCMEC jobs to the queue specified in your NCMEC settings. Whether decisions made from this queue submit real CyberTips or go to NCMEC’s sandbox is controlled by the <code>NCMEC_ENV</code> environment variable on the Coop server; see <a href="#test-vs-production-submissions">Test vs. Production Submissions</a>.</p>
+<p><strong>“User” ItemType with a <code>creatorId</code> field</strong>: NCMEC jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a <code>creatorId</code> field (a <code>RELATED_ITEM</code> field referencing the User Item Type), then aggregates all media associated with that user into a single NCMEC review job.</p>
 </li>
 <li>
-<p><strong>An Additional Info endpoint</strong> (optional, but strongly recommended): a webhook Coop calls before submitting a CyberTip to fetch enriched metadata: email addresses, screen names, IP capture events, and per-media details. Without this, Coop submits the CyberTip with only the user ID and basic information from the Item data.</p>
+<p><strong>Dedicated NCMEC manual review queue</strong> for Coop to route jobs to. Whether decisions made from this queue submit real CyberTips or go to NCMEC’s sandbox is controlled by the <code>NCMEC_ENV</code> environment variable on the Coop server; see <a href="#test-vs-production-submissions">Test vs. Production Submissions</a>.</p>
 </li>
 <li>
-<p><strong>A Preservation endpoint</strong> (optional): a webhook Coop calls after a successful CyberTip submission so your platform can preserve relevant user data per NCMEC requirements. NOTE: Coop does not come with built-in preservation functionalities.</p>
+<p><strong><a href="#additional-info-endpoint">Additional Info endpoint</a></strong> (optional, but strongly recommended): a webhook Coop calls before submitting a CyberTip to fetch enriched metadata: email addresses, screen names, IP capture events, and per-media details. Without this, Coop submits the CyberTip with only the user ID and basic information from the Item data.</p>
+</li>
+<li>
+<p><strong><a href="#preservation-endpoint">Preservation endpoint</a></strong> (optional): a webhook Coop calls after a successful CyberTip submission so your platform can preserve relevant user data per NCMEC requirements. Note that <strong>Coop does not come with built-in preservation functionalities</strong>; it will simply use the provided endpoint if configured.</p>
+</li>
+<li>
+<p><strong>NCMEC org settings configured</strong> with the above via <strong>Settings</strong> → <strong>NCMEC</strong> in Coop. See <a href="#ncmec-settings">NCMEC Settings</a> below for details.</p>
 </li>
 </ol>
 <h3 id="hash-matching-hma"><a class="header" href="#hash-matching-hma">Hash Matching (HMA)</a></h3>
-<p>If you want to automatically detect known CSAM via hash matching, you need a <strong>separate</strong> set of credentials for NCMEC’s Hash Sharing API (distinct from the CyberTipline credentials above). See <a href="hma.html">Hasher-Matcher-Actioner (HMA)</a> for more detailed setup. Both credential sets are obtained from NCMEC when registering as an ESP, but they authenticate against different APIs and are configured in different places: Hash Sharing credentials go into HMA’s own configuration (its curator UI or the <code>TX_NCMEC_CREDENTIALS</code> env var on the HMA service), while CyberTipline credentials are configured in the Coop settings UI.</p>
-<h2 id="ncmec-settings"><a class="header" href="#ncmec-settings">NCMEC Settings</a></h2>
-<p>Configure NCMEC reporting under <strong>Settings → NCMEC</strong> (<code>/dashboard/settings/ncmec</code>).</p>
+<p>To automatically detect known CSAM via hash matching, you need <strong>Hash Sharing API credentials</strong> from NCMEC. Configure in HMA’s curator UI or via <code>TX_NCMEC_CREDENTIALS</code> env var on the HMA service.</p>
+<p>See the <a href="hma.html">Hasher-Matcher-Actioner (HMA) integration</a> for details.</p>
+<h2 id="ncmec-settings"><a class="header" href="#ncmec-settings">NCMEC settings</a></h2>
+<p>Configure NCMEC reporting under <strong>Settings</strong> → <strong>NCMEC Settings</strong>.</p>
 <p><img src="../images/coop-ncmec-settings.png" alt="Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies"></p>
 <div class="table-wrapper">
 <table>
@@ -246,50 +231,17 @@
 </tbody>
 </table>
 </div>
-<p>Saving credentials, Company Report Name, and Legal URL enables NCMEC reporting for the organization. The remaining fields are not required to submit a CyberTip, but filling them out makes reports significantly more actionable for NCMEC investigators.</p>
-<h2 id="access-and-roles"><a class="header" href="#access-and-roles">Access and Roles</a></h2>
-<p>NCMEC data is sensitive. Coop restricts access based on user roles:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Role</th><th>Can Access NCMEC Jobs</th><th>Can Submit CyberTips</th><th>Can Configure NCMEC Settings</th></tr>
-</thead>
-<tbody>
-<tr><td>Admin</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-<tr><td>Moderator Manager</td><td>Yes</td><td>Yes</td><td>No</td></tr>
-<tr><td>Child Safety Moderator</td><td>Yes</td><td>Yes</td><td>No</td></tr>
-<tr><td>Moderator</td><td>No</td><td>No</td><td>No</td></tr>
-<tr><td>Analyst / Rules Manager</td><td>No</td><td>No</td><td>No</td></tr>
-<tr><td>External Moderator</td><td>No</td><td>No</td><td>No</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="how-content-gets-routed-to-the-ncmec-queue"><a class="header" href="#how-content-gets-routed-to-the-ncmec-queue">How Content Gets Routed to the NCMEC Queue</a></h2>
-<p>There are four ways content can enter the NCMEC review queue:</p>
-<h3 id="1-hash-matching-known-csam-hma"><a class="header" href="#1-hash-matching-known-csam-hma">1. Hash Matching Known CSAM (HMA)</a></h3>
-<p>Coop integrates with Meta’s <a href="https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner">Hasher-Matcher-Actioner (HMA)</a>, which matches uploaded media against NCMEC’s database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.</p>
-<h4 id="how-it-works"><a class="header" href="#how-it-works">How it works</a></h4>
-<p>When media is submitted to your platform, Coop calls HMA to compute a perceptual hash (PDQ for images, MD5 for video) and checks it against the hash banks configured in HMA. If a match is found against an NCMEC-sourced bank, configure a routing rule to assign the content to your NCMEC review queue automatically.</p>
-<p>HMA syncs hashes from NCMEC via NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>, a separate API from the CyberTipline reporting API. The Hash Sharing API gives you access to NCMEC’s database of image and video fingerprints for known CSAM, which HMA pulls on a schedule and indexes locally for fast matching.</p>
-<h4 id="setup"><a class="header" href="#setup">Setup</a></h4>
-<ol>
-<li>Configure NCMEC Hash Sharing API credentials in HMA (via HMA’s curator UI or by setting the <code>TX_NCMEC_CREDENTIALS</code> environment variable on the HMA service).</li>
-<li>In HMA, create a bank sourced from the NCMEC exchange. HMA will begin syncing hashes on its background fetch schedule (every 5 minutes by default).</li>
-<li>In Coop, go to <strong>Settings → Integrations</strong> and add your HMA service URL.</li>
-<li>In Coop’s <strong>Matching Banks</strong>, the NCMEC-sourced bank will be available to reference in rules.</li>
-<li>How you set things up depends on your use case:</li>
-</ol>
-<ul>
-<li>
-<p>If items are submitted by <a href="../api/report.html">user reports</a>: create a routing rule with the NCMEC hash match logic and assign it to the NCMEC queue.</p>
-</li>
-<li>
-<p>If items are submitted via the <a href="../api/items.html">items API</a> and you want Coop to proactively flag matches without a user report: you need an automated enforcement rule with the image hash condition and a “Enqueue to NCMEC” action.</p>
-</li>
-</ul>
-<h3 id="2-novel-csam-detection-content-safety-api"><a class="header" href="#2-novel-csam-detection-content-safety-api">2. Novel CSAM Detection (Content Safety API)</a></h3>
+<p>Saving credentials, Company Report Name, and Legal URL enables NCMEC reporting for the organization. The remaining fields are not <em>required</em> to submit a CyberTip, but <strong>filling them out makes reports significantly more actionable</strong> for NCMEC investigators.</p>
+<h2 id="routing-content-to-ncmec"><a class="header" href="#routing-content-to-ncmec">Routing content to NCMEC</a></h2>
+<p>Content is routed to the NCMEC queue through three automatic detection paths and one manual path. For the manual escalation workflow and an explanation of how jobs are aggregated once content is enqueued, see the <a href="../user/child-safety.html">Child Safety (NCMEC)</a> user docs.</p>
+<h3 id="1-hash-matching-known-csam-hma"><a class="header" href="#1-hash-matching-known-csam-hma">1. Hash-matching known CSAM (HMA)</a></h3>
+<p>Coop integrates with Meta’s <a href="https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner">Hasher-Matcher-Actioner (HMA)</a> to match uploaded media against NCMEC’s database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.</p>
+<p>HMA syncs hashes from NCMEC via NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>, which gives you local access to NCMEC’s database of image and video fingerprints for known CSAM for fast matching.</p>
+<p>See the <a href="hma.html">Hasher-Matcher-Actioner (HMA) integration</a> for details.</p>
+<h3 id="2-novel-csam-detection-content-safety-api"><a class="header" href="#2-novel-csam-detection-content-safety-api">2. Novel CSAM detection (Content Safety API)</a></h3>
 <p>For content that hasn’t been seen before and therefore has no known hash, Coop integrates with Google’s Content Safety API that classifies images for potential CSAM. You can configure a Routing Rule using a Content Safety signal to route high-confidence detections directly to the NCMEC queue, or to a triage queue for human review before escalation.</p>
-<h3 id="3-inbound-report-flagged-as-csam"><a class="header" href="#3-inbound-report-flagged-as-csam">3. Inbound Report Flagged as CSAM</a></h3>
+<p>See <a href="google-content-safety.html">Google Content Safety API</a> for integration details.</p>
+<h3 id="3-inbound-report-flagged-as-csam"><a class="header" href="#3-inbound-report-flagged-as-csam">3. Inbound report flagged as CSAM</a></h3>
 <p>When your platform sends a user report to Coop’s Report API with <code>reportedForReason.csam: true</code>, Coop automatically routes it to the NCMEC queue instead of the default review queue. These reasons should be configured by your reporting flow and match whatever reporting reasons you have defined.</p>
 <pre><code class="language-json">{
   "reporter": { "id": "user123", "typeId": "user-type-id" },
@@ -304,73 +256,9 @@
   }
 }
 </code></pre>
-<h3 id="4-manual-escalation-from-the-review-console"><a class="header" href="#4-manual-escalation-from-the-review-console">4. Manual Escalation from the Review Console</a></h3>
-<p>In any review task, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. This immediately moves the job out of the current queue and into the NCMEC queue.</p>
-<h3 id="what-happens-when-content-is-enqueued-to-ncmec"><a class="header" href="#what-happens-when-content-is-enqueued-to-ncmec">What Happens When Content Is Enqueued to NCMEC</a></h3>
-<p>When any of the three triggers above fire, Coop:</p>
-<ol>
-<li>Identifies the <strong>user</strong> associated with the content (via the <code>creatorId</code> field on the content item, or directly if the item is a User type).</li>
-<li>Checks whether that user already has an open NCMEC job. If one exists, the existing job is updated with the new payload (the new job’s content always takes precedence). No duplicate jobs are created.</li>
-<li>Fetches <strong>all media</strong> ever associated with that user across your platform.</li>
-<li>Creates a single consolidated NCMEC review job containing the user and all their media.</li>
-<li>Routes the job to the configured NCMEC queue (or the org default queue if none is configured).</li>
-</ol>
-<p>This user-centric aggregation means that even if a user has uploaded many pieces of CSAM, a single NCMEC review job is created for the reviewer, and a single CyberTip is submitted to NCMEC rather than separate reports per piece of content.</p>
-<h2 id="reviewing-an-ncmec-job"><a class="header" href="#reviewing-an-ncmec-job">Reviewing an NCMEC Job</a></h2>
-<p>The NCMEC job UI is distinct from standard review jobs. It is designed around the user and all of their associated media.</p>
-<p><img src="../images/coop-ncmec-job.png" alt="Coop’s NCMEC Reporting job view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors"></p>
-<h3 id="incident-type"><a class="header" href="#incident-type">Incident Type</a></h3>
-<p>Select the applicable incident type from the NCMEC CyberTipline’s defined categories:</p>
-<ul>
-<li>Child Pornography (possession, manufacture, and distribution)</li>
-<li>Child Sex Trafficking</li>
-<li>Child Sex Tourism</li>
-<li>Child Sexual Molestation</li>
-<li>Misleading Domain Name</li>
-<li>Misleading Words or Digital Images on the Internet</li>
-<li>Online Enticement of Children for Sexual Acts</li>
-<li>Unsolicited Obscene Material Sent to a Child</li>
-</ul>
-<h3 id="industry-classification"><a class="header" href="#industry-classification">Industry Classification</a></h3>
-<p>Apply an <a href="https://technologycoalition.org/wp-content/uploads/Tech_Coalition_Industry_Classification_System.pdf">ESP-designated industry classification</a> to each media item being reported:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Classification</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><strong>A1</strong></td><td>Prepubescent minor, explicit sexual activity</td></tr>
-<tr><td><strong>A2</strong></td><td>Prepubescent minor, non-explicit nudity or sexual posing</td></tr>
-<tr><td><strong>B1</strong></td><td>Pubescent minor, explicit sexual activity</td></tr>
-<tr><td><strong>B2</strong></td><td>Pubescent minor, non-explicit nudity or sexual posing</td></tr>
-</tbody>
-</table>
-</div>
-<p>Keyboard shortcuts are available in the review UI to speed up classification.</p>
-<h3 id="file-annotations-labels"><a class="header" href="#file-annotations-labels">File Annotations (Labels)</a></h3>
-<p>Apply one or more labels to individual media items to provide NCMEC with additional context:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Label</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>animeDrawingVirtualHentai</code></td><td>The file depicts anime, cartoon, virtual, or hentai content.</td></tr>
-<tr><td><code>potentialMeme</code></td><td>The file appears to be shared out of mimicry or other seemingly non-malicious intent.</td></tr>
-<tr><td><code>viral</code></td><td>The file is circulating rapidly from user to user.</td></tr>
-<tr><td><code>possibleSelfProduction</code></td><td>The file is believed to be self-produced.</td></tr>
-<tr><td><code>physicalHarm</code></td><td>The file depicts an intentional act of causing physical injury or trauma.</td></tr>
-<tr><td><code>violenceGore</code></td><td>The file depicts graphic violence or brutality.</td></tr>
-<tr><td><code>bestiality</code></td><td>The file involves an animal.</td></tr>
-<tr><td><code>liveStreaming</code></td><td>The content was streamed live at the time it was uploaded.</td></tr>
-<tr><td><code>infant</code></td><td>The file depicts an infant.</td></tr>
-<tr><td><code>generativeAi</code></td><td>The file is believed to be generated by AI.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="submitting-the-cybertip"><a class="header" href="#submitting-the-cybertip">Submitting the CyberTip</a></h3>
-<p>Once the reviewer has classified all media and selected the incident type, they click <strong>Submit to NCMEC</strong>. Coop then builds and submits the CyberTip automatically. See <a href="#cybertip-submission-flow">CyberTip Submission Flow</a> below.</p>
-<h2 id="cybertip-submission-flow"><a class="header" href="#cybertip-submission-flow">CyberTip Submission Flow</a></h2>
+<h3 id="4-manual-escalation"><a class="header" href="#4-manual-escalation">4. Manual escalation</a></h3>
+<p>In any review job, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. This immediately moves the job to the NCMEC queue.</p>
+<h2 id="cybertip-submission-flow"><a class="header" href="#cybertip-submission-flow">CyberTip submission flow</a></h2>
 <p>When a reviewer submits a CyberTip, Coop performs the following steps:</p>
 <ol>
 <li>
@@ -437,29 +325,21 @@
 <p><strong>Send a preservation request</strong>: If your org has a <a href="#preservation-endpoint">Preservation endpoint</a> configured, Coop calls it with the report ID so you can preserve relevant user data.</p>
 </li>
 </ol>
-<h3 id="test-vs-production-submissions"><a class="header" href="#test-vs-production-submissions">Test vs. Production Submissions</a></h3>
-<p>Coop routes every CyberTip submission to one of two NCMEC endpoints:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Endpoint</th><th>URL</th><th>What happens to reports</th></tr>
-</thead>
-<tbody>
-<tr><td><strong>Test (default)</strong></td><td><code>exttest.cybertip.org</code></td><td>Discarded by NCMEC. Used for integration testing.</td></tr>
-<tr><td><strong>Production</strong></td><td><code>report.cybertip.org</code></td><td>Real reports routed to law enforcement.</td></tr>
-</tbody>
-</table>
-</div>
-<p>The endpoint is selected by the <code>NCMEC_ENV</code> environment variable on the Coop server:</p>
+<h3 id="test-vs-production-submissions"><a class="header" href="#test-vs-production-submissions">Test vs. production submissions</a></h3>
+<p>Coop routes every CyberTip submission to one of two NCMEC endpoints determined by the <code>NCMEC_ENV</code> environment variable on the Coop server:</p>
 <ul>
-<li><strong>Unset, or any value other than <code>production</code></strong> → test endpoint. This is the safe default.</li>
-<li><strong><code>NCMEC_ENV=production</code></strong> → production endpoint.</li>
+<li>
+<p><strong>Unset, or any value other than <code>production</code></strong>: NCMEC test endpoint where reports are discarded by NCMEC. Safe default used for integration testing.</p>
+</li>
+<li>
+<p><strong><code>NCMEC_ENV=production</code></strong>: NCMEC production endpoint, where reports are investigated and i.e. routed to law enforcement.</p>
+</li>
 </ul>
-<p>Operators are responsible for ensuring <code>NCMEC_ENV</code> matches the credentials they have configured in <strong>Settings → NCMEC</strong>. NCMEC issues separate test and production credentials, and submitting from an unapproved integration to the production endpoint can result in your credentials being revoked.</p>
+<p>Operators are responsible for ensuring <code>NCMEC_ENV</code> matches the credentials they have configured in <strong>Settings</strong> → <strong>NCMEC</strong>. NCMEC issues separate test and production credentials, and submitting from an unapproved integration to the production endpoint can result in your credentials being revoked.</p>
 <p>Reports submitted against the test endpoint are stored in Coop’s database with an <code>is_test</code> flag and are only visible in the NCMEC Reports dashboard to the reviewer who submitted them. Production reports are visible to anyone in the org with the <code>VIEW_CHILD_SAFETY_DATA</code> permission.</p>
 <h2 id="webhooks"><a class="header" href="#webhooks">Webhooks</a></h2>
-<h3 id="additional-info-endpoint"><a class="header" href="#additional-info-endpoint">Additional Info Endpoint</a></h3>
-<p>Coop calls this webhook <strong>before</strong> building a CyberTip to retrieve enriched metadata for the reported user and their media. This endpoint is optional but <strong>strongly recommended</strong> since without it, Coop submits the CyberTip with only the user’s ID and whatever data was already sent to Coop via your Item API.</p>
+<h3 id="additional-info-endpoint"><a class="header" href="#additional-info-endpoint">Additional Info endpoint</a></h3>
+<p>Coop calls this webhook <strong>before</strong> building a CyberTip to retrieve enriched metadata for the reported user and their media. This endpoint is optional but <strong>strongly recommended</strong> since without it, Coop submits the CyberTip with only the user’s ID and whatever data was already sent to Coop via the Items API.</p>
 <p>Coop signs every request with your org’s signing key. Verify the signature before processing.</p>
 <h4 id="request"><a class="header" href="#request">Request</a></h4>
 <pre><code class="language-json">{
@@ -530,7 +410,7 @@
   "additionalInfo": "string"
 }
 </code></pre>
-<h4 id="response-fields"><a class="header" href="#response-fields">Response Fields</a></h4>
+<h4 id="response-fields"><a class="header" href="#response-fields">Response fields</a></h4>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -564,15 +444,10 @@
 <p>If the response does not include an entry for every user and media item in the request, Coop will throw an error and not submit the CyberTip. Your endpoint must return a response entry for each requested user and media item.
 If all media items have <code>missing: true</code>, Coop will not file the CyberTip. The job will be marked as a permanent error and will not be retried.</p>
 </blockquote>
-<h3 id="preservation-endpoint"><a class="header" href="#preservation-endpoint">Preservation Endpoint</a></h3>
-<p>Platforms that submit CyberTips may have data preservation obligations under laws like <a href="https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title18-section2258A">18 U.S.C. §
-2258A</a> and the <a href="https://www.missingkids.org/blog/2024/first-line-of-defense-guidelines-to-help-online-platforms-detect-sexually-exploited-kids">REPORT Act
-(2024)</a>, which extended content retention
-requirements to one year. Talk to your legal team to understand your organization’s specific obligations.</p>
-<p>Coop calls a preservation endpoint you build and host immediately after a CyberTip is successfully submitted. Your endpoint should trigger whatever internal workflow
-handles data retention, for example flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the
-media included in the CyberTip, and the NCMEC-assigned report ID so you have everything you need to identify what to retain.
-Coop signs every request with your org’s signing key. Verify the signature before processing.</p>
+<h3 id="preservation-endpoint"><a class="header" href="#preservation-endpoint">Preservation endpoint</a></h3>
+<p>Platforms that submit CyberTips may have data preservation obligations under laws like <a href="https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title18-section2258A">18 U.S.C. § 2258A</a> and the <a href="https://www.missingkids.org/blog/2024/first-line-of-defense-guidelines-to-help-online-platforms-detect-sexually-exploited-kids">REPORT Act (2024)</a>, which extended content retention requirements to one year. Talk to your legal team to understand your organization’s specific obligations.</p>
+<p>Coop calls a preservation endpoint you build and host immediately after a CyberTip is successfully submitted. Your endpoint should trigger whatever internal workflow handles data retention, for example flagging the account for legal hold, snapshotting relevant records, or notifying your legal team. Coop passes the reported user, the media included in the CyberTip, and the NCMEC-assigned report ID so you have everything you need to identify what to retain.</p>
+<p>Coop signs every request with your org’s signing key. Verify the signature before processing.</p>
 <h4 id="request-1"><a class="header" href="#request-1">Request</a></h4>
 <pre><code class="language-json">{
   "user": { "id": "string", "typeId": "string" },
@@ -593,24 +468,13 @@ Coop signs every request with your org’s signing key. Verify the signature bef
 </table>
 </div>
 <p>Coop only checks for a successful HTTP status code. The response body is ignored. This webhook is only called for production (non-test) CyberTip submissions.</p>
-<h2 id="retry-behavior"><a class="header" href="#retry-behavior">Retry Behavior</a></h2>
+<h2 id="retry-behavior"><a class="header" href="#retry-behavior">Retry behavior</a></h2>
 <p>If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:</p>
 <ul>
 <li>Have not already been successfully submitted (no matching report in the database)</li>
 <li>Have fewer than 10 prior retry attempts</li>
 <li>Are not marked as a permanent error (e.g. all media missing)</li>
 <li>Were decided within the past 30 days</li>
-</ul>
-<h2 id="viewing-submitted-reports"><a class="header" href="#viewing-submitted-reports">Viewing Submitted Reports</a></h2>
-<p>After a CyberTip is submitted, the report is stored in Coop and accessible from the NCMEC Reports dashboard. The report record includes:</p>
-<ul>
-<li>The NCMEC-assigned report ID</li>
-<li>The reported user</li>
-<li>All media included in the report</li>
-<li>The full CyberTip XML</li>
-<li>Any supplemental files uploaded</li>
-<li>Any conversation thread CSVs uploaded</li>
-<li>Whether the submission was a test or production report</li>
 </ul>
 
                     </main>

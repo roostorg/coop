@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1a437888.js";
+            window.path_to_searchindex_js = "../searchindex-c7169d13.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1393162.js"></script>
+        <script src="../toc-f7125777.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -179,47 +179,52 @@
                         <h1 id="hasher-matcher-actioner-hma"><a class="header" href="#hasher-matcher-actioner-hma">Hasher-Matcher-Actioner (HMA)</a></h1>
 <p>Coop integrates with Meta’s open-source <a href="https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner">Hasher-Matcher-Actioner (HMA)</a> to provide perceptual hash matching for known CSAM, non-consensual intimate imagery (NCII), terrorist and violent extremist content (TVEC), and any custom hash banks you maintain.</p>
 <p>Hash matching works by computing a perceptual fingerprint (PDQ for images, MD5 for video) of submitted media and checking it against databases of known harmful content. Unlike AI classifiers, a hash match against a verified database like NCMEC’s is a strong, reliable signal; known content will match reliably even if it’s been slightly modified.</p>
-<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
-<ul>
-<li>A running HMA instance accessible from your Coop server</li>
-<li>API credentials from any hash databases you want to use (e.g. NCMEC’s Hash Sharing API, StopNCII)</li>
-</ul>
-<h2 id="connecting-hma-to-coop"><a class="header" href="#connecting-hma-to-coop">Connecting HMA to Coop</a></h2>
+<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
 <ol>
-<li>In Coop, go to <strong>Settings → Integrations</strong>.</li>
-<li>Enter your HMA service URL.</li>
+<li>
+<p><strong>A running HMA instance</strong> accessible from your Coop server</p>
+</li>
+<li>
+<p><strong>API credentials for any third-party hash banks</strong> you want to use; for example, NCMEC provides Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank.</p>
+</li>
+<li>
+<p><strong>Your own hash banks</strong> (optional), i.e. if you have your own collection of known violations.</p>
+</li>
+<li>
+<p>HMA service URL configured in Coop under <strong>Settings</strong> → <strong>Integrations</strong>.</p>
+</li>
 </ol>
 <p>Once connected, HMA signals will be available in Coop’s signal library for use in routing rules and proactive rules.</p>
 <h2 id="managing-hash-banks"><a class="header" href="#managing-hash-banks">Managing Hash Banks</a></h2>
-<p><img src="../images/coop-hma.png" alt="Coop matching banks page showing a test hash bank created in the Coop UI"></p>
 <p>Hash banks are collections of known-harmful media fingerprints that you can reference in your rules. You can create and manage banks through the Coop UI, or sync them from external sources like NCMEC.</p>
+<p><img src="../images/coop-hma.png" alt="Matching banks page showing a test hash bank created in the Coop UI"></p>
 <h3 id="creating-banks-through-coop"><a class="header" href="#creating-banks-through-coop">Creating banks through Coop</a></h3>
-<p>The recommended approach is to create banks through <strong>Settings → Matching Banks</strong> in Coop. This registers the bank in both HMA and Coop’s database automatically, making it immediately available in the rule builder.</p>
-<p>Banks created through Coop are named in HMA using the convention <code>COOP_&lt;ORGID&gt;_&lt;NORMALIZED_NAME&gt;</code>, for example a bank named “Test Bank” for org <code>e7c89ce7729</code> becomes <code>COOP_E7C89CE7729_TEST_BANK</code> in HMA. This is what you will see in the HMA UI.</p>
+<p>The recommended approach is to create banks through <strong>Settings</strong> → <strong>Matching Banks</strong> in Coop. This registers the bank in both HMA and Coop’s database automatically, making it immediately available in the rule builder.</p>
+<p>Banks created through Coop are named in HMA using the convention <code>COOP_&lt;ORGID&gt;_&lt;NORMALIZED_NAME&gt;</code>, for example a bank named “Test Bank” for org <code>abcdef12345</code> becomes <code>COOP_ABCDEF12345_TEST_BANK</code> in HMA. This is what you will see in the HMA UI.</p>
 <h3 id="banks-created-directly-in-hma"><a class="header" href="#banks-created-directly-in-hma">Banks created directly in HMA</a></h3>
 <p>Banks created directly in HMA (via the HMA UI or seed scripts) will not appear in Coop’s Matching Banks UI unless they are also registered in the <code>hash_banks</code> table. If you need to use an HMA-native bank in Coop rules, create a matching bank in the Coop UI first.</p>
 <p><img src="../images/hma-ui-coop-banks.png" alt="HMA UI showing the bank created in Coop, along with a modal that appears if you manually upload media to the matching bank"></p>
 <p>You can use the HMA UI to manually add content to any bank for local testing, regardless of how the bank was created.</p>
 <h2 id="ncmec-hash-sharing"><a class="header" href="#ncmec-hash-sharing">NCMEC Hash Sharing</a></h2>
-<p>To match against NCMEC’s database of known CSAM hashes, you need credentials for NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>, which is separate from the CyberTipline reporting API used to submit CyberTips.</p>
-<blockquote class="blockquote-tag blockquote-tag-important">
-<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
-<p>Hash Sharing API credentials are configured in HMA, not in Coop. Configure them via HMA’s curator UI or by setting the <code>TX_NCMEC_CREDENTIALS</code> environment variable on the HMA service.</p>
-</blockquote>
-<h3 id="setup"><a class="header" href="#setup">Setup</a></h3>
-<ol>
-<li>Obtain Hash Sharing API credentials from NCMEC by <a href="https://esp.ncmec.org/registration">registering as an ESP</a>.</li>
-<li>Configure the credentials in HMA (via HMA’s curator UI or <code>TX_NCMEC_CREDENTIALS</code> env var).</li>
-<li>In HMA, create a bank sourced from the NCMEC exchange. HMA will begin syncing hashes on its background fetch schedule (every 5 minutes by default).</li>
-<li>The NCMEC-sourced bank will appear in Coop’s <strong>Matching Banks</strong> once synced.</li>
-</ol>
-<p>For details on routing NCMEC hash matches into a CSAM review workflow, see <a href="ncmec.html">NCMEC Reporting</a>.</p>
+<p>For Coop to match against NCMEC’s database of known CSAM hashes, you need credentials for NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>.</p>
+<p>In HMA, create a bank sourced from the NCMEC exchange. HMA will begin syncing hashes on its background fetch schedule (every 5 minutes by default). The NCMEC-sourced bank will appear in Coop’s <strong>Matching Banks</strong> once synced.</p>
+<p>See the <a href="ncmec.html">NCMEC CyberTipline integration</a> for details.</p>
 <h2 id="using-hma-signals-in-rules"><a class="header" href="#using-hma-signals-in-rules">Using HMA Signals in Rules</a></h2>
 <p>Once HMA is connected and hash banks are configured, the image hash signal is available in both routing rules and proactive rules.</p>
-<p><strong>If items are submitted by <a href="../api/report.html">user reports</a></strong>: no enforcement rule is needed. Reported items are automatically enqueued for review, and a routing rule with the image hash condition will direct matches to the right queue.</p>
-<p><img src="../images/hma-routing-rule.png" alt="A routing rule using HMA hash matching"></p>
-<p><strong>If items are submitted via the <a href="../api/items.html">items API</a></strong> and you want Coop to proactively flag matches without a user report: create a proactive rule with the image hash condition and an action, typically “Send to Manual Review” or “Enqueue to NCMEC.” Optionally pair it with a routing rule to send matches to a specific queue; otherwise they go to the default queue.</p>
-<p>See <a href="../user/rules.html">Automated Routing &amp; Enforcement</a> for more on building rules.</p>
+<ul>
+<li>
+<p><strong>To route content from <a href="../api/report.html">user reports</a></strong>, create a <a href="../user/rules.html#routing-rules">routing rule</a> with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.</p>
+<p><img src="../images/hma-routing-rule.png" alt="Routing rule using HMA hash matching"></p>
+</li>
+<li>
+<p><strong>For content submitted via the <a href="../api/items.html">items API</a></strong>, if you want Coop to proactively hash and flag matches without a user report, create a <a href="../user/rules.html#proactive-rules">proactive rule</a> with the image hash condition and “Enqueue to NCMEC” action.</p>
+</li>
+</ul>
+<h2 id="see-also"><a class="header" href="#see-also">See also</a></h2>
+<ul>
+<li><a href="../user/rules.html">Automated Routing &amp; Enforcement</a> for more on building rules</li>
+<li><a href="ncmec.html">NCMEC CyberTipline</a> for details on configuring your NCMEC integration</li>
+</ul>
 
                     </main>
 
