@@ -105,3 +105,88 @@ export async function waitForItemInClickHouse(
     { timeoutMs: opts.timeoutMs },
   );
 }
+
+/**
+ * Polls `analytics.ACTION_EXECUTIONS` for a row where the given action fired on
+ * the given item submission. Returned by RuleEngine when a rule's conditions
+ * match and the rule has actions attached; the row is written via
+ * ActionPublisher after the worker finishes processing the submission.
+ *
+ * Tests use this to assert "the rule fired for this item" without coupling to
+ * the rule's internals — we only care that the resulting action execution
+ * landed in the warehouse.
+ */
+type ActionExecutionRow = {
+  action_id: string;
+  item_id: string | null;
+  item_type_id: string | null;
+  rules: string;
+};
+
+export async function waitForActionExecution(
+  deps: Pick<Dependencies, 'DataWarehouse' | 'Tracer'>,
+  opts: {
+    orgId: string;
+    actionId: string;
+    itemIdentifier: ItemIdentifier;
+    timeoutMs?: number;
+  },
+): Promise<ActionExecutionRow> {
+  const { orgId, actionId, itemIdentifier } = opts;
+  return waitFor(
+    `action ${actionId} execution for item ${itemIdentifier.id} in ClickHouse ACTION_EXECUTIONS`,
+    async () => {
+      const rows = (await deps.DataWarehouse.query(
+        `SELECT action_id, item_id, item_type_id, rules
+           FROM analytics.ACTION_EXECUTIONS
+          WHERE org_id = ?
+            AND action_id = ?
+            AND item_id = ?
+            AND item_type_id = ?
+          LIMIT 1`,
+        deps.Tracer,
+        [orgId, actionId, itemIdentifier.id, itemIdentifier.typeId],
+      )) as readonly ActionExecutionRow[];
+      return rows.length > 0 ? rows[0] : null;
+    },
+    { timeoutMs: opts.timeoutMs },
+  );
+}
+
+/**
+ * Asserts the *absence* of an action execution by polling for a fixed window
+ * and confirming no row appeared. Tests use this to verify an updated rule's
+ * old condition is no longer firing — proving a negative requires waiting long
+ * enough that the worker would have written a row if it were going to.
+ *
+ * `windowMs` should comfortably exceed the worker's typical end-to-end latency
+ * for a single submission (a few hundred ms) to keep false positives low.
+ */
+export async function assertNoActionExecution(
+  deps: Pick<Dependencies, 'DataWarehouse' | 'Tracer'>,
+  opts: {
+    orgId: string;
+    actionId: string;
+    itemIdentifier: ItemIdentifier;
+    windowMs?: number;
+  },
+) {
+  const { orgId, actionId, itemIdentifier, windowMs = 3_000 } = opts;
+  await new Promise((r) => setTimeout(r, windowMs));
+  const rows = await deps.DataWarehouse.query(
+    `SELECT action_id, item_id
+       FROM analytics.ACTION_EXECUTIONS
+      WHERE org_id = ?
+        AND action_id = ?
+        AND item_id = ?
+        AND item_type_id = ?
+      LIMIT 1`,
+    deps.Tracer,
+    [orgId, actionId, itemIdentifier.id, itemIdentifier.typeId],
+  );
+  if (rows.length > 0) {
+    throw new Error(
+      `Expected no action execution for action ${actionId} on item ${itemIdentifier.id}, but found one in ACTION_EXECUTIONS`,
+    );
+  }
+}
