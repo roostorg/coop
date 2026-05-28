@@ -2263,6 +2263,16 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLMissingRequiredPolicyForDecisionError = GQLError & {
+  readonly __typename: 'MissingRequiredPolicyForDecisionError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLModelCard = {
   readonly __typename: 'ModelCard';
   readonly modelName: Scalars['String']['output'];
@@ -4421,6 +4431,7 @@ export type GQLSubmitDecisionInput = {
 
 export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
+  | GQLMissingRequiredPolicyForDecisionError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
   | GQLSubmitDecisionSuccessResponse
@@ -15097,6 +15108,7 @@ export type GQLSubmitManualReviewDecisionMutation = {
         readonly status: number;
         readonly type: ReadonlyArray<string>;
       }
+    | { readonly __typename: 'MissingRequiredPolicyForDecisionError' }
     | {
         readonly __typename: 'NoJobWithIdInQueueError';
         readonly title: string;

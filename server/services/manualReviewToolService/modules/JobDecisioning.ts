@@ -21,6 +21,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
 
@@ -141,6 +142,7 @@ export default class JobDecisioning {
     readonly onRecordDecision: (params: OnRecordDecisionInput) => Promise<void>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly manualReviewToolSettings: ManualReviewToolSettings,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -199,17 +201,18 @@ export default class JobDecisioning {
 
       // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
       // disables submit when this is on, but API/script callers can bypass that.
-      const settingsRow = await this.pgQuery
-        .selectFrom('manual_review_tool.manual_review_tool_settings')
-        .select(['requires_policy_for_decisions'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      if (settingsRow?.requires_policy_for_decisions) {
-        const customActionDecisionMissingPolicy = decisions.find(
-          (decision) =>
-            decision.type === 'CUSTOM_ACTION' && decision.policies.length === 0,
-        );
-        if (customActionDecisionMissingPolicy != null) {
+      // Only check the flag when there's actually a policy-less decision to
+      // enforce against, so the common path avoids the extra DB hit.
+      const hasEmptyPolicyCustomAction = decisions.some(
+        (decision) =>
+          decision.type === 'CUSTOM_ACTION' && decision.policies.length === 0,
+      );
+      if (hasEmptyPolicyCustomAction) {
+        const requiresPolicy =
+          await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
+            orgId,
+          );
+        if (requiresPolicy) {
           throw makeMissingRequiredPolicyForDecisionError({
             detail:
               'This org requires every decision to include at least one policy.',
