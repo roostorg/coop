@@ -2330,6 +2330,16 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLMissingRequiredDecisionReasonError = GQLError & {
+  readonly __typename?: 'MissingRequiredDecisionReasonError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLModelCard = {
   readonly __typename?: 'ModelCard';
   readonly modelName: Scalars['String']['output'];
@@ -4437,6 +4447,7 @@ export type GQLSubmitDecisionInput = {
 
 export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
+  | GQLMissingRequiredDecisionReasonError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
   | GQLSubmitDecisionSuccessResponse
@@ -5436,6 +5447,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
   SignalOutputType: GQLEnumSignalOutputType | GQLScalarSignalOutputType;
   SubmitDecisionResponse:
     | GQLJobHasAlreadyBeenSubmittedError
+    | GQLMissingRequiredDecisionReasonError
     | GQLNoJobWithIdInQueueError
     | GQLRecordingJobDecisionFailedError
     | GQLSubmitDecisionSuccessResponse
@@ -5507,6 +5519,7 @@ export type GQLResolversInterfaceTypes<
     | GQLLoginUserDoesNotExistError
     | GQLManualReviewQueueNameExistsError
     | GQLMatchingBankNameExistsError
+    | GQLMissingRequiredDecisionReasonError
     | GQLNoJobWithIdInQueueError
     | GQLNotFoundError
     | GQLOrgWithEmailExistsError
@@ -5966,6 +5979,7 @@ export type GQLResolversTypes = {
     }
   >;
   MetricsTimeDivisionOptions: GQLMetricsTimeDivisionOptions;
+  MissingRequiredDecisionReasonError: ResolverTypeWrapper<GQLMissingRequiredDecisionReasonError>;
   ModelCard: ResolverTypeWrapper<GQLModelCard>;
   ModelCardField: ResolverTypeWrapper<GQLModelCardField>;
   ModelCardSection: ResolverTypeWrapper<GQLModelCardSection>;
@@ -6709,6 +6723,7 @@ export type GQLResolversParentTypes = {
   MessageWithIpAddress: Omit<GQLMessageWithIpAddress, 'message'> & {
     message: GQLResolversParentTypes['ContentItem'];
   };
+  MissingRequiredDecisionReasonError: GQLMissingRequiredDecisionReasonError;
   ModelCard: GQLModelCard;
   ModelCardField: GQLModelCardField;
   ModelCardSection: GQLModelCardSection;
@@ -8751,6 +8766,7 @@ export type GQLErrorResolvers<
     | 'LoginUserDoesNotExistError'
     | 'ManualReviewQueueNameExistsError'
     | 'MatchingBankNameExistsError'
+    | 'MissingRequiredDecisionReasonError'
     | 'NoJobWithIdInQueueError'
     | 'NotFoundError'
     | 'OrgWithEmailExistsError'
@@ -10346,6 +10362,37 @@ export type GQLMessageWithIpAddressResolvers<
 > = {
   ipAddress?: Resolver<GQLResolversTypes['IpAddress'], ParentType, ContextType>;
   message?: Resolver<GQLResolversTypes['ContentItem'], ParentType, ContextType>;
+};
+
+export type GQLMissingRequiredDecisionReasonErrorResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['MissingRequiredDecisionReasonError'] =
+    GQLResolversParentTypes['MissingRequiredDecisionReasonError'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type GQLModelCardResolvers<
@@ -13583,6 +13630,7 @@ export type GQLSubmitDecisionResponseResolvers<
 > = {
   __resolveType: TypeResolveFn<
     | 'JobHasAlreadyBeenSubmittedError'
+    | 'MissingRequiredDecisionReasonError'
     | 'NoJobWithIdInQueueError'
     | 'RecordingJobDecisionFailedError'
     | 'SubmitDecisionSuccessResponse'
@@ -14767,6 +14815,7 @@ export type GQLResolvers<ContextType = Context> = {
   MatchingBanks?: GQLMatchingBanksResolvers<ContextType>;
   MatchingValues?: GQLMatchingValuesResolvers<ContextType>;
   MessageWithIpAddress?: GQLMessageWithIpAddressResolvers<ContextType>;
+  MissingRequiredDecisionReasonError?: GQLMissingRequiredDecisionReasonErrorResolvers<ContextType>;
   ModelCard?: GQLModelCardResolvers<ContextType>;
   ModelCardField?: GQLModelCardFieldResolvers<ContextType>;
   ModelCardSection?: GQLModelCardSectionResolvers<ContextType>;

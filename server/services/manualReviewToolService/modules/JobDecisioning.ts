@@ -10,6 +10,7 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
+import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
@@ -21,6 +22,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
 
@@ -141,6 +143,7 @@ export default class JobDecisioning {
     readonly onRecordDecision: (params: OnRecordDecisionInput) => Promise<void>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly manualReviewToolSettings: ManualReviewToolSettings,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -195,6 +198,23 @@ export default class JobDecisioning {
       // We only throw if there aren't any valid actions.
       if (validActions.length === 0) {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
+      }
+    }
+
+    // Enforce `mrt_requires_decision_reason` server-side. The MRT UI already
+    // disables submit when this is on, but API/script callers can bypass that.
+    // Skip the AUTOMATIC_CLOSE path (no moderator, no reason to require) and
+    // only read the flag when there's actually a missing reason to enforce
+    // against, so the common path does no extra DB work. Matches the client
+    // gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
+    if (decisionComponents != null && !isNonEmptyString(decisionReason)) {
+      const requiresReason =
+        await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
+      if (requiresReason) {
+        throw makeMissingRequiredDecisionReasonError({
+          detail: 'This org requires every decision to include a reason.',
+          shouldErrorSpan: true,
+        });
       }
     }
 
@@ -593,7 +613,8 @@ export type SubmitDecisionErrorType =
   | 'JobHasAlreadyBeenSubmittedError'
   | 'SubmittedJobActionNotFoundError'
   | 'NoJobWithIdInQueueError'
-  | 'RecordingJobDecisionFailedError';
+  | 'RecordingJobDecisionFailedError'
+  | 'MissingRequiredDecisionReasonError';
 
 export const makeJobHasAlreadyBeenSubmittedError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -628,5 +649,17 @@ export const makeNoJobWithIdInQueueError = (data: ErrorInstanceData) =>
     type: [ErrorType.NotFound],
     title: String(data.detail),
     name: 'NoJobWithIdInQueueError',
+    ...data,
+  });
+
+export const makeMissingRequiredDecisionReasonError = (
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title:
+      'This org requires every decision to include a reason. Add a reason and resubmit.',
+    name: 'MissingRequiredDecisionReasonError',
     ...data,
   });

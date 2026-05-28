@@ -340,12 +340,22 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
+  type MissingRequiredDecisionReasonError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
   union SubmitDecisionResponse =
     | SubmitDecisionSuccessResponse
     | JobHasAlreadyBeenSubmittedError
     | SubmittedJobActionNotFoundError
     | NoJobWithIdInQueueError
     | RecordingJobDecisionFailedError
+    | MissingRequiredDecisionReasonError
 
   union DequeueManualReviewJobResponse = DequeueManualReviewJobSuccessResponse
 
@@ -2245,7 +2255,8 @@ const Mutation: GQLMutationResolvers = {
         isCoopErrorOfType(e, 'JobHasAlreadyBeenSubmittedError') ||
         isCoopErrorOfType(e, 'SubmittedJobActionNotFoundError') ||
         isCoopErrorOfType(e, 'NoJobWithIdInQueueError') ||
-        isCoopErrorOfType(e, 'RecordingJobDecisionFailedError')
+        isCoopErrorOfType(e, 'RecordingJobDecisionFailedError') ||
+        isCoopErrorOfType(e, 'MissingRequiredDecisionReasonError')
       ) {
         return gqlErrorResult(e);
       }
