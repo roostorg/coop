@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-5dbf5497.js";
+            window.path_to_searchindex_js = "../searchindex-1a437888.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-b1393162.js"></script>
@@ -179,6 +179,110 @@
                         <h1 id="deployment"><a class="header" href="#deployment">Deployment</a></h1>
 <p>For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available on the <a href="https://github.com/roostorg/coop/tree/0.1/.devops"><code>0.1</code> branch</a>. That infrastructure code may have drifted from the current application architecture and is no longer maintained, but can serve as a reference for your own deployment.</p>
 <p><strong>IMPORTANT</strong> When you run migrations, we create a sample org which contains users with default passwords. Make sure you clean up in a production environment.</p>
+<h2 id="settings"><a class="header" href="#settings">Settings</a></h2>
+<p>Settings live across several database tables. Many are not yet exposed in the front-end UI and can only be configured directly in the database.</p>
+<h3 id="organization"><a class="header" href="#organization">Organization</a></h3>
+<p>The <code>public.org_settings</code> table is the main catch-all for org-level feature flags and integration configuration. It controls which major features are enabled (appeals, reporting rules, multi-policy actions), integration points (SSO/SAML, the Partial Items API, appeal callbacks), and behavioral settings like how long user strikes remain active.</p>
+<h4 id="appeals"><a class="header" href="#appeals">Appeals</a></h4>
+<p>Settings for <a href="../user/appeals.html">Appeals</a> using the <a href="../api/appeals.html">Appeals API</a>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Setting</th><th style="text-align: left">Default</th><th style="text-align: left">Description</th><th style="text-align: left">Where to configure</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>has_appeals_enabled</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Enables the appeals feature for the org</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>appeal_callback_url</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">Webhook URL called when an appeal is submitted</td><td style="text-align: left"><strong>Settings</strong> → <strong>Appeal Settings</strong></td></tr>
+<tr><td style="text-align: left"><code>appeal_callback_headers</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">Custom headers sent with appeal webhook requests</td><td style="text-align: left"><strong>Settings</strong> → <strong>Appeal Settings</strong></td></tr>
+<tr><td style="text-align: left"><code>appeal_callback_body</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">Custom body template for appeal webhook requests</td><td style="text-align: left"><strong>Settings</strong> → <strong>Appeal Settings</strong></td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="single-sign-on"><a class="header" href="#single-sign-on">Single-sign-on</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Setting</th><th style="text-align: left">Default</th><th style="text-align: left">Description</th><th style="text-align: left">Where to configure</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>saml_enabled</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Activates SAML/SSO for the org</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>sso_url</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">The SAML identity provider endpoint</td><td style="text-align: left"><strong>Settings</strong> → <strong>SSO</strong></td></tr>
+<tr><td style="text-align: left"><code>cert</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">The SAML identity provider signing certificate</td><td style="text-align: left"><strong>Settings</strong> → <strong>SSO</strong></td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="partial-items"><a class="header" href="#partial-items">Partial Items</a></h4>
+<p>Custom endpoint and headers for fetching additional item data using the <a href="../api/partial-items.html">Partial Items API</a>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Setting</th><th style="text-align: left">Default</th><th style="text-align: left">Description</th><th style="text-align: left">Where to configure</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>partial_items_endpoint</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">Endpoint for fetching additional item data</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>partial_items_request_headers</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">Custom headers for partial items requests</td><td style="text-align: left">Database-only</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="others"><a class="header" href="#others">Others</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Setting</th><th style="text-align: left">Default</th><th style="text-align: left">Description</th><th style="text-align: left">Where to configure</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>has_reporting_rules_enabled</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Enables Report Rules for proactive actions in response to user reports</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>allow_multiple_policies_per_action</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Job decisions can reference multiple policies</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>user_strike_ttl_days</code></td><td style="text-align: left"><code>90</code></td><td style="text-align: left">Days before user strikes expire</td><td style="text-align: left">Database-only</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="review-console"><a class="header" href="#review-console">Review Console</a></h3>
+<p>The <code>manual_review_tool.manual_review_tool_settings</code> table affects reviewer capabilities in the Review Console.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Setting</th><th style="text-align: left">Default</th><th style="text-align: left">Description</th><th style="text-align: left">Where to configure</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>requires_policy_for_decisions</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Moderators must choose a policy when performing a job action</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>mrt_requires_decision_reason</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Moderators must provide a written decision when completing a job</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>hide_skip_button_for_non_admins</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Non-admins must work jobs in order and may not skip a job</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>preview_jobs_view_enabled</code></td><td style="text-align: left"><code>false</code></td><td style="text-align: left">Anyone who can edit queues may preview a queue without claiming a job</td><td style="text-align: left">Database-only</td></tr>
+<tr><td style="text-align: left"><code>ignore_callback_url</code></td><td style="text-align: left"><code>NULL</code></td><td style="text-align: left">Where to send a webhook with item data when a job is ignored</td><td style="text-align: left">Database-only</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="wellness"><a class="header" href="#wellness">Wellness</a></h3>
+<p>The <code>user_management_service.org_default_user_interface_settings</code> table stores the org-wide defaults for reviewer wellness interface preferences. These values apply to new reviewers when they join; individual reviewers can override them in their own settings.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Setting</th><th style="text-align: left">Default</th><th style="text-align: left">Description</th><th style="text-align: left">Where to configure</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>moderator_safety_blur_level</code></td><td style="text-align: left"><code>2</code></td><td style="text-align: left">Default blur intensity (0–3) for new reviewers</td><td style="text-align: left"><strong>Settings</strong> → <strong>Wellness</strong></td></tr>
+<tr><td style="text-align: left"><code>moderator_safety_grayscale</code></td><td style="text-align: left"><code>true</code></td><td style="text-align: left">Default grayscale mode for new reviewers</td><td style="text-align: left"><strong>Settings</strong> → <strong>Wellness</strong></td></tr>
+<tr><td style="text-align: left"><code>moderator_safety_mute_video</code></td><td style="text-align: left"><code>true</code></td><td style="text-align: left">Default video mute state for new reviewers</td><td style="text-align: left"><strong>Settings</strong> → <strong>Wellness</strong></td></tr>
+</tbody>
+</table>
+</div>
+<style>
+  /* TODO: move this to site-wide style override */
+  table {
+    width: 100%;
+  }
+
+  table td,
+  table thead th {
+    padding: 0.25em 0.5em;
+  }
+
+  table td {
+    text-wrap: balance;
+    word-wrap: anywhere;
+  }
+</style>
 
                     </main>
 
