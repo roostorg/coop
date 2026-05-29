@@ -34,6 +34,11 @@ export const ScalarTypes = makeEnumLike([
   // schema field as an IP address so it can be surfaced as an identifier in
   // moderation flows (e.g., via schema-field role metadata).
   'IP_ADDRESS',
+  // Polymorphic media: holds a URL plus the resolved kind (AUDIO/IMAGE/VIDEO),
+  // detected from the URL extension at ingestion time. Lets an adopter declare
+  // a single field (or container of fields) that mixes media kinds without
+  // committing to one in the schema.
+  'MEDIA',
 ]);
 export type ScalarTypes = typeof ScalarTypes;
 export type ScalarType = keyof typeof ScalarTypes;
@@ -60,6 +65,13 @@ type ScalarTypeRuntimeTypeMapping = Satisfies<
     [ScalarTypes.RELATED_ITEM]: RelatedItem;
     [ScalarTypes.POLICY_ID]: string;
     [ScalarTypes.IP_ADDRESS]: string;
+    [ScalarTypes.MEDIA]: {
+      url: string;
+      // The resolved kind, derived from the URL extension. `null` when the
+      // extension was missing or unrecognized — consumers can fall back to
+      // probing Content-Type or treating the value as opaque.
+      mediaType: MediaKind | null;
+    };
   },
   { [K in ScalarType]: unknown }
 >;
@@ -178,18 +190,30 @@ export function getScalarType<T extends FieldType>(it: Field<T>) {
   ) as FieldScalarType<T>;
 }
 
+export type MediaKind =
+  | ScalarTypes['AUDIO']
+  | ScalarTypes['IMAGE']
+  | ScalarTypes['VIDEO'];
+
 export function isMediaType(it: ScalarType): boolean {
   return (
     it === ScalarTypes.AUDIO ||
     it === ScalarTypes.VIDEO ||
-    it === ScalarTypes.IMAGE
+    it === ScalarTypes.IMAGE ||
+    it === ScalarTypes.MEDIA
   );
 }
 
 export function isMediaValue<T extends ScalarType>(
   it: TaggedScalar<T>,
 ): it is TaggedScalar<
-  T & (ScalarTypes['IMAGE'] | ScalarTypes['VIDEO'] | ScalarTypes['AUDIO'])
+  T &
+    (
+      | ScalarTypes['IMAGE']
+      | ScalarTypes['VIDEO']
+      | ScalarTypes['AUDIO']
+      | ScalarTypes['MEDIA']
+    )
 > {
   return isMediaType(it.type);
 }

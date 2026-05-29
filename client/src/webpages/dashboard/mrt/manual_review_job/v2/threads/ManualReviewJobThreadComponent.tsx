@@ -349,10 +349,10 @@ export function ManualReviewJobThreadComponent(props: {
     orgData?.myOrg?.id === '488cb41d501'
       ? `Script for Video ${thread.id}`
       : displayNameField
-      ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
-      : threadTypeName
-      ? `${threadTypeName} ID: ${thread.id}`
-      : `Thread ID: ${thread.id}`;
+        ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
+        : threadTypeName
+          ? `${threadTypeName} ID: ${thread.id}`
+          : `Thread ID: ${thread.id}`;
 
   if (loading) {
     return <ComponentLoading />;

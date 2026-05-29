@@ -48,11 +48,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
       label: 'Developer',
       value: (
         <div className="items-center justify-center font-semibold text-gray-500">
-          <img
-            alt="logo"
-            className="w-8 h-8 mr-2 rounded-full"
-            src={logoSrc}
-          />{' '}
+          <img alt="logo" className="w-8 h-8 mr-2 rounded-full" src={logoSrc} />{' '}
           {integrationTitle}
         </div>
       ),

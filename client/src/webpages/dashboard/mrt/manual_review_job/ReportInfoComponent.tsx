@@ -12,6 +12,7 @@ import {
 import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { getFieldValueForRole } from '@/utils/itemUtils';
+import { selectPreferredUserItem } from '@/utils/manualReviewTool';
 import { format } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import { useCallback } from 'react';
@@ -115,14 +116,12 @@ export default function ReportInfoComponent(props: {
     },
   });
 
-  const reporterInfo =
-    reporterData?.partialItems.__typename === 'PartialItemsSuccessResponse' &&
-    reporterData.partialItems.items[0].__typename === 'UserItem'
-      ? reporterData.partialItems.items[0]
-      : reporterItemInvestigationData?.latestItemSubmissions[0]?.__typename ===
-          'UserItem'
-        ? reporterItemInvestigationData.latestItemSubmissions[0]
-        : undefined;
+  const reporterInfo = selectPreferredUserItem(
+    reporterData?.partialItems.__typename === 'PartialItemsSuccessResponse'
+      ? reporterData.partialItems.items
+      : undefined,
+    reporterItemInvestigationData?.latestItemSubmissions,
+  );
   const reporterDisplayName = reporterInfo
     ? (getFieldValueForRole<GQLSchemaFieldRoles, keyof GQLSchemaFieldRoles>(
         reporterInfo,

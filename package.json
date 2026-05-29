@@ -7,6 +7,7 @@
     "compile": "concurrently \"npm run server:start\" \"BROWSER=none npm run client:start\" \"npm run generate:watch\" --kill-others",
     "client:start": "cd client && npm start",
     "server:start": "cd server && npm start",
+    "create-org": "cd server && npm run create-org --",
     "db:add": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts add",
     "db:clean": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts clean",
     "db:update": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts apply",

@@ -12,8 +12,8 @@ import type {
   GQLRuleExecutionResultResolvers,
   GQLRuleInsightsResolvers,
 } from '../generated.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   enum LookbackVersion {
@@ -115,7 +115,7 @@ const typeDefs = /* GraphQL */ `
 
   union GetFullResultForItemResponse = RuleExecutionResult | NotFoundError
   union GetFullReportingRuleResultForItemResponse =
-      ReportingRuleExecutionResult
+    | ReportingRuleExecutionResult
     | NotFoundError
 `;
 

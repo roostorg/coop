@@ -24,7 +24,9 @@ export type IntegrationRegistry = Readonly<{
   /** Absolute path to main plugin logo (manifest.logoPath). */
   getPluginLogoFilePath(integrationId: string): string | undefined;
   /** Absolute path to "with background" logo (manifest.logoWithBackgroundPath), if set. */
-  getPluginLogoWithBackgroundFilePath(integrationId: string): string | undefined;
+  getPluginLogoWithBackgroundFilePath(
+    integrationId: string,
+  ): string | undefined;
 }>;
 
 function buildRegistry(): IntegrationRegistry {
@@ -79,7 +81,9 @@ function buildRegistry(): IntegrationRegistry {
     getPluginLogoFilePath(integrationId: string): string | undefined {
       return pluginLogoPaths.get(integrationId);
     },
-    getPluginLogoWithBackgroundFilePath(integrationId: string): string | undefined {
+    getPluginLogoWithBackgroundFilePath(
+      integrationId: string,
+    ): string | undefined {
       return pluginLogoWithBackgroundPaths.get(integrationId);
     },
   };

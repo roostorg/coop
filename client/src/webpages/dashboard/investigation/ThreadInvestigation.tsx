@@ -18,17 +18,20 @@ import {
 } from '../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../utils/collections';
 import {
+  findFirstIframeUrl,
+  shouldDisplayUrlFieldInIframe,
+} from '../../../utils/contentUrlUtils';
+import {
   getFieldValueForRole,
   getFieldValueOrValues,
   getPrimaryContentFields,
 } from '../../../utils/itemUtils';
 import { truncateIdIfNeeded } from '../../../utils/string';
+import IframeContentDisplayComponent from '../mrt/manual_review_job/IframeContentDisplayComponent';
 import type {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
 } from '../mrt/manual_review_job/ManualReviewJobReview';
-import IframeContentDisplayComponent from '../mrt/manual_review_job/IframeContentDisplayComponent';
-import { findFirstIframeUrl, shouldDisplayUrlFieldInIframe } from '../../../utils/contentUrlUtils';
 import FieldsComponent from '../mrt/manual_review_job/v2/ManualReviewJobFieldsComponent';
 import ManualReviewJobMagnifyImageComponent from '../mrt/manual_review_job/v2/ManualReviewJobMagnifyImageComponent';
 import { ManualReviewJobThreadComponent } from '../mrt/manual_review_job/v2/threads/ManualReviewJobThreadComponent';

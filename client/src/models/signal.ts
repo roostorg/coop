@@ -112,6 +112,7 @@ export function outputTypeToComparators(outputType: GQLSignalOutputType) {
     case GQLScalarType.Audio:
     case GQLScalarType.Image:
     case GQLScalarType.Video:
+    case GQLScalarType.Media:
     case GQLScalarType.Geohash:
     case GQLScalarType.Boolean:
     case GQLScalarType.RelatedItem:

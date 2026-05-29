@@ -158,8 +158,7 @@ export async function getConditionSetResults(
 
   return {
     conjunction,
-    conditions:
-      conditionsWithResult as ConditionSetWithResult['conditions'],
+    conditions: conditionsWithResult as ConditionSetWithResult['conditions'],
     result: {
       outcome:
         finalOutcome ??
@@ -196,23 +195,23 @@ export function getConditionSetOutcome(
       return falseOutcomes && falseOutcomes.length > 0
         ? falseOutcomes[0]
         : nullOutcomes
-        ? nullOutcomes[0]
-        : ConditionCompletionOutcome.PASSED;
+          ? nullOutcomes[0]
+          : ConditionCompletionOutcome.PASSED;
     case ConditionConjunction.OR:
       // With OR, it's TRUE that swallows null (TRUE || NULL = TRUE), while
       // we have to propogate any NULLs when there's no true outcomes.
       return trueOutcomes && trueOutcomes.length > 0
         ? ConditionCompletionOutcome.PASSED
         : nullOutcomes
-        ? nullOutcomes[0]
-        : ConditionCompletionOutcome.FAILED;
+          ? nullOutcomes[0]
+          : ConditionCompletionOutcome.FAILED;
     case ConditionConjunction.XOR:
       // Similar to OR, but we must ensure there's one true with no NULLs.
       return trueOutcomes?.length === 1 && !nullOutcomes
         ? ConditionCompletionOutcome.PASSED
         : (!trueOutcomes || trueOutcomes.length === 1) && nullOutcomes
-        ? nullOutcomes[0]
-        : ConditionCompletionOutcome.FAILED;
+          ? nullOutcomes[0]
+          : ConditionCompletionOutcome.FAILED;
     default:
       return assertUnreachable(conjunction);
   }

@@ -16,9 +16,7 @@ import {
   arrayFromArrayOrSingleItem,
   filterNullOrUndefined,
 } from '../../../../../utils/collections';
-import {
-  getFieldValueForRole,
-} from '../../../../../utils/itemUtils';
+import { getFieldValueForRole } from '../../../../../utils/itemUtils';
 import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,

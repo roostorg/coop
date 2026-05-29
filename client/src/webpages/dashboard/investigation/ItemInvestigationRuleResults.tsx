@@ -174,8 +174,8 @@ export default function ItemInvestigationRuleResults(props: {
                 outcome === GQLConditionOutcome.Passed
                   ? 'soft-red'
                   : outcome === GQLConditionOutcome.Failed
-                  ? 'soft-green'
-                  : 'soft-gray'
+                    ? 'soft-green'
+                    : 'soft-gray'
               }
               shapeVariant="rounded"
               label={getDisplayName(outcome)}

@@ -59,6 +59,7 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     RELATED_ITEM
@@ -77,6 +78,7 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     RELATED_ITEM
@@ -101,6 +103,7 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     ARRAY

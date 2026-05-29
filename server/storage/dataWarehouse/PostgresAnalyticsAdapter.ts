@@ -1,8 +1,8 @@
 /**
  * PostgreSQL analytics adapter stub - SAMPLE ONLY
- * 
+ *
  * This is a basic stub showing what you need to implement for PostgreSQL.
- * 
+ *
  * To implement:
  * - Use Kysely with PostgreSQL dialect
  * - Use COPY for bulk inserts
@@ -12,13 +12,14 @@
  */
 
 import { sql, type InsertObject, type Kysely } from 'kysely';
+
 import type SafeTracer from '../../utils/SafeTracer.js';
 import {
-  type IDataWarehouseAnalytics,
   type AnalyticsSchema,
   type BulkWriteConfig,
-  type CDCConfig,
   type CDCChange,
+  type CDCConfig,
+  type IDataWarehouseAnalytics,
 } from './IDataWarehouseAnalytics.js';
 
 /**
@@ -50,7 +51,9 @@ export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
         flush: async (r) => {
           await this.kysely
             .insertInto(tableName)
-            .values(r as ReadonlyArray<InsertObject<AnalyticsSchema, TableName>>)
+            .values(
+              r as ReadonlyArray<InsertObject<AnalyticsSchema, TableName>>,
+            )
             .execute();
         },
       });
@@ -135,4 +138,3 @@ export class PostgresAnalyticsAdapter implements IDataWarehouseAnalytics {
     throw new Error('Not implemented');
   };
 }
-

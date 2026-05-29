@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import {
   getUserFromActionTargetItem,
   type ActionExecutionData,
@@ -13,15 +14,14 @@ import {
   scyllaItemIdentifierToItemIdentifier,
   type Scylla,
 } from '../../scylla/index.js';
-import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
+import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import {
   type Action,
   type ModerationConfigService,
 } from '../moderationConfigService/index.js';
 import { type UserStrikesScyllaRelations } from './dbTypes.js';
-import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 
 const { maxBy } = _;
 
@@ -231,11 +231,12 @@ export class UserStrikeService {
     limit?: number;
   }) {
     const { orgId, filterBy, limit } = opts;
-    const results = await this.actionExecutionsAdapter.getRecentUserStrikeActions({
-      orgId,
-      filterBy,
-      limit,
-    });
+    const results =
+      await this.actionExecutionsAdapter.getRecentUserStrikeActions({
+        orgId,
+        filterBy,
+        limit,
+      });
     return filterNullOrUndefined(
       results.map((it) =>
         it.itemId && it.itemTypeId
