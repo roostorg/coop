@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c7169d13.js";
+            window.path_to_searchindex_js = "../searchindex-3827dea0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-f7125777.js"></script>
@@ -218,26 +218,61 @@
 </tbody>
 </table>
 </div>
-<h2 id="example-response"><a class="header" href="#example-response">Example response</a></h2>
-<p>Your platform returns information about the item to Coop in its response. Even if it can’t fetch <em>all</em> attributes of the item (perhaps because of some limitations in your data model or query latency), your platform can just return as many attributes as you have access to. In other words, you can return a <em>partial</em> version of the Item, even if some attributes are missing.</p>
-<p>Coop expects a response in the following format:</p>
+<h2 id="response-requirements"><a class="header" href="#response-requirements">Response requirements</a></h2>
+<p>Your endpoint must respond with a <code>2xx</code> status and a JSON body containing a single top-level object with an <code>items</code> array. Extra top-level keys are accepted but ignored; only <code>items</code> is consumed.</p>
+<p>Each entry in <code>items</code> describes one of the items Coop asked about. You can return a <em>partial</em> version of the Item <code>data</code> may contain only the subset of fields you have access to, but the keys below must be present and well-typed:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Property</th><th style="text-align: left">Type</th><th style="text-align: left">Required</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>id</code></td><td style="text-align: left"><code>String</code></td><td style="text-align: left">Yes</td><td style="text-align: left">The <code>id</code> Coop provided in the request body.</td></tr>
+<tr><td style="text-align: left"><code>typeId</code></td><td style="text-align: left"><code>String</code></td><td style="text-align: left">Yes</td><td style="text-align: left">The <code>typeId</code> Coop provided in the request body.</td></tr>
+<tr><td style="text-align: left"><code>data</code></td><td style="text-align: left"><code>Object</code></td><td style="text-align: left">Yes</td><td style="text-align: left">The same shape you’d send via the Items API. May be empty (<code>{}</code>), but the key itself must be present.</td></tr>
+<tr><td style="text-align: left"><code>typeVersion</code></td><td style="text-align: left"><code>String</code></td><td style="text-align: left">No</td><td style="text-align: left">Specific Item Type version to target.</td></tr>
+<tr><td style="text-align: left"><code>typeSchemaVariant</code></td><td style="text-align: left"><code>"original" | "partial"</code></td><td style="text-align: left">No</td><td style="text-align: left">Defaults to <code>partial</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Example response:</p>
 <pre><code class="language-json">{
   "items": [
     {
-      "id": "abc123", // the `id` Coop provided in the request body
-      "typeId": "def456", // the `typeId` Coop provided in the request body
-      "data": { // the same `data` JSON object you'd provide if you had sent this Item via the Items API
+      "id": "abc123", // the `id` Coop provided
+      "typeId": "def456", // the `typeId` Coop provided
+      "data": {
+        // the same shape you'd send via the Items API
         "text": "some text uploaded by a user"
         // ... all other fields in your Item Type
-      },
-    },
-    ... // other items
+      }
+    }
   ]
 }
 </code></pre>
-<p>Coop expects a <code>2xx</code> HTTP status from your endpoint. If it receives any non-2xx response, it treats the request as failed and the on-demand item fetch will not succeed for the user.</p>
-<p>If your platform can’t find or return a particular item, omit it from the <code>items</code> array in your response rather than returning an error status. Coop won’t treat a missing item as a failure; it simply won’t have data for that item.</p>
-<p>The response body must be valid JSON with a top-level <code>items</code> array. A malformed response is also treated as a failure.</p>
+<p>If you can’t find or return a particular item, <strong>omit it</strong> from the <code>items</code> array rather than returning an error or a sentinel value. Coop won’t treat a missing item as a failure; it simply won’t have data for that item. Items whose <code>(id, typeId)</code> did not appear in the request are silently dropped.</p>
+<p>A nested form is also accepted in which <code>typeId</code>, <code>typeVersion</code>, and <code>typeSchemaVariant</code> are grouped under a <code>type</code> object as <code>id</code>, <code>version</code>, and <code>schemaVariant</code>. The flat form above is recommended for new integrations; this nested form only exists for parity with the Items API submission shape.</p>
+<pre><code class="language-json">{
+  "items": [
+    {
+      "id": "abc123",
+      "data": { "text": "..." },
+      "type": {
+        "id": "def456",
+        "version": "2025-01-01",
+        "schemaVariant": "partial"
+      }
+    }
+  ]
+}
+</code></pre>
+<h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
+<p>If a request shows up in your webhook logs but doesn’t update the item in Coop, the UI will surface one of these:</p>
+<ul>
+<li><strong><code>PartialItemsEndpointResponseError</code></strong>: the endpoint returned a non-2xx status.</li>
+<li><strong><code>PartialItemsInvalidResponseError</code></strong>: the body parsed as JSON but didn’t match the schema above (most often a missing <code>data</code>, a missing top-level <code>items</code> key, or non-string <code>id</code>/<code>typeId</code>), <em>or</em> it couldn’t be parsed as JSON at all. When the body fails to parse, Coop’s server logs include a short prefix of the response bytes; the most common cause is writing to the response twice (e.g. a middleware emitting a sentinel before the payload, producing something like <code>null{"items":[...]}</code>).</li>
+</ul>
+<p>If the request looks successful but the item still doesn’t appear, verify that each returned item’s <code>(id, typeId)</code> exactly matches what Coop asked for; mismatches are silently dropped. If you’re testing through a tunnel (<code>localtunnel</code>, <code>ngrok</code>), make sure the tunnel isn’t injecting a browser-warning page in place of your response.</p>
 
                     </main>
 
