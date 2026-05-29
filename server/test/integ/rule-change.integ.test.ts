@@ -185,10 +185,14 @@ describe('Rule changes take effect (integration)', () => {
 
       // Gate on Scylla so we know the worker has picked up the submission before
       // we start polling for the (potentially later) action execution row.
-      await waitForItemInScylla(harness.deps, {
+      // `waitForItemInScylla` looks up by `item_identifier` only (per its doc
+      // comment), so guard against a cross-org id collision after the row comes
+      // back.
+      const scyllaRow = await waitForItemInScylla(harness.deps, {
         orgId,
         itemIdentifier: { id: itemId, typeId: scenario.itemTypeId },
       });
+      expect(scyllaRow.org_id).toBe(orgId);
 
       const actionRow = await waitForActionExecution(harness.deps, {
         orgId,
@@ -312,12 +316,16 @@ describe('Rule changes take effect (integration)', () => {
         })
         .expect(202);
 
-      // Wait for Scylla so we know the worker actually processed it; only then
-      // can the no-execution check be trusted.
-      await waitForItemInScylla(harness.deps, {
+      // Wait for Scylla so we know the worker started processing this
+      // submission. Same cross-org guard as in the test above.
+      // `assertNoActionExecution` then waits for `analytics.CONTENT_API_REQUESTS`
+      // (logged after `runEnabledRules`) before checking absence — that
+      // post-rules signal, not Scylla, is what makes the negative trustworthy.
+      const staleScyllaRow = await waitForItemInScylla(harness.deps, {
         orgId,
         itemIdentifier: { id: staleMatchItemId, typeId: scenario.itemTypeId },
       });
+      expect(staleScyllaRow.org_id).toBe(orgId);
       await assertNoActionExecution(harness.deps, {
         orgId,
         actionId: scenario.actionId,

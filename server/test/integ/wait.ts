@@ -154,13 +154,20 @@ export async function waitForActionExecution(
 }
 
 /**
- * Asserts the *absence* of an action execution by polling for a fixed window
- * and confirming no row appeared. Tests use this to verify an updated rule's
- * old condition is no longer firing — proving a negative requires waiting long
- * enough that the worker would have written a row if it were going to.
+ * Asserts the *absence* of an action execution. Proving a negative requires
+ * waiting long enough that the worker would have written a row if it were
+ * going to — but a fixed sleep races against rule evaluation latency.
  *
- * `windowMs` should comfortably exceed the worker's typical end-to-end latency
- * for a single submission (a few hundred ms) to keep false positives low.
+ * Instead we gate on `analytics.CONTENT_API_REQUESTS`, which `ItemProcessingWorker`
+ * writes *after* `ruleEngine.runEnabledRules` returns (see the worker around
+ * Scylla → rules → contentApiLogger). Once that row is visible, the rule path
+ * for this submission has fully run; if no `ACTION_EXECUTIONS` row exists at
+ * that point, none will.
+ *
+ * Both writes go through `analytics.bulkWrite` with the same default
+ * batchTimeout, so seeing CONTENT_API_REQUESTS implies that batch interval
+ * has elapsed — long enough for an ACTION_EXECUTIONS batch from the same
+ * submission to have flushed.
  */
 export async function assertNoActionExecution(
   deps: Pick<Dependencies, 'DataWarehouse' | 'Tracer'>,
@@ -168,11 +175,11 @@ export async function assertNoActionExecution(
     orgId: string;
     actionId: string;
     itemIdentifier: ItemIdentifier;
-    windowMs?: number;
+    timeoutMs?: number;
   },
 ) {
-  const { orgId, actionId, itemIdentifier, windowMs = 3_000 } = opts;
-  await new Promise((r) => setTimeout(r, windowMs));
+  const { orgId, actionId, itemIdentifier, timeoutMs } = opts;
+  await waitForItemInClickHouse(deps, { orgId, itemIdentifier, timeoutMs });
   const rows = await deps.DataWarehouse.query(
     `SELECT action_id, item_id
        FROM analytics.ACTION_EXECUTIONS
