@@ -1,5 +1,8 @@
 import { GQLUserPenaltySeverity } from '../graphql/generated';
-import { recomputeSelectedRelatedActions } from './manualReviewTool';
+import {
+  recomputeSelectedRelatedActions,
+  selectPreferredUserItem,
+} from './manualReviewTool';
 
 describe('recomputeSelectedRelatedActions', () => {
   afterEach(() => {
@@ -205,5 +208,47 @@ describe('recomputeSelectedRelatedActions', () => {
         policies: [{ id: 'z', name: 'w' }],
       },
     ]);
+  });
+});
+
+describe('selectPreferredUserItem', () => {
+  const userItem = { __typename: 'UserItem' as const, id: 'u1' };
+  const contentItem = { __typename: 'ContentItem' as const, id: 'c1' };
+  const fallbackUserItem = { __typename: 'UserItem' as const, id: 'u2' };
+
+  // Regression: a `PartialItemsSuccessResponse` is partial by design and can
+  // carry an empty `items` array. Indexing `items[0].__typename` without a
+  // guard crashed the review page with "Cannot read properties of undefined
+  // (reading '__typename')" and looped the MRT subtree.
+  test('returns undefined (does not throw) when both lists are empty', () => {
+    expect(selectPreferredUserItem([], [])).toBeUndefined();
+  });
+
+  test('returns undefined when both lists are undefined', () => {
+    expect(selectPreferredUserItem(undefined, undefined)).toBeUndefined();
+  });
+
+  test('prefers the primary list when its first item is a UserItem', () => {
+    expect(selectPreferredUserItem([userItem], [fallbackUserItem])).toBe(
+      userItem,
+    );
+  });
+
+  test('falls back when the primary list is empty but the fallback has a UserItem', () => {
+    expect(selectPreferredUserItem([], [fallbackUserItem])).toBe(
+      fallbackUserItem,
+    );
+  });
+
+  test('falls back when the primary first item is not a UserItem', () => {
+    expect(selectPreferredUserItem([contentItem], [fallbackUserItem])).toBe(
+      fallbackUserItem,
+    );
+  });
+
+  test('returns undefined when neither first item is a UserItem', () => {
+    expect(
+      selectPreferredUserItem([contentItem], [contentItem]),
+    ).toBeUndefined();
   });
 });
