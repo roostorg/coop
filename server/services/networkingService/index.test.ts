@@ -34,6 +34,11 @@ describe('fetchHTTP', () => {
             res.write('{');
             break;
 
+          case '/sends-trailing-content-after-json':
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end('null{"items":[]}');
+            break;
+
           default:
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end('"Hello World"');
@@ -66,6 +71,25 @@ describe('fetchHTTP', () => {
         status: 200,
         ok: true,
         body: 'Hello World',
+      });
+    },
+  );
+
+  testWithFakeServer(
+    'should reject with an error whose message includes the body prefix when the response is not valid JSON',
+    async ({ baseURL, tracer }) => {
+      await expect(
+        fetchHTTP(tracer, {
+          url: new URL(
+            '/sends-trailing-content-after-json',
+            baseURL,
+          ).toString(),
+          method: 'get',
+          handleResponseBody: 'as-json',
+        }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('null{"items":[]}'),
+        cause: expect.any(SyntaxError),
       });
     },
   );
