@@ -15108,7 +15108,12 @@ export type GQLSubmitManualReviewDecisionMutation = {
         readonly status: number;
         readonly type: ReadonlyArray<string>;
       }
-    | { readonly __typename: 'MissingRequiredPolicyForDecisionError' }
+    | {
+        readonly __typename: 'MissingRequiredPolicyForDecisionError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+      }
     | {
         readonly __typename: 'NoJobWithIdInQueueError';
         readonly title: string;
@@ -34248,6 +34253,11 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
         status
         type
         detail
+      }
+      ... on MissingRequiredPolicyForDecisionError {
+        title
+        status
+        type
       }
     }
   }
