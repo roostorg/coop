@@ -2,7 +2,7 @@ import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
 import { WarningFilled } from '@ant-design/icons';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { useState } from 'react';
 
 import CoopModal from '../../../../components/CoopModal';

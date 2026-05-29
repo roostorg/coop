@@ -1,18 +1,11 @@
-import { ErrorType, CoopError } from '../../utils/errors.js';
+import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import {
+  type GQLMutationResolvers,
+  type GQLQueryResolvers,
+} from '../generated.js';
 import { forbiddenError } from '../utils/errors.js';
-
-/** Context shape required by rotateWebhookSigningKey (avoids importing resolvers). */
-type RotateWebhookSigningKeyContext = {
-  getUser: () => {
-    orgId: string;
-    getPermissions: () => readonly string[];
-  } | null | undefined;
-  dataSources: {
-    orgAPI: { rotateWebhookSigningKey: (orgId: string) => Promise<string> };
-  };
-};
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type ApiKey {
@@ -60,7 +53,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union RotateWebhookSigningKeyResponse =
-      RotateWebhookSigningKeySuccessResponse
+    | RotateWebhookSigningKeySuccessResponse
     | RotateWebhookSigningKeyError
 
   type Query {
@@ -73,14 +66,17 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
-const Query: any = {
-  async apiKey(_: any, __: any, context: any) {
+const Query: GQLQueryResolvers = {
+  async apiKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError('User does not have permission to check if key exists');
+      throw forbiddenError(
+        'User does not have permission to check if key exists',
+      );
     }
 
-    const apiKeyRecord = await context.services.ApiKeyService.getActiveApiKeyForOrg(user.orgId);
+    const apiKeyRecord =
+      await context.services.ApiKeyService.getActiveApiKeyForOrg(user.orgId);
     if (!apiKeyRecord) {
       return process.env.NODE_ENV !== 'production' ? '' : '';
     }
@@ -89,23 +85,28 @@ const Query: any = {
   },
 };
 
-const Mutation: any = {
-  async rotateApiKey(_: any, { input }: any, context: any) {
+const Mutation: GQLMutationResolvers = {
+  async rotateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError('User does not have permission to rotate the API key');
+      throw forbiddenError(
+        'User does not have permission to rotate the API key',
+      );
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to rotate the API key');
+      throw forbiddenError(
+        'User does not have permission to rotate the API key',
+      );
     }
 
     try {
-      const { apiKey, record } = await context.services.ApiKeyService.rotateApiKey(
-        user.orgId,
-        input.name,
-        input.description || null,
-        user.id
-      );
+      const { apiKey, record } =
+        await context.services.ApiKeyService.rotateApiKey(
+          user.orgId,
+          input.name,
+          input.description ?? null,
+          user.id,
+        );
 
       return gqlSuccessResult(
         {
@@ -116,11 +117,11 @@ const Mutation: any = {
             description: record.description,
             isActive: record.isActive,
             createdAt: record.createdAt.toISOString(),
-            lastUsedAt: record.lastUsedAt?.toISOString() || null,
+            lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
             createdBy: record.createdBy,
           },
         },
-        'RotateApiKeySuccessResponse'
+        'RotateApiKeySuccessResponse',
       );
     } catch (error) {
       // Resolvers do not receive a request-scoped logger; use logErrorJson for structured server-side logging.
@@ -132,23 +133,23 @@ const Mutation: any = {
           type: [ErrorType.InternalServerError],
           title: 'Failed to rotate API key',
           detail: 'An error occurred while rotating the API key',
-          name: 'InternalServerError',
+          name: 'RotateApiKeyError',
           shouldErrorSpan: true,
         }),
       );
     }
   },
-  async rotateWebhookSigningKey(
-    _: unknown,
-    __: Record<string, never>,
-    context: RotateWebhookSigningKeyContext,
-  ) {
+  async rotateWebhookSigningKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError('User does not have permission to rotate the webhook signing key');
+      throw forbiddenError(
+        'User does not have permission to rotate the webhook signing key',
+      );
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to rotate the webhook signing key');
+      throw forbiddenError(
+        'User does not have permission to rotate the webhook signing key',
+      );
     }
 
     try {
@@ -171,7 +172,7 @@ const Mutation: any = {
           type: [ErrorType.InternalServerError],
           title: 'Failed to rotate webhook signing key',
           detail: 'An error occurred while rotating the webhook signing key',
-          name: 'InternalServerError',
+          name: 'RotateWebhookSigningKeyError',
           shouldErrorSpan: true,
         }),
       );

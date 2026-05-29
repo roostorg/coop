@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';

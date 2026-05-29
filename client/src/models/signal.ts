@@ -54,12 +54,16 @@ export function integrationForSignalType(type: string) {
   switch (type) {
     case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
       return GQLIntegration.GoogleContentSafetyApi;
+    case 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL':
     case 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_HATE_TEXT_MODEL':
     case 'OPEN_AI_HATE_THREATENING_TEXT_MODEL':
+    case 'OPEN_AI_SELF_HARM_IMAGE_MODEL':
     case 'OPEN_AI_SELF_HARM_TEXT_MODEL':
+    case 'OPEN_AI_SEXUAL_IMAGE_MODEL':
     case 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL':
     case 'OPEN_AI_SEXUAL_TEXT_MODEL':
+    case 'OPEN_AI_VIOLENCE_IMAGE_MODEL':
     case 'OPEN_AI_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_WHISPER_TRANSCRIPTION':
       return GQLIntegration.OpenAi;
@@ -120,6 +124,7 @@ export function outputTypeToComparators(outputType: GQLSignalOutputType) {
       ];
     case GQLScalarType.Url:
     case GQLScalarType.String:
+    case GQLScalarType.IpAddress:
       return outputType.__typename === 'EnumSignalOutputType' &&
         outputType.ordered
         ? orderedComparators

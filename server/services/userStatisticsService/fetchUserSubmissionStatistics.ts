@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 
@@ -59,7 +59,9 @@ export const makeFetchUserSubmissionStatistics = inject(
             // NB: we need the manual `number` type param to indicate that this
             // isn't returned as a bigint or a numeric string (it shouldn't be,
             // because a user can't possibly have that many submissions).
-            warehouseKysely.fn.sum<number>('NUM_SUBMISSIONS').as('numSubmissions'),
+            warehouseKysely.fn
+              .sum<number>('NUM_SUBMISSIONS')
+              .as('numSubmissions'),
           ])
           .where('ORG_ID', '=', orgId)
           .where(({ eb, and, or }) =>

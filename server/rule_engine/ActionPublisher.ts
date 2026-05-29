@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { type Exception } from '@opentelemetry/api';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../iocContainer/index.js';

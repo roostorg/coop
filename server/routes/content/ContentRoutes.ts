@@ -1,11 +1,11 @@
-import { type ScalarTypeRuntimeType } from '@roostorg/types';
+import { type ScalarTypeRuntimeType } from '@roostorg/coop-types';
 
 import { type DerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';
+import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { type SerializableError } from '../../utils/errors.js';
 import { type JSON } from '../../utils/json-schema-types.js';
 import { route } from '../../utils/route-helpers.js';
-import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { type Controller } from '../index.js';
 import submitContent from './submitContent.js';
 
@@ -41,10 +41,7 @@ export type EvaluateContentOutput = {
 export default {
   pathPrefix: '/content',
   routes: [
-    route.post<
-      EvaluateContentInputCamelCase,
-      EvaluateContentOutput
-    >(
+    route.post<EvaluateContentInputCamelCase, EvaluateContentOutput>(
       '/',
       {
         bodySchema: {
@@ -67,7 +64,13 @@ export default {
           required: ['contentType', 'contentId', 'content'],
         },
       },
-      (deps) => [createApiKeyMiddleware<EvaluateContentInputCamelCase, EvaluateContentOutput>(deps), submitContent(deps)],
+      (deps) => [
+        createApiKeyMiddleware<
+          EvaluateContentInputCamelCase,
+          EvaluateContentOutput
+        >(deps),
+        submitContent(deps),
+      ],
     ),
   ],
 } as Controller;

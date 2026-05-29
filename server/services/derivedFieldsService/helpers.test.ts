@@ -4,7 +4,7 @@ import {
   type ContainerType,
   type Field,
   type TaggedScalar,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import fc from 'fast-check';
 
 import { DerivedFieldSpecArbitrary } from '../../test/arbitraries/ContentType.js';
@@ -261,6 +261,10 @@ describe('Item type schemas', () => {
       });
 
       test('should reject invalid specs', () => {
+        // The casts to "any" below intentionally bypass TS so that we can
+        // construct invalid inputs (the very thing parseDerivedFieldSpec is
+        // expected to reject at runtime).
+        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect(() => {
           parseDerivedFieldSpec(
             serializeDerivedFieldSpec({
@@ -309,6 +313,7 @@ describe('Item type schemas', () => {
             }),
           );
         }).toThrowErrorMatchingInlineSnapshot(`"Invalid derived field spec"`);
+        /* eslint-enable @typescript-eslint/no-explicit-any */
       });
     });
   });

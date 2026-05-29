@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import os from 'node:os';
 import path from 'path';
 import { ApolloServer } from '@apollo/server';
@@ -10,9 +9,9 @@ import { MapperKind, mapSchema } from '@graphql-tools/utils';
 import { MultiSamlStrategy } from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
-  SEMATTRS_EXCEPTION_MESSAGE,
-  SEMATTRS_EXCEPTION_STACKTRACE,
-  SEMATTRS_EXCEPTION_TYPE,
+  ATTR_EXCEPTION_MESSAGE,
+  ATTR_EXCEPTION_STACKTRACE,
+  ATTR_EXCEPTION_TYPE,
 } from '@opentelemetry/semantic-conventions';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
@@ -33,7 +32,7 @@ import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
-import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
+import { safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
@@ -91,7 +90,7 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
-  const { KyselyPg } = deps;
+  const { KyselyPg, KyselyPgPool } = deps;
 
   app.use(cors());
 
@@ -127,29 +126,10 @@ export default async function makeApiServer(deps: Dependencies) {
   /**
    * Passport & User Session Configuration
    */
-  const {
-    DATABASE_HOST,
-    DATABASE_PORT = 5432,
-    DATABASE_NAME,
-    DATABASE_USER,
-    DATABASE_PASSWORD,
-  } = process.env;
-
-  const conObject = {
-    host: DATABASE_HOST,
-    port: Number(DATABASE_PORT),
-    user: DATABASE_USER,
-    password: DATABASE_PASSWORD,
-    database: DATABASE_NAME,
-    // NB: `rejectUnauthorized: false` keeps the connection encrypted but skips
-    // certificate validation.
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
-  };
-
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ conObject }),
+      store: new sessionStore({ pool: KyselyPgPool }),
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -276,7 +256,7 @@ export default async function makeApiServer(deps: Dependencies) {
     },
   );
 
-  passport.serializeUser((user: any, done) => {
+  passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
@@ -422,11 +402,11 @@ export default async function makeApiServer(deps: Dependencies) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
 
         // I don't know if these attributes are necessary, with recordException
-        span.setAttribute(SEMATTRS_EXCEPTION_MESSAGE, err.message);
+        span.setAttribute(ATTR_EXCEPTION_MESSAGE, err.message);
         if (err.stack) {
-          span.setAttribute(SEMATTRS_EXCEPTION_STACKTRACE, err.stack);
+          span.setAttribute(ATTR_EXCEPTION_STACKTRACE, err.stack);
         }
-        span.setAttribute(SEMATTRS_EXCEPTION_TYPE, err.name);
+        span.setAttribute(ATTR_EXCEPTION_TYPE, err.name);
 
         const errors = (() => {
           if (err instanceof AggregateError) {

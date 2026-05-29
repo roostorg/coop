@@ -4,7 +4,7 @@ import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/ite
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
 import { LoadingOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import isEmpty from 'lodash/isEmpty';
 
 import {
@@ -186,8 +186,8 @@ export default function ManualReviewJobRelatedUserComponent(props: {
     moreInfoData.partialItems.items[0].__typename === 'UserItem'
       ? moreInfoData.partialItems.items[0]
       : userItemData?.latestItemSubmissions[0]?.__typename === 'UserItem'
-      ? userItemData.latestItemSubmissions[0]
-      : undefined;
+        ? userItemData.latestItemSubmissions[0]
+        : undefined;
 
   const userItem = userItemData?.latestItemSubmissions?.find(
     (it) => it.__typename === 'UserItem',
@@ -348,8 +348,8 @@ export default function ManualReviewJobRelatedUserComponent(props: {
                 moreInfoError != null
                   ? 'Error Fetching Data'
                   : moreInfo != null && isEmpty(moreInfo?.data)
-                  ? 'No info returned'
-                  : undefined
+                    ? 'No info returned'
+                    : undefined
               }
             />
           ) : undefined}

@@ -1,8 +1,8 @@
 {
-  "name": "@roostorg/types",
+  "name": "@roostorg/coop-types",
   "type": "module",
-  "version": "2.0.0",
-  "description": "Shared types across Coop services",
+  "version": "2.3.0",
+  "description": "Shared TypeScript types for Coop: schema primitives, signal data maps, and integration contracts.",
   "module": "transpiled/index.js",
   "typings": "./transpiled/index.d.ts",
   "scripts": {

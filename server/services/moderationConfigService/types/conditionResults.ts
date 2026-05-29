@@ -1,4 +1,4 @@
-import { type ScalarType, type TaggedScalar } from '@roostorg/types';
+import { type ScalarType, type TaggedScalar } from '@roostorg/coop-types';
 
 import { type SerializableError } from '../../../utils/errors.js';
 import {

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ScalarTypes, type Field } from '@roostorg/types';
+import { ScalarTypes, type Field } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
@@ -11,7 +11,13 @@ export default async function (opts: {
   includeCreator?: boolean;
   extra: { fields?: NonEmptyArray<Field> };
 }) {
-  const { moderationConfigService, orgId, extra, numItemTypes = 1, includeCreator = false } = opts;
+  const {
+    moderationConfigService,
+    orgId,
+    extra,
+    numItemTypes = 1,
+    includeCreator = false,
+  } = opts;
 
   const itemTypes = await Promise.all(
     Array.from({ length: numItemTypes }).map(async () =>
@@ -25,16 +31,22 @@ export default async function (opts: {
             required: false,
             container: null,
           },
-          ...(includeCreator ? [{
-            name: 'creatorId',
-            type: ScalarTypes.RELATED_ITEM,
-            required: false,
-            container: null
-          }] : [])
+          ...(includeCreator
+            ? [
+                {
+                  name: 'creatorId',
+                  type: ScalarTypes.RELATED_ITEM,
+                  required: false,
+                  container: null,
+                },
+              ]
+            : []),
         ],
-        schemaFieldRoles: includeCreator ? {
-          creatorId: 'creatorId'
-        } : {}
+        schemaFieldRoles: includeCreator
+          ? {
+              creatorId: 'creatorId',
+            }
+          : {},
       }),
     ),
   );

@@ -1,4 +1,4 @@
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';

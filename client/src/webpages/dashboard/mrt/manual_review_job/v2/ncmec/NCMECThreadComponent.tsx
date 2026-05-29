@@ -1,4 +1,4 @@
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useRef, useState } from 'react';

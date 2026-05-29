@@ -4,6 +4,7 @@ import { v1 as uuidv1 } from 'uuid';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
+import { type JobId } from '../manualReviewToolService.js';
 
 export type ManualReviewJobComment = {
   id: string;
@@ -22,7 +23,10 @@ const manualReviewCommentDbSelection = [
 export default class CommentOperations {
   constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
 
-  private async getRelatedJobIds(opts: { orgId: string; jobId: string }): Promise<string[]> {
+  private async getRelatedJobIds(opts: {
+    orgId: string;
+    jobId: string;
+  }): Promise<string[]> {
     const { orgId, jobId } = opts;
 
     // First get the item identifiers for the current job
@@ -30,7 +34,7 @@ export default class CommentOperations {
       .selectFrom('manual_review_tool.job_creations')
       .select(['item_id', 'item_type_id'])
       .where('org_id', '=', orgId)
-      .where('id', '=', jobId as any)
+      .where('id', '=', jobId as JobId)
       .executeTakeFirst();
 
     if (!currentJob) {
@@ -47,7 +51,7 @@ export default class CommentOperations {
       .where('item_type_id', '=', currentJob.item_type_id)
       .execute();
 
-    return relatedJobIds.map(row => row.id);
+    return relatedJobIds.map((row) => row.id);
   }
 
   async getComments(opts: { orgId: string; jobId: string }) {
@@ -58,7 +62,7 @@ export default class CommentOperations {
       .selectFrom('manual_review_tool.job_comments')
       .select(manualReviewCommentDbSelection)
       .where('org_id', '=', orgId)
-      .where('job_id', 'in', jobIds as any[])
+      .where('job_id', 'in', jobIds as JobId[])
       .orderBy('created_at', 'asc')
       .execute();
 
@@ -73,7 +77,7 @@ export default class CommentOperations {
       .selectFrom('manual_review_tool.job_comments')
       .select((eb) => eb.fn.count('id').as('count'))
       .where('org_id', '=', orgId)
-      .where('job_id', 'in', jobIds as any[])
+      .where('job_id', 'in', jobIds as JobId[])
       .executeTakeFirst();
 
     return result?.count ? Number(result.count) : 0;

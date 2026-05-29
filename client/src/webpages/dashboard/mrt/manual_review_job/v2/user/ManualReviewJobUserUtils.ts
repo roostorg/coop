@@ -1,5 +1,5 @@
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { Field, RelatedItem, ScalarType } from '@roostorg/types';
+import { Field, RelatedItem, ScalarType } from '@roostorg/coop-types';
 import omit from 'lodash/omit';
 
 const createFieldType = (name: string, type: ScalarType) =>

@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { SignalPricingStructure as SignalPricingStructureType } from '../types/SignalPricingStructure.js';
 import { SignalType } from '../types/SignalType.js';

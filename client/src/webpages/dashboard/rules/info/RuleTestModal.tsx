@@ -136,6 +136,8 @@ export default function RuleTestModal(props: {
         return 'https://test.com';
       case 'USER_ID':
         return 'user-id';
+      case 'IP_ADDRESS':
+        return '192.0.2.1';
       case 'ARRAY':
         return `${getPlaceholder(
           containerValueScalarType!,

@@ -687,6 +687,7 @@ export type GQLContentSchemaFieldRoles = {
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly creatorId?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
   readonly parentId?: Maybe<Scalars['String']['output']>;
   readonly threadId?: Maybe<Scalars['String']['output']>;
@@ -696,6 +697,7 @@ export type GQLContentSchemaFieldRolesInput = {
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly creatorId?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
   readonly parentId?: InputMaybe<Scalars['String']['input']>;
   readonly threadId?: InputMaybe<Scalars['String']['input']>;
@@ -1340,6 +1342,7 @@ export const GQLFieldType = {
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
+  IpAddress: 'IP_ADDRESS',
   Map: 'MAP',
   Number: 'NUMBER',
   PolicyId: 'POLICY_ID',
@@ -4140,6 +4143,7 @@ export const GQLScalarType = {
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
+  IpAddress: 'IP_ADDRESS',
   Number: 'NUMBER',
   PolicyId: 'POLICY_ID',
   RelatedItem: 'RELATED_ITEM',
@@ -4279,6 +4283,7 @@ export const GQLSignalInputType = {
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
+  IpAddress: 'IP_ADDRESS',
   Number: 'NUMBER',
   PolicyId: 'POLICY_ID',
   RelatedItem: 'RELATED_ITEM',
@@ -4335,12 +4340,16 @@ export const GQLSignalType = {
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
   ImageSimilarityScore: 'IMAGE_SIMILARITY_SCORE',
+  OpenAiGraphicViolenceImageModel: 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL',
   OpenAiGraphicViolenceTextModel: 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
   OpenAiHateThreateningTextModel: 'OPEN_AI_HATE_THREATENING_TEXT_MODEL',
+  OpenAiSelfHarmImageModel: 'OPEN_AI_SELF_HARM_IMAGE_MODEL',
   OpenAiSelfHarmTextModel: 'OPEN_AI_SELF_HARM_TEXT_MODEL',
+  OpenAiSexualImageModel: 'OPEN_AI_SEXUAL_IMAGE_MODEL',
   OpenAiSexualMinorsTextModel: 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL',
   OpenAiSexualTextModel: 'OPEN_AI_SEXUAL_TEXT_MODEL',
+  OpenAiViolenceImageModel: 'OPEN_AI_VIOLENCE_IMAGE_MODEL',
   OpenAiViolenceTextModel: 'OPEN_AI_VIOLENCE_TEXT_MODEL',
   OpenAiWhisperTranscription: 'OPEN_AI_WHISPER_TRANSCRIPTION',
   TextMatchingContainsRegex: 'TEXT_MATCHING_CONTAINS_REGEX',
@@ -4534,6 +4543,7 @@ export type GQLThreadSchemaFieldRoles = {
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly creatorId?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
 };
 
@@ -4541,6 +4551,7 @@ export type GQLThreadSchemaFieldRolesInput = {
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly creatorId?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -5012,6 +5023,7 @@ export type GQLUserSchemaFieldRoles = {
   readonly backgroundImage?: Maybe<Scalars['String']['output']>;
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
   readonly profileIcon?: Maybe<Scalars['String']['output']>;
 };
@@ -5020,6 +5032,7 @@ export type GQLUserSchemaFieldRolesInput = {
   readonly backgroundImage?: InputMaybe<Scalars['String']['input']>;
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
   readonly profileIcon?: InputMaybe<Scalars['String']['input']>;
 };
@@ -7996,6 +8009,11 @@ export type GQLContentSchemaFieldRolesResolvers<
     ContextType
   >;
   displayName?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  ipAddress?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
     ContextType
@@ -13833,6 +13851,11 @@ export type GQLThreadSchemaFieldRolesResolvers<
     ParentType,
     ContextType
   >;
+  ipAddress?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   isDeleted?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -14476,6 +14499,11 @@ export type GQLUserSchemaFieldRolesResolvers<
     ContextType
   >;
   displayName?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  ipAddress?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
     ContextType
