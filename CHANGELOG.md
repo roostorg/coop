@@ -82,7 +82,19 @@ We also implemented versioning for the docs meaning the latest docs for the `mai
 
 As a SaaS product, several features for organizations were hidden behind database-only toggles. To make it easier to customize Coop for your platform and deployment, we've moved these settings directly into the Coop front-end for administrators.
 
-<list of related PRs>
+- Renamed "Employee Safety" to "Wellness" throughout settings UI (#394)
+- _Appeals enable/disable toggle (#620)_
+- _SAML/SSO enabled toggle, with validation that `sso_url` and `cert` are set (#623)_
+- _User strike TTL configuration (#622)_
+- _Require decision reason for moderator actions (#618)_
+- _Require policy selection when making decisions (#619)_
+- _Skip button visibility toggle for non-admin reviewers (#624)_
+- _Preview jobs mode toggle (#625)_
+- _Multiple policies per action toggle (#532)_
+- _Partial Items API endpoint and custom request headers (#378)_
+- _Ignore callback URL (#626)_
+- _Granular per-permission model replacing built-in roles (#406)_
+- _GDPR delete requests now execute rather than only persisting (#336)_
 
 ### Expanded features & capability
 
