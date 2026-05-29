@@ -21,9 +21,26 @@ We focused a _ton_ of time and effort on making Coop simpler and easier to get r
 
 #### Code & infrastructure simplification
 
-<summary of reducing databases and moving off Kysley and to BullMQ>
+The largest internal change in Coop 1.0 is the near-complete migration from Sequelize to Kysely for database access, covering the rule engine, actions, policies, users, organizations, MRT, and backtests. On the infrastructure side, BullMQ replaces Kafka for item submission processing—removing one of the most operationally demanding dependencies from the default deployment. We also cleared out SaaS-era scaffolding that was never meant for self-hosted deployments: proprietary branding, hardcoded infrastructure URLs, the old cloud deployment reference, and the SaaS-only AI risk model.
 
-<list of related PRs>
+- Completed Sequelize→Kysely migration across rule engine, actions, policies, users, organizations, MRT, and backtests (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
+- BullMQ replaces Kafka for item submission processing (#137)
+- Express upgraded to v5 (#283)
+- SSL/TLS and body schema validation added (#326)
+- Stripped Cove marketing and tracking from the client (#509)
+- Removed hardcoded SaaS host URLs; replaced with relative or configurable equivalents (#527)
+- Removed legacy SaaS AI risk model (#293)
+- Removed legacy cloud infrastructure reference (`.devops`); moved migrations to `db/` (#141)
+- Removed unused Content Proxy reference (#176)
+- Dropped unmaintained `graphql-passport` dependency (#462)
+- Client now always uses a relative GraphQL URL (#455)
+- Moved NCMEC routing from hardcoded values to environment config (#474)
+- Renamed published package to `@roostorg/coop-types` (#602)
+- Refactored `package.json` dependencies across packages (#549)
+- Added `create-org` script for provisioning new organizations from the command line (#537)
+- _Scylla made optional for deployments that don't need it (#190)_
+- _Simplified getting-started experience for new evaluators (#219)_
+- _Docker images published for deployment without building from source (#280)_
 
 #### Rewritten documentation
 
