@@ -183,7 +183,7 @@ export default function ManualReviewJobRelatedUserComponent(props: {
 
   const moreInfo =
     moreInfoData?.partialItems.__typename === 'PartialItemsSuccessResponse' &&
-    moreInfoData.partialItems.items[0].__typename === 'UserItem'
+    moreInfoData.partialItems.items[0]?.__typename === 'UserItem'
       ? moreInfoData.partialItems.items[0]
       : userItemData?.latestItemSubmissions[0]?.__typename === 'UserItem'
         ? userItemData.latestItemSubmissions[0]
