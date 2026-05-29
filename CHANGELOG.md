@@ -53,7 +53,30 @@ Before Coop 1.0, our documentation was a combination of SaaS-oriented docs that 
 
 We also implemented versioning for the docs meaning the latest docs for the `main` branch will always live at [roostorg.github.io/coop/latest](https://roostorg.github.io/coop/latest), while docs for version 1.0 will live at [roostorg.github.io/coop/1.0](https://roostorg.github.io/coop/1.0).
 
-<list of related PRs>
+- Complete documentation rework for Coop 1.0 (#338)
+- Versioned mdbook on GitHub Pages; latest docs always at `roostorg.github.io/coop/latest` (#417)
+- Added Partial Items API reference (#523)
+- Added deployment guide with database settings reference (#627)
+- Added cost and requirements guide for third-party integrations (#595)
+- Split NCMEC docs into separate user and integration guides (#526)
+- Added model card for Zentropi integration (#200)
+- Corrected API key scoping in architecture doc (#594)
+- Updated minimum memory requirements for deployment (#371)
+- Corrected links in user README (#515)
+- Updated styling of "Coop" in integration docs (#147)
+- Added heading to Appeals docs (#149)
+- Corrected NCMEC docs link (#169)
+- Removed redundant NCMEC docs (#172)
+- Applied Funnel Display and Funnel Sans to docs site (#525)
+- Corrected site URL in docs (#510)
+- Added explicit link to GitHub repo and README in docs (#511)
+- _Deployment and hosting guide (#207)_
+- _Intention statement (#287)_
+- _Document user strikes feature (#503)_
+- _Clarify SSO docs to reflect support for any SAML provider, not just Okta (#587)_
+- _Model card documentation for OpenAI Moderation API (#126)_
+- _Model card documentation for Google Content Safety API (#127)_
+- _Document known Coop adopters (#54)_
 
 #### Admin settings
 
