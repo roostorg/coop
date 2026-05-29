@@ -105,3 +105,89 @@ export async function waitForItemInClickHouse(
     { timeoutMs: opts.timeoutMs },
   );
 }
+
+export type ReportingServiceReportRow = {
+  request_id: string;
+  reported_item_id: string;
+  reported_item_type_id: string;
+  reporter_kind: string;
+};
+
+/**
+ * Poll `REPORTING_SERVICE.REPORTS` for a row matching a reported item.
+ *
+ * `submitReport` writes via `dataWarehouseAnalytics.bulkWrite`, which may
+ * batch before the row is queryable, so we poll rather than reading once.
+ */
+export async function waitForReportInClickHouse(
+  deps: Pick<Dependencies, 'DataWarehouse' | 'Tracer'>,
+  opts: {
+    orgId: string;
+    reportedItemIdentifier: ItemIdentifier;
+    timeoutMs?: number;
+  },
+): Promise<ReportingServiceReportRow> {
+  const { orgId, reportedItemIdentifier } = opts;
+  return waitFor(
+    `report for item ${reportedItemIdentifier.id} in REPORTING_SERVICE.REPORTS`,
+    async () => {
+      const rows = await deps.DataWarehouse.query(
+        `SELECT request_id, reported_item_id, reported_item_type_id, reporter_kind
+           FROM REPORTING_SERVICE.REPORTS
+          WHERE org_id = ?
+            AND reported_item_id = ?
+            AND reported_item_type_id = ?
+          LIMIT 1`,
+        deps.Tracer,
+        [orgId, reportedItemIdentifier.id, reportedItemIdentifier.typeId],
+      );
+      return rows.length > 0 ? (rows[0] as ReportingServiceReportRow) : null;
+    },
+    { timeoutMs: opts.timeoutMs },
+  );
+}
+
+/**
+ * Poll `manual_review_tool.job_creations` for a row.
+ *
+ * The MRT enqueue path inserts here after the BullMQ `addJob` returns, so a
+ * report POST returning 201 doesn't guarantee the row is visible yet.
+ *
+ * Matches on `(org_id, item_id, item_type_id)` — the differentiator for the
+ * NCMEC enqueue path vs the standard report path is exactly which item lands
+ * here (the content vs the content creator), so callers should pass the item
+ * they expect to see.
+ */
+export async function waitForJobCreationInPostgres(
+  deps: Pick<Dependencies, 'KyselyPg'>,
+  opts: {
+    orgId: string;
+    itemIdentifier: ItemIdentifier;
+    timeoutMs?: number;
+  },
+) {
+  const { orgId, itemIdentifier } = opts;
+  return waitFor(
+    `job_creations row for item ${itemIdentifier.id}`,
+    async () => {
+      const row = await deps.KyselyPg.selectFrom(
+        'manual_review_tool.job_creations',
+      )
+        .select([
+          'id',
+          'org_id',
+          'item_id',
+          'item_type_id',
+          'queue_id',
+          'enqueue_source_info',
+        ])
+        .where('org_id', '=', orgId)
+        .where('item_id', '=', itemIdentifier.id)
+        .where('item_type_id', '=', itemIdentifier.typeId)
+        .limit(1)
+        .executeTakeFirst();
+      return row ?? null;
+    },
+    { timeoutMs: opts.timeoutMs },
+  );
+}
