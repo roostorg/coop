@@ -87,10 +87,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE()
+            WHERE ts_end_exclusive <= now64(3)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [],
@@ -110,10 +110,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND ts_start_inclusive >= ?
+            WHERE ts_end_exclusive <= now64(3) AND ts_start_inclusive >= parseDateTime64BestEffort(?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -135,10 +135,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND rule_id IN (?,?)
+            WHERE ts_end_exclusive <= now64(3) AND rule_id IN (?,?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -158,10 +158,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND rule_id IN (?)
+            WHERE ts_end_exclusive <= now64(3) AND rule_id IN (?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -186,10 +186,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND ts_start_inclusive >= ? AND rule_id IN (?,?)
+            WHERE ts_end_exclusive <= now64(3) AND ts_start_inclusive >= parseDateTime64BestEffort(?) AND rule_id IN (?,?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
