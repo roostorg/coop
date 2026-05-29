@@ -20,17 +20,20 @@ describe('getRuleAnomalyDetectionStatistics', () => {
   let getRulePassStatistics: Dependencies['getRuleAnomalyDetectionStatistics'];
 
   beforeAll(() => {
-    // ClickHouse returns column names in the case they were written in the
-    // SELECT (lowercase here); use BigInt for the Int64 columns to mirror the
-    // real client's deserialisation.
+    // Mirror the real ClickHouse output shape: lowercase keys (CH echoes the
+    // SELECT casing), `BigInt` for `Int64`/`UInt64` columns, and both
+    // `DateTime64(3)` columns in CH's native string form
+    // (`"YYYY-MM-DD HH:MM:SS.sss"`, no `T`, no `Z`). Mocking one of them as
+    // ISO with `Z` would let the production parser silently treat the other
+    // as local time and the test would still pass.
     const queryResult = [
       {
         rule_id: 'a',
         num_passes: BigInt(2),
         num_distinct_users: BigInt(1),
         num_runs: BigInt(4),
-        ts_start_inclusive: '2022-05-07 23:00:00.00',
-        rule_version: '2022-05-01T12:10:00.00305Z',
+        ts_start_inclusive: '2022-05-07 23:00:00.000',
+        rule_version: '2022-05-01 12:10:00.003',
       },
     ];
 
@@ -66,14 +69,18 @@ describe('getRuleAnomalyDetectionStatistics', () => {
 
   test('should return the result from the warehouse, properly formatted', async () => {
     const result = await getRulePassStatistics();
+    // Expected timestamps are built from fixed UTC ISO instants — the same
+    // physical moment ClickHouse stored. If the production parser ever
+    // reverts to interpreting CH-style strings as *local* time, this test
+    // fails on any non-UTC runtime.
     expect(result).toEqual([
       {
         ruleId: 'a',
         passCount: 2,
         runsCount: 4,
         passingUsersCount: 1,
-        windowStart: new Date('2022-05-07 23:00:00.00'),
-        approxRuleVersion: new Date('2022-05-01T12:10:00.00305Z'),
+        windowStart: new Date('2022-05-07T23:00:00.000Z'),
+        approxRuleVersion: new Date('2022-05-01T12:10:00.003Z'),
       },
     ]);
   });

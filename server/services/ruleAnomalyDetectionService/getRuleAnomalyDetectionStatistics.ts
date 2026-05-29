@@ -2,6 +2,22 @@ import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { unzip2 } from '../../utils/fp-helpers.js';
 
+/**
+ * ClickHouse returns `DateTime64` values as strings like
+ * `"YYYY-MM-DD HH:MM:SS.sss"` with no timezone annotation. Passing that
+ * straight to `new Date(...)` interprets it as *local time*, so the parsed
+ * instant differs from the stored UTC value by whatever timezone the runtime
+ * happens to be in — UTC on production containers, local TZ on a dev
+ * machine. Compose the input into a proper ISO string with an explicit `Z`
+ * before parsing so the result is always the UTC instant ClickHouse wrote.
+ */
+function parseClickhouseTimestamp(raw: string | number | Date): Date {
+  if (raw instanceof Date) return raw;
+  if (typeof raw === 'number') return new Date(raw);
+  const isoish = raw.replace(' ', 'T');
+  return new Date(isoish.endsWith('Z') ? isoish : `${isoish}Z`);
+}
+
 const makeGetRuleAnomalyDetectionaStatistics =
   (
     dataWarehouse: Dependencies['DataWarehouse'],
@@ -106,12 +122,16 @@ const makeGetRuleAnomalyDetectionaStatistics =
         ruleId: row.rule_id as string,
         // name is a reminder that JS may trim the precision on the Date here,
         // but that should be ok for our purposes.
-        approxRuleVersion: new Date(row.rule_version as string | number | Date),
+        approxRuleVersion: parseClickhouseTimestamp(
+          row.rule_version as string | number | Date,
+        ),
         // nb: the warehouse returned value for a timestamp is a JS Date, but with
         // some extra methods attached to it. These methods include toString, so
         // we cast back to a proper Date to avoid the string representation
         // changing (e.g., when serializing to JSON).
-        windowStart: new Date(row.ts_start_inclusive as string | number | Date),
+        windowStart: parseClickhouseTimestamp(
+          row.ts_start_inclusive as string | number | Date,
+        ),
         // ClickHouse `Int64`/`UInt64` columns (`num_passes`, `num_runs`,
         // `JSONLength(…)`) come back as JS `BigInt`. The Snowflake-era
         // downstream code (binomialTest, arithmetic, comparisons against

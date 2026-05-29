@@ -44,6 +44,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
   let harness: IntegrationServer | undefined;
   let orgCleanup: (() => Promise<unknown>) | undefined;
   let coopUserCleanup: (() => Promise<unknown>) | undefined;
+  let reviewerId: string;
 
   beforeAll(async () => {
     harness = await makeIntegrationServer();
@@ -58,9 +59,12 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
     );
     orgCleanup = orgFixture.cleanup;
 
-    // Reviewer for the seeded decisions; the materialized view carries the
-    // reviewer_id through unchanged so any valid coop user works.
+    // Reviewer for the seeded decisions. The materialized view carries the
+    // reviewer_id through unchanged, but `manual_review_decisions.reviewer_id`
+    // is constrained to point at a real coop user — fresh uids would either
+    // skip the join silently or break the constraint when it lands.
     const userFixture = await createUser(harness.deps.KyselyPg, orgId);
+    reviewerId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
   }, 60_000);
 
@@ -116,7 +120,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
     // Seed 3 decisions. `dim_mrt_decisions` is a view that produces one row
     // per (decision × non-CUSTOM_ACTION decision_component); we use a single
     // NO_ACTION component per decision so the row count maps 1:1.
-    await insertDecisions(KyselyPg, orgId, 3);
+    await insertDecisions(KyselyPg, orgId, reviewerId, 3);
 
     // Baseline: nothing materialized yet for this org.
     expect(await countMaterializedForOrg()).toBe(0);
@@ -132,7 +136,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
     expect(await countMaterializedForOrg()).toBe(3);
 
     // Add 2 more decisions, run again: should pick up exactly the new ones.
-    await insertDecisions(KyselyPg, orgId, 2);
+    await insertDecisions(KyselyPg, orgId, reviewerId, 2);
     await RefreshMRTDecisionsMaterializedViewJob.run();
     expect(await countMaterializedForOrg()).toBe(5);
   }, 60_000);
@@ -290,6 +294,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
 async function insertDecisions(
   db: Kysely<CombinedPg & ManualReviewToolServicePg>,
   orgId: string,
+  reviewerId: string,
   count: number,
 ) {
   const rows = Array.from({ length: count }).map(() => {
@@ -300,7 +305,7 @@ async function insertDecisions(
       id: decisionId,
       org_id: orgId,
       queue_id: uid(),
-      reviewer_id: uid(),
+      reviewer_id: reviewerId,
       decision_components: [
         {
           type: 'NO_ACTION',
@@ -356,9 +361,14 @@ async function seedAnomalyStatistics(
       Array.from({ length: count }).map((_, idx) => `${prefix}-u${idx}`),
     );
 
-  // Current period: ends just before "now" so the query's
-  // `ts_end_exclusive <= now64(3)` filter accepts it.
-  const currentEnd = new Date(now.valueOf() - 1000);
+  // Current period: ends comfortably before "now" so the query's
+  // `ts_end_exclusive <= now64(3)` filter accepts it. The job's reference
+  // clock is ClickHouse's `now64(3)`, not the Node clock we're computing
+  // against here, so a 1s margin can land the row slightly in the future
+  // when the docker stack and the test process are skewed even a little.
+  // 30s is well past any plausible skew without disturbing the alarm math
+  // (still firmly inside the "one week ago" startTime window).
+  const currentEnd = new Date(now.valueOf() - 30_000);
   const currentStart = new Date(currentEnd.valueOf() - HOUR_MS);
   const currentRow = formatStatsRow({
     orgId: opts.orgId,
