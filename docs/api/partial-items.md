@@ -49,7 +49,7 @@ In each object in the `items` array, Coop expects the following fields:
 
 Your endpoint must respond with a `2xx` status and a JSON body containing a single top-level object with an `items` array. Extra top-level keys are accepted but ignored; only `items` is consumed.
 
-Each entry in `items` describes one of the items Coop asked about. You can return a _partial_ version of the Item — `data` may contain only the subset of fields you have access to — but the keys below must be present and well-typed:
+Each entry in `items` describes one of the items Coop asked about. You can return a _partial_ version of the Item `data` may contain only the subset of fields you have access to, but the keys below must be present and well-typed:
 
 | Property            | Type                      | Required | Description                                                                                           |
 | :------------------ | :------------------------ | :------- | :---------------------------------------------------------------------------------------------------- |

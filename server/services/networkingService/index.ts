@@ -339,13 +339,16 @@ export async function fetchHTTP<T extends HandleResponseBody>(
               const decodedBody = utf8DecodeBytes(
                 new Uint8Array(tempArrayBuffer),
               );
-              span.setAttribute('responseBody', decodedBody);
+              const bodyPrefix = sanitizedBodyPrefix(decodedBody);
+              span.setAttribute(
+                'responseBodyByteLength',
+                tempArrayBuffer.byteLength,
+              );
+              span.setAttribute('responseBodyPrefix', bodyPrefix);
               throw new Error(
                 `Failed to parse response body as JSON (${tempArrayBuffer.byteLength} bytes): ${
                   e instanceof Error ? e.message : String(e)
-                }. Response body started with: ${sanitizedBodyPrefix(
-                  decodedBody,
-                )}`,
+                }. Response body started with: ${bodyPrefix}`,
                 { cause: e },
               );
             }
