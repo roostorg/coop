@@ -852,6 +852,9 @@ export default class QueueOperations {
     queueId: string;
     batchSize?: number;
     maxJobs?: number;
+    // Set to `{ truncated: true }` when the queue held more pending jobs
+    // than `maxJobs`, so callers can report a partial sweep.
+    progress?: { truncated: boolean };
   }): AsyncIterable<ManualReviewJob> {
     const { orgId, queueId } = opts;
     const batchSize = Math.max(1, Math.min(opts.batchSize ?? 200, 500));
@@ -881,6 +884,11 @@ export default class QueueOperations {
         break;
       }
       start += batchSize;
+    }
+
+    // We stopped collecting once we hit the cap; flag a likely-partial sweep.
+    if (opts.progress != null) {
+      opts.progress.truncated = snapshotIds.length >= maxJobs;
     }
 
     for (const jobId of snapshotIds) {

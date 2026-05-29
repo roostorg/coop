@@ -1502,6 +1502,11 @@ export type GQLInvalidateReportsFromReporterSuccessResponse = {
   readonly jobsScrubbed: Scalars['Int']['output'];
   readonly queuesScanned: Scalars['Int']['output'];
   readonly reportsRemoved: Scalars['Int']['output'];
+  /**
+   * True when a queue held more pending jobs than the per-queue scan cap,
+   * so the org-wide sweep may not have reached every matching report.
+   */
+  readonly truncated: Scalars['Boolean']['output'];
 };
 
 export type GQLInviteUserInput = {
@@ -12062,6 +12067,7 @@ export type GQLInvalidateReportsFromReporterMutation = {
     readonly jobsScrubbed: number;
     readonly jobsDeleted: number;
     readonly reportsRemoved: number;
+    readonly truncated: boolean;
   };
 };
 
@@ -33904,6 +33910,7 @@ export const GQLInvalidateReportsFromReporterDocument = gql`
       jobsScrubbed
       jobsDeleted
       reportsRemoved
+      truncated
     }
   }
 `;

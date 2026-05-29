@@ -450,6 +450,11 @@ const typeDefs = /* GraphQL */ `
     jobsScrubbed: Int!
     jobsDeleted: Int!
     reportsRemoved: Int!
+    """
+    True when a queue held more pending jobs than the per-queue scan cap,
+    so the org-wide sweep may not have reached every matching report.
+    """
+    truncated: Boolean!
   }
 
   enum MetricsTimeDivisionOptions {

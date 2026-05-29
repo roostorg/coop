@@ -31,6 +31,7 @@ function successData(
       jobsScrubbed: 1,
       jobsDeleted: 0,
       reportsRemoved: 1,
+      truncated: false,
       ...overrides,
     },
   };

@@ -1569,6 +1569,11 @@ export type GQLInvalidateReportsFromReporterSuccessResponse = {
   readonly jobsScrubbed: Scalars['Int']['output'];
   readonly queuesScanned: Scalars['Int']['output'];
   readonly reportsRemoved: Scalars['Int']['output'];
+  /**
+   * True when a queue held more pending jobs than the per-queue scan cap,
+   * so the org-wide sweep may not have reached every matching report.
+   */
+  readonly truncated: Scalars['Boolean']['output'];
 };
 
 export type GQLInviteUserInput = {
@@ -9312,6 +9317,7 @@ export type GQLInvalidateReportsFromReporterSuccessResponseResolvers<
   jobsScrubbed?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   queuesScanned?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   reportsRemoved?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  truncated?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type GQLInviteUserTokenResolvers<

@@ -30,6 +30,9 @@ export type InvalidateReportsFromReporterResult = {
   jobsScrubbed: number;
   jobsDeleted: number;
   reportsRemoved: number;
+  // True when at least one queue held more pending jobs than the per-queue
+  // scan cap, so the sweep may not have reached every matching report.
+  truncated: boolean;
 };
 
 // Keep a single sweep bounded even for a reporter with a huge item set.
@@ -71,7 +74,7 @@ export default class ReporterInvalidation {
   async invalidateReportsFromReporter(
     input: InvalidateReportsFromReporterInput,
   ): Promise<InvalidateReportsFromReporterResult> {
-    const { orgId, reporter, invokedBy, jobId } = input;
+    const { orgId, reporter, invokedBy, jobId, reason } = input;
 
     return this.tracer.addActiveSpan(
       {
@@ -87,6 +90,8 @@ export default class ReporterInvalidation {
           }),
           'reporterInvalidation.invokedByUserId': invokedBy.userId,
           'reporterInvalidation.scope': jobId ? 'single_job' : 'org_wide',
+          // The reason is the audit record for this action (see reports.md).
+          ...(reason == null ? {} : { 'reporterInvalidation.reason': reason }),
         },
       },
       async (span) => {
@@ -96,6 +101,7 @@ export default class ReporterInvalidation {
           jobsScrubbed: 0,
           jobsDeleted: 0,
           reportsRemoved: 0,
+          truncated: false,
         };
 
         // Only guard the org-wide path; single-job sweeps are cheap.
@@ -152,6 +158,7 @@ export default class ReporterInvalidation {
               result.jobsScrubbed += perQueue.jobsScrubbed;
               result.jobsDeleted += perQueue.jobsDeleted;
               result.reportsRemoved += perQueue.reportsRemoved;
+              result.truncated ||= perQueue.truncated;
             }
           }
         } finally {
@@ -165,6 +172,7 @@ export default class ReporterInvalidation {
           'reporterInvalidation.jobsScrubbed': result.jobsScrubbed,
           'reporterInvalidation.jobsDeleted': result.jobsDeleted,
           'reporterInvalidation.reportsRemoved': result.reportsRemoved,
+          'reporterInvalidation.truncated': result.truncated,
         });
 
         return result;
@@ -184,6 +192,7 @@ export default class ReporterInvalidation {
     jobsScrubbed: number;
     jobsDeleted: number;
     reportsRemoved: number;
+    truncated: boolean;
   }> {
     const {
       orgId,
@@ -198,12 +207,14 @@ export default class ReporterInvalidation {
     let jobsScrubbed = 0;
     let jobsDeleted = 0;
     let reportsRemoved = 0;
+    const progress = { truncated: false };
 
     for await (const job of this.queueOps.iteratePendingJobsForQueue({
       orgId,
       queueId,
       batchSize,
       maxJobs: maxJobsPerQueue,
+      progress,
     })) {
       jobsScanned++;
       const perJob = await this.#applyScrubToJob({
@@ -218,7 +229,13 @@ export default class ReporterInvalidation {
       reportsRemoved += perJob.reportsRemoved;
     }
 
-    return { jobsScanned, jobsScrubbed, jobsDeleted, reportsRemoved };
+    return {
+      jobsScanned,
+      jobsScrubbed,
+      jobsDeleted,
+      reportsRemoved,
+      truncated: progress.truncated,
+    };
   }
 
   async #applyScrubToJob(opts: {
@@ -322,11 +339,21 @@ export function scrubPayloadForReporter(
           ]
         : filteredReasons;
 
+    // Legacy singular fields some consumers still read: if they point at
+    // the invalidated reporter, repoint to the newest remaining report.
+    const legacyReporterMatches = isMatch(payload.reporterIdentifier);
+
     return {
       payload: {
         ...payload,
         reportHistory: filteredHistory,
         reportedForReasons,
+        ...(legacyReporterMatches && 'reporterIdentifier' in payload
+          ? { reporterIdentifier: filteredHistory[0]?.reporterId }
+          : {}),
+        ...(legacyReporterMatches && 'reportedForReason' in payload
+          ? { reportedForReason: filteredHistory[0]?.reason }
+          : {}),
       },
       removedCount: historyRemovedCount,
     };

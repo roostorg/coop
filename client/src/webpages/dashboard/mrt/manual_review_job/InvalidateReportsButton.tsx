@@ -18,6 +18,7 @@ gql`
       jobsScrubbed
       jobsDeleted
       reportsRemoved
+      truncated
     }
   }
 `;
@@ -75,6 +76,11 @@ export default function InvalidateReportsButton(props: {
           scope: scopedToCurrentJob ? 'currentJob' : 'orgWide',
         }),
       );
+      if (result.truncated) {
+        message.warning(
+          'Some queues had more reports than could be processed in one pass. Run the action again to continue.',
+        );
+      }
     },
   });
 

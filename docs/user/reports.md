@@ -23,7 +23,7 @@ Reports are submitted via `POST /api/v1/report`. For the full API schema (field 
 
 If a single user on your platform is mass-flagging non-violating content and clogging the review queue, moderators with the `EDIT_MRT_QUEUES` permission can invalidate every pending report from that reporter via the "Invalidate reports" action on any report's detail view in the Manual Review Tool.
 
-By default the action is scoped to the report you're viewing: it strips this reporter's entries from the current job's report history (and removes the job if no other reporters were left and the job was enqueued purely from a user report). Tick "Apply across the whole organization" in the confirmation modal to instead sweep every pending job in the org. Decided/closed jobs are not modified.
+By default the action is scoped to the current job: it strips this reporter's entries from the job's report history. If the job has no other reporters or report sources (for example, automated detectors) left afterwards, the job is removed from the queue. To instead sweep every pending job in your organization, tick "Apply across the whole organization" in the confirmation modal. Decided or closed jobs are never modified.
 
 This is a one-shot operation, not a persistent blocklist: future reports from the same reporter will land normally and need to be invalidated again if the behavior continues. Address recurring bad-faith reporters by banning or silencing them at the platform layer.
 

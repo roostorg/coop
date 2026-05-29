@@ -147,6 +147,42 @@ describe('scrubPayloadForReporter (pure)', () => {
     expect(reasons?.[0]?.reason).toBe(survivorEntry.reason);
   });
 
+  it('repoints legacy reportedForReason/reporterIdentifier when they referenced the scrubbed reporter', () => {
+    const survivor = { typeId: 'user_type', id: 'survivor' };
+    const survivorEntry = makeReportHistoryEntry(survivor);
+    const payload: ContentManualReviewJobPayload = {
+      kind: 'DEFAULT',
+      item: makeItem(),
+      reportHistory: [makeReportHistoryEntry(badReporter), survivorEntry],
+      reportedForReasons: [{ reporterId: badReporter, reason: 'fake' }],
+      // Legacy singular fields still pointing at the scrubbed reporter.
+      reportedForReason: 'fake',
+      reporterIdentifier: badReporter,
+    };
+    const result = scrubPayloadForReporter(payload, badReporter);
+    const scrubbed = result.payload as ContentManualReviewJobPayload;
+    expect(scrubbed.reporterIdentifier).toEqual(survivor);
+    expect(scrubbed.reportedForReason).toBe(survivorEntry.reason);
+  });
+
+  it('leaves legacy reporterIdentifier untouched when it referenced a different reporter', () => {
+    const payload: ContentManualReviewJobPayload = {
+      kind: 'DEFAULT',
+      item: makeItem(),
+      reportHistory: [
+        makeReportHistoryEntry(goodReporter),
+        makeReportHistoryEntry(badReporter),
+      ],
+      reportedForReasons: [{ reporterId: goodReporter, reason: 'spam' }],
+      reportedForReason: 'spam',
+      reporterIdentifier: goodReporter,
+    };
+    const result = scrubPayloadForReporter(payload, badReporter);
+    const scrubbed = result.payload as ContentManualReviewJobPayload;
+    expect(scrubbed.reporterIdentifier).toEqual(goodReporter);
+    expect(scrubbed.reportedForReason).toBe('spam');
+  });
+
   it('does not match entries where the reporterId is undefined (rule-engine / system entries)', () => {
     const payload: ContentManualReviewJobPayload = {
       kind: 'DEFAULT',

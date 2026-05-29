@@ -1191,6 +1191,14 @@ export class ManualReviewToolService {
         { shouldErrorSpan: true },
       );
     }
+    // Bind the sweep to the caller's own org so an in-process caller can't
+    // mutate a different org by passing a mismatched orgId.
+    if (input.invokedBy.orgId !== input.orgId) {
+      throw makeUnauthorizedError(
+        'You do not have permission to invalidate reports for this org',
+        { shouldErrorSpan: true },
+      );
+    }
     return this.reporterInvalidation.invalidateReportsFromReporter(input);
   }
 
