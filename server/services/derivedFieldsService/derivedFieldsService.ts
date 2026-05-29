@@ -4,7 +4,7 @@ import {
   ScalarTypes,
   type Field,
   type ScalarType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { inject } from '../../iocContainer/index.js';
@@ -141,91 +141,83 @@ export const makeDerivedFieldsService = inject(
         ).then((it) => it.flat());
 
         const derivedFieldsFromCoopInputs = await Promise.all(
-          Object.values(CoopInput).map(
-            async (it): Promise<DerivedField[]> => {
-              // using a switch here is a good way to get exhaustiveness
-              // checking for when we inevitably add new CoopInputs.
-              switch (it) {
-                case CoopInput.AUTHOR_USER:
-                  return (
-                    await getAnnotatedRecipesForInputType(
-                      ScalarTypes.USER_ID,
-                      orgId,
+          Object.values(CoopInput).map(async (it): Promise<DerivedField[]> => {
+            // using a switch here is a good way to get exhaustiveness
+            // checking for when we inevitably add new CoopInputs.
+            switch (it) {
+              case CoopInput.AUTHOR_USER:
+                return (
+                  await getAnnotatedRecipesForInputType(
+                    ScalarTypes.USER_ID,
+                    orgId,
+                  )
+                ).map((recipe) =>
+                  makeCoopInputDerivedFieldSpec(recipe, CoopInput.AUTHOR_USER),
+                );
+
+              case CoopInput.ALL_TEXT:
+                return hasFieldOfScalarType(schema, ScalarTypes.STRING)
+                  ? (
+                      await getAnnotatedRecipesForInputType(
+                        ScalarTypes.STRING,
+                        orgId,
+                      )
+                    ).map((recipe) =>
+                      makeCoopInputDerivedFieldSpec(recipe, CoopInput.ALL_TEXT),
                     )
-                  ).map((recipe) =>
-                    makeCoopInputDerivedFieldSpec(
-                      recipe,
-                      CoopInput.AUTHOR_USER,
-                    ),
-                  );
+                  : [];
 
-                case CoopInput.ALL_TEXT:
-                  return hasFieldOfScalarType(schema, ScalarTypes.STRING)
-                    ? (
-                        await getAnnotatedRecipesForInputType(
-                          ScalarTypes.STRING,
-                          orgId,
-                        )
-                      ).map((recipe) =>
-                        makeCoopInputDerivedFieldSpec(
-                          recipe,
-                          CoopInput.ALL_TEXT,
-                        ),
+              case CoopInput.ANY_GEOHASH:
+                return hasFieldOfScalarType(schema, ScalarTypes.GEOHASH)
+                  ? (
+                      await getAnnotatedRecipesForInputType(
+                        ScalarTypes.GEOHASH,
+                        orgId,
                       )
-                    : [];
+                    ).map((recipe) =>
+                      makeCoopInputDerivedFieldSpec(
+                        recipe,
+                        CoopInput.ANY_GEOHASH,
+                      ),
+                    )
+                  : [];
 
-                case CoopInput.ANY_GEOHASH:
-                  return hasFieldOfScalarType(schema, ScalarTypes.GEOHASH)
-                    ? (
-                        await getAnnotatedRecipesForInputType(
-                          ScalarTypes.GEOHASH,
-                          orgId,
-                        )
-                      ).map((recipe) =>
-                        makeCoopInputDerivedFieldSpec(
-                          recipe,
-                          CoopInput.ANY_GEOHASH,
-                        ),
+              case CoopInput.ANY_IMAGE:
+                return hasFieldOfScalarType(schema, ScalarTypes.IMAGE)
+                  ? (
+                      await getAnnotatedRecipesForInputType(
+                        ScalarTypes.IMAGE,
+                        orgId,
                       )
-                    : [];
+                    ).map((recipe) =>
+                      makeCoopInputDerivedFieldSpec(
+                        recipe,
+                        CoopInput.ANY_IMAGE,
+                      ),
+                    )
+                  : [];
 
-                case CoopInput.ANY_IMAGE:
-                  return hasFieldOfScalarType(schema, ScalarTypes.IMAGE)
-                    ? (
-                        await getAnnotatedRecipesForInputType(
-                          ScalarTypes.IMAGE,
-                          orgId,
-                        )
-                      ).map((recipe) =>
-                        makeCoopInputDerivedFieldSpec(
-                          recipe,
-                          CoopInput.ANY_IMAGE,
-                        ),
+              case CoopInput.ANY_VIDEO:
+                return hasFieldOfScalarType(schema, ScalarTypes.VIDEO)
+                  ? (
+                      await getAnnotatedRecipesForInputType(
+                        ScalarTypes.VIDEO,
+                        orgId,
                       )
-                    : [];
-
-                case CoopInput.ANY_VIDEO:
-                  return hasFieldOfScalarType(schema, ScalarTypes.VIDEO)
-                    ? (
-                        await getAnnotatedRecipesForInputType(
-                          ScalarTypes.VIDEO,
-                          orgId,
-                        )
-                      ).map((recipe) =>
-                        makeCoopInputDerivedFieldSpec(
-                          recipe,
-                          CoopInput.ANY_VIDEO,
-                        ),
-                      )
-                    : [];
-                case CoopInput.POLICY_ID:
-                case CoopInput.SOURCE:
-                  return [];
-                default:
-                  assertUnreachable(it);
-              }
-            },
-          ),
+                    ).map((recipe) =>
+                      makeCoopInputDerivedFieldSpec(
+                        recipe,
+                        CoopInput.ANY_VIDEO,
+                      ),
+                    )
+                  : [];
+              case CoopInput.POLICY_ID:
+              case CoopInput.SOURCE:
+                return [];
+              default:
+                assertUnreachable(it);
+            }
+          }),
         ).then((it) => it.flat());
 
         return [

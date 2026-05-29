@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import { normalizeText } from 'normalize-text';
 import SizeLimitedMap from 'size-limited-map';
 

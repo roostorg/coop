@@ -1,7 +1,7 @@
 import { isTypingInEditableElement } from '@/utils/misc';
 import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, TaggedScalar } from '@roostorg/types';
+import { ItemIdentifier, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';

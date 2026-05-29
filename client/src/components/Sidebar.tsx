@@ -4,7 +4,7 @@ import { CogFilled, ExitFilled, UserAlt3Filled } from '@/icons';
 import AngleDoubleLeft from '@/icons/lni/Direction/angle-double-left.svg?react';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
 import { cn } from '@/lib/utils';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import React, {
   ReactElement,
   useEffect,

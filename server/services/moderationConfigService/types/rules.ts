@@ -1,4 +1,4 @@
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 
 import { type JsonOf } from '../../../utils/encoding.js';
 import {

@@ -6,7 +6,7 @@ import {
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
 import Pencil from '@/icons/lni/Education/pencil.svg?react';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { useCallback, useMemo, useState } from 'react';

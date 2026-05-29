@@ -11,7 +11,6 @@ import {
   useGQLDashboardOrgQuery,
   useGQLIsWarehouseAvailableQuery,
 } from '@/graphql/generated';
-import { TriangleAlert } from 'lucide-react';
 import {
   FileExclamationFilled,
   FlowChartAltFilled,
@@ -21,14 +20,15 @@ import {
 } from '@/icons';
 import { LookbackLength } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import { startOfHour, subDays } from 'date-fns';
+import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 
 import DashboardHeader from '../components/DashboardHeader';
-import ErrorBoundary from '@/components/ErrorBoundary';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 import { ChartType } from '../rules/dashboard/visualization/RulesDashboardInsights';
 import RuleDashboardInsightsChart from '../rules/dashboard/visualization/rulesDashboardInsightsChart';
@@ -228,9 +228,7 @@ export default function Overview() {
               containedInLayout
               FallbackComponent={() => (
                 <div className="flex flex-col items-center justify-center w-full gap-3 p-6 rounded bg-slate-100">
-                  <div className="text-xl">
-                    No chart data available yet
-                  </div>
+                  <div className="text-xl">No chart data available yet</div>
                 </div>
               )}
             >
@@ -250,9 +248,7 @@ export default function Overview() {
                 containedInLayout
                 FallbackComponent={() => (
                   <div className="flex flex-col items-center justify-center w-full gap-3 p-6 rounded bg-slate-100">
-                    <div className="text-xl">
-                      No chart data available yet
-                    </div>
+                    <div className="text-xl">No chart data available yet</div>
                   </div>
                 )}
               >

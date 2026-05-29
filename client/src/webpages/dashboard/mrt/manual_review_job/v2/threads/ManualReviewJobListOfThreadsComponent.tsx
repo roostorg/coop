@@ -1,4 +1,4 @@
-import { RelatedItem } from '@roostorg/types';
+import { RelatedItem } from '@roostorg/coop-types';
 import groupBy from 'lodash/groupBy';
 
 import {
@@ -77,11 +77,10 @@ export default function ManualReviewJobListOfThreadsComponent(props: {
 
   const threadComponents = Object.entries(threadsByThreadId).map(
     ([threadId, threadMessages], idx) => {
-      const sortedMessages = threadMessages.sort(
-        (a, b) =>
-          (getFieldValueForRole(a, 'createdAt') ?? '')?.localeCompare(
-            getFieldValueForRole(b, 'createdAt') ?? '',
-          ),
+      const sortedMessages = threadMessages.sort((a, b) =>
+        (getFieldValueForRole(a, 'createdAt') ?? '')?.localeCompare(
+          getFieldValueForRole(b, 'createdAt') ?? '',
+        ),
       );
 
       return (
@@ -92,8 +91,8 @@ export default function ManualReviewJobListOfThreadsComponent(props: {
               payload.__typename === 'UserManualReviewJobPayload'
                 ? filterNullOrUndefined(payload.reportedItems ?? [])
                 : payload.__typename === 'ContentManualReviewJobPayload'
-                ? [{ id: item.id, typeId: item.type.id }]
-                : []
+                  ? [{ id: item.id, typeId: item.type.id }]
+                  : []
             }
             reportedUserIdentifier={
               item.__typename === 'UserItem'
@@ -119,11 +118,11 @@ export default function ManualReviewJobListOfThreadsComponent(props: {
             onEnqueueActions={onEnqueueActions}
             reporterIdentifier={
               'reportedForReasons' in payload
-                ? payload.reportedForReasons?.slice(-2, -1)[0]?.reporterId ??
-                  undefined
+                ? (payload.reportedForReasons?.slice(-2, -1)[0]?.reporterId ??
+                  undefined)
                 : 'appealerIdentifier' in payload
-                ? payload.appealerIdentifier ?? undefined
-                : undefined
+                  ? (payload.appealerIdentifier ?? undefined)
+                  : undefined
             }
             reportedUserRef={reportedUserRef}
             isActionable={isActionable}

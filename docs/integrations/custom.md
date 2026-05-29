@@ -6,7 +6,7 @@ Coop supports **plugin-style integrations**: authors can ship integrations as se
 
 You build a package that exports a **plugin** (manifest + optional signals). The manifest describes the integration: id, name, version, docs link, logos, config fields, and any signals it provides. Logos can be files in the package (served by the platform) or URLs. If the integration needs per-org config (e.g. API keys), you define the fields in the manifest and the platform renders the config form and stores values.
 
-**See the example package for a full reference implementation:** [**`coop-integration-example`**](https://github.com/roostorg/coop-integration-example). It includes a manifest, config field, model card, logos, and a sample signal. Use it as the template for building your own integration; the contract and types live in `@roostorg/types`.
+**See the example package for a full reference implementation:** [**`coop-integration-example`**](https://github.com/roostorg/coop-integration-example). It includes a manifest, config field, model card, logos, and a sample signal. Use it as the template for building your own integration; the contract and types live in `@roostorg/coop-types`.
 
 ## For adopters
 

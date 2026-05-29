@@ -2,7 +2,7 @@ import {
   type ScalarType,
   type ScalarTypeRuntimeType,
   type ScalarTypes,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 
 import { type SignalErrorResult as _SignalErrorResult } from '../signals/SignalBase.js';
 

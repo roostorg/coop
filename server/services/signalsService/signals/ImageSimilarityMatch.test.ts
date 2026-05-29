@@ -1,8 +1,9 @@
-import ImageSimilarityMatch from './ImageSimilarityMatch.js';
+import { type ScalarTypes } from '@roostorg/coop-types';
+
 import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import { type HmaService } from '../../hmaService/index.js';
+import ImageSimilarityMatch from './ImageSimilarityMatch.js';
 import { type SignalInput } from './SignalBase.js';
-import { type ScalarTypes } from '@roostorg/types';
 
 type MatchSignalInput = SignalInput<ScalarTypes['IMAGE'], true>;
 
@@ -33,11 +34,14 @@ describe('ImageSimilarityMatchSignal', () => {
 
     await expect(
       signal.run({
-        value: { type: 'IMAGE', value: { url: 'https://example.com/img.png', hashes: { pdq: 'abc' } } },
+        value: {
+          type: 'IMAGE',
+          value: { url: 'https://example.com/img.png', hashes: { pdq: 'abc' } },
+        },
         matchingValues: [],
         orgId: 'org-1',
         actionPenalties: undefined,
-      } as unknown as MatchSignalInput)
+      } as unknown as MatchSignalInput),
     ).rejects.toThrow('No banks provided for matching');
   });
 
@@ -50,20 +54,25 @@ describe('ImageSimilarityMatchSignal', () => {
         matchingValues: mockBanks,
         orgId: 'org-1',
         actionPenalties: undefined,
-      } as unknown as MatchSignalInput)
+      } as unknown as MatchSignalInput),
     ).rejects.toThrow('No hashes found in image value');
   });
 
   it('returns score true and matchedValue when at least one bank matches', async () => {
-    const signal = makeSignal(jest.fn().mockResolvedValue({
-      matched: true,
-      matchedBanks: ['ORG_TEST_BANK'],
-    }));
+    const signal = makeSignal(
+      jest.fn().mockResolvedValue({
+        matched: true,
+        matchedBanks: ['ORG_TEST_BANK'],
+      }),
+    );
 
     const result = await signal.run({
       value: {
         type: 'IMAGE',
-        value: { url: 'https://example.com/img.png', hashes: { pdq: 'abc123' } },
+        value: {
+          url: 'https://example.com/img.png',
+          hashes: { pdq: 'abc123' },
+        },
       },
       matchingValues: mockBanks,
       orgId: 'org-1',
@@ -78,15 +87,20 @@ describe('ImageSimilarityMatchSignal', () => {
   });
 
   it('returns score false and no matchedValue when no bank matches', async () => {
-    const signal = makeSignal(jest.fn().mockResolvedValue({
-      matched: false,
-      matchedBanks: [],
-    }));
+    const signal = makeSignal(
+      jest.fn().mockResolvedValue({
+        matched: false,
+        matchedBanks: [],
+      }),
+    );
 
     const result = await signal.run({
       value: {
         type: 'IMAGE',
-        value: { url: 'https://example.com/img.png', hashes: { pdq: 'abc123' } },
+        value: {
+          url: 'https://example.com/img.png',
+          hashes: { pdq: 'abc123' },
+        },
       },
       matchingValues: mockBanks,
       orgId: 'org-1',
@@ -99,10 +113,12 @@ describe('ImageSimilarityMatchSignal', () => {
 
   it('aggregates matched banks across hash types', async () => {
     const signal = makeSignal(
-      jest.fn().mockImplementation(async (_ids: string[], signalType: string) => ({
-        matched: signalType === 'pdq',
-        matchedBanks: signalType === 'pdq' ? ['ORG_TEST_BANK'] : [],
-      })),
+      jest
+        .fn()
+        .mockImplementation(async (_ids: string[], signalType: string) => ({
+          matched: signalType === 'pdq',
+          matchedBanks: signalType === 'pdq' ? ['ORG_TEST_BANK'] : [],
+        })),
     );
 
     const result = await signal.run({

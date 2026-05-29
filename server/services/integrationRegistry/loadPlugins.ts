@@ -4,15 +4,14 @@
  * entries for later signal loading (createSignals).
  */
 
-import fs from 'node:fs';
 import { createRequire } from 'module';
+import fs from 'node:fs';
 import path from 'path';
-
 import {
   assertModelCardHasRequiredSections,
   isCoopIntegrationPlugin,
-} from '@roostorg/types';
-import type { CoopIntegrationsConfig } from '@roostorg/types';
+  type CoopIntegrationsConfig,
+} from '@roostorg/coop-types';
 
 import type {
   IntegrationManifestEntry,
@@ -21,7 +20,10 @@ import type {
 
 export type PluginManifestMap = Map<string, IntegrationManifestEntry>;
 
-export type PluginEntry = Readonly<{ packageSpec: string; integrationId: string }>;
+export type PluginEntry = Readonly<{
+  packageSpec: string;
+  integrationId: string;
+}>;
 
 export type LoadPluginsResult = Readonly<{
   manifests: PluginManifestMap;
@@ -61,7 +63,9 @@ export function loadPlugins(
   config: CoopIntegrationsConfig,
   configPath: string,
 ): LoadPluginsResult {
-  const require = createRequire(path.join(path.dirname(configPath), 'package.json'));
+  const require = createRequire(
+    path.join(path.dirname(configPath), 'package.json'),
+  );
   const map = new Map<string, IntegrationManifestEntry>();
   const pluginEntries: PluginEntry[] = [];
   const pluginLogoPaths = new Map<string, string>();
@@ -100,7 +104,9 @@ export function loadPlugins(
     let logoUrl = manifest.logoUrl;
     let logoWithBackgroundUrl = manifest.logoWithBackgroundUrl;
     const logoPath = (manifest as { logoPath?: string }).logoPath;
-    const logoWithBackgroundPath = (manifest as { logoWithBackgroundPath?: string }).logoWithBackgroundPath;
+    const logoWithBackgroundPath = (
+      manifest as { logoWithBackgroundPath?: string }
+    ).logoWithBackgroundPath;
     const entryPath = require.resolve(packageSpec);
     const packageRoot = findPackageRoot(path.dirname(entryPath));
     const packageRootResolved = path.resolve(packageRoot);
@@ -155,7 +161,9 @@ export function loadPlugins(
     }
     if (logoWithBackgroundPath != null && logoWithBackgroundPath.length > 0) {
       const withBgUrlPath = `${INTEGRATION_LOGOS_PATH_PREFIX}/${id}/with-background`;
-      const { fullPathResolved, found, pathToUse } = resolveLogoPath(logoWithBackgroundPath);
+      const { fullPathResolved, found, pathToUse } = resolveLogoPath(
+        logoWithBackgroundPath,
+      );
       if (found) {
         pluginLogoWithBackgroundPaths.set(id, pathToUse);
         logoWithBackgroundUrl = withBgUrlPath;
@@ -187,5 +195,10 @@ export function loadPlugins(
     pluginEntries.push({ packageSpec, integrationId: id });
   }
 
-  return { manifests: map, pluginEntries, pluginLogoPaths, pluginLogoWithBackgroundPaths };
+  return {
+    manifests: map,
+    pluginEntries,
+    pluginLogoPaths,
+    pluginLogoWithBackgroundPaths,
+  };
 }

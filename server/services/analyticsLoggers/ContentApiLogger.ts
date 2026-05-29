@@ -27,8 +27,8 @@ export type ContentApiRequestLogEntry<HasFailure extends boolean> = {
   failureReason: HasFailure extends true
     ? string
     : HasFailure extends false
-    ? undefined
-    : string | undefined;
+      ? undefined
+      : string | undefined;
 };
 
 export type ContentDetailsApiRequestLogEntry = {

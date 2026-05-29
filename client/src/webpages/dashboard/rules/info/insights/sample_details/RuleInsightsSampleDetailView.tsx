@@ -1,4 +1,4 @@
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import CloseButton from '@/components/common/CloseButton';
 
@@ -28,7 +28,7 @@ export function staticValue(input: {
   if ((!score && !matchedValue) || !outcome) {
     return (
       <div className="p-2 mx-2 mb-1 bg-white rounded-lg whitespace-nowrap h-fit">
-       {text}
+        {text}
       </div>
     );
   }
@@ -45,18 +45,18 @@ export function staticValue(input: {
 
   return (
     <div className="flex flex-col items-center px-2 font-bold text-center">
-     {/* This is a hidden component used to ensure the component is vertically centered */}
-     <span className="hidden">
-       {prefix}
-       {resultText}
-     </span>
-     <div className="p-2 mx-2 mb-1 bg-white rounded-lg whitespace-nowrap">
-       {text}
-     </div>
-     <span className="flex px-2 font-bold text-center gap-2">
-       {prefix}
-       {resultText}
-     </span>
+      {/* This is a hidden component used to ensure the component is vertically centered */}
+      <span className="hidden">
+        {prefix}
+        {resultText}
+      </span>
+      <div className="p-2 mx-2 mb-1 bg-white rounded-lg whitespace-nowrap">
+        {text}
+      </div>
+      <span className="flex px-2 font-bold text-center gap-2">
+        {prefix}
+        {resultText}
+      </span>
     </div>
   );
 }

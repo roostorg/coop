@@ -5,17 +5,14 @@
 
 import { createRequire } from 'module';
 import path from 'path';
+import { isCoopIntegrationPlugin } from '@roostorg/coop-types';
 
-import { isCoopIntegrationPlugin } from '@roostorg/types';
+import type { PluginEntry } from '../../integrationRegistry/loadPlugins.js';
+import type { SignalAuthService } from '../../signalAuthService/index.js';
 import PluginSignalAdapter, {
   type PluginSignalDescriptor,
 } from '../signals/PluginSignalAdapter.js';
-import type {
-  SignalBase,
-  SignalInputType,
-} from '../signals/SignalBase.js';
-import type { PluginEntry } from '../../integrationRegistry/loadPlugins.js';
-import type { SignalAuthService } from '../../signalAuthService/index.js';
+import type { SignalBase, SignalInputType } from '../signals/SignalBase.js';
 import type { SignalOutputType } from '../types/SignalOutputType.js';
 
 export type PluginSignalsByType = Record<
@@ -48,7 +45,9 @@ export function loadPluginSignals(
     const resolved: unknown =
       (plugin as { default?: unknown }).default ?? plugin;
     if (!isCoopIntegrationPlugin(resolved)) continue;
-    const createSignals = (resolved as { createSignals?: (ctx: unknown) => unknown[] }).createSignals;
+    const createSignals = (
+      resolved as { createSignals?: (ctx: unknown) => unknown[] }
+    ).createSignals;
     if (typeof createSignals !== 'function') continue;
 
     const getCredential = async (orgId: string) =>

@@ -1,11 +1,11 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 
 import {
   rawItemSubmissionSchema,
   type RawItemSubmission,
 } from '../../services/itemProcessingService/index.js';
-import { route } from '../../utils/route-helpers.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
+import { route } from '../../utils/route-helpers.js';
 import { type Controller } from '../index.js';
 import submitAppeal from './submitAppeal.js';
 import submitReport from './submitReport.js';
@@ -100,7 +100,10 @@ export default {
           required: ['reporter', 'reportedAt', 'reportedItem'],
         },
       },
-      (deps) => [createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps), submitReport(deps)],
+      (deps) => [
+        createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps),
+        submitReport(deps),
+      ],
     ),
     route.post<AppealItemInput, AppealItemOutput>(
       '/appeal',
@@ -150,7 +153,10 @@ export default {
           ],
         },
       },
-      (deps) => [createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps), submitAppeal(deps)],
+      (deps) => [
+        createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps),
+        submitAppeal(deps),
+      ],
     ),
   ],
 } as Controller;

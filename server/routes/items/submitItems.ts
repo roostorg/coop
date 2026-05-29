@@ -1,6 +1,5 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { v1 as uuidv1 } from 'uuid';
-
 
 import {
   type Dependencies,
@@ -14,6 +13,7 @@ import {
   type ItemSubmission,
   type ItemSubmissionWithTypeIdentifier,
 } from '../../services/itemProcessingService/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
   fromCorrelationId,
@@ -25,7 +25,6 @@ import {
   makeBadRequestError,
   type CoopError,
 } from '../../utils/errors.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { safeGet, withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { type SubmitItemsInput } from './ItemRoutes.js';
@@ -82,7 +81,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
         }),
       );
     }
-    
+
     const { orgId } = req;
 
     // TODO: error handling. Our controllers still need much better error
@@ -109,12 +108,15 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           !itemSubmission.error
         ) {
           try {
-            const images = itemSubmission.itemSubmission.data.images as (string | {url: string})[];
-            
+            const images = itemSubmission.itemSubmission.data.images as (
+              | string
+              | { url: string }
+            )[];
+
             // Get all hash banks for this org once
             const allBanks = await HMAHashBankService.listBanks(orgId);
-            const allBankNames = allBanks.map(bank => bank.hma_name);
-            
+            const allBankNames = allBanks.map((bank) => bank.hma_name);
+
             const imageHashes = await Promise.all(
               images.map(async (image) => {
                 const url = typeof image === 'string' ? image : image.url;
@@ -129,49 +131,64 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                       },
                       async () => {
                         return HMAHashBankService.hashContentFromUrl(url);
-                      }
+                      },
                     );
                     const hashes = await hmaHashWithRetries();
-                    
+
                     // Check which banks match this image
                     const matchedBankNames: string[] = [];
-                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                    if (hashes && Object.keys(hashes).length > 0 && allBankNames.length > 0) {
+                     
+                    if (
+                      hashes &&
+                      Object.keys(hashes).length > 0 &&
+                      allBankNames.length > 0
+                    ) {
                       const matchResults = await Promise.all(
                         Object.entries(hashes).map(async ([signalType, hash]) =>
-                          HMAHashBankService.checkImageMatchWithDetails(allBankNames, signalType, hash)
-                        )
+                          HMAHashBankService.checkImageMatchWithDetails(
+                            allBankNames,
+                            signalType,
+                            hash,
+                          ),
+                        ),
                       );
-                      
+
                       // Collect all matched banks
                       const allMatchedHmaBanks = new Set<string>();
-                      matchResults.forEach(result => {
-                        result.matchedBanks.forEach(bank => allMatchedHmaBanks.add(bank));
+                      matchResults.forEach((result) => {
+                        result.matchedBanks.forEach((bank) =>
+                          allMatchedHmaBanks.add(bank),
+                        );
                       });
-                      
+
                       // Map HMA bank names to user-friendly names
-                      allMatchedHmaBanks.forEach(hmaName => {
-                        const bank = allBanks.find(b => b.hma_name === hmaName);
+                      allMatchedHmaBanks.forEach((hmaName) => {
+                        const bank = allBanks.find(
+                          (b) => b.hma_name === hmaName,
+                        );
                         if (bank) {
                           matchedBankNames.push(bank.name);
                         }
                       });
                     }
-                    
+
                     return {
                       url,
                       hashes,
-                      matchedBanks: matchedBankNames.length > 0 ? matchedBankNames : undefined
+                      matchedBanks:
+                        matchedBankNames.length > 0
+                          ? matchedBankNames
+                          : undefined,
                     };
                   } catch (e) {
                     return {
                       url,
-                      hashes: {}
+                      hashes: {},
                     };
                   }
                 }
                 return null;
-              })
+              }),
             );
             // Attach the hashes array to the item submission data
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -299,9 +316,8 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           operation: 'itemSubmissionQueueBulkWrite',
         },
         async (span) => {
-          const bulkWriteResponse = await itemSubmissionQueueBulkWrite(
-            submissionsToProcess,
-          );
+          const bulkWriteResponse =
+            await itemSubmissionQueueBulkWrite(submissionsToProcess);
           if (bulkWriteResponse.error) {
             span.recordException(
               bulkWriteResponse.results.find(
@@ -403,8 +419,6 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           }
         }),
       );
-
-
     }
   };
 }

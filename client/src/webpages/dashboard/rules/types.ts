@@ -151,6 +151,7 @@ export function isMediaType(it: GQLScalarType): boolean {
   return (
     it === GQLScalarType.Audio ||
     it === GQLScalarType.Video ||
-    it === GQLScalarType.Image
+    it === GQLScalarType.Image ||
+    it === GQLScalarType.Media
   );
 }

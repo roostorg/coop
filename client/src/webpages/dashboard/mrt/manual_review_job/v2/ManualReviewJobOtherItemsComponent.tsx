@@ -1,4 +1,4 @@
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useEffect, useRef, useState } from 'react';
@@ -16,9 +16,7 @@ import {
   arrayFromArrayOrSingleItem,
   filterNullOrUndefined,
 } from '../../../../../utils/collections';
-import {
-  getFieldValueForRole,
-} from '../../../../../utils/itemUtils';
+import { getFieldValueForRole } from '../../../../../utils/itemUtils';
 import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
