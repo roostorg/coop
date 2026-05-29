@@ -20,14 +20,17 @@ describe('getRuleAnomalyDetectionStatistics', () => {
   let getRulePassStatistics: Dependencies['getRuleAnomalyDetectionStatistics'];
 
   beforeAll(() => {
+    // ClickHouse returns column names in the case they were written in the
+    // SELECT (lowercase here); use BigInt for the Int64 columns to mirror the
+    // real client's deserialisation.
     const queryResult = [
       {
-        RULE_ID: 'a',
-        NUM_PASSES: 2,
-        NUM_DISTINCT_USERS: 1,
-        NUM_RUNS: 4,
-        TS_START_INCLUSIVE: '2022-05-07 23:00:00.00',
-        RULE_VERSION: '2022-05-01T12:10:00.00305Z',
+        rule_id: 'a',
+        num_passes: BigInt(2),
+        num_distinct_users: BigInt(1),
+        num_runs: BigInt(4),
+        ts_start_inclusive: '2022-05-07 23:00:00.00',
+        rule_version: '2022-05-01T12:10:00.00305Z',
       },
     ];
 
