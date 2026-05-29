@@ -15,7 +15,7 @@ Coop v0 was our initial open source release, while v0.1 focused on strengthening
 > [!NOTE]
 > _Italicized items_ are open issues assigned to the 1.0 milestone that have not yet been merged.
 
-### Deployability
+### Making it easier to get started
 
 We focused a _ton_ of time and effort on making it faster, easier, and lighter-weight to get up and running with Coop.
 
