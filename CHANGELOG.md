@@ -196,6 +196,18 @@ As a critical open source project that empowers platforms to keep their users sa
 - README and AGENTS.md CI commands aligned after CI restructure (#330)
 - _SDLC checklist P0s and P1s addressed (#213)_
 
+### New Contributors
+
+- @TomHawk123 made their first contribution in https://github.com/roostorg/coop/pull/109
+- @dom-notion made their first contribution in https://github.com/roostorg/coop/pull/328
+- @vinaysrao1 made their first contribution in https://github.com/roostorg/coop/pull/314
+- @samuelralak made their first contribution in https://github.com/roostorg/coop/pull/368
+- @ThatKoffe made their first contribution in https://github.com/roostorg/coop/pull/405
+- @haileyok made their first contribution in https://github.com/roostorg/coop/pull/439
+- @davidyshin made their first contribution in https://github.com/roostorg/coop/pull/472
+
+**Full Changelog**: https://github.com/roostorg/coop/compare/0.1...1.0
+
 ---
 
 ## Coop v0.1
