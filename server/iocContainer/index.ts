@@ -337,6 +337,17 @@ export interface Dependencies {
   itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
   IORedis: IORedis.Redis | Cluster;
+  /**
+   * Dedicated ioredis client for the items-async enqueue path. Same Redis
+   * as `IORedis`, but built with `enableOfflineQueue: false` so a
+   * `queue.addBulk` while Redis is unreachable rejects immediately
+   * instead of buffering in-process. The shared `IORedis` keeps its
+   * default offline-buffer behaviour because BullMQ workers and other
+   * read-paths rely on it for transient reconnects.
+   *
+   * Closes #647.
+   */
+  IORedisEnqueueNoBuffer: IORedis.Redis | Cluster;
 
   // Loggers
   RuleExecutionLogger: RuleExecutionLogger;
@@ -573,7 +584,14 @@ export default async function getBottle() {
       }),
   );
 
-  bottle.factory('IORedis', () =>
+  // Shared ioredis builder used by both the default `IORedis` client
+  // (BullMQ workers, general read/write) and the dedicated no-offline-buffer
+  // client used by the items-async enqueue path. The extra knobs let the
+  // enqueue path turn off the offline command queue without copy-pasting the
+  // connection wiring; see #647 for why the enqueue path needs that.
+  const makeRedis = (
+    extraOptions: { enableOfflineQueue?: boolean } = {},
+  ): IORedis.Redis | Cluster =>
     safeGetEnvVar('REDIS_USE_CLUSTER') === 'true'
       ? new IORedis.Cluster(
           [
@@ -593,6 +611,7 @@ export default async function getBottle() {
               maxRetriesPerRequest: null,
               username: safeGetEnvVar('REDIS_USER'),
               password: safeGetEnvVar('REDIS_PASSWORD'),
+              ...extraOptions,
             },
           },
         )
@@ -605,7 +624,18 @@ export default async function getBottle() {
           ...(isEnvTrue('REDIS_TLS')
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
-        }),
+          ...extraOptions,
+        });
+
+  bottle.factory('IORedis', () => makeRedis());
+  // The items-async enqueue path uses this client. With
+  // `enableOfflineQueue: false`, a `queue.addBulk` while Redis is
+  // unreachable rejects immediately instead of resolving against the
+  // in-process buffer. submitItems.ts's existing 5xx branch then fires
+  // and the API tells the client "couldn't enqueue" rather than
+  // claiming 202 against a buffer that vanishes on process restart.
+  bottle.factory('IORedisEnqueueNoBuffer', () =>
+    makeRedis({ enableOfflineQueue: false }),
   );
 
   // Data Warehouse abstraction layer
@@ -672,7 +702,10 @@ export default async function getBottle() {
   });
 
   bottle.factory('itemSubmissionQueueBulkWrite', (container) =>
-    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_QUEUE_NAME),
+    makeItemSubmissionBulkWrite(
+      container.IORedisEnqueueNoBuffer,
+      ITEM_SUBMISSION_QUEUE_NAME,
+    ),
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
@@ -1607,6 +1640,7 @@ export default async function getBottle() {
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
             'IORedis',
+            'IORedisEnqueueNoBuffer',
             // Storage abstractions
             'DataWarehouse',
             'DataWarehouseDialect',
