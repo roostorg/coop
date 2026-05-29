@@ -1,5 +1,4 @@
 import { ScalarTypes } from '@roostorg/coop-types';
-import * as fuzzball from 'fuzzball';
 import _ from 'lodash';
 import { normalizeText } from 'normalize-text';
 
@@ -7,9 +6,9 @@ import { Language } from '../../../../../utils/language.js';
 import { SignalPricingStructure as SignalPricingStructureType } from '../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../SignalBase.js';
+import { partialRatio, ratio } from './levenshteinSimilarity.js';
 import { replaceHomoglyphs } from './textTransform.js';
 
-const { partial_ratio, ratio } = fuzzball;
 const { maxBy } = _;
 
 export default class TextSimilarityScoreSignal extends SignalBase<
@@ -107,17 +106,16 @@ export default class TextSimilarityScoreSignal extends SignalBase<
   }
 
   /**
-   * Compute text similarity using fuzzball partial_ratio (open sourced
-   * by Seatgeek).
+   * Compute text similarity using a partial Levenshtein-similarity ratio.
    *
-   * Importantly, partial_ratio looks for similarity of substrings. So,
-   * if the string extracted from the content is very short (e.g. just
-   * the letter 'A'), then it'll have a partial_ratio of 1 when matched
-   * to any targetString that contains the letter 'A'.
+   * partialRatio looks for similarity of substrings. So if the string
+   * extracted from the content is very short (e.g. just the letter 'A'),
+   * then it'll have a partialRatio of 100 when matched to any targetString
+   * that contains the letter 'A'.
    *
    * We need to special case the instances where targetString is shorter
-   * than matchingString, which will be somewhat rare, but not insanely
-   * rare. In that case, we just use levenshtein distance.
+   * than matchingString, which will be somewhat rare but not insanely so.
+   * In that case, we use the plain ratio.
    *
    * @param targetString - the string extracted from the content being
    * evaluated by a rule
@@ -127,14 +125,9 @@ export default class TextSimilarityScoreSignal extends SignalBase<
    */
   computeSimilarity(targetString: string, matchingString: string) {
     if (targetString.length < matchingString.length) {
-      return (
-        ratio(targetString, matchingString, { force_ascii: false }) / 100.0
-      );
+      return ratio(targetString, matchingString) / 100.0;
     }
-    return (
-      partial_ratio(targetString, matchingString, { force_ascii: false }) /
-      100.0
-    );
+    return partialRatio(targetString, matchingString) / 100.0;
   }
 
   /**
@@ -151,9 +144,10 @@ export default class TextSimilarityScoreSignal extends SignalBase<
    * looks for common homoglyph characters (e.g. '$' instead of 's', '3' instead of
    * 'e', '@' instead of 'a', etc.) and replaces them with the more standard character.
    *
-   * Then we use Seatgeek's open source string fuzzy matching npm module (fuzzball)
-   * to compute similarity scores between the text and the matchingValues. We use
-   * partial_ratio() because it allows for substring matching.
+   * Then we use a local Levenshtein-similarity implementation (see
+   * `levenshteinSimilarity.ts`) to compute similarity scores between the text
+   * and the matchingValues. We use partialRatio() because it allows for
+   * substring matching.
    */
   override async run(input: SignalInput<ScalarTypes['STRING'], true>) {
     /**
