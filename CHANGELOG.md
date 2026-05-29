@@ -179,7 +179,21 @@ As a critical open source project that empowers platforms to keep their users sa
 
 #### Other improvements
 
-<list of related PRs>
+- End-to-end item submission integration test and harness added (#488)
+- Recovery script provided for accidental queue cleanup (#479)
+- CI checks moved into Docker Compose services for consistency with local dev (#314)
+- Husky pre-commit hooks wired up with lint-staged (#391)
+- Storybook migrated from CRA to Vite (#150)
+- Betterer removed; ESLint upgraded to v9 (#152)
+- `AGENTS.md` added with Coop-specific guidance for AI coding assistants (#296)
+- AI code review configuration and instructions added (#445)
+- `CODEOWNERS` cleaned up (#443)
+- ESLint warnings fixed in server (#331)
+- ESLint ignores added for postcss and storybook config (#456)
+- Dummy `package.json` added for ESLint custom rules in client (#281)
+- Postgres settings adjusted for development environments (#376)
+- README and AGENTS.md CI commands aligned after CI restructure (#330)
+- _SDLC checklist P0s and P1s addressed (#213)_
 
 ---
 
