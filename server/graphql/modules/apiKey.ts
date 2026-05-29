@@ -93,9 +93,7 @@ const Mutation: GQLMutationResolvers = {
   async rotateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError(
-        'User does not have permission to rotate the API key',
-      );
+      throw unauthenticatedError('Authenticated user required');
     }
     if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
@@ -146,9 +144,7 @@ const Mutation: GQLMutationResolvers = {
   async rotateWebhookSigningKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError(
-        'User does not have permission to rotate the webhook signing key',
-      );
+      throw unauthenticatedError('Authenticated user required');
     }
     if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(

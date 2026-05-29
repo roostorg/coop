@@ -102,18 +102,15 @@ export async function kyselyListRolesForOrg(
     const defaults = SystemRoleDefaults[roleKey];
     const userCount = userCountsByRole.get(roleKey) ?? 0;
     if (row !== undefined) {
-      const persistedPermissions = permissionsByRoleId.get(row.id) ?? [];
+      // Persisted rows are authoritative; an empty set is a valid saved state.
       return {
         id: row.id,
         key: roleKey,
         displayName: row.display_name,
         description: row.description,
         isSystem: row.is_system,
-        permissions:
-          persistedPermissions.length > 0
-            ? persistedPermissions
-            : getPermissionsForRole(roleKey),
-        isFallback: persistedPermissions.length === 0,
+        permissions: permissionsByRoleId.get(row.id) ?? [],
+        isFallback: false,
         userCount,
       };
     }
@@ -243,6 +240,25 @@ async function ensureSystemRoleRow(
     })
     .returning('id')
     .executeTakeFirstOrThrow();
+
+  // Seed permissions from the static defaults so a freshly materialized
+  // row never looks like an "explicitly empty" set to readers. Callers that
+  // overwrite permissions (e.g. kyselyUpdateRolePermissions) delete these
+  // before inserting their own.
+  const seededPermissions = Array.from(
+    new Set(getPermissionsForRole(opts.roleKey)),
+  );
+  if (seededPermissions.length > 0) {
+    await tx
+      .insertInto('public.role_permissions')
+      .values(
+        seededPermissions.map((permission) => ({
+          role_id: inserted.id,
+          permission,
+        })),
+      )
+      .execute();
+  }
 
   // Backfill role_id on rows where it's NULL; don't stomp existing links.
   await tx
