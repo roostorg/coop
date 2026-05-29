@@ -161,7 +161,21 @@ As a critical open source project that empowers platforms to keep their users sa
 
 #### Security & dependencies
 
-<list of related PRs>
+- Sequelize and undici patched for high-severity vulnerabilities (#138)
+- Axios updated to mitigate supply chain risk (#170)
+- AWS SDK upgraded to fix fast-xml-parser vulnerabilities (#154)
+- lodash and jsonpath vulnerabilities fixed; lodash removed in favor of `plugin-functional` (#186, #216)
+- `@xmldom/xmldom` security update applied (#295)
+- `ajv` vulnerability patched (#229, #276)
+- `ws`, `protobufjs`, UUID, postcss, and other dependency vulnerabilities patched (#177, #262, #263, #264, #322, #449, #459, #514)
+- Helmet upgraded from v4 to v8 (#289)
+- Busybox Docker image pinned by digest to prevent silent image substitution (#311)
+- GitHub Actions SHA-pinned; `--ignore-scripts` added to npm CI installs (#439)
+- Various security-motivated dependency patches applied (#132, #158)
+- Routine dependency updates across all packages (#135, #136, #175, #179, #180, #181, #182, #183, #214, #215, #218, #258, #272, #273, #274, #282, #286, #300, #302, #304, #305, #351, #359, #425, #460)
+- Dependabot configured and grouped; major version bumps excluded (#294, #299, #358)
+- _Fuzzball (GPL-licensed) replaced with an MIT-licensed alternative (#638)_
+- _Automated license scanning added to CI (#611)_
 
 #### Other improvements
 
