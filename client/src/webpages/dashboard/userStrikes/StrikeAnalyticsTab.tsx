@@ -68,13 +68,15 @@ function UserStrikeDistributionChart() {
   if (loading || thresholdsLoading) {
     return <FullScreenLoading />;
   }
+  const chartHeight = 400;
+
   return (
     <div className="w-full">
       <div className="font-bold">Distribution of User Strikes</div>
       <BarChart
         title="Distribution of User Strikes"
         width={900}
-        height={400}
+        height={chartHeight}
         data={counts}
         layout="horizontal"
         margin={{
@@ -112,12 +114,12 @@ function UserStrikeDistributionChart() {
         />
         {/* Pin the tooltip to a fixed Y in the middle of the plot area so
             it doesn't follow the cursor up and down inside a single bar.
-            The fixed Y avoids overlapping the chart title above and the
-            x-axis label below. The cursor fill replaces the invisible
-            default so the user can see which column is selected. */}
+            The +20 nudges it below the title without overlapping the x-axis
+            label. The cursor fill replaces the invisible default so the
+            user can see which column is selected. */}
         <Tooltip
           cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }}
-          position={{ y: 220 }}
+          position={{ y: chartHeight / 2 + 20 }}
         />
         {/* Top alignment keeps the legend out of the x-axis label's space.
             Custom payload so the dashed red threshold lines are explained;
@@ -209,9 +211,7 @@ function RecentUserStrikeActionsTable() {
   const tableData = useMemo(() => {
     return recentUserStrikeActions
       ?.slice()
-      ?.sort((a, b) => {
-        return a.time > b.time ? -1 : 1;
-      })
+      ?.sort((a, b) => (a.time > b.time ? -1 : a.time < b.time ? 1 : 0))
       .map((values) => {
         return {
           user: (
@@ -224,7 +224,7 @@ function RecentUserStrikeActionsTable() {
             </Link>
           ),
           action: actionsById
-            ? actionsById[values.actionId] || 'Unknown'
+            ? (actionsById[values.actionId] ?? 'Unknown')
             : 'Unknown',
           date: format(new Date(values.time), 'MM/dd/yy hh:mm'),
         };

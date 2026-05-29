@@ -134,7 +134,9 @@ export default function ThresholdsTab() {
 }
 function StrikeTTLForm(props: {
   orgTTL: number;
-  setTTL: (ttl: number) => void;
+  // Async — the caller awaits inside the Save handler so the form can wait for
+  // the mutation to round-trip before toggling out of edit mode.
+  setTTL: (ttl: number) => Promise<void>;
 }) {
   const { orgTTL, setTTL } = props;
 
