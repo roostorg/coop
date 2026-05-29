@@ -6,7 +6,7 @@ As our first major release, Coop 1.0 is ready for self-hosted deployment by plat
 
 Coop v0 was our initial open source release, while v0.1 focused on strengthening the foundation with better integrations, improved stability, and feature additions driven by early feedback. Since then, we've been focused on three major areas for Coop 1.0:
 
-- **Deployability** for self-hosters including both significant simplification and completely rewritten documentation to make it faster, easier, and lighter-weight to get up and running with Coop
+- **Making it easier to get started** for developers, contributors, and self-hosters including both significant simplification and completely rewritten documentation
 
 - **Expanded features & capability** in response to adopters' production usage, including review console features and child safety reporting
 
@@ -17,13 +17,13 @@ Coop v0 was our initial open source release, while v0.1 focused on strengthening
 
 ### Deployability
 
-We focused a _ton_ of time and effort on making Coop simpler and easier to get running.
+We focused a _ton_ of time and effort on making it faster, easier, and lighter-weight to get up and running with Coop.
 
 #### Code & infrastructure simplification
 
-The largest internal change in Coop 1.0 is the near-complete migration from Sequelize to Kysely for database access, covering the rule engine, actions, policies, users, organizations, MRT, and backtests. On the infrastructure side, BullMQ replaces Kafka for item submission processing—removing one of the most operationally demanding dependencies from the default deployment. We also cleared out SaaS-era scaffolding that was never meant for self-hosted deployments: proprietary branding, hardcoded infrastructure URLs, the old cloud deployment reference, and the SaaS-only AI risk model.
+The largest internal change in Coop 1.0 is the near-complete migration from Sequelize to Kysely for database access, covering the rule engine, actions, policies, users, organizations, MRT, and backtests. On the infrastructure side, BullMQ replaces Kafka for item submission processing—removing one of the most operationally demanding dependencies from the default deployment. We also cleared out SaaS-era remnants that were never meant for self-hosted deployments.
 
-- Completed Sequelize→Kysely migration across rule engine, actions, policies, users, organizations, MRT, and backtests (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
+- Completed Sequelize → Kysely migration across rule engine, actions, policies, users, organizations, MRT, and backtests (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
 - BullMQ replaces Kafka for item submission processing (#137)
 - Express upgraded to v5 (#283)
 - SSL/TLS and body schema validation added (#326)
@@ -31,6 +31,7 @@ The largest internal change in Coop 1.0 is the near-complete migration from Sequ
 - Removed hardcoded SaaS host URLs; replaced with relative or configurable equivalents (#527)
 - Removed legacy SaaS AI risk model (#293)
 - Removed legacy cloud infrastructure reference (`.devops`); moved migrations to `db/` (#141)
+- Removed Snowflake from codebase (#133)
 - Removed unused Content Proxy reference (#176)
 - Dropped unmaintained `graphql-passport` dependency (#462)
 - Client now always uses a relative GraphQL URL (#455)
@@ -174,7 +175,7 @@ As a critical open source project that empowers platforms to keep their users sa
 - Various security-motivated dependency patches applied (#132, #158)
 - Routine dependency updates across all packages (#135, #136, #175, #179, #180, #181, #182, #183, #214, #215, #218, #258, #272, #273, #274, #282, #286, #300, #302, #304, #305, #351, #359, #425, #460)
 - Dependabot configured and grouped; major version bumps excluded (#294, #299, #358)
-- _Fuzzball (GPL-licensed) replaced with an MIT-licensed alternative (#638)_
+- Fuzzball bumped to v2.2.6 (now MIT-licensed; resolves GPL licensing concern) (#642)
 - _Automated license scanning added to CI (#611)_
 
 #### Other improvements
