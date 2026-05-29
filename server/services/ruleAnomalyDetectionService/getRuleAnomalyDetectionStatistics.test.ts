@@ -20,14 +20,20 @@ describe('getRuleAnomalyDetectionStatistics', () => {
   let getRulePassStatistics: Dependencies['getRuleAnomalyDetectionStatistics'];
 
   beforeAll(() => {
+    // Mirror the real ClickHouse output shape: lowercase keys (CH echoes the
+    // SELECT casing), `BigInt` for `Int64`/`UInt64` columns, and both
+    // `DateTime64(3)` columns in CH's native string form
+    // (`"YYYY-MM-DD HH:MM:SS.sss"`, no `T`, no `Z`). Mocking one of them as
+    // ISO with `Z` would let the production parser silently treat the other
+    // as local time and the test would still pass.
     const queryResult = [
       {
-        RULE_ID: 'a',
-        NUM_PASSES: 2,
-        NUM_DISTINCT_USERS: 1,
-        NUM_RUNS: 4,
-        TS_START_INCLUSIVE: '2022-05-07 23:00:00.00',
-        RULE_VERSION: '2022-05-01T12:10:00.00305Z',
+        rule_id: 'a',
+        num_passes: BigInt(2),
+        num_distinct_users: BigInt(1),
+        num_runs: BigInt(4),
+        ts_start_inclusive: '2022-05-07 23:00:00.000',
+        rule_version: '2022-05-01 12:10:00.003',
       },
     ];
 
@@ -63,14 +69,18 @@ describe('getRuleAnomalyDetectionStatistics', () => {
 
   test('should return the result from the warehouse, properly formatted', async () => {
     const result = await getRulePassStatistics();
+    // Expected timestamps are built from fixed UTC ISO instants — the same
+    // physical moment ClickHouse stored. If the production parser ever
+    // reverts to interpreting CH-style strings as *local* time, this test
+    // fails on any non-UTC runtime.
     expect(result).toEqual([
       {
         ruleId: 'a',
         passCount: 2,
         runsCount: 4,
         passingUsersCount: 1,
-        windowStart: new Date('2022-05-07 23:00:00.00'),
-        approxRuleVersion: new Date('2022-05-01T12:10:00.00305Z'),
+        windowStart: new Date('2022-05-07T23:00:00.000Z'),
+        approxRuleVersion: new Date('2022-05-01T12:10:00.003Z'),
       },
     ]);
   });
@@ -87,10 +97,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE()
+            WHERE ts_end_exclusive <= now64(3)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [],
@@ -110,10 +120,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND ts_start_inclusive >= ?
+            WHERE ts_end_exclusive <= now64(3) AND ts_start_inclusive >= parseDateTime64BestEffort(?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -135,10 +145,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND rule_id IN (?,?)
+            WHERE ts_end_exclusive <= now64(3) AND rule_id IN (?,?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -158,10 +168,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND rule_id IN (?)
+            WHERE ts_end_exclusive <= now64(3) AND rule_id IN (?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -186,10 +196,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND ts_start_inclusive >= ? AND rule_id IN (?,?)
+            WHERE ts_end_exclusive <= now64(3) AND ts_start_inclusive >= parseDateTime64BestEffort(?) AND rule_id IN (?,?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
