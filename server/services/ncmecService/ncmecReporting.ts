@@ -168,7 +168,11 @@ type Media = {
   createdAt: string;
   industryClassification: NCMECIndustryClassificationType;
   fileAnnotations?: readonly NCMECFileAnnotationType[];
-  ipCaptureEvent?: IPNCMECEvent;
+  /** Pre-built IP event(s); accepts a single event or an array. */
+  ipCaptureEvent?: IPNCMECEvent | readonly IPNCMECEvent[];
+  /** Bare IP from the `ipAddress` field role; appended as a synthesised
+   * `Upload` event. */
+  ipAddress?: string;
   deviceId?: DeviceNCMECEvent[];
 };
 
@@ -177,6 +181,11 @@ type NCMECUserParams = {
   typeId: string;
   profilePicture?: string;
   displayName?: string;
+  /** Pre-built IP event(s); accepts a single event or an array. */
+  ipCaptureEvent?: IPNCMECEvent | readonly IPNCMECEvent[];
+  /** Bare IP from the `ipAddress` field role; appended as a synthesised
+   * `Unknown` event. */
+  ipAddress?: string;
 };
 
 export type NCMECReportParams = {
@@ -496,6 +505,40 @@ export function clampIncidentDateTimeToPast(
     value: new Date(finalMs).toISOString(),
     wasClamped,
   };
+}
+
+/** Build the `ipCaptureEvent` array for an NCMEC person or media block:
+ * webhook events + caller-supplied events + role-IP-synthesised event, in
+ * that order. Returns `undefined` when all sources are empty. */
+export function mergeFieldRoleIpIntoEvents(
+  webhookEvents: readonly IPNCMECEvent[] | undefined,
+  paramEvents: IPNCMECEvent | readonly IPNCMECEvent[] | undefined,
+  roleIpAddress: string | undefined | null,
+  synthesisedEvent: { eventName: NCMECEventType; dateTime: string },
+): IPNCMECEvent[] | undefined {
+  const isEventArray = (
+    v: IPNCMECEvent | readonly IPNCMECEvent[],
+  ): v is readonly IPNCMECEvent[] => Array.isArray(v);
+  const paramEventsArray: readonly IPNCMECEvent[] =
+    paramEvents == null
+      ? []
+      : isEventArray(paramEvents)
+        ? paramEvents
+        : [paramEvents];
+  const trimmedRoleIp =
+    typeof roleIpAddress === 'string' ? roleIpAddress.trim() : '';
+  const events: IPNCMECEvent[] = [
+    ...(webhookEvents ?? []),
+    ...paramEventsArray,
+  ];
+  if (trimmedRoleIp !== '') {
+    events.push({
+      ipAddress: trimmedRoleIp,
+      eventName: synthesisedEvent.eventName,
+      dateTime: synthesisedEvent.dateTime,
+    });
+  }
+  return events.length > 0 ? events : undefined;
 }
 
 export function buildInternetDetailsFromOrgSetting(
@@ -1539,6 +1582,18 @@ export default class NcmecReporting {
             ? { email: reportedPersonEmail }
             : undefined;
 
+          // The role IP is a bare string, not a login/upload signal, so
+          // `Unknown` is the safest event-name claim.
+          const reportedUserIpCaptureEvents = mergeFieldRoleIpIntoEvents(
+            userAdditionalInfo.ipCaptureEvent,
+            reportParams.reportedUser.ipCaptureEvent,
+            reportParams.reportedUser.ipAddress,
+            {
+              eventName: NCMECEvent.Unknown,
+              dateTime: clampedIncidentDateTime,
+            },
+          );
+
           const report: Report = {
             report: {
               incidentSummary: {
@@ -1568,9 +1623,9 @@ export default class NcmecReporting {
                       displayName: [reportParams.reportedUser.displayName],
                     }
                   : {}),
-                ...(userAdditionalInfo.ipCaptureEvent &&
-                userAdditionalInfo.ipCaptureEvent.length > 0
-                  ? { ipCaptureEvent: userAdditionalInfo.ipCaptureEvent }
+                ...(reportedUserIpCaptureEvents &&
+                reportedUserIpCaptureEvents.length > 0
+                  ? { ipCaptureEvent: reportedUserIpCaptureEvents }
                   : {}),
               },
               ...(reportAdditionalInfo !== undefined
@@ -1608,11 +1663,23 @@ export default class NcmecReporting {
                 additionalInfo: [],
                 ipCaptureEvent: [],
               };
+              const mergedMediaInfo = {
+                ...mediaAdditionalInfo,
+                ipCaptureEvent: mergeFieldRoleIpIntoEvents(
+                  mediaAdditionalInfo.ipCaptureEvent,
+                  media.ipCaptureEvent,
+                  media.ipAddress,
+                  {
+                    eventName: NCMECEvent.Upload,
+                    dateTime: media.createdAt,
+                  },
+                ),
+              };
               return this.#upload(
                 reportId,
                 media,
                 cybertipAuthenticationCredentials,
-                mediaAdditionalInfo,
+                mergedMediaInfo,
                 isTest,
               );
             }),

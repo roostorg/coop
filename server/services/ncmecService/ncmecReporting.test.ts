@@ -1,6 +1,8 @@
 import {
   buildInternetDetailsFromOrgSetting,
   clampIncidentDateTimeToPast,
+  mergeFieldRoleIpIntoEvents,
+  NCMECEvent,
   summarizeCyberTipFailure,
 } from './ncmecReporting.js';
 
@@ -142,6 +144,166 @@ describe('NCMEC reporting', () => {
       expect(() => clampIncidentDateTimeToPast('not-a-date', NOW_MS)).toThrow(
         /Invalid media createdAt timestamp/,
       );
+    });
+  });
+
+  describe('mergeFieldRoleIpIntoEvents', () => {
+    const synth = {
+      eventName: NCMECEvent.Upload,
+      dateTime: '2026-05-27T12:00:00.000Z',
+    };
+
+    const webhookEvent = {
+      ipAddress: '192.0.2.1',
+      eventName: NCMECEvent.Login,
+      dateTime: '2026-01-01T00:00:00.000Z',
+      port: 443,
+    };
+    const paramEvent = {
+      ipAddress: '198.51.100.5',
+      eventName: NCMECEvent.Registration,
+      dateTime: '2026-02-02T00:00:00.000Z',
+    };
+    const otherParamEvent = {
+      ipAddress: '198.51.100.6',
+      eventName: NCMECEvent.Other,
+      dateTime: '2026-02-03T00:00:00.000Z',
+    };
+
+    it('passes webhook events through when nothing else is set', () => {
+      expect(
+        mergeFieldRoleIpIntoEvents([webhookEvent], undefined, undefined, synth),
+      ).toEqual([webhookEvent]);
+    });
+
+    it('accepts a single param event (not wrapped in an array)', () => {
+      // Partial-items-derived data may produce a single event or many; we
+      // accept either shape so callers don't need to wrap.
+      expect(
+        mergeFieldRoleIpIntoEvents(undefined, paramEvent, undefined, synth),
+      ).toEqual([paramEvent]);
+    });
+
+    it('accepts an array of param events', () => {
+      expect(
+        mergeFieldRoleIpIntoEvents(
+          undefined,
+          [paramEvent, otherParamEvent],
+          undefined,
+          synth,
+        ),
+      ).toEqual([paramEvent, otherParamEvent]);
+    });
+
+    it('concatenates webhook + param + role-synth events in that order', () => {
+      expect(
+        mergeFieldRoleIpIntoEvents(
+          [webhookEvent],
+          [paramEvent, otherParamEvent],
+          '203.0.113.5',
+          synth,
+        ),
+      ).toEqual([
+        webhookEvent,
+        paramEvent,
+        otherParamEvent,
+        {
+          ipAddress: '203.0.113.5',
+          eventName: NCMECEvent.Upload,
+          dateTime: '2026-05-27T12:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('appends the role IP as a synthesised event after webhook events', () => {
+      // The role IP is always included alongside webhook events — adopters
+      // who tag the item with the IP get coverage even when the webhook
+      // already returns a richer event from a different system of record.
+      expect(
+        mergeFieldRoleIpIntoEvents(
+          [webhookEvent],
+          undefined,
+          '203.0.113.5',
+          synth,
+        ),
+      ).toEqual([
+        webhookEvent,
+        {
+          ipAddress: '203.0.113.5',
+          eventName: NCMECEvent.Upload,
+          dateTime: '2026-05-27T12:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('returns a single synthesised event when only the role IP is available', () => {
+      expect(
+        mergeFieldRoleIpIntoEvents([], undefined, '192.0.2.10', synth),
+      ).toEqual([
+        {
+          ipAddress: '192.0.2.10',
+          eventName: NCMECEvent.Upload,
+          dateTime: '2026-05-27T12:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('returns undefined when no source has data', () => {
+      expect(
+        mergeFieldRoleIpIntoEvents(undefined, undefined, undefined, synth),
+      ).toBeUndefined();
+      expect(
+        mergeFieldRoleIpIntoEvents(undefined, undefined, null, synth),
+      ).toBeUndefined();
+      expect(
+        mergeFieldRoleIpIntoEvents([], [], undefined, synth),
+      ).toBeUndefined();
+    });
+
+    it('treats blank/whitespace role IP as absent', () => {
+      // Don't synthesise from blank/whitespace; ingestion validates real IPs
+      // upstream, but we trim defensively here.
+      expect(
+        mergeFieldRoleIpIntoEvents(undefined, undefined, '', synth),
+      ).toBeUndefined();
+      expect(
+        mergeFieldRoleIpIntoEvents(undefined, undefined, '   ', synth),
+      ).toBeUndefined();
+      // With a webhook event, the blank role IP is dropped silently.
+      expect(
+        mergeFieldRoleIpIntoEvents([webhookEvent], undefined, '   ', synth),
+      ).toEqual([webhookEvent]);
+    });
+
+    it('trims surrounding whitespace from the role IP before emitting', () => {
+      const result = mergeFieldRoleIpIntoEvents(
+        undefined,
+        undefined,
+        '  198.51.100.7  ',
+        synth,
+      );
+      expect(result).toEqual([
+        {
+          ipAddress: '198.51.100.7',
+          eventName: NCMECEvent.Upload,
+          dateTime: '2026-05-27T12:00:00.000Z',
+        },
+      ]);
+    });
+
+    it('does not mutate the input webhook or param event arrays', () => {
+      const webhook = [webhookEvent];
+      const params = [paramEvent];
+      const result = mergeFieldRoleIpIntoEvents(
+        webhook,
+        params,
+        '203.0.113.5',
+        synth,
+      );
+      expect(result).not.toBe(webhook);
+      expect(result).not.toBe(params);
+      expect(webhook).toHaveLength(1);
+      expect(params).toHaveLength(1);
     });
   });
 

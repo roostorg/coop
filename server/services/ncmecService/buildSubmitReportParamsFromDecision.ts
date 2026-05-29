@@ -104,6 +104,12 @@ export async function buildSubmitReportParamsFromDecision(
     'profileIcon',
     reportedUserData,
   );
+  const reportedUserIp = getFieldValueForRole(
+    reportedUserItemType.schema,
+    reportedUserItemType.schemaFieldRoles,
+    'ipAddress',
+    reportedUserData,
+  );
 
   // Pre-index allMediaItems by (itemId, typeId) so the per-decisionComponent
   // lookup below is O(1) instead of O(n) for every reportedMedia entry. The
@@ -147,6 +153,12 @@ export async function buildSubmitReportParamsFromDecision(
       if (createdAt === undefined) {
         throw new Error('No created at for reported media');
       }
+      const mediaIp = getFieldValueForRole(
+        mediaItemType.schema,
+        mediaItemType.schemaFieldRoles,
+        'ipAddress',
+        reportedItem.contentItem.data,
+      );
       return {
         id: it.id,
         typeId: it.typeId,
@@ -154,6 +166,7 @@ export async function buildSubmitReportParamsFromDecision(
         createdAt,
         industryClassification: it.industryClassification,
         fileAnnotations: it.fileAnnotations,
+        ...(mediaIp ? { ipAddress: mediaIp } : {}),
       };
     }),
   );
@@ -170,6 +183,7 @@ export async function buildSubmitReportParamsFromDecision(
       typeId: reportedItemTypeId,
       ...(displayName ? { displayName } : {}),
       ...(profilePicUrl ? { profilePicture: profilePicUrl.url } : {}),
+      ...(reportedUserIp ? { ipAddress: reportedUserIp } : {}),
     },
     orgId,
     media,

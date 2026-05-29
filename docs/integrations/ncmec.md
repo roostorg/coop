@@ -213,7 +213,7 @@ When a reviewer submits a CyberTip, Coop performs the following steps:
      - `screenName`: the user's username, from your Additional Info endpoint
      - `displayName`: the user's display name, if available
      - `email`: known email addresses for the user, from your Additional Info endpoint
-     - `ipCaptureEvent`: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC's ability to identify and locate the suspect.
+     - `ipCaptureEvent`: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC's ability to identify and locate the suspect. If the user item's item type maps the `ipAddress` schema field role, that IP is also appended as an `Unknown` event.
 
    - **Victim**: if a child victim is identifiable (e.g. from a messaging context), Coop includes their `espIdentifier`, `screenName`, `displayName`, and `ipCaptureEvent`. This helps NCMEC locate and provide assistance to the victim.
 
@@ -222,7 +222,7 @@ When a reviewer submits a CyberTip, Coop performs the following steps:
 4. **Upload media**: For each media item, Coop downloads the file from its URL and uploads it to NCMEC with full file metadata:
    - Industry classification (A1/A2/B1/B2)
    - File annotations (labels selected by the reviewer)
-   - IP capture events associated with the upload
+   - IP capture events associated with the upload. If the media item's item type maps the `ipAddress` schema field role, that IP is also appended as an `Upload` event at the media's `createdAt`.
    - Whether the content was publicly available on your platform (`publiclyAvailable`)
    - Whether the ESP viewed the file and its EXIF data (`fileViewedByEsp: true`, `exifViewedByEsp: true`)
    - File hash, if provided by your Additional Info endpoint
@@ -347,7 +347,7 @@ Coop signs every request with your org's signing key. Verify the signature befor
 | `users.typeId`            | String          | Must match the `typeId` from the request.                                                                                                                 |
 | `users.screenName`        | String          | The user's screen name or username on your platform.                                                                                                      |
 | `users.email`             | Array           | Known email addresses for the user. `type` may be `Business`, `Home`, or `Work`.                                                                          |
-| `users.ipCaptureEvent`    | Array           | IP events associated with the user (e.g. logins, registrations). `eventName` may be `Login`, `Registration`, `Purchase`, `Upload`, `Other`, or `Unknown`. |
+| `users.ipCaptureEvent`    | Array           | IP events associated with the user (e.g. logins, registrations). `eventName` may be `Login`, `Registration`, `Purchase`, `Upload`, `Other`, or `Unknown`. Coop also appends the user item's `ipAddress` field role (when mapped) as an `Unknown` event at the report's incident time. |
 | `users.data`              | Object          | Raw item data for the user.                                                                                                                               |
 | `media`                   | Array           | Must include an entry for every media item in the request if present.                                                                                     |
 | `media.id`                | String          | Must match the `id` from the request.                                                                                                                     |
@@ -356,7 +356,7 @@ Coop signs every request with your org's signing key. Verify the signature befor
 | `media.publiclyAvailable` | Boolean         | Whether the media was publicly accessible on your platform at the time of reporting.                                                                      |
 | `media.fileName`          | String          | Original filename of the media.                                                                                                                           |
 | `media.additionalInfo`    | Array\<String\> | Additional context about the media to include in the NCMEC file details.                                                                                  |
-| `media.ipCaptureEvent`    | Array           | IP events associated with this media item (e.g. the upload event).                                                                                        |
+| `media.ipCaptureEvent`    | Array           | IP events associated with this media item. Coop also appends the media item's `ipAddress` field role (when mapped) as an `Upload` event at the media's `createdAt`. |
 | `media.fileDetails`       | Object          | Hash information for the file: `{ hash, hashType }`.                                                                                                      |
 | `additionalFiles`         | Array           | Extra files to upload to NCMEC as supplemental evidence (e.g. screenshots).                                                                               |
 | `messages`                | Array           | Message-level IP address data for conversation thread context.                                                                                            |
