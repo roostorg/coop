@@ -44,3 +44,19 @@ CMD ["node", "bin/www.js"]
 
 FROM backend_base AS build_worker_runner
 CMD ["node", "bin/run-worker-or-job.js"]
+
+# Migrator: runs schema migrations via db:create / db:update scripts.
+# The K8s db-migrate Job provides the command at runtime (e.g.,
+#   npm run db:update -- --env staging --db api-server-pg
+# ). Falls back to --help if no command is given.
+FROM node:24.14.1-bullseye-slim AS build_migrator
+WORKDIR /app
+RUN groupadd -r migrator && useradd -r -g migrator -u 1001 migrator
+ENV NPM_CONFIG_CACHE=/tmp/.npm
+COPY --chown=migrator:migrator ["package.json", "./"]
+COPY --chown=migrator:migrator ["db/package.json", "db/package-lock.json", "db/"]
+RUN cd db && npm ci && chown -R migrator:migrator /app/db/node_modules
+COPY --chown=migrator:migrator ["db/src", "db/src/"]
+COPY --chown=migrator:migrator ["db/tsconfig.json", "db/"]
+USER 1001
+CMD ["npm", "run", "db:update", "--", "--help"]
