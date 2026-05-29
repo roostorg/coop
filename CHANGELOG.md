@@ -102,11 +102,36 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 
 #### Review console features
 
-<list of related PRs>
+- Added parameterized actions that accept runtime values when executing (#400)
+- Thread-kind items now surface in user submission history (#284)
+- Recent actions list refreshes automatically after submitting an action (#285)
+- Investigation tool now surfaces users even when no submitted item is available (#444)
+- Report information now shown on other reports table (#475)
+- Comments from deleted users are now visible on manual review jobs (#407)
+- Point of Interest (Google Maps) gracefully disabled when no API key is configured (#584)
+- Added horizontal scrollbar and increased max width for wide tables (#162)
+- Changed permission required to view policies in sidebar (#405)
+- Fixed hidden inputs in proactive rule form (#368)
+- Fixed Submit button being cut off when content overflows in MRT and Investigation (#463)
+- Fixed CoopButton links not respecting disabled state (#472)
+- _User Strikes UI under Automatic Enforcement (#597)_
+- _Remove deprecated User Score in favor of User Strikes (#156, #596)_
+- _Queue custom prioritization (#409)_
+- _Invalidate reports from a specific user to address spam reporting (#404)_
+
+#### Platform needs
+
+- OpenAI image moderation support via `omni-moderation-latest` (#534)
+- IP address schema field role added for tagging items with source IP data (#559, #583)
+- MEDIA content type added end-to-end through server and Review Console (#605, #606, #632)
 
 #### Child safety improvements
 
-<list of related PRs>
+- Built-in NCMEC enqueue actions now available to all orgs, not just managed deployments (#393)
+- Added `additionalInfo` field to NCMEC reports; fixed XML element ordering and Node 24 multipart submission (#477)
+- Fixed NCMEC wellness permission check (#505)
+- Reviewer-friendly error messages now surface `last_error` for NCMEC jobs (#513)
+- _IP address automatically added to NCMEC reports (#592)_
 
 ### Reliability & sustainability
 
@@ -114,7 +139,25 @@ As a critical open source project that empowers platforms to keep their users sa
 
 #### Fixes
 
-<list of related PRs>
+- Postgres idle-client errors no longer crash the server process (#542)
+- ClickHouse outages no longer crash all dashboard pages (#151)
+- Server crashes on transient ClickHouse errors resolved; Scylla memory capped to prevent OOM (#412)
+- Scylla connection failures stopped; connection errors now surfaced visibly (#395)
+- Unbounded queries in review queues fixed (#160)
+- GraphQL depth-limit crashes and related MRT/insights issues resolved (#401)
+- MRT crash when `partialItems` returns an empty array fixed (#645)
+- Partial item rejects of extra top-level items fixed (#601)
+- Job fragment circular dependency resolved (#372)
+- Dashboard routes lazy-loaded to prevent cascading failures (#334)
+- Apollo retry behavior and org metadata cache improved (#184)
+- `createOrg` FK ordering and built-in action seeding fixed (#604)
+- MRT backfill job added (#347)
+- Demo request emails can now be disabled via env var (#352)
+- Coop SVG export fixed (#346)
+- Sidebar flickering and space shifting when navigating from settings to dashboard fixed (#140)
+- Jaeger URL now opens correctly cross-platform (#367)
+- Env example updated with missing PostgreSQL variables (#413)
+- `create-org` command fixed and README updated (#328)
 
 #### Security & dependencies
 
