@@ -249,6 +249,44 @@ describe('buildSubmitReportParamsFromDecision', () => {
       expect(result.media[0]).not.toHaveProperty('ipAddress');
     });
 
+    it('falls back to "now" when the role-derived `createdAt` is unparseable', async () => {
+      const userItemType = makeUserItemType({});
+      const contentItemType = makeContentItemType({});
+      const before = Date.now();
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: userItemType,
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType,
+          contentData: asNormalizedData({
+            created_at: 'not-a-real-date',
+          }),
+        }),
+      );
+      const after = Date.now();
+
+      expect(result.media).toHaveLength(1);
+      const fallbackMs = Date.parse(result.media[0].createdAt);
+      expect(Number.isNaN(fallbackMs)).toBe(false);
+      expect(fallbackMs).toBeGreaterThanOrEqual(before);
+      expect(fallbackMs).toBeLessThanOrEqual(after);
+    });
+
+    it('preserves a valid role-derived `createdAt` unchanged', async () => {
+      const userItemType = makeUserItemType({});
+      const contentItemType = makeContentItemType({});
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: userItemType,
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType,
+          contentData: asNormalizedData({ created_at: FIXED_NOW }),
+        }),
+      );
+
+      expect(result.media[0].createdAt).toBe(FIXED_NOW);
+    });
+
     it('propagates IPv6 addresses unchanged', async () => {
       const userItemType = makeUserItemType({
         ipAddressField: 'client_ip',

@@ -530,14 +530,16 @@ export function mergeFieldRoleIpIntoEvents(
   const events: IPNCMECEvent[] = [
     ...(webhookEvents ?? []),
     ...paramEventsArray,
+    ...(trimmedRoleIp !== ''
+      ? [
+          {
+            ipAddress: trimmedRoleIp,
+            eventName: synthesisedEvent.eventName,
+            dateTime: synthesisedEvent.dateTime,
+          },
+        ]
+      : []),
   ];
-  if (trimmedRoleIp !== '') {
-    events.push({
-      ipAddress: trimmedRoleIp,
-      eventName: synthesisedEvent.eventName,
-      dateTime: synthesisedEvent.dateTime,
-    });
-  }
   return events.length > 0 ? events : undefined;
 }
 

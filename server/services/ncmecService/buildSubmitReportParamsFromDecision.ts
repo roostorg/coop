@@ -139,17 +139,21 @@ export async function buildSubmitReportParamsFromDecision(
       if (mediaItemType === undefined) {
         throw new Error('Unable to find item type for reported media');
       }
-      // Fall back to "now" when the source row is missing `createdAt`.
-      // This keeps retries submittable for legacy data (predates the field)
-      // better to send the retry timestamp than to permanently block the
-      // report from being submitted to NCMEC at all.
+      const roleCreatedAt = getFieldValueForRole(
+        mediaItemType.schema,
+        mediaItemType.schemaFieldRoles,
+        'createdAt',
+        reportedItem.contentItem.data,
+      );
+      // Fall back to "now" when `createdAt` is missing or unparseable (e.g.
+      // legacy rows that predate the field, or a `createdAt` schema field
+      // role mapped to a non-date column). Better to send the retry
+      // timestamp than to permanently block the report.
       const createdAt =
-        getFieldValueForRole(
-          mediaItemType.schema,
-          mediaItemType.schemaFieldRoles,
-          'createdAt',
-          reportedItem.contentItem.data,
-        ) ?? makeDateString(new Date().toISOString());
+        roleCreatedAt !== undefined &&
+        !Number.isNaN(Date.parse(roleCreatedAt))
+          ? roleCreatedAt
+          : makeDateString(new Date().toISOString());
       if (createdAt === undefined) {
         throw new Error('No created at for reported media');
       }

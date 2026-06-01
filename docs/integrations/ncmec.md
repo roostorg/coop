@@ -213,7 +213,7 @@ When a reviewer submits a CyberTip, Coop performs the following steps:
      - `screenName`: the user's username, from your Additional Info endpoint
      - `displayName`: the user's display name, if available
      - `email`: known email addresses for the user, from your Additional Info endpoint
-     - `ipCaptureEvent`: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC's ability to identify and locate the suspect. If the user item's item type maps the `ipAddress` schema field role, that IP is also appended as an `Unknown` event.
+     - `ipCaptureEvent`: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC's ability to identify and locate the suspect. If the user item's item type maps the `ipAddress` schema field role, that IP is also appended as an `Unknown` event at the report's incident time.
 
    - **Victim**: if a child victim is identifiable (e.g. from a messaging context), Coop includes their `espIdentifier`, `screenName`, `displayName`, and `ipCaptureEvent`. This helps NCMEC locate and provide assistance to the victim.
 
