@@ -619,12 +619,9 @@ export default async function getBottle() {
         });
 
   bottle.factory('IORedis', () => makeRedis());
-  // The items-async enqueue path uses this client. With
-  // `enableOfflineQueue: false`, a `queue.addBulk` while Redis is
+  // With `enableOfflineQueue: false`, a `queue.addBulk` while Redis is
   // unreachable rejects immediately instead of resolving against the
-  // in-process buffer. submitItems.ts's existing 5xx branch then fires
-  // and the API tells the client "couldn't enqueue" rather than
-  // claiming 202 against a buffer that vanishes on process restart.
+  // in-process buffer. fails enqueue early with "couldn't enqueue".
   bottle.factory('IORedisEnqueueNoBuffer', () =>
     makeRedis({ enableOfflineQueue: false }),
   );
