@@ -52,3 +52,13 @@ minimumReleaseAgeExclude:
 # Block transitive dependencies from resolving via git repos or tarball URLs.
 # Ensures all deps come from the official registry, not arbitrary remote sources.
 blockExoticSubdeps: true
+
+allowBuilds:
+  '@apollo/protobufjs': false
+  '@parcel/watcher': false
+  core-js-pure: false
+  esbuild: false
+  msgpackr-extract: false
+  nice-napi: false
+  protobufjs: false
+  unrs-resolver: false

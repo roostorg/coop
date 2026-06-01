@@ -24,7 +24,7 @@ services:
     image: node:24.14.1-bullseye-slim
     command: bash -c 'set -e
       && corepack enable
-      && pnpm install && ( [ "$CI" = "true" ] && pnpm run db:clean -- --env staging || true )
+      && pnpm install && ( [ "$$CI" = "true" ] && pnpm run db:clean -- --env staging || true )
       && for db in api-server-pg scylla clickhouse; do pnpm run db:create -- --db "$$db" --env staging; pnpm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.githubci
