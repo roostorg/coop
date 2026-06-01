@@ -44,6 +44,11 @@ onlyBuiltDependencies:
 # Mitigates "publish-and-immediately-compromise" supply chain attacks.
 minimumReleaseAge: 10080
 
+# First-party roostorg packages are exempt: they're published from this repo and
+# trusted by definition; the age gate adds no supply-chain protection for them.
+minimumReleaseAgeExclude:
+  - '@roostorg/coop-types'
+
 # Block transitive dependencies from resolving via git repos or tarball URLs.
 # Ensures all deps come from the official registry, not arbitrary remote sources.
 blockExoticSubdeps: true

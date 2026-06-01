@@ -67,9 +67,7 @@ export type TextBank = {
 type ReturnsModerationConfigTypes = {
   [K in keyof ModerationConfigService]: ReturnType<
     ModerationConfigService[K]
-  > extends ArrayOrPromiseOf<
-    void | ItemType | Action | Policy | boolean | UserStrikeThreshold | TextBank
-  >
+  > extends ArrayOrPromiseOf<void | null | ItemType | Action | Policy | boolean | UserStrikeThreshold | TextBank | PlainRuleWithLatestVersion>
     ? ModerationConfigService[K]
     : never;
 };
@@ -111,7 +109,7 @@ type UserTypeSchemaFieldRoles = {
  * sub-divided lightly; see the rationale at
  * https://coop.atlassian.net/browse/COOP-743?focusedCommentId=10223
  */
-export class ModerationConfigService {
+export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly actionOps: ActionOperations;
   private readonly policyOps: PolicyOperations;
   private readonly itemTypeOps: ItemTypeOperations;
@@ -316,7 +314,7 @@ export class ModerationConfigService {
   }) {
     return this.actionOps.getActionsForRuleId(opts);
   }
-
+  // @ts-expect-error -- getPoliciesByRuleIds returns Record<string,Policy[]>; ArrayOrPromiseOf can't express keyed maps
   async getPoliciesByRuleIds(ruleIds: readonly string[]) {
     return this.policyOps.getPoliciesByRuleIds({
       ruleIds,

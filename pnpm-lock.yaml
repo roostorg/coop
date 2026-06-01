@@ -148,9 +148,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.1.2
         version: 1.2.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@roostorg/types':
-        specifier: ^2.0.0
-        version: 2.0.0
+      '@roostorg/coop-types':
+        specifier: ^2.3.0
+        version: 2.3.0
       '@tailwindcss/container-queries':
         specifier: ^0.1.1
         version: 0.1.1(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
@@ -572,9 +572,9 @@ importers:
       '@roostorg/coop-integration-example':
         specifier: ^2.0.0
         version: 2.0.1(@roostorg/types@2.0.0)
-      '@roostorg/types':
-        specifier: ^2.0.0
-        version: 2.0.0
+      '@roostorg/coop-types':
+        specifier: ^2.3.0
+        version: 2.3.0
       '@sendgrid/mail':
         specifier: ^8.1.6
         version: 8.1.6
@@ -633,8 +633,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       fuzzball:
-        specifier: ^2.1.2
-        version: 2.2.3
+        specifier: ^2.2.6
+        version: 2.2.6
       generic-pool:
         specifier: ^3.8.2
         version: 3.9.0
@@ -3927,6 +3927,9 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@roostorg/types': '>=2.0.0'
+
+  '@roostorg/coop-types@2.3.0':
+    resolution: {integrity: sha512-aOHomJIoqNUUoHxewxjOe6x2Y7ALcVgweUX7SxD18DwfylYK1KJZi4Q5nZB0SMm6q7V5H6btJfo4jRQMLxUT+g==}
 
   '@roostorg/db-migrator@1.1.0':
     resolution: {integrity: sha512-yRP2KsgU+nTX8p4lKUvygILnpK6xOeKYiP1ilpdluWVXPHQkSs/ZsnkyHGFPKuFn1+i2D+i5gMXUb1c1Jjtg2A==}
@@ -7651,8 +7654,8 @@ packages:
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
 
-  fuzzball@2.2.3:
-    resolution: {integrity: sha512-sQDb3kjI7auA4YyE1YgEW85MTparcSgRgcCweUK06Cn0niY5lN+uhFiRUZKN4MQVGGiHxlbrYCA4nL1QjOXBLQ==}
+  fuzzball@2.2.6:
+    resolution: {integrity: sha512-RFYKY0GGDOmocz6rYmvOk9qOnV2UCsLHbVPl5zfZVvcdBlilDg/84WSgAvOCGDq+UEnpnqjZMHk6a/hamC5VuQ==}
 
   gaxios@7.1.4:
     resolution: {integrity: sha512-bTIgTsM2bWn3XklZISBTQX7ZSddGW+IO3bMdGaemHZ3tbqExMENHLx6kKZ/KlejgrMtj8q7wBItt51yegqalrA==}
@@ -15218,6 +15221,11 @@ snapshots:
     dependencies:
       '@roostorg/types': 2.0.0
 
+  '@roostorg/coop-types@2.3.0':
+    dependencies:
+      date-fns: 2.30.0
+      type-fest: 4.41.0
+
   '@roostorg/db-migrator@1.1.0(@types/node@24.12.2)(pg@8.20.0)':
     dependencies:
       '@total-typescript/ts-reset': 0.6.1
@@ -20088,7 +20096,7 @@ snapshots:
 
   functions-have-names@1.2.3: {}
 
-  fuzzball@2.2.3:
+  fuzzball@2.2.6:
     dependencies:
       heap: 0.2.7
       lodash: 4.18.1
