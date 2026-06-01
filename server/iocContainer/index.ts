@@ -1685,7 +1685,24 @@ export default async function getBottle() {
                   ) {
                     await it.destroy();
                   } else if ('quit' in it && typeof it.quit === 'function') {
-                    await it.quit();
+                    // ioredis `quit()` writes a QUIT command to the wire. On
+                    // a client built with `enableOfflineQueue: false`, that
+                    // throws synchronously if the stream isn't writeable
+                    // (e.g. the connection never opened, as is common in
+                    // unit tests). Fall back to a hard disconnect in that
+                    // case so shutdown doesn't fail.
+                    try {
+                      await it.quit();
+                    } catch (err) {
+                      if (
+                        'disconnect' in it &&
+                        typeof it.disconnect === 'function'
+                      ) {
+                        it.disconnect();
+                      } else {
+                        throw err;
+                      }
+                    }
                   } else if (
                     'flushPendingWrites' in it &&
                     typeof it.flushPendingWrites === 'function'
