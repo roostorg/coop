@@ -709,16 +709,22 @@ function ManualReviewJobReviewImpl(props: {
     // Claim the job before refetching: the refetch may momentarily report
     // it gone, and the redirect effect must not fire during that window.
     invalidationDeletedJobIdRef.current = jobId;
-    const refetched = await refetchJobInfo();
-    const stillExists = refetched.data?.me?.reviewableQueues
-      .find((queue) => queue.id === queueId)
-      ?.jobs.find((j) => j.id === jobId);
-    if (stillExists) {
-      // Job survived (other reporters remain); release the claim and stay.
+    try {
+      const refetched = await refetchJobInfo();
+      const stillExists = refetched.data?.me?.reviewableQueues
+        .find((queue) => queue.id === queueId)
+        ?.jobs.find((j) => j.id === jobId);
+      if (stillExists) {
+        // Job survived (other reporters remain); release the claim and stay.
+        invalidationDeletedJobIdRef.current = null;
+        return;
+      }
+      await advanceToNextJobAfterInvalidation();
+    } catch (e) {
+      // Release the claim so the redirect effect isn't suppressed forever.
       invalidationDeletedJobIdRef.current = null;
-      return;
+      throw e;
     }
-    await advanceToNextJobAfterInvalidation();
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {

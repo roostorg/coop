@@ -852,8 +852,7 @@ export default class QueueOperations {
     queueId: string;
     batchSize?: number;
     maxJobs?: number;
-    // Set to `{ truncated: true }` when the queue held more pending jobs
-    // than `maxJobs`, so callers can report a partial sweep.
+    // Set `truncated` when the queue exceeded `maxJobs`.
     progress?: { truncated: boolean };
   }): AsyncIterable<ManualReviewJob> {
     const { orgId, queueId } = opts;
@@ -886,7 +885,6 @@ export default class QueueOperations {
       start += batchSize;
     }
 
-    // We stopped collecting once we hit the cap; flag a likely-partial sweep.
     if (opts.progress != null) {
       opts.progress.truncated = snapshotIds.length >= maxJobs;
     }
@@ -1782,9 +1780,16 @@ export const makeUnableToDeleteDefaultQueueError = (
  * that accept the id as user input (e.g. admin button) so a malformed id
  * becomes a "not found" instead of a 500.
  */
+// Both halves are base64url tokens (optionally `=`-padded), so reject input
+// that can't be one before paying for the per-queue fallback scan.
+const B64URL_TOKEN = /^[A-Za-z0-9_\-+/=]+$/;
 function isParsableExternalId(externalId: JobId): boolean {
   const parts = (externalId as string).split(':');
-  return parts.length === 2 && parts[0].length > 0 && parts[1].length > 0;
+  return (
+    parts.length === 2 &&
+    B64URL_TOKEN.test(parts[0]) &&
+    B64URL_TOKEN.test(parts[1])
+  );
 }
 
 /**

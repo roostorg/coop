@@ -121,6 +121,25 @@ describe('scrubPayloadForReporter (pure)', () => {
     ).toHaveLength(0);
   });
 
+  it('scrubs reportedForReasons on legacy jobs whose reportHistory is empty', () => {
+    // legacyJobToJob synthesizes reportedForReasons from reporterIdentifier
+    // while leaving reportHistory empty, so the reporter only appears there.
+    const payload: ContentManualReviewJobPayload = {
+      kind: 'DEFAULT',
+      item: makeItem(),
+      reportHistory: [],
+      reportedForReasons: [{ reporterId: badReporter, reason: 'fake' }],
+      reportedForReason: 'fake',
+      reporterIdentifier: badReporter,
+    };
+    const result = scrubPayloadForReporter(payload, badReporter);
+    expect(result.removedCount).toBe(1);
+    const scrubbed = result.payload as ContentManualReviewJobPayload;
+    expect(scrubbed.reportedForReasons).toHaveLength(0);
+    expect(scrubbed.reportHistory).toHaveLength(0);
+    expect(scrubbed.reporterIdentifier).toBeUndefined();
+  });
+
   it('repopulates reportedForReasons from the new newest history entry when scrubbing empties it', () => {
     // Regression: scrubbing the newest reporter could leave
     // `reportedForReasons` empty while `reportHistory` still had entries,
@@ -155,7 +174,6 @@ describe('scrubPayloadForReporter (pure)', () => {
       item: makeItem(),
       reportHistory: [makeReportHistoryEntry(badReporter), survivorEntry],
       reportedForReasons: [{ reporterId: badReporter, reason: 'fake' }],
-      // Legacy singular fields still pointing at the scrubbed reporter.
       reportedForReason: 'fake',
       reporterIdentifier: badReporter,
     };

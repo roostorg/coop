@@ -451,8 +451,7 @@ const typeDefs = /* GraphQL */ `
     jobsDeleted: Int!
     reportsRemoved: Int!
     """
-    True when a queue held more pending jobs than the per-queue scan cap,
-    so the org-wide sweep may not have reached every matching report.
+    True when a queue exceeded the per-queue scan cap, so the sweep was partial.
     """
     truncated: Boolean!
   }

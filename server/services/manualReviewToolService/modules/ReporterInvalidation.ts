@@ -30,8 +30,7 @@ export type InvalidateReportsFromReporterResult = {
   jobsScrubbed: number;
   jobsDeleted: number;
   reportsRemoved: number;
-  // True when at least one queue held more pending jobs than the per-queue
-  // scan cap, so the sweep may not have reached every matching report.
+  // True when a queue exceeded the per-queue scan cap, so the sweep was partial.
   truncated: boolean;
 };
 
@@ -90,7 +89,6 @@ export default class ReporterInvalidation {
           }),
           'reporterInvalidation.invokedByUserId': invokedBy.userId,
           'reporterInvalidation.scope': jobId ? 'single_job' : 'org_wide',
-          // The reason is the audit record for this action (see reports.md).
           ...(reason == null ? {} : { 'reporterInvalidation.reason': reason }),
         },
       },
@@ -315,15 +313,18 @@ export function scrubPayloadForReporter(
   const historyRemovedCount =
     payload.reportHistory.length - filteredHistory.length;
 
-  if (historyRemovedCount === 0) {
-    return { payload, removedCount: 0 };
-  }
-
-  // NCMEC payloads have no `reportedForReasons`; only filter history.
+  // Legacy jobs can have an empty `reportHistory` with the reporter still in
+  // `reportedForReasons`, so check both rather than early-returning on history.
   if (payload.kind === 'DEFAULT' && 'reportedForReasons' in payload) {
-    const filteredReasons = (payload.reportedForReasons ?? []).filter(
+    const existingReasons = payload.reportedForReasons ?? [];
+    const filteredReasons = existingReasons.filter(
       (entry) => !isMatch(entry.reporterId),
     );
+    const reasonsRemovedCount = existingReasons.length - filteredReasons.length;
+
+    if (historyRemovedCount === 0 && reasonsRemovedCount === 0) {
+      return { payload, removedCount: 0 };
+    }
 
     // The MRT UI hides `reportHistory[0]` from the "other reports" table,
     // assuming it's represented in `reportedForReasons`. If filtering
@@ -339,8 +340,7 @@ export function scrubPayloadForReporter(
           ]
         : filteredReasons;
 
-    // Legacy singular fields some consumers still read: if they point at
-    // the invalidated reporter, repoint to the newest remaining report.
+    // Keep legacy singular fields in sync when they named the scrubbed reporter.
     const legacyReporterMatches = isMatch(payload.reporterIdentifier);
 
     return {
@@ -355,10 +355,15 @@ export function scrubPayloadForReporter(
           ? { reportedForReason: filteredHistory[0]?.reason }
           : {}),
       },
-      removedCount: historyRemovedCount,
+      // Fall back to the reasons count for legacy jobs with no history.
+      removedCount: historyRemovedCount || reasonsRemovedCount,
     };
   }
 
+  // NCMEC and other non-DEFAULT payloads only have `reportHistory`.
+  if (historyRemovedCount === 0) {
+    return { payload, removedCount: 0 };
+  }
   return {
     payload: { ...payload, reportHistory: filteredHistory },
     removedCount: historyRemovedCount,

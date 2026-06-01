@@ -1569,10 +1569,7 @@ export type GQLInvalidateReportsFromReporterSuccessResponse = {
   readonly jobsScrubbed: Scalars['Int']['output'];
   readonly queuesScanned: Scalars['Int']['output'];
   readonly reportsRemoved: Scalars['Int']['output'];
-  /**
-   * True when a queue held more pending jobs than the per-queue scan cap,
-   * so the org-wide sweep may not have reached every matching report.
-   */
+  /** True when a queue exceeded the per-queue scan cap, so the sweep was partial. */
   readonly truncated: Scalars['Boolean']['output'];
 };
 
