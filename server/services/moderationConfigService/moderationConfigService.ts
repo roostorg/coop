@@ -109,7 +109,7 @@ type UserTypeSchemaFieldRoles = {
  * sub-divided lightly; see the rationale at
  * https://coop.atlassian.net/browse/COOP-743?focusedCommentId=10223
  */
-export class ModerationConfigService implements ReturnsModerationConfigTypes {
+export class ModerationConfigService {
   private readonly actionOps: ActionOperations;
   private readonly policyOps: PolicyOperations;
   private readonly itemTypeOps: ItemTypeOperations;
@@ -120,7 +120,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   constructor(
     pgQuery: Kysely<ModerationConfigServicePg>,
     pgQueryReplica: Kysely<ModerationConfigServicePg>,
-    private readonly onDeletePolicyId: (opts: {
+    onDeletePolicyId: (opts: {
       policyId: string;
       orgId: string;
     }) => Promise<void>,
@@ -314,7 +314,6 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   }) {
     return this.actionOps.getActionsForRuleId(opts);
   }
-  // @ts-expect-error -- getPoliciesByRuleIds returns Record<string,Policy[]>; ArrayOrPromiseOf can't express keyed maps
   async getPoliciesByRuleIds(ruleIds: readonly string[]) {
     return this.policyOps.getPoliciesByRuleIds({
       ruleIds,

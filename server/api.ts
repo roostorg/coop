@@ -18,7 +18,10 @@ import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
-import helmet from 'helmet';
+import helmet_ from 'helmet';
+import type { HelmetOptions } from 'helmet';
+// pnpm+NodeNext resolves .d.cts types for ESM import; cast to retain the callable Helmet type
+const helmet = helmet_ as unknown as (options?: Readonly<HelmetOptions>) => (req: unknown, res: unknown, next: (err?: unknown) => void) => void;
 import passport from 'passport';
 
 import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
