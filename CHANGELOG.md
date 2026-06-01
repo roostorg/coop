@@ -173,7 +173,7 @@ As a critical open source project that empowers platforms to keep their users sa
 - Busybox Docker image pinned by digest to prevent silent image substitution (#311)
 - GitHub Actions SHA-pinned; `--ignore-scripts` added to npm CI installs (#439)
 - Various security-motivated dependency patches applied (#132, #158)
-- Routine dependency updates across all packages (#135, #136, #175, #179, #180, #181, #182, #183, #214, #215, #218, #258, #272, #273, #274, #282, #286, #300, #302, #304, #305, #351, #359, #425, #460)
+- Routine dependency updates across all packages (#135, #136, #175, #179, #180, #181, #182, #183, #214, #215, #218, #258, #272, #273, #274, #282, #286, #300, #302, #304, #305, #351, #359, #425, #460, #554, #568)
 - Dependabot configured and grouped; major version bumps excluded (#294, #299, #358)
 - Fuzzball bumped to v2.2.6 (now MIT-licensed; resolves GPL licensing concern) (#642)
 - _Automated license scanning added to CI (#611)_
