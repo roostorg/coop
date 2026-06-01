@@ -1,7 +1,7 @@
 import {
   hasPermission,
   UserPermission,
-} from '../../models/types/permissioning.js';
+} from '../../services/userManagementService/index.js';
 import { type GQLMutationRunRetroactionArgs } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';

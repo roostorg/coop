@@ -1,4 +1,4 @@
-import { RelatedItem } from '@roostorg/types';
+import { RelatedItem } from '@roostorg/coop-types';
 
 import { GQLContentItem } from '../../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';

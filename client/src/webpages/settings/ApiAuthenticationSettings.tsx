@@ -74,7 +74,7 @@ const ApiAuthenticationSettings = () => {
   const requiredPermissions = [GQLUserPermission.ManageOrg];
   const permissions = data?.me?.permissions;
   if (!userHasPermissions(permissions, requiredPermissions)) {
-    navigate('/settings');
+    navigate('/dashboard/settings');
     return null;
   }
 

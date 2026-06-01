@@ -1,7 +1,6 @@
 /* eslint-disable max-lines */
 
-import { type ConsumerDirectives } from '../../../lib/cache/index.js';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import {
   sql,
   type CaseWhenBuilder,
@@ -15,9 +14,8 @@ import {
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
+import { type ConsumerDirectives } from '../../../lib/cache/index.js';
 import { type RuleExecutionResult } from '../../../rule_engine/RuleEvaluator.js';
-import { type ActionExecutionCorrelationId } from '../../analyticsLoggers/ActionExecutionLogger.js';
-import { type RuleExecutionCorrelationId } from '../../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { cached } from '../../../utils/caching.js';
 import { moveArrayElement } from '../../../utils/collections.js';
 import { getSourceType } from '../../../utils/correlationIds.js';
@@ -33,14 +31,14 @@ import {
   type NonEmptyArray,
   type NonEmptyString,
 } from '../../../utils/typescript-types.js';
+import { type ActionExecutionCorrelationId } from '../../analyticsLoggers/ActionExecutionLogger.js';
+import { type RuleExecutionCorrelationId } from '../../analyticsLoggers/ruleExecutionLoggingUtils.js';
+import { type ItemSubmission } from '../../itemProcessingService/index.js';
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type ConditionSet } from '../../moderationConfigService/index.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
-import {
-  type ManualReviewJobPayload,
-} from '../manualReviewToolService.js';
+import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
 import type QueueOperations from './QueueOperations.js';
-import { type ItemSubmission } from '../../itemProcessingService/index.js';
 
 export const RoutingRuleStatus = makeEnumLike(['LIVE']);
 export type RoutingRuleStatus = keyof typeof RoutingRuleStatus;
@@ -506,18 +504,15 @@ export default class JobRouting {
       const shouldRunRule =
         !destinationQueueId && isApplicableRule(rule, itemSubmission);
 
-
       const ruleResult = shouldRunRule
         ? await this.ruleEvaluator.runRule(rule.conditionSet, evaluationContext)
         : { passed: false, conditionResults: rule.conditionSet };
-
 
       results.push(ruleResult);
       if (destinationQueueId == null && ruleResult.passed) {
         destinationQueueId = rule.destinationQueueId;
       }
     }
-
 
     const rulesToResults = new Map(equalLengthZip(routingRules, results));
 

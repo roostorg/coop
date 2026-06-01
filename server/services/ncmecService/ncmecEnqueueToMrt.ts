@@ -3,7 +3,7 @@ import {
   getScalarType,
   isMediaType,
   type ItemIdentifier,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import { match } from 'ts-pattern';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -211,8 +211,6 @@ export default class NcmecEnqueueToMrt {
       },
       input.targetQueueId,
     );
-    // eslint-disable-next-line no-console
-    console.log('[NCMEC] ✅ Successfully created NCMEC manual review job!');
     return { status: 'ENQUEUED' };
   }
 

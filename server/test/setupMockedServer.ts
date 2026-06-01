@@ -51,9 +51,7 @@ export async function getBottleContainerWithIOMocks() {
   ) as jest.MockedFunction<IDataWarehouse['query']>;
 
   const transactionImpl: IDataWarehouse['transaction'] = async (fn) =>
-    fn(async (sql, binds) =>
-      queryMock(sql, tracer, binds as readonly unknown[] | undefined),
-    );
+    fn(async (sql, binds) => queryMock(sql, tracer, binds));
 
   const startMock = jest.fn(() => {}) as IDataWarehouse['start'];
   const closeMock = jest.fn(async () => {}) as IDataWarehouse['close'];

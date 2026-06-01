@@ -1,5 +1,5 @@
 import type { Dependencies } from '../../iocContainer/index.js';
-import { UserPermission } from '../../models/types/permissioning.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 
 export default async function (opts: {
   orgId: string;

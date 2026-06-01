@@ -21,23 +21,22 @@ function formatValue(value: unknown): string {
     return `unhex('${value.toString('hex')}')`;
   }
 
-  const type = typeof value;
-  if (type === 'number') {
-    if (!Number.isFinite(value as number)) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
       throw new Error('ClickHouse adapter does not support non-finite numbers');
     }
     return String(value);
   }
 
-  if (type === 'bigint') {
+  if (typeof value === 'bigint') {
     return value.toString();
   }
 
-  if (type === 'boolean') {
-    return (value as boolean) ? '1' : '0';
+  if (typeof value === 'boolean') {
+    return value ? '1' : '0';
   }
 
-  if (type === 'object') {
+  if (typeof value === 'object') {
     const json = safeStableStringify(value);
     return `'${escapeString(json)}'`;
   }
@@ -89,4 +88,3 @@ function translateFunctions(statement: string): string {
     .replace(/\bDATE_TRUNC\b/gi, 'date_trunc')
     .replace(/\bDATE\(/gi, 'toDate(');
 }
-

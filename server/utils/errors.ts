@@ -32,7 +32,7 @@ export enum ErrorType {
   // To replace the above once we migrate the submission endpoint
   DataInvalidForItemType = '/errors/data-invalid-for-item-type',
   FieldRolesInvalidForItemType = '/errors/field-roles-invalid-for-item-type',
-  AttemptingToDeleteDefaultUserType = 'errors/attempting-to-delete-default-user-type',
+  AttemptingToDeleteDefaultUserType = '/errors/attempting-to-delete-default-user-type',
 
   // Rule + Rule evaluation Errors
   AttemptingToMutateActiveRule = '/errors/attempting-to-mutate-active-rule',
@@ -259,7 +259,11 @@ export type CoopErrorName =
   | 'NotFoundError'
   | 'InternalServerError'
   | 'BadRequestError'
+  | 'UnauthenticatedError'
   | 'UnauthorizedError'
+  // apiKey errors
+  | 'RotateApiKeyError'
+  | 'RotateWebhookSigningKeyError'
   // gql mutation errors
   | UserErrorType
   | IntegrationErrorType
@@ -316,6 +320,21 @@ export const makeNotFoundError = (title: string, data: ErrorInstanceData) =>
     name: 'NotFoundError',
   });
 
+// 401: caller did not provide valid credentials. Pair with `Unauthenticated`
+// so the GraphQL layer (`server/api.ts`) maps it to `code: 'UNAUTHENTICATED'`.
+export const makeUnauthenticatedError = (
+  title: string,
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    ...data,
+    status: 401,
+    type: [...(data.type ?? []), ErrorType.Unauthenticated],
+    title,
+    name: 'UnauthenticatedError',
+  });
+
+// 403: caller is authenticated but lacks permission for the requested action.
 export const makeUnauthorizedError = (title: string, data: ErrorInstanceData) =>
   new CoopError({
     ...data,
@@ -357,8 +376,8 @@ export const sanitizeError = exposeUnsafeErrorDetails
       typeof err !== 'object'
         ? { title: String(err), status: 500, type: [] }
         : err instanceof CoopError
-        ? err
-        : { title: String(err), status: 500, type: [], ...err }
+          ? err
+          : { title: String(err), status: 500, type: [], ...err }
   : (err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('Sanitizing error:', err);
@@ -382,10 +401,10 @@ export const sanitizeError = exposeUnsafeErrorDetails
 function isSerializableError(it: unknown): it is SerializableError {
   return Boolean(
     typeof it === 'object' &&
-      it &&
-      'status' in it &&
-      'type' in it &&
-      'title' in it,
+    it &&
+    'status' in it &&
+    'type' in it &&
+    'title' in it,
   );
 }
 
@@ -401,10 +420,10 @@ export function getMessageFromAggregateError(it: AggregateError): string {
       it instanceof AggregateError
         ? getMessageFromAggregateError(it)
         : it instanceof CoopError
-        ? it.title + (it.detail ? `: ${it.detail}` : '')
-        : it instanceof Error
-        ? it.message
-        : undefined,
+          ? it.title + (it.detail ? `: ${it.detail}` : '')
+          : it instanceof Error
+            ? it.message
+            : undefined,
     ),
   ).join('\n');
 }
@@ -416,7 +435,7 @@ export function getErrorsFromAggregateError(
     it instanceof AggregateError
       ? getErrorsFromAggregateError(it)
       : it instanceof Error
-      ? [it]
-      : [],
+        ? [it]
+        : [],
   );
 }

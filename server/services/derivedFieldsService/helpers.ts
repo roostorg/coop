@@ -1,10 +1,9 @@
-import { type ScalarType, type TaggedScalar } from '@roostorg/types';
+import { type ScalarType, type TaggedScalar } from '@roostorg/coop-types';
 import _Ajv, { type JSONSchemaType } from 'ajv-draft-04';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { extractContentValueOrValues } from '../../condition_evaluator/leafCondition.js';
-import { type TaggedItemData } from '../../models/rules/item-type-fields.js';
 import {
   b64UrlDecode,
   b64UrlEncode,
@@ -21,7 +20,10 @@ import { everyAsync } from '../../utils/fp-helpers.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { type ItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
-import { CoopInput } from '../moderationConfigService/index.js';
+import {
+  CoopInput,
+  type TaggedItemData,
+} from '../moderationConfigService/index.js';
 import { type TransientRunSignalWithCache } from '../orgAwareSignalExecutionService/signalExecutionService.js';
 import {
   isSignalErrorResult,
@@ -337,7 +339,15 @@ export async function getDerivedFieldValue(
     .reduce(async (derivedResPromise, recipeOperation) => {
       // get value(s) as they've been generated so far.
       const valueOrValues = await derivedResPromise;
+      // The DerivedFieldOperationType enum has only one variant
+      // (RUN_SIGNAL) today, so the case label and the discriminant are
+      // trivially equal and trip no-unnecessary-condition. The switch is
+      // intentional: when a new variant is added, the existing case stops
+      // being exhaustive and the "default: assertUnreachable(...)" branch
+      // surfaces the gap at compile time. Disabling the condition rule
+      // (only) preserves that safety net.
       switch (recipeOperation.type) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see comment above
         case DerivedFieldOperationType.RUN_SIGNAL: {
           const transformValue = transformWithSignal.bind(
             null,

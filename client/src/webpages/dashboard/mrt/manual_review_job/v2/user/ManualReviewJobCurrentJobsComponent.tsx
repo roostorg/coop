@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { useCallback, useMemo } from 'react';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';

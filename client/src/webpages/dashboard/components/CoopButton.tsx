@@ -57,7 +57,7 @@ export default function CoopButton(
     fontWeight = 'semibold',
     iconPosition = 'left',
   } = props;
-  const size = 'size' in props ? props.size ?? 'middle' : 'middle';
+  const size = 'size' in props ? (props.size ?? 'middle') : 'middle';
 
   const sizeProps = (() => {
     if (type === 'link') {
@@ -131,7 +131,11 @@ export default function CoopButton(
   );
 
   const buttonPossiblyWithLinkWrapper =
-    destination != null ? <Link to={destination}>{button}</Link> : button;
+    destination != null && !buttonIsDisabled ? (
+      <Link to={destination}>{button}</Link>
+    ) : (
+      button
+    );
 
   const finalButtonPossiblyWithTooltip =
     Boolean(disabled) && disabledTooltipTitle ? (

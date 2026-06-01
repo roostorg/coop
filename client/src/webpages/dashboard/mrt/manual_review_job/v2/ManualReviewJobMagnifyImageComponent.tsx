@@ -1,4 +1,4 @@
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Popover } from 'antd';
 import { useContext, useMemo } from 'react';
 
@@ -104,9 +104,9 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
     footerComponent == null
   ) {
     return (
-      <div className="flex flex-row items-center gap-2">
+      <div className="flex flex-row items-center gap-2 min-w-0">
         <div
-          className={`flex border-solid rounded-full ${
+          className={`flex shrink-0 border-solid rounded-full ${
             borderAndTextColor
               ? `${borderAndTextColor} border-2`
               : 'border-slate-500 border'
@@ -116,8 +116,8 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
         </div>
         {label ? (
           <div
-            className={`ml-3 font-medium ${
-              labelTruncationType === 'wrap' ? 'overflow-auto' : 'truncate'
+            className={`ml-3 font-medium min-w-0 flex-1 ${
+              labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
             }`}
           >
             {label}
@@ -162,11 +162,11 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
         </div>
       }
     >
-      <div className="flex flex-row items-center cursor-pointer flex-nowrap">
+      <div className="flex flex-row items-center cursor-pointer min-w-0">
         {finalImageUrl ? (
           <img
             alt=""
-            className={`rounded-full ${
+            className={`rounded-full shrink-0 ${
               borderAndTextColor
                 ? `p-0.5 border-2 border-solid ${borderAndTextColor} w-12 h-12`
                 : 'border-current w-12 h-12'
@@ -175,7 +175,7 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
           />
         ) : (
           <div
-            className={`flex border border-solid rounded-full ${
+            className={`flex shrink-0 border border-solid rounded-full ${
               borderAndTextColor ?? 'border-slate-500'
             }`}
           >
@@ -183,16 +183,22 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
           </div>
         )}
         {label ? (
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 flex-1">
             <div
-              className={`ml-2 truncate font-medium ${
-                borderAndTextColor ?? 'text-slate-500'
-              }`}
+              className={`ml-2 font-medium ${
+                labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
+              } ${borderAndTextColor ?? 'text-slate-500'}`}
             >
               {label}
             </div>
             {sublabel ? (
-              <div className="ml-2 text-xs truncate">{sublabel}</div>
+              <div
+                className={`ml-2 text-xs ${
+                  labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
+                }`}
+              >
+                {sublabel}
+              </div>
             ) : null}
           </div>
         ) : null}

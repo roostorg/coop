@@ -21,6 +21,7 @@ npm run get-invite -- --email "user@example.com"
 ### Output
 
 The script will display:
+
 - Invite details (email, role, org ID, created date)
 - **Signup URL** - The full URL to complete signup
 
@@ -87,6 +88,7 @@ All parameters are required:
 ### Output
 
 The script will output:
+
 - Organization ID
 - Organization details (name, email, website)
 - Admin user ID and details
@@ -152,8 +154,87 @@ The script performs the following actions:
 ### Troubleshooting
 
 If the script fails:
+
 - Check that your database connection is configured correctly in `.env`
 - Verify that the organization name and email don't already exist
 - Ensure the website URL is valid (must start with `http://` or `https://`)
 - Check the console output for specific error messages
 
+---
+
+## recover-mrt-queue.ts
+
+Re-enqueues items into a Manual Review Tool queue after Redis loss.
+
+Pending MRT job payloads only live in Redis (BullMQ). When a queue is
+obliterated — intentionally via the "Delete All Jobs" button, or
+unintentionally via a Redis cluster reset / data loss — the items disappear
+from the moderator's queue. The list of WHICH items were enqueued is
+preserved in Postgres (`manual_review_tool.job_creations`); rebuilt
+`reportHistory` is sourced from the data warehouse table
+`REPORTING_SERVICE.REPORTS`; item bodies are re-fetched via
+`ItemInvestigationService.getItemByIdentifier`, which cascades through
+Scylla (`item_submission_by_thread`), the org's Partial Items endpoint,
+and the data warehouse (6-month lookback) — using whichever source still
+has the item.
+
+### Usage
+
+Get the `--queueId` from the MRT queues dashboard (the "ID" column has a
+copy-to-clipboard button next to each id). The mode is auto-detected from
+the queue's role in `ncmec_org_settings`, so the same command works for
+both default and NCMEC queues:
+
+```bash
+# Dry run -- prints what would be re-enqueued, makes no changes
+npm run recover-mrt-queue -- \
+  --orgId "<orgId>" \
+  --queueId "<queueId>"
+
+# Actually re-enqueue
+npm run recover-mrt-queue -- \
+  --orgId "<orgId>" \
+  --queueId "<queueId>" \
+  --apply
+```
+
+### Parameters
+
+- `--orgId` (required): Organization id whose queue is being recovered.
+- `--queueId` (required): MRT queue id to recover into. Must already exist.
+- `--mode default|ncmec` (optional): job kind to re-enqueue. Defaults to
+  auto-detect: `ncmec` if `--queueId` matches the org's
+  `ncmec_org_settings.default_ncmec_queue_id`, else `default`. Pass
+  explicitly only to override (rare; only useful for orgs whose routing
+  rules send DEFAULT jobs into the NCMEC queue, or vice versa). The
+  configuration banner prints both the chosen mode and its source.
+- `--since "<ISO timestamp>"` (default: 30 days ago): only consider
+  `job_creations` rows after this timestamp.
+- `--limit <N>` (default `10000`, max `100000`): cap on number of items.
+- `--apply` (default off): actually call enqueue. Without this flag, the
+  script is a dry-run and prints the items it would re-enqueue.
+- `--no-report-history` (default off): skip rebuilding `reportHistory` from
+  the data warehouse (useful if the warehouse is unavailable).
+
+### Safety
+
+- Dry-run by default. `--apply` is required to make any changes.
+- Items that already have a decision in
+  `manual_review_tool.manual_review_decisions` are filtered out.
+- BullMQ dedupes by `(itemTypeId, itemId)` per queue, so re-running the
+  script on a partially-recovered queue is safe.
+- Per-item enqueue errors are logged and counted but do not abort the run.
+- The script validates that `--orgId` and `--queueId` look like opaque ids
+  before issuing any DB queries.
+
+### What it does NOT recover
+
+- The original BullMQ `JobId` values are not preserved — recovered jobs
+  receive new ids derived from the item identifier.
+- Item field data is whatever the cascade above can find. If the item has
+  been hard-deleted from Scylla, the org has no Partial Items endpoint,
+  and the warehouse 6-month lookback misses, the item is logged as
+  skipped and counted in the final summary.
+- Report history is best-effort: only inbound `submitReport` rows that made
+  it into `REPORTING_SERVICE.REPORTS` are restored. Rule-driven enqueues
+  (`ENQUEUE_TO_MRT`) never had a report history to begin with.

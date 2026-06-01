@@ -1,7 +1,8 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv-draft-04';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type GetItemTypesForOrgEventuallyConsistent } from '../../rule_engine/ruleEngineQueries.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
@@ -22,12 +23,14 @@ import {
 import { type GetItemTypeEventuallyConsistent } from '../moderationConfigService/moderationConfigServiceQueries.js';
 import { type FetchHTTP } from '../networkingService/index.js';
 import { type OrgSettingsService } from '../orgSettingsService/orgSettingsService.js';
+import { isJsonParseFailure } from './isJsonParseFailure.js';
 
 const Ajv = _Ajv as unknown as typeof _Ajv.default;
 const ajv = new Ajv();
 
 type PartialItemsResponse = { items: RawItemSubmission[] };
 
+// Extra top-level keys are accepted but ignored.
 const validatePartialItemsResponse = ajv.compile<PartialItemsResponse>({
   type: 'object',
   properties: {
@@ -37,7 +40,6 @@ const validatePartialItemsResponse = ajv.compile<PartialItemsResponse>({
     },
   },
   required: ['items'],
-  additionalProperties: false,
 } as const satisfies JSONSchemaV4<PartialItemsResponse>);
 
 function makePartialItemsService(
@@ -65,9 +67,8 @@ function makePartialItemsService(
             jsonStringify(itemsToFetch),
           );
 
-          const partialItemsInfo = await orgSettingsService.partialItemsInfo(
-            orgId,
-          );
+          const partialItemsInfo =
+            await orgSettingsService.partialItemsInfo(orgId);
 
           const partialItemsEndpoint = partialItemsInfo?.partialItemsEndpoint;
 
@@ -96,6 +97,16 @@ function makePartialItemsService(
               signingKeyPairService,
               orgId,
             ),
+          }).catch((e: unknown) => {
+            // Surface JSON parse failures as a typed GraphQL error instead of
+            // letting them bubble up as an opaque "Unknown error".
+            if (isJsonParseFailure(e)) {
+              throw makePartialItemsEndpointInvalidResponseError({
+                shouldErrorSpan: true,
+                cause: e,
+              });
+            }
+            throw e;
           });
 
           if (!response.ok) {

@@ -9,9 +9,9 @@ import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {
   CoopError,
   ErrorType,
+  isCoopErrorOfType,
   makeBadRequestError,
   type ErrorInstanceData,
-  isCoopErrorOfType,
 } from '../../utils/errors.js';
 import { WEEK_MS } from '../../utils/time.js';
 import {
@@ -20,6 +20,7 @@ import {
   type GQLRequestDemoInput,
 } from '../generated.js';
 import {
+  kyselyOrgDeleteById,
   kyselyOrgFindAll,
   kyselyOrgFindByEmail,
   kyselyOrgFindById,
@@ -33,6 +34,10 @@ import {
   validateOrgUpdatePatch,
   type OrgValidationFailure,
 } from './orgValidation.js';
+import {
+  kyselyUserListByOrg,
+  type GraphQLUserParent,
+} from './userKyselyPersistence.js';
 
 class OrgAPI {
   constructor(
@@ -47,7 +52,6 @@ class OrgAPI {
     private readonly orgSettingsService: Dependencies['OrgSettingsService'],
     private readonly manualReviewToolService: Dependencies['ManualReviewToolService'],
     private readonly kysely: Dependencies['KyselyPg'],
-    private readonly sequelize: Dependencies['Sequelize'],
   ) {}
 
   async createOrg(params: GQLMutationCreateOrgArgs) {
@@ -77,33 +81,39 @@ class OrgAPI {
 
     const id = uid();
 
-    // Create api key before inserting the org, so we don't have to worry about
-    // the possibility of orgs existing without an api key.
-    // TODO: if org fails to save later, delete orphaned api key.
-    const { record } = await this.apiKeyService.createApiKey(
+    // Insert the org first so FK-dependent inserts (api_keys, signing_keys,
+    // and everything in the Promise.all below) have a parent row to reference.
+    // Past versions of this resolver created the api_key first, which fails
+    // against the non-deferred `api_keys.org_id` FK to `public.orgs(id)`.
+    const org = await kyselyOrgInsert({
+      db: this.kysely,
       id,
-      'Main API Key',
-      'Primary API key for organization',
-      null
-    );
-
-    // TODO: if org fails to save later, delete orphaned signing key pair
-    await this.signingKeyPairService.createAndStoreSigningKeys(id);
+      email,
+      name,
+      websiteUrl: website,
+    });
 
     try {
-      const org = await kyselyOrgInsert({
-        db: this.kysely,
+      const { record } = await this.apiKeyService.createApiKey(
         id,
-        email,
-        name,
-        websiteUrl: website,
-        apiKeyId: record.id,
-      });
+        'Main API Key',
+        'Primary API key for organization',
+        null,
+      );
+      await this.signingKeyPairService.createAndStoreSigningKeys(id);
+
+      // Backfill api_key_id on the org now that the key exists.
+      await this.kysely
+        .updateTable('public.orgs')
+        .set({ api_key_id: record.id, updated_at: new Date() })
+        .where('id', '=', id)
+        .execute();
 
       await Promise.all([
         // This should ideally be done in one transaction, but we can update
         // this after we move off of sequelize
         this.moderationConfigService.createDefaultUserType(id),
+        this.moderationConfigService.upsertBuiltInActions(id),
         this.orgCreationLogger.logOrgCreated(id, name, email, website),
         this.userManagementService.upsertOrgDefaultUserInterfaceSettings({
           orgId: id,
@@ -114,6 +124,14 @@ class OrgAPI {
 
       return org;
     } catch (e) {
+      // Roll back the org insert so we don't leave a half-provisioned row.
+      // `ON DELETE CASCADE` on org_id FKs cleans up any child rows that did
+      // make it (api_keys, signing_keys, item_types, etc.).
+      await kyselyOrgDeleteById(this.kysely, id).catch(() => {
+        // Swallow cleanup failures: the original error is more useful to the
+        // caller, and the next createOrg attempt will hit the unique-name
+        // / unique-email guards above and surface a clear conflict.
+      });
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
         activeSpan.recordException(e as Exception);
@@ -153,7 +171,10 @@ class OrgAPI {
     } catch (error: unknown) {
       // Even if email fails, return the token so it can be copied
       // eslint-disable-next-line no-console
-      console.warn('Failed to send invite email, but token was created:', error);
+      console.warn(
+        'Failed to send invite email, but token was created:',
+        error,
+      );
     }
     return token;
   }
@@ -242,19 +263,12 @@ class OrgAPI {
     return updated;
   }
 
-  /**
-   * Legacy GraphQL `ContentType` parents still use Sequelize `getActions` on
-   * item types; load them from the ORM until item types are fully migrated.
-   */
-  async getSequelizeContentTypesForOrg(orgId: string) {
-    return this.sequelize.ItemType.findAll({
-      where: { orgId },
-    });
+  async getContentTypesForOrg(orgId: string) {
+    return this.moderationConfigService.getItemTypes({ orgId });
   }
 
-  /** GraphQL `Org.users` / permission filters still use Sequelize `User` models. */
-  async getOrgUsersForGraphQL(orgId: string) {
-    return this.sequelize.User.findAll({ where: { orgId } });
+  async getOrgUsersForGraphQL(orgId: string): Promise<GraphQLUserParent[]> {
+    return kyselyUserListByOrg(this.kysely, orgId);
   }
 
   // TODO: ApiKeyService should maybe be its own dataSource,
@@ -280,9 +294,8 @@ class OrgAPI {
   async getPublicSigningKeyPem(orgId: string) {
     let key: CryptoKey;
     try {
-      key = await this.signingKeyPairService.getSignatureVerificationInfo(
-        orgId,
-      );
+      key =
+        await this.signingKeyPairService.getSignatureVerificationInfo(orgId);
     } catch (error) {
       if (isCoopErrorOfType(error, 'SigningKeyPairNotFound')) {
         key = await this.signingKeyPairService.createAndStoreSigningKeys(orgId);
@@ -378,7 +391,6 @@ export default inject(
     'OrgSettingsService',
     'ManualReviewToolService',
     'KyselyPg',
-    'Sequelize',
   ],
   OrgAPI,
 );

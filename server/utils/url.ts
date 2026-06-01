@@ -1,4 +1,4 @@
-import { type UrlString } from '@roostorg/types';
+import { type UrlString } from '@roostorg/coop-types';
 
 import { instantiateOpaqueType } from './typescript-types.js';
 
@@ -10,17 +10,12 @@ type UrlValidationOptions = {
 function defaultBlockedHostnames(): string[] {
   const { ALLOW_USER_INPUT_LOCALHOST_URIS } = process.env;
 
-  return [
-    'coopapi.com',
-    'www.coopapi.com',
-    'trycoop.co',
-    'www.trycoop.co',
-    'getcoop.com',
-    'www.getcoop.com',
-    ...(ALLOW_USER_INPUT_LOCALHOST_URIS === 'true'
-      ? []
-      : ['localhost', '127.0.0.1']),
-  ];
+  // Block loopback addresses to reduce SSRF risk from user-supplied URLs (e.g.
+  // webhook callbacks). Operators who want stricter blocking against their own
+  // public hostname should pass `blockedHostnames` via `UrlValidationOptions`.
+  return ALLOW_USER_INPUT_LOCALHOST_URIS === 'true'
+    ? []
+    : ['localhost', '127.0.0.1'];
 }
 
 export function validateUrl(

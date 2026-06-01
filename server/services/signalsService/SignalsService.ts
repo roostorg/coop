@@ -2,12 +2,12 @@ import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import { isTaggedItemData } from '../../models/rules/item-type-fields.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { CoopError, ErrorType, makeNotFoundError } from '../../utils/errors.js';
 import { __throw, assertUnreachable } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
 import { getIntegrationRegistry } from '../integrationRegistry/index.js';
+import { isTaggedItemData } from '../moderationConfigService/index.js';
 import { instantiateBuiltInSignals } from './helpers/instantiateBuiltInSignals.js';
 import { loadPluginSignals } from './helpers/loadPluginSignals.js';
 import { makeCachedCredentialGetters } from './helpers/makeCachedCredentialsGetters.js';
@@ -294,8 +294,8 @@ export class SignalsService {
       'value' in input.value
         ? input.value.type
         : isTaggedItemData(input.value)
-        ? 'FULL_ITEM'
-        : assertUnreachable(input.value, 'Unknown signal input...');
+          ? 'FULL_ITEM'
+          : assertUnreachable(input.value, 'Unknown signal input...');
 
     if (!signal.eligibleInputs.includes(signalInputType)) {
       throw new CoopError({
@@ -311,16 +311,13 @@ export class SignalsService {
       });
     }
 
-    // When we look up the signal with `#getSignalInstance` above, TS thinks
-    // (correctly) that we could get any signal back, but it loses track of the
-    // relationship between the signal we get back and the type of the `input`.
-    // So, when we call `signal.run()` it tries to check that the `input` is a
-    // type that _any_ signal would accept. However, there is no type that'll
-    // work as every signal's input (e.g, because some signals demand text input
-    // and some demand an image reference), so it'll only let us make this call
-    // if we cast the input to `never` (which is the intersection of every
-    // signal's input type).
-    return signal.run(input as never) as Promise<
+    // `#getSignalInstance` returns a signal whose input type is the union of
+    // every signal's input, so TS loses the relationship between the looked-up
+    // signal and the caller's `input`. The cast on the return value restores
+    // the expected output type for this signal type `T`; the runtime call is
+    // sound because we already validated `signalInputType` against
+    // `signal.eligibleInputs` above.
+    return signal.run(input) as Promise<
       Awaited<SignalTypesToRunOutputTypes[T]>
     >;
   }

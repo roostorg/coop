@@ -2,8 +2,6 @@ import { type Request, type Response } from 'express';
 
 import submitAction from './submitAction.js';
 
-type Handler = ReturnType<typeof submitAction>;
-
 function makeDeps(
   overrides?: Partial<{
     action: Record<string, unknown>;
@@ -48,7 +46,7 @@ function makeDeps(
     ModerationConfigService: { getActions, getPolicies },
     getItemTypeEventuallyConsistent,
     UserAPIDataSource: { getGraphQLUserFromId },
-  } as never) as Handler;
+  } as never);
 
   return { handler, publishActions, getActions };
 }
@@ -100,11 +98,7 @@ describe('submitAction (REST handler)', () => {
     const res = makeRes();
     const next = jest.fn();
 
-    await handler(
-      makeReq({ ...validBody, parameters: {} }),
-      res,
-      next,
-    );
+    await handler(makeReq({ ...validBody, parameters: {} }), res, next);
 
     expect(publishActions).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);

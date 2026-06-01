@@ -1,15 +1,49 @@
-import { type Insertable, type Kysely, type Updateable, sql } from 'kysely';
+import { sql, type Insertable, type Kysely, type Updateable } from 'kysely';
 
-import { computeRuleStatusFromRow } from '../../models/rules/ruleTypes.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
-import { makeNotFoundError } from '../../utils/errors.js';
+import { type BacktestStatusDb } from '../../services/coreAppTables.js';
 import {
+  computeRuleStatusFromRow,
   RuleAlarmStatus,
   RuleStatus,
   RuleType,
+  type Action,
   type ConditionSet,
+  type PlainRuleWithLatestVersion,
+  type Policy,
 } from '../../services/moderationConfigService/index.js';
-import { type Backtest } from '../../models/rules/BacktestModel.js';
+import { makeNotFoundError } from '../../utils/errors.js';
+import { type GraphQLUserParent } from './userKyselyPersistence.js';
+
+/**
+ * GraphQL Rule parent: plain row fields plus the three resolver getters our
+ * Rule / ContentRule / UserRule / RuleInsights resolvers actually use. The
+ * codegen mapper for those four GraphQL types points here.
+ */
+export type GraphQLRuleParent = PlainRuleWithLatestVersion & {
+  getCreator(): Promise<GraphQLUserParent>;
+  getActions(): Promise<Action[]>;
+  getPolicies(): Promise<Policy[]>;
+};
+
+export type GraphQLBacktestParent = {
+  id: string;
+  ruleId: string;
+  creatorId: string;
+  sampleDesiredSize: number;
+  sampleActualSize: number;
+  sampleStartAt: Date;
+  sampleEndAt: Date;
+  samplingComplete: boolean;
+  contentItemsProcessed: number;
+  contentItemsMatched: number;
+  status: BacktestStatusDb;
+  createdAt: Date;
+  updatedAt: Date;
+  cancelationDate: Date | null;
+  correctedContentItemsProcessed: number;
+  correctedContentItemsMatched: number;
+};
 
 /** Matches `public.backtests.status` when generated value is RUNNING. */
 const backtestRunningPredicate = sql<boolean>`cancelation_date is null
@@ -48,13 +82,18 @@ async function replaceRuleActions(
   ruleId: string,
   actionIds: readonly string[],
 ) {
-  await trx.deleteFrom('public.rules_and_actions').where('rule_id', '=', ruleId).execute();
+  await trx
+    .deleteFrom('public.rules_and_actions')
+    .where('rule_id', '=', ruleId)
+    .execute();
   if (actionIds.length === 0) {
     return;
   }
   await trx
     .insertInto('public.rules_and_actions')
-    .values(actionIds.map((actionId) => ({ rule_id: ruleId, action_id: actionId })))
+    .values(
+      actionIds.map((actionId) => ({ rule_id: ruleId, action_id: actionId })),
+    )
     .execute();
 }
 
@@ -63,7 +102,10 @@ async function replaceRulePolicies(
   ruleId: string,
   policyIds: readonly string[],
 ) {
-  await trx.deleteFrom('public.rules_and_policies').where('rule_id', '=', ruleId).execute();
+  await trx
+    .deleteFrom('public.rules_and_policies')
+    .where('rule_id', '=', ruleId)
+    .execute();
   if (policyIds.length === 0) {
     return;
   }
@@ -86,7 +128,10 @@ async function replaceRuleItemTypes(
   ruleId: string,
   itemTypeIds: readonly string[],
 ) {
-  await trx.deleteFrom('public.rules_and_item_types').where('rule_id', '=', ruleId).execute();
+  await trx
+    .deleteFrom('public.rules_and_item_types')
+    .where('rule_id', '=', ruleId)
+    .execute();
   if (itemTypeIds.length === 0) {
     return;
   }
@@ -156,10 +201,7 @@ export async function kyselyCreateRule(
     created_at: now,
     updated_at: now,
   };
-  await trx
-    .insertInto('public.rules')
-    .values(ruleValues as Insertable<CombinedPg['public.rules']>)
-    .execute();
+  await trx.insertInto('public.rules').values(ruleValues).execute();
 
   await replaceRuleActions(trx, input.id, input.actionIds);
   await replaceRulePolicies(trx, input.id, input.policyIds);
@@ -310,7 +352,11 @@ export async function kyselyDeleteRule(
     .deleteFrom('public.users_and_favorite_rules')
     .where('rule_id', '=', id)
     .execute();
-  await trx.deleteFrom('public.rules').where('id', '=', id).where('org_id', '=', orgId).execute();
+  await trx
+    .deleteFrom('public.rules')
+    .where('id', '=', id)
+    .where('org_id', '=', orgId)
+    .execute();
   return true;
 }
 
@@ -344,7 +390,7 @@ export async function kyselyListBacktestsForRule(
   kysely: Kysely<CombinedPg>,
   ruleId: string,
   backtestIds?: readonly string[] | null,
-): Promise<Backtest[]> {
+): Promise<GraphQLBacktestParent[]> {
   let q = kysely
     .selectFrom('public.backtests')
     .selectAll()
@@ -353,10 +399,10 @@ export async function kyselyListBacktestsForRule(
     q = q.where('id', 'in', [...backtestIds]);
   }
   const rows = await q.execute();
-  return rows.map((r) => mapBacktestRowToGqlParent(r)) as unknown as Backtest[];
+  return rows.map((r) => mapBacktestRowToGqlParent(r));
 }
 
-function mapBacktestRowToGqlParent(r: {
+export function mapBacktestRowToGqlParent(r: {
   id: string;
   rule_id: string;
   creator_id: string;
@@ -367,11 +413,13 @@ function mapBacktestRowToGqlParent(r: {
   sampling_complete: boolean;
   content_items_processed: number;
   content_items_matched: number;
-  status: string;
+  status: BacktestStatusDb;
   created_at: Date;
   updated_at: Date;
   cancelation_date: Date | null;
-}) {
+}): GraphQLBacktestParent {
+  // Queues deliver sampled items at-least-once, so processed/matched counters
+  // can rarely exceed sample_actual_size. Clamp the values exposed to clients.
   const correctedContentItemsProcessed = Math.min(
     r.sample_actual_size,
     r.content_items_processed,

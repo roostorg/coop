@@ -1,7 +1,4 @@
-/* eslint-disable max-lines */
-
 import { type GQLQueryResolvers } from '../generated.js';
-
 import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `

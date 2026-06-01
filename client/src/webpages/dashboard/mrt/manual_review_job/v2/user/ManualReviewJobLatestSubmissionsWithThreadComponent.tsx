@@ -1,6 +1,6 @@
 import { filterNullOrUndefined } from '@/utils/collections';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import groupBy from 'lodash/groupBy';
 import sortBy from 'lodash/sortBy';
 import { useMemo } from 'react';

@@ -3,10 +3,11 @@
  */
 
 /* eslint-disable max-classes-per-file */
+import { type Kysely } from 'kysely';
+
 import {
   ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
   NoOpAnalyticsAdapter,
-  type AnalyticsEventInput,
   type IAnalyticsAdapter,
 } from '../../plugins/analytics/index.js';
 import {
@@ -27,7 +28,6 @@ import {
   type DataWarehouseProvider as IDataWarehouseProvider,
   type TransactionFunction,
 } from './IDataWarehouse.js';
-import { type Kysely } from 'kysely';
 import type {
   AnalyticsSchema,
   BulkWriteConfig,
@@ -119,7 +119,7 @@ class WarehouseAdapterBridge implements IDataWarehouse {
     return this.adapter.transaction(async (warehouseQuery) => {
       return fn(async (statement, parameters = []) => {
         const rows = await warehouseQuery(statement, parameters);
-        return Array.from(rows) as unknown[];
+        return Array.from(rows);
       });
     });
   }
@@ -154,7 +154,7 @@ class AnalyticsAdapterBridge implements IDataWarehouseAnalytics {
   ): Promise<void> {
     await this.adapter.writeEvents(
       tableName,
-      rows as readonly AnalyticsEventInput[],
+      rows,
       config?.batchTimeout !== undefined
         ? { batchTimeout: config.batchTimeout }
         : undefined,
@@ -263,8 +263,7 @@ export class DataWarehouseFactory {
     config: DataWarehouseConfig,
     dialect?: IDataWarehouseDialect,
   ): IDataWarehouseAnalytics {
-    const analyticsProvider =
-      config.analyticsProvider ?? (config.provider as AnalyticsProvider);
+    const analyticsProvider = config.analyticsProvider ?? config.provider;
 
     switch (analyticsProvider) {
       case 'noop':

@@ -1,7 +1,9 @@
 /* eslint-disable max-lines */
 import { type JsonValue } from 'type-fest';
-import { inject } from '../../iocContainer/utils.js';
+import { FormData } from 'undici';
+
 import type { Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import type { HashBank } from './dbTypes.js';
 import { HashBankService } from './hashBankService.js';
@@ -178,12 +180,13 @@ const KNOWN_EXCHANGE_SCHEMAS: Partial<Record<string, ExchangeApiSchema>> = {
 export class HmaService {
   private readonly hmaServiceUrl: string;
   private readonly hashBankService: HashBankService;
-  
+
   constructor(
     private readonly fetchHTTP: Dependencies['fetchHTTP'],
-    kyselyPg: Dependencies['KyselyPg']
+    kyselyPg: Dependencies['KyselyPg'],
   ) {
-    this.hmaServiceUrl = process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
+    this.hmaServiceUrl =
+      process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
     this.hashBankService = new HashBankService(kyselyPg);
   }
 
@@ -203,7 +206,7 @@ export class HmaService {
     name: string,
     description: string,
     enabled_ratio: number,
-    exchange?: { apiName: string; apiJson: Record<string, unknown> }
+    exchange?: { apiName: string; apiJson: Record<string, unknown> },
   ): Promise<HashBank> {
     const hmaName = this.getHmaName(orgId, name);
 
@@ -225,7 +228,7 @@ export class HmaService {
 
       if (!response.ok) {
         throw new Error(
-          `Failed to create exchange in HMA: status=${response.status}`
+          `Failed to create exchange in HMA: status=${response.status}`,
         );
       }
 
@@ -260,7 +263,9 @@ export class HmaService {
           url: `${this.hmaServiceUrl}/c/banks`,
           headers: response.headers,
         };
-        throw new Error(`Failed to create HMA bank: ${jsonStringify(errorDetails)}`);
+        throw new Error(
+          `Failed to create HMA bank: ${jsonStringify(errorDetails)}`,
+        );
       }
     }
 
@@ -283,13 +288,20 @@ export class HmaService {
         });
       } catch (cleanupError) {
         // eslint-disable-next-line no-console
-        console.error('Failed to clean up HMA bank after local creation failed:', cleanupError);
+        console.error(
+          'Failed to clean up HMA bank after local creation failed:',
+          cleanupError,
+        );
       }
       throw error;
     }
   }
 
-  async updateBank(orgId: string, id: string, updates: { name?: string; description?: string; enabled_ratio?: number }): Promise<HashBank> {
+  async updateBank(
+    orgId: string,
+    id: string,
+    updates: { name?: string; description?: string; enabled_ratio?: number },
+  ): Promise<HashBank> {
     // Get the existing bank
     const bank = await this.hashBankService.findById(parseInt(id), orgId);
 
@@ -300,16 +312,16 @@ export class HmaService {
     // If name is being updated, we need to update the HMA bank name
     if (updates.name && updates.name !== bank.name) {
       const newHmaName = this.getHmaName(orgId, updates.name);
-      
+
       // Create new bank in HMA with new name
       const createRequestBody = {
         name: newHmaName,
-        enabled_ratio: (updates.enabled_ratio ?? bank.enabled_ratio).toString()
+        enabled_ratio: (updates.enabled_ratio ?? bank.enabled_ratio).toString(),
       };
 
       const createResponse = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/banks`,
-        method: "post",
+        method: 'post',
         body: jsonStringify(createRequestBody),
         headers: {
           'Content-Type': 'application/json',
@@ -323,16 +335,18 @@ export class HmaService {
           responseBody: createResponse.body,
           requestBody: createRequestBody,
           url: `${this.hmaServiceUrl}/c/banks`,
-          headers: createResponse.headers
+          headers: createResponse.headers,
         };
-        throw new Error(`Failed to create new HMA bank: ${jsonStringify(errorDetails)}`);
+        throw new Error(
+          `Failed to create new HMA bank: ${jsonStringify(errorDetails)}`,
+        );
       }
 
       // Delete old HMA bank
       try {
         await this.fetchHTTP({
           url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-          method: "delete",
+          method: 'delete',
           handleResponseBody: 'discard',
         });
       } catch (deleteError) {
@@ -341,22 +355,29 @@ export class HmaService {
       }
 
       // Update local bank with new name and HMA name
-      const updatedBank = await this.hashBankService.update(Number(bank.id), orgId, {
-        name: updates.name,
-        hma_name: newHmaName,
-        description: updates.description,
-        enabled_ratio: updates.enabled_ratio,
-      });
+      const updatedBank = await this.hashBankService.update(
+        Number(bank.id),
+        orgId,
+        {
+          name: updates.name,
+          hma_name: newHmaName,
+          description: updates.description,
+          enabled_ratio: updates.enabled_ratio,
+        },
+      );
       return updatedBank;
-    } else if (updates.enabled_ratio !== undefined && updates.enabled_ratio !== bank.enabled_ratio) {
+    } else if (
+      updates.enabled_ratio !== undefined &&
+      updates.enabled_ratio !== bank.enabled_ratio
+    ) {
       // If only enabled_ratio is being updated, use PUT to update HMA service
       const updateRequestBody = {
-        enabled_ratio: updates.enabled_ratio
+        enabled_ratio: updates.enabled_ratio,
       };
 
       const updateResponse = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-        method: "put",
+        method: 'put',
         body: jsonStringify(updateRequestBody),
         headers: {
           'Content-Type': 'application/json',
@@ -370,14 +391,19 @@ export class HmaService {
           responseBody: updateResponse.body,
           requestBody: updateRequestBody,
           url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-          headers: updateResponse.headers
+          headers: updateResponse.headers,
         };
-        throw new Error(`Failed to update HMA bank: ${jsonStringify(errorDetails)}`);
+        throw new Error(
+          `Failed to update HMA bank: ${jsonStringify(errorDetails)}`,
+        );
       }
     }
 
     // Update other fields if they weren't already updated above
-    const fieldsToUpdate: { description?: string | null; enabled_ratio?: number } = {};
+    const fieldsToUpdate: {
+      description?: string | null;
+      enabled_ratio?: number;
+    } = {};
     if (updates.description !== undefined) {
       fieldsToUpdate.description = updates.description;
     }
@@ -386,7 +412,11 @@ export class HmaService {
     }
 
     if (Object.keys(fieldsToUpdate).length > 0) {
-      const updatedBank = await this.hashBankService.update(Number(bank.id), orgId, fieldsToUpdate);
+      const updatedBank = await this.hashBankService.update(
+        Number(bank.id),
+        orgId,
+        fieldsToUpdate,
+      );
       return updatedBank;
     }
 
@@ -405,7 +435,7 @@ export class HmaService {
     try {
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-        method: "delete",
+        method: 'delete',
         handleResponseBody: 'discard',
       });
 
@@ -433,7 +463,7 @@ export class HmaService {
     try {
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-        method: "get",
+        method: 'get',
         handleResponseBody: 'discard',
       });
 
@@ -445,7 +475,9 @@ export class HmaService {
 
       if (!response.ok) {
         // eslint-disable-next-line no-console
-        console.error(`Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`);
+        console.error(
+          `Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`,
+        );
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -467,7 +499,7 @@ export class HmaService {
     try {
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-        method: "get",
+        method: 'get',
         handleResponseBody: 'discard',
       });
 
@@ -479,7 +511,9 @@ export class HmaService {
 
       if (!response.ok) {
         // eslint-disable-next-line no-console
-        console.error(`Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`);
+        console.error(
+          `Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`,
+        );
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -500,7 +534,7 @@ export class HmaService {
           try {
             const response = await this.fetchHTTP({
               url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-              method: "get",
+              method: 'get',
               headers: {
                 'Content-Type': 'application/json',
               },
@@ -515,16 +549,21 @@ export class HmaService {
 
             if (!response.ok) {
               // eslint-disable-next-line no-console
-              console.error(`Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`);
+              console.error(
+                `Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`,
+              );
             }
 
             return bank;
           } catch (error) {
             // eslint-disable-next-line no-console
-            console.error(`Network error verifying bank ${bank.hma_name}:`, error);
+            console.error(
+              `Network error verifying bank ${bank.hma_name}:`,
+              error,
+            );
             return bank;
           }
-        })
+        }),
       );
 
       return validBanks.filter((bank): bank is HashBank => bank !== null);
@@ -570,7 +609,7 @@ export class HmaService {
           // fall through to default
         }
         return { name, supports_auth: false, has_auth: false };
-      })
+      }),
     );
     return infos;
   }
@@ -601,7 +640,7 @@ export class HmaService {
   async createExchange(
     bankName: string,
     apiType: string,
-    apiJson: Record<string, unknown>
+    apiJson: Record<string, unknown>,
   ): Promise<void> {
     const requestBody = {
       bank: bankName,
@@ -624,13 +663,15 @@ export class HmaService {
         requestBody,
         url: `${this.hmaServiceUrl}/c/exchanges`,
       };
-      throw new Error(`Failed to create exchange: ${jsonStringify(errorDetails)}`);
+      throw new Error(
+        `Failed to create exchange: ${jsonStringify(errorDetails)}`,
+      );
     }
   }
 
   async setExchangeCredentials(
     apiName: string,
-    credentialJson: Record<string, unknown>
+    credentialJson: Record<string, unknown>,
   ): Promise<void> {
     const requestBody = { credential_json: credentialJson };
 
@@ -644,7 +685,7 @@ export class HmaService {
 
     if (!response.ok) {
       throw new Error(
-        `Failed to set exchange credentials for '${apiName}': status=${response.status}`
+        `Failed to set exchange credentials for '${apiName}': status=${response.status}`,
       );
     }
   }
@@ -724,7 +765,9 @@ export class HmaService {
         info.fetched_items = status.fetched_items;
         info.is_fetching = status.running_fetch_start_ts != null;
         if (status.last_fetch_complete_ts != null) {
-          info.last_fetch_time = new Date(status.last_fetch_complete_ts * 1000).toISOString();
+          info.last_fetch_time = new Date(
+            status.last_fetch_complete_ts * 1000,
+          ).toISOString();
         }
       }
     } catch {
@@ -759,12 +802,14 @@ export class HmaService {
         content_uri?: string;
         json?: Record<string, unknown>;
       };
-    }
+    },
   ): Promise<BankContentResponse> {
     const { file, contentType, url, metadata } = options;
 
-    if (!file && !url) {
-      throw new Error('Either file or url must be provided');
+    if (!url && (!file || !contentType)) {
+      throw new Error(
+        'Either url or (file + contentType) must be provided to addContentToBank',
+      );
     }
 
     let response;
@@ -773,9 +818,12 @@ export class HmaService {
       const params = new URLSearchParams();
       params.append('url', url);
       if (metadata) {
-        if (metadata.content_id) params.append('content_id', metadata.content_id);
-        if (metadata.content_uri) params.append('content_uri', metadata.content_uri);
-        if (metadata.json) params.append('metadata', jsonStringify(metadata.json));
+        if (metadata.content_id)
+          params.append('content_id', metadata.content_id);
+        if (metadata.content_uri)
+          params.append('content_uri', metadata.content_uri);
+        if (metadata.json)
+          params.append('metadata', jsonStringify(metadata.json));
       }
 
       response = await this.fetchHTTP({
@@ -784,24 +832,29 @@ export class HmaService {
         handleResponseBody: 'as-json',
       });
     } else {
-      // File upload
+      if (!file || !contentType) {
+        throw new Error(
+          'addContentToBank reached file-upload branch without file/contentType',
+        );
+      }
       const formData = new FormData();
-      formData.append(contentType!, file!);
+      formData.append(contentType, file);
 
       if (metadata) {
-        if (metadata.content_id) formData.append('content_id', metadata.content_id);
-        if (metadata.content_uri) formData.append('content_uri', metadata.content_uri);
-        if (metadata.json) formData.append('metadata', jsonStringify(metadata.json));
+        if (metadata.content_id)
+          formData.append('content_id', metadata.content_id);
+        if (metadata.content_uri)
+          formData.append('content_uri', metadata.content_uri);
+        if (metadata.json)
+          formData.append('metadata', jsonStringify(metadata.json));
       }
 
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bankName}/content`,
         method: 'post',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        body: formData as any,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        // Don't set Content-Type explicitly: undici needs to add the multipart
+        // boundary parameter itself when serializing the FormData.
+        body: formData,
         handleResponseBody: 'as-json',
       });
     }
@@ -813,14 +866,12 @@ export class HmaService {
     return response.body as unknown as BankContentResponse;
   }
 
-  async lookupContent(
-    options: {
-      url?: string;
-      contentType?: ContentType;
-      signalType?: string;
-      signal?: string;
-    }
-  ): Promise<LookupResponse> {
+  async lookupContent(options: {
+    url?: string;
+    contentType?: ContentType;
+    signalType?: string;
+    signal?: string;
+  }): Promise<LookupResponse> {
     const { url, contentType, signalType, signal } = options;
 
     const params = new URLSearchParams();
@@ -851,9 +902,9 @@ export class HmaService {
    * @returns A promise that resolves to an object with matched status and list of matched banks
    */
   async checkImageMatchWithDetails(
-    hmaBankIds: string[], 
-    signalType: string, 
-    signal: string
+    hmaBankIds: string[],
+    signalType: string,
+    signal: string,
   ): Promise<{ matched: boolean; matchedBanks: string[] }> {
     const matches: LookupResponse = await this.lookupContent({
       signal,
@@ -863,7 +914,7 @@ export class HmaService {
     const matchedBanks: string[] = [];
 
     // Check which banks have matches
-    hmaBankIds.forEach(bankId => {
+    hmaBankIds.forEach((bankId) => {
       const bankMatches = matches[bankId];
       if (bankMatches && bankMatches.length > 0) {
         // TODO: Implement some configuration for the distance threshold
@@ -885,8 +936,16 @@ export class HmaService {
    * @returns A promise that resolves to true if the image matches any images in any of the banks
    * @deprecated Use checkImageMatchWithDetails for more detailed information
    */
-  async checkImageMatch(hmaBankIds: string[], signalType: string, signal: string): Promise<boolean> {
-    const result = await this.checkImageMatchWithDetails(hmaBankIds, signalType, signal);
+  async checkImageMatch(
+    hmaBankIds: string[],
+    signalType: string,
+    signal: string,
+  ): Promise<boolean> {
+    const result = await this.checkImageMatchWithDetails(
+      hmaBankIds,
+      signalType,
+      signal,
+    );
     return result.matched;
   }
 }

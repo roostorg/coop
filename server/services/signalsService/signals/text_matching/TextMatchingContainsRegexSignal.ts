@@ -1,4 +1,4 @@
-import { type ScalarTypes } from '@roostorg/types';
+import { type ScalarTypes } from '@roostorg/coop-types';
 
 import { SignalType } from '../../types/SignalType.js';
 import { type SignalInput } from '../SignalBase.js';

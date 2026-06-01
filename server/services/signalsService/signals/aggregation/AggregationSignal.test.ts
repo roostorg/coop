@@ -21,7 +21,6 @@ describe('AggregationSignal', () => {
     const { server, deps, shutdown } = await makeMockedServer();
 
     const {
-      Sequelize: models,
       ModerationConfigService,
       AggregationsService,
       RuleAPIDataSource,
@@ -35,7 +34,7 @@ describe('AggregationSignal', () => {
       uid(),
     );
 
-    const { user, cleanup: userCleanup } = await createUser(models, org.id, {});
+    const { user, cleanup: userCleanup } = await createUser(KyselyPg, org.id);
 
     const { itemTypes, cleanup: itemTypesCleanup } =
       await createContentItemTypes({
