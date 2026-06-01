@@ -193,6 +193,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         <Button
           className="self-end ml-2 text-red-500 border-none"
           icon={<Trash2 className="w-4 h-4" />}
+          aria-label="Delete field"
           onClick={onClickDelete}
         />
       </div>

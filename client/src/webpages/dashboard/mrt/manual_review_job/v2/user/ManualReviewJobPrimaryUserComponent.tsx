@@ -174,7 +174,7 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
           {isReported ? (
             <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red h-fit">
               Reported
-              <AlertTriangle className="w-4 h-4 flex items-center justify-center" fill="currentColor" />
+              <AlertTriangle className="w-4 h-4" />
             </div>
           ) : null}
         </div>
