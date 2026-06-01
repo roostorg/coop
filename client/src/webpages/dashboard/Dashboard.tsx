@@ -1,9 +1,4 @@
-import {
-  FlowChartAltFilled,
-  FriendsFilled,
-  GraphAlt1Filled,
-  SparklesFilled,
-} from '@/icons';
+import { BarChart2 as GraphAlt1Filled, GitBranch as FlowChartAltFilled, Sparkles as SparklesFilled, Users as FriendsFilled } from 'lucide-react';
 import { gql } from '@apollo/client';
 import compact from 'lodash/compact';
 import { useEffect, useState, type ComponentType } from 'react';

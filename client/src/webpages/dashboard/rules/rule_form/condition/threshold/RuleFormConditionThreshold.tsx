@@ -1,5 +1,6 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { Form, Input, Select, Tooltip } from 'antd';
+import { AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
+import { Form, Input, Select } from 'antd';
 
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
@@ -80,8 +81,11 @@ export default function RuleFormConditionThreshold(props: {
       status={hasInvalidThreshold ? 'error' : ''}
       prefix={
         hasInvalidThreshold ? (
-          <Tooltip title="Enter a number">
-            <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertCircle className="w-4 h-4 text-red-500" />
+            </TooltipTrigger>
+            <TooltipContent>Enter a number</TooltipContent>
           </Tooltip>
         ) : (
           <span />

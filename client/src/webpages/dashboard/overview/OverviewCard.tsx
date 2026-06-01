@@ -6,9 +6,7 @@ import {
   useGQLTotalPendingJobsLazyQuery,
   useGQLViolationsPerPolicyLazyQuery,
 } from '@/graphql/generated';
-import { ChevronDownFilled, ChevronUpFilled } from '@/icons';
-import ArrowRight from '@/icons/lni/Direction/arrow-right.svg?react';
-import ArrowsHorizontal from '@/icons/lni/Direction/arrows-horizontal.svg?react';
+import { ArrowLeftRight as ArrowsHorizontal, ArrowRight, ChevronDown as ChevronDownFilled, ChevronUp as ChevronUpFilled } from 'lucide-react';
 import { assertUnreachable } from '@/utils/misc';
 import { gql } from '@apollo/client';
 import {
@@ -20,7 +18,8 @@ import groupBy from 'lodash/groupBy';
 import isNaN from 'lodash/isNaN';
 import partition from 'lodash/partition';
 import sum from 'lodash/sum';
-import { useEffect, useMemo, type SVGProps } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 
 import ComponentLoading from '@/components/common/ComponentLoading';
 
@@ -67,7 +66,7 @@ function getPreviousTimeWindow(timeWindow: TimeWindow): TimeWindow {
 
 export default function OverviewCard(props: {
   title: string;
-  icon: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+  icon: LucideIcon;
   iconColor: 'text-teal-300' | 'text-orange-400' | 'text-amber-400';
   timeWindow: TimeWindow;
   statistic:
@@ -509,7 +508,7 @@ export default function OverviewCard(props: {
               target="_blank"
             >
               View
-              <ArrowRight className="w-3 h-3 fill-primary hover:fill-primary" />
+              <ArrowRight className="w-3 h-3 text-primary" />
             </Link>
           ) : (
             <div className="text-primary">{formatNumber(value.count)}</div>

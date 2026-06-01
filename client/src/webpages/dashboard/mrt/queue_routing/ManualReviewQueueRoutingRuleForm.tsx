@@ -1,4 +1,4 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import { Button, Select } from 'antd';
 import cloneDeep from 'lodash/cloneDeep';
 
@@ -212,7 +212,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
               className="hover:bg-coop-lightblue"
               shape="circle"
               type="default"
-              icon={<PlusOutlined />}
+              icon={<Plus className="w-4 h-4" />}
               onClick={() => {
                 const newConditionSet = addCondition(
                   conditionSet,
@@ -305,7 +305,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
             setTopLevelConditionSet(addConditionSet(rule.conditionSet))
           }
         >
-          <PlusOutlined className="mr-2 mt-0.5" />
+          <Plus className="w-4 h-4 mr-2 mt-0.5" />
           Add Condition Set
         </div>
       )}

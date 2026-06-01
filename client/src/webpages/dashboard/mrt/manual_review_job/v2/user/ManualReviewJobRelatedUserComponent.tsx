@@ -1,8 +1,8 @@
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
+import { User as UserAlt4 } from 'lucide-react';
 import { arrayFromArrayOrSingleItem } from '@/utils/collections';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
-import { LoadingOutlined } from '@ant-design/icons';
+import { Loader2 } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import isEmpty from 'lodash/isEmpty';
@@ -123,7 +123,7 @@ const SeeMoreInfoSection = (props: {
   if (expanded) {
     return null;
   } else if (loading) {
-    return <LoadingOutlined spin className="self-start" />;
+    return <Loader2 className="w-4 h-4 animate-spin self-start" />;
   } else if (errorMessage) {
     return <div className="self-start text-red-500">{errorMessage}</div>;
   }
@@ -265,7 +265,7 @@ export default function ManualReviewJobRelatedUserComponent(props: {
               }
               label={userName}
               fallbackComponent={
-                <UserAlt4 className="p-3 fill-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11" />
               }
             />
             {isReporter ? (

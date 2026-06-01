@@ -1,4 +1,4 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus as PlusOutlined } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { notification } from 'antd';
 import { useEffect, useState } from 'react';

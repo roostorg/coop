@@ -1,6 +1,5 @@
 /* eslint-disable react/jsx-key */
-import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
-import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
+import { ArrowDownWideNarrow as SortAmountDsc, ArrowUpNarrowWide as SortAmountAsc } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Column, Row, useFilters, useSortBy, useTable } from 'react-table';
@@ -144,11 +143,11 @@ export default function Table(
                             {canSort ? (
                               /* @ts-ignore */
                               column.isSortedDesc ? (
-                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" /> /* @ts-ignore */
+                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 text-primary rounded-full" /> /* @ts-ignore */
                               ) : column.isSorted ? (
-                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full scale-y-[-1]" />
+                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 text-primary rounded-full scale-y-[-1]" />
                               ) : (
-                                <SortAmountDsc className="w-4 rounded-full fill-gray-500" />
+                                <SortAmountDsc className="w-4 rounded-full text-gray-500" />
                               )
                             ) : null}
                           </div>

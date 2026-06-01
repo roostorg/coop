@@ -1,5 +1,6 @@
-import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Form, Select, Tooltip } from 'antd';
+import { Trash2, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
+import { Button, Form, Select } from 'antd';
 
 import {
   GQLConditionConjunction,
@@ -47,12 +48,11 @@ export function optionWithTooltip(
       <div className="flex items-center justify-between">
         <div style={{ paddingRight: 24 }}>{title}</div>
         {description && (
-          <Tooltip
-            placement="right"
-            title={description}
-            style={{ background: 'white' }}
-          >
-            <InfoCircleOutlined style={{ color: 'lightslategray' }} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-4 h-4 text-slate-500" />
+            </TooltipTrigger>
+            <TooltipContent side="right">{description}</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -207,7 +207,7 @@ export default function RuleFormCondition(props: {
       <Button
         key={`RuleFormCondition-delete_set_index_${conditionSetIndex}_index_${conditionIndex}`}
         shape="circle"
-        icon={<DeleteOutlined />}
+        icon={<Trash2 className="w-4 h-4" />}
         onClick={onDeleteCondition}
       />
     </Form.Item>

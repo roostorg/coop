@@ -1,6 +1,6 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Label } from '@/coop-ui/Label';
-import { DeleteOutlined } from '@ant-design/icons';
+import { Trash2 } from 'lucide-react';
 import { isContainerType, type ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select, Tooltip } from 'antd';
 
@@ -192,7 +192,8 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         </div>
         <Button
           className="self-end ml-2 text-red-500 border-none"
-          icon={<DeleteOutlined />}
+          icon={<Trash2 className="w-4 h-4" />}
+          aria-label="Delete field"
           onClick={onClickDelete}
         />
       </div>

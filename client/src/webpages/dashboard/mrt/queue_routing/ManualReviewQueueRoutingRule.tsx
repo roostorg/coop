@@ -1,12 +1,7 @@
-import {
-  DeleteOutlined,
-  DownOutlined,
-  EditOutlined,
-  HolderOutlined,
-  UpOutlined,
-} from '@ant-design/icons';
+import { ChevronDown, ChevronUp, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { gql } from '@apollo/client';
-import { Input, Tooltip } from 'antd';
+import { Input } from 'antd';
 import React, { useState } from 'react';
 import { DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
 
@@ -55,8 +50,8 @@ export function ManualReviewQueueDefaultRoutingRule(props: {
   const { showHandle } = props;
   const buttonPanel = (
     <>
-      <IconButton icon={<EditOutlined />} disabled />
-      <IconButton icon={<DeleteOutlined />} disabled />
+      <IconButton icon={<Pencil className="w-4 h-4" />} disabled />
+      <IconButton icon={<Trash2 className="w-4 h-4" />} disabled />
     </>
   );
 
@@ -65,14 +60,15 @@ export function ManualReviewQueueDefaultRoutingRule(props: {
       <div className="flex flex-row items-center bg-white border border-solid rounded-md border-slate-200">
         {showHandle && (
           <>
-            <Tooltip
-              className="bg-white cursor-not-allowed"
-              placement="right"
-              title="This rule must be the last rule in your routing rules, so it cannot be moved, edited, or deleted."
-            >
-              <div className="flex items-center self-stretch justify-center pr-4 max-w-fit rounded-tl-md rounded-bl-md text-slate-300 bg-slate-100">
-                <HolderOutlined className="pl-4 text-2xl" />
-              </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center self-stretch justify-center pr-4 max-w-fit rounded-tl-md rounded-bl-md text-slate-300 bg-slate-100 cursor-not-allowed">
+                  <GripVertical className="w-6 h-6 pl-4" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                This rule must be the last rule in your routing rules, so it cannot be moved, edited, or deleted.
+              </TooltipContent>
             </Tooltip>
 
             <div className="self-stretch w-px mr-4 bg-slate-200" />
@@ -255,12 +251,12 @@ export default function ManualReviewQueueRoutingRule(props: {
         </div>
         <div className="flex flex-row space-x-4">
           <IconButton
-            icon={<EditOutlined />}
+            icon={<Pencil className="w-4 h-4" />}
             onClick={onEdit}
             disabled={isReordering}
           />
           <IconButton
-            icon={<DeleteOutlined />}
+            icon={<Trash2 className="w-4 h-4" />}
             onClick={() => onClickDelete(editableRule)}
             disabled={isReordering}
           />
@@ -276,7 +272,7 @@ export default function ManualReviewQueueRoutingRule(props: {
         <span className="font-semibold text-slate-500">
           {expanded ? 'Collapse' : 'Expand Rule'}
         </span>
-        {expanded ? <UpOutlined /> : <DownOutlined />}
+        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </div>
     </>
   );
@@ -290,7 +286,7 @@ export default function ManualReviewQueueRoutingRule(props: {
               {...dragHandleProps}
               className="flex items-center self-stretch justify-center pr-4 max-w-fit text-slate-500 rounded-tl-md rounded-bl-md cursor-grab active:cursor-grabbing focus:cursor-grabbing"
             >
-              <HolderOutlined className="pl-4 text-2xl" />
+              <GripVertical className="w-6 h-6 pl-4" />
             </div>
             <div className="self-stretch w-px mr-4 bg-slate-200" />
           </>

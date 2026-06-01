@@ -1,5 +1,5 @@
-import { RightOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { ChevronRight } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import startCase from 'lodash/startCase';
 
 import {
@@ -94,8 +94,8 @@ export default function RuleFormSignalModalMenuItem(props: {
         <div className="overflow-hidden text-sm text-gray-400 text-ellipsis line-clamp-2">
           {signal.description}
         </div>
-        <RightOutlined
-          className="p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300"
+        <ChevronRight
+          className="w-4 h-4 p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300 box-content"
           onClick={(event) => {
             event.stopPropagation();
             infoButtonTapped();
@@ -106,7 +106,12 @@ export default function RuleFormSignalModalMenuItem(props: {
   );
 
   if (disabledInfo.disabled) {
-    return <Tooltip title={disabledInfo.disabledMessage}>{item}</Tooltip>;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipContent>{disabledInfo.disabledMessage}</TooltipContent>
+      </Tooltip>
+    );
   }
   return item;
 }

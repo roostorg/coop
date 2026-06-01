@@ -1,7 +1,7 @@
-import SpinnerSolid from '@/icons/lni/Spinner/spinner-solid.svg?react';
+import { Loader2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Tooltip } from 'antd';
 import { TooltipPlacement } from 'antd/lib/tooltip';
-import type { SVGProps } from 'react';
 import { Link } from 'react-router-dom';
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
@@ -30,10 +30,10 @@ export default function CoopButton(
   } & (
     | {
         title: string;
-        icon?: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+        icon?: LucideIcon;
       }
     | {
-        icon: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+        icon: LucideIcon;
         title?: undefined;
       }
   ) &
@@ -115,16 +115,16 @@ export default function CoopButton(
       disabled={buttonIsDisabled}
     >
       {loading ? (
-        <SpinnerSolid className="w-4 mr-2 animate-spin fill-inherit" />
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
       ) : null}
       <div className="flex items-center justify-center gap-2">
         {/* See https://stackoverflow.com/a/37414418 for why this is capitalized */}
         {Icon !== undefined && iconPosition === 'left' ? (
-          <Icon className={`${iconSizeProps} fill-inherit text-inherit`} />
+          <Icon className={`${iconSizeProps} text-inherit`} />
         ) : null}
         {title}
         {Icon !== undefined && iconPosition === 'right' ? (
-          <Icon className={`${iconSizeProps} fill-inherit text-inherit`} />
+          <Icon className={`${iconSizeProps} text-inherit`} />
         ) : null}
       </div>
     </button>

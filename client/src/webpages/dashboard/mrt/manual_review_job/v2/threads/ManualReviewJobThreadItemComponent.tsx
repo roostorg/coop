@@ -1,6 +1,5 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
-import { WarningFilled } from '@ant-design/icons';
+import { AlertTriangle, User as UserAlt4 } from 'lucide-react';
 import { RelatedItem } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import { useContext } from 'react';
@@ -139,7 +138,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
                 imageUrl={profileImage?.url}
                 magnifiedUrls={backgroundImage ? [backgroundImage.url] : []}
                 fallbackComponent={
-                  <UserAlt4 className="p-3 fill-slate-500 w-11" />
+                  <UserAlt4 className="p-3 text-slate-500 w-11" />
                 }
                 footerComponent={
                   <div className="flex gap-2">
@@ -186,7 +185,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
                 {isByReportedUser ? (
                   <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red">
                     {`Reported ${authorTypeName}`}
-                    <WarningFilled className="flex items-center justify-center" />
+                    <AlertTriangle className="w-4 h-4 flex items-center justify-center" fill="currentColor" />
                   </div>
                 ) : isReporter ? (
                   <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-success-green">
@@ -196,7 +195,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
                 {isReportedMessage ? (
                   <div className="flex px-2 py-1 text-xs font-medium text-white bg-orange-400 rounded gap-1">
                     Reported Message
-                    <WarningFilled className="flex items-center justify-center" />
+                    <AlertTriangle className="w-4 h-4 flex items-center justify-center" fill="currentColor" />
                   </div>
                 ) : null}
                 {isAuthorDeleted ? (

@@ -1,13 +1,8 @@
-import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { ChevronsRight as AngleDoubleRight, PanelLeft as Sidebar1 } from 'lucide-react';
 import { __throw } from '@/utils/misc';
 import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
-import {
-  DownOutlined,
-  EditOutlined,
-  LoadingOutlined,
-} from '@ant-design/icons';
+import { ChevronDown, Loader2, Pencil } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -1037,7 +1032,7 @@ function ManualReviewJobReviewImpl(props: {
                   }}
                 >
                   <div>
-                    Move <DownOutlined />
+                    Move <ChevronDown className="w-4 h-4 inline" />
                   </div>
                 </Dropdown>
               </div>
@@ -1151,7 +1146,7 @@ function ManualReviewJobReviewImpl(props: {
                       });
                     }}
                   >
-                    <EditOutlined />
+                    <Pencil className="w-4 h-4" />
                   </span>
                 </Tooltip>
               )}
@@ -1194,7 +1189,7 @@ function ManualReviewJobReviewImpl(props: {
     >
       <Button className="flex flex-row bottom-0 w-2/3 !px-2 mb-2 hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]">
         <div className="flex flex-row">
-          <Sidebar1 className="w-3.5 mr-2 fill-inherit" /> View Policy
+          <Sidebar1 className="w-3.5 mr-2" /> View Policy
         </div>
       </Button>
     </Dropdown>
@@ -1208,7 +1203,7 @@ function ManualReviewJobReviewImpl(props: {
         disabled={pendingJobCount === 0}
       >
         <div className="flex flex-row">
-          Skip <AngleDoubleRight className="w-3.5 ml-2 fill-inherit" />
+          Skip <AngleDoubleRight className="w-3.5 ml-2" />
         </div>
       </Button>
     );
@@ -1789,7 +1784,7 @@ function ManualReviewJobReviewImpl(props: {
               }}
             >
               {submissionLoading ? (
-                <LoadingOutlined spin className="self-start" />
+                <Loader2 className="w-4 h-4 animate-spin self-start" />
               ) : (
                 <div className="text-base">Submit</div>
               )}

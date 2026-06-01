@@ -1,4 +1,4 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
@@ -594,7 +594,7 @@ export default function ItemTypeForm() {
               ])
             }
           >
-            <PlusOutlined />
+            <Plus className="w-4 h-4" />
             Add Field
           </Button>
           <div className="flex flex-row gap-16">

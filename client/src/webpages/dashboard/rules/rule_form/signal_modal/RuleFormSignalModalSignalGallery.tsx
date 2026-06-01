@@ -1,5 +1,5 @@
 import { useGQLIsDemoOrgQuery } from '@/graphql/generated';
-import { SearchOutlined } from '@ant-design/icons';
+import { Search } from 'lucide-react';
 import { Input } from 'antd';
 import { useMemo, useState } from 'react';
 
@@ -51,7 +51,7 @@ export default function RuleFormSignalModalSignalGallery(props: {
         <Input
           className="max-w-xs rounded-lg"
           placeholder="Search"
-          prefix={<SearchOutlined className="site-form-item-icon" />}
+          prefix={<Search className="w-4 h-4" />}
           allowClear
           onChange={(event) =>
             setSearchTerm(event.target.value.toLocaleLowerCase())

@@ -1,4 +1,4 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import { Button } from 'antd';
 import { useState } from 'react';
 
@@ -115,7 +115,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
       <div className="ml-3">
         <Button
           className="!text-slate-500"
-          icon={<PlusOutlined />}
+          icon={<Plus className="w-4 h-4" />}
           onClick={() => setModalVisible(true)}
         >
           Select Locations
@@ -153,7 +153,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
             })}
             <Button
               onClick={() => setModalVisible(true)}
-              icon={<PlusOutlined />}
+              icon={<Plus className="w-4 h-4" />}
             />
           </div>
         </div>

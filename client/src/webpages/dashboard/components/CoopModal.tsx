@@ -1,4 +1,4 @@
-import { LeftOutlined } from '@ant-design/icons';
+import { ChevronLeft as LeftOutlined } from 'lucide-react';
 import { Modal as AntModal } from 'antd';
 
 import CloseButton from '@/components/common/CloseButton';
@@ -35,7 +35,7 @@ export default function CoopModal({
       onClick={onBack}
       className="flex flex-row items-center justify-center rounded-full cursor-pointer text-slate-400 hover:text-primary/70"
     >
-      <LeftOutlined className="text-base leading-none" onClick={onBack} />
+      <LeftOutlined className="w-4 h-4" onClick={onBack} />
       {!title && (
         // pb-0.5 is to add a little padding so the text appears in the middle of the line, rather
         // than having it pinned to the bottom

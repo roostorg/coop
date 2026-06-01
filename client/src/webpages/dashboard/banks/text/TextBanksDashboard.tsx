@@ -1,4 +1,4 @@
-import { PlayCircleOutlined } from '@ant-design/icons';
+import { PlayCircle } from 'lucide-react';
 import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import { MouseEvent, useMemo, useState } from 'react';
@@ -234,7 +234,7 @@ export default function TextBanksDashboard() {
       buttonLinkPath="form/text"
       buttonTitle="Create Text Banks"
       dashboardName="Text Banks"
-      icon={<PlayCircleOutlined />}
+      icon={<PlayCircle className="w-4 h-4" />}
       buttonDisabled={!canEditTextBanks}
     />
   );

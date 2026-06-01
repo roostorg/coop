@@ -1,4 +1,4 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import { Button } from 'antd';
 import { useState } from 'react';
 
@@ -112,7 +112,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
       <div className="ml-3">
         <Button
           className="font-semibold rounded-lg text-primary hover:border hover:border-solid hover:border-slate-200 hover:bg-slate-100"
-          icon={<PlusOutlined />}
+          icon={<Plus className="w-4 h-4" />}
           onClick={() => setModalVisible(true)}
         >
           Select Locations
@@ -155,7 +155,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
                 <Button
                   className="rounded-lg p-0 ml-[2px] mr-[2px]"
                   onClick={() => setModalVisible(true)}
-                  icon={<PlusOutlined />}
+                  icon={<Plus className="w-4 h-4" />}
                 />
               </>
             ) : (

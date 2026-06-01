@@ -1,5 +1,5 @@
 import { Button } from '@/coop-ui/Button';
-import { PencilFilled, TrashCanFilled } from '@/icons';
+import { Pencil as PencilFilled, Trash2 as TrashCanFilled } from 'lucide-react';
 import { Tooltip } from 'antd';
 import { MouseEvent, ReactNode } from 'react';
 

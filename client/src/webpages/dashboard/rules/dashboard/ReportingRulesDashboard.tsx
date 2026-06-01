@@ -1,4 +1,4 @@
-import { AuditOutlined } from '@ant-design/icons';
+import { Scale } from 'lucide-react';
 import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
@@ -381,7 +381,7 @@ export default function ReportingRulesDashboard() {
       buttonLinkPath="form"
       buttonTitle="Create Report Rule"
       dashboardName="Report Rules"
-      icon={<AuditOutlined />}
+      icon={<Scale className="w-4 h-4" />}
     />
   );
 

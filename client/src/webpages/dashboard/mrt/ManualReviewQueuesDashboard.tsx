@@ -1,7 +1,4 @@
-import { StarFilled, TapFilled } from '@/icons';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import Star from '@/icons/lni/Web and Technology/star.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
+import { ChevronsRight as AngleDoubleRight, LayoutGrid as GridAlt, MousePointerClick as TapFilled, Star, Star as StarFilled } from 'lucide-react';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
@@ -728,13 +725,14 @@ export default function ManualReviewQueuesDashboard() {
                   }}
                 >
                   <StarFilled
-                    className={`cursor-pointer text-xl absolute top-0 left-0 text-coop-yellow fill-coop-yellow ${
+                    fill="currentColor"
+                    className={`cursor-pointer w-5 h-5 absolute top-0 left-0 text-coop-yellow ${
                       values.isFavorited ? '' : 'invisible'
                     }`}
                   />
                 </div>
                 <Star
-                  className={`cursor-pointer text-xl absolute top-0 left-0 text-coop-yellow fill-coop-yellow ${
+                  className={`cursor-pointer w-5 h-5 absolute top-0 left-0 text-coop-yellow ${
                     values.isFavorited ? 'invisible' : ''
                   }`}
                   onClick={(event) => {
@@ -790,9 +788,7 @@ export default function ManualReviewQueuesDashboard() {
             ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
-        icon={
-          <GridAlt className="inline-block w-4 h-4 mr-2" fill="currentColor" />
-        }
+        icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
         onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
       >
         Columns
@@ -872,9 +868,8 @@ export default function ManualReviewQueuesDashboard() {
             </div>
             <div className="pl-2 rounded">
               <TapFilled
-                width={24}
-                height={24}
-                className={`text-xl text-sky-400 fill-sky-400`}
+                size={24}
+                className={`text-xl text-sky-400`}
               />
             </div>
           </div>
@@ -892,9 +887,8 @@ export default function ManualReviewQueuesDashboard() {
             </div>
             <div className="pl-2 rounded">
               <AngleDoubleRight
-                width={24}
-                height={24}
-                className={`text-xl text-amber-400 fill-amber-400`}
+                size={24}
+                className={`text-xl text-amber-400`}
               />
             </div>
           </div>

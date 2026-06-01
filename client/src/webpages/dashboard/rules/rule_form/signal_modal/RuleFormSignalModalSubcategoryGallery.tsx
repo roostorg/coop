@@ -1,4 +1,4 @@
-import { SearchOutlined } from '@ant-design/icons';
+import { Search } from 'lucide-react';
 import { Input, Select } from 'antd';
 import omit from 'lodash/omit';
 import { useState } from 'react';
@@ -69,7 +69,7 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
       <Input
         className="max-w-xs mb-2 rounded-lg"
         placeholder="Search"
-        prefix={<SearchOutlined className="site-form-item-icon" />}
+        prefix={<Search className="w-4 h-4" />}
         allowClear
         onChange={(event) =>
           setSearchTerm(event.target.value.toLocaleLowerCase())

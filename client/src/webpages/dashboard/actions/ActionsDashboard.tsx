@@ -1,4 +1,4 @@
-import { PlayCircleOutlined } from '@ant-design/icons';
+import { PlayCircle } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { MouseEvent, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -285,7 +285,7 @@ export default function ActionsDashboard() {
       buttonLinkPath="form"
       buttonTitle="Create Actions"
       dashboardName="Actions"
-      icon={<PlayCircleOutlined />}
+      icon={<PlayCircle className="w-4 h-4" />}
       buttonDisabled={!canEditActions}
     />
   );

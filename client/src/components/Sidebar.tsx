@@ -1,8 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { GQLUserPermission } from '@/graphql/generated';
-import { CogFilled, ExitFilled, UserAlt3Filled } from '@/icons';
-import AngleDoubleLeft from '@/icons/lni/Direction/angle-double-left.svg?react';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { ChevronsLeft as AngleDoubleLeft, ChevronsRight as AngleDoubleRight, LogOut as ExitFilled, Settings as CogFilled, User as UserAlt3Filled } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { makeEnumLike } from '@roostorg/coop-types';
 import React, {
@@ -10,7 +9,6 @@ import React, {
   useEffect,
   useMemo,
   useState,
-  type SVGProps,
 } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -54,7 +52,7 @@ type MenuItemName = keyof typeof MenuItemNames;
 export type MenuItem = {
   title: MenuItemName;
   urlPath: string;
-  icon?: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+  icon?: LucideIcon;
   requiredPermissions: GQLUserPermission[];
   subItems?: Omit<MenuItem, 'subItems'>[];
 };
@@ -187,7 +185,7 @@ export default function Sidebar(props: SidebarProps) {
 
   const footerButton = (
     props: {
-      icon: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+      icon: LucideIcon;
       menuItemName: MenuItemName;
     } & (
       | { onClick: () => void; url?: undefined }
@@ -215,7 +213,7 @@ export default function Sidebar(props: SidebarProps) {
             >
               <Icon
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="text-black"
               />
             </div>
           ) : (
@@ -230,7 +228,7 @@ export default function Sidebar(props: SidebarProps) {
             >
               <Icon
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="text-black"
               />
             </Link>
           )}
@@ -302,12 +300,12 @@ export default function Sidebar(props: SidebarProps) {
             {collapsed ? (
               <AngleDoubleRight
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="text-black"
               />
             ) : (
               <AngleDoubleLeft
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="text-black"
               />
             )}
           </div>

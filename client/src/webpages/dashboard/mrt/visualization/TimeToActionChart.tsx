@@ -1,10 +1,5 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  EllipsisOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
-import { Tooltip as AntTooltip } from 'antd';
+import { Info, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Tooltip as AntTooltip, TooltipContent as AntTooltipContent, TooltipTrigger as AntTooltipTrigger } from '@/coop-ui/Tooltip';
 import orderBy from 'lodash/orderBy';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import {
@@ -257,15 +252,15 @@ export default function TimeToActionByQueueChart({
         } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit`}
         onClick={() => setOptionsVisible((prev) => !prev)}
       >
-        <EllipsisOutlined className="flex text-2xl" />
+        <MoreHorizontal className="w-6 h-6 flex" />
       </div>
       {optionsVisible && (
         <div
           ref={optionsRef}
           className="absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200"
         >
-          {onEdit && optionButton('Edit', <EditOutlined />, onEdit)}
-          {onDelete && optionButton('Delete', <DeleteOutlined />, onDelete)}
+          {onEdit && optionButton('Edit', <Pencil className="w-4 h-4" />, onEdit)}
+          {onDelete && optionButton('Delete', <Trash2 className="w-4 h-4" />, onDelete)}
         </div>
       )}
     </div>
@@ -288,12 +283,13 @@ export default function TimeToActionByQueueChart({
               <div className="pb-2 text-base font-medium text-slate-500">
                 {title}
                 {infoText && (
-                  <AntTooltip
-                    title={infoText}
-                    placement="topRight"
-                    color="white"
-                  >
-                    <InfoCircleOutlined className="pl-2 w-fit h-fit text-slate-300" />
+                  <AntTooltip>
+                    <AntTooltipTrigger asChild>
+                      <Info className="w-4 h-4 pl-2 text-slate-300" />
+                    </AntTooltipTrigger>
+                    <AntTooltipContent side="top" align="end">
+                      {infoText}
+                    </AntTooltipContent>
                   </AntTooltip>
                 )}
               </div>

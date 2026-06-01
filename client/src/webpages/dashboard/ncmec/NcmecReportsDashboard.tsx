@@ -6,10 +6,9 @@ import {
   useGQLPermissionsQuery,
   useGQLRetryNcmecSubmissionMutation,
 } from '@/graphql/generated';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
-import { AuditOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Download, LayoutGrid as GridAlt, Scale } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { Button, Checkbox, Input, Tag, Tooltip } from 'antd';
 import { format } from 'date-fns';
@@ -475,7 +474,7 @@ export default function NcmecReportsDashboard() {
                     contents={formatXml(report.reportXml)}
                     mimeType="text/plain"
                   >
-                    <DownloadOutlined />
+                    <Download className="w-4 h-4" />
                   </BlobDownloadLink>
                 </div>
               </div>
@@ -497,7 +496,7 @@ export default function NcmecReportsDashboard() {
                           contents={formatXml(media.xml)}
                           mimeType="text/plain"
                         >
-                          <DownloadOutlined />
+                          <Download className="w-4 h-4" />
                         </BlobDownloadLink>
                       </div>
                     </div>
@@ -522,7 +521,7 @@ export default function NcmecReportsDashboard() {
                           contents={formatXml(additionalFile.xml)}
                           mimeType="text/plain"
                         >
-                          <DownloadOutlined className="pr-1" />
+                          <Download className="w-4 h-4 pr-1" />
                         </BlobDownloadLink>
                       </div>
                       <div className="overflow-ellipsis">
@@ -551,7 +550,7 @@ export default function NcmecReportsDashboard() {
                           contents={reportedMessage.csv}
                           mimeType="text/csv"
                         >
-                          <DownloadOutlined />
+                          <Download className="w-4 h-4" />
                         </BlobDownloadLink>
                       </div>
                     </div>
@@ -675,7 +674,7 @@ export default function NcmecReportsDashboard() {
         <div className="flex items-center justify-center w-full h-full">
           <div className="flex flex-col items-center justify-center p-12 mt-24">
             <div className="pb-3 text-zinc-500 text-8xl">
-              {<AuditOutlined />}
+              {<Scale className="w-4 h-4" />}
             </div>
             <div className="pb-2 text-3xl text-zinc-500 max-w-100">
               No NCMEC Reports
@@ -726,10 +725,7 @@ export default function NcmecReportsDashboard() {
                         : 'bg-gray-600 text-white border-none hover:bg-gray-500'
                     }`}
                     icon={
-                      <GridAlt
-                        className="inline-block w-4 h-4 mr-2"
-                        fill="currentColor"
-                      />
+                      <GridAlt className="inline-block w-4 h-4 mr-2" />
                     }
                     onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
                   >

@@ -1,6 +1,5 @@
 import { GQLUserPermission, useGQLPermissionsQuery } from '@/graphql/generated';
-import World2 from '@/icons/lni/Education/world-2.svg?react';
-import TextUnderlineAlt from '@/icons/lni/Text editor/text-underline-alt.svg?react';
+import { Globe as World2, Underline as TextUnderlineAlt } from 'lucide-react';
 import { userHasPermissions } from '@/routing/permissions';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';

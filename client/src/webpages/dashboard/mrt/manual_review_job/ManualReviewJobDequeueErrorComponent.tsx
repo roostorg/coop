@@ -1,4 +1,4 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import CoopButton from '../../components/CoopButton';
@@ -10,7 +10,7 @@ export default function ManualReviewJobDequeueErrorComponent() {
     <div className="flex items-center justify-center w-full">
       <div className="flex flex-col items-center justify-center max-w-sm p-12 mt-24 shadow-lg rounded-xl">
         <div className="pb-10 text-gray-300 text-8xl">
-          <ExclamationCircleOutlined />
+          <AlertCircle className="w-4 h-4" />
         </div>
         <div className="pb-4 text-3xl text-gray-500">
           Error Dequeueing Next Job

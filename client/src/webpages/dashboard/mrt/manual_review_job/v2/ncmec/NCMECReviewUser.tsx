@@ -1,5 +1,5 @@
 import { isTypingInEditableElement } from '@/utils/misc';
-import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { AlertCircle, Lightbulb } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
@@ -361,7 +361,7 @@ export default function NCMECReviewUser(
     <div className="flex items-start justify-center w-full h-full">
       <div className="flex flex-col items-center justify-center p-12 mt-20 shadow rounded-xl bg-slate-50 text-slate-500">
         <div className="pb-3 text-slate-200 text-8xl">
-          <ExclamationCircleOutlined />
+          <AlertCircle className="w-6 h-6" />
         </div>
         <div className="text-2xl max-w-[400px] pb-2">
           Could not find any valid media
@@ -906,7 +906,7 @@ export default function NCMECReviewUser(
       />
       <div className="flex items-center justify-between w-full gap-8 mb-2">
         <div className="text-start text-slate-500 font-medium w-fit bg-slate-100 rounded-md p-1.5 flex items-center">
-          <BulbOutlined className="pr-2 text-xl" />
+          <Lightbulb className="w-5 h-5 pr-2" />
           <div className="flex flex-col">
             <div className="text-sm pb-0.5 font-semibold">
               Keyboard shortcuts:

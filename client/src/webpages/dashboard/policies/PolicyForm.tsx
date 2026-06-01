@@ -1,6 +1,6 @@
 import { Button } from '@/coop-ui/Button';
 import { Loading } from '@/coop-ui/Button.stories';
-import { CheckmarkFilled, PlusFilled, TrashCanFilled } from '@/icons';
+import { Check as CheckmarkFilled, Plus as PlusFilled, Trash2 as TrashCanFilled } from 'lucide-react';
 import { treeFromList } from '@/utils/tree';
 import { Input } from 'antd';
 import { useEffect, useState } from 'react';

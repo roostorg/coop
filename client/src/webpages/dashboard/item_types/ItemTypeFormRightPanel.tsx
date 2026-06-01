@@ -1,4 +1,4 @@
-import { CodeOutlined, UserOutlined } from '@ant-design/icons';
+import { Code, User } from 'lucide-react';
 import type { ItemTypeKind } from '@roostorg/coop-types';
 import { useState } from 'react';
 
@@ -27,12 +27,12 @@ export default function ItemTypeFormRightPanel(props: {
           {
             label: 'Preview',
             value: 'Preview',
-            icon: <UserOutlined />,
+            icon: <User className="w-4 h-4" />,
           },
           {
             label: 'API Request',
             value: 'SampleRequest',
-            icon: <CodeOutlined />,
+            icon: <Code className="w-4 h-4" />,
           },
         ]}
         initialSelectedTab={activeTab}
