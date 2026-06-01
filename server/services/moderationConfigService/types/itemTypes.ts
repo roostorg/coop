@@ -1,4 +1,8 @@
-import { ItemTypeKind, type Field, type ScalarTypes } from '@roostorg/types';
+import {
+  ItemTypeKind,
+  type Field,
+  type ScalarTypes,
+} from '@roostorg/coop-types';
 
 import { type NonEmptyArray } from '../../../utils/typescript-types.js';
 // Imported w/ underscore for use in a jsdoc @link/@see w/o it being flagged as
@@ -48,6 +52,7 @@ export type UserSchemaFieldRoles = {
   backgroundImage?: string;
   createdAt?: string;
   isDeleted?: string;
+  ipAddress?: string;
 };
 
 export type ThreadSchemaFieldRoles = {
@@ -55,6 +60,7 @@ export type ThreadSchemaFieldRoles = {
   createdAt?: string;
   creatorId?: string;
   isDeleted?: string;
+  ipAddress?: string;
 };
 
 export type ContentSchemaFieldRoles = {
@@ -62,6 +68,7 @@ export type ContentSchemaFieldRoles = {
   displayName?: string;
   creatorId?: string;
   isDeleted?: string;
+  ipAddress?: string;
 } & (
   | {
       parentId?: string;
@@ -119,6 +126,7 @@ export type FieldRoleToScalarType = {
   profileIcon: ScalarTypes['IMAGE'];
   backgroundImage: ScalarTypes['IMAGE'];
   isDeleted: ScalarTypes['BOOLEAN'];
+  ipAddress: ScalarTypes['IP_ADDRESS'];
 };
 
 export function getPartialSchemaFromOriginal(schema: ItemSchema) {

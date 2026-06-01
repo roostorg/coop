@@ -1,4 +1,4 @@
-import type { ScalarType, TaggedScalar } from '@roostorg/types';
+import type { ScalarType, TaggedScalar } from '@roostorg/coop-types';
 import type { ReadonlyDeep } from 'type-fest';
 
 import { getSignalInputValueOrValues } from '../../condition_evaluator/leafCondition.js';

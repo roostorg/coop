@@ -1,4 +1,4 @@
-import { type UrlString } from '@roostorg/types';
+import { type UrlString } from '@roostorg/coop-types';
 
 import { instantiateOpaqueType } from './typescript-types.js';
 

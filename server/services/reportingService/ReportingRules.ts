@@ -1,4 +1,4 @@
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import { sql, type Kysely, type Transaction } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';

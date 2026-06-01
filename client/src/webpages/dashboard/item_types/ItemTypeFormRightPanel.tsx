@@ -1,5 +1,5 @@
 import { CodeOutlined, UserOutlined } from '@ant-design/icons';
-import type { ItemTypeKind } from '@roostorg/types';
+import type { ItemTypeKind } from '@roostorg/coop-types';
 import { useState } from 'react';
 
 import TabBar from '../components/TabBar';

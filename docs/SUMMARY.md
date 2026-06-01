@@ -13,6 +13,7 @@
   - [Bulk Actioning](user/bulk-actioning.md)
   - [Reports](user/reports.md)
   - [Appeals](user/appeals.md)
+  - [Child Safety (NCMEC)](user/child-safety.md)
   - [Metrics & Reporting](user/metrics.md)
   - [Administration](user/administration.md)
 
@@ -43,7 +44,7 @@
 - [Integrations](integrations/README.md)
   - [Google Content Safety API](integrations/google-content-safety.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
-  - [NCMEC Reporting](integrations/ncmec.md)
+  - [NCMEC CyberTipline](integrations/ncmec.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
   - [Zentropi CoPE](integrations/zentropi-cope.md)
   - [Custom](integrations/custom.md)

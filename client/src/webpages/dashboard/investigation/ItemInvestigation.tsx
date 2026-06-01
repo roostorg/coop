@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Alert, Input } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -97,6 +97,7 @@ gql`
                   threadId
                   createdAt
                   creatorId
+                  ipAddress
                 }
               }
               ... on UserItemType {
@@ -104,6 +105,7 @@ gql`
                   displayName
                   createdAt
                   profileIcon
+                  ipAddress
                 }
               }
               ... on ThreadItemType {
@@ -111,6 +113,7 @@ gql`
                   displayName
                   createdAt
                   creatorId
+                  ipAddress
                 }
               }
             }

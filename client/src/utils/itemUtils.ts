@@ -6,7 +6,7 @@ import {
   ScalarTypes,
   TaggedScalar,
   type FieldType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import { JsonObject } from 'type-fest';
 
 import { GQLBaseField, GQLSchemaFieldRoles } from '../graphql/generated';

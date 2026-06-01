@@ -1,13 +1,19 @@
-import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import {
+  type IReportingAnalyticsAdapter,
+  type ReportingRulePassingContentSampleInput,
+  type ReportingRulePassRateInput,
+} from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
 import {
   fromCorrelationId,
   type CorrelationId,
 } from '../../utils/correlationIds.js';
+import { jsonStringify } from '../../utils/encoding.js';
 import { YEAR_MS } from '../../utils/time.js';
 import { type Bind1 } from '../../utils/typescript-types.js';
 import {
@@ -25,12 +31,6 @@ import ReportingRules, {
   type CreateReportingRuleInput,
   type UpdateReportingRuleInput,
 } from './ReportingRules.js';
-import { jsonStringify } from '../../utils/encoding.js';
-import {
-  type IReportingAnalyticsAdapter,
-  type ReportingRulePassRateInput,
-  type ReportingRulePassingContentSampleInput,
-} from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
 
 export type ReporterKind = 'rule' | 'user';
 export type Reporter =
@@ -122,8 +122,7 @@ function makeReportingService(
         // nb: this is intentionally logged as a string not json, because it
         // contains JSON nulls, which are not safe for the data warehouse JSON columns.
         reported_item_type_schema: reportedItem.itemType.schema,
-        reported_item_type_schema_variant:
-          reportedItem.itemType.schemaVariant,
+        reported_item_type_schema_variant: reportedItem.itemType.schemaVariant,
         reported_item_type_version: reportedItem.itemType.version,
         reported_item_type_schema_field_roles:
           reportedItem.itemType.schemaFieldRoles,
@@ -162,10 +161,9 @@ function makeReportingService(
       } satisfies Record<string, unknown>;
 
       try {
-        await dataWarehouseAnalytics.bulkWrite(
-          'REPORTING_SERVICE.REPORTS',
-          [reportRow],
-        );
+        await dataWarehouseAnalytics.bulkWrite('REPORTING_SERVICE.REPORTS', [
+          reportRow,
+        ]);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(
@@ -209,8 +207,7 @@ function makeReportingService(
         // nb: this is intentionally logged as a string not json, because it
         // contains JSON nulls, which are not safe for the data warehouse JSON columns.
         actioned_item_type_schema: actionedItem.itemType.schema,
-        actioned_item_type_schema_variant:
-          actionedItem.itemType.schemaVariant,
+        actioned_item_type_schema_variant: actionedItem.itemType.schemaVariant,
         actioned_item_type_version: actionedItem.itemType.version,
         actioned_item_type_schema_field_roles:
           actionedItem.itemType.schemaFieldRoles,
@@ -229,10 +226,9 @@ function makeReportingService(
       } satisfies Record<string, unknown>;
 
       try {
-        await dataWarehouseAnalytics.bulkWrite(
-          'REPORTING_SERVICE.APPEALS',
-          [appealRow],
-        );
+        await dataWarehouseAnalytics.bulkWrite('REPORTING_SERVICE.APPEALS', [
+          appealRow,
+        ]);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(

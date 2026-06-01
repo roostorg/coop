@@ -13,7 +13,7 @@ When your platform sends a report, Coop:
 3. Routes the job to that queue (or the default queue if no rule matches)
 4. Makes the job available to the next available moderator in that queue
 
-If `reportedForReason.csam` is `true`, the job is routed directly to the NCMEC queue rather than going through the normal routing rule evaluation. See [NCMEC Reporting](../integrations/ncmec.md) for details.
+If `reportedForReason.csam` is `true`, the job is routed directly to the NCMEC queue rather than going through the normal routing rule evaluation. See [Child Safety (NCMEC)](child-safety.md) for details.
 
 ## Sending reports to Coop
 

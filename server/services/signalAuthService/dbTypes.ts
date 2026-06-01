@@ -1,6 +1,6 @@
 import { type ColumnType } from 'kysely';
 
-/** JSONB config blob; shape defined per integration (see @roostorg/types StoredIntegrationConfigPayload). */
+/** JSONB config blob; shape defined per integration (see @roostorg/coop-types StoredIntegrationConfigPayload). */
 export type IntegrationConfigRow = {
   org_id: string;
   integration_id: string;
@@ -30,7 +30,11 @@ export type SignalAuthServicePg = {
   'signal_auth_service.zentropi_configs': {
     org_id: string;
     api_key: string;
-    labeler_versions: ColumnType<string, string | undefined, string | undefined>;
+    labeler_versions: ColumnType<
+      string,
+      string | undefined,
+      string | undefined
+    >;
     created_at: ColumnType<Date, never, never>;
     updated_at: ColumnType<Date, never, never>;
   };

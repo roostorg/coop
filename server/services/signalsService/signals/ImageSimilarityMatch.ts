@@ -1,24 +1,21 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
+import type { Dependencies } from '../../../iocContainer/index.js';
+import { jsonStringify } from '../../../utils/encoding.js';
+import type { HashBank } from '../../hmaService/dbTypes.js';
 import { SignalPricingStructure as SignalPricingStructureType } from '../types/SignalPricingStructure.js';
 import { SignalType } from '../types/SignalType.js';
 import SignalBase, {
+  type ImageValue,
   type SignalInput,
   type SignalResult,
-  type ImageValue,
 } from './SignalBase.js';
-import type { Dependencies } from '../../../iocContainer/index.js';
-import type { HashBank } from '../../hmaService/dbTypes.js';
-import { jsonStringify } from '../../../utils/encoding.js';
 
 export default class ImageSimilarityMatchSignal extends SignalBase<
   ScalarTypes['IMAGE'],
   { scalarType: ScalarTypes['BOOLEAN'] }
 > {
-
-  constructor(
-    private readonly hmaService: Dependencies['HMAHashBankService'],
-  ) {
+  constructor(private readonly hmaService: Dependencies['HMAHashBankService']) {
     super();
   }
 
@@ -113,25 +110,25 @@ export default class ImageSimilarityMatchSignal extends SignalBase<
     }
 
     // Check all available hash types and collect matched banks
-    const bankNames = banks.map(bank => bank.hma_name);
+    const bankNames = banks.map((bank) => bank.hma_name);
     const allMatchedBanks = new Set<string>();
 
     const hashCheckResults = await Promise.all(
       Object.entries(imageValue.hashes).map(async ([signalType, hash]) =>
-        this.hmaService.checkImageMatchWithDetails(bankNames, signalType, hash)
-      )
+        this.hmaService.checkImageMatchWithDetails(bankNames, signalType, hash),
+      ),
     );
 
     // Collect all matched banks from all hash types
-    hashCheckResults.forEach(result => {
-      result.matchedBanks.forEach(bank => allMatchedBanks.add(bank));
+    hashCheckResults.forEach((result) => {
+      result.matchedBanks.forEach((bank) => allMatchedBanks.add(bank));
     });
 
     const isMatch = allMatchedBanks.size > 0;
 
     // Map HMA bank names back to user-friendly bank names
-    const matchedBankNames = Array.from(allMatchedBanks).map(hmaName => {
-      const bank = banks.find(b => b.hma_name === hmaName);
+    const matchedBankNames = Array.from(allMatchedBanks).map((hmaName) => {
+      const bank = banks.find((b) => b.hma_name === hmaName);
       return bank?.name ?? hmaName;
     });
 
@@ -139,9 +136,10 @@ export default class ImageSimilarityMatchSignal extends SignalBase<
       score: isMatch,
       outputType: { scalarType: ScalarTypes.BOOLEAN },
       // Store matched banks as metadata for frontend display
-      matchedValue: matchedBankNames.length > 0 
-        ? jsonStringify({ matchedBanks: matchedBankNames })
-        : undefined,
+      matchedValue:
+        matchedBankNames.length > 0
+          ? jsonStringify({ matchedBanks: matchedBankNames })
+          : undefined,
     };
   }
 }

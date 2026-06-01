@@ -1,9 +1,7 @@
 import { Loader } from '@googlemaps/js-api-loader';
 import { useEffect, useState } from 'react';
 
-// The key should be available at build time in VITE_GOOGLE_PLACES_API_KEY env.
-// It's not a secret key, though, so hardcoding it is fine.
-const placesApiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY ?? '';
+import { GOOGLE_PLACES_API_KEY } from '../lib/config';
 
 // Use this variable to not load the Google APIs twice.
 let placesApiLoaded = false;
@@ -27,19 +25,24 @@ export function useMapsApi() {
         geocoderService: new google.maps.Geocoder(),
       });
     } else {
-      new Loader({ apiKey: placesApiKey, libraries: ['places'] }).load().then(
-        () => {
-          placesApiLoaded = true;
-          setMapsApi({
-            type: 'LOADED',
-            autocompleteService: new google.maps.places.AutocompleteService(),
-            geocoderService: new google.maps.Geocoder(),
-          });
-        },
-        (e: Error) => {
-          setMapsApi({ type: 'ERROR', error: e });
-        },
-      );
+      new Loader({
+        apiKey: GOOGLE_PLACES_API_KEY,
+        libraries: ['places'],
+      })
+        .load()
+        .then(
+          () => {
+            placesApiLoaded = true;
+            setMapsApi({
+              type: 'LOADED',
+              autocompleteService: new google.maps.places.AutocompleteService(),
+              geocoderService: new google.maps.Geocoder(),
+            });
+          },
+          (e: Error) => {
+            setMapsApi({ type: 'ERROR', error: e });
+          },
+        );
     }
   }, []);
 

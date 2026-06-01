@@ -4,13 +4,31 @@ Connect to free safety-oriented APIs like Google Content Safety API, OpenAI Mode
 
 ## Built-in integrations
 
-For specific integration information, see that integration's documentation:
+For specific integration information and detailed requirements, see that integration's documentation:
 
-- [Google Content Safety API](google-content-safety.md)
-- [Hasher-Matcher-Actioner (HMA)](hma.md)
-- [NCMEC Reporting](ncmec.md)
-- [OpenAI Moderation API](openai-moderation.md)
-- [Zentropi CoPE](zentropi-cope.md)
+| Integration                     | Cost                   | Requirements                                                   |
+| ------------------------------- | ---------------------- | -------------------------------------------------------------- |
+| [Google Content Safety API]     | Free                   | API key, approval by Google[^CSAPI]                            |
+| [Hasher-Matcher-Actioner (HMA)] | Free                   | Your own hashes, and/or access to third-party hash banks[^HMA] |
+| [NCMEC Reporting]               | Free                   | CyberTip API key, approval by NCMEC[^ESP]                      |
+| [OpenAI Moderation API]         | Free[^OAI]             | OpenAI API key                                                 |
+| [Zentropi CoPE]                 | Free, paid options[^Z] | Zentropi API key                                               |
+
+[Google Content Safety API]: google-content-safety.md
+[Hasher-Matcher-Actioner (HMA)]: hma.md
+[NCMEC Reporting]: ncmec.md
+[OpenAI Moderation API]: openai-moderation.md
+[Zentropi CoPE]: zentropi-cope.md
+
+[^CSAPI]: Industry and civil society third parties seeking to protect their platform against abuse can [apply to access the Content Safety API](https://protectingchildren.google/toolkit-interest-form/?roost-coop). Mention in your application that you are using the Coop review tool. Applications are subject to approval and require accepting Google's terms and conditions.
+
+[^HMA]: You don’t need credentials or licenses for using your own hash banks, i.e. if you have your own collection of known violations. Access to each third-party hash requires access from that org; for example, NCMEC needs to provide Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank.
+
+[^ESP]: Requires [NCMEC ESP registration](https://esp.ncmec.org/registration) and approval to receive CyberTip API credentials
+
+[^OAI]: [Per OpenAI](https://help.openai.com/en/articles/4936833-is-the-moderation-endpoint-free-to-use), the API is completely free and does not count towards monthly usage limits.
+
+[^Z]: Zentropi text classifiers are free, and currently use the openly-licensed [CoPE-A-9B model](https://huggingface.co/zentropi-ai/cope-a-9b). The API supports all labelers you create, including free and optionally paid; see [Zentropi pricing details](https://zentropi.ai/subscription).
 
 ## Model cards
 
