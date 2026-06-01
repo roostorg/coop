@@ -132,7 +132,7 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - Added `additionalInfo` field to NCMEC reports; fixed XML element ordering and Node 24 multipart submission (#477)
 - Fixed NCMEC wellness permission check (#505)
 - Reviewer-friendly error messages now surface `last_error` for NCMEC jobs (#513)
-- _IP address automatically added to NCMEC reports (#592)_
+- IP address automatically added to NCMEC reports (#592)
 
 ### Reliability & sustainability
 
