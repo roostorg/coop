@@ -22,8 +22,7 @@ services:
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
     image: node:24.14.1-bullseye-slim
-    command: bash -c 'set -e
-      && corepack enable
+    command: bash -c 'set -e && corepack enable
       && pnpm install --filter coop-data-migrator --store-dir /tmp/pnpm-store
       && ( [ "$$CI" = "true" ] && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ) || true )
       && for db in api-server-pg scylla clickhouse; do
@@ -111,6 +110,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
+    init: true
     command: bash -c 'pnpm run test:ci'
     working_dir: /app/server
     volumes:
@@ -130,9 +130,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
+    init: true
     working_dir: /src
-    command: bash -c 'set -e
-      && git config --global --add safe.directory /src
+    command: bash -c 'set -e && git config --global --add safe.directory /src
       && pnpm install --filter coop --filter server --frozen-lockfile
       && pnpm run generate
       && [[ -z "$(git status --porcelain)" ]]'
@@ -145,6 +145,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
+    init: true
     command: pnpm run lint
 
   client:

@@ -21,7 +21,7 @@ overrides:
 # Avoids hardlinks, which can cause confusing behaviour when editing node_modules locally.
 packageImportMethod: clone-or-copy
 
-# Resolve @roostorg/types from the local workspace rather than the npm registry,
+# Resolve @roostorg/coop-types from the local workspace rather than the npm registry,
 # even if a newer published version exists. Without this, a stale published version
 # could be silently resolved instead of local changes.
 preferWorkspacePackages: true
