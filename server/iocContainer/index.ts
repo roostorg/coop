@@ -341,11 +341,7 @@ export interface Dependencies {
    * Dedicated ioredis client for the items-async enqueue path. Same Redis
    * as `IORedis`, but built with `enableOfflineQueue: false` so a
    * `queue.addBulk` while Redis is unreachable rejects immediately
-   * instead of buffering in-process. The shared `IORedis` keeps its
-   * default offline-buffer behaviour because BullMQ workers and other
-   * read-paths rely on it for transient reconnects.
-   *
-   * Closes #647.
+   * instead of buffering in-process
    */
   IORedisEnqueueNoBuffer: IORedis.Redis | Cluster;
 
