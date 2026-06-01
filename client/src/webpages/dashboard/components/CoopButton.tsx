@@ -115,7 +115,7 @@ export default function CoopButton(
       disabled={buttonIsDisabled}
     >
       {loading ? (
-        <Loader2 className="w-4 mr-2 animate-spin" />
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
       ) : null}
       <div className="flex items-center justify-center gap-2">
         {/* See https://stackoverflow.com/a/37414418 for why this is capitalized */}

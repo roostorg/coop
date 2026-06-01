@@ -865,12 +865,12 @@ export default function ManualReviewRecentDecisions() {
             {decidedJobLoading || selectedDecision ? null : (
               <div className="flex justify-between w-full mb-10">
                 <ChevronLeft
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="font-bold cursor-pointer w-7 text-slate-500"
                   onClick={() => handlePrevious()}
                 />
                 <span>Page {page + 1}</span>
                 <ChevronRight
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="font-bold cursor-pointer w-7 text-slate-500"
                   onClick={() => handleNext()}
                 />
               </div>

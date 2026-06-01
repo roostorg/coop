@@ -726,13 +726,13 @@ export default function ManualReviewQueuesDashboard() {
                 >
                   <StarFilled
                     fill="currentColor"
-                    className={`cursor-pointer text-xl absolute top-0 left-0 text-coop-yellow ${
+                    className={`cursor-pointer w-5 h-5 absolute top-0 left-0 text-coop-yellow ${
                       values.isFavorited ? '' : 'invisible'
                     }`}
                   />
                 </div>
                 <Star
-                  className={`cursor-pointer text-xl absolute top-0 left-0 text-coop-yellow ${
+                  className={`cursor-pointer w-5 h-5 absolute top-0 left-0 text-coop-yellow ${
                     values.isFavorited ? 'invisible' : ''
                   }`}
                   onClick={(event) => {
