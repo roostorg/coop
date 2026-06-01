@@ -580,11 +580,6 @@ export default async function getBottle() {
       }),
   );
 
-  // Shared ioredis builder used by both the default `IORedis` client
-  // (BullMQ workers, general read/write) and the dedicated no-offline-buffer
-  // client used by the items-async enqueue path. The extra knobs let the
-  // enqueue path turn off the offline command queue without copy-pasting the
-  // connection wiring; see #647 for why the enqueue path needs that.
   const makeRedis = (
     extraOptions: { enableOfflineQueue?: boolean } = {},
   ): IORedis.Redis | Cluster =>
