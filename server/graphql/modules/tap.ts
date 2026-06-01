@@ -1,5 +1,4 @@
-import { AuthenticationError } from 'apollo-server-express';
-
+import { unauthenticatedError } from '../utils/errors.js';
 import { TapAdminApi } from '../../services/tapConnectorService/tapAdminApi.js';
 import { logErrorJson } from '../../utils/logging.js';
 
@@ -45,7 +44,7 @@ const Query: any = {
   async tapStats(_: any, __: any, context: any) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const adminApi = getTapAdminApi();
@@ -62,7 +61,7 @@ const Query: any = {
   async tapRepoInfo(_: any, { did }: { did: string }, context: any) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
 
     const adminApi = getTapAdminApi();
@@ -81,10 +80,10 @@ const Mutation: any = {
   async tapAddRepos(_: any, { dids }: { dids: string[] }, context: any) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw unauthenticatedError(
         'User does not have permission to manage Tap repos',
       );
     }
@@ -108,10 +107,10 @@ const Mutation: any = {
   ) {
     const user = context.getUser();
     if (!user) {
-      throw new AuthenticationError('Authenticated user required');
+      throw unauthenticatedError('Authenticated user required');
     }
     if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw new AuthenticationError(
+      throw unauthenticatedError(
         'User does not have permission to manage Tap repos',
       );
     }
