@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3827dea0.js";
+            window.path_to_searchindex_js = "../searchindex-0b415844.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-f7125777.js"></script>
@@ -287,7 +287,7 @@
 <li><code>screenName</code>: the user’s username, from your Additional Info endpoint</li>
 <li><code>displayName</code>: the user’s display name, if available</li>
 <li><code>email</code>: known email addresses for the user, from your Additional Info endpoint</li>
-<li><code>ipCaptureEvent</code>: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC’s ability to identify and locate the suspect.</li>
+<li><code>ipCaptureEvent</code>: IP addresses associated with the user (e.g. login, upload events), from your Additional Info endpoint. Providing IP data significantly improves NCMEC’s ability to identify and locate the suspect. If the user item’s item type maps the <code>ipAddress</code> schema field role, that IP is also appended as an <code>Unknown</code> event at the report’s incident time.</li>
 </ul>
 </li>
 <li>
@@ -303,7 +303,7 @@
 <ul>
 <li>Industry classification (A1/A2/B1/B2)</li>
 <li>File annotations (labels selected by the reviewer)</li>
-<li>IP capture events associated with the upload</li>
+<li>IP capture events associated with the upload. If the media item’s item type maps the <code>ipAddress</code> schema field role, that IP is also appended as an <code>Upload</code> event at the media’s <code>createdAt</code>.</li>
 <li>Whether the content was publicly available on your platform (<code>publiclyAvailable</code>)</li>
 <li>Whether the ESP viewed the file and its EXIF data (<code>fileViewedByEsp: true</code>, <code>exifViewedByEsp: true</code>)</li>
 <li>File hash, if provided by your Additional Info endpoint</li>
@@ -422,7 +422,7 @@
 <tr><td><code>users.typeId</code></td><td>String</td><td>Must match the <code>typeId</code> from the request.</td></tr>
 <tr><td><code>users.screenName</code></td><td>String</td><td>The user’s screen name or username on your platform.</td></tr>
 <tr><td><code>users.email</code></td><td>Array</td><td>Known email addresses for the user. <code>type</code> may be <code>Business</code>, <code>Home</code>, or <code>Work</code>.</td></tr>
-<tr><td><code>users.ipCaptureEvent</code></td><td>Array</td><td>IP events associated with the user (e.g. logins, registrations). <code>eventName</code> may be <code>Login</code>, <code>Registration</code>, <code>Purchase</code>, <code>Upload</code>, <code>Other</code>, or <code>Unknown</code>.</td></tr>
+<tr><td><code>users.ipCaptureEvent</code></td><td>Array</td><td>IP events associated with the user (e.g. logins, registrations). <code>eventName</code> may be <code>Login</code>, <code>Registration</code>, <code>Purchase</code>, <code>Upload</code>, <code>Other</code>, or <code>Unknown</code>. Coop also appends the user item’s <code>ipAddress</code> field role (when mapped) as an <code>Unknown</code> event at the report’s incident time.</td></tr>
 <tr><td><code>users.data</code></td><td>Object</td><td>Raw item data for the user.</td></tr>
 <tr><td><code>media</code></td><td>Array</td><td>Must include an entry for every media item in the request if present.</td></tr>
 <tr><td><code>media.id</code></td><td>String</td><td>Must match the <code>id</code> from the request.</td></tr>
@@ -431,7 +431,7 @@
 <tr><td><code>media.publiclyAvailable</code></td><td>Boolean</td><td>Whether the media was publicly accessible on your platform at the time of reporting.</td></tr>
 <tr><td><code>media.fileName</code></td><td>String</td><td>Original filename of the media.</td></tr>
 <tr><td><code>media.additionalInfo</code></td><td>Array&lt;String&gt;</td><td>Additional context about the media to include in the NCMEC file details.</td></tr>
-<tr><td><code>media.ipCaptureEvent</code></td><td>Array</td><td>IP events associated with this media item (e.g. the upload event).</td></tr>
+<tr><td><code>media.ipCaptureEvent</code></td><td>Array</td><td>IP events associated with this media item. Coop also appends the media item’s <code>ipAddress</code> field role (when mapped) as an <code>Upload</code> event at the media’s <code>createdAt</code>.</td></tr>
 <tr><td><code>media.fileDetails</code></td><td>Object</td><td>Hash information for the file: <code>{ hash, hashType }</code>.</td></tr>
 <tr><td><code>additionalFiles</code></td><td>Array</td><td>Extra files to upload to NCMEC as supplemental evidence (e.g. screenshots).</td></tr>
 <tr><td><code>messages</code></td><td>Array</td><td>Message-level IP address data for conversation thread context.</td></tr>
