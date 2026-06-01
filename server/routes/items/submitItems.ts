@@ -334,11 +334,6 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       );
 
       if (enqueueFailed) {
-        // Don't claim 202 if the enqueue rejected — the no-offline-buffer
-        // ioredis client used here (see #647) makes that rejection a real
-        // signal that the submission is *not* durable yet, and we'd rather
-        // tell the client to retry than imply success against a buffer that
-        // vanishes on process restart.
         res.status(500).end();
         return;
       }
