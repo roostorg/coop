@@ -6,7 +6,7 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../userManagementService/index.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import { type LocationBankErrorType, type RuleErrorType } from './errors.js';
-import { type CustomAction, type Policy } from './index.js';
+import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
 } from './modules/ActionOperations.js';
@@ -61,6 +61,25 @@ export type TextBank = {
   ownerId: string | null;
 };
 
+// By having the ModerationConfigService `implement` this type, TS will check
+// for us that every ModerationConfigService method returns one of our public
+// types.
+type ReturnsModerationConfigTypes = {
+  [K in keyof ModerationConfigService]: ReturnType<
+    ModerationConfigService[K]
+  > extends ArrayOrPromiseOf<
+    void | ItemType | Action | Policy | boolean | TextBank | UserStrikeThreshold
+  >
+    ? ModerationConfigService[K]
+    : never;
+};
+
+type ArrayOrPromiseOf<T> =
+  | ReadonlyDeep<T>
+  | readonly ReadonlyDeep<T>[]
+  | Promise<readonly ReadonlyDeep<T>[]>
+  | Promise<ReadonlyDeep<T>>;
+
 type ContentTypeSchemaFieldRoles = {
   creatorId?: string | null;
   threadId?: string | null;
@@ -92,7 +111,7 @@ type UserTypeSchemaFieldRoles = {
  * sub-divided lightly; see the rationale at
  * https://coop.atlassian.net/browse/COOP-743?focusedCommentId=10223
  */
-export class ModerationConfigService {
+export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly actionOps: ActionOperations;
   private readonly policyOps: PolicyOperations;
   private readonly itemTypeOps: ItemTypeOperations;
