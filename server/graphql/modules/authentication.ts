@@ -1,6 +1,7 @@
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { type GQLMutationLoginArgs } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -79,6 +80,13 @@ const Query: ResolverMap = {
     return context.services.SSOService.getSSOOidcCallbackUrl();
   },
   async getSSOCallbackUrls(_: unknown, { orgId }, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes('MANAGE_ORG')) {
+      throw forbiddenError('User does not have permission to view SSO settings');
+    }
     return {
       samlCallbackUrl: context.services.SSOService.getSSOSamlCallbackUrl(orgId),
       samlIssuer: context.services.SSOService.getSSOSamlIssuer(),

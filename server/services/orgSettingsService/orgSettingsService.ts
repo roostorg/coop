@@ -266,7 +266,11 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         await pgQuery
           .updateTable('public.org_settings')
           .where('org_id', '=', input.orgId)
-          .set({ saml_enabled: true, oidc_enabled: false, sso_url: input.ssoUrl, cert: input.cert })
+          .set({
+            saml_enabled: true, oidc_enabled: false,
+            sso_url: input.ssoUrl, cert: input.cert,
+            issuer_url: null, client_id: null, client_secret: null,
+          })
           .executeTakeFirst();
       } else {
         const issuerUrl = input.issuerUrl ? normalizeIssuerUrl(input.issuerUrl) : undefined;
@@ -280,6 +284,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
             issuer_url: issuerUrl,
             client_id: input.clientId,
             client_secret: input.clientSecret ? encrypt(input.clientSecret) : undefined,
+            sso_url: null, cert: null,
           })
           .executeTakeFirst();
       }

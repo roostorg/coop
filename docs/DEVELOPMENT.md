@@ -181,11 +181,15 @@ HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:98
 When submitting items to Coop, image URLs must be reachable by the HMA Docker container and not just your browser or the Node.js server. 
 HMA fetches the image itself to compute the hash. This means localhost URLs will silently fail: HMA will return empty hashes, the image similarity signal will not evaluate, and no rule will fire.
 
-For local development, if you're serving images from your host machine, add the following to /etc/hosts:
+For local development, if you're serving images from your host machine:
 
-127.0.0.1 host.docker.internal
+**Docker Desktop (Mac/Windows):** `host.docker.internal` resolves automatically — no setup needed. Use `host.docker.internal:<port>` directly in image URLs.
 
-Then use `host.docker.internal:<port>` in image URLs when submitting items. This URL resolves correctly from both the browser and inside Docker.
+**Linux:** Docker Desktop is not available. Use `--add-host=host.docker.internal:host-gateway` (Docker 20.10+):
+```bash
+docker compose up -d hma --add-host=host.docker.internal:host-gateway
+```
+Alternatively, find the host IP via `ip addr show docker0` and use that IP in image URLs instead.
 
 ## Troubleshooting
 

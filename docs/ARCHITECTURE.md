@@ -602,7 +602,8 @@ Configuration (per org in org\_settings table):
 * cert: Certificate for validation                                                                              
                                                                                                                     
   Files:                                                                                                            
-`/server/api.ts (lines 176-283)`                                                                                  
+`/server/routes/samlRoutes.ts`
+`/server/routes/oidcRoutes.ts`
 `/server/services/SSOService/SSOService.ts`
 
 

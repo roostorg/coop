@@ -375,6 +375,7 @@ export async function kyselyUserUpdateLoginMethods(
     .where('id', '=', userId)
     .returning(USER_COLUMNS)
     .returning(loginMethodsAsTextArray)
+    .returning(permissionsArray)
     .executeTakeFirst();
 
   return row === undefined ? undefined : rowToGraphQLUserParent(row);

@@ -28,7 +28,7 @@ import { gqlSuccessResult } from '../utils/gqlResult.js';
 
 async function resolveOidcField(
   org: { id: string },
-  context: { getUser: () => any; services: any },
+  context: Context,
   field: 'client_id' | 'issuer_url',
 ) {
   const user = context.getUser();
@@ -947,12 +947,6 @@ const Mutation: GQLMutationResolvers = {
 
     if (oidcSettings?.oidc_enabled && input.samlEnabled) {
       throw new Error('SAML cannot be enabled as OIDC is enabled.');
-    }
-
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
-      throw forbiddenError(
-        'User does not have permission to manage SSO settings',
-      );
     }
 
     return context.services.OrgSettingsService.updateSamlSettings({

@@ -6,7 +6,7 @@ export function normalizeIssuerDomain(value: string) {
     const url = new URL(
       /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
     );
-    return url.hostname;
+    return url.host; // preserve :port (hostname strips it)
   } catch (_) {
     return trimmed
       .replace(/^https?:\/\//i, '')
@@ -22,7 +22,7 @@ export function isValidIssuerDomain(value: string) {
     if (!normalized) return false;
 
     const url = new URL(`https://${normalized}`);
-    return url.hostname.includes('.') && url.hostname === normalized;
+    return url.hostname.includes('.') && url.host === normalized;
   } catch (_) {
     return false;
   }

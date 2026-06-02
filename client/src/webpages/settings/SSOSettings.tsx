@@ -14,7 +14,6 @@ import { Textarea } from '@/coop-ui/Textarea';
 import { toast } from '@/coop-ui/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Heading, Text } from '@/coop-ui/Typography';
-import { HOST_URL } from '@/lib/config';
 import { userHasPermissions } from '@/routing/permissions';
 import { isValidIssuerDomain, normalizeIssuerDomain } from '@/utils/oidc';
 import { gql } from '@apollo/client';
@@ -490,7 +489,7 @@ export default function SSOSettings() {
           </DialogHeader>
           <DialogDescription>
             {isEnablingFromPassword
-              ? `Enabling ${activeTab} is irreversible. All org users will be required to authenticate through the new provider immediately.`
+              ? `Enabling ${activeTab} will disable password login for all org users immediately. You can switch SSO methods later, but users will not be able to log in with a password while SSO is active.`
               : `This will disable ${currentMethod} and enable ${activeTab}. Your ${currentMethod} credentials will be preserved in case you switch back, but users will need to authenticate through the new provider immediately.`}
           </DialogDescription>
           <DialogFooter>
