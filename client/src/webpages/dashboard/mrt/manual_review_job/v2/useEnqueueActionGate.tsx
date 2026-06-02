@@ -117,9 +117,7 @@ export function useEnqueueActionGate(args: {
       const parameters = actionMeta?.parameters ?? [];
       if (parameters.length === 0) return;
       const initialValues =
-        (entry.customMrtApiParamDecisionPayload as
-          | ActionParameterValues
-          | undefined) ?? defaultValuesForParameters(parameters);
+        (entry.customMrtApiParamDecisionPayload) ?? defaultValuesForParameters(parameters);
       const match = (it: ManualReviewJobEnqueuedActionData) =>
         it.action.id === entry.action.id &&
         it.target.identifier.itemId === entry.target.identifier.itemId &&

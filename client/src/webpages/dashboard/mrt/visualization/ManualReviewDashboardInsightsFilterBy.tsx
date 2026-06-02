@@ -107,7 +107,7 @@ export function groupByColumnToFilterByColumns(
         case GQLJobCreationGroupByColumns.Source:
           return ['sources', 'ruleIds'];
       }
-    })() as FilterByColumnName[];
+    })();
   });
 }
 

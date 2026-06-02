@@ -3,8 +3,8 @@ import {
   GQLScalarType,
   GQLSignalPricingStructureType,
   GQLSignalType,
+  GQLSignal,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { RuleFormConditionSet, RuleFormLeafCondition } from '../types';
 import {
   getConditionInputScalarType,
@@ -20,7 +20,8 @@ jest.mock('./RuleFormUtils', () => {
 // NB: See docs above shouldConditionPromptForComparatorAndThreshold
 // above the caveats for this particular implementation
 describe('Test Rule Form Utils', () => {
-  const sampleSignal: CoreSignal = {
+  const sampleSignal: GQLSignal = {
+    __typename: 'Signal',
     id: '1234',
     type: GQLSignalType.TextMatchingContainsRegex,
     shouldPromptForMatchingValues: false,

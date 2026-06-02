@@ -339,8 +339,7 @@ export function RuleInsightsSampleDetailResultsImpl(props: {
                 : 'border-none'
           }`}
         >
-          {conditionSet.conditions.map((condition, conditionIndex) => {
-            condition = condition as LeafConditionWithResult;
+          {conditionSet.conditions.filter((c): c is LeafConditionWithResult => !('conditions' in c)).map((condition, conditionIndex) => {
             return (
               <div key={conditionIndex} className="flex items-start py-3">
                 {renderConditionOutcome(condition.result?.outcome)}

@@ -1,8 +1,7 @@
 import {
-  GQLConditionSetFieldsFragment,
   GQLManualReviewQueueRoutingRulesQuery,
+  GQLSignal,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { getTypedConditionSetFromGQL } from '../../rules/rule_form/RuleFormUtils';
 import { RuleFormConditionSet } from '../../rules/types';
 
@@ -32,14 +31,14 @@ export function editableRoutingRuleFromRoutingRule(
   rule: RoutingRule,
   index: number,
   selectedItemTypeIds: string[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ) {
   return {
     id: rule.id,
     name: rule.name,
     destinationQueue: rule.destinationQueue,
     conditionSet: getTypedConditionSetFromGQL(
-      rule.conditionSet as GQLConditionSetFieldsFragment,
+      rule.conditionSet,
       rule.itemTypes.filter((it) => selectedItemTypeIds.includes(it.id)),
       allSignals,
     ),

@@ -218,7 +218,7 @@ export default function RuleDashboardInsightsChart(props: {
     ...allDatesArray,
   ];
 
-  const groupedData = formattedDataWithAllDates.reduce((result, item) => {
+  const groupedData = formattedDataWithAllDates.reduce((result: Record<string, any>, item) => {
     const ds = item.ds;
 
     if (!(ds in result)) {

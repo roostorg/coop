@@ -9,8 +9,8 @@ import {
   GQLMatchingValues,
   GQLScalarType,
   GQLValueComparator,
+  GQLSignal,
 } from '../../../graphql/generated';
-import { CoreSignal } from '../../../models/signal';
 import { CoopInput } from '../types/enums';
 import {
   isComparatorTerminal,
@@ -103,8 +103,8 @@ export type RuleFormConditionSet = {
 // The shape used to store each leaf condition in the rule form's state.
 export type RuleFormLeafCondition = {
   input?: SimplifiedConditionInput;
-  eligibleSignals?: CoreSignal[];
-  signal?: CoreSignal;
+  eligibleSignals?: GQLSignal[];
+  signal?: GQLSignal;
   matchingValues?: {
     strings?: readonly string[];
     textBankIds?: readonly string[];
