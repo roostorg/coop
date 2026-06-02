@@ -90,7 +90,7 @@ export function groupByColumnToFilterByColumns(
   groupBy: ManualReviewDashboardInsightsGroupByColumns[],
 ): FilterByColumnName[] {
   return groupBy.flatMap((groupByColumn) => {
-    return (() => {
+    return ((): FilterByColumnName[] => {
       switch (groupByColumn) {
         case GQLDecisionCountGroupByColumns.PolicyId:
         case GQLJobCreationGroupByColumns.PolicyId:
