@@ -11,7 +11,7 @@ These docs focus on providing more detailed information and reference. See the [
 
 - **Operating System**: macOS, Linux, or Windows with WSL2
 - **git** for cloning and contributing
-- **Node.js 24**, **nvm**, and **npm**
+- **Node.js 24**, **nvm**, and **pnpm** (the version is pinned by `packageManager` in the root `package.json`)
 - **Docker** and **Docker Compose**
 - **4 GiB RAM** minimum for a bare instance, 8 GiB or more recommended for development
 
@@ -23,14 +23,10 @@ nvm install && nvm use
 
 ## Dependencies
 
-The Coop repository is composed of multiple components, managed as individual npm packages each with their own dependencies.
+The Coop repository is composed of multiple components, managed as a pnpm workspace: each package has its own `package.json`, and one `pnpm install` from the root installs them all.
 
 ```sh
-npm install
-(cd db && npm install)
-(cd server && npm install)
-(cd client && npm install)
-(cd migrator && npm install)
+pnpm install
 ```
 
 ## Environment setup
@@ -55,7 +51,7 @@ The content proxy URL (`VITE_CONTENT_PROXY_URL`) is optional and unset by defaul
 
 ## Docker services
 
-`npm run up` starts the backing services using Docker:
+`pnpm run up` starts the backing services using Docker:
 
 | Service        | Port       | Notes                   |
 | -------------- | ---------- | ----------------------- |
@@ -76,7 +72,7 @@ docker logs <container-name>
 Stop services:
 
 ```sh
-npm run down
+pnpm run down
 ```
 
 ## Database operations
@@ -84,26 +80,26 @@ npm run down
 ### Create databases
 
 ```sh
-npm run db:create -- --env staging --db api-server-pg
-npm run db:create -- --env staging --db scylla
-npm run db:create -- --env staging --db clickhouse
+pnpm run db:create --env staging --db api-server-pg
+pnpm run db:create --env staging --db scylla
+pnpm run db:create --env staging --db clickhouse
 ```
 
 ### Run migrations
 
 ```sh
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db scylla
-npm run db:update -- --env staging --db clickhouse
+pnpm run db:update --env staging --db api-server-pg
+pnpm run db:update --env staging --db scylla
+pnpm run db:update --env staging --db clickhouse
 ```
 
 ### Other commands
 
 ```sh
-npm run db:add -- --name <migration-name> --db api-server-pg
-npm run db:clean    # Drop and recreate (destructive)
-npm run db:create   # Create database
-npm run db:drop     # Drop database
+pnpm run db:add --name <migration-name> --db api-server-pg
+pnpm run db:clean    # Drop and recreate (destructive)
+pnpm run db:create   # Create database
+pnpm run db:drop     # Drop database
 ```
 
 ### Migration locations
@@ -117,40 +113,40 @@ db/src/scripts/
 
 ## Running the application
 
-For convenience, the `start` npm script in the root of the repository will start each of the client, server, and GraphQL codegen, plus open a web browser. The `compile` script does the same without opening the browser.
+For convenience, the `start` script in the root of the repository will start each of the client, server, and GraphQL codegen, plus open a web browser. The `compile` script does the same without opening the browser.
 
 ```sh
-npm run start
+pnpm run start
 ```
 
 or
 
 ```sh
-npm run compile
+pnpm run compile
 ```
 
 ### Individual services
 
-To start services individually (i.e. to aid in debugging), run the `start` npm script for the `server` and `client` packages in individual terminal windows/tabs.
+To start services individually (i.e. to aid in debugging), run the `start` script for the `server` and `client` packages in individual terminal windows/tabs.
 
 <!-- TODO: confirm and standardize https://github.com/roostorg/coop/issues/476 -->
 
 Start the server your first terminal:
 
 ```sh
-cd server && npm run start
+cd server && pnpm run start
 ```
 
 Start the client in your second terminal:
 
 ```sh
-cd client && npm run start
+cd client && pnpm run start
 ```
 
 Optionally, to keep GraphQL schema changes up to date, run in a third terminal:
 
 ```sh
-npm run generate:watch
+pnpm run generate:watch
 ```
 
 ### Background workers
@@ -159,7 +155,7 @@ Item submissions are processed asynchronously via a BullMQ worker that consumes 
 
 ```sh
 cd server
-npm run runWorkerOrJob ItemProcessingWorker
+pnpm run runWorkerOrJob ItemProcessingWorker
 ```
 
 Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in `server/iocContainer/services/workersAndJobs.ts`.
@@ -177,7 +173,7 @@ EMAIL_TRANSPORT=console
 ### With distributed tracing
 
 ```sh
-cd server && npm run start:trace
+cd server && pnpm run start:trace
 ```
 
 <!-- TODO: Expand on this https://github.com/roostorg/coop/issues/416 -->
@@ -198,42 +194,42 @@ View traces at [localhost:16686](http://localhost:16686).
 ```sh
 # Server
 cd server
-npm run test              # Watch mode
-npm run test:prepush      # Single run
-npm run test:integ        # Integration tests
+pnpm run test              # Watch mode
+pnpm run test:prepush      # Single run
+pnpm run test:integ        # Integration tests
 
 # Client
 cd client
-npm run test              # Watch mode
-npm run test:prepush      # Single run
+pnpm run test              # Watch mode
+pnpm run test:prepush      # Single run
 
 # Full validation (run before pushing)
-npm run check:prepush
+pnpm run check:prepush
 ```
 
 ## Running CI locally
 
 Most PR checks are defined as `docker compose` services so you can reproduce them locally; formatting and GraphQL codegen run on the host Node install.
 
-| CI job                                   | Local command                                                       |
-| ---------------------------------------- | ------------------------------------------------------------------- |
-| `check_formatting`                       | `npm ci && npm run prettier`                                        |
-| `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                      |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                     |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                       |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                      |
-| `check_api_server` (test)                | `docker compose run --rm test`                                      |
+| CI job                                   | Local command                                                                                |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `check_formatting`                       | `pnpm install --frozen-lockfile && pnpm run prettier`                                        |
+| `check_generated_graphql`                | `pnpm install --frozen-lockfile && pnpm run generate && test -z "$(git status --porcelain)"` |
+| `check_api_server` (lint)                | `docker compose run --rm backend pnpm run lint`                                              |
+| `check_api_server` (build)               | `docker compose run --rm backend pnpm run build`                                             |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client pnpm run lint`                                               |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client pnpm run build`                                              |
+| `check_api_server` (test)                | `docker compose run --rm test`                                                               |
 
 Run the full suite (stops at first failure):
 
 ```sh
-npm ci && npm run prettier \
-  && npm run generate && test -z "$(git status --porcelain)" \
-  && docker compose run --rm backend npm run lint \
-  && docker compose run --rm backend npm run build \
-  && docker compose run --rm client npm run lint \
-  && docker compose run --rm client npm run build \
+pnpm install --frozen-lockfile && pnpm run prettier \
+  && pnpm run generate && test -z "$(git status --porcelain)" \
+  && docker compose run --rm backend pnpm run lint \
+  && docker compose run --rm backend pnpm run build \
+  && docker compose run --rm client pnpm run lint \
+  && docker compose run --rm client pnpm run build \
   && docker compose run --rm test
 ```
 
@@ -251,8 +247,8 @@ docker compose down -v     # also drop DB volumes (fresh DBs next run)
 Coop uses schema-first GraphQL with bidirectional code generation.
 
 ```sh
-npm run generate          # One-time
-npm run generate:watch    # Watch mode
+pnpm run generate          # One-time
+pnpm run generate:watch    # Watch mode
 ```
 
 Generated files:
@@ -268,14 +264,14 @@ Backend GraphQL definitions are annotated with `/* GraphQL */` at the start of e
 
 Two utility scripts in `server/bin/` help with common operations:
 
-- **`npm run create-org`**: creates a new organization with an admin user and API key.
-- **`npm run get-invite`**: retrieves the signup link for a user who has been invited via the UI.
+- **`pnpm run create-org`**: creates a new organization with an admin user and API key.
+- **`pnpm run get-invite`**: retrieves the signup link for a user who has been invited via the UI.
 
 See `server/bin/README.md` for detailed usage and examples.
 
 ## HMA development
 
-HMA is started automatically with `npm run up` along with the other backing services.
+HMA is started automatically with `pnpm run up` along with the other backing services.
 
 HMA is pre-configured in `server/.env` with `HMA_SERVICE_URL=http://localhost:9876`. No additional environment setup is needed for local development.
 
@@ -294,7 +290,7 @@ Then use `host.docker.internal:<port>` in image URLs when submitting items. This
 
 ### ScyllaDB not ready
 
-ScyllaDB takes 30-60 seconds to initialize. If migrations fail immediately after `npm run up`, wait and retry.
+ScyllaDB takes 30-60 seconds to initialize. If migrations fail immediately after `pnpm run up`, wait and retry.
 
 ### ClickHouse migration fails
 
@@ -311,12 +307,12 @@ lsof -i :5432    # PostgreSQL
 ### Reset everything
 
 ```sh
-npm run down
+pnpm run down
 docker volume prune    # Warning: removes all Docker volumes
-npm run up
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db clickhouse
-npm run create-org
+pnpm run up
+pnpm run db:update --env staging --db api-server-pg
+pnpm run db:update --env staging --db clickhouse
+pnpm run create-org
 ```
 
 ### Connecting to databases directly
@@ -336,7 +332,7 @@ redis-cli
 ## Code quality
 
 ```sh
-npm run lint           # ESLint
-npm run prettier       # Prettier (check only; use `npm run prettier:fix` to write, alias `npm run format`)
-npm run check:prepush    # Run before pushing
+pnpm run lint           # ESLint
+pnpm run prettier       # Prettier (check only; use `pnpm run prettier:fix` to write, alias `pnpm run format`)
+pnpm run check:prepush    # Run before pushing
 ```

@@ -1,0 +1,82 @@
+packages:
+  - client
+  - server
+  - types
+  - db
+  - migrator
+  - nodejs-instrumentation
+
+overrides:
+  # Force all packages (including transitive deps like @node-saml/passport-saml)
+  # to use @types/express v5. Mirrors the override in server/package.json that
+  # worked under npm but is ignored by pnpm (pnpm only reads root overrides).
+  '@types/express': '^5'
+  # The published @roostorg/coop-types asks for type-fest ^4.3.2. Newer type-fest
+  # declares its own `tag` symbol, so its Opaque types stop matching the server's
+  # type-fest 4.3.2 helpers. npm deduped this to 4.3.2; pnpm has to be told.
+  '@roostorg/coop-types>type-fest': '4.3.2'
+
+  # Ported from the per-package `overrides` in server, client, db, migrator and
+  # nodejs-instrumentation package.json, which pnpm ignores (it reads only this
+  # file). Most are security floors, written as range selectors so they raise
+  # vulnerable versions without forcing one major on every package.
+  '@googlemaps/google-maps-services-js@^3.3.16>retry-axios': 'npm:@ethanresnick/retry-axios@2.6.1'
+  'tailwindcss>sucrase': '^3.35.1'
+  # npm's nested override reached rimraf through source-map-explorer > temp;
+  # pnpm's `a>b` only matches a direct parent, so target temp.
+  'temp>rimraf': '^6.1.2'
+  'uuid@<14.0.0': '^14.0.0'
+  'fast-xml-parser@<5.8.0': '^5.8.0'
+  'axios@<1.18.1': '^1.18.1'
+  'fast-uri@<3.1.6': '^3.1.6'
+  'protobufjs@<7.6.3': '^7.6.3'
+  'protobufjs@>=8.0.0 <8.6.0': '^8.6.0'
+  # nodejs-instrumentation forced protobufjs 8 under npm; its only user is here.
+  '@grpc/proto-loader>protobufjs': '^8.6.0'
+  '@protobufjs/utf8@<1.1.1': '^1.1.1'
+  'decode-uri-component@<0.5.0': '^0.5.0'
+  'adm-zip@<0.6.1': '^0.6.1'
+  'esbuild@<0.28.1': '^0.28.1'
+
+# clone-or-copy: use copy-on-write cloning from the pnpm store (fastest on APFS/macOS),
+# fall back to copying on Linux CI where CoW may not be available.
+# Avoids hardlinks, which can cause confusing behaviour when editing node_modules locally.
+packageImportMethod: clone-or-copy
+
+# Make node_modules/.bin entries symlinks to each package's JS entry point, as
+# npm does, instead of pnpm's default POSIX shell shims. Scripts such as
+# server's `node --env-file-if-exists=.env node_modules/.bin/vitest` run the
+# .bin file with node, which can't parse a shell script.
+preferSymlinkedExecutables: true
+
+# Resolve @roostorg/coop-types from the local workspace rather than the npm registry,
+# even if a newer published version exists. Without this, a stale published version
+# could be silently resolved instead of local changes.
+preferWorkspacePackages: true
+
+# Refuse to install packages published less than 7 days ago (10080 minutes).
+# Mitigates "publish-and-immediately-compromise" supply chain attacks.
+minimumReleaseAge: 10080
+
+# First-party roostorg packages are exempt: they're published from this repo and
+# trusted by definition; the age gate adds no supply-chain protection for them.
+minimumReleaseAgeExclude:
+  - '@roostorg/coop-types'
+
+# Block transitive dependencies from resolving via git repos or tarball URLs.
+# Ensures all deps come from the official registry, not arbitrary remote sources.
+blockExoticSubdeps: true
+
+# Dependency install scripts pnpm may run (true) or skip (false). pnpm also
+# skips unlisted ones, with a warning; `pnpm ignored-builds` lists them.
+allowBuilds:
+  '@mongodb-js/zstd': true
+  '@apollo/protobufjs': false
+  '@parcel/watcher': false
+  core-js: false
+  core-js-pure: false
+  esbuild: false
+  msgpackr-extract: false
+  nice-napi: false
+  protobufjs: false
+  unrs-resolver: false

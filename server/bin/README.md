@@ -11,7 +11,7 @@ Retrieves the signup invite link for a user that was invited from the UI.
 From the `server` directory, run:
 
 ```bash
-npm run get-invite -- --email "user@example.com"
+pnpm run get-invite --email "user@example.com"
 ```
 
 ### Parameters
@@ -65,7 +65,7 @@ Creates a new organization with an admin user and generates an API key.
 From the `server` directory, run:
 
 ```bash
-npm run create-org -- \
+pnpm run create-org \
   --name "My Organization" \
   --email "admin@example.com" \
   --website "https://example.com" \
@@ -187,12 +187,12 @@ both default and NCMEC queues:
 
 ```bash
 # Dry run -- prints what would be re-enqueued, makes no changes
-npm run recover-mrt-queue -- \
+pnpm run recover-mrt-queue \
   --orgId "<orgId>" \
   --queueId "<queueId>"
 
 # Actually re-enqueue
-npm run recover-mrt-queue -- \
+pnpm run recover-mrt-queue \
   --orgId "<orgId>" \
   --queueId "<queueId>" \
   --apply

@@ -3,7 +3,9 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - '**/package-lock.json'
+      - 'pnpm-lock.yaml'
+      - 'scripts/check-licenses.mjs'
+      - '.github/workflows/license-check.yml'
 permissions:
   contents: read
 jobs:
@@ -36,19 +38,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: '**/package-lock.json'
+          cache: 'pnpm'
 
       - name: Format license list
         run: echo "ALLOWED_LICENSES=$(echo "$ALLOWED_LICENSES" | tr '\n' ';' | sed 's/;$//')" >> "$GITHUB_ENV"
 
+      # pnpm uses a single root lockfile, so install the whole workspace once and
+      # list each package's production dependencies with --filter.
       - name: Install dependencies
-        working-directory: ${{ matrix.directory }}
-        run: npm ci --omit=dev --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Check licenses
-        working-directory: ${{ matrix.directory }}
-        run: npx --yes license-checker@25.0.1 --production --excludePrivatePackages --onlyAllow "$ALLOWED_LICENSES"
+        # shell: bash adds pipefail, so a failing `pnpm licenses` fails the step.
+        shell: bash
+        run: pnpm licenses list --prod --json --filter "./${{ matrix.directory }}" | node scripts/check-licenses.mjs

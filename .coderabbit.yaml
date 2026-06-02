@@ -85,7 +85,7 @@ reviews:
         - Open redirects: redirecting to a user-supplied URL without an
           allowlist is risky.
 
-    - path: '**/{package.json,package-lock.json}'
+    - path: '**/{package.json,pnpm-lock.yaml,pnpm-workspace.yaml}'
       instructions: |
         Dependency additions, removals, or upgrades (including transitive
         bumps) require human approval for license (Apache 2.0) and CVE review

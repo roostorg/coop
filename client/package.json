@@ -4,12 +4,12 @@
   "type": "module",
   "description": "Coop Client app",
   "scripts": {
-    "analyze": "VITE_SOURCEMAP=true npm run build && source-map-explorer 'build/assets/*.js' --gzip",
+    "analyze": "VITE_SOURCEMAP=true pnpm run build && source-map-explorer 'build/assets/*.js' --gzip",
     "start": "vite --port 3000",
     "build": "vite build",
     "test": "vitest --passWithNoTests",
     "test:prepush": "vitest run --passWithNoTests",
-    "check:prepush": "npm run build && npm run test:prepush",
+    "check:prepush": "pnpm run build && pnpm run test:prepush",
     "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && eslint ./src",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
@@ -112,17 +112,6 @@
     "vite-plugin-svgr": "^4.5.0",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.1"
-  },
-  "overrides": {
-    "tailwindcss": {
-      "sucrase": "^3.35.1"
-    },
-    "source-map-explorer": {
-      "rimraf": "^6.1.2"
-    },
-    "protobufjs": "^7.6.3",
-    "@protobufjs/utf8": "^1.1.1",
-    "esbuild": "^0.28.1"
   },
   "browserslist": {
     "production": [
