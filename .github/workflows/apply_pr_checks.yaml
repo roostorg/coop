@@ -122,10 +122,10 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Lint
-        run: docker compose run --rm --quiet-pull backend npm run lint
+        run: docker compose run --rm --quiet-pull backend pnpm run lint
 
       - name: Build server
-        run: docker compose run --rm --quiet-pull backend npm run build
+        run: docker compose run --rm --quiet-pull backend pnpm run build
 
       - name: Migrate CI DBs and Test
         run: |
@@ -158,9 +158,9 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Lint client
-        run: docker compose run --rm --quiet-pull client npm run lint
+        run: docker compose run --rm --quiet-pull client pnpm run lint
 
       - name: Build client
-        run: docker compose run --rm --quiet-pull client npm run build
+        run: docker compose run --rm --quiet-pull client pnpm run build
 
 
