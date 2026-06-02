@@ -1,4 +1,4 @@
-import stableStringify from 'safe-stable-stringify';
+import { stringify as stableStringify } from 'safe-stable-stringify';
 
 import type Cache from '../Cache.js';
 import { type NormalizedProducerResult } from '../types/06_Normalization.js';

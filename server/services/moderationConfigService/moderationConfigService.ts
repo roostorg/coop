@@ -1,3 +1,7 @@
+/* eslint-disable max-lines -- widening ReturnsModerationConfigTypes to cover
+   main's newer return shapes (e.g. #792's parameterized actions) pushed this a
+   few lines over 500; splitting the service is out of scope for this
+   type-hygiene PR. */
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
@@ -42,13 +46,32 @@ export type ModerationConfigErrorType =
   | LocationBankErrorType
   | MatchingBankErrorType;
 
+// Public return types for the strike-threshold and text-bank methods, derived
+// from the underlying operations so they stay in sync with the DB row shapes.
+type UserStrikeThreshold = Awaited<
+  ReturnType<UserStrikeOperations['getUserStrikeThresholds']>
+>[number];
+type TextBank = Awaited<ReturnType<MatchingBankOperations['getTextBank']>>;
+
 // By having the ModerationConfigService `implement` this type, TS will check
 // for us that every ModerationConfigService method returns one of our public
 // types.
 type ReturnsModerationConfigTypes = {
   [K in keyof ModerationConfigService]: ReturnType<
     ModerationConfigService[K]
-  > extends ArrayOrPromiseOf<void | ItemType | Action | Policy | boolean>
+  > extends ArrayOrPromiseOf<
+    | void
+    | null
+    | ItemType
+    | Action
+    | Policy
+    | boolean
+    | TextBank
+    | UserStrikeThreshold
+    | PlainRuleWithLatestVersion
+    | Record<string, Policy[]>
+    | { action: Action; parameters: JsonObject }
+  >
     ? ModerationConfigService[K]
     : never;
 };

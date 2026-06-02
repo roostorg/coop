@@ -1,6 +1,6 @@
 import { setTimeout } from 'timers/promises';
 import debug from 'debug';
-import stringify from 'safe-stable-stringify';
+import { stringify } from 'safe-stable-stringify';
 import { type JsonValue, type Tagged } from 'type-fest';
 
 import { components, type Logger } from '../types/index.js';

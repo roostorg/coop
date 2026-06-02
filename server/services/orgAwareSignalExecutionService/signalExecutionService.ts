@@ -1,6 +1,6 @@
 import { SpanStatusCode } from '@opentelemetry/api';
 import _ from 'lodash';
-import stringify from 'safe-stable-stringify';
+import { stringify } from 'safe-stable-stringify';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';

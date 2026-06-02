@@ -446,7 +446,17 @@ export default class JobDecisioning {
           .with(['ALREADY_LOGGED', 'SUCCESS'], () => jobAlreadySubmittedError)
           // Case 4, client retrying after failed job deletion; deletion failed again.
           .with(['ALREADY_LOGGED', 'FAILED'], () => decisioningFailedError)
-          .exhaustive(),
+          // All reachable [logDecisionStatus, removeJobStatus] combinations are
+          // handled above (logDecisionStatus === 'FAILED' returned earlier), so
+          // this branch is unreachable. If it is ever hit we've entered an
+          // unexpected state, so fail fast rather than silently report no error.
+          // We use .otherwise() instead of .exhaustive() because ts-pattern
+          // v5.9 + TS 5.9 mis-infers .exhaustive() as NonExhaustiveError<[any]>.
+          .otherwise((unexpected) => {
+            throw new Error(
+              `Unexpected job decisioning state: [${unexpected.join(', ')}]`,
+            );
+          }),
       };
     })();
 
