@@ -204,20 +204,20 @@ All PR checks are defined as `docker compose` services to reproduce any CI job l
 | CI job                                   | Local command                                   |
 | ---------------------------------------- | ----------------------------------------------- |
 | `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
+| `check_api_server` (lint)                | `docker compose run --rm backend pnpm run lint`  |
+| `check_api_server` (build)               | `docker compose run --rm backend pnpm run build` |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client pnpm run lint`   |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client pnpm run build`  |
 | `check_api_server` (test)                | `docker compose run --rm test`                  |
 
 Run the full suite (stops at first failure):
 
 ```sh
 docker compose run --rm codegen-check \
-  && docker compose run --rm backend npm run lint \
-  && docker compose run --rm backend npm run build \
-  && docker compose run --rm client npm run lint \
-  && docker compose run --rm client npm run build \
+  && docker compose run --rm backend pnpm run lint \
+  && docker compose run --rm backend pnpm run build \
+  && docker compose run --rm client pnpm run lint \
+  && docker compose run --rm client pnpm run build \
   && docker compose run --rm test
 ```
 
