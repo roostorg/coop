@@ -12,9 +12,9 @@ import {
   shouldConditionPromptForComparatorAndThreshold,
 } from './RuleFormUtils';
 
-jest.mock('./RuleFormUtils', () => {
-  const origin = jest.requireActual('./RuleFormUtils');
-  return { ...origin, getConditionInputScalarType: jest.fn() };
+vi.mock('./RuleFormUtils', async () => {
+  const origin = await vi.importActual('./RuleFormUtils');
+  return { ...origin, getConditionInputScalarType: vi.fn() };
 });
 
 // NB: See docs above shouldConditionPromptForComparatorAndThreshold
@@ -73,9 +73,7 @@ describe('Test Rule Form Utils', () => {
         eligibleSignals: [sampleSignal],
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue(GQLScalarType.Boolean);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
@@ -92,38 +90,32 @@ describe('Test Rule Form Utils', () => {
         signal: sampleSignal,
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue(GQLScalarType.Boolean);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
     });
 
     it('Condition with input and selected signal with non-boolean output should show comparator/threshold', () => {
-      const condition: RuleFormLeafCondition = {
-        input: {
-          type: 'CONTENT_FIELD',
-          name: 'num_likes',
-          contentTypeId: '12345',
-        },
-        eligibleSignals: [sampleSignal],
-        signal: sampleSignal,
-      };
-
-      const nonBooleanSignal = {
+      const nonBooleanSignal: CoreSignal = {
         ...sampleSignal,
         outputType: {
           __typename: 'ScalarSignalOutputType',
           scalarType: GQLScalarType.Number,
         },
       };
+      const condition: RuleFormLeafCondition = {
+        input: {
+          type: 'CONTENT_FIELD',
+          name: 'num_likes',
+          contentTypeId: '12345',
+        },
+        eligibleSignals: [nonBooleanSignal],
+        signal: nonBooleanSignal,
+      };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        nonBooleanSignal,
-      ]);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
-        false,
+        true,
       );
     });
   });
