@@ -1,6 +1,16 @@
 import { setTimeout } from "timers/promises";
-import debug from "debug";
-import stringify from "safe-stable-stringify";
+import stringify_ from "safe-stable-stringify";
+
+// Minimal debug-compatible logger — avoids phantom dep under pnpm strict mode.
+// Behaviour is identical when DEBUG is unset (the common case in tests/prod).
+const debug = (namespace: string) => {
+  const patterns = (process.env.DEBUG ?? '').split(',').map((p) => p.trim());
+  const enabled = patterns.some(
+    (p) => p === '*' || p === namespace || (p.endsWith('*') && namespace.startsWith(p.slice(0, -1))),
+  );
+  return (...args: unknown[]) => { if (enabled) console.debug(`  ${namespace}`, ...args); };
+};
+const stringify = stringify_ as unknown as (value: unknown) => string | undefined;
 import { type JsonValue, type Tagged } from "type-fest";
 
 import { components, type Logger } from "../types/index.js";

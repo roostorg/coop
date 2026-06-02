@@ -1,4 +1,5 @@
-import safeStableStringify from 'safe-stable-stringify';
+import safeStableStringify_ from 'safe-stable-stringify';
+const safeStableStringify = safeStableStringify_ as unknown as (value: unknown) => string | undefined;
 
 function escapeString(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -37,7 +38,7 @@ function formatValue(value: unknown): string {
   }
 
   if (typeof value === 'object') {
-    const json = safeStableStringify(value);
+    const json = safeStableStringify(value) ?? 'null';
     return `'${escapeString(json)}'`;
   }
 

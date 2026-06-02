@@ -1,4 +1,5 @@
-import stringify from 'safe-stable-stringify';
+import stringify_ from 'safe-stable-stringify';
+const stringify = stringify_ as unknown as (value: unknown) => string | undefined;
 import { type Opaque } from 'type-fest';
 
 import { JSON } from './json-schema-types.js';

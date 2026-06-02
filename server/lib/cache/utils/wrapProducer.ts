@@ -1,4 +1,5 @@
-import stableStringify from "safe-stable-stringify";
+import stableStringify_ from "safe-stable-stringify";
+const stableStringify = stableStringify_ as unknown as (value: unknown) => string | undefined;
 
 import type Cache from "../Cache.js";
 import { type NormalizedProducerResult } from "../types/06_Normalization.js";
