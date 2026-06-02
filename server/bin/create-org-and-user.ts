@@ -4,7 +4,7 @@
  * Script to create a new organization and admin user
  *
  * Usage:
- *   npm run create-org -- \
+ *   pnpm run create-org \
  *     --name "My Org" \
  *     --email "admin@example.com" \
  *     --website "https://example.com" \

@@ -58,179 +58,43 @@ updates:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
 
+  # One entry for the whole pnpm workspace. Dependabot reads
+  # pnpm-workspace.yaml from the root and updates every package's
+  # package.json together with the single root pnpm-lock.yaml. Per-package
+  # entries don't work: a package directory has no lockfile of its own, so
+  # their PRs change package.json alone and fail `--frozen-lockfile`.
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: 'weekly'
+    # One day longer than pnpm-workspace.yaml's 7-day minimumReleaseAge, so a
+    # proposed version is always old enough for `pnpm install` to accept.
     cooldown:
-      default-days: 7
+      default-days: 8
     labels:
       - 'dependencies'
       - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
-    groups:
-      root-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      root-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      root-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/db'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      db-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      db-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      db-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/migrator'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      migrator-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      migrator-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      migrator-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/server'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
+      # Held back for the server; with one workspace entry these now apply to
+      # every package.
       - dependency-name: 'type-fest'
         versions: ['>4.3.2 <5.0.0']
       - dependency-name: 'typescript'
         versions: ['>=5.0.0 <6.0.0']
     groups:
-      server-prod-security:
+      npm-prod-security:
         dependency-type: 'production'
         applies-to: 'security-updates'
         patterns:
           - '*'
-      server-prod:
+      npm-prod:
         dependency-type: 'production'
         applies-to: 'version-updates'
         patterns:
           - '*'
-      server-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/client'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      client-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      client-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      client-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/nodejs-instrumentation'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      nodejs-instrumentation-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      nodejs-instrumentation-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      nodejs-instrumentation-dev:
+      npm-dev:
         dependency-type: 'development'
         applies-to: 'version-updates'
         patterns:

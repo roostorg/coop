@@ -5,13 +5,13 @@ These instructions apply to AI tools when they review pull requests in this repo
 ## Repository at a glance
 
 - Node (`.nvmrc`), TypeScript throughout.
-- Independent packages, **not an npm workspace** — each has its own `package.json` and lockfile. Main ones: `/` (root), `/server` (Express + Apollo GraphQL, ESM), `/client` (React + Vite + Apollo Client, Ant Design + Tailwind), `/db` (Postgres/ClickHouse/Scylla migration runner), `/migrator` (CLI).
+- A **pnpm workspace** (`pnpm-workspace.yaml`) with one root `pnpm-lock.yaml`; each package has its own `package.json`. Main ones: `/` (root), `/server` (Express + Apollo GraphQL, ESM), `/client` (React + Vite + Apollo Client, Ant Design + Tailwind), `/db` (Postgres/ClickHouse/Scylla migration runner), `/migrator` (CLI).
 - Server uses BottleJS dependency injection wired in `server/iocContainer/`.
-- GraphQL is authored inline in resolvers with `/* GraphQL */` markers and compiled by `npm run generate` into `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. Both `generated.ts` files are codegen output.
+- GraphQL is authored inline in resolvers with `/* GraphQL */` markers and compiled by `pnpm run generate` into `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. Both `generated.ts` files are codegen output.
 
 ## Scope of review — focus on quality and security
 
-Lint and formatting are enforced by ESLint and Prettier in CI (`docker compose run --rm backend npm run lint`, `docker compose run --rm client npm run lint`), so please skip:
+Lint and formatting are enforced by ESLint and Prettier in CI (`docker compose run --rm backend pnpm run lint`, `docker compose run --rm client pnpm run lint`), so please skip:
 
 - formatting, whitespace, indentation, quote style, or import ordering
 - ESLint or Prettier rule violations
@@ -19,7 +19,7 @@ Lint and formatting are enforced by ESLint and Prettier in CI (`docker compose r
 - missing JSDoc on internal helpers
 - subjective style preferences not codified in a project rule
 
-If a finding would be caught by `npm run lint` or `npm run prettier` (check) / `npm run prettier:fix` (alias `npm run format`), it's redundant.
+If a finding would be caught by `pnpm run lint` or `pnpm run prettier` (check) / `pnpm run prettier:fix` (alias `pnpm run format`), it's redundant.
 
 ## Security (cross-cutting)
 
@@ -38,7 +38,7 @@ Path-specific concerns (resolvers, `server/api.ts`, client, raw SQL in ClickHous
 
 Use judgment — these patterns tend to cause bugs or maintenance pain regardless of where they appear:
 
-- **Generated files.** `generated.ts` (client and server) is produced by `npm run generate`; hand-edits drift from the GraphQL schema.
+- **Generated files.** `generated.ts` (client and server) is produced by `pnpm run generate`; hand-edits drift from the GraphQL schema.
 - **Error handling.** Silently swallowed errors (`catch {}` with no log or rethrow), unhandled promise rejections, and missing `await` on a promise whose result matters tend to cause production surprises.
 - **Async correctness.** `forEach` with an `async` callback doesn't await; `for...of` with `await` or `Promise.all` is usually what's intended. Worth a look when shared state is involved.
 - **Type safety.** New `any`, `as unknown as`, non-null assertions (`!`) introduced to silence a real type error, or `@ts-ignore` are worth questioning. `@ts-expect-error` with a justifying comment is preferred when an escape hatch is genuinely needed.

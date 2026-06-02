@@ -7,8 +7,8 @@
   "typings": "./transpiled/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "test": "npm run build && node --test transpiled/test_scripts/"
+    "prepublishOnly": "pnpm run build",
+    "test": "pnpm run build && node --test transpiled/test_scripts/"
   },
   "repository": {
     "type": "git",

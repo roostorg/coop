@@ -7,6 +7,8 @@ on:
       - 'server/**'
       - 'client/**'
       - 'db/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - 'Dockerfile'
       - 'client/Dockerfile'
       - '.github/workflows/publish-docker.yaml'
@@ -73,10 +75,16 @@ jobs:
             server:
               - 'server/**'
               - 'Dockerfile'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
             client:
               - 'client/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
             db:
               - 'db/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
 
       # On release/dispatch, paths-filter is skipped so outputs are empty.
       # The downstream jobs use != 'false', so empty triggers a build.
@@ -164,7 +172,7 @@ jobs:
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: client
+          context: .
           file: client/Dockerfile
           target: serve
           push: true
@@ -210,7 +218,7 @@ jobs:
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: db
+          context: .
           file: db/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
