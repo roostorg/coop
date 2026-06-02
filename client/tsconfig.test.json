@@ -5,7 +5,9 @@
       "vite/client",
       "vite-plugin-svgr/client",
       "vitest/globals",
-      "node"
+      "node",
+      "google.maps",
+      "jest"
     ]
   },
   "include": [
