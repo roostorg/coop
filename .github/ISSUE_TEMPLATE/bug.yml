@@ -76,17 +76,6 @@ body:
     validations:
       required: false
 
-  - type: input
-    id: contact
-    attributes:
-      label: Contact details
-      description: >
-        Outside of GitHub, how can we get in touch if we need more info? Leave
-        blank if replying here on GitHub is best.
-      placeholder: email@example.com
-    validations:
-      required: false
-
   - type: checkboxes
     id: checklist
     attributes:
