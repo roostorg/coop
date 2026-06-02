@@ -1,3 +1,9 @@
+import {
+  GQLManageUsersDocument,
+  GQLRolesForOrgDocument,
+  GQLUserPermission,
+  GQLUserRole,
+} from '@/graphql/generated';
 import { MockedProvider, MockedResponse } from '@apollo/client/testing';
 import {
   fireEvent,
@@ -8,15 +14,6 @@ import {
 } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
-
-import '@testing-library/jest-dom/extend-expect';
-
-import {
-  GQLManageUsersDocument,
-  GQLRolesForOrgDocument,
-  GQLUserPermission,
-  GQLUserRole,
-} from '@/graphql/generated';
 
 import ManageUsers from './ManageUsers';
 

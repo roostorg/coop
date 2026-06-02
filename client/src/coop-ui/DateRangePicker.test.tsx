@@ -1,11 +1,7 @@
-import React from 'react';
-import { vi } from 'vitest';
-
-import '@testing-library/jest-dom';
-import '@testing-library/jest-dom/extend-expect';
-
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { vi } from 'vitest';
 
 describe('DateRangePicker', () => {
   it('should render without crashing', () => {
