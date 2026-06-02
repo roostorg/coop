@@ -76,19 +76,20 @@ services:
     command:
       - |
         PASSWORD=$$(node -e "process.stdout.write(require('crypto').randomBytes(18).toString('base64url'))")
-        node bin/create-org-and-user.js \
+        OUTPUT=$$(node bin/create-org-and-user.js \
           --name "Coop" \
           --email "admin@coop.local" \
           --website "https://coop.local" \
           --firstName "Admin" \
           --lastName "User" \
-          --password "$$PASSWORD" \
+          --password "$$PASSWORD" 2>&1) \
+        && echo "$$OUTPUT" \
         && echo "" \
         && echo "============================================" \
         && echo "  Login:    admin@coop.local" \
         && echo "  Password: $$PASSWORD" \
         && echo "============================================" \
-        || echo "Seed user already exists — skipping."
+        || { echo "$$OUTPUT"; echo "$$OUTPUT" | grep -q "duplicate key" && echo "Seed user already exists — skipping." || exit 1; }
     env_file: ./.env.githubci
     environment:
       NODE_ENV: development

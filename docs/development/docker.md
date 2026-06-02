@@ -80,4 +80,4 @@ docker compose -f docker-compose.images.yaml down -v
 | `coop-worker` | `Dockerfile`        | `build_worker_runner` | node:24-bullseye-slim + dumb-init |
 | `coop-client` | `client/Dockerfile` | `serve`               | nginx:1.27-bookworm               |
 
-The client image serves the Vite-built SPA via nginx and proxies `/api/` and `/graphql` requests to a backend service named `server` on port 8080.
+The client image serves the Vite-built SPA via nginx and proxies `/api/` requests (including `/api/v1/graphql`) to a backend service named `server` on port 8080.
