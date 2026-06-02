@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -47,6 +46,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.server != 'false'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         include:
@@ -96,6 +98,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.client != 'false'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
