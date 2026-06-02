@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
