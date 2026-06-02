@@ -68,7 +68,16 @@ type ReturnsModerationConfigTypes = {
   [K in keyof ModerationConfigService]: ReturnType<
     ModerationConfigService[K]
   > extends ArrayOrPromiseOf<
-    void | ItemType | Action | Policy | boolean | TextBank | UserStrikeThreshold
+    | void
+    | null
+    | ItemType
+    | Action
+    | Policy
+    | boolean
+    | TextBank
+    | UserStrikeThreshold
+    | PlainRuleWithLatestVersion
+    | Record<string, Policy[]>
   >
     ? ModerationConfigService[K]
     : never;

@@ -24,7 +24,7 @@
     "generate:watch": "graphql-codegen --watch \"server/graphql/**/**.ts\"",
     "prepare": "husky",
     "lint": "pnpm -r run lint",
-    "up": "docker compose up --detach postgres clickhouse scylla redis",
+    "up": "docker compose up --detach postgres clickhouse hma scylla redis otel-collector && (open http://localhost:16686 || xdg-open http://localhost:16686)",
     "down": "docker compose down"
   },
   "dependencies": {

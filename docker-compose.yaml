@@ -23,7 +23,7 @@ services:
   migrations:
     image: node:24.14.1-bullseye-slim
     command: bash -c 'set -e && corepack enable
-      && pnpm install --filter coop-data-migrator --store-dir /tmp/pnpm-store
+      && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store
       && ( [ "$$CI" = "true" ] && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ) || true )
       && for db in api-server-pg scylla clickhouse; do
            ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts create --db "$$db" --env staging );
@@ -46,7 +46,7 @@ services:
 
   drop_dbs:
     image: node:24.14.1-bullseye-slim
-    command: bash -c 'corepack enable && pnpm install --filter coop-data-migrator --store-dir /tmp/pnpm-store && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts drop --env staging )'
+    command: bash -c 'corepack enable && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts drop --env staging )'
     working_dir: /src
     env_file: ./.env.githubci
     environment:

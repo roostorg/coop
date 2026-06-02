@@ -13,16 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /
 
 RUN npm install -g pnpm@10.22.0
 
-# Append "--build-arg OMIT_SNOWFLAKE='true'" to your call to avoid installing
-# optional snowflake-promise dependency
-ARG OMIT_SNOWFLAKE
-
 # Copy root lockfile + workspace config, then server package.json
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY server/package.json ./server/
-RUN if [ "$OMIT_SNOWFLAKE" = "true" ]; then \
-      cd server && npm pkg set pnpm.overrides.snowflake-promise='npm:empty-module@^1.0.0'; \
-    fi
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter server --frozen-lockfile --ignore-scripts && \
     pnpm rebuild --filter server
 COPY server/ ./server/
