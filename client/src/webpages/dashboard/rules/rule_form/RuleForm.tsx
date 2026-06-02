@@ -37,7 +37,7 @@ import {
   useGQLUpdateContentRuleMutation,
   useGQLUpdateUserRuleMutation,
   GQLSignal,
-} from '../../../../graphql/generated';
+} from '@/graphql/generated';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { DAY, HOUR, MONTH, WEEK } from '../../../../utils/time';

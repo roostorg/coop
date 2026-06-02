@@ -7,7 +7,7 @@ import {
   GQLSignalPricingStructureType,
   GQLSignalSubcategory,
   GQLSignal,
-} from '../../../../../graphql/generated';
+} from '@/graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import { signalDisplayName } from './RuleFormSignalModalMenuItem';

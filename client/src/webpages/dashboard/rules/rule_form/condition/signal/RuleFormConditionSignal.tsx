@@ -2,7 +2,7 @@ import { DownOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useState } from 'react';
 
-import { GQLSignal } from '../../../../../../graphql/generated';
+import { GQLSignal } from '@/graphql/generated';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
 import RuleFormSignalModal from '../../signal_modal/RuleFormSignalModal';
 import RuleFormConditionSignalSubcategory from './RuleFormConditionSignalSubcategory';

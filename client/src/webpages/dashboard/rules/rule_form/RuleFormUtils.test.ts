@@ -102,29 +102,26 @@ describe('Test Rule Form Utils', () => {
     });
 
     it('Condition with input and selected signal with non-boolean output should show comparator/threshold', () => {
+      const nonBooleanSignal = {
+        ...sampleSignal,
+        outputType: {
+          __typename: 'ScalarSignalOutputType' as const,
+          scalarType: GQLScalarType.Number,
+        },
+      };
+
       const condition: RuleFormLeafCondition = {
         input: {
           type: 'CONTENT_FIELD',
           name: 'num_likes',
           contentTypeId: '12345',
         },
-        eligibleSignals: [sampleSignal],
-        signal: sampleSignal,
+        eligibleSignals: [nonBooleanSignal],
+        signal: nonBooleanSignal,
       };
 
-      const nonBooleanSignal = {
-        ...sampleSignal,
-        outputType: {
-          __typename: 'ScalarSignalOutputType',
-          scalarType: GQLScalarType.Number,
-        },
-      };
-
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        nonBooleanSignal,
-      ]);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
-        false,
+        true,
       );
     });
   });

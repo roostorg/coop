@@ -6,7 +6,7 @@ import {
   GQLDisabledInfo,
   GQLSignalType,
   GQLSignal,
-} from '../../../../../graphql/generated';
+} from '@/graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 

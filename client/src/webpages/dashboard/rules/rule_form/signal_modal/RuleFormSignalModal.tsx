@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import CoopModal from '../../../components/CoopModal';
 
-import { GQLSignal, GQLSignalSubcategory } from '../../../../../graphql/generated';
+import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/signalUtils';
 import RuleFormSignalModalSignalDetailView from './RuleFormSignalModalSignalDetailView';
 import RuleFormSignalModalSignalGallery from './RuleFormSignalModalSignalGallery';

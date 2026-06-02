@@ -666,8 +666,8 @@ export function updateInput(
   const currentSignal = newConditions[conditionIndex].signal;
   if (
     currentSignal != null &&
-    // Need to compare IDs instead of objects
-    !allNewSignals.map((s) => s.type).includes(currentSignal.type)
+    // Compare by ID: type-based comparison fails for custom signals, which all share GQLSignalType.Custom
+    !allNewSignals.some((s) => s.id === currentSignal.id)
   ) {
     // Clear out all other fields on the Condition
     newConditions[conditionIndex] = {
