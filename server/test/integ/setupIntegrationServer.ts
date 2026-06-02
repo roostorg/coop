@@ -3,8 +3,8 @@
  * (Postgres, Scylla, ClickHouse, Redis) and starts the item-processing worker
  * inline so that submissions land in the data stores within the same process.
  *
- * Requires the docker-compose stack from `npm run up` and migrations applied
- * via `npm run db:update`.
+ * Requires the docker-compose stack from `pnpm run up` and migrations applied
+ * via `pnpm run db:update`.
  */
 
 import * as superTest from 'supertest';

@@ -60,20 +60,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: npm run prettier
+        run: node --run prettier
 
       - name: Check Node version parity
-        run: npm run check:node-version
+        run: pnpm run check:node-version
 
   check_generated_graphql:
     timeout-minutes: 5
@@ -85,20 +90,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check generated GraphQL is up to date
         run: |
-          npm run generate
+          pnpm run generate
           if [[ -n "$(git status --porcelain)" ]]; then
-            echo "Generated GraphQL files are out of date. Run npm run generate and commit the result."
+            echo "Generated GraphQL files are out of date. Run pnpm run generate and commit the result."
             git status
             git diff
             exit 1
@@ -210,13 +220,13 @@ jobs:
           build: backend test
 
       - name: Lint
-        run: docker compose run --rm --quiet-pull backend npm run lint
+        run: docker compose run --rm --quiet-pull backend pnpm run lint
 
       - name: Typecheck server
-        run: docker compose run --rm --quiet-pull backend npm run typecheck
+        run: docker compose run --rm --quiet-pull backend pnpm run typecheck
 
       - name: Build server
-        run: docker compose run --rm --quiet-pull backend npm run build
+        run: docker compose run --rm --quiet-pull backend pnpm run build
 
       - name: Migrate CI DBs and Test
         run: |
@@ -259,7 +269,7 @@ jobs:
 
       - name: Migrate CI DBs and run integration tests
         run: |
-          docker compose run --rm --quiet-pull test npm run test:integ
+          docker compose run --rm --quiet-pull test pnpm run test:integ
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
@@ -294,13 +304,13 @@ jobs:
           build: client
 
       - name: Lint client
-        run: docker compose run --rm --quiet-pull client npm run lint
+        run: docker compose run --rm --quiet-pull client pnpm run lint
 
       - name: Test client
-        run: docker compose run --rm --quiet-pull client npm run test:prepush
+        run: docker compose run --rm --quiet-pull client pnpm run test:prepush
 
       - name: Build client
-        run: docker compose run --rm --quiet-pull client npm run build
+        run: docker compose run --rm --quiet-pull client pnpm run build
 
   # db and migrator have no ESLint setup, so CI only typechecks them.
   typecheck_db:
@@ -314,18 +324,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
-          cache-dependency-path: 'db/package-lock.json'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck db
-        run: |
-          cd db
-          npm ci
-          npm run typecheck
+        run: cd db && node --run typecheck
 
   typecheck_migrator:
     needs: changes
@@ -338,15 +352,19 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
-          cache-dependency-path: 'migrator/package-lock.json'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck migrator
-        run: |
-          cd migrator
-          npm ci
-          npm run typecheck
+        run: cd migrator && node --run typecheck

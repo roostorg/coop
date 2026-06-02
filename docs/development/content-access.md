@@ -174,8 +174,8 @@ labels. Store only necessary metadata under the deployment's retention policy.
 
 ```sh
 cd server
-npm run typecheck
-npm run test:prepush -- --coverage=false \
+pnpm run typecheck
+pnpm run test:prepush --coverage=false \
   services/contentAccessService.test.ts \
   services/contentAccessService.tracing.test.ts \
   graphql/modules/contentAccess.resolver.test.ts

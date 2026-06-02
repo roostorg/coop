@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env ./transpiled/bin/www.js\"",
     "start:trace": "tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env --require ../nodejs-instrumentation/transpiled/autoinstrumentation.js ./transpiled/bin/www.js\"",
-    "test": "npm run test:local",
+    "test": "pnpm run test:local",
     "test:local": "node --env-file-if-exists=.env node_modules/.bin/vitest",
     "test:prepush": "node --env-file-if-exists=.env node_modules/.bin/vitest run",
     "test:ci": "node --env-file-if-exists=.env node_modules/.bin/vitest run --reporter=default --reporter=junit --outputFile.junit=reports/jest-junit.xml",
@@ -16,7 +16,7 @@
     "test:e2e": "node --env-file-if-exists=.env node_modules/.bin/playwright test --config e2e/playwright.config.ts",
     "test:e2e:ui": "node --env-file-if-exists=.env node_modules/.bin/playwright test --config e2e/playwright.config.ts --ui",
     "e2e:install-browsers": "playwright install --with-deps chromium",
-    "check:prepush": "npm run typecheck && npm run test:prepush",
+    "check:prepush": "pnpm run typecheck && pnpm run test:prepush",
     "lint": "eslint \"./**/*.{ts,tsx,js}\"",
     "runWorkerOrJob": "node --env-file-if-exists=.env --loader ts-node/esm bin/run-worker-or-job.ts",
     "create-org": "node --env-file-if-exists=.env --loader ts-node/esm bin/create-org-and-user.ts",
@@ -137,20 +137,5 @@
     "typescript-eslint": "^8.57.2",
     "vite": "^7.3.6",
     "vitest": "^5.0.1"
-  },
-  "//": "Use a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
-  "overrides": {
-    "@types/express": "$@types/express",
-    "@googlemaps/google-maps-services-js@^3.3.16": {
-      "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
-    },
-    "uuid": "^14.0.0",
-    "fast-xml-parser": "^5.8.0",
-    "axios": "^1.20.0",
-    "fast-uri": "^3.1.8",
-    "protobufjs": "^7.6.3",
-    "@protobufjs/utf8": "^1.1.1",
-    "decode-uri-component": "^0.5.0",
-    "adm-zip": "^0.6.1"
   }
 }

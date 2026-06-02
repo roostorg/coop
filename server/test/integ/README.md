@@ -3,7 +3,7 @@
 End-to-end tests that exercise the real Coop stack — Postgres, Scylla,
 ClickHouse, Redis, and an inline item-processing worker. Unlike unit tests
 (which mock the data warehouse), these run against the same services that
-`npm start` uses.
+`pnpm start` uses.
 
 These tests implement the scenarios filed under issue
 [#288](https://github.com/roostorg/coop/issues/288).
@@ -13,13 +13,13 @@ These tests implement the scenarios filed under issue
 From the repo root:
 
 ```bash
-npm run up           # boot postgres, clickhouse, scylla, redis, hma, otel
-npm run db:update    # apply Postgres + ClickHouse migrations
-cd server && npm run test:integ
+pnpm run up           # boot postgres, clickhouse, scylla, redis, hma, otel
+pnpm run db:update    # apply Postgres + ClickHouse migrations
+cd server && pnpm run test:integ
 ```
 
-`npm run up` opens Jaeger at <http://localhost:16686>. Stop infra with
-`npm run down` when done.
+`pnpm run up` opens Jaeger at <http://localhost:16686>. Stop infra with
+`pnpm run down` when done.
 
 ## Layout
 
@@ -46,4 +46,4 @@ Fixture helpers (`createOrg`, `createContentItemTypes`, ...) live in
 ## CI
 
 Not yet wired. A follow-up PR will add a workflow that boots the
-`docker-compose.yaml` services and runs `npm run test:integ`.
+`docker-compose.yaml` services and runs `pnpm run test:integ`.

@@ -5,8 +5,8 @@
  * (Postgres, Scylla, ClickHouse, Redis) and asserts the item lands in both
  * Scylla (item_submission_by_thread) and ClickHouse (CONTENT_API_REQUESTS).
  *
- * Run with: npm run test:integ
- * Requires: `npm run up && npm run db:update`
+ * Run with: pnpm run test:integ
+ * Requires: `pnpm run up && pnpm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';

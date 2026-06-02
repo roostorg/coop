@@ -17,8 +17,8 @@
  * outbound-HTTP simulator before the retry invariants can be checked
  * meaningfully against a real stack.
  *
- * Run with: npm run test:integ
- * Requires: `npm run up && npm run db:update`
+ * Run with: pnpm run test:integ
+ * Requires: `pnpm run up && pnpm run db:update`
  */
 import { type Kysely } from 'kysely';
 import { uid } from 'uid';

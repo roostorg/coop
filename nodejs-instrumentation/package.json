@@ -26,9 +26,5 @@
   },
   "devDependencies": {
     "typescript": "^6.0.3"
-  },
-  "overrides": {
-    "protobufjs": "^8.6.0",
-    "@protobufjs/utf8": "^1.1.1"
   }
 }

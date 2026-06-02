@@ -4,7 +4,7 @@
  * Script to get invite token for a user
  *
  * Usage:
- *   npm run get-invite -- --email "user@example.com"
+ *   pnpm run get-invite --email "user@example.com"
  */
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
