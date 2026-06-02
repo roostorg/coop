@@ -137,7 +137,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
 
                     // Check which banks match this image
                     const matchedBankNames: string[] = [];
-                     
+
                     if (
                       hashes &&
                       Object.keys(hashes).length > 0 &&
@@ -310,6 +310,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       });
 
       Meter.itemsEnqueued.add(submissionsToProcess.length);
+      let enqueueFailed = false;
       await Tracer.addActiveSpan(
         {
           resource: 'SubmitItems',
@@ -327,11 +328,15 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                   'Unknown error in bulk write to item submission queue',
                 ),
             );
-            res.status(500).end();
+            enqueueFailed = true;
           }
         },
       );
 
+      if (enqueueFailed) {
+        res.status(500).end();
+        return;
+      }
       res.status(202).end();
     } else {
       // Return 202 immediately now that validation is complete, then keep executing other code

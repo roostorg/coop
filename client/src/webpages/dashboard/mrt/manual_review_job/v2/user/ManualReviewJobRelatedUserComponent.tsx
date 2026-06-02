@@ -14,6 +14,7 @@ import {
   useGQLGetUserItemsQuery,
 } from '../../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
+import { selectPreferredUserItem } from '../../../../../../utils/manualReviewTool';
 import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
@@ -181,13 +182,12 @@ export default function ManualReviewJobRelatedUserComponent(props: {
       },
     });
 
-  const moreInfo =
-    moreInfoData?.partialItems.__typename === 'PartialItemsSuccessResponse' &&
-    moreInfoData.partialItems.items[0].__typename === 'UserItem'
-      ? moreInfoData.partialItems.items[0]
-      : userItemData?.latestItemSubmissions[0]?.__typename === 'UserItem'
-        ? userItemData.latestItemSubmissions[0]
-        : undefined;
+  const moreInfo = selectPreferredUserItem(
+    moreInfoData?.partialItems.__typename === 'PartialItemsSuccessResponse'
+      ? moreInfoData.partialItems.items
+      : undefined,
+    userItemData?.latestItemSubmissions,
+  );
 
   const userItem = userItemData?.latestItemSubmissions?.find(
     (it) => it.__typename === 'UserItem',

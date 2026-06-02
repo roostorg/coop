@@ -26,10 +26,10 @@ import {
 import { userHasPermissions } from '../../../routing/permissions';
 import { prettyPrintJsonValue } from '../../../utils/string';
 import ActionParametersEditor, {
-  type ActionParameterDraft,
   fromGraphQLParameters,
   toMutationInput,
   validateDrafts,
+  type ActionParameterDraft,
 } from './ActionParametersEditor';
 
 const { Option } = Select;
@@ -323,10 +323,8 @@ export default function ActionForm() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         action. See the{' '}
-        <Link href={`${DOCS_URL}/api/actions.html`}>
-          documentation
-        </Link>{' '}
-        for more information.
+        <Link href={`${DOCS_URL}/api/actions.html`}>documentation</Link> for
+        more information.
       </div>
       {callbackSectionHeader('Headers (Optional)')}
       <div className="mb-4 text-base text-zinc-900">

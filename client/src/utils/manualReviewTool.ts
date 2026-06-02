@@ -1,5 +1,35 @@
 import { ManualReviewJobEnqueuedActionData } from '../webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview';
 
+type ItemWithTypename = { __typename: string };
+
+/**
+ * Picks the first `UserItem`, preferring `partialItems` over `fallbackItems`.
+ * `partialItems` is partial by design and may be empty, so the index is
+ * guarded — `items[0].__typename` on an empty list crashed the review page.
+ */
+export function selectPreferredUserItem<
+  TPrimary extends ItemWithTypename,
+  TFallback extends ItemWithTypename,
+>(
+  primaryItems: readonly TPrimary[] | undefined,
+  fallbackItems: readonly TFallback[] | undefined,
+):
+  | Extract<TPrimary, { __typename: 'UserItem' }>
+  | Extract<TFallback, { __typename: 'UserItem' }>
+  | undefined {
+  const primaryFirst = primaryItems?.[0];
+  if (primaryFirst?.__typename === 'UserItem') {
+    return primaryFirst as Extract<TPrimary, { __typename: 'UserItem' }>;
+  }
+
+  const fallbackFirst = fallbackItems?.[0];
+  if (fallbackFirst?.__typename === 'UserItem') {
+    return fallbackFirst as Extract<TFallback, { __typename: 'UserItem' }>;
+  }
+
+  return undefined;
+}
+
 const areRelatedActionsEqual = (
   a: ManualReviewJobEnqueuedActionData,
   b: ManualReviewJobEnqueuedActionData,

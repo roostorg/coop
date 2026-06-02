@@ -3,10 +3,7 @@ import _ from 'lodash';
 
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../services/itemProcessingService/index.js';
 import { NCMECIncidentType as NCMECIncidentTypeValues } from '../../services/ncmecService/index.js';
-import {
-  getPermissionsForRole,
-  UserPermission,
-} from '../../services/userManagementService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   asyncIterableToArray,
   filterNullOrUndefined,
@@ -2422,7 +2419,7 @@ const Mutation: GQLMutationResolvers = {
       await context.services.ManualReviewToolService.deleteAllJobsFromQueue({
         orgId: user.orgId,
         queueId: params.queueId,
-        userPermissions: getPermissionsForRole(user.role),
+        userPermissions: user.getPermissions(),
       });
       return gqlSuccessResult(
         { _: true },

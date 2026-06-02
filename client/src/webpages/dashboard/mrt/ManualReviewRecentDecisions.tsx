@@ -33,8 +33,8 @@ import {
 } from '../../../utils/time';
 import { jsonParse } from '../../../utils/typescript-types';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
-import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
 import { JOB_FRAGMENT } from './manual_review_job/jobFragment';
+import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
 import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
@@ -223,10 +223,10 @@ export default function ManualReviewRecentDecisions() {
   useEffect(() => {
     const decision =
       allDecisionsData?.getRecentDecisions.find((it) => it.id === decisionId) ??
-      decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision.id ===
-        decisionId
+      (decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision?.id ===
+      decisionId
         ? decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision
-        : undefined;
+        : undefined);
     if (decision) {
       setSelectedDecision(decision as GQLManualReviewDecision);
     }
@@ -431,9 +431,9 @@ export default function ManualReviewRecentDecisions() {
         decisionColorNamePairs: decisionData.decisions
           .map((decision) => getDecisionColorNamePairs(decision, isSelected))
           .flat(),
-        policies: decisionData.decisions
-           
-          .flatMap((decision) => getPoliciesFromDecision(decision)),
+        policies: decisionData.decisions.flatMap((decision) =>
+          getPoliciesFromDecision(decision),
+        ),
         reviewer: getReviewerName(decisionData.reviewerId),
         queue: getQueueName(decisionData.queueId),
         decisionTime: decisionData.createdAt,
@@ -663,7 +663,7 @@ export default function ManualReviewRecentDecisions() {
         queueIds: input.queueIds,
         startTime: input.dateRange?.startDate,
         endTime: input.dateRange?.endDate,
-         
+
         decisions: decisionOrActions?.map((it) => {
           switch (it.type) {
             case 'CUSTOM_ACTION':

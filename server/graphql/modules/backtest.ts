@@ -1,7 +1,4 @@
-import {
-  hasPermission,
-  UserPermission,
-} from '../../services/userManagementService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { type RuleExecutionResult } from '../datasources/RuleApi.js';
 import { type GraphQLBacktestParent } from '../datasources/ruleKyselyPersistence.js';
 import { type GQLMutationCreateBacktestArgs } from '../generated.js';
@@ -116,7 +113,7 @@ const resolvers = {
       if (user == null) {
         throw unauthenticatedError('Authenticated user required');
       }
-      if (!hasPermission(UserPermission.RUN_BACKTEST, user.role)) {
+      if (!user.getPermissions().includes(UserPermission.RUN_BACKTEST)) {
         throw forbiddenError('User not authorized to create backtests.');
       }
 

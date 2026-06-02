@@ -3,6 +3,7 @@
 import { GraphQLError } from 'graphql';
 
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { __throw } from '../../utils/misc.js';
 import {
@@ -277,7 +278,7 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
       throw forbiddenError(
         'User does not have permission to view pending invites',
       );
@@ -349,6 +350,11 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view the org API key',
+      );
+    }
     const apiKey = await context.dataSources.orgAPI.getActivatedApiKeyForOrg(
       org.id,
     );
@@ -367,6 +373,11 @@ const Org: GQLOrgResolvers = {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view integration configs',
+      );
     }
 
     return context.dataSources.integrationAPI.getAllIntegrationConfigs(
@@ -438,6 +449,11 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view the webhook signing key',
+      );
+    }
     return context.dataSources.orgAPI.getPublicSigningKeyPem(org.id);
   },
   async hasNCMECReportingEnabled(org, _, context) {
@@ -485,7 +501,9 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('VIEW_CHILD_SAFETY_DATA')) {
+    if (
+      !user.getPermissions().includes(UserPermission.VIEW_CHILD_SAFETY_DATA)
+    ) {
       throw forbiddenError(
         'VIEW_CHILD_SAFETY_DATA permission required to view NCMEC submissions.',
       );
@@ -584,15 +602,19 @@ const Org: GQLOrgResolvers = {
     const users = await context.dataSources.orgAPI.getOrgUsersForGraphQL(
       org.id,
     );
-    return users.filter((u) => u.getPermissions().includes('EDIT_MRT_QUEUES'));
+    return users.filter((u) =>
+      u.getPermissions().includes(UserPermission.EDIT_MRT_QUEUES),
+    );
   },
   async defaultInterfacePreferences(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('Authenticated user required');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to view org safety settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view org safety settings',
+      );
     }
     const orgDefaults =
       await context.services.UserManagementService.getOrgDefaultUserInterfaceSettings(
@@ -616,7 +638,7 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
@@ -638,7 +660,7 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
@@ -729,8 +751,10 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to update org safety settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org safety settings',
+      );
     }
     await context.services.UserManagementService.upsertOrgDefaultUserInterfaceSettings(
       {
@@ -771,8 +795,10 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to manage SSO settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to manage SSO settings',
+      );
     }
 
     return context.services.OrgSettingsService.updateSamlSettings({
@@ -787,7 +813,7 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError('User does not have permission to manage org info');
     }
 

@@ -1,5 +1,6 @@
 import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
 import { __throw } from '@/utils/misc';
 import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
@@ -34,6 +35,7 @@ import {
   GQLThreadAppealManualReviewJobPayload,
   GQLUserManualReviewJobPayload,
   GQLUserPenaltySeverity,
+  GQLUserPermission,
   useGQLDequeueManualReviewJobMutation,
   useGQLLogSkipMutation,
   useGQLManualReviewJobInfoQuery,
@@ -159,7 +161,7 @@ gql`
           ...JobFields
         }
       }
-      role
+      permissions
     }
   }
 
@@ -735,7 +737,10 @@ function ManualReviewJobReviewImpl(props: {
   if (!closedJob && !queue) {
     throw Error(`Queue not found for ID ${queueId}`);
   }
-  const userIsAdmin = data.me?.role === 'ADMIN';
+  const userCanBypassSkipRestriction = userHasPermissions(
+    data.me?.permissions,
+    [GQLUserPermission.ManageOrg],
+  );
 
   const filteredActions = org.actions.filter(
     ({ id }) => !queue?.hiddenActionIds?.includes(id),
@@ -1227,7 +1232,8 @@ function ManualReviewJobReviewImpl(props: {
   );
 
   const skipToNextJobButton =
-    org.hideSkipButtonForNonAdmins && !userIsAdmin ? undefined : (
+    org.hideSkipButtonForNonAdmins &&
+    !userCanBypassSkipRestriction ? undefined : (
       <Button
         className="bottom-0 w-1/3 !px-2 mb-2 overflow-hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]"
         onClick={skipToNextJob}
