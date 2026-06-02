@@ -1,19 +1,4 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
-import { MockedProvider, MockedResponse } from '@apollo/client/testing';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
-import { vi } from 'vitest';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLDeploymentSettingsDocument,
   GQLOrgDefaultSafetySettingsDocument,
@@ -28,6 +13,18 @@ import {
   GQLUpdateRequiresPolicyForDecisionsDocument,
   GQLUpdateSsoCredentialsDocument,
 } from '@/graphql/generated';
+import { MockedProvider, MockedResponse } from '@apollo/client/testing';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { HelmetProvider } from 'react-helmet-async';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
+import { vi } from 'vitest';
 
 import SettingsPage from './SettingsPage';
 
