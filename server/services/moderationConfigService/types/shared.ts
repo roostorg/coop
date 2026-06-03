@@ -1,4 +1,4 @@
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 
 export const UserPenaltySeverity = makeEnumLike([
   'NONE',

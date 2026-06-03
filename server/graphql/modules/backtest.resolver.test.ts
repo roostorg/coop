@@ -1,4 +1,7 @@
-import { UserRole } from '../../services/userManagementService/index.js';
+import {
+  UserPermission,
+  UserRole,
+} from '../../services/userManagementService/index.js';
 import {
   mapBacktestRowToGqlParent,
   type GraphQLBacktestParent,
@@ -134,6 +137,10 @@ describe('backtest resolvers', () => {
           id: 'user-1',
           orgId: 'org-1',
           role: UserRole.MODERATOR,
+          getPermissions: () => [
+            UserPermission.VIEW_MRT,
+            UserPermission.VIEW_MRT_DATA,
+          ],
         }),
         services: {
           ModerationConfigService: { getRuleByIdAndOrg },

@@ -1,4 +1,4 @@
-import { ItemTypeKind } from '@roostorg/types';
+import { ItemTypeKind } from '@roostorg/coop-types';
 import { Tooltip } from 'antd';
 
 import { getDisplayStringForRole, SchemaFieldRoles } from './itemTypeUtils';
@@ -13,20 +13,20 @@ type ItemTypeRoles<T extends ItemTypeKind> = T extends 'CONTENT'
       isDeleted: string | undefined;
     }
   : T extends 'THREAD'
-  ? {
-      createdAt: string | undefined;
-      displayName: string | undefined;
-      isDeleted: string | undefined;
-    }
-  : T extends 'USER'
-  ? {
-      createdAt: string | undefined;
-      displayName: string | undefined;
-      profileIcon: string | undefined;
-      backgroundImage: string | undefined;
-      isDeleted: string | undefined;
-    }
-  : never | undefined;
+    ? {
+        createdAt: string | undefined;
+        displayName: string | undefined;
+        isDeleted: string | undefined;
+      }
+    : T extends 'USER'
+      ? {
+          createdAt: string | undefined;
+          displayName: string | undefined;
+          profileIcon: string | undefined;
+          backgroundImage: string | undefined;
+          isDeleted: string | undefined;
+        }
+      : never | undefined;
 
 export default function ItemTypePreview<T extends ItemTypeKind>(props: {
   kind: T;

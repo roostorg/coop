@@ -1,13 +1,13 @@
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
-import { jsonParse } from '../../utils/encoding.js';
-import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import {
   warehouseDateToDate,
   warehouseDateToDateOnlyString,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
+import { jsonParse } from '../../utils/encoding.js';
+import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 
 type ItemHistoryQueryFilter = {
   passed?: boolean;
@@ -19,6 +19,11 @@ type ItemHistoryQueryFilter = {
 class ItemHistoryQueries {
   constructor(private readonly dialect: Dependencies['DataWarehouseDialect']) {}
 
+  // The data warehouse schema isn't statically modeled in TS, so we use
+  // "any" here to opt out of Kysely's column-name checking. Kysely's stricter
+  // alternatives ("Record<string, unknown>") reject the string-based column
+  // selections this query relies on.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see comment above
   private get kysely(): Kysely<any> {
     return this.dialect.getKyselyInstance();
   }
@@ -73,10 +78,9 @@ class ItemHistoryQueries {
         ]);
       });
 
-
     try {
       const results = await query.execute();
-      return results.map((it: any) => ({
+      return results.map((it) => ({
         itemTypeName: it.itemTypeName,
         itemTypeId: it.itemTypeId,
         userId: it.userId,
@@ -95,7 +99,10 @@ class ItemHistoryQueries {
       }));
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('ItemHistoryQueries: getItemRuleExecutionsHistory failed:', (error as Error).message);
+      console.error(
+        'ItemHistoryQueries: getItemRuleExecutionsHistory failed:',
+        (error as Error).message,
+      );
       throw error;
     }
   }

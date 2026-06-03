@@ -3,7 +3,7 @@ import {
   type ScalarTypeRuntimeType,
   type SignalSubcategory,
   type TaggedScalar,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
 import { type CoopError } from '../../../utils/errors.js';

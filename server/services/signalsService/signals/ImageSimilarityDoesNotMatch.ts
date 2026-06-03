@@ -1,23 +1,21 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
+import type { Dependencies } from '../../../iocContainer/index.js';
+import { jsonStringify } from '../../../utils/encoding.js';
+import type { HashBank } from '../../hmaService/dbTypes.js';
 import { SignalPricingStructure as SignalPricingStructureType } from '../types/SignalPricingStructure.js';
 import { SignalType } from '../types/SignalType.js';
 import SignalBase, {
-  type SignalResult,
-  type SignalInput,
   type ImageValue,
+  type SignalInput,
+  type SignalResult,
 } from './SignalBase.js';
-import type { Dependencies } from '../../../iocContainer/index.js';
-import type { HashBank } from '../../hmaService/dbTypes.js';
-import { jsonStringify } from '../../../utils/encoding.js';
 
 export default class ImageSimilarityDoesNotMatchSignal extends SignalBase<
   ScalarTypes['IMAGE'],
   { scalarType: ScalarTypes['BOOLEAN'] }
 > {
-  constructor(
-    private readonly hmaService: Dependencies['HMAHashBankService'],
-  ) {
+  constructor(private readonly hmaService: Dependencies['HMAHashBankService']) {
     super();
   }
 
@@ -42,9 +40,7 @@ export default class ImageSimilarityDoesNotMatchSignal extends SignalBase<
   }
 
   override get description() {
-    return (
-      'Detects whether any images in the content do not match any images in a hash bank.'
-    );
+    return 'Detects whether any images in the content do not match any images in a hash bank.';
   }
 
   override async getDisabledInfo() {
@@ -110,26 +106,26 @@ export default class ImageSimilarityDoesNotMatchSignal extends SignalBase<
     }
 
     // Check all available hash types and collect matched banks
-    const bankNames = banks.map(bank => bank.hma_name);
+    const bankNames = banks.map((bank) => bank.hma_name);
     const allMatchedBanks = new Set<string>();
-    
+
     const hashCheckResults = await Promise.all(
       Object.entries(imageValue.hashes).map(async ([signalType, hash]) =>
-        this.hmaService.checkImageMatchWithDetails(bankNames, signalType, hash)
-      )
+        this.hmaService.checkImageMatchWithDetails(bankNames, signalType, hash),
+      ),
     );
 
     // Collect all matched banks from all hash types
-    hashCheckResults.forEach(result => {
-      result.matchedBanks.forEach(bank => allMatchedBanks.add(bank));
+    hashCheckResults.forEach((result) => {
+      result.matchedBanks.forEach((bank) => allMatchedBanks.add(bank));
     });
 
     const doesNotMatch = allMatchedBanks.size === 0;
 
     // Map HMA bank names back to user-friendly bank names
-    const checkedBankNames = banks.map(b => b.name);
-    const matchedBankNames = Array.from(allMatchedBanks).map(hmaName => {
-      const bank = banks.find(b => b.hma_name === hmaName);
+    const checkedBankNames = banks.map((b) => b.name);
+    const matchedBankNames = Array.from(allMatchedBanks).map((hmaName) => {
+      const bank = banks.find((b) => b.hma_name === hmaName);
       return bank?.name ?? hmaName;
     });
 
@@ -137,7 +133,7 @@ export default class ImageSimilarityDoesNotMatchSignal extends SignalBase<
       score: doesNotMatch, // Return true if NONE matched
       outputType: { scalarType: ScalarTypes.BOOLEAN },
       // Store checked banks and any matches as metadata
-      matchedValue: jsonStringify({ 
+      matchedValue: jsonStringify({
         checkedBanks: checkedBankNames,
         matchedBanks: matchedBankNames.length > 0 ? matchedBankNames : [],
       }),

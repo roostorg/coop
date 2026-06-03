@@ -21,6 +21,7 @@ import { typeDefs as policyTypeDefs } from './modules/policy.js';
 import { typeDefs as reportingTypeDefs } from './modules/reporting.js';
 import { typeDefs as reportingRulesTypeDefs } from './modules/reportingRule.js';
 import { typeDefs as retroactionTypeDefs } from './modules/retroaction.js';
+import { typeDefs as rolesTypeDefs } from './modules/roles.js';
 import { typeDefs as routingRulesTypeDefs } from './modules/routingRule.js';
 import { typeDefs as ruleTypeDefs } from './modules/rule.js';
 import { typeDefs as signalTypeDefs } from './modules/signal.js';
@@ -59,11 +60,13 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     RELATED_ITEM
     URL
     POLICY_ID
+    IP_ADDRESS
   }
 
   # This is equivalent to ScalarType, but with 'FULL_ITEM' added
@@ -76,12 +79,14 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     RELATED_ITEM
     URL
     FULL_ITEM
     POLICY_ID
+    IP_ADDRESS
   }
 
   # !! IMPORTANT: when you add a value here, also add it to FieldType !!
@@ -99,6 +104,7 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     ARRAY
@@ -106,6 +112,7 @@ const typeDefs = /* GraphQL */ `
     RELATED_ITEM
     URL
     POLICY_ID
+    IP_ADDRESS
   }
 
   enum Language {
@@ -331,7 +338,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union InviteUserTokenResponse =
-      InviteUserTokenSuccessResponse
+    | InviteUserTokenSuccessResponse
     | InviteUserTokenExpiredError
     | InviteUserTokenMissingError
 
@@ -517,6 +524,7 @@ export default mergeTypeDefs([
   reportingRulesTypeDefs,
   reportingTypeDefs,
   retroactionTypeDefs,
+  rolesTypeDefs,
   routingRulesTypeDefs,
   ruleTypeDefs,
   signalTypeDefs,

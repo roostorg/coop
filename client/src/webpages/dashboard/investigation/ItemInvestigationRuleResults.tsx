@@ -1,4 +1,4 @@
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
@@ -174,8 +174,8 @@ export default function ItemInvestigationRuleResults(props: {
                 outcome === GQLConditionOutcome.Passed
                   ? 'soft-red'
                   : outcome === GQLConditionOutcome.Failed
-                  ? 'soft-green'
-                  : 'soft-gray'
+                    ? 'soft-green'
+                    : 'soft-gray'
               }
               shapeVariant="rounded"
               label={getDisplayName(outcome)}

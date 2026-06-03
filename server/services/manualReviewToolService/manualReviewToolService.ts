@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 
 import { SpanStatusCode } from '@opentelemetry/api';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
@@ -325,6 +325,7 @@ export class ManualReviewToolService {
       ruleEvaluator,
       //routingRuleExecutionLogger,
     );
+    this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
       pgQuery,
@@ -332,10 +333,10 @@ export class ManualReviewToolService {
       onRecordDecision,
       moderationConfigService,
       this.tracer,
+      this.manualReviewToolSettings,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
-    this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
   }

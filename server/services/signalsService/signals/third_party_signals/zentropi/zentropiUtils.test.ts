@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { isCoopErrorOfType } from '../../../../../utils/errors.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';

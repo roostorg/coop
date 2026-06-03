@@ -1,4 +1,4 @@
-import { isContainerField } from '@roostorg/types';
+import { isContainerField } from '@roostorg/coop-types';
 import fc from 'fast-check';
 
 import {

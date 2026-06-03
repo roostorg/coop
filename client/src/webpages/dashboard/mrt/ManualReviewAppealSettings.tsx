@@ -1,4 +1,5 @@
 import { DOCS_URL } from '@/lib/config';
+import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { Input, notification } from 'antd';
 import Link from 'antd/lib/typography/Link';
@@ -11,6 +12,7 @@ import FormHeader from '../components/FormHeader';
 import FormSectionHeader from '../components/FormSectionHeader';
 
 import {
+  GQLUserPermission,
   useGQLAppealSettingsQuery,
   useGQLUpdateAppealSettingsMutation,
 } from '../../../graphql/generated';
@@ -24,7 +26,7 @@ gql`
       appealsCallbackBody
     }
     me {
-      role
+      permissions
     }
   }
 
@@ -88,6 +90,10 @@ export default function ManualReviewAppealSettings() {
     return <FullScreenLoading />;
   }
 
+  const canManageOrg = userHasPermissions(data?.me?.permissions, [
+    GQLUserPermission.ManageOrg,
+  ]);
+
   const onUpdateAppealSettings = async () =>
     updateAppealSettings({
       variables: {
@@ -118,10 +124,8 @@ export default function ManualReviewAppealSettings() {
         <span className="font-semibold">Note</span>: For each HTTP request we
         send to that URL, we will include a JSON body with information about the
         appeal. See the{' '}
-        <Link href={`${DOCS_URL}/api/appeal.html`}>
-          documentation
-        </Link>{' '}
-        for more information.
+        <Link href={`${DOCS_URL}/api/appeal.html`}>documentation</Link> for more
+        information.
       </div>
       {callbackSectionHeader('Headers (Optional)')}
       <div className="mb-4 text-base text-zinc-900">
@@ -170,15 +174,15 @@ export default function ManualReviewAppealSettings() {
       <CoopButton
         title="Save Settings"
         disabled={
-          data?.me?.role !== 'ADMIN' ||
+          !canManageOrg ||
           !appealsCallbackUrl ||
           !validateJSON(appealsCallbackHeaders) ||
           !validateJSON(appealsCallbackBody)
         }
         loading={updateLoading}
         disabledTooltipTitle={(() => {
-          if (data?.me?.role !== 'ADMIN') {
-            return "To edit these settings, ask your organization's admin to upgrade your role to Admin.";
+          if (!canManageOrg) {
+            return 'You do not have permission to edit appeal settings. Ask your organization administrator for access.';
           }
           if (!appealsCallbackUrl) {
             return 'The Callback URL is required.';

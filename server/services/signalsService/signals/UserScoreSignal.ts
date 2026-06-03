@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import { SignalPricingStructure } from '../types/SignalPricingStructure.js';

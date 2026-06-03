@@ -66,7 +66,11 @@ export default function ThresholdsTab() {
     },
   });
 
-  const [setUserStrikeTTL] = useGQLUpdateUserStrikeTtlMutation();
+  const [setUserStrikeTTL] = useGQLUpdateUserStrikeTtlMutation({
+    onCompleted: async () => {
+      await refetchThresholds();
+    },
+  });
 
   const thresholds = data?.myOrg?.userStrikeThresholds;
 
@@ -111,6 +115,9 @@ export default function ThresholdsTab() {
         }}
       />
       <StrikeTTLForm
+        // Force remount when orgTTL changes (after a successful save) so the
+        // form's local ttlFormState picks up the refetched value.
+        key={`strikeTTLForm-${data?.myOrg?.userStrikeTTL ?? 90}`}
         orgTTL={data?.myOrg?.userStrikeTTL ?? 90}
         setTTL={async (ttl) => {
           await setUserStrikeTTL({
@@ -127,7 +134,9 @@ export default function ThresholdsTab() {
 }
 function StrikeTTLForm(props: {
   orgTTL: number;
-  setTTL: (ttl: number) => void;
+  // Async — the caller awaits inside the Save handler so the form can wait for
+  // the mutation to round-trip before toggling out of edit mode.
+  setTTL: (ttl: number) => Promise<void>;
 }) {
   const { orgTTL, setTTL } = props;
 
@@ -180,7 +189,7 @@ function StrikeTTLForm(props: {
                 className="!fill-none"
                 startIcon={Check}
                 onClick={async () => {
-                  setTTL(ttlFormState);
+                  await setTTL(ttlFormState);
                   toggleEditing();
                 }}
               >
@@ -196,17 +205,21 @@ function StrikeTTLForm(props: {
           <div className="flex flex-row items-start mt-4 space-x-12 text-slate-700 text-start">
             <div className="flex flex-col mr-12 gap-3">
               <div className="text-sm">User strikes stay on record for</div>
-              <div className="flex flex-row">
+              <div className="flex flex-row items-center gap-2">
                 <Input
                   type="number"
                   disabled={!editingTTL}
-                  style={editingTTL ? { width: '3.5em' } : { width: '5.5em' }}
+                  // Wide enough for 3 digits (max 365) plus the browser's
+                  // number-input spinner controls in the editing state.
+                  style={{ width: '6em' }}
                   min={0}
                   max={365}
                   maxLength={3}
                   placeholder="90"
-                  defaultValue={orgTTL}
-                  value={ttlFormState + `${!editingTTL ? ' days' : ''}`}
+                  // value must be a plain number string for type="number" —
+                  // any trailing non-numeric chars (like " days") cause the
+                  // browser to silently render the placeholder instead.
+                  value={ttlFormState}
                   onChange={(value) => {
                     if (value.target.value === '') {
                       setTTLFormState(0);
@@ -219,6 +232,7 @@ function StrikeTTLForm(props: {
                     }
                   }}
                 />
+                <span className="text-sm">days</span>
               </div>
             </div>
           </div>

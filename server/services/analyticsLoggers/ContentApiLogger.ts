@@ -27,8 +27,8 @@ export type ContentApiRequestLogEntry<HasFailure extends boolean> = {
   failureReason: HasFailure extends true
     ? string
     : HasFailure extends false
-    ? undefined
-    : string | undefined;
+      ? undefined
+      : string | undefined;
 };
 
 export type ContentDetailsApiRequestLogEntry = {
@@ -52,7 +52,7 @@ class ContentApiLogger {
     const { itemType } = itemSubmission;
     const now = new Date();
     await this.analytics.bulkWrite(
-      'CONTENT_API_REQUESTS' as any,
+      'CONTENT_API_REQUESTS',
       [
         {
           ds: getUtcDateOnlyString(now),

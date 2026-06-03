@@ -1,11 +1,11 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type JsonObject, type JsonValue } from 'type-fest';
 
-import { route } from '../../utils/route-helpers.js';
-import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
-import { type Controller } from '../index.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { MAX_ACTOR_NOTE_LENGTH } from '../../services/moderationConfigService/index.js';
+import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
+import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
+import { route } from '../../utils/route-helpers.js';
+import { type Controller } from '../index.js';
 import submitAction from './submitAction.js';
 
 export type SubmitActionInput = JsonObject & {
@@ -89,7 +89,10 @@ export default {
           required: ['actionId', 'itemId', 'itemTypeId'],
         } as unknown as JSONSchemaV4<SubmitActionInput>,
       },
-      (deps) => [createApiKeyMiddleware<SubmitActionInput, undefined>(deps), submitAction(deps)],
+      (deps) => [
+        createApiKeyMiddleware<SubmitActionInput, undefined>(deps),
+        submitAction(deps),
+      ],
     ),
   ],
 } as Controller;

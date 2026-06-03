@@ -1,6 +1,6 @@
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useEffect, useRef, useState } from 'react';
@@ -349,10 +349,10 @@ export function ManualReviewJobThreadComponent(props: {
     orgData?.myOrg?.id === '488cb41d501'
       ? `Script for Video ${thread.id}`
       : displayNameField
-      ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
-      : threadTypeName
-      ? `${threadTypeName} ID: ${thread.id}`
-      : `Thread ID: ${thread.id}`;
+        ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
+        : threadTypeName
+          ? `${threadTypeName} ID: ${thread.id}`
+          : `Thread ID: ${thread.id}`;
 
   if (loading) {
     return <ComponentLoading />;

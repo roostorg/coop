@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import type { Exception } from '@opentelemetry/api';
-import { makeEnumLike, type ItemIdentifier } from '@roostorg/types';
+import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv';
 import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
@@ -168,7 +168,11 @@ type Media = {
   createdAt: string;
   industryClassification: NCMECIndustryClassificationType;
   fileAnnotations?: readonly NCMECFileAnnotationType[];
-  ipCaptureEvent?: IPNCMECEvent;
+  /** Pre-built IP event(s); accepts a single event or an array. */
+  ipCaptureEvent?: IPNCMECEvent | readonly IPNCMECEvent[];
+  /** Bare IP from the `ipAddress` field role; appended as a synthesised
+   * `Upload` event. */
+  ipAddress?: string;
   deviceId?: DeviceNCMECEvent[];
 };
 
@@ -177,6 +181,11 @@ type NCMECUserParams = {
   typeId: string;
   profilePicture?: string;
   displayName?: string;
+  /** Pre-built IP event(s); accepts a single event or an array. */
+  ipCaptureEvent?: IPNCMECEvent | readonly IPNCMECEvent[];
+  /** Bare IP from the `ipAddress` field role; appended as a synthesised
+   * `Unknown` event. */
+  ipAddress?: string;
 };
 
 export type NCMECReportParams = {
@@ -496,6 +505,42 @@ export function clampIncidentDateTimeToPast(
     value: new Date(finalMs).toISOString(),
     wasClamped,
   };
+}
+
+/** Build the `ipCaptureEvent` array for an NCMEC person or media block:
+ * webhook events + caller-supplied events + role-IP-synthesised event, in
+ * that order. Returns `undefined` when all sources are empty. */
+export function mergeFieldRoleIpIntoEvents(
+  webhookEvents: readonly IPNCMECEvent[] | undefined,
+  paramEvents: IPNCMECEvent | readonly IPNCMECEvent[] | undefined,
+  roleIpAddress: string | undefined | null,
+  synthesisedEvent: { eventName: NCMECEventType; dateTime: string },
+): IPNCMECEvent[] | undefined {
+  const isEventArray = (
+    v: IPNCMECEvent | readonly IPNCMECEvent[],
+  ): v is readonly IPNCMECEvent[] => Array.isArray(v);
+  const paramEventsArray: readonly IPNCMECEvent[] =
+    paramEvents == null
+      ? []
+      : isEventArray(paramEvents)
+        ? paramEvents
+        : [paramEvents];
+  const trimmedRoleIp =
+    typeof roleIpAddress === 'string' ? roleIpAddress.trim() : '';
+  const events: IPNCMECEvent[] = [
+    ...(webhookEvents ?? []),
+    ...paramEventsArray,
+    ...(trimmedRoleIp !== ''
+      ? [
+          {
+            ipAddress: trimmedRoleIp,
+            eventName: synthesisedEvent.eventName,
+            dateTime: synthesisedEvent.dateTime,
+          },
+        ]
+      : []),
+  ];
+  return events.length > 0 ? events : undefined;
 }
 
 export function buildInternetDetailsFromOrgSetting(
@@ -1539,6 +1584,18 @@ export default class NcmecReporting {
             ? { email: reportedPersonEmail }
             : undefined;
 
+          // The role IP is a bare string, not a login/upload signal, so
+          // `Unknown` is the safest event-name claim.
+          const reportedUserIpCaptureEvents = mergeFieldRoleIpIntoEvents(
+            userAdditionalInfo.ipCaptureEvent,
+            reportParams.reportedUser.ipCaptureEvent,
+            reportParams.reportedUser.ipAddress,
+            {
+              eventName: NCMECEvent.Unknown,
+              dateTime: clampedIncidentDateTime,
+            },
+          );
+
           const report: Report = {
             report: {
               incidentSummary: {
@@ -1568,9 +1625,9 @@ export default class NcmecReporting {
                       displayName: [reportParams.reportedUser.displayName],
                     }
                   : {}),
-                ...(userAdditionalInfo.ipCaptureEvent &&
-                userAdditionalInfo.ipCaptureEvent.length > 0
-                  ? { ipCaptureEvent: userAdditionalInfo.ipCaptureEvent }
+                ...(reportedUserIpCaptureEvents &&
+                reportedUserIpCaptureEvents.length > 0
+                  ? { ipCaptureEvent: reportedUserIpCaptureEvents }
                   : {}),
               },
               ...(reportAdditionalInfo !== undefined
@@ -1608,11 +1665,23 @@ export default class NcmecReporting {
                 additionalInfo: [],
                 ipCaptureEvent: [],
               };
+              const mergedMediaInfo = {
+                ...mediaAdditionalInfo,
+                ipCaptureEvent: mergeFieldRoleIpIntoEvents(
+                  mediaAdditionalInfo.ipCaptureEvent,
+                  media.ipCaptureEvent,
+                  media.ipAddress,
+                  {
+                    eventName: NCMECEvent.Upload,
+                    dateTime: media.createdAt,
+                  },
+                ),
+              };
               return this.#upload(
                 reportId,
                 media,
                 cybertipAuthenticationCredentials,
-                mediaAdditionalInfo,
+                mergedMediaInfo,
                 isTest,
               );
             }),
@@ -1919,40 +1988,34 @@ export default class NcmecReporting {
     if (!fileAnnotations || fileAnnotations.length === 0) {
       return undefined;
     }
-    return {
-      ...(fileAnnotations.includes(
-        NCMECFileAnnotation.ANIME_DRAWING_VIRTUAL_HENTAI,
-      )
-        ? { animeDrawingVirtualHentai: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.POTENTIAL_MEME)
-        ? { potentialMeme: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.VIRAL)
-        ? { viral: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.POSSIBLE_SELF_PRODUCTION)
-        ? { possibleSelfProduction: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.PHYSICAL_HARM)
-        ? { physicalHarm: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.VIOLENCE_GORE)
-        ? { violenceGore: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.BESTIALITY)
-        ? { bestiality: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.LIVE_STREAMING)
-        ? { liveStreaming: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.INFANT)
-        ? { infant: undefined }
-        : {}),
-      ...(fileAnnotations.includes(NCMECFileAnnotation.GENERATIVE_AI)
-        ? { generativeAi: undefined }
-        : {}),
+    // Map each NCMEC annotation enum value to the corresponding XML field
+    // name. Iterating through the table avoids one logical branch per
+    // annotation, which previously pushed cyclomatic complexity over the
+    // configured ESLint limit and made the function hard to extend when new
+    // annotation types are added.
+    const annotationFieldByType: Record<
+      NCMECFileAnnotationType,
+      keyof FileAnnotations
+    > = {
+      [NCMECFileAnnotation.ANIME_DRAWING_VIRTUAL_HENTAI]:
+        'animeDrawingVirtualHentai',
+      [NCMECFileAnnotation.POTENTIAL_MEME]: 'potentialMeme',
+      [NCMECFileAnnotation.VIRAL]: 'viral',
+      [NCMECFileAnnotation.POSSIBLE_SELF_PRODUCTION]: 'possibleSelfProduction',
+      [NCMECFileAnnotation.PHYSICAL_HARM]: 'physicalHarm',
+      [NCMECFileAnnotation.VIOLENCE_GORE]: 'violenceGore',
+      [NCMECFileAnnotation.BESTIALITY]: 'bestiality',
+      [NCMECFileAnnotation.LIVE_STREAMING]: 'liveStreaming',
+      [NCMECFileAnnotation.INFANT]: 'infant',
+      [NCMECFileAnnotation.GENERATIVE_AI]: 'generativeAi',
     };
+
+    const result: FileAnnotations = {};
+    for (const annotation of fileAnnotations) {
+      const field = annotationFieldByType[annotation];
+      result[field] = undefined;
+    }
+    return result;
   }
 
   async #uploadFileDetails(

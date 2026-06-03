@@ -6,7 +6,7 @@ import {
 } from '@/graphql/generated';
 import { parseDatetimeToReadableStringInCurrentTimeZone } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -17,8 +17,8 @@ import ComponentLoading from '@/components/common/ComponentLoading';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 import InvestigationTag from '../investigation/InvestigationTag';
-import ManualReviewJobReview from '../mrt/manual_review_job/ManualReviewJobReview';
 import { JOB_FRAGMENT } from '../mrt/manual_review_job/jobFragment';
+import ManualReviewJobReview from '../mrt/manual_review_job/ManualReviewJobReview';
 import ManualReviewRecentDecisionSummary from '../mrt/ManualReviewRecentDecisionSummary';
 
 gql`
