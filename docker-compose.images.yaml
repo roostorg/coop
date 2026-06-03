@@ -56,7 +56,7 @@ services:
       && npm i
       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
-    env_file: ./.env.githubci
+    env_file: ./.env.docker
     volumes:
       - .:/src
     depends_on:
@@ -68,10 +68,7 @@ services:
         condition: service_healthy
 
   seed:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: build_server
+    image: ghcr.io/roostorg/coop-server:latest
     entrypoint: ['sh', '-c']
     command:
       - |
@@ -90,7 +87,7 @@ services:
         && echo "  Password: $$PASSWORD" \
         && echo "============================================" \
         || { echo "$$OUTPUT"; echo "$$OUTPUT" | grep -q "duplicate key" && echo "Seed user already exists — skipping." || exit 1; }
-    env_file: ./.env.githubci
+    env_file: ./.env.docker
     environment:
       NODE_ENV: development
     depends_on:
@@ -100,13 +97,10 @@ services:
         condition: service_started
 
   server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: build_server
+    image: ghcr.io/roostorg/coop-server:latest
     ports:
       - '8080:8080'
-    env_file: ./.env.githubci
+    env_file: ./.env.docker
     environment:
       NODE_ENV: development
       PORT: '8080'
@@ -117,14 +111,9 @@ services:
         condition: service_started
 
   client:
-    build:
-      context: client
-      dockerfile: Dockerfile
-      target: serve
+    image: ghcr.io/roostorg/coop-client:latest
     ports:
       - '3000:80'
-    depends_on:
-      - server
 
 volumes:
   pg_data:
