@@ -41,7 +41,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ${{ matrix.directory }}
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --ignore-scripts
 
       - name: Check licenses
         working-directory: ${{ matrix.directory }}
