@@ -18,6 +18,7 @@ jobs:
         CC0-1.0
         ISC
         MIT
+        Python-2.0
     strategy:
       matrix:
         directory:
