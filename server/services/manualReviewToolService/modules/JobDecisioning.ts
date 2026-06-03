@@ -184,11 +184,12 @@ export default class JobDecisioning {
     // (for security) before we save the data to the db. We accept that there
     // could be some legit policies/actions that are very rarely not found
     // (from eventually consistent pg lookup) as a reasonable tradeoff.
-    if (decisions.some((decision) => decision.type === 'CUSTOM_ACTION')) {
-      const allActionIds = decisions.flatMap((decision) =>
-        decision.type === 'CUSTOM_ACTION'
-          ? decision.actions.map((action) => action.id)
-          : [],
+    const customActionDecisions = decisions.flatMap((decision) =>
+      decision.type === 'CUSTOM_ACTION' ? [decision] : [],
+    );
+    if (customActionDecisions.length > 0) {
+      const allActionIds = customActionDecisions.flatMap((decision) =>
+        decision.actions.map((action) => action.id),
       );
       const validActions = await this.getCustomActionsByIds({
         ids: allActionIds,
@@ -203,9 +204,8 @@ export default class JobDecisioning {
       // disables submit when this is on, but API/script callers can bypass that.
       // Only check the flag when there's actually a policy-less decision to
       // enforce against, so the common path avoids the extra DB hit.
-      const hasEmptyPolicyCustomAction = decisions.some(
-        (decision) =>
-          decision.type === 'CUSTOM_ACTION' && decision.policies.length === 0,
+      const hasEmptyPolicyCustomAction = customActionDecisions.some(
+        (decision) => decision.policies.length === 0,
       );
       if (hasEmptyPolicyCustomAction) {
         const requiresPolicy =
@@ -214,8 +214,6 @@ export default class JobDecisioning {
           );
         if (requiresPolicy) {
           throw makeMissingRequiredPolicyForDecisionError({
-            detail:
-              'This org requires every decision to include at least one policy.',
             shouldErrorSpan: true,
           });
         }
