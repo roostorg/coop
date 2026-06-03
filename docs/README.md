@@ -2,6 +2,20 @@
 
 Welcome to the Coop documentation! For the Coop source code and basic information, [check out Coop on GitHub](https://github.com/roostorg/coop).
 
+## Who Coop is for
+
+Coop is for anyone who needs to make online safety decisions: platforms of all sizes, solo developers, and community teams without dedicated trust and safety staff.
+
+Most moderation tooling is proprietary and priced for platforms that can already afford it. Coop is free and open source so your data stays within your infrastructure, and you can customize it for your community's needs.
+
+A few things that shape how we build it:
+
+- **The platform owns its policy.** Coop is the plumbing to implement and enforce your own rules.
+- **Child safety is a prioritized workflow.** As the first free end-to-end online child safety system, it is one of the reasons Coop exists.
+- **The codebase is auditable**, with no hidden logic and no vendor lock-in.
+
+## Finding your way around
+
 These docs are split into a few guides, depending on who you are and what you're looking for:
 
 - [User Guide](user/): learn about Coop, its functionality, and the user interface
