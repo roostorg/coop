@@ -140,12 +140,7 @@ export type UserStatisticsService = ReturnType<
 >;
 
 export default inject(
-  [
-    'KyselyPg',
-    'KyselyPgReadReplica',
-    'DataWarehouseDialect',
-    'Tracer',
-  ],
+  ['KyselyPg', 'KyselyPgReadReplica', 'DataWarehouseDialect', 'Tracer'],
   makeUserStatisticsService,
 );
 

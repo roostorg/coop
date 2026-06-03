@@ -225,6 +225,15 @@ export function generateFakeScalarFieldValue(fieldType: ScalarType) {
       return `https://url.com/some-path/${Math.floor(100 * Math.random())}`;
     case 'IP_ADDRESS':
       return `192.0.2.${Math.floor(255 * Math.random())}`;
+    case 'MEDIA': {
+      // Like AUDIO/IMAGE/VIDEO, the fake value is the *input* (pre-coercion) form
+      // — a raw URL string. The server's MEDIA coercion resolves the kind from
+      // the extension, so cycle through one of each so the IMAGE/VIDEO/AUDIO
+      // render paths all get fake-data coverage.
+      const extensions = ['jpg', 'mp4', 'mp3'];
+      const ext = extensions[Math.floor(Math.random() * extensions.length)];
+      return `https://url.com/${Math.floor(1000 * Math.random())}.${ext}`;
+    }
   }
 }
 

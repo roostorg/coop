@@ -40,8 +40,8 @@ export function getValuesFromFields(
     return Array.isArray(fieldValue)
       ? fieldValue
       : fieldValue !== undefined
-      ? [fieldValue]
-      : [];
+        ? [fieldValue]
+        : [];
   });
 }
 

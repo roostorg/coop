@@ -1,13 +1,13 @@
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
-import { jsonParse } from '../../utils/encoding.js';
-import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import {
   warehouseDateToDate,
   warehouseDateToDateOnlyString,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
+import { jsonParse } from '../../utils/encoding.js';
+import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 
 type ItemHistoryQueryFilter = {
   passed?: boolean;
@@ -78,7 +78,6 @@ class ItemHistoryQueries {
         ]);
       });
 
-
     try {
       const results = await query.execute();
       return results.map((it) => ({
@@ -100,7 +99,10 @@ class ItemHistoryQueries {
       }));
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('ItemHistoryQueries: getItemRuleExecutionsHistory failed:', (error as Error).message);
+      console.error(
+        'ItemHistoryQueries: getItemRuleExecutionsHistory failed:',
+        (error as Error).message,
+      );
       throw error;
     }
   }

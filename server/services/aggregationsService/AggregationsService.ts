@@ -115,7 +115,7 @@ function getItemCreatedAtTime(itemSubmission: ItemSubmission) {
 
   return createdAtFromSchema
     ? new Date(createdAtFromSchema)
-    : itemSubmission.submissionTime ?? new Date();
+    : (itemSubmission.submissionTime ?? new Date());
 }
 
 function getStoreKeysForAggregation(

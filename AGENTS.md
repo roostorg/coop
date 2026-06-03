@@ -27,7 +27,6 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 - **GraphQL authoring:** Inline in resolver files with `/* GraphQL */` comment markers — codegen discovers queries this way. Searching for `gql` or `graphql` alone misses most of it.
 - **GraphQL codegen:** `npm run generate` (from root) regenerates `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. **Never hand-edit** either `generated.ts`. **Never hand-merge** either `generated.ts` during a rebase/merge — pick one side with `git checkout --ours|--theirs <file>`, then run `npm run generate`. Hand-merging produces output that parses but drifts from the schema.
 - **Adding a new built-in `SignalType`:** the type list is hand-mirrored in four files; missing any one ships a signal that's invisible to the dashboard. Update all of:
-
   1. `server/services/signalsService/types/SignalType.ts` — the canonical TS enum-like object (`BuiltInExternalSignalType` or `BuiltInThirdPartySignalType`) and the `integrationForSignalType` switch.
   2. `server/services/signalsService/types/SignalArgsByType.ts` — both `SignalArgsByType` and `RuntimeSignalArgsByType` (the `Satisfies<>` will fail compile until you do).
   3. `server/graphql/modules/signal.ts` — the `enum SignalType { ... }` block inside the SDL string. The `signal.test.ts` coverage test fails if you miss this.
@@ -57,8 +56,14 @@ npm run db:update -- --env staging --db api-server-pg
 npm run db:update -- --env staging --db scylla
 npm run db:update -- --env staging --db clickhouse
 
-# Create organization and admin user
-npm run create-org
+# Create organization and admin user (all flags required)
+npm run create-org -- \
+  --name "Test Org" \
+  --email "admin@example.com" \
+  --website "example.com" \
+  --firstName "Admin" \
+  --lastName "User" \
+  --password "your-password"
 
 # Start dev servers (separate terminals recommended)
 npm run client:start        # React dev server

@@ -3,6 +3,11 @@ import type { ItemIdentifier } from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
+import {
+  type ContentApiRequestRecord,
+  type IContentApiRequestsAdapter,
+} from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
 import {
   isRealItemIdentifier,
   itemIdentifierToScyllaItemIdentifier,
@@ -10,8 +15,6 @@ import {
   type Scylla,
   type ScyllaItemIdentifier,
 } from '../../scylla/index.js';
-import type { ContentApiRequestLogEntry } from '../analyticsLoggers/ContentApiLogger.js';
-import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
   fromCorrelationId,
@@ -24,12 +27,15 @@ import {
 } from '../../utils/iterables.js';
 import { DAY_MS, MONTH_MS } from '../../utils/time.js';
 import { tryParseNonEmptyString } from '../../utils/typescript-types.js';
+import type { ContentApiRequestLogEntry } from '../analyticsLoggers/ContentApiLogger.js';
+import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
   type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
+import { type SubmissionId } from '../itemProcessingService/makeItemSubmission.js';
 import { type ReportingRuleExecutionCorrelationId } from '../reportingService/index.js';
 import {
   type ScyllaItemSubmissionsRow,
@@ -45,12 +51,6 @@ import {
   getSyntheticThreadId,
   partitionLatestAndPriorSubmissions,
 } from './utils.js';
-import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
-import {
-  type ContentApiRequestRecord,
-  type IContentApiRequestsAdapter,
-} from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
-import { type SubmissionId } from '../itemProcessingService/makeItemSubmission.js';
 
 /**
  * The ItemInvestigationService API exposes `limit` parameters

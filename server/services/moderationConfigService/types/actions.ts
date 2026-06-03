@@ -10,7 +10,6 @@ import {
 } from 'type-fest';
 
 import { type TaggedUnionFromCases } from '../../../utils/typescript-types.js';
-
 import { type UserPenaltySeverity } from './shared.js';
 
 export const ActionType = makeEnumLike([

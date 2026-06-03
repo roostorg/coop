@@ -26,6 +26,22 @@ class UserManagementService {
     private readonly configService: Dependencies['ConfigService'],
   ) {}
 
+  // Returns null for orgs without seeded role rows; the read path falls
+  // back to UserPermissionsForRole defaults.
+  async #lookupSystemRoleId(opts: {
+    orgId: string;
+    role: UserRole;
+  }): Promise<string | null> {
+    const row = await this.pgQuery
+      .selectFrom('public.roles')
+      .select('id')
+      .where('org_id', '=', opts.orgId)
+      .where('key', '=', opts.role)
+      .where('is_system', '=', true)
+      .executeTakeFirst();
+    return row?.id ?? null;
+  }
+
   async getUserInterfaceSettings(opts: { userId: string; orgId: string }) {
     const { userId, orgId } = opts;
     const row = await this.pgQuery
@@ -98,10 +114,12 @@ class UserManagementService {
   }) {
     const { email, role, orgId } = opts;
 
+    const roleId = await this.#lookupSystemRoleId({ orgId, role });
+
     const token = (await asyncRandomBytes(32)).toString('hex');
     await this.pgQuery
       .insertInto('public.invite_user_tokens')
-      .values({ token, email, role, org_id: orgId })
+      .values({ token, email, role, role_id: roleId, org_id: orgId })
       .execute();
     return token;
   }
@@ -272,16 +290,21 @@ class UserManagementService {
       );
     }
 
-    if (!invoker.permissions.includes(UserPermission.MANAGE_ORG)) {
+    if (!invoker.permissions.includes(UserPermission.MANAGE_USERS)) {
       throw makeUnauthorizedError(
         'User does not have permission to change roles',
         { shouldErrorSpan: true },
       );
     }
 
+    const newRoleId = await this.#lookupSystemRoleId({
+      orgId: invoker.orgId,
+      role: newRole,
+    });
+
     const result = await this.pgQuery
       .updateTable('public.users')
-      .set({ role: newRole })
+      .set({ role: newRole, role_id: newRoleId })
       .where('id', '=', userId)
       .where('org_id', '=', invoker.orgId)
       .executeTakeFirst();

@@ -7,6 +7,8 @@ import type { SignalSubcategory } from '@roostorg/coop-types';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { type Language } from '../../../utils/language.js';
+import { type SignalOutputType } from '../types/SignalOutputType.js';
+import { type SignalPricingStructure } from '../types/SignalPricingStructure.js';
 import SignalBase, {
   type SignalDisabledInfo,
   type SignalErrorResult,
@@ -14,8 +16,6 @@ import SignalBase, {
   type SignalInputType,
   type SignalResult,
 } from './SignalBase.js';
-import { type SignalOutputType } from '../types/SignalOutputType.js';
-import { type SignalPricingStructure } from '../types/SignalPricingStructure.js';
 
 /** Minimal descriptor shape from a plugin; matches @roostorg/coop-types PluginSignalDescriptor. */
 export type PluginSignalDescriptor = Readonly<{
@@ -33,7 +33,9 @@ export type PluginSignalDescriptor = Readonly<{
   outputType: Readonly<{ scalarType: string }>;
   getCost: () => number;
   run: (input: unknown) => Promise<unknown>;
-  getDisabledInfo: (orgId: string) => Promise<
+  getDisabledInfo: (
+    orgId: string,
+  ) => Promise<
     | { disabled: false; disabledMessage?: string }
     | { disabled: true; disabledMessage: string }
   >;
@@ -91,7 +93,8 @@ export default class PluginSignalAdapter extends SignalBase<
   }
 
   override get pricingStructure() {
-    return this.descriptor.pricingStructure as unknown as SignalPricingStructure;
+    return this.descriptor
+      .pricingStructure as unknown as SignalPricingStructure;
   }
 
   override get eligibleInputs() {
@@ -114,7 +117,9 @@ export default class PluginSignalAdapter extends SignalBase<
   }
 
   override async getDisabledInfo(orgId: string): Promise<SignalDisabledInfo> {
-    return this.descriptor.getDisabledInfo(orgId) as Promise<SignalDisabledInfo>;
+    return this.descriptor.getDisabledInfo(
+      orgId,
+    ) as Promise<SignalDisabledInfo>;
   }
 
   override get needsMatchingValues() {

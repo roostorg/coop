@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 
+import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   type GQLGetDecisionCountSettings,
   type GQLGetJobCreationCountSettings,
@@ -7,9 +8,8 @@ import {
   type GQLQueryResolvers,
   type GQLUserResolvers,
 } from '../generated.js';
-import { gqlSuccessResult } from '../utils/gqlResult.js';
-
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import { gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   enum UserRole {
@@ -37,6 +37,9 @@ const typeDefs = /* GraphQL */ `
     MANAGE_POLICIES
     VIEW_INVESTIGATION
     VIEW_RULES_DASHBOARD
+    MANAGE_ROLES
+    MANAGE_USERS
+    MANAGE_ROUTING_RULES
   }
 
   enum UserPenaltySeverity {
@@ -135,7 +138,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union ChangePasswordResponse =
-      ChangePasswordSuccessResponse
+    | ChangePasswordSuccessResponse
     | ChangePasswordError
 
   type Mutation {
@@ -216,6 +219,9 @@ const Mutation: GQLMutationResolvers = {
     const user = context.getUser();
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_USERS)) {
+      throw forbiddenError('User does not have permission to delete users');
     }
 
     return context.dataSources.userAPI.deleteUser({
@@ -348,11 +354,25 @@ const User: GQLUserResolvers = {
 
       const { email, firstName, lastName, orgId } = user;
       const name = `${firstName} ${lastName}`;
-      const [apiKeyRes, publicSigningKey] = await Promise.all([
-        dataSources.orgAPI.getActivatedApiKeyForOrg(orgId),
-        dataSources.orgAPI.getPublicSigningKeyPem(orgId),
-      ]);
-      const apiKey = apiKeyRes === false ? null : apiKeyRes.key;
+
+      // The ReadMe JWT can include the org's API key and webhook signing key
+      // so docs can prefill them — but only for users who are already
+      // entitled to see those secrets via the normal MANAGE_ORG-gated
+      // surfaces. Otherwise, decoding the JWT would leak org secrets to any
+      // authenticated user.
+      const canSeeOrgSecrets = authedUser
+        .getPermissions()
+        .includes(UserPermission.MANAGE_ORG);
+      let apiKey: string | null = null;
+      let publicSigningKey: string | null = null;
+      if (canSeeOrgSecrets) {
+        const [apiKeyRes, signingKey] = await Promise.all([
+          dataSources.orgAPI.getActivatedApiKeyForOrg(orgId),
+          dataSources.orgAPI.getPublicSigningKeyPem(orgId),
+        ]);
+        apiKey = apiKeyRes === false ? null : apiKeyRes.key;
+        publicSigningKey = signingKey;
+      }
 
       return jwt.sign(
         { name, email, apiKey, publicSigningKey },

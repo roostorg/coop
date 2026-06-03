@@ -244,6 +244,78 @@ function TableRowComponent(props: {
         </div>
       );
     }
+    case 'MEDIA': {
+      // Polymorphic field — render with the kind detected at coercion time,
+      // falling back to a plain link when detection didn't resolve.
+      const url = value?.url;
+      if (url == null) {
+        return <NotProvidedComponent />;
+      }
+      if (value.mediaType === 'IMAGE') {
+        return (
+          <div className="flex flex-col px-2 align-top text-start">
+            <ManualReviewJobContentBlurableImage
+              url={url}
+              options={{
+                maxWidth: maxWidthImage,
+                maxHeight: maxHeightImage,
+                shouldBlur: !(
+                  unblurAllMedia ||
+                  safetySettings?.moderatorSafetyBlurLevel === 0
+                ),
+                blurStrength: unblurAllMedia
+                  ? (0 as const)
+                  : safetySettings?.moderatorSafetyBlurLevel
+                    ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
+                    : (2 as const),
+                grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+              }}
+            />
+            {label ? <div className="font-bold">{label}</div> : null}
+          </div>
+        );
+      }
+      if (value.mediaType === 'VIDEO') {
+        return (
+          <div className="p-2 align-top text-start">
+            <ManualReviewJobContentBlurableVideo
+              url={url}
+              options={{
+                shouldBlur: !(
+                  unblurAllMedia ||
+                  safetySettings?.moderatorSafetyBlurLevel === 0
+                ),
+                blurStrength: unblurAllMedia
+                  ? (0 as const)
+                  : safetySettings?.moderatorSafetyBlurLevel
+                    ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
+                    : (2 as const),
+                maxWidth: maxWidthVideo,
+                maxHeight: maxHeightVideo,
+                muted: safetySettings?.moderatorSafetyMuteVideo ?? true,
+              }}
+            />
+            {label ? <div className="font-bold">{label}</div> : null}
+          </div>
+        );
+      }
+      if (value.mediaType === 'AUDIO') {
+        return (
+          <div className="flex flex-col px-2 align-top text-start">
+            {label ? <div className="pr-3 font-bold">{label}</div> : null}
+            <ReactAudioPlayer src={url} autoPlay controls />
+          </div>
+        );
+      }
+      return (
+        <div className="align-top text-start">
+          {label ? <div className="pr-3 font-bold">{label}</div> : null}
+          <a rel="noreferrer" href={url} target="_blank">
+            {url}
+          </a>
+        </div>
+      );
+    }
     case 'DATETIME': {
       return (
         <div className="flex flex-row align-top text-start">
@@ -348,6 +420,7 @@ function FieldComponent(props: {
     case 'STRING':
     case 'USER_ID':
     case 'VIDEO':
+    case 'MEDIA':
     case 'RELATED_ITEM':
     case 'URL':
     case 'POLICY_ID':
@@ -411,6 +484,7 @@ function ContainerComponent(props: {
               return true;
             case 'AUDIO':
             case 'IMAGE':
+            case 'MEDIA':
             case 'RELATED_ITEM':
             case 'URL':
             case 'VIDEO':
@@ -449,6 +523,7 @@ function ContainerComponent(props: {
       case 'URL':
       case 'POLICY_ID':
       case 'IP_ADDRESS':
+      case 'MEDIA':
       case 'VIDEO': {
         throw Error('Cannot call container component with scalar field');
       }
@@ -514,7 +589,8 @@ function ContainerComponent(props: {
         className={` ${
           data.container!.valueScalarType === 'IMAGE' ||
           data.container!.valueScalarType === 'VIDEO' ||
-          data.container!.valueScalarType === 'AUDIO'
+          data.container!.valueScalarType === 'AUDIO' ||
+          data.container!.valueScalarType === 'MEDIA'
             ? ''
             : 'flex-col'
         } flex overflow-x-scroll border-slate-200 rounded p-1.5 ${

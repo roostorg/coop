@@ -1,4 +1,8 @@
-import { ItemTypeKind, type Field, type ScalarTypes } from '@roostorg/coop-types';
+import {
+  ItemTypeKind,
+  type Field,
+  type ScalarTypes,
+} from '@roostorg/coop-types';
 
 import { type NonEmptyArray } from '../../../utils/typescript-types.js';
 // Imported w/ underscore for use in a jsdoc @link/@see w/o it being flagged as

@@ -180,8 +180,8 @@ export function RuleInsightsSampleDetailResultsImpl(props: {
             outcome === GQLConditionOutcome.Passed
               ? 'soft-red'
               : outcome === GQLConditionOutcome.Failed
-              ? 'soft-green'
-              : 'soft-gray'
+                ? 'soft-green'
+                : 'soft-gray'
           }
           shapeVariant="rounded"
           label={getDisplayName(outcome)}
@@ -335,8 +335,8 @@ export function RuleInsightsSampleDetailResultsImpl(props: {
             conditionSet.result?.outcome === GQLConditionOutcome.Passed
               ? 'border border-solid border-red-800'
               : conditionSet.result?.outcome === GQLConditionOutcome.Failed
-              ? 'border border-solid border-teal-800'
-              : 'border-none'
+                ? 'border border-solid border-teal-800'
+                : 'border-none'
           }`}
         >
           {conditionSet.conditions.map((condition, conditionIndex) => {
