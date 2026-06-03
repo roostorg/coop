@@ -42,42 +42,44 @@ You can invite users from **Settings → Users**, either copying the invite link
 
 Coop comes with seven predefined roles:
 
-| User Role              | Access Manual Review Tool | View all Queues | Create, Delete and Edit Queues | Create, Delete and Edit Rules | Access NCMEC data | Access Insights |
-| :--------------------- | :------------------------ | :-------------- | :----------------------------- | :---------------------------- | :---------------- | :-------------- |
-| Admin                  | Yes                       | Yes             | Yes                            | Yes                           | Yes               | Yes             |
-| Rules Manager          | No                        | No              | No                             | Yes                           | No                | Yes             |
-| Moderator Manager      | Yes                       | Yes             | Yes                            | No                            | Yes               | No              |
-| Child Safety Moderator | Yes                       | No              | No                             | No                            | Yes               | No              |
-| Moderator              | Yes                       | No              | No                             | No                            | No                | No              |
-| Analyst                | No                        | No              | No                             | No                            | No                | Yes             |
-| External Moderator     | Yes                       | No              | No                             | No                            | No                | No              |
+| User Role              | Access Review Console | View all Queues | Create, Delete and Edit Queues | Create, Delete and Edit Rules | Access NCMEC data | Access Insights |
+| :--------------------- | :-------------------- | :-------------- | :----------------------------- | :---------------------------- | :---------------- | :-------------- |
+| Admin                  | Yes                   | Yes             | Yes                            | Yes                           | Yes               | Yes             |
+| Rules Manager          | No                    | No              | No                             | Yes                           | No                | Yes             |
+| Moderator Manager      | Yes                   | Yes             | Yes                            | No                            | Yes               | No              |
+| Child Safety Moderator | Yes                   | No              | No                             | No                            | Yes               | No              |
+| Moderator              | Yes                   | No              | No                             | No                            | No                | No              |
+| Analyst                | No                    | No              | No                             | No                            | No                | Yes             |
+| External Moderator     | Yes                   | No              | No                             | No                            | No                | No              |
 
 **Admin**: manage the entire organization. They have full control over all resources and settings within Coop.
 
 **Rules Manager**: can create, edit, and deploy Live Rules, run retroaction and backtests, view rule insights, manage policies, use the Investigation tool, and bulk-action content. They cannot manage users, queues, or other organization-level settings.
 
-**Moderator Manager**: can view and edit all queues within the Manual Review Tool, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.
+**Moderator Manager**: can view and edit all queues within the Review Console, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.
 
 **Child Safety Moderator**: the same permissions as Moderators, but can also review Child Safety jobs and see previous Child Safety decisions.
 
-**Moderator**: can access the Manual Review Tool, but can only review jobs from queues they've been given permission to see. They cannot see any Child Safety-related jobs or decisions.
+**Moderator**: can access the Review Console, but can only review jobs from queues they've been given permission to see. They cannot see any Child Safety-related jobs or decisions.
 
-**Analyst**: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Manual Review Tool.
+**Analyst**: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Review Console.
 
-**External Moderator**: can only review jobs in the Manual Review Tool. They cannot see any decisions or use any other tooling.
+**External Moderator**: can only review jobs in the Review Console. They cannot see any decisions or use any other tooling.
 
 ## SSO
 
-Coop supports single sign-on via Okta SAML.
+Coop supports single sign-on via SAML, e.g. with Okta.
 
-### Prerequisites
+### Example: Okta
+
+Configuring Okta SAML for Coop requires:
 
 - Admin mode in Okta
 - Group names that match exactly between Okta and SAML
 - Admin permissions in Coop
 - Ability to create a custom SAML application
 
-### Configuration
+To set it up:
 
 1. Create a [custom SAML application](https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm) in Okta with the following settings:
 
