@@ -22,6 +22,10 @@ We want to hear from you! Whether you're testing it out, running into issues, or
 
 Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap).
 
+## Docker
+
+Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.
+
 ## Learn more
 
 We maintain [documentation](docs/) directly in this repo covering functionality, development, integrations, and more. Versioned documentation is also [available online](https://roostorg.github.io/coop) for easier browsing.
