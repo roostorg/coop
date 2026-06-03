@@ -9,6 +9,7 @@ import {
   UserRole,
   type PermissionGroup,
 } from '../../services/userManagementService/index.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 
 type RolesKysely = Kysely<CombinedPg>;
 
@@ -158,7 +159,7 @@ export async function kyselyUpdateRolePermissions(
   },
 ): Promise<RoleParent> {
   const { orgId, roleKey, permissions } = opts;
-  return kysely.transaction().execute(async (tx) => {
+  return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
     const roleId = await ensureSystemRoleRow(tx, { orgId, roleKey });
     await tx
       .deleteFrom('public.role_permissions')
@@ -194,7 +195,7 @@ export async function kyselyRenameRole(
   },
 ): Promise<RoleParent> {
   const { orgId, roleKey, displayName, description } = opts;
-  return kysely.transaction().execute(async (tx) => {
+  return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
     const roleId = await ensureSystemRoleRow(tx, { orgId, roleKey });
     await tx
       .updateTable('public.roles')
