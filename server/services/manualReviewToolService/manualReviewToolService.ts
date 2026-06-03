@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 
 import { SpanStatusCode } from '@opentelemetry/api';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';

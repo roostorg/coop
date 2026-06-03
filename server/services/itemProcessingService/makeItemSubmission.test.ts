@@ -1,4 +1,4 @@
-import { ScalarTypes, type Field, type FieldType } from '@roostorg/types';
+import { ScalarTypes, type Field, type FieldType } from '@roostorg/coop-types';
 
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import {

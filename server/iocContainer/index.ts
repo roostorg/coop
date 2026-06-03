@@ -2,7 +2,7 @@
 import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import {
   types as scyllaTypes,
   type Host as ScyllaHost,
@@ -337,6 +337,13 @@ export interface Dependencies {
   itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
   IORedis: IORedis.Redis | Cluster;
+  /**
+   * Dedicated ioredis client for the items-async enqueue path. Same Redis
+   * as `IORedis`, but built with `enableOfflineQueue: false` so a
+   * `queue.addBulk` while Redis is unreachable rejects immediately
+   * instead of buffering in-process
+   */
+  IORedisEnqueueNoBuffer: IORedis.Redis | Cluster;
 
   // Loggers
   RuleExecutionLogger: RuleExecutionLogger;
@@ -572,7 +579,9 @@ export default async function getBottle() {
       }),
   );
 
-  bottle.factory('IORedis', () =>
+  const makeRedis = (
+    extraOptions: { enableOfflineQueue?: boolean } = {},
+  ): IORedis.Redis | Cluster =>
     safeGetEnvVar('REDIS_USE_CLUSTER') === 'true'
       ? new IORedis.Cluster(
           [
@@ -592,6 +601,7 @@ export default async function getBottle() {
               maxRetriesPerRequest: null,
               username: safeGetEnvVar('REDIS_USER'),
               password: safeGetEnvVar('REDIS_PASSWORD'),
+              ...extraOptions,
             },
           },
         )
@@ -604,7 +614,15 @@ export default async function getBottle() {
           ...(isEnvTrue('REDIS_TLS')
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
-        }),
+          ...extraOptions,
+        });
+
+  bottle.factory('IORedis', () => makeRedis());
+  // With `enableOfflineQueue: false`, a `queue.addBulk` while Redis is
+  // unreachable rejects immediately instead of resolving against the
+  // in-process buffer. fails enqueue early with "couldn't enqueue".
+  bottle.factory('IORedisEnqueueNoBuffer', () =>
+    makeRedis({ enableOfflineQueue: false }),
   );
 
   // Data Warehouse abstraction layer
@@ -671,7 +689,10 @@ export default async function getBottle() {
   });
 
   bottle.factory('itemSubmissionQueueBulkWrite', (container) =>
-    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_QUEUE_NAME),
+    makeItemSubmissionBulkWrite(
+      container.IORedisEnqueueNoBuffer,
+      ITEM_SUBMISSION_QUEUE_NAME,
+    ),
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
@@ -1606,6 +1627,7 @@ export default async function getBottle() {
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
             'IORedis',
+            'IORedisEnqueueNoBuffer',
             // Storage abstractions
             'DataWarehouse',
             'DataWarehouseDialect',
@@ -1662,7 +1684,24 @@ export default async function getBottle() {
                   ) {
                     await it.destroy();
                   } else if ('quit' in it && typeof it.quit === 'function') {
-                    await it.quit();
+                    // ioredis `quit()` writes a QUIT command to the wire. On
+                    // a client built with `enableOfflineQueue: false`, that
+                    // throws synchronously if the stream isn't writeable
+                    // (e.g. the connection never opened, as is common in
+                    // unit tests). Fall back to a hard disconnect in that
+                    // case so shutdown doesn't fail.
+                    try {
+                      await it.quit();
+                    } catch (err) {
+                      if (
+                        'disconnect' in it &&
+                        typeof it.disconnect === 'function'
+                      ) {
+                        it.disconnect();
+                      } else {
+                        throw err;
+                      }
+                    }
                   } else if (
                     'flushPendingWrites' in it &&
                     typeof it.flushPendingWrites === 'function'

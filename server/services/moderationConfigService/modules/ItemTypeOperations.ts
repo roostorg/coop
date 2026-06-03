@@ -54,6 +54,7 @@ const itemTypeDbSelection = [
   'is_deleted_field as isDeletedField',
   'profile_icon_field as profileIconField',
   'background_image_field as backgroundImageField',
+  'ip_address_field as ipAddressField',
   'org_id as orgId',
   'is_default_user as isDefaultUserType',
 ] as const;
@@ -268,6 +269,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -286,6 +288,7 @@ export default class ItemTypeOperations {
         created_at_field: input.schemaFieldRoles.createdAt,
         display_name_field: input.schemaFieldRoles.displayName,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -311,6 +314,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -339,6 +343,9 @@ export default class ItemTypeOperations {
           is_deleted_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.isDeleted,
           ),
+          ip_address_field: replaceEmptyStringWithNull(
+            input.schemaFieldRoles.ipAddress,
+          ),
         }),
       )
       .where('id', '=', input.id)
@@ -364,6 +371,7 @@ export default class ItemTypeOperations {
         displayName?: string | null;
         creatorId?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ): Promise<ThreadItemType> {
@@ -380,6 +388,7 @@ export default class ItemTypeOperations {
         display_name_field: input.schemaFieldRoles.displayName,
         creator_id_field: input.schemaFieldRoles.creatorId,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -403,6 +412,7 @@ export default class ItemTypeOperations {
         displayName?: string | null;
         creatorId?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -424,6 +434,9 @@ export default class ItemTypeOperations {
           ),
           is_deleted_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.isDeleted,
+          ),
+          ip_address_field: replaceEmptyStringWithNull(
+            input.schemaFieldRoles.ipAddress,
           ),
         }),
       )
@@ -451,6 +464,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -468,6 +482,7 @@ export default class ItemTypeOperations {
         created_at_field: input.schemaFieldRoles.createdAt,
         display_name_field: input.schemaFieldRoles.displayName,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -492,6 +507,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ): Promise<UserItemType> {
@@ -516,6 +532,9 @@ export default class ItemTypeOperations {
           ),
           is_deleted_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.isDeleted,
+          ),
+          ip_address_field: replaceEmptyStringWithNull(
+            input.schemaFieldRoles.ipAddress,
           ),
         }),
       )
@@ -724,6 +743,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             parentId: input.parentIdField ?? undefined,
             threadId: input.threadIdField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
+            ipAddress: input.ipAddressField ?? undefined,
             // We collapse the cases here because otherwise this satisfies
             // check fails, but the correlation is checked by the DB
             // constraints
@@ -734,6 +754,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             createdAt: input.createdAtField ?? undefined,
             creatorId: input.creatorIdField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
+            ipAddress: input.ipAddressField ?? undefined,
           } satisfies ThreadItemType['schemaFieldRoles'];
         case 'USER':
           return {
@@ -742,6 +763,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             createdAt: input.createdAtField ?? undefined,
             profileIcon: input.profileIconField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
+            ipAddress: input.ipAddressField ?? undefined,
           } satisfies UserItemType['schemaFieldRoles'];
         default:
           assertUnreachable(input.kind);

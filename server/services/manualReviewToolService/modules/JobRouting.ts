@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import {
   sql,
   type CaseWhenBuilder,

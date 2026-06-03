@@ -1,4 +1,4 @@
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import { tryParseNonEmptyString } from '../utils/typescript-types.js';
 import type {

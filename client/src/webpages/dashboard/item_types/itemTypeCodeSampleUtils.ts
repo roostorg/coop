@@ -1,5 +1,5 @@
 import { HOST_URL } from '@/lib/config';
-import { ItemTypeKind } from '@roostorg/types';
+import { ItemTypeKind } from '@roostorg/coop-types';
 import zipObject from 'lodash/zipObject';
 
 import { GQLScalarType, type GQLItemType } from '../../../graphql/generated';

@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { jsonStringify } from '../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../utils/errors.js';

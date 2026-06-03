@@ -126,7 +126,7 @@ export default function submitReport({
 
                   // Check which banks match this image
                   const matchedBankNames: string[] = [];
-                   
+
                   if (
                     Object.keys(hashes).length > 0 &&
                     allBankNames.length > 0
@@ -204,9 +204,9 @@ export default function submitReport({
 
       const hasAdditionalItemsOnThreadSubmission = Boolean(
         additionalItemSubmissions &&
-          additionalItemSubmissions.length > 0 &&
-          reportedItemSubmission.error === undefined &&
-          reportedItemSubmission.itemSubmission.itemType.kind === 'THREAD',
+        additionalItemSubmissions.length > 0 &&
+        reportedItemSubmission.error === undefined &&
+        reportedItemSubmission.itemSubmission.itemType.kind === 'THREAD',
       );
 
       const isAllValidContentItems = (

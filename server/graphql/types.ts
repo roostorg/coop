@@ -5,7 +5,7 @@ import {
 } from '../services/itemProcessingService/index.js';
 import { type ItemType } from '../services/moderationConfigService/index.js';
 
-export { type ItemIdentifier } from '@roostorg/types';
+export { type ItemIdentifier } from '@roostorg/coop-types';
 
 /**
  * GQL exposes what is essentially an `ItemSubmission` using a different layout

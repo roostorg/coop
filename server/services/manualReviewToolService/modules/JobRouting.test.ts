@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import getBottle from '../../../iocContainer/index.js';

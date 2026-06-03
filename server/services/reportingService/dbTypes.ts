@@ -1,13 +1,13 @@
-import { type ItemIdentifier, type ItemTypeKind } from '@roostorg/types';
+import { type ItemIdentifier, type ItemTypeKind } from '@roostorg/coop-types';
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
-import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   type FilterableWarehouseDate,
   type WarehouseDate,
 } from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
+import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
