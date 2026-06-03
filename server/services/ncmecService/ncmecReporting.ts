@@ -177,6 +177,7 @@ type NCMECUserParams = {
   typeId: string;
   profilePicture?: string;
   displayName?: string;
+  ipAddress?: string;
 };
 
 export type NCMECReportParams = {
