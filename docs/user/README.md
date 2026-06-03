@@ -2,7 +2,10 @@
 
 Coop enables you to protect your users from harm with remarkable ease.
 
-![Overview](../images/coop-overview.png)
+| ![Overview](../images/overview.png) | ![Review Console](../images/review-console.png) |
+| ----------------------------------- | ----------------------------------------------- |
+| ![Job page](../images/job-page.png) | ![Wellness](../images/org-wellness.png)         |
+| ![Job page](../images/job-page.png) | ![Integrations](../images/integrations.png)     |
 
 Coop is a trust and safety platform built around two functional areas that can be used independently or together:
 
@@ -31,3 +34,15 @@ Once Coop is configured, your platform can:
 1. Begin submitting items to Coop via the [Items API](../api/items.md) so they run through your proactive rules
 
 2. Submit user reports via the [Report API](../api/report.md) to route them into review queues for your moderators
+
+<style>
+  table,
+  table thead,
+  table thead tr,
+  table thead th,
+  table tbody tr,
+  table tbody tr td {
+    background: none !important;
+    border: none !important;
+  }
+</style>

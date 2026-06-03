@@ -6,7 +6,7 @@ Admins manage organization-wide configuration including items, actions, policies
 
 Item Types represent the different types of entities on your platform. See [Concepts → Item Type](concepts.md#item-type) for details.
 
-![Configuration of an Item Type: a post from the firehose with a schema of fields that get sent to Coop including text, unique ID as well as what format the fields are in](../images/coop-items.png)
+![Configuration of an Item Type: a post from the firehose with a schema of fields that get sent to Coop including text, unique ID as well as what format the fields are in](../images/items.png)
 
 When creating an Item Type, define the schema to include which fields will be included and shown to reviewers. These fields are also available in any rule logic to connect with signals for routing or automation.
 
@@ -14,17 +14,17 @@ When creating an Item Type, define the schema to include which fields will be in
 
 Actions represent anything that can be performed on Items by proactive rules or moderator decisions. See [Concepts → Actions](concepts.md#actions) for details.
 
-![Table of configured custom actions like: send warning, label as spam, delete content, delete account, ban email](../images/coop-actions.png)
+![Table of configured custom actions like: send warning, label as spam, delete content, delete account, ban email](../images/actions.png)
 
 Actions are paired with API enpoints on your platform. See [Handling Actions](../api/actions.md) for technical details.
 
-![Creating an action in Coop: add the name, description, what item types the action can run on, and a callback URL](../images/coop-define-action.png)
+![Creating an action in Coop: add the name, description, what item types the action can run on, and a callback URL](../images/define-action.png)
 
 ## Policies
 
 Policies are the set of rules and guidelines that a platform uses to govern the conduct of its users. See [Concepts → Policy](concepts.md#policy) for details.
 
-![Policy Dashboard showing 4 policies: Fraud, Nudity, Scams, Spam. There's a button to create new policies as well as options to add sub-policies for each existing policy and edit or delete them](../images/coop-policies.png)
+![Policy Dashboard showing 4 policies: Fraud, Nudity, Scams, Spam. There's a button to create new policies as well as options to add sub-policies for each existing policy and edit or delete them](../images/policies.png)
 
 Policies added in Coop's UI are visible to reviewers directly in the [Job view](review-console.md#job-view) of the Review Console.
 
@@ -32,11 +32,11 @@ Policies added in Coop's UI are visible to reviewers directly in the [Job view](
 
 Coop uses role-based access controls to ensure the right people can access the right data.
 
-![User management page in Coop showing different users with different emails and roles assigned to them. There is an Approval Status column and a column showing when they were created](../images/coop-manage-users.png)
+![User management page in Coop showing different users with different emails and roles assigned to them. There is an Approval Status column and a column showing when they were created](../images/manage-users.png)
 
 You can invite users from **Settings → Users**, either copying the invite link to share directly or configuring an email service to send it automatically.
 
-![Coop's user invitation flow](../images/coop-invite.png)
+![Coop's user invitation flow](../images/invite.png)
 
 ### Roles
 
