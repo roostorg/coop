@@ -19,6 +19,7 @@ jobs:
         ISC
         MIT
         Python-2.0
+        Unlicense
     strategy:
       matrix:
         directory:
