@@ -12,6 +12,8 @@ Coop is the open source review and moderation tool from [ROOST](https://roost.to
 - **Rules Engine**: Automated content evaluation against customizable policies
 - **API Integration**: Simple REST and GraphQL APIs for seamless platform integration
 
+It's designed for trust and safety teams for online platforms of all sizes from small indie projects to large enterprise-scale deployments.
+
 ## Who Coop is for
 
 Coop is for anyone who needs to make online safety decisions: platforms of all sizes, solo developers, and community teams without dedicated trust and safety staff.
