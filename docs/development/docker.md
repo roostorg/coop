@@ -14,11 +14,13 @@ Images are tagged with `latest`, the git SHA, and semver tags on release.
 
 ## Quick start
 
-Build and run the full stack locally with a single command:
+Pull the published images and run the full stack locally with a single command:
 
 ```bash
-docker compose -f docker-compose.images.yaml up --build -d
+docker compose -f docker-compose.images.yaml up -d
 ```
+
+> **Warning:** `docker-compose.images.yaml` uses `.env.docker`, which ships working defaults for local evaluation but includes placeholder secrets. Review and replace secrets before any non-local deployment.
 
 This starts:
 
