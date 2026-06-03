@@ -2453,6 +2453,7 @@ export type GQLMutation = {
   readonly removeAccessibleQueuesToUser: GQLRemoveAccessibleQueuesToUserResponse;
   readonly removeFavoriteMRTQueue: GQLRemoveFavoriteMrtQueueSuccessResponse;
   readonly removeFavoriteRule: GQLRemoveFavoriteRuleSuccessResponse;
+  readonly renameRole: GQLRole;
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
   readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
@@ -2488,6 +2489,7 @@ export type GQLMutation = {
   readonly updatePolicy: GQLUpdatePolicyResponse;
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
+  readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
   readonly updateSSOCredentials: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
@@ -2681,6 +2683,10 @@ export type GQLMutationRemoveFavoriteRuleArgs = {
   ruleId: Scalars['ID']['input'];
 };
 
+export type GQLMutationRenameRoleArgs = {
+  input: GQLRenameRoleInput;
+};
+
 export type GQLMutationReorderRoutingRulesArgs = {
   input: GQLReorderRoutingRulesInput;
 };
@@ -2797,6 +2803,10 @@ export type GQLMutationUpdateReportingRuleArgs = {
 
 export type GQLMutationUpdateRoleArgs = {
   input: GQLUpdateRoleInput;
+};
+
+export type GQLMutationUpdateRolePermissionsArgs = {
+  input: GQLUpdateRolePermissionsInput;
 };
 
 export type GQLMutationUpdateRoutingRuleArgs = {
@@ -3209,6 +3219,21 @@ export type GQLPendingInvite = {
   readonly role: GQLUserRole;
 };
 
+export type GQLPermissionGroup = {
+  readonly __typename: 'PermissionGroup';
+  readonly description: Scalars['String']['output'];
+  readonly key: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+  readonly permissions: ReadonlyArray<GQLPermissionGroupItem>;
+};
+
+export type GQLPermissionGroupItem = {
+  readonly __typename: 'PermissionGroupItem';
+  readonly description: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+  readonly permission: GQLUserPermission;
+};
+
 export type GQLPlaceBounds = {
   readonly __typename: 'PlaceBounds';
   readonly northeastCorner: GQLLatLng;
@@ -3341,10 +3366,14 @@ export type GQLQuery = {
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
+  /** Server-owned grouping + ordering for the role-editor UI. Gated on MANAGE_ROLES. */
+  readonly permissionGroups: ReadonlyArray<GQLPermissionGroup>;
   readonly policy?: Maybe<GQLPolicy>;
   readonly recentUserStrikeActions: ReadonlyArray<GQLRecentUserStrikeActions>;
   readonly reportingInsights: GQLReportingInsights;
   readonly reportingRule?: Maybe<GQLReportingRule>;
+  /** All system roles for the invoking admin's org. Gated on MANAGE_ROLES. */
+  readonly rolesForOrg: ReadonlyArray<GQLRole>;
   readonly rule?: Maybe<GQLRule>;
   readonly spotTestRule: GQLRuleExecutionResult;
   readonly textBank?: Maybe<GQLTextBank>;
@@ -3703,6 +3732,12 @@ export type GQLRemoveFavoriteRuleSuccessResponse = {
   readonly _?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type GQLRenameRoleInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly displayName: Scalars['String']['input'];
+  readonly roleKey: GQLUserRole;
+};
+
 export type GQLReorderRoutingRulesInput = {
   readonly isAppealsRule?: InputMaybe<Scalars['Boolean']['input']>;
   readonly order: ReadonlyArray<Scalars['ID']['input']>;
@@ -3859,6 +3894,22 @@ export type GQLRetryNcmecSubmissionResponse = {
    */
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly success: Scalars['Boolean']['output'];
+};
+
+export type GQLRole = {
+  readonly __typename: 'Role';
+  readonly description?: Maybe<Scalars['String']['output']>;
+  readonly displayName: Scalars['String']['output'];
+  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
+  readonly id?: Maybe<Scalars['ID']['output']>;
+  /** True when permissions/metadata come from the static fallback rather than public.roles. */
+  readonly isFallback: Scalars['Boolean']['output'];
+  readonly isSystem: Scalars['Boolean']['output'];
+  /** Stable role identifier (matches UserRole). */
+  readonly key: GQLUserRole;
+  readonly permissions: ReadonlyArray<GQLUserPermission>;
+  /** Number of approved (non-rejected) users in the org assigned to this role. */
+  readonly userCount: Scalars['Int']['output'];
 };
 
 export type GQLRotateApiKeyError = GQLError & {
@@ -4683,6 +4734,11 @@ export type GQLUpdateRoleInput = {
   readonly role: GQLUserRole;
 };
 
+export type GQLUpdateRolePermissionsInput = {
+  readonly permissions: ReadonlyArray<GQLUserPermission>;
+  readonly roleKey: GQLUserRole;
+};
+
 export type GQLUpdateRoutingRuleInput = {
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -4904,6 +4960,9 @@ export const GQLUserPermission = {
   EditMrtQueues: 'EDIT_MRT_QUEUES',
   ManageOrg: 'MANAGE_ORG',
   ManagePolicies: 'MANAGE_POLICIES',
+  ManageRoles: 'MANAGE_ROLES',
+  ManageRoutingRules: 'MANAGE_ROUTING_RULES',
+  ManageUsers: 'MANAGE_USERS',
   ManuallyActionContent: 'MANUALLY_ACTION_CONTENT',
   MutateLiveRules: 'MUTATE_LIVE_RULES',
   MutateNonLiveRules: 'MUTATE_NON_LIVE_RULES',
@@ -9518,7 +9577,7 @@ export type GQLAppealSettingsQuery = {
   } | null;
   readonly me?: {
     readonly __typename: 'User';
-    readonly role?: GQLUserRole | null;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
   } | null;
 };
 
@@ -12343,7 +12402,7 @@ export type GQLManualReviewJobInfoQuery = {
   readonly me?: {
     readonly __typename: 'User';
     readonly id: string;
-    readonly role?: GQLUserRole | null;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly reviewableQueues: ReadonlyArray<{
       readonly __typename: 'ManualReviewQueue';
       readonly id: string;
@@ -24366,6 +24425,23 @@ export type GQLChangePasswordMutation = {
       };
 };
 
+export type GQLRolesForOrgQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLRolesForOrgQuery = {
+  readonly __typename: 'Query';
+  readonly rolesForOrg: ReadonlyArray<{
+    readonly __typename: 'Role';
+    readonly id?: string | null;
+    readonly key: GQLUserRole;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly isSystem: boolean;
+    readonly isFallback: boolean;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+    readonly userCount: number;
+  }>;
+};
+
 export type GQLManageUsersQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLManageUsersQuery = {
@@ -24589,6 +24665,62 @@ export type GQLUpdateOrgInfoMutation = {
   readonly updateOrgInfo: {
     readonly __typename: 'UpdateOrgInfoSuccessResponse';
     readonly _?: boolean | null;
+  };
+};
+
+export type GQLPermissionGroupsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLPermissionGroupsQuery = {
+  readonly __typename: 'Query';
+  readonly permissionGroups: ReadonlyArray<{
+    readonly __typename: 'PermissionGroup';
+    readonly key: string;
+    readonly label: string;
+    readonly description: string;
+    readonly permissions: ReadonlyArray<{
+      readonly __typename: 'PermissionGroupItem';
+      readonly permission: GQLUserPermission;
+      readonly label: string;
+      readonly description: string;
+    }>;
+  }>;
+};
+
+export type GQLUpdateRolePermissionsMutationVariables = Exact<{
+  input: GQLUpdateRolePermissionsInput;
+}>;
+
+export type GQLUpdateRolePermissionsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRolePermissions: {
+    readonly __typename: 'Role';
+    readonly id?: string | null;
+    readonly key: GQLUserRole;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly isSystem: boolean;
+    readonly isFallback: boolean;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+    readonly userCount: number;
+  };
+};
+
+export type GQLRenameRoleMutationVariables = Exact<{
+  input: GQLRenameRoleInput;
+}>;
+
+export type GQLRenameRoleMutation = {
+  readonly __typename: 'Mutation';
+  readonly renameRole: {
+    readonly __typename: 'Role';
+    readonly id?: string | null;
+    readonly key: GQLUserRole;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly isSystem: boolean;
+    readonly isFallback: boolean;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+    readonly userCount: number;
   };
 };
 
@@ -31684,7 +31816,7 @@ export const GQLAppealSettingsDocument = gql`
       appealsCallbackBody
     }
     me {
-      role
+      permissions
     }
   }
 `;
@@ -33922,7 +34054,7 @@ export const GQLManualReviewJobInfoDocument = gql`
           ...JobFields
         }
       }
-      role
+      permissions
     }
   }
   ${GQLItemTypeFragmentFragmentDoc}
@@ -42364,6 +42496,111 @@ export type GQLChangePasswordMutationOptions = Apollo.BaseMutationOptions<
   GQLChangePasswordMutation,
   GQLChangePasswordMutationVariables
 >;
+export const GQLRolesForOrgDocument = gql`
+  query RolesForOrg {
+    rolesForOrg {
+      id
+      key
+      displayName
+      description
+      isSystem
+      isFallback
+      permissions
+      userCount
+    }
+  }
+`;
+
+/**
+ * __useGQLRolesForOrgQuery__
+ *
+ * To run a query within a React component, call `useGQLRolesForOrgQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLRolesForOrgQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLRolesForOrgQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLRolesForOrgQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLRolesForOrgQuery, GQLRolesForOrgQueryVariables>(
+    GQLRolesForOrgDocument,
+    options,
+  );
+}
+export function useGQLRolesForOrgLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<GQLRolesForOrgQuery, GQLRolesForOrgQueryVariables>(
+    GQLRolesForOrgDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useGQLRolesForOrgSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLRolesForOrgQuery,
+  GQLRolesForOrgQueryVariables
+>;
+export function useGQLRolesForOrgSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLRolesForOrgQuery,
+        GQLRolesForOrgQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLRolesForOrgQuery | undefined,
+  GQLRolesForOrgQueryVariables
+>;
+export function useGQLRolesForOrgSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLRolesForOrgQuery,
+        GQLRolesForOrgQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >(GQLRolesForOrgDocument, options);
+}
+export type GQLRolesForOrgQueryHookResult = ReturnType<
+  typeof useGQLRolesForOrgQuery
+>;
+export type GQLRolesForOrgLazyQueryHookResult = ReturnType<
+  typeof useGQLRolesForOrgLazyQuery
+>;
+export type GQLRolesForOrgSuspenseQueryHookResult = ReturnType<
+  typeof useGQLRolesForOrgSuspenseQuery
+>;
+export type GQLRolesForOrgQueryResult = Apollo.QueryResult<
+  GQLRolesForOrgQuery,
+  GQLRolesForOrgQueryVariables
+>;
 export const GQLManageUsersDocument = gql`
   query ManageUsers {
     myOrg {
@@ -43411,6 +43648,226 @@ export type GQLUpdateOrgInfoMutationOptions = Apollo.BaseMutationOptions<
   GQLUpdateOrgInfoMutation,
   GQLUpdateOrgInfoMutationVariables
 >;
+export const GQLPermissionGroupsDocument = gql`
+  query PermissionGroups {
+    permissionGroups {
+      key
+      label
+      description
+      permissions {
+        permission
+        label
+        description
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLPermissionGroupsQuery__
+ *
+ * To run a query within a React component, call `useGQLPermissionGroupsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLPermissionGroupsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLPermissionGroupsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLPermissionGroupsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >(GQLPermissionGroupsDocument, options);
+}
+export function useGQLPermissionGroupsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >(GQLPermissionGroupsDocument, options);
+}
+// @ts-ignore
+export function useGQLPermissionGroupsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLPermissionGroupsQuery,
+  GQLPermissionGroupsQueryVariables
+>;
+export function useGQLPermissionGroupsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLPermissionGroupsQuery,
+        GQLPermissionGroupsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLPermissionGroupsQuery | undefined,
+  GQLPermissionGroupsQueryVariables
+>;
+export function useGQLPermissionGroupsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLPermissionGroupsQuery,
+        GQLPermissionGroupsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >(GQLPermissionGroupsDocument, options);
+}
+export type GQLPermissionGroupsQueryHookResult = ReturnType<
+  typeof useGQLPermissionGroupsQuery
+>;
+export type GQLPermissionGroupsLazyQueryHookResult = ReturnType<
+  typeof useGQLPermissionGroupsLazyQuery
+>;
+export type GQLPermissionGroupsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLPermissionGroupsSuspenseQuery
+>;
+export type GQLPermissionGroupsQueryResult = Apollo.QueryResult<
+  GQLPermissionGroupsQuery,
+  GQLPermissionGroupsQueryVariables
+>;
+export const GQLUpdateRolePermissionsDocument = gql`
+  mutation UpdateRolePermissions($input: UpdateRolePermissionsInput!) {
+    updateRolePermissions(input: $input) {
+      id
+      key
+      displayName
+      description
+      isSystem
+      isFallback
+      permissions
+      userCount
+    }
+  }
+`;
+export type GQLUpdateRolePermissionsMutationFn = Apollo.MutationFunction<
+  GQLUpdateRolePermissionsMutation,
+  GQLUpdateRolePermissionsMutationVariables
+>;
+
+/**
+ * __useGQLUpdateRolePermissionsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRolePermissionsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRolePermissionsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRolePermissionsMutation, { data, loading, error }] = useGQLUpdateRolePermissionsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateRolePermissionsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRolePermissionsMutation,
+    GQLUpdateRolePermissionsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRolePermissionsMutation,
+    GQLUpdateRolePermissionsMutationVariables
+  >(GQLUpdateRolePermissionsDocument, options);
+}
+export type GQLUpdateRolePermissionsMutationHookResult = ReturnType<
+  typeof useGQLUpdateRolePermissionsMutation
+>;
+export type GQLUpdateRolePermissionsMutationResult =
+  Apollo.MutationResult<GQLUpdateRolePermissionsMutation>;
+export type GQLUpdateRolePermissionsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRolePermissionsMutation,
+    GQLUpdateRolePermissionsMutationVariables
+  >;
+export const GQLRenameRoleDocument = gql`
+  mutation RenameRole($input: RenameRoleInput!) {
+    renameRole(input: $input) {
+      id
+      key
+      displayName
+      description
+      isSystem
+      isFallback
+      permissions
+      userCount
+    }
+  }
+`;
+export type GQLRenameRoleMutationFn = Apollo.MutationFunction<
+  GQLRenameRoleMutation,
+  GQLRenameRoleMutationVariables
+>;
+
+/**
+ * __useGQLRenameRoleMutation__
+ *
+ * To run a mutation, you first call `useGQLRenameRoleMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLRenameRoleMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlRenameRoleMutation, { data, loading, error }] = useGQLRenameRoleMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLRenameRoleMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLRenameRoleMutation,
+    GQLRenameRoleMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLRenameRoleMutation,
+    GQLRenameRoleMutationVariables
+  >(GQLRenameRoleDocument, options);
+}
+export type GQLRenameRoleMutationHookResult = ReturnType<
+  typeof useGQLRenameRoleMutation
+>;
+export type GQLRenameRoleMutationResult =
+  Apollo.MutationResult<GQLRenameRoleMutation>;
+export type GQLRenameRoleMutationOptions = Apollo.BaseMutationOptions<
+  GQLRenameRoleMutation,
+  GQLRenameRoleMutationVariables
+>;
 export const GQLGetSsoCredentialsDocument = gql`
   query GetSSOCredentials {
     me {
@@ -43682,11 +44139,13 @@ export const namedOperations = {
     UserStrikeThresholds: 'UserStrikeThresholds',
     AccountSettings: 'AccountSettings',
     PersonalSafetySettings: 'PersonalSafetySettings',
+    RolesForOrg: 'RolesForOrg',
     ManageUsers: 'ManageUsers',
     HasNcmecReportingEnabled: 'HasNcmecReportingEnabled',
     NcmecOrgSettings: 'NcmecOrgSettings',
     OrgDefaultSafetySettings: 'OrgDefaultSafetySettings',
     OrgSettings: 'OrgSettings',
+    PermissionGroups: 'PermissionGroups',
     GetSSOCredentials: 'GetSSOCredentials',
   },
   Mutation: {
@@ -43768,6 +44227,8 @@ export const namedOperations = {
     UpdateNcmecOrgSettings: 'UpdateNcmecOrgSettings',
     SetOrgDefaultSafetySettings: 'SetOrgDefaultSafetySettings',
     UpdateOrgInfo: 'UpdateOrgInfo',
+    UpdateRolePermissions: 'UpdateRolePermissions',
+    RenameRole: 'RenameRole',
     UpdateSSOCredentials: 'UpdateSSOCredentials',
   },
   Fragment: {

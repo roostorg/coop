@@ -1,0 +1,9 @@
+blank_issues_enabled: false # maintainers can still file blank issues for convenience
+contact_links:
+  - name: Discuss Coop
+    about: "See previously-asked questions and existing discussions about Coop, or start your own"
+    url: https://github.com/roostorg/coop/discussions
+
+  - name: Chat with contributors
+    about: "Join the #coop channel on the ROOST Discord server"
+    url: https://discord.gg/2r7uUqvsut

@@ -1,5 +1,6 @@
 import { type Action } from '../../services/moderationConfigService/index.js';
-import { resolveOrgActions } from './org.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
+import { resolveOrgActions, resolvers } from './org.js';
 
 function makeAction(
   id: string,
@@ -99,6 +100,102 @@ describe('Org resolvers', () => {
       );
       expect(getActions).not.toHaveBeenCalled();
       expect(hasNCMECReportingEnabled).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Org sensitive field resolvers require MANAGE_ORG', () => {
+    function makeCtx(opts: {
+      orgId: string;
+      permissions: readonly UserPermission[];
+      callerOrgId?: string;
+    }) {
+      const getActivatedApiKeyForOrg = jest.fn(async () => ({
+        key: 'api-key-secret',
+      }));
+      const getPublicSigningKeyPem = jest.fn(async () => 'PEM_BODY');
+      const getAllIntegrationConfigs = jest.fn(async () => []);
+      const ctx = {
+        getUser: () => ({
+          id: 'user-1',
+          orgId: opts.callerOrgId ?? opts.orgId,
+          getPermissions: () => opts.permissions,
+        }),
+        dataSources: {
+          orgAPI: { getActivatedApiKeyForOrg, getPublicSigningKeyPem },
+          integrationAPI: { getAllIntegrationConfigs },
+        },
+      };
+      return {
+        ctx,
+        getActivatedApiKeyForOrg,
+        getPublicSigningKeyPem,
+        getAllIntegrationConfigs,
+      };
+    }
+
+    const orgParent = { id: 'org-1' };
+    const Org = resolvers.Org as Record<
+      'apiKey' | 'publicSigningKey' | 'integrationConfigs',
+      (
+        parent: typeof orgParent,
+        args: unknown,
+        ctx: unknown,
+      ) => Promise<unknown>
+    >;
+
+    it('Org.apiKey throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+      const { ctx, getActivatedApiKeyForOrg } = makeCtx({
+        orgId: 'org-1',
+        permissions: [UserPermission.VIEW_MRT],
+      });
+      await expect(Org.apiKey(orgParent, {}, ctx)).rejects.toThrow(
+        'User does not have permission to view the org API key',
+      );
+      expect(getActivatedApiKeyForOrg).not.toHaveBeenCalled();
+    });
+
+    it('Org.apiKey returns the key when caller has MANAGE_ORG', async () => {
+      const { ctx, getActivatedApiKeyForOrg } = makeCtx({
+        orgId: 'org-1',
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+      await expect(Org.apiKey(orgParent, {}, ctx)).resolves.toBe(
+        'api-key-secret',
+      );
+      expect(getActivatedApiKeyForOrg).toHaveBeenCalledWith('org-1');
+    });
+
+    it('Org.publicSigningKey throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+      const { ctx, getPublicSigningKeyPem } = makeCtx({
+        orgId: 'org-1',
+        permissions: [UserPermission.VIEW_MRT],
+      });
+      await expect(Org.publicSigningKey(orgParent, {}, ctx)).rejects.toThrow(
+        'User does not have permission to view the webhook signing key',
+      );
+      expect(getPublicSigningKeyPem).not.toHaveBeenCalled();
+    });
+
+    it('Org.integrationConfigs throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+      const { ctx, getAllIntegrationConfigs } = makeCtx({
+        orgId: 'org-1',
+        permissions: [UserPermission.VIEW_MRT],
+      });
+      await expect(Org.integrationConfigs(orgParent, {}, ctx)).rejects.toThrow(
+        'User does not have permission to view integration configs',
+      );
+      expect(getAllIntegrationConfigs).not.toHaveBeenCalled();
+    });
+
+    it('Org.apiKey still throws unauthenticatedError when caller is in a different org (IDOR guard runs first)', async () => {
+      const { ctx } = makeCtx({
+        orgId: 'org-1',
+        callerOrgId: 'other-org',
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+      await expect(Org.apiKey(orgParent, {}, ctx)).rejects.toThrow(
+        'User required.',
+      );
     });
   });
 });
