@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-6271d7b7.js";
+            window.path_to_searchindex_js = "../searchindex-35895685.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6b814170.js"></script>
@@ -181,8 +181,12 @@
 <p><img src="../images/coop-overview.png" alt="Overview"></p>
 <p>Coop is a trust and safety platform built around two functional areas that can be used independently or together:</p>
 <ul>
-<li><strong>Automated Enforcement</strong>: rules that evaluate every submitted item and automatically take action or route it to a review queue</li>
-<li><strong>Review Console</strong>: a human review queue where moderators examine flagged content and make enforcement decisions</li>
+<li>
+<p><strong>Automated Enforcement</strong>: rules that evaluate every submitted item and automatically take action or route it to a review queue</p>
+</li>
+<li>
+<p><strong>Review Console</strong>: a human review queue where moderators examine flagged content and make enforcement decisions</p>
+</li>
 </ul>
 <p>This simplified diagram can help you better understand how data flows between a platform and Coop:</p>
 <p><a href="../images/diagram-simple.svg"><img src="../images/diagram-simple.svg" alt="Simple Diagram"></a></p>
@@ -190,14 +194,20 @@
 <p>We recommend beginning by familiarizing yourself with Coop’s <a href="concepts.html">basic concepts</a>. Once you’re up to speed:</p>
 <ol>
 <li>
-<p>Ensure you have an account and API key for your Coop instance (find or generate one under <strong>Settings</strong> → <strong>API Keys</strong>)</p>
+<p>Ensure you have an account and API key for your Coop instance</p>
 </li>
 <li>
-<p>Define your <a href="administration.html#item-types">Item Types</a>; the kinds of content or users on your platform (posts, comments, profiles, etc.)</p>
+<p>Define your <a href="administration.html#item-types">Item Types</a>; the kinds of content and actors on your platform</p>
 </li>
 <li>
-<p>Define your <a href="administration.html#actions">Actions</a> and expose callback endpoints so Coop can trigger enforcement on your platform; see <a href="../api/actions.html">Handling Actions</a> for the webhook format</p>
+<p>Input your detailed platform <a href="administration.html#policies">Policies</a></p>
 </li>
+<li>
+<p>Define your <a href="administration.html#actions">Actions</a> and expose <a href="../api/actions.html">callback endpoints</a> so Coop can trigger enforcement on your platform</p>
+</li>
+</ol>
+<p>Once Coop is configured, your platform can:</p>
+<ol>
 <li>
 <p>Begin submitting items to Coop via the <a href="../api/items.html">Items API</a> so they run through your proactive rules</p>
 </li>
