@@ -28,6 +28,12 @@
   },
   "devDependencies": {
     "@graphiql/create-fetcher": "^0.1.0",
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "devDependencies": {
     "@graphql-codegen/add": "^6.0.0",
     "@graphql-codegen/cli": "^6.3.1",
     "@graphql-codegen/named-operations-object": "^4.0.1",
