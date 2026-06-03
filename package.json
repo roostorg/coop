@@ -2,6 +2,7 @@
   "name": "coop",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "start": "concurrently \"npm run server:start\" \"npm run client:start\" \"npm run generate:watch\" --kill-others",
     "compile": "concurrently \"npm run server:start\" \"BROWSER=none npm run client:start\" \"npm run generate:watch\" --kill-others",
