@@ -28,7 +28,9 @@ The Overview dashboard gives a high-level picture of moderation activity. All me
 
 Visit **Review Console** → **Recent Decisions** to review every action taken in Coop: who made the decision, on what content, and when. You can click through to the full job from any entry to investigate further or take an additional action.
 
-The log can be downloaded in its entirety, which makes it useful for:
+![Recent Decisions being filtered](../images/recent-decisions-filter.png)
+
+The log can be downloaded in its entirety, or filtered according to decisions, policies, queues, moderators and date ranges and then downloaded. This makes it particularly useful for:
 
 - **Transparency reporting**: export decisions to include in reports to regulators or oversight bodies
 
