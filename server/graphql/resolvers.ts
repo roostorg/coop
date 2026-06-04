@@ -261,9 +261,6 @@ const Mutation: GQLMutationResolvers = {
 
     return context.dataSources.userAPI.rejectUser(id, user.orgId);
   },
-  async requestDemo(_, params, context) {
-    return context.dataSources.orgAPI.requestDemo(params.input);
-  },
 };
 
 export default mergeResolvers([

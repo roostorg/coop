@@ -426,12 +426,6 @@ const typeDefs = /* GraphQL */ `
     actionedSubmissionsByActionByDay: [CountByActionByDay!]!
   }
 
-  input CreateOrgInput {
-    name: String!
-    email: String!
-    website: String!
-  }
-
   input SendPasswordResetInput {
     email: String!
   }
@@ -458,22 +452,6 @@ const typeDefs = /* GraphQL */ `
     createdAt: DateTime!
   }
 
-  enum RequestDemoInterest {
-    CUSTOM_AI_MODELS
-    MODERATOR_CONSOLE
-    AUTOMATED_ENFORCEMENT
-    COMPLIANCE_TOOLKIT
-  }
-
-  input RequestDemoInput {
-    email: String!
-    company: String!
-    website: String!
-    interests: [RequestDemoInterest!]!
-    ref: String!
-    isFromGoogleAds: Boolean!
-  }
-
   directive @publicResolver on FIELD_DEFINITION
 
   type Query {
@@ -496,8 +474,6 @@ const typeDefs = /* GraphQL */ `
     deleteInvite(id: ID!): Boolean
     approveUser(id: ID!): Boolean
     rejectUser(id: ID!): Boolean
-
-    requestDemo(input: RequestDemoInput!): Boolean @publicResolver
   }
 `;
 
