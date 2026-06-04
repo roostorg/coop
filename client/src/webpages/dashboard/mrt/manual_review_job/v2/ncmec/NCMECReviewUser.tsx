@@ -1,7 +1,7 @@
 import { isTypingInEditableElement } from '@/utils/misc';
 import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, TaggedScalar } from '@roostorg/types';
+import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
@@ -27,6 +27,7 @@ import {
   useGQLPersonalSafetySettingsQuery,
 } from '../../../../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../../../../utils/collections';
+import { inferMediaKindFromUrl } from '../../../../../../utils/contentUrlUtils';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -114,6 +115,25 @@ gql`
   }
 `;
 
+// NCMEC covers images and videos only. For the MEDIA scalar the kind isn't
+// implied by the field type, so use the resolved `mediaType` (or infer from URL).
+function toNcmecUrlInfo(tagged: {
+  type: string;
+  value: { url?: string; mediaType?: MediaKind | null };
+}): NCMECUrlInfo | undefined {
+  const url = tagged.value?.url;
+  if (!url) {
+    return undefined;
+  }
+  const kind =
+    tagged.type === 'IMAGE' || tagged.type === 'VIDEO'
+      ? tagged.type
+      : (tagged.value?.mediaType ?? inferMediaKindFromUrl(url));
+  return kind === 'IMAGE' || kind === 'VIDEO'
+    ? { url, mediaType: kind }
+    : undefined;
+}
+
 function getUrlsFromItem(
   item: NCMECMediaQueryResult['contentItem'],
 ): NCMECUrlInfo[] {
@@ -121,24 +141,23 @@ function getUrlsFromItem(
     (it) =>
       it.type === 'IMAGE' ||
       it.type === 'VIDEO' ||
+      it.type === 'MEDIA' ||
       it.container?.valueScalarType === 'IMAGE' ||
-      it.container?.valueScalarType === 'VIDEO',
+      it.container?.valueScalarType === 'VIDEO' ||
+      it.container?.valueScalarType === 'MEDIA',
   );
   return filterNullOrUndefined(
     mediaFields
       .map((field) => {
         const valueOrValues = getFieldValueOrValues(item.data, field) as
-          | TaggedScalar<'IMAGE' | 'VIDEO'>
-          | TaggedScalar<'IMAGE' | 'VIDEO'>[];
+          | TaggedScalar<'IMAGE' | 'VIDEO' | 'MEDIA'>
+          | TaggedScalar<'IMAGE' | 'VIDEO' | 'MEDIA'>[];
         if (valueOrValues === undefined) {
           return undefined;
         }
-        return Array.isArray(valueOrValues)
-          ? valueOrValues.map((it) => ({
-              url: it.value.url,
-              mediaType: it.type,
-            }))
-          : { url: valueOrValues.value.url, mediaType: valueOrValues.type };
+        return (
+          Array.isArray(valueOrValues) ? valueOrValues : [valueOrValues]
+        ).map(toNcmecUrlInfo);
       })
       .flat(),
   );
@@ -153,8 +172,10 @@ export function getMatchedBanksForMediaUrl(
     (it) =>
       it.type === 'IMAGE' ||
       it.type === 'VIDEO' ||
+      it.type === 'MEDIA' ||
       it.container?.valueScalarType === 'IMAGE' ||
-      it.container?.valueScalarType === 'VIDEO',
+      it.container?.valueScalarType === 'VIDEO' ||
+      it.container?.valueScalarType === 'MEDIA',
   );
   for (const field of mediaFields) {
     const valueOrValues = getFieldValueOrValues(item.data, field) as

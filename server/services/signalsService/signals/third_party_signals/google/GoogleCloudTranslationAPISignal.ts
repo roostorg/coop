@@ -1,5 +1,5 @@
 import { v2 } from '@google-cloud/translate';
-import { ScalarTypes, type ScalarTypeRuntimeType } from '@roostorg/types';
+import { ScalarTypes, type ScalarTypeRuntimeType } from '@roostorg/coop-types';
 
 import { SignalPricingStructure } from '../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../types/SignalType.js';

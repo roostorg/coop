@@ -29,3 +29,28 @@ export const HOST_URL: string =
  */
 export const DOCS_URL: string =
   import.meta.env.VITE_DOCS_URL ?? 'https://roostorg.github.io/coop/latest';
+
+/**
+ * Google Maps Places API key used for the "Points of Interest" location
+ * search experience (Location Banks, rule location conditions, etc.).
+ *
+ * Configure with `VITE_GOOGLE_PLACES_API_KEY` at build time. The key is
+ * sent in client-side requests to Google's Places API; lock it down via
+ * HTTP referrer + API allowlists in the Google Cloud Console rather than
+ * relying on it being secret. Adopters who don't want to integrate
+ * Google Maps can leave this unset — the Points of Interest tab will be
+ * disabled in the UI and the rest of Location Banks (geohashes, banks)
+ * keeps working.
+ */
+export const GOOGLE_PLACES_API_KEY: string =
+  import.meta.env.VITE_GOOGLE_PLACES_API_KEY ?? '';
+
+/**
+ * Whether this Coop build has a Google Maps Places API key configured.
+ *
+ * UI surfaces that depend on Google Places (e.g. the Points of Interest
+ * tab in `LocationInputModal`) should disable themselves when this is
+ * false rather than silently failing at request time.
+ */
+export const IS_GOOGLE_PLACES_API_CONFIGURED: boolean =
+  GOOGLE_PLACES_API_KEY.length > 0;

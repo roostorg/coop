@@ -3,6 +3,7 @@
 Instructions for AI coding agents working on Coop. `README.md` is for humans; this file is for machines. The nearest `AGENTS.md` to the edited file wins; explicit user prompts override everything.
 
 This file inherits from the ROOST community policy — read it once:
+
 - [ROOST community `AGENTS.md`](https://github.com/roostorg/community/blob/main/software-development-practices/agents.md) — pan-org agent rules (dependency approval, CI/CD approval, small diffs, PR standards).
 - [ROOST `CONTRIBUTING.md`](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) — contribution standards (explainable, reviewable, digestible).
 
@@ -25,6 +26,14 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 - **API:** REST + GraphQL (Apollo Server); client uses Apollo Client with InMemoryCache; server resolvers live in `server/graphql/resolvers/`.
 - **GraphQL authoring:** Inline in resolver files with `/* GraphQL */` comment markers — codegen discovers queries this way. Searching for `gql` or `graphql` alone misses most of it.
 - **GraphQL codegen:** `npm run generate` (from root) regenerates `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. **Never hand-edit** either `generated.ts`. **Never hand-merge** either `generated.ts` during a rebase/merge — pick one side with `git checkout --ours|--theirs <file>`, then run `npm run generate`. Hand-merging produces output that parses but drifts from the schema.
+- **Adding a new built-in `SignalType`:** the type list is hand-mirrored in four files; missing any one ships a signal that's invisible to the dashboard. Update all of:
+  1. `server/services/signalsService/types/SignalType.ts` — the canonical TS enum-like object (`BuiltInExternalSignalType` or `BuiltInThirdPartySignalType`) and the `integrationForSignalType` switch.
+  2. `server/services/signalsService/types/SignalArgsByType.ts` — both `SignalArgsByType` and `RuntimeSignalArgsByType` (the `Satisfies<>` will fail compile until you do).
+  3. `server/graphql/modules/signal.ts` — the `enum SignalType { ... }` block inside the SDL string. The `signal.test.ts` coverage test fails if you miss this.
+  4. `client/src/models/signal.ts` — the `integrationForSignalType` switch (the server's switch is the source of truth for which `Integration` a type belongs to).
+
+  After step 3, run `npm run generate` from the repo root to refresh the codegen output.
+
 - **Data model:** Use Knex query builder for Postgres; ClickHouse via raw SQL in `server/clickhouse/`; Scylla via Cassandra driver.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
 
@@ -47,8 +56,14 @@ npm run db:update -- --env staging --db api-server-pg
 npm run db:update -- --env staging --db scylla
 npm run db:update -- --env staging --db clickhouse
 
-# Create organization and admin user
-npm run create-org
+# Create organization and admin user (all flags required)
+npm run create-org -- \
+  --name "Test Org" \
+  --email "admin@example.com" \
+  --website "example.com" \
+  --firstName "Admin" \
+  --lastName "User" \
+  --password "your-password"
 
 # Start dev servers (separate terminals recommended)
 npm run client:start        # React dev server
@@ -99,14 +114,14 @@ docker compose run --rm test
 
 Individual checks:
 
-| CI job | Local command |
-| --- | --- |
-| `check_generated_graphql` | `docker compose run --rm codegen-check` |
-| `check_api_server` (lint) | `docker compose run --rm backend npm run lint` |
-| `check_api_server` (build) | `docker compose run --rm backend npm run build` |
-| `run_frontend_checks_if_changed` (lint) | `docker compose run --rm client npm run lint` |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build` |
-| `check_api_server` (test) | `docker compose run --rm test` |
+| CI job                                   | Local command                                   |
+| ---------------------------------------- | ----------------------------------------------- |
+| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
+| `check_api_server` (test)                | `docker compose run --rm test`                  |
 
 Tear down:
 
@@ -186,9 +201,11 @@ Stop and get explicit human approval before:
 ## Commit attribution
 
 Agent-authored commits should include a `Co-Authored-By` trailer naming the agent, e.g.:
-```
+
+```text
 Co-Authored-By: <agent-name>
 ```
+
 Coop is open source and contributions flow upstream; attribution matters for maintainer trust.
 
 ## Don't

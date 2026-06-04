@@ -620,6 +620,7 @@ export type GQLContentSchemaFieldRoles = {
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly creatorId?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
   readonly parentId?: Maybe<Scalars['String']['output']>;
   readonly threadId?: Maybe<Scalars['String']['output']>;
@@ -629,6 +630,7 @@ export type GQLContentSchemaFieldRolesInput = {
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly creatorId?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
   readonly parentId?: InputMaybe<Scalars['String']['input']>;
   readonly threadId?: InputMaybe<Scalars['String']['input']>;
@@ -784,22 +786,6 @@ export type GQLCreateManualReviewQueueInput = {
 export type GQLCreateManualReviewQueueResponse =
   | GQLManualReviewQueueNameExistsError
   | GQLMutateManualReviewQueueSuccessResponse;
-
-export type GQLCreateOrgInput = {
-  readonly email: Scalars['String']['input'];
-  readonly name: Scalars['String']['input'];
-  readonly website: Scalars['String']['input'];
-};
-
-export type GQLCreateOrgResponse =
-  | GQLCreateOrgSuccessResponse
-  | GQLOrgWithEmailExistsError
-  | GQLOrgWithNameExistsError;
-
-export type GQLCreateOrgSuccessResponse = {
-  readonly __typename: 'CreateOrgSuccessResponse';
-  readonly id: Scalars['ID']['output'];
-};
 
 export type GQLCreateReportingRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
@@ -1273,7 +1259,9 @@ export const GQLFieldType = {
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
+  IpAddress: 'IP_ADDRESS',
   Map: 'MAP',
+  Media: 'MEDIA',
   Number: 'NUMBER',
   PolicyId: 'POLICY_ID',
   RelatedItem: 'RELATED_ITEM',
@@ -2259,6 +2247,16 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLMissingRequiredPolicyForDecisionError = GQLError & {
+  readonly __typename: 'MissingRequiredPolicyForDecisionError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLModelCard = {
   readonly __typename: 'ModelCard';
   readonly modelName: Scalars['String']['output'];
@@ -2417,7 +2415,6 @@ export type GQLMutation = {
   readonly createLocationBank: GQLMutateLocationBankResponse;
   readonly createManualReviewJobComment: GQLAddManualReviewJobCommentResponse;
   readonly createManualReviewQueue: GQLCreateManualReviewQueueResponse;
-  readonly createOrg: GQLCreateOrgResponse;
   readonly createReportingRule: GQLCreateReportingRuleResponse;
   readonly createRoutingRule: GQLCreateRoutingRuleResponse;
   readonly createTextBank: GQLMutateBankResponse;
@@ -2449,8 +2446,8 @@ export type GQLMutation = {
   readonly removeAccessibleQueuesToUser: GQLRemoveAccessibleQueuesToUserResponse;
   readonly removeFavoriteMRTQueue: GQLRemoveFavoriteMrtQueueSuccessResponse;
   readonly removeFavoriteRule: GQLRemoveFavoriteRuleSuccessResponse;
+  readonly renameRole: GQLRole;
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
-  readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
   /**
    * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
@@ -2484,6 +2481,7 @@ export type GQLMutation = {
   readonly updatePolicy: GQLUpdatePolicyResponse;
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
+  readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
   readonly updateSSOCredentials: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
@@ -2551,10 +2549,6 @@ export type GQLMutationCreateManualReviewJobCommentArgs = {
 
 export type GQLMutationCreateManualReviewQueueArgs = {
   input: GQLCreateManualReviewQueueInput;
-};
-
-export type GQLMutationCreateOrgArgs = {
-  input: GQLCreateOrgInput;
 };
 
 export type GQLMutationCreateReportingRuleArgs = {
@@ -2677,12 +2671,12 @@ export type GQLMutationRemoveFavoriteRuleArgs = {
   ruleId: Scalars['ID']['input'];
 };
 
-export type GQLMutationReorderRoutingRulesArgs = {
-  input: GQLReorderRoutingRulesInput;
+export type GQLMutationRenameRoleArgs = {
+  input: GQLRenameRoleInput;
 };
 
-export type GQLMutationRequestDemoArgs = {
-  input: GQLRequestDemoInput;
+export type GQLMutationReorderRoutingRulesArgs = {
+  input: GQLReorderRoutingRulesInput;
 };
 
 export type GQLMutationResetPasswordArgs = {
@@ -2793,6 +2787,10 @@ export type GQLMutationUpdateReportingRuleArgs = {
 
 export type GQLMutationUpdateRoleArgs = {
   input: GQLUpdateRoleInput;
+};
+
+export type GQLMutationUpdateRolePermissionsArgs = {
+  input: GQLUpdateRolePermissionsInput;
 };
 
 export type GQLMutationUpdateRoutingRuleArgs = {
@@ -3123,26 +3121,6 @@ export type GQLOrgSignalsArgs = {
   customOnly?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-export type GQLOrgWithEmailExistsError = GQLError & {
-  readonly __typename: 'OrgWithEmailExistsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
-export type GQLOrgWithNameExistsError = GQLError & {
-  readonly __typename: 'OrgWithNameExistsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 /** Information about the current page in a connection. */
 export type GQLPageInfo = {
   readonly __typename: 'PageInfo';
@@ -3203,6 +3181,21 @@ export type GQLPendingInvite = {
   readonly email: Scalars['String']['output'];
   readonly id: Scalars['ID']['output'];
   readonly role: GQLUserRole;
+};
+
+export type GQLPermissionGroup = {
+  readonly __typename: 'PermissionGroup';
+  readonly description: Scalars['String']['output'];
+  readonly key: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+  readonly permissions: ReadonlyArray<GQLPermissionGroupItem>;
+};
+
+export type GQLPermissionGroupItem = {
+  readonly __typename: 'PermissionGroupItem';
+  readonly description: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+  readonly permission: GQLUserPermission;
 };
 
 export type GQLPlaceBounds = {
@@ -3287,7 +3280,6 @@ export type GQLQuery = {
   readonly __typename: 'Query';
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
-  readonly allOrgs: ReadonlyArray<GQLOrg>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String']['output'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
@@ -3337,10 +3329,14 @@ export type GQLQuery = {
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
+  /** Server-owned grouping + ordering for the role-editor UI. Gated on MANAGE_ROLES. */
+  readonly permissionGroups: ReadonlyArray<GQLPermissionGroup>;
   readonly policy?: Maybe<GQLPolicy>;
   readonly recentUserStrikeActions: ReadonlyArray<GQLRecentUserStrikeActions>;
   readonly reportingInsights: GQLReportingInsights;
   readonly reportingRule?: Maybe<GQLReportingRule>;
+  /** All system roles for the invoking admin's org. Gated on MANAGE_ROLES. */
+  readonly rolesForOrg: ReadonlyArray<GQLRole>;
   readonly rule?: Maybe<GQLRule>;
   readonly spotTestRule: GQLRuleExecutionResult;
   readonly textBank?: Maybe<GQLTextBank>;
@@ -3699,6 +3695,12 @@ export type GQLRemoveFavoriteRuleSuccessResponse = {
   readonly _?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type GQLRenameRoleInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly displayName: Scalars['String']['input'];
+  readonly roleKey: GQLUserRole;
+};
+
 export type GQLReorderRoutingRulesInput = {
   readonly isAppealsRule?: InputMaybe<Scalars['Boolean']['input']>;
   readonly order: ReadonlyArray<Scalars['ID']['input']>;
@@ -3816,24 +3818,6 @@ export const GQLReportingRuleStatus = {
 
 export type GQLReportingRuleStatus =
   (typeof GQLReportingRuleStatus)[keyof typeof GQLReportingRuleStatus];
-export type GQLRequestDemoInput = {
-  readonly company: Scalars['String']['input'];
-  readonly email: Scalars['String']['input'];
-  readonly interests: ReadonlyArray<GQLRequestDemoInterest>;
-  readonly isFromGoogleAds: Scalars['Boolean']['input'];
-  readonly ref: Scalars['String']['input'];
-  readonly website: Scalars['String']['input'];
-};
-
-export const GQLRequestDemoInterest = {
-  AutomatedEnforcement: 'AUTOMATED_ENFORCEMENT',
-  ComplianceToolkit: 'COMPLIANCE_TOOLKIT',
-  CustomAiModels: 'CUSTOM_AI_MODELS',
-  ModeratorConsole: 'MODERATOR_CONSOLE',
-} as const;
-
-export type GQLRequestDemoInterest =
-  (typeof GQLRequestDemoInterest)[keyof typeof GQLRequestDemoInterest];
 export type GQLResetPasswordInput = {
   readonly newPassword: Scalars['String']['input'];
   readonly token: Scalars['String']['input'];
@@ -3855,6 +3839,22 @@ export type GQLRetryNcmecSubmissionResponse = {
    */
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly success: Scalars['Boolean']['output'];
+};
+
+export type GQLRole = {
+  readonly __typename: 'Role';
+  readonly description?: Maybe<Scalars['String']['output']>;
+  readonly displayName: Scalars['String']['output'];
+  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
+  readonly id?: Maybe<Scalars['ID']['output']>;
+  /** True when permissions/metadata come from the static fallback rather than public.roles. */
+  readonly isFallback: Scalars['Boolean']['output'];
+  readonly isSystem: Scalars['Boolean']['output'];
+  /** Stable role identifier (matches UserRole). */
+  readonly key: GQLUserRole;
+  readonly permissions: ReadonlyArray<GQLUserPermission>;
+  /** Number of approved (non-rejected) users in the org assigned to this role. */
+  readonly userCount: Scalars['Int']['output'];
 };
 
 export type GQLRotateApiKeyError = GQLError & {
@@ -4073,6 +4073,8 @@ export const GQLScalarType = {
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
+  IpAddress: 'IP_ADDRESS',
+  Media: 'MEDIA',
   Number: 'NUMBER',
   PolicyId: 'POLICY_ID',
   RelatedItem: 'RELATED_ITEM',
@@ -4212,6 +4214,8 @@ export const GQLSignalInputType = {
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
+  IpAddress: 'IP_ADDRESS',
+  Media: 'MEDIA',
   Number: 'NUMBER',
   PolicyId: 'POLICY_ID',
   RelatedItem: 'RELATED_ITEM',
@@ -4268,12 +4272,16 @@ export const GQLSignalType = {
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
   ImageSimilarityScore: 'IMAGE_SIMILARITY_SCORE',
+  OpenAiGraphicViolenceImageModel: 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL',
   OpenAiGraphicViolenceTextModel: 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
   OpenAiHateThreateningTextModel: 'OPEN_AI_HATE_THREATENING_TEXT_MODEL',
+  OpenAiSelfHarmImageModel: 'OPEN_AI_SELF_HARM_IMAGE_MODEL',
   OpenAiSelfHarmTextModel: 'OPEN_AI_SELF_HARM_TEXT_MODEL',
+  OpenAiSexualImageModel: 'OPEN_AI_SEXUAL_IMAGE_MODEL',
   OpenAiSexualMinorsTextModel: 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL',
   OpenAiSexualTextModel: 'OPEN_AI_SEXUAL_TEXT_MODEL',
+  OpenAiViolenceImageModel: 'OPEN_AI_VIOLENCE_IMAGE_MODEL',
   OpenAiViolenceTextModel: 'OPEN_AI_VIOLENCE_TEXT_MODEL',
   OpenAiWhisperTranscription: 'OPEN_AI_WHISPER_TRANSCRIPTION',
   TextMatchingContainsRegex: 'TEXT_MATCHING_CONTAINS_REGEX',
@@ -4358,6 +4366,7 @@ export type GQLSubmitDecisionInput = {
 
 export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
+  | GQLMissingRequiredPolicyForDecisionError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
   | GQLSubmitDecisionSuccessResponse
@@ -4467,6 +4476,7 @@ export type GQLThreadSchemaFieldRoles = {
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly creatorId?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
 };
 
@@ -4474,6 +4484,7 @@ export type GQLThreadSchemaFieldRolesInput = {
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly creatorId?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -4667,6 +4678,11 @@ export type GQLUpdateReportingRuleResponse =
 export type GQLUpdateRoleInput = {
   readonly id: Scalars['ID']['input'];
   readonly role: GQLUserRole;
+};
+
+export type GQLUpdateRolePermissionsInput = {
+  readonly permissions: ReadonlyArray<GQLUserPermission>;
+  readonly roleKey: GQLUserRole;
 };
 
 export type GQLUpdateRoutingRuleInput = {
@@ -4890,6 +4906,9 @@ export const GQLUserPermission = {
   EditMrtQueues: 'EDIT_MRT_QUEUES',
   ManageOrg: 'MANAGE_ORG',
   ManagePolicies: 'MANAGE_POLICIES',
+  ManageRoles: 'MANAGE_ROLES',
+  ManageRoutingRules: 'MANAGE_ROUTING_RULES',
+  ManageUsers: 'MANAGE_USERS',
   ManuallyActionContent: 'MANUALLY_ACTION_CONTENT',
   MutateLiveRules: 'MUTATE_LIVE_RULES',
   MutateNonLiveRules: 'MUTATE_NON_LIVE_RULES',
@@ -4945,6 +4964,7 @@ export type GQLUserSchemaFieldRoles = {
   readonly backgroundImage?: Maybe<Scalars['String']['output']>;
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
   readonly profileIcon?: Maybe<Scalars['String']['output']>;
 };
@@ -4953,6 +4973,7 @@ export type GQLUserSchemaFieldRolesInput = {
   readonly backgroundImage?: InputMaybe<Scalars['String']['input']>;
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
   readonly profileIcon?: InputMaybe<Scalars['String']['input']>;
 };
@@ -6310,6 +6331,7 @@ export type GQLInvestigationItemTypesQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -6367,6 +6389,7 @@ export type GQLInvestigationItemTypesQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -6425,6 +6448,7 @@ export type GQLInvestigationItemTypesQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -6591,6 +6615,7 @@ export type GQLGetOrgDataQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -6648,6 +6673,7 @@ export type GQLGetOrgDataQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -6706,6 +6732,7 @@ export type GQLGetOrgDataQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -6855,6 +6882,7 @@ export type GQLGetItemsWithIdQuery = {
               readonly threadId?: string | null;
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
+              readonly ipAddress?: string | null;
             };
           };
         }
@@ -6887,6 +6915,7 @@ export type GQLGetItemsWithIdQuery = {
               readonly displayName?: string | null;
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
+              readonly ipAddress?: string | null;
             };
           };
         }
@@ -6920,6 +6949,7 @@ export type GQLGetItemsWithIdQuery = {
               readonly displayName?: string | null;
               readonly createdAt?: string | null;
               readonly profileIcon?: string | null;
+              readonly ipAddress?: string | null;
             };
           };
         };
@@ -7214,6 +7244,7 @@ export type GQLItemTypeQuery = {
           readonly createdAt?: string | null;
           readonly creatorId?: string | null;
           readonly isDeleted?: string | null;
+          readonly ipAddress?: string | null;
         };
         readonly baseFields: ReadonlyArray<{
           readonly __typename: 'BaseField';
@@ -7271,6 +7302,7 @@ export type GQLItemTypeQuery = {
           readonly createdAt?: string | null;
           readonly creatorId?: string | null;
           readonly isDeleted?: string | null;
+          readonly ipAddress?: string | null;
         };
         readonly baseFields: ReadonlyArray<{
           readonly __typename: 'BaseField';
@@ -7329,6 +7361,7 @@ export type GQLItemTypeQuery = {
           readonly profileIcon?: string | null;
           readonly backgroundImage?: string | null;
           readonly isDeleted?: string | null;
+          readonly ipAddress?: string | null;
         };
         readonly baseFields: ReadonlyArray<{
           readonly __typename: 'BaseField';
@@ -7541,6 +7574,7 @@ type GQLItemFieldsContentItemFragment = {
       readonly createdAt?: string | null;
       readonly creatorId?: string | null;
       readonly isDeleted?: string | null;
+      readonly ipAddress?: string | null;
     };
     readonly baseFields: ReadonlyArray<{
       readonly __typename: 'BaseField';
@@ -7606,6 +7640,7 @@ type GQLItemFieldsThreadItemFragment = {
       readonly createdAt?: string | null;
       readonly creatorId?: string | null;
       readonly isDeleted?: string | null;
+      readonly ipAddress?: string | null;
     };
     readonly baseFields: ReadonlyArray<{
       readonly __typename: 'BaseField';
@@ -7672,6 +7707,7 @@ type GQLItemFieldsUserItemFragment = {
       readonly profileIcon?: string | null;
       readonly backgroundImage?: string | null;
       readonly isDeleted?: string | null;
+      readonly ipAddress?: string | null;
     };
     readonly baseFields: ReadonlyArray<{
       readonly __typename: 'BaseField';
@@ -7745,6 +7781,7 @@ export type GQLItemTypesQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -7802,6 +7839,7 @@ export type GQLItemTypesQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -7861,6 +7899,7 @@ export type GQLItemTypesQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -8042,6 +8081,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8108,6 +8148,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8199,6 +8240,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8265,6 +8307,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8331,6 +8374,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8439,6 +8483,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8510,6 +8555,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                         readonly createdAt?: string | null;
                         readonly creatorId?: string | null;
                         readonly isDeleted?: string | null;
+                        readonly ipAddress?: string | null;
                       };
                       readonly baseFields: ReadonlyArray<{
                         readonly __typename: 'BaseField';
@@ -8574,6 +8620,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                         readonly createdAt?: string | null;
                         readonly creatorId?: string | null;
                         readonly isDeleted?: string | null;
+                        readonly ipAddress?: string | null;
                       };
                       readonly baseFields: ReadonlyArray<{
                         readonly __typename: 'BaseField';
@@ -8639,6 +8686,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                         readonly profileIcon?: string | null;
                         readonly backgroundImage?: string | null;
                         readonly isDeleted?: string | null;
+                        readonly ipAddress?: string | null;
                       };
                       readonly baseFields: ReadonlyArray<{
                         readonly __typename: 'BaseField';
@@ -8741,6 +8789,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8829,6 +8878,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -8941,6 +8991,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -9007,6 +9058,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -9097,6 +9149,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -9163,6 +9216,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -9234,6 +9288,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -9468,7 +9523,7 @@ export type GQLAppealSettingsQuery = {
   } | null;
   readonly me?: {
     readonly __typename: 'User';
-    readonly role?: GQLUserRole | null;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
   } | null;
 };
 
@@ -9713,6 +9768,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -9782,6 +9838,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -9850,6 +9907,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -9917,6 +9975,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -9984,6 +10043,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -10052,6 +10112,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -10120,6 +10181,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -10636,6 +10698,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -10702,6 +10765,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -10793,6 +10857,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -10859,6 +10924,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -10925,6 +10991,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11033,6 +11100,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly profileIcon?: string | null;
                 readonly backgroundImage?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11104,6 +11172,7 @@ export type GQLGetDecidedJobQuery = {
                       readonly createdAt?: string | null;
                       readonly creatorId?: string | null;
                       readonly isDeleted?: string | null;
+                      readonly ipAddress?: string | null;
                     };
                     readonly baseFields: ReadonlyArray<{
                       readonly __typename: 'BaseField';
@@ -11168,6 +11237,7 @@ export type GQLGetDecidedJobQuery = {
                       readonly createdAt?: string | null;
                       readonly creatorId?: string | null;
                       readonly isDeleted?: string | null;
+                      readonly ipAddress?: string | null;
                     };
                     readonly baseFields: ReadonlyArray<{
                       readonly __typename: 'BaseField';
@@ -11233,6 +11303,7 @@ export type GQLGetDecidedJobQuery = {
                       readonly profileIcon?: string | null;
                       readonly backgroundImage?: string | null;
                       readonly isDeleted?: string | null;
+                      readonly ipAddress?: string | null;
                     };
                     readonly baseFields: ReadonlyArray<{
                       readonly __typename: 'BaseField';
@@ -11335,6 +11406,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11423,6 +11495,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11535,6 +11608,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly profileIcon?: string | null;
                 readonly backgroundImage?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11601,6 +11675,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11691,6 +11766,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly profileIcon?: string | null;
                 readonly backgroundImage?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11757,6 +11833,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11828,6 +11905,7 @@ export type GQLGetDecidedJobQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -11986,6 +12064,7 @@ export type GQLManualReviewJobInfoQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -12043,6 +12122,7 @@ export type GQLManualReviewJobInfoQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -12101,6 +12181,7 @@ export type GQLManualReviewJobInfoQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -12267,7 +12348,7 @@ export type GQLManualReviewJobInfoQuery = {
   readonly me?: {
     readonly __typename: 'User';
     readonly id: string;
-    readonly role?: GQLUserRole | null;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly reviewableQueues: ReadonlyArray<{
       readonly __typename: 'ManualReviewQueue';
       readonly id: string;
@@ -12309,6 +12390,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -12375,6 +12457,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -12466,6 +12549,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -12532,6 +12616,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -12598,6 +12683,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -12706,6 +12792,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -12777,6 +12864,7 @@ export type GQLManualReviewJobInfoQuery = {
                           readonly createdAt?: string | null;
                           readonly creatorId?: string | null;
                           readonly isDeleted?: string | null;
+                          readonly ipAddress?: string | null;
                         };
                         readonly baseFields: ReadonlyArray<{
                           readonly __typename: 'BaseField';
@@ -12841,6 +12929,7 @@ export type GQLManualReviewJobInfoQuery = {
                           readonly createdAt?: string | null;
                           readonly creatorId?: string | null;
                           readonly isDeleted?: string | null;
+                          readonly ipAddress?: string | null;
                         };
                         readonly baseFields: ReadonlyArray<{
                           readonly __typename: 'BaseField';
@@ -12906,6 +12995,7 @@ export type GQLManualReviewJobInfoQuery = {
                           readonly profileIcon?: string | null;
                           readonly backgroundImage?: string | null;
                           readonly isDeleted?: string | null;
+                          readonly ipAddress?: string | null;
                         };
                         readonly baseFields: ReadonlyArray<{
                           readonly __typename: 'BaseField';
@@ -13008,6 +13098,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13096,6 +13187,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13208,6 +13300,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13274,6 +13367,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13364,6 +13458,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13430,6 +13525,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13501,6 +13597,7 @@ export type GQLManualReviewJobInfoQuery = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -13636,6 +13733,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -13702,6 +13800,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -13793,6 +13892,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -13859,6 +13959,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -13925,6 +14026,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14033,6 +14135,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14104,6 +14207,7 @@ export type GQLDequeueManualReviewJobMutation = {
                         readonly createdAt?: string | null;
                         readonly creatorId?: string | null;
                         readonly isDeleted?: string | null;
+                        readonly ipAddress?: string | null;
                       };
                       readonly baseFields: ReadonlyArray<{
                         readonly __typename: 'BaseField';
@@ -14168,6 +14272,7 @@ export type GQLDequeueManualReviewJobMutation = {
                         readonly createdAt?: string | null;
                         readonly creatorId?: string | null;
                         readonly isDeleted?: string | null;
+                        readonly ipAddress?: string | null;
                       };
                       readonly baseFields: ReadonlyArray<{
                         readonly __typename: 'BaseField';
@@ -14233,6 +14338,7 @@ export type GQLDequeueManualReviewJobMutation = {
                         readonly profileIcon?: string | null;
                         readonly backgroundImage?: string | null;
                         readonly isDeleted?: string | null;
+                        readonly ipAddress?: string | null;
                       };
                       readonly baseFields: ReadonlyArray<{
                         readonly __typename: 'BaseField';
@@ -14335,6 +14441,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14423,6 +14530,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14535,6 +14643,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14601,6 +14710,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14691,6 +14801,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14757,6 +14868,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14828,6 +14940,7 @@ export type GQLDequeueManualReviewJobMutation = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -14931,6 +15044,12 @@ export type GQLSubmitManualReviewDecisionMutation = {
         readonly type: ReadonlyArray<string>;
       }
     | {
+        readonly __typename: 'MissingRequiredPolicyForDecisionError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+      }
+    | {
         readonly __typename: 'NoJobWithIdInQueueError';
         readonly title: string;
         readonly status: number;
@@ -15008,6 +15127,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15074,6 +15194,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15165,6 +15286,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15231,6 +15353,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15297,6 +15420,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15405,6 +15529,7 @@ export type GQLJobFieldsFragment = {
               readonly profileIcon?: string | null;
               readonly backgroundImage?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15476,6 +15601,7 @@ export type GQLJobFieldsFragment = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -15540,6 +15666,7 @@ export type GQLJobFieldsFragment = {
                     readonly createdAt?: string | null;
                     readonly creatorId?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -15605,6 +15732,7 @@ export type GQLJobFieldsFragment = {
                     readonly profileIcon?: string | null;
                     readonly backgroundImage?: string | null;
                     readonly isDeleted?: string | null;
+                    readonly ipAddress?: string | null;
                   };
                   readonly baseFields: ReadonlyArray<{
                     readonly __typename: 'BaseField';
@@ -15707,6 +15835,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15795,6 +15924,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15907,6 +16037,7 @@ export type GQLJobFieldsFragment = {
               readonly profileIcon?: string | null;
               readonly backgroundImage?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -15973,6 +16104,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -16063,6 +16195,7 @@ export type GQLJobFieldsFragment = {
               readonly profileIcon?: string | null;
               readonly backgroundImage?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -16129,6 +16262,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -16200,6 +16334,7 @@ export type GQLJobFieldsFragment = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -16697,6 +16832,7 @@ export type GQLGetMoreInfoForPartialItemsQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -16761,6 +16897,7 @@ export type GQLGetMoreInfoForPartialItemsQuery = {
                   readonly createdAt?: string | null;
                   readonly creatorId?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -16826,6 +16963,7 @@ export type GQLGetMoreInfoForPartialItemsQuery = {
                   readonly profileIcon?: string | null;
                   readonly backgroundImage?: string | null;
                   readonly isDeleted?: string | null;
+                  readonly ipAddress?: string | null;
                 };
                 readonly baseFields: ReadonlyArray<{
                   readonly __typename: 'BaseField';
@@ -17169,6 +17307,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -17226,6 +17365,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -17284,6 +17424,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -17321,6 +17462,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -17378,6 +17520,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -17436,6 +17579,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
               readonly profileIcon?: string | null;
               readonly backgroundImage?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -17669,6 +17813,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -17726,6 +17871,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
               readonly createdAt?: string | null;
               readonly creatorId?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -17784,6 +17930,7 @@ export type GQLManualReviewQueueRoutingRulesQuery = {
               readonly profileIcon?: string | null;
               readonly backgroundImage?: string | null;
               readonly isDeleted?: string | null;
+              readonly ipAddress?: string | null;
             };
             readonly baseFields: ReadonlyArray<{
               readonly __typename: 'BaseField';
@@ -21033,6 +21180,7 @@ export type GQLReportingRuleQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -21090,6 +21238,7 @@ export type GQLReportingRuleQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -21148,6 +21297,7 @@ export type GQLReportingRuleQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -21485,6 +21635,7 @@ export type GQLReportingRuleFormOrgDataQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -21542,6 +21693,7 @@ export type GQLReportingRuleFormOrgDataQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -21600,6 +21752,7 @@ export type GQLReportingRuleFormOrgDataQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -21844,6 +21997,7 @@ type GQLItemTypeFragmentContentItemTypeFragment = {
     readonly createdAt?: string | null;
     readonly creatorId?: string | null;
     readonly isDeleted?: string | null;
+    readonly ipAddress?: string | null;
   };
   readonly baseFields: ReadonlyArray<{
     readonly __typename: 'BaseField';
@@ -21902,6 +22056,7 @@ type GQLItemTypeFragmentThreadItemTypeFragment = {
     readonly createdAt?: string | null;
     readonly creatorId?: string | null;
     readonly isDeleted?: string | null;
+    readonly ipAddress?: string | null;
   };
   readonly baseFields: ReadonlyArray<{
     readonly __typename: 'BaseField';
@@ -21961,6 +22116,7 @@ type GQLItemTypeFragmentUserItemTypeFragment = {
     readonly profileIcon?: string | null;
     readonly backgroundImage?: string | null;
     readonly isDeleted?: string | null;
+    readonly ipAddress?: string | null;
   };
   readonly baseFields: ReadonlyArray<{
     readonly __typename: 'BaseField';
@@ -22876,6 +23032,7 @@ export type GQLRuleQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -22933,6 +23090,7 @@ export type GQLRuleQuery = {
                 readonly createdAt?: string | null;
                 readonly creatorId?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -22991,6 +23149,7 @@ export type GQLRuleQuery = {
                 readonly profileIcon?: string | null;
                 readonly backgroundImage?: string | null;
                 readonly isDeleted?: string | null;
+                readonly ipAddress?: string | null;
               };
               readonly baseFields: ReadonlyArray<{
                 readonly __typename: 'BaseField';
@@ -23700,6 +23859,7 @@ export type GQLContentRuleFormConfigQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -23757,6 +23917,7 @@ export type GQLContentRuleFormConfigQuery = {
             readonly createdAt?: string | null;
             readonly creatorId?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -23815,6 +23976,7 @@ export type GQLContentRuleFormConfigQuery = {
             readonly profileIcon?: string | null;
             readonly backgroundImage?: string | null;
             readonly isDeleted?: string | null;
+            readonly ipAddress?: string | null;
           };
           readonly baseFields: ReadonlyArray<{
             readonly __typename: 'BaseField';
@@ -24215,6 +24377,23 @@ export type GQLChangePasswordMutation = {
       };
 };
 
+export type GQLRolesForOrgQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLRolesForOrgQuery = {
+  readonly __typename: 'Query';
+  readonly rolesForOrg: ReadonlyArray<{
+    readonly __typename: 'Role';
+    readonly id?: string | null;
+    readonly key: GQLUserRole;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly isSystem: boolean;
+    readonly isFallback: boolean;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+    readonly userCount: number;
+  }>;
+};
+
 export type GQLManageUsersQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLManageUsersQuery = {
@@ -24441,6 +24620,62 @@ export type GQLUpdateOrgInfoMutation = {
   };
 };
 
+export type GQLPermissionGroupsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLPermissionGroupsQuery = {
+  readonly __typename: 'Query';
+  readonly permissionGroups: ReadonlyArray<{
+    readonly __typename: 'PermissionGroup';
+    readonly key: string;
+    readonly label: string;
+    readonly description: string;
+    readonly permissions: ReadonlyArray<{
+      readonly __typename: 'PermissionGroupItem';
+      readonly permission: GQLUserPermission;
+      readonly label: string;
+      readonly description: string;
+    }>;
+  }>;
+};
+
+export type GQLUpdateRolePermissionsMutationVariables = Exact<{
+  input: GQLUpdateRolePermissionsInput;
+}>;
+
+export type GQLUpdateRolePermissionsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRolePermissions: {
+    readonly __typename: 'Role';
+    readonly id?: string | null;
+    readonly key: GQLUserRole;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly isSystem: boolean;
+    readonly isFallback: boolean;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+    readonly userCount: number;
+  };
+};
+
+export type GQLRenameRoleMutationVariables = Exact<{
+  input: GQLRenameRoleInput;
+}>;
+
+export type GQLRenameRoleMutation = {
+  readonly __typename: 'Mutation';
+  readonly renameRole: {
+    readonly __typename: 'Role';
+    readonly id?: string | null;
+    readonly key: GQLUserRole;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly isSystem: boolean;
+    readonly isFallback: boolean;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+    readonly userCount: number;
+  };
+};
+
 export type GQLGetSsoCredentialsQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -24583,6 +24818,7 @@ export const GQLItemTypeFragmentFragmentDoc = gql`
         profileIcon
         backgroundImage
         isDeleted
+        ipAddress
       }
     }
     ... on ContentItemType {
@@ -24593,6 +24829,7 @@ export const GQLItemTypeFragmentFragmentDoc = gql`
         createdAt
         creatorId
         isDeleted
+        ipAddress
       }
     }
     ... on ThreadItemType {
@@ -24601,6 +24838,7 @@ export const GQLItemTypeFragmentFragmentDoc = gql`
         createdAt
         creatorId
         isDeleted
+        ipAddress
       }
     }
   }
@@ -24620,6 +24858,7 @@ export const GQLItemFieldsFragmentDoc = gql`
           profileIcon
           backgroundImage
           isDeleted
+          ipAddress
         }
       }
       ... on ContentItemType {
@@ -24630,6 +24869,7 @@ export const GQLItemFieldsFragmentDoc = gql`
           createdAt
           creatorId
           isDeleted
+          ipAddress
         }
       }
       ... on ThreadItemType {
@@ -24638,6 +24878,7 @@ export const GQLItemFieldsFragmentDoc = gql`
           createdAt
           creatorId
           isDeleted
+          ipAddress
         }
       }
     }
@@ -29910,6 +30151,7 @@ export const GQLGetItemsWithIdDocument = gql`
                   threadId
                   createdAt
                   creatorId
+                  ipAddress
                 }
               }
               ... on UserItemType {
@@ -29917,6 +30159,7 @@ export const GQLGetItemsWithIdDocument = gql`
                   displayName
                   createdAt
                   profileIcon
+                  ipAddress
                 }
               }
               ... on ThreadItemType {
@@ -29924,6 +30167,7 @@ export const GQLGetItemsWithIdDocument = gql`
                   displayName
                   createdAt
                   creatorId
+                  ipAddress
                 }
               }
             }
@@ -31524,7 +31768,7 @@ export const GQLAppealSettingsDocument = gql`
       appealsCallbackBody
     }
     me {
-      role
+      permissions
     }
   }
 `;
@@ -33762,7 +34006,7 @@ export const GQLManualReviewJobInfoDocument = gql`
           ...JobFields
         }
       }
-      role
+      permissions
     }
   }
   ${GQLItemTypeFragmentFragmentDoc}
@@ -33944,6 +34188,11 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
         status
         type
         detail
+      }
+      ... on MissingRequiredPolicyForDecisionError {
+        title
+        status
+        type
       }
     }
   }
@@ -42204,6 +42453,111 @@ export type GQLChangePasswordMutationOptions = Apollo.BaseMutationOptions<
   GQLChangePasswordMutation,
   GQLChangePasswordMutationVariables
 >;
+export const GQLRolesForOrgDocument = gql`
+  query RolesForOrg {
+    rolesForOrg {
+      id
+      key
+      displayName
+      description
+      isSystem
+      isFallback
+      permissions
+      userCount
+    }
+  }
+`;
+
+/**
+ * __useGQLRolesForOrgQuery__
+ *
+ * To run a query within a React component, call `useGQLRolesForOrgQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLRolesForOrgQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLRolesForOrgQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLRolesForOrgQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLRolesForOrgQuery, GQLRolesForOrgQueryVariables>(
+    GQLRolesForOrgDocument,
+    options,
+  );
+}
+export function useGQLRolesForOrgLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<GQLRolesForOrgQuery, GQLRolesForOrgQueryVariables>(
+    GQLRolesForOrgDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useGQLRolesForOrgSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLRolesForOrgQuery,
+  GQLRolesForOrgQueryVariables
+>;
+export function useGQLRolesForOrgSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLRolesForOrgQuery,
+        GQLRolesForOrgQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLRolesForOrgQuery | undefined,
+  GQLRolesForOrgQueryVariables
+>;
+export function useGQLRolesForOrgSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLRolesForOrgQuery,
+        GQLRolesForOrgQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLRolesForOrgQuery,
+    GQLRolesForOrgQueryVariables
+  >(GQLRolesForOrgDocument, options);
+}
+export type GQLRolesForOrgQueryHookResult = ReturnType<
+  typeof useGQLRolesForOrgQuery
+>;
+export type GQLRolesForOrgLazyQueryHookResult = ReturnType<
+  typeof useGQLRolesForOrgLazyQuery
+>;
+export type GQLRolesForOrgSuspenseQueryHookResult = ReturnType<
+  typeof useGQLRolesForOrgSuspenseQuery
+>;
+export type GQLRolesForOrgQueryResult = Apollo.QueryResult<
+  GQLRolesForOrgQuery,
+  GQLRolesForOrgQueryVariables
+>;
 export const GQLManageUsersDocument = gql`
   query ManageUsers {
     myOrg {
@@ -43251,6 +43605,226 @@ export type GQLUpdateOrgInfoMutationOptions = Apollo.BaseMutationOptions<
   GQLUpdateOrgInfoMutation,
   GQLUpdateOrgInfoMutationVariables
 >;
+export const GQLPermissionGroupsDocument = gql`
+  query PermissionGroups {
+    permissionGroups {
+      key
+      label
+      description
+      permissions {
+        permission
+        label
+        description
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLPermissionGroupsQuery__
+ *
+ * To run a query within a React component, call `useGQLPermissionGroupsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLPermissionGroupsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLPermissionGroupsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLPermissionGroupsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >(GQLPermissionGroupsDocument, options);
+}
+export function useGQLPermissionGroupsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >(GQLPermissionGroupsDocument, options);
+}
+// @ts-ignore
+export function useGQLPermissionGroupsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLPermissionGroupsQuery,
+  GQLPermissionGroupsQueryVariables
+>;
+export function useGQLPermissionGroupsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLPermissionGroupsQuery,
+        GQLPermissionGroupsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLPermissionGroupsQuery | undefined,
+  GQLPermissionGroupsQueryVariables
+>;
+export function useGQLPermissionGroupsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLPermissionGroupsQuery,
+        GQLPermissionGroupsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLPermissionGroupsQuery,
+    GQLPermissionGroupsQueryVariables
+  >(GQLPermissionGroupsDocument, options);
+}
+export type GQLPermissionGroupsQueryHookResult = ReturnType<
+  typeof useGQLPermissionGroupsQuery
+>;
+export type GQLPermissionGroupsLazyQueryHookResult = ReturnType<
+  typeof useGQLPermissionGroupsLazyQuery
+>;
+export type GQLPermissionGroupsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLPermissionGroupsSuspenseQuery
+>;
+export type GQLPermissionGroupsQueryResult = Apollo.QueryResult<
+  GQLPermissionGroupsQuery,
+  GQLPermissionGroupsQueryVariables
+>;
+export const GQLUpdateRolePermissionsDocument = gql`
+  mutation UpdateRolePermissions($input: UpdateRolePermissionsInput!) {
+    updateRolePermissions(input: $input) {
+      id
+      key
+      displayName
+      description
+      isSystem
+      isFallback
+      permissions
+      userCount
+    }
+  }
+`;
+export type GQLUpdateRolePermissionsMutationFn = Apollo.MutationFunction<
+  GQLUpdateRolePermissionsMutation,
+  GQLUpdateRolePermissionsMutationVariables
+>;
+
+/**
+ * __useGQLUpdateRolePermissionsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRolePermissionsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRolePermissionsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRolePermissionsMutation, { data, loading, error }] = useGQLUpdateRolePermissionsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateRolePermissionsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRolePermissionsMutation,
+    GQLUpdateRolePermissionsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRolePermissionsMutation,
+    GQLUpdateRolePermissionsMutationVariables
+  >(GQLUpdateRolePermissionsDocument, options);
+}
+export type GQLUpdateRolePermissionsMutationHookResult = ReturnType<
+  typeof useGQLUpdateRolePermissionsMutation
+>;
+export type GQLUpdateRolePermissionsMutationResult =
+  Apollo.MutationResult<GQLUpdateRolePermissionsMutation>;
+export type GQLUpdateRolePermissionsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRolePermissionsMutation,
+    GQLUpdateRolePermissionsMutationVariables
+  >;
+export const GQLRenameRoleDocument = gql`
+  mutation RenameRole($input: RenameRoleInput!) {
+    renameRole(input: $input) {
+      id
+      key
+      displayName
+      description
+      isSystem
+      isFallback
+      permissions
+      userCount
+    }
+  }
+`;
+export type GQLRenameRoleMutationFn = Apollo.MutationFunction<
+  GQLRenameRoleMutation,
+  GQLRenameRoleMutationVariables
+>;
+
+/**
+ * __useGQLRenameRoleMutation__
+ *
+ * To run a mutation, you first call `useGQLRenameRoleMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLRenameRoleMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlRenameRoleMutation, { data, loading, error }] = useGQLRenameRoleMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLRenameRoleMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLRenameRoleMutation,
+    GQLRenameRoleMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLRenameRoleMutation,
+    GQLRenameRoleMutationVariables
+  >(GQLRenameRoleDocument, options);
+}
+export type GQLRenameRoleMutationHookResult = ReturnType<
+  typeof useGQLRenameRoleMutation
+>;
+export type GQLRenameRoleMutationResult =
+  Apollo.MutationResult<GQLRenameRoleMutation>;
+export type GQLRenameRoleMutationOptions = Apollo.BaseMutationOptions<
+  GQLRenameRoleMutation,
+  GQLRenameRoleMutationVariables
+>;
 export const GQLGetSsoCredentialsDocument = gql`
   query GetSSOCredentials {
     me {
@@ -43522,11 +44096,13 @@ export const namedOperations = {
     UserStrikeThresholds: 'UserStrikeThresholds',
     AccountSettings: 'AccountSettings',
     PersonalSafetySettings: 'PersonalSafetySettings',
+    RolesForOrg: 'RolesForOrg',
     ManageUsers: 'ManageUsers',
     HasNcmecReportingEnabled: 'HasNcmecReportingEnabled',
     NcmecOrgSettings: 'NcmecOrgSettings',
     OrgDefaultSafetySettings: 'OrgDefaultSafetySettings',
     OrgSettings: 'OrgSettings',
+    PermissionGroups: 'PermissionGroups',
     GetSSOCredentials: 'GetSSOCredentials',
   },
   Mutation: {
@@ -43608,6 +44184,8 @@ export const namedOperations = {
     UpdateNcmecOrgSettings: 'UpdateNcmecOrgSettings',
     SetOrgDefaultSafetySettings: 'SetOrgDefaultSafetySettings',
     UpdateOrgInfo: 'UpdateOrgInfo',
+    UpdateRolePermissions: 'UpdateRolePermissions',
+    RenameRole: 'RenameRole',
     UpdateSSOCredentials: 'UpdateSSOCredentials',
   },
   Fragment: {

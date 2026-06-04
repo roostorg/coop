@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { makeEnumLike } from '@roostorg/types';
+import { makeEnumLike } from '@roostorg/coop-types';
 import { Input, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

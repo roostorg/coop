@@ -1,4 +1,4 @@
-import type { ScalarType, TaggedScalar } from '@roostorg/types';
+import type { ScalarType, TaggedScalar } from '@roostorg/coop-types';
 import type { ReadonlyDeep } from 'type-fest';
 
 import { getSignalInputValueOrValues } from '../../condition_evaluator/leafCondition.js';
@@ -115,7 +115,7 @@ function getItemCreatedAtTime(itemSubmission: ItemSubmission) {
 
   return createdAtFromSchema
     ? new Date(createdAtFromSchema)
-    : itemSubmission.submissionTime ?? new Date();
+    : (itemSubmission.submissionTime ?? new Date());
 }
 
 function getStoreKeysForAggregation(

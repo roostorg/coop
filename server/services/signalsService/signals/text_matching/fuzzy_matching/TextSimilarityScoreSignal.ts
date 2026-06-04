@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import * as fuzzball from 'fuzzball';
 import _ from 'lodash';
 import { normalizeText } from 'normalize-text';

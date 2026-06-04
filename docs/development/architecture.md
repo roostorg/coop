@@ -341,7 +341,7 @@ API keys authenticate programmatic requests to REST endpoints. All API requests 
 4. Returns 401 Unauthorized if invalid or missing
 
 - Keys are 32-byte random values, SHA-256 hashed before storage
-- Each key is scoped to a single team (ie. if you have different teams in the same organization whose data should not mix)
+- Each key is scoped to an organization
 - Last-used timestamp tracked for auditing
 - Keys can be rotated (creates new key, deactivates old)
 

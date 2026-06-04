@@ -1,4 +1,4 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { type Language } from '../../../../utils/language.js';
 import { type NonEmptyArray } from '../../../../utils/typescript-types.js';

@@ -12,7 +12,7 @@ export const SIX_MONTHS_MS = MONTH_MS * 6;
 export const YEAR_MS = DAY_MS * 365;
 
 // NB: we call this DateOnlyString to avoid a conflict with the DateString type
-// in @roostorg/types.
+// in @roostorg/coop-types.
 export type DateOnlyString = Opaque<string, 'DateOnlyString'>;
 
 /**

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { Kysely, Selectable } from 'kysely';
+
 import { inject } from '../../iocContainer/index.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
 import { type ApiKeyServicePg } from './dbTypes.js';
@@ -53,7 +54,7 @@ class ApiKeyService {
     orgId: string,
     name: string,
     description: string | null,
-    createdBy: string | null
+    createdBy: string | null,
   ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
     const apiKey = this.generateApiKey();
     const keyHash = this.hashApiKey(apiKey);
@@ -87,7 +88,7 @@ class ApiKeyService {
     orgId: string,
     name: string,
     description: string | null,
-    createdBy: string | null
+    createdBy: string | null,
   ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
     return this.createApiKey(orgId, name, description, createdBy);
   }
@@ -125,7 +126,7 @@ class ApiKeyService {
    */
   async validateApiKey(apiKey: string): Promise<string | null> {
     const keyHash = this.hashApiKey(apiKey);
-    
+
     const result = await this.db
       .selectFrom('public.api_keys')
       .select(['org_id', 'last_used_at'])
@@ -189,7 +190,12 @@ class ApiKeyService {
    */
   async getOrgIdFromActivatedKey(apiKey: string): Promise<string | null> {
     const keyHash = this.hashApiKey(apiKey);
-    const result = await this.db.selectFrom('public.api_keys').select('org_id').where('key_hash', '=', keyHash).where('is_active', '=', true).executeTakeFirst();
+    const result = await this.db
+      .selectFrom('public.api_keys')
+      .select('org_id')
+      .where('key_hash', '=', keyHash)
+      .where('is_active', '=', true)
+      .executeTakeFirst();
     if (!result) {
       return null;
     }

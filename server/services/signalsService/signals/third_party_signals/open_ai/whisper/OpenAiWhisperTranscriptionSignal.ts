@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream';
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 import streamToBlob from 'stream-to-blob';
 import { FormData } from 'undici';
 

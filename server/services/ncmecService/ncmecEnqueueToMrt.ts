@@ -3,7 +3,7 @@ import {
   getScalarType,
   isMediaType,
   type ItemIdentifier,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import { match } from 'ts-pattern';
 
 import { type Dependencies } from '../../iocContainer/index.js';

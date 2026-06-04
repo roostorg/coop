@@ -3,9 +3,9 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type AnalyticsSchema } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
+import { type AnalyticsSchema } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import { fromCorrelationId } from '../../utils/correlationIds.js';
 import { jsonStringifyUnstable } from '../../utils/encoding.js';
 

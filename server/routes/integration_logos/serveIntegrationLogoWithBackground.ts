@@ -37,7 +37,6 @@ export default function serveIntegrationLogoWithBackground(
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.sendFile(filePath, (err?: Error) => {
       if (err && !res.headersSent) {
-         
         next(err);
       }
     });

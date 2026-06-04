@@ -1,7 +1,7 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
 import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { WarningFilled } from '@ant-design/icons';
-import { RelatedItem } from '@roostorg/types';
+import { RelatedItem } from '@roostorg/coop-types';
 import { JsonObject } from 'type-fest';
 
 import {

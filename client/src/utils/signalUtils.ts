@@ -1,4 +1,4 @@
-import { SignalSubcategory } from '@roostorg/types';
+import { SignalSubcategory } from '@roostorg/coop-types';
 import transform from 'lodash/transform';
 
 import { GQLSignalSubcategory } from '../graphql/generated';

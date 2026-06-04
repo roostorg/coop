@@ -1,6 +1,6 @@
 import Pencil from '@/icons/lni/Education/pencil.svg?react';
 import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { Tooltip } from 'antd';
 
 import CloseButton from '@/components/common/CloseButton';

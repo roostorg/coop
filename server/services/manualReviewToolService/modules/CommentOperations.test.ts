@@ -5,8 +5,8 @@ import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
 import { UserPermission } from '../../userManagementService/index.js';
-import CommentOperations from './CommentOperations.js';
 import { type JobId } from '../manualReviewToolService.js';
+import CommentOperations from './CommentOperations.js';
 
 describe('CommentOperations', () => {
   const testWithFixtures = makeTestWithFixture(async () => {

@@ -1,6 +1,5 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { v1 as uuidv1 } from 'uuid';
-
 
 import {
   type Dependencies,
@@ -14,6 +13,7 @@ import {
   type ItemSubmission,
   type ItemSubmissionWithTypeIdentifier,
 } from '../../services/itemProcessingService/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
   fromCorrelationId,
@@ -25,7 +25,6 @@ import {
   makeBadRequestError,
   type CoopError,
 } from '../../utils/errors.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { safeGet, withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { type SubmitItemsInput } from './ItemRoutes.js';
@@ -82,7 +81,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
         }),
       );
     }
-    
+
     const { orgId } = req;
 
     // TODO: error handling. Our controllers still need much better error
@@ -109,15 +108,24 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           !itemSubmission.error
         ) {
           try {
-            const images = itemSubmission.itemSubmission.data.images as (string | {url: string})[];
-            
+            const images = itemSubmission.itemSubmission.data.images as (
+              | string
+              | { url: string; [key: string]: unknown }
+            )[];
+
             // Get all hash banks for this org once
             const allBanks = await HMAHashBankService.listBanks(orgId);
-            const allBankNames = allBanks.map(bank => bank.hma_name);
-            
+            const allBankNames = allBanks.map((bank) => bank.hma_name);
+
             const imageHashes = await Promise.all(
               images.map(async (image) => {
                 const url = typeof image === 'string' ? image : image.url;
+                // Preserve any fields the coercion step already populated on
+                // the media object (e.g. MEDIA's `mediaType`, which the manual
+                // review tool relies on to decide whether to render an image,
+                // video, or audio player). Rebuilding a fresh object below
+                // would otherwise silently drop them.
+                const coercedFields = typeof image === 'string' ? {} : image;
                 if (typeof url === 'string' && url) {
                   try {
                     const hmaHashWithRetries = await withRetries(
@@ -129,49 +137,66 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                       },
                       async () => {
                         return HMAHashBankService.hashContentFromUrl(url);
-                      }
+                      },
                     );
                     const hashes = await hmaHashWithRetries();
-                    
+
                     // Check which banks match this image
                     const matchedBankNames: string[] = [];
-                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                    if (hashes && Object.keys(hashes).length > 0 && allBankNames.length > 0) {
+
+                    if (
+                      hashes &&
+                      Object.keys(hashes).length > 0 &&
+                      allBankNames.length > 0
+                    ) {
                       const matchResults = await Promise.all(
                         Object.entries(hashes).map(async ([signalType, hash]) =>
-                          HMAHashBankService.checkImageMatchWithDetails(allBankNames, signalType, hash)
-                        )
+                          HMAHashBankService.checkImageMatchWithDetails(
+                            allBankNames,
+                            signalType,
+                            hash,
+                          ),
+                        ),
                       );
-                      
+
                       // Collect all matched banks
                       const allMatchedHmaBanks = new Set<string>();
-                      matchResults.forEach(result => {
-                        result.matchedBanks.forEach(bank => allMatchedHmaBanks.add(bank));
+                      matchResults.forEach((result) => {
+                        result.matchedBanks.forEach((bank) =>
+                          allMatchedHmaBanks.add(bank),
+                        );
                       });
-                      
+
                       // Map HMA bank names to user-friendly names
-                      allMatchedHmaBanks.forEach(hmaName => {
-                        const bank = allBanks.find(b => b.hma_name === hmaName);
+                      allMatchedHmaBanks.forEach((hmaName) => {
+                        const bank = allBanks.find(
+                          (b) => b.hma_name === hmaName,
+                        );
                         if (bank) {
                           matchedBankNames.push(bank.name);
                         }
                       });
                     }
-                    
+
                     return {
+                      ...coercedFields,
                       url,
                       hashes,
-                      matchedBanks: matchedBankNames.length > 0 ? matchedBankNames : undefined
+                      matchedBanks:
+                        matchedBankNames.length > 0
+                          ? matchedBankNames
+                          : undefined,
                     };
                   } catch (e) {
                     return {
+                      ...coercedFields,
                       url,
-                      hashes: {}
+                      hashes: {},
                     };
                   }
                 }
                 return null;
-              })
+              }),
             );
             // Attach the hashes array to the item submission data
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,15 +318,15 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       });
 
       Meter.itemsEnqueued.add(submissionsToProcess.length);
+      let enqueueFailed = false;
       await Tracer.addActiveSpan(
         {
           resource: 'SubmitItems',
           operation: 'itemSubmissionQueueBulkWrite',
         },
         async (span) => {
-          const bulkWriteResponse = await itemSubmissionQueueBulkWrite(
-            submissionsToProcess,
-          );
+          const bulkWriteResponse =
+            await itemSubmissionQueueBulkWrite(submissionsToProcess);
           if (bulkWriteResponse.error) {
             span.recordException(
               bulkWriteResponse.results.find(
@@ -311,11 +336,15 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                   'Unknown error in bulk write to item submission queue',
                 ),
             );
-            res.status(500).end();
+            enqueueFailed = true;
           }
         },
       );
 
+      if (enqueueFailed) {
+        res.status(500).end();
+        return;
+      }
       res.status(202).end();
     } else {
       // Return 202 immediately now that validation is complete, then keep executing other code
@@ -403,8 +432,6 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           }
         }),
       );
-
-
     }
   };
 }

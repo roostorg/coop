@@ -1,7 +1,5 @@
 import crypto from 'node:crypto';
 import { URL } from 'node:url';
-import { type Exception } from '@opentelemetry/api';
-import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { CoopEmailAddress } from '../../services/sendEmailService/index.js';
@@ -9,33 +7,24 @@ import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {
   CoopError,
   ErrorType,
+  isCoopErrorOfType,
   makeBadRequestError,
   type ErrorInstanceData,
-  isCoopErrorOfType,
 } from '../../utils/errors.js';
 import { WEEK_MS } from '../../utils/time.js';
+import { type GQLInviteUserInput } from '../generated.js';
 import {
-  type GQLInviteUserInput,
-  type GQLMutationCreateOrgArgs,
-  type GQLRequestDemoInput,
-} from '../generated.js';
-import {
-  kyselyOrgFindAll,
-  kyselyOrgFindByEmail,
   kyselyOrgFindById,
-  kyselyOrgFindByName,
-  kyselyOrgInsert,
   kyselyOrgUpdate,
   type GraphQLOrgParent,
 } from './orgKyselyPersistence.js';
 import {
-  validateOrgCreateInput,
   validateOrgUpdatePatch,
   type OrgValidationFailure,
 } from './orgValidation.js';
 import {
-  type GraphQLUserParent,
   kyselyUserListByOrg,
+  type GraphQLUserParent,
 } from './userKyselyPersistence.js';
 
 class OrgAPI {
@@ -52,78 +41,6 @@ class OrgAPI {
     private readonly manualReviewToolService: Dependencies['ManualReviewToolService'],
     private readonly kysely: Dependencies['KyselyPg'],
   ) {}
-
-  async createOrg(params: GQLMutationCreateOrgArgs) {
-    const { email, name, website } = params.input;
-
-    const validation = validateOrgCreateInput({
-      name,
-      email,
-      websiteUrl: website,
-    });
-    if (!validation.ok) {
-      throw orgValidationFailureToBadRequestError(
-        validation.failure,
-        'createOrg',
-      );
-    }
-
-    const existingOrgByName = await kyselyOrgFindByName(this.kysely, name);
-    if (existingOrgByName != null) {
-      throw makeOrgNameExistsError({ shouldErrorSpan: true });
-    }
-    const existingOrgByEmail = await kyselyOrgFindByEmail(this.kysely, email);
-
-    if (existingOrgByEmail != null) {
-      throw makeOrgEmailExistsError({ shouldErrorSpan: true });
-    }
-
-    const id = uid();
-
-    // Create api key before inserting the org, so we don't have to worry about
-    // the possibility of orgs existing without an api key.
-    // TODO: if org fails to save later, delete orphaned api key.
-    const { record } = await this.apiKeyService.createApiKey(
-      id,
-      'Main API Key',
-      'Primary API key for organization',
-      null
-    );
-
-    // TODO: if org fails to save later, delete orphaned signing key pair
-    await this.signingKeyPairService.createAndStoreSigningKeys(id);
-
-    try {
-      const org = await kyselyOrgInsert({
-        db: this.kysely,
-        id,
-        email,
-        name,
-        websiteUrl: website,
-        apiKeyId: record.id,
-      });
-
-      await Promise.all([
-        // This should ideally be done in one transaction, but we can update
-        // this after we move off of sequelize
-        this.moderationConfigService.createDefaultUserType(id),
-        this.orgCreationLogger.logOrgCreated(id, name, email, website),
-        this.userManagementService.upsertOrgDefaultUserInterfaceSettings({
-          orgId: id,
-        }),
-        this.orgSettingsService.upsertOrgDefaultSettings({ orgId: id }),
-        this.manualReviewToolService.upsertDefaultSettings({ orgId: id }),
-      ]);
-
-      return org;
-    } catch (e) {
-      const activeSpan = this.tracer.getActiveSpan();
-      if (activeSpan?.isRecording()) {
-        activeSpan.recordException(e as Exception);
-      }
-      throw e;
-    }
-  }
 
   // Create invite token and optionally send email
   async inviteUser(input: GQLInviteUserInput, orgId: string) {
@@ -156,7 +73,10 @@ class OrgAPI {
     } catch (error: unknown) {
       // Even if email fails, return the token so it can be copied
       // eslint-disable-next-line no-console
-      console.warn('Failed to send invite email, but token was created:', error);
+      console.warn(
+        'Failed to send invite email, but token was created:',
+        error,
+      );
     }
     return token;
   }
@@ -182,37 +102,12 @@ class OrgAPI {
     return token;
   }
 
-  async requestDemo(input: GQLRequestDemoInput) {
-    if (process.env.ENABLE_DEMO_REQUEST !== 'true') {
-      return false;
-    }
-    const { email, company, website, interests, ref, isFromGoogleAds } = input;
-    const msg = {
-      to: CoopEmailAddress.Support,
-      from: CoopEmailAddress.NoReply,
-      subject: '[URGENT] Demo Request',
-      text: `A new potential user has requested a Coop demo.\n\nEmail address: ${email}\n\nCompany name: ${company}\n\nCompany website: ${website}\n\nInterests: ${interests.join(
-        ', ',
-      )} \n\nRef: ${ref} \n\nIs from Google Ads: ${isFromGoogleAds}`,
-    };
-    try {
-      await this.sendEmail(msg);
-    } catch (error: unknown) {
-      return false;
-    }
-    return true;
-  }
-
   async getGraphQLOrgFromId(id: string): Promise<GraphQLOrgParent> {
     const org = await kyselyOrgFindById(this.kysely, id);
     if (org == null) {
       throw new Error(`Organization not found: ${id}`);
     }
     return org;
-  }
-
-  async getAllGraphQLOrgs(): Promise<GraphQLOrgParent[]> {
-    return kyselyOrgFindAll(this.kysely);
   }
 
   async updateOrgInfo(
@@ -226,10 +121,7 @@ class OrgAPI {
   ): Promise<GraphQLOrgParent> {
     const validation = validateOrgUpdatePatch(input);
     if (!validation.ok) {
-      throw orgValidationFailureToBadRequestError(
-        validation.failure,
-        'updateOrgInfo',
-      );
+      throw orgValidationFailureToBadRequestError(validation.failure);
     }
 
     const updated = await kyselyOrgUpdate(this.kysely, orgId, {
@@ -276,9 +168,8 @@ class OrgAPI {
   async getPublicSigningKeyPem(orgId: string) {
     let key: CryptoKey;
     try {
-      key = await this.signingKeyPairService.getSignatureVerificationInfo(
-        orgId,
-      );
+      key =
+        await this.signingKeyPairService.getSignatureVerificationInfo(orgId);
     } catch (error) {
       if (isCoopErrorOfType(error, 'SigningKeyPairNotFound')) {
         key = await this.signingKeyPairService.createAndStoreSigningKeys(orgId);
@@ -304,44 +195,15 @@ class OrgAPI {
 }
 
 export type OrgErrorType =
-  | 'OrgWithEmailExistsError'
-  | 'OrgWithNameExistsError'
   | 'InviteUserTokenExpiredError'
   | 'InviteUserTokenMissingError';
 
-function orgValidationFailureToBadRequestError(
-  failure: OrgValidationFailure,
-  mutation: 'createOrg' | 'updateOrgInfo',
-) {
-  // `createOrg` exposes `websiteUrl` as `website` in its GraphQL input;
-  // `updateOrgInfo` uses the same field name.
-  const gqlField =
-    mutation === 'createOrg' && failure.field === 'websiteUrl'
-      ? 'website'
-      : failure.field;
+function orgValidationFailureToBadRequestError(failure: OrgValidationFailure) {
   return makeBadRequestError(failure.message, {
-    pointer: `/input/${gqlField}`,
+    pointer: `/input/${failure.field}`,
     shouldErrorSpan: false,
   });
 }
-
-export const makeOrgEmailExistsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.UniqueViolation],
-    title: 'An org with this email already exists',
-    name: 'OrgWithEmailExistsError',
-    ...data,
-  });
-
-export const makeOrgNameExistsError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.UniqueViolation],
-    title: 'An org with this name already exists',
-    name: 'OrgWithNameExistsError',
-    ...data,
-  });
 
 export const makeInviteUserTokenExpiredError = (data: ErrorInstanceData) =>
   new CoopError({

@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { type DateString } from '@roostorg/types';
+import { type DateString } from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import {

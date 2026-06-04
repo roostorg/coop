@@ -23,7 +23,10 @@ const manualReviewCommentDbSelection = [
 export default class CommentOperations {
   constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
 
-  private async getRelatedJobIds(opts: { orgId: string; jobId: string }): Promise<string[]> {
+  private async getRelatedJobIds(opts: {
+    orgId: string;
+    jobId: string;
+  }): Promise<string[]> {
     const { orgId, jobId } = opts;
 
     // First get the item identifiers for the current job
@@ -48,7 +51,7 @@ export default class CommentOperations {
       .where('item_type_id', '=', currentJob.item_type_id)
       .execute();
 
-    return relatedJobIds.map(row => row.id);
+    return relatedJobIds.map((row) => row.id);
   }
 
   async getComments(opts: { orgId: string; jobId: string }) {

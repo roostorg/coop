@@ -1,13 +1,13 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { sql, type Kysely } from 'kysely';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import {
   warehouseDateToDate,
   warehouseDateToDateOnlyString,
   type DataWarehousePublicSchema,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
+import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 
 const RULE_EXECUTIONS_COLUMNS = [
   'ds',
