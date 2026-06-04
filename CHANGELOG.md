@@ -203,7 +203,7 @@ When we first released Coop's source code, we knew there was a lot of work to be
 - README and AGENTS.md CI commands aligned after CI restructure (#330)
 - _SDLC checklist P0s and P1s addressed (#213)_
 
-### New Contributors
+### New contributors
 
 - @TomHawk123 made their first contribution in https://github.com/roostorg/coop/pull/109
 - @dom-notion made their first contribution in https://github.com/roostorg/coop/pull/328
@@ -212,6 +212,8 @@ When we first released Coop's source code, we knew there was a lot of work to be
 - @ThatKoffe made their first contribution in https://github.com/roostorg/coop/pull/405
 - @haileyok made their first contribution in https://github.com/roostorg/coop/pull/439
 - @davidyshin made their first contribution in https://github.com/roostorg/coop/pull/472
+- @ded-furby made their first contribution in https://github.com/roostorg/coop/pull/675
+- @JagadeeshChandra12 made their first contribution in https://github.com/roostorg/coop/pull/702
 
 **Full Changelog**: https://github.com/roostorg/coop/compare/0.1...1.0
 
