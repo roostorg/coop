@@ -19,14 +19,19 @@ Coop v0 was our initial open source release, while v0.1 focused on strengthening
 
 We focused a _ton_ of time and effort on making it faster, easier, and lighter-weight to get up and running with Coop.
 
-#### Code & infrastructure simplification
+#### Simplification & modernization
 
-The largest internal change in Coop 1.0 is the near-complete migration from Sequelize to Kysely for database access, covering the rule engine, actions, policies, users, organizations, Review Console, and backtests. On the infrastructure side, BullMQ replaces Kafka for item submission processing—removing one of the most operationally demanding dependencies from the default deployment. We also cleared out SaaS-era remnants that were never meant for self-hosted deployments.
+With Coop 1.0, we now build and publish Docker images for easier testing and deployment. We also migrated from Sequelize to Kysely, making Coop lighter-weight, simpler to run, and easier to keep secure with fewer dependencies. Similarly, we replaced Kafka with BullMQ and the existing Redis instance for item submission processing—further simplifying deployment by removing one of the most operationally demanding dependencies. We also cleaned up SaaS-era remnants that were never meant for self-hosted deployments.
 
-- Completed Sequelize → Kysely migration across rule engine, actions, policies, users, organizations, Review Console, and backtests (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
-- BullMQ replaces Kafka for item submission processing (#137)
+- Sequelize → Kysely migration (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
+- Kafka → BullMQ for item submission processing (#137)
+- Docker images published for deployment (#665)
+- Added `create-org` script for provisioning new organizations from the command line (#537)
 - Express upgraded to v5 (#283)
+- Migrated to Apollo v5 (#67, #119)
+- Client now always uses a relative GraphQL URL (#455)
 - SSL/TLS and body schema validation added (#326)
+- Moved NCMEC routing from hardcoded values to environment config (#474)
 - Stripped Cove marketing and tracking from the client (#509)
 - Removed hardcoded SaaS host URLs; replaced with relative or configurable equivalents (#527)
 - Removed legacy SaaS AI risk model (#293)
@@ -34,56 +39,46 @@ The largest internal change in Coop 1.0 is the near-complete migration from Sequ
 - Removed Snowflake from codebase (#133)
 - Removed unused Content Proxy reference (#176)
 - Dropped unmaintained `graphql-passport` dependency (#462)
-- Client now always uses a relative GraphQL URL (#455)
-- Moved NCMEC routing from hardcoded values to environment config (#474)
 - Renamed published package to `@roostorg/coop-types` (#602)
 - Refactored `package.json` dependencies across packages (#549)
-- Added `create-org` script for provisioning new organizations from the command line (#537)
 - _Scylla made optional for deployments that don't need it (#190)_
 - _Simplified getting-started experience for new evaluators (#219)_
-- Docker images published for deployment without building from source (#665)
 
 #### Rewritten documentation
 
-Before Coop 1.0, our documentation was a combination of SaaS-oriented docs that we'd acquired, technical architecture notes from our assessment of the original codebase, and several attempts to expand the level of detail. While it served its purpose of getting the project off the ground, we spent a significant amount of time completely reworking the documentation. The new structure more clearly separates the docs into four distinct sections, better separating concerns:
+Before Coop 1.0, our documentation was a combination of SaaS-oriented docs that we'd acquired, technical architecture notes from our assessment of the original codebase, and several attempts to expand the level of detail. While it served its purpose of getting the project off the ground, we spent a significant amount of time completely reworking, validating, and expanding the project documentation. The README is simpler to skim and understand, while the new docs site structure more clearly separates the docs into four distinct sections to better separate concerns:
 
 - User guide
-- Development guide
+- Development & deployment
 - API reference
 - Integrations
 
-We also implemented versioning for the docs meaning the latest docs for the `main` branch will always live at [roostorg.github.io/coop/latest](https://roostorg.github.io/coop/latest), while docs for version 1.0 will live at [roostorg.github.io/coop/1.0](https://roostorg.github.io/coop/1.0).
+The documentation rewrite better aligns on consistent terminology, links between sections instead of duplicating information, and makes it much, much easier to both get started with and dive deep into Coop. We also implemented versioning for the docs meaning the latest docs for the `main` branch will always live at [roostorg.github.io/coop/latest](https://roostorg.github.io/coop/latest), while docs for version 1.0 will live at [roostorg.github.io/coop/1.0](https://roostorg.github.io/coop/1.0).
 
 - Complete documentation rework for Coop 1.0 (#338)
-- Versioned mdbook on GitHub Pages; latest docs always at `roostorg.github.io/coop/latest` (#417)
-- Added Partial Items API reference (#523)
-- Added deployment guide with database settings reference (#627)
-- Added cost and requirements guide for third-party integrations (#595)
-- Split NCMEC docs into separate user and integration guides (#526)
+- Added deployment guide (#627, #675)
+- Versioned docs site (#417)
 - Added model card for Zentropi integration (#200)
+- Improved NCMEC docs (#169, #172, #526)
+- Added cost and requirements for third-party integrations (#595)
+- Added Partial Items API reference (#501, #523)
+- Added intention statement to README (#287, #680)
+- Added known Coop adopters to README (#54, #693)
+- Improved SAML/SSO documentation (#587, #693)
 - Corrected API key scoping in architecture doc (#594)
 - Updated minimum memory requirements for deployment (#371)
-- Corrected links in user README (#515)
-- Updated styling of "Coop" in integration docs (#147)
-- Added heading to Appeals docs (#149)
-- Corrected NCMEC docs link (#169)
-- Removed redundant NCMEC docs (#172)
-- Applied Funnel Display and Funnel Sans to docs site (#525)
-- Corrected site URL in docs (#510)
-- Added explicit link to GitHub repo and README in docs (#511)
-- Expanded deployment guide for self-hosting (#675)
+- Improved docs site typography (#525)
+- Various docs fixes (#147, #149, #510, #511, #515)
+- _Model card for OpenAI Moderation API (#126)_
+- _Model card for Google Content Safety API (#127)_
 - _Deployment and hosting guide (#207)_
-- Added intention statement to README (#680)
 - _Document user strikes feature (#503)_
-- Corrected SAML/SSO documentation to clarify that any SAML 2.0 provider is supported, not only Okta (#587, #693)
-- _Model card documentation for OpenAI Moderation API (#126)_
-- _Model card documentation for Google Content Safety API (#127)_
-- _Document known Coop adopters (#54)_
 
 #### Admin settings
 
-As a SaaS product, several features for organizations were hidden behind database-only toggles. To make it easier to customize Coop for your platform and deployment, we've moved these settings directly into the Coop front-end for administrators.
+For Coop 1.0, we built out a new granular capability-based permissions system that makes it easier to customize what roles and permissions are available for your team. As a SaaS product, several features for organizations were also hidden behind database-only toggles; to make it easier to customize Coop for your platform and deployment, we've moved these settings directly into the Coop front-end for administrators.
 
+- Granular capability-based permissions (#528, #560, #582)
 - Renamed "Employee Safety" to "Wellness" throughout settings UI (#394)
 - _Appeals enable/disable toggle (#620)_
 - _SAML/SSO enabled toggle, with validation that `sso_url` and `cert` are set (#623)_
@@ -95,27 +90,27 @@ As a SaaS product, several features for organizations were hidden behind databas
 - _Multiple policies per action toggle (#532)_
 - _Partial Items API endpoint and custom request headers (#378)_
 - _Ignore callback URL (#626)_
-- Granular server-side permissions introduced (#528)
-- _Role editor UI for per-user permission management (#406)_
-- _GDPR delete requests now execute rather than only persisting (#336)_
+- _GDPR delete requests execute rather than only persisting (#336)_
 
 ### Expanded features & capability
 
 We were extremely fortunate to have multiple platforms adopt Coop during the 1.0 development cycle; this meant we had real-world users sharing invaluable feedback. As a result, Coop 1.0 is now a better product—not just for these adopters, but for everyone.
 
-#### Review console features
+#### Review & moderation improvements
 
-- Added parameterized actions that accept runtime values when executing (#400)
+Most moderators spend the majority of their time in the review console, working review jobs and making decisions. We focused on improving this experience and adding new capabilities based on adopter feedback; for example, we added parameterized actions to accept extra information when a moderator makes a decision. We completed work on user strikes, enabling platforms to handle them directly within Coop. And we made several fixes and improvements to the UI thanks to issue reports from testers and adopters.
+
+- Added parameterized actions that accept runtime values when executing (#400, #408)
 - Thread-kind items now surface in user submission history (#284)
 - Recent actions list refreshes automatically after submitting an action (#285)
 - Investigation tool now surfaces users even when no submitted item is available (#444)
 - Report information now shown on other reports table (#475)
 - Comments from deleted users are now visible on manual review jobs (#407)
-- Point of Interest (Google Maps) gracefully disabled when no API key is configured (#584)
+- Gracefully disabled Point of Interest (Google Maps) when no API key is configured (#584)
 - Added horizontal scrollbar and increased max width for wide tables (#162)
 - Changed permission required to view policies in sidebar (#405)
 - Fixed hidden inputs in proactive rule form (#368)
-- Fixed Submit button being cut off when content overflows in Review Console and Investigation (#463)
+- Fixed Submit button being cut off when content overflows (#463)
 - Fixed CoopButton links not respecting disabled state (#472)
 - User Strikes dashboard and UI (#597, #600)
 - Server-side enforcement of policy selection requirement (#533)
@@ -124,33 +119,36 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - _Queue custom prioritization (#409)_
 - _Invalidate reports from a specific user to address spam reporting (#404)_
 
-#### Platform needs
+#### Additional platform needs
 
 - OpenAI image moderation support via `omni-moderation-latest` (#534)
+- HMA exchanges can now be configured directly from Coop (#115)
 - IP address schema field role added for tagging items with source IP data (#559, #583)
 - MEDIA content type added end-to-end through server and Review Console (#605, #606, #632)
 
 #### Child safety improvements
 
-- Built-in NCMEC enqueue actions now available to all orgs, not just managed deployments (#393)
-- Added `additionalInfo` field to NCMEC reports; fixed XML element ordering and Node 24 multipart submission (#477)
+- Ensured built-in NCMEC enqueue actions are available to all orgs (#393)
+- NCMEC and Review Console enqueue actions now work for users with no prior submission record (#494)
+- Added `additionalInfo` field to NCMEC reports and fixed XML element ordering (#477)
 - Fixed NCMEC wellness permission check (#505)
-- Reviewer-friendly error messages now surface `last_error` for NCMEC jobs (#513)
+- Failed NCMEC submissions persisted and surfaced with retry in the Reports dashboard (#491, #492)
+- Reviewer-friendly error messages for NCMEC jobs (#513)
 - IP address automatically added to NCMEC reports (#592, #641)
 - Fixed NCMEC Review Console gallery display for MEDIA scalar fields (#694)
 
 ### Reliability & sustainability
 
-As a critical open source project that empowers platforms to keep their users safe, it's crucial that Coop is reliable, sustainable, and secure. We focused on ensuring Coop 1.0 met these goals and will continue to meet them going forward.
+As a critical open source project that empowers platforms to keep their users safe, it's crucial that Coop is reliable, sustainable, and secure. We focused on ensuring Coop 1.0 meets these goals and will continue to meet them going forward.
 
 #### Fixes
 
 - Postgres idle-client errors no longer crash the server process (#542)
 - ClickHouse outages no longer crash all dashboard pages (#151)
-- Server crashes on transient ClickHouse errors resolved; Scylla memory capped to prevent OOM (#412)
+- Fixed server crashes from transient ClickHouse errors; capped Scylla memory prevent OOM (#412)
 - Scylla connection failures stopped; connection errors now surfaced visibly (#395)
 - Unbounded queries in review queues fixed (#160)
-- GraphQL depth-limit crashes and related Review Console/insights issues resolved (#401)
+- GraphQL depth limit set and depth-limit crashes resolved (#109, #401)
 - Review Console crash when `partialItems` returns an empty array fixed (#645)
 - Server now fails fast on Redis outage during async item submission rather than hanging (#653)
 - Partial item rejects of extra top-level items fixed (#601)
@@ -168,6 +166,9 @@ As a critical open source project that empowers platforms to keep their users sa
 
 #### Security & dependencies
 
+When we first released Coop's source code, we knew there was a lot of work to be done around dependencies and security vulnerabilities. In addition to code simplification (which also removed a substantial number of dependencies), we ensured Coop 1.0 comes with
+
+- Automated license scanning added to CI (#611, #692)
 - Sequelize and undici patched for high-severity vulnerabilities (#138)
 - Axios updated to mitigate supply chain risk (#170)
 - AWS SDK upgraded to fix fast-xml-parser vulnerabilities (#154)
@@ -182,11 +183,10 @@ As a critical open source project that empowers platforms to keep their users sa
 - Routine dependency updates across all packages (#135, #136, #175, #179, #180, #181, #182, #183, #214, #215, #218, #258, #272, #273, #274, #282, #286, #300, #302, #304, #305, #351, #359, #425, #460, #554, #568)
 - Dependabot configured and grouped; major version bumps excluded (#294, #299, #358)
 - Fuzzball bumped to v2.2.6 (now MIT-licensed; resolves GPL licensing concern) (#642)
-- Automated license scanning added to CI (#611, #692)
 
 #### Other improvements
 
-- End-to-end item submission integration test and harness added (#488)
+- End-to-end integration tests added: item submission, report flow, and rule changes (#488, #637, #640)
 - Recovery script provided for accidental queue cleanup (#479)
 - CI checks moved into Docker Compose services for consistency with local dev (#314)
 - Husky pre-commit hooks wired up with lint-staged (#391)
