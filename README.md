@@ -24,6 +24,15 @@ A few things that shape how we build it:
 - **Child safety is a prioritized workflow.** As the first free end-to-end online child safety system, it is one of the reasons Coop exists.
 - **The codebase is auditable**, with no hidden logic and no vendor lock-in.
 
+## Used in production
+
+Coop is used by:
+
+| ![Kyodo](docs/images/adopters/kyodo.png) | ![Notion](docs/images/adopters/notion.png) |
+| ---------------------------------------- | ------------------------------------------ |
+
+Using Coop and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/coop/edit/main/README.md)
+
 ## Built in the open
 
 Coop is an open source project undergoing active development. Features and documentation will evolve based on community feedback.
