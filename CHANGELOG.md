@@ -41,7 +41,7 @@ The largest internal change in Coop 1.0 is the near-complete migration from Sequ
 - Added `create-org` script for provisioning new organizations from the command line (#537)
 - _Scylla made optional for deployments that don't need it (#190)_
 - _Simplified getting-started experience for new evaluators (#219)_
-- _Docker images published for deployment without building from source (#280)_
+- Docker images published for deployment without building from source (#665)
 
 #### Rewritten documentation
 
@@ -71,10 +71,11 @@ We also implemented versioning for the docs meaning the latest docs for the `mai
 - Applied Funnel Display and Funnel Sans to docs site (#525)
 - Corrected site URL in docs (#510)
 - Added explicit link to GitHub repo and README in docs (#511)
+- Expanded deployment guide for self-hosting (#675)
 - _Deployment and hosting guide (#207)_
-- _Intention statement (#287)_
+- Added intention statement to README (#680)
 - _Document user strikes feature (#503)_
-- _Clarify SSO docs to reflect support for any SAML provider, not just Okta (#587)_
+- Corrected SAML/SSO documentation to clarify that any SAML 2.0 provider is supported, not only Okta (#587, #693)
 - _Model card documentation for OpenAI Moderation API (#126)_
 - _Model card documentation for Google Content Safety API (#127)_
 - _Document known Coop adopters (#54)_
@@ -94,7 +95,8 @@ As a SaaS product, several features for organizations were hidden behind databas
 - _Multiple policies per action toggle (#532)_
 - _Partial Items API endpoint and custom request headers (#378)_
 - _Ignore callback URL (#626)_
-- _Granular per-permission model replacing built-in roles (#406)_
+- Granular server-side permissions introduced (#528)
+- _Role editor UI for per-user permission management (#406)_
 - _GDPR delete requests now execute rather than only persisting (#336)_
 
 ### Expanded features & capability
@@ -115,7 +117,9 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - Fixed hidden inputs in proactive rule form (#368)
 - Fixed Submit button being cut off when content overflows in MRT and Investigation (#463)
 - Fixed CoopButton links not respecting disabled state (#472)
-- _User Strikes UI under Automatic Enforcement (#597)_
+- User Strikes dashboard and UI (#597, #600)
+- Server-side enforcement of policy selection requirement (#533)
+- Fixed MEDIA fields rendering as links instead of images in manual review (#679)
 - _Remove deprecated User Score in favor of User Strikes (#156, #596)_
 - _Queue custom prioritization (#409)_
 - _Invalidate reports from a specific user to address spam reporting (#404)_
@@ -132,7 +136,8 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - Added `additionalInfo` field to NCMEC reports; fixed XML element ordering and Node 24 multipart submission (#477)
 - Fixed NCMEC wellness permission check (#505)
 - Reviewer-friendly error messages now surface `last_error` for NCMEC jobs (#513)
-- IP address automatically added to NCMEC reports (#592)
+- IP address automatically added to NCMEC reports (#592, #641)
+- Fixed NCMEC MRT gallery display for MEDIA scalar fields (#694)
 
 ### Reliability & sustainability
 
@@ -147,6 +152,7 @@ As a critical open source project that empowers platforms to keep their users sa
 - Unbounded queries in review queues fixed (#160)
 - GraphQL depth-limit crashes and related MRT/insights issues resolved (#401)
 - MRT crash when `partialItems` returns an empty array fixed (#645)
+- Server now fails fast on Redis outage during async item submission rather than hanging (#653)
 - Partial item rejects of extra top-level items fixed (#601)
 - Job fragment circular dependency resolved (#372)
 - Dashboard routes lazy-loaded to prevent cascading failures (#334)
@@ -176,7 +182,7 @@ As a critical open source project that empowers platforms to keep their users sa
 - Routine dependency updates across all packages (#135, #136, #175, #179, #180, #181, #182, #183, #214, #215, #218, #258, #272, #273, #274, #282, #286, #300, #302, #304, #305, #351, #359, #425, #460, #554, #568)
 - Dependabot configured and grouped; major version bumps excluded (#294, #299, #358)
 - Fuzzball bumped to v2.2.6 (now MIT-licensed; resolves GPL licensing concern) (#642)
-- _Automated license scanning added to CI (#611)_
+- Automated license scanning added to CI (#611, #692)
 
 #### Other improvements
 
@@ -186,6 +192,7 @@ As a critical open source project that empowers platforms to keep their users sa
 - Husky pre-commit hooks wired up with lint-staged (#391)
 - Storybook migrated from CRA to Vite (#150)
 - Betterer removed; ESLint upgraded to v9 (#152)
+- Issue forms added to guide bug reports and feature requests (#673, #674)
 - `AGENTS.md` added with Coop-specific guidance for AI coding assistants (#296)
 - AI code review configuration and instructions added (#445)
 - `CODEOWNERS` cleaned up (#443)
