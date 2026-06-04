@@ -4410,6 +4410,12 @@ export const GQLSignalType = {
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
   OpenAiHateThreateningTextModel: 'OPEN_AI_HATE_THREATENING_TEXT_MODEL',
   OpenAiSelfHarmImageModel: 'OPEN_AI_SELF_HARM_IMAGE_MODEL',
+  OpenAiSelfHarmInstructionsImageModel:
+    'OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL',
+  OpenAiSelfHarmInstructionsTextModel:
+    'OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL',
+  OpenAiSelfHarmIntentImageModel: 'OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL',
+  OpenAiSelfHarmIntentTextModel: 'OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL',
   OpenAiSelfHarmTextModel: 'OPEN_AI_SELF_HARM_TEXT_MODEL',
   OpenAiSexualImageModel: 'OPEN_AI_SEXUAL_IMAGE_MODEL',
   OpenAiSexualMinorsTextModel: 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL',
