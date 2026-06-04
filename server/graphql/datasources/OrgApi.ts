@@ -14,7 +14,6 @@ import {
 import { WEEK_MS } from '../../utils/time.js';
 import { type GQLInviteUserInput } from '../generated.js';
 import {
-  kyselyOrgFindAll,
   kyselyOrgFindById,
   kyselyOrgUpdate,
   type GraphQLOrgParent,
@@ -109,10 +108,6 @@ class OrgAPI {
       throw new Error(`Organization not found: ${id}`);
     }
     return org;
-  }
-
-  async getAllGraphQLOrgs(): Promise<GraphQLOrgParent[]> {
-    return kyselyOrgFindAll(this.kysely);
   }
 
   async updateOrgInfo(

@@ -3280,7 +3280,6 @@ export type GQLQuery = {
   readonly __typename: 'Query';
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
-  readonly allOrgs: ReadonlyArray<GQLOrg>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String']['output'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;

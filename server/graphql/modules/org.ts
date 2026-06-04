@@ -100,7 +100,6 @@ const typeDefs = /* GraphQL */ `
 
   type Query {
     org(id: ID!): Org
-    allOrgs: [Org!]!
     appealSettings: AppealSettings
   }
 
@@ -152,9 +151,6 @@ const Query: GQLQueryResolvers = {
     }
 
     return context.dataSources.orgAPI.getGraphQLOrgFromId(id);
-  },
-  async allOrgs(_, __, context) {
-    return context.dataSources.orgAPI.getAllGraphQLOrgs();
   },
   async appealSettings(_, __, context) {
     const user = context.getUser();
