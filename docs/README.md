@@ -1,6 +1,6 @@
 # Welcome
 
-Welcome to the Coop documentation! For the Coop source code and basic information, [check out Coop on GitHub](https://github.com/roostorg/coop).
+Welcome to the Coop documentation! Visit [Coop on GitHub](https://github.com/roostorg/coop#readme) for source code and project information.
 
 These docs are split into a few guides, depending on who you are and what you're looking for:
 

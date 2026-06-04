@@ -150,8 +150,7 @@ export async function buildSubmitReportParamsFromDecision(
       // role mapped to a non-date column). Better to send the retry
       // timestamp than to permanently block the report.
       const createdAt =
-        roleCreatedAt !== undefined &&
-        !Number.isNaN(Date.parse(roleCreatedAt))
+        roleCreatedAt !== undefined && !Number.isNaN(Date.parse(roleCreatedAt))
           ? roleCreatedAt
           : makeDateString(new Date().toISOString());
       if (createdAt === undefined) {

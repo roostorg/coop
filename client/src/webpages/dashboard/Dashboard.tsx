@@ -357,9 +357,9 @@ export function DashboardRoutes() {
         handle: { isUsingLegacyCSS: true },
         lazy: lazyRoute(async () => import('./policies/PolicyForm')),
       },
-      // TODO: uncomment this when final UI is finished
       {
-        path: 'user_strikes',
+        path: 'rules/user_strikes',
+        handle: { isUsingLegacyCSS: true },
         lazy: lazyRoute(
           async () => import('./userStrikes/UserStrikeDashboard'),
         ),
@@ -558,12 +558,11 @@ export default function Dashboard() {
           urlPath: 'banks',
           requiredPermissions: [GQLUserPermission.MutateNonLiveRules],
         },
-        //TODO: uncomment this when final UI is finished
-        // {
-        //   title: 'User Strikes',
-        //   urlPath: 'userStrikes',
-        //   requiredPermissions: [GQLUserPermission.ManageOrg],
-        // },
+        {
+          title: 'User Strikes' as const,
+          urlPath: 'user_strikes',
+          requiredPermissions: [GQLUserPermission.ManageOrg],
+        },
       ]),
     },
     {
