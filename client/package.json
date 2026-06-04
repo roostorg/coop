@@ -119,7 +119,7 @@
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-svgr": "^4.5.0",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "overrides": {
     "tailwindcss": {

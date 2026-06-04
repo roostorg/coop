@@ -7,7 +7,6 @@ import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { CoopError } from '../../utils/errors.js';
-import { kyselyOrgDeleteById } from './orgKyselyPersistence.js';
 import {
   kyselyUserDeleteById,
   kyselyUserInsert,
@@ -291,73 +290,6 @@ describe('OrgAPI', () => {
         } finally {
           await kyselyUserDeleteById(deps.KyselyPg, otherUserId);
           await otherOrgCleanup();
-        }
-      },
-    );
-  });
-
-  describe('createOrg', () => {
-    testWithFixture(
-      'throws a BadRequest with /input/website pointer for bad website',
-      async ({ deps }) => {
-        await expect(
-          deps.OrgAPIDataSource.createOrg({
-            input: {
-              name: `NewOrg_${uid()}`,
-              email: `new_${uid()}@example.com`,
-              // eslint-disable-next-line no-script-url
-              website: 'javascript:alert(1)',
-            },
-          }),
-        ).rejects.toMatchObject({
-          name: 'BadRequestError',
-          pointer: '/input/website',
-        });
-      },
-    );
-
-    testWithFixture(
-      'throws a BadRequest for malformed email',
-      async ({ deps }) => {
-        await expect(
-          deps.OrgAPIDataSource.createOrg({
-            input: {
-              name: `NewOrg_${uid()}`,
-              email: 'not-an-email',
-              website: 'https://example.com',
-            },
-          }),
-        ).rejects.toMatchObject({
-          name: 'BadRequestError',
-          pointer: '/input/email',
-        });
-      },
-    );
-
-    testWithFixture(
-      'seeds the built-in actions for the new org',
-      async ({ deps }) => {
-        const created = await deps.OrgAPIDataSource.createOrg({
-          input: {
-            name: `NewOrg_${uid()}`,
-            email: `new_${uid()}@example.com`,
-            website: 'https://example.com',
-          },
-        });
-        try {
-          const actions = await deps.ModerationConfigService.getActions({
-            orgId: created.id,
-          });
-          const actionTypes = actions.map((a) => a.actionType).sort();
-          expect(actionTypes).toEqual(
-            [
-              'ENQUEUE_AUTHOR_TO_MRT',
-              'ENQUEUE_TO_MRT',
-              'ENQUEUE_TO_NCMEC',
-            ].sort(),
-          );
-        } finally {
-          await kyselyOrgDeleteById(deps.KyselyPg, created.id);
         }
       },
     );

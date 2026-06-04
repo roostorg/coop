@@ -787,22 +787,6 @@ export type GQLCreateManualReviewQueueResponse =
   | GQLManualReviewQueueNameExistsError
   | GQLMutateManualReviewQueueSuccessResponse;
 
-export type GQLCreateOrgInput = {
-  readonly email: Scalars['String']['input'];
-  readonly name: Scalars['String']['input'];
-  readonly website: Scalars['String']['input'];
-};
-
-export type GQLCreateOrgResponse =
-  | GQLCreateOrgSuccessResponse
-  | GQLOrgWithEmailExistsError
-  | GQLOrgWithNameExistsError;
-
-export type GQLCreateOrgSuccessResponse = {
-  readonly __typename: 'CreateOrgSuccessResponse';
-  readonly id: Scalars['ID']['output'];
-};
-
 export type GQLCreateReportingRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly conditionSet: GQLConditionSetInput;
@@ -2431,7 +2415,6 @@ export type GQLMutation = {
   readonly createLocationBank: GQLMutateLocationBankResponse;
   readonly createManualReviewJobComment: GQLAddManualReviewJobCommentResponse;
   readonly createManualReviewQueue: GQLCreateManualReviewQueueResponse;
-  readonly createOrg: GQLCreateOrgResponse;
   readonly createReportingRule: GQLCreateReportingRuleResponse;
   readonly createRoutingRule: GQLCreateRoutingRuleResponse;
   readonly createTextBank: GQLMutateBankResponse;
@@ -2465,7 +2448,6 @@ export type GQLMutation = {
   readonly removeFavoriteRule: GQLRemoveFavoriteRuleSuccessResponse;
   readonly renameRole: GQLRole;
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
-  readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
   /**
    * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
@@ -2567,10 +2549,6 @@ export type GQLMutationCreateManualReviewJobCommentArgs = {
 
 export type GQLMutationCreateManualReviewQueueArgs = {
   input: GQLCreateManualReviewQueueInput;
-};
-
-export type GQLMutationCreateOrgArgs = {
-  input: GQLCreateOrgInput;
 };
 
 export type GQLMutationCreateReportingRuleArgs = {
@@ -2699,10 +2677,6 @@ export type GQLMutationRenameRoleArgs = {
 
 export type GQLMutationReorderRoutingRulesArgs = {
   input: GQLReorderRoutingRulesInput;
-};
-
-export type GQLMutationRequestDemoArgs = {
-  input: GQLRequestDemoInput;
 };
 
 export type GQLMutationResetPasswordArgs = {
@@ -3147,26 +3121,6 @@ export type GQLOrgSignalsArgs = {
   customOnly?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-export type GQLOrgWithEmailExistsError = GQLError & {
-  readonly __typename: 'OrgWithEmailExistsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
-export type GQLOrgWithNameExistsError = GQLError & {
-  readonly __typename: 'OrgWithNameExistsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 /** Information about the current page in a connection. */
 export type GQLPageInfo = {
   readonly __typename: 'PageInfo';
@@ -3326,7 +3280,6 @@ export type GQLQuery = {
   readonly __typename: 'Query';
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
-  readonly allOrgs: ReadonlyArray<GQLOrg>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String']['output'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
@@ -3865,24 +3818,6 @@ export const GQLReportingRuleStatus = {
 
 export type GQLReportingRuleStatus =
   (typeof GQLReportingRuleStatus)[keyof typeof GQLReportingRuleStatus];
-export type GQLRequestDemoInput = {
-  readonly company: Scalars['String']['input'];
-  readonly email: Scalars['String']['input'];
-  readonly interests: ReadonlyArray<GQLRequestDemoInterest>;
-  readonly isFromGoogleAds: Scalars['Boolean']['input'];
-  readonly ref: Scalars['String']['input'];
-  readonly website: Scalars['String']['input'];
-};
-
-export const GQLRequestDemoInterest = {
-  AutomatedEnforcement: 'AUTOMATED_ENFORCEMENT',
-  ComplianceToolkit: 'COMPLIANCE_TOOLKIT',
-  CustomAiModels: 'CUSTOM_AI_MODELS',
-  ModeratorConsole: 'MODERATOR_CONSOLE',
-} as const;
-
-export type GQLRequestDemoInterest =
-  (typeof GQLRequestDemoInterest)[keyof typeof GQLRequestDemoInterest];
 export type GQLResetPasswordInput = {
   readonly newPassword: Scalars['String']['input'];
   readonly token: Scalars['String']['input'];
