@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-35895685.js";
+            window.path_to_searchindex_js = "../searchindex-58b51522.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6b814170.js"></script>
@@ -183,29 +183,29 @@
 <p>Rule conditions can be set to <strong>AND</strong> (all must match for the rule to match) or <strong>OR</strong> (the rule matches when any condition matches).</p>
 <h3 id="proactive-rules"><a class="header" href="#proactive-rules">Proactive Rules</a></h3>
 <p>Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule’s configured action is executed automatically. Configure them under <strong>Automated Enforcement → Proactive Rules</strong>.</p>
-<p><img src="../images/coop-rules.png" alt="Proactive Rules"></p>
+<p><img src="../images/rules.png" alt="Proactive Rules"></p>
 <p>All Proactive Rules that match an item fire, not just the first one. This means a single piece of content can trigger multiple automated actions if more than one rule matches.</p>
-<p><img src="../images/coop-scam-rule.png" alt="Proactive Rule for scam"></p>
+<p><img src="../images/scam-rule.png" alt="Proactive Rule for scam"></p>
 <p>The action of a Proactive Rule can be set to <em>Enqueue Item to Manual Review</em> which will convert it to a report that will then be matched against Routing Rules in order to send it to the correct queue.</p>
 <h3 id="routing-rules"><a class="header" href="#routing-rules">Routing Rules</a></h3>
 <p>Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under <strong>Review Console → Routing</strong>.</p>
-<p><img src="../images/coop-routing-rules.png" alt="Routing Rules"></p>
+<p><img src="../images/routing-rules.png" alt="Routing Rules"></p>
 <p>Rules are evaluated in order, and a report is routed to the queue of the first matching rule. If no rule matches, the report goes to the default queue. Each rule contains one or more conditions.</p>
 <p><img src="../images/hma-routing-rule.png" alt="HMA routing rule"></p>
 <h2 id="matching-banks"><a class="header" href="#matching-banks">Matching Banks</a></h2>
 <p>Matching banks are reusable sets of values you can reference across many rules without repeating yourself. Instead of listing all banned keywords in every rule that needs them, you define a bank once and reference it wherever needed.</p>
-<p><img src="../images/coop-banks.png" alt="Banks"></p>
+<p><img src="../images/banks.png" alt="Banks"></p>
 <h3 id="text-banks"><a class="header" href="#text-banks">Text Banks</a></h3>
 <p>Text banks hold lists of exact words or phrases, or regular expressions. Use them for keyword matching and pattern detection in text fields.</p>
-<p><img src="../images/coop-text-string-bank.png" alt="Text string bank"></p>
+<p><img src="../images/text-string-bank.png" alt="Text string bank"></p>
 <p>Coop also supports variant matching to catch evasion attempts, for example treating <code>h3||0</code> and <code>helllllllloooo</code> as matches for <code>hello</code>. See <a href="signals.html#text-analysis">Signals → Text analysis</a> for details on text signal types.</p>
-<p><img src="../images/coop-regex-bank.png" alt="Regex bank"></p>
+<p><img src="../images/regex-bank.png" alt="Regex bank"></p>
 <h3 id="hash-banks"><a class="header" href="#hash-banks">Hash Banks</a></h3>
 <p>Hash banks hold perceptual fingerprints of known harmful media. Coop uses these in conjunction with HMA to match images and videos against databases of known CSAM, NCII, TVEC, and any custom content you fingerprint. See <a href="../integrations/hma.html">Hasher-Matcher-Actioner (HMA)</a> for setup.</p>
 <p><img src="../images/hma-ui-coop-banks.png" alt="Hash bank"></p>
 <h3 id="location-banks"><a class="header" href="#location-banks">Location Banks</a></h3>
 <p>Location banks hold lists of <a href="https://en.wikipedia.org/wiki/Geohash">geohashes</a> or Google Maps Places references. Use them to apply different rules to specific geographic areas, for example stricter content policies on college campuses, or targeted enforcement in particular regions.</p>
-<p><img src="../images/coop-location-bank.png" alt="Location bank"></p>
+<p><img src="../images/location-bank.png" alt="Location bank"></p>
 <p>For location matching to work, include a geohash in every item you send to Coop representing the location of the user who created the content.</p>
 <h2 id="signals"><a class="header" href="#signals">Signals</a></h2>
 <p>Signals are what rule conditions actually evaluate. A signal takes an item field and returns a score, which the rule condition compares against a threshold. See <a href="signals.html">Signals</a> for more information.</p>

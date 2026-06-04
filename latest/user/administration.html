@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-35895685.js";
+            window.path_to_searchindex_js = "../searchindex-58b51522.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6b814170.js"></script>
@@ -180,28 +180,28 @@
 <p>Admins manage organization-wide configuration including items, actions, policies, user access, authentication, and integrations settings. All of these settings are accessible under <strong>Settings</strong> in Coop.</p>
 <h2 id="item-types"><a class="header" href="#item-types">Item Types</a></h2>
 <p>Item Types represent the different types of entities on your platform. See <a href="concepts.html#item-type">Concepts → Item Type</a> for details.</p>
-<p><img src="../images/coop-items.png" alt="Configuration of an Item Type: a post from the firehose with a schema of fields that get sent to Coop including text, unique ID as well as what format the fields are in"></p>
+<p><img src="../images/items.png" alt="Configuration of an Item Type: a post from the firehose with a schema of fields that get sent to Coop including text, unique ID as well as what format the fields are in"></p>
 <p>When creating an Item Type, define the schema to include which fields will be included and shown to reviewers. These fields are also available in any rule logic to connect with signals for routing or automation.</p>
 <h2 id="actions"><a class="header" href="#actions">Actions</a></h2>
 <p>Actions represent anything that can be performed on Items by proactive rules or moderator decisions. See <a href="concepts.html#actions">Concepts → Actions</a> for details.</p>
-<p><img src="../images/coop-actions.png" alt="Table of configured custom actions like: send warning, label as spam, delete content, delete account, ban email"></p>
+<p><img src="../images/actions.png" alt="Table of configured custom actions like: send warning, label as spam, delete content, delete account, ban email"></p>
 <p>Actions are paired with API enpoints on your platform. See <a href="../api/actions.html">Handling Actions</a> for technical details.</p>
-<p><img src="../images/coop-define-action.png" alt="Creating an action in Coop: add the name, description, what item types the action can run on, and a callback URL"></p>
+<p><img src="../images/define-action.png" alt="Creating an action in Coop: add the name, description, what item types the action can run on, and a callback URL"></p>
 <h2 id="policies"><a class="header" href="#policies">Policies</a></h2>
 <p>Policies are the set of rules and guidelines that a platform uses to govern the conduct of its users. See <a href="concepts.html#policy">Concepts → Policy</a> for details.</p>
-<p><img src="../images/coop-policies.png" alt="Policy Dashboard showing 4 policies: Fraud, Nudity, Scams, Spam. There’s a button to create new policies as well as options to add sub-policies for each existing policy and edit or delete them"></p>
+<p><img src="../images/policies.png" alt="Policy Dashboard showing 4 policies: Fraud, Nudity, Scams, Spam. There’s a button to create new policies as well as options to add sub-policies for each existing policy and edit or delete them"></p>
 <p>Policies added in Coop’s UI are visible to reviewers directly in the <a href="review-console.html#job-view">Job view</a> of the Review Console.</p>
 <h2 id="user-management"><a class="header" href="#user-management">User management</a></h2>
 <p>Coop uses role-based access controls to ensure the right people can access the right data.</p>
-<p><img src="../images/coop-manage-users.png" alt="User management page in Coop showing different users with different emails and roles assigned to them. There is an Approval Status column and a column showing when they were created"></p>
+<p><img src="../images/manage-users.png" alt="User management page in Coop showing different users with different emails and roles assigned to them. There is an Approval Status column and a column showing when they were created"></p>
 <p>You can invite users from <strong>Settings → Users</strong>, either copying the invite link to share directly or configuring an email service to send it automatically.</p>
-<p><img src="../images/coop-invite.png" alt="Coop’s user invitation flow"></p>
+<p><img src="../images/invite.png" alt="Coop’s user invitation flow"></p>
 <h3 id="roles"><a class="header" href="#roles">Roles</a></h3>
 <p>Coop comes with seven predefined roles:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th style="text-align: left">User Role</th><th style="text-align: left">Access Manual Review Tool</th><th style="text-align: left">View all Queues</th><th style="text-align: left">Create, Delete and Edit Queues</th><th style="text-align: left">Create, Delete and Edit Rules</th><th style="text-align: left">Access NCMEC data</th><th style="text-align: left">Access Insights</th></tr>
+<tr><th style="text-align: left">User Role</th><th style="text-align: left">Access Review Console</th><th style="text-align: left">View all Queues</th><th style="text-align: left">Create, Delete and Edit Queues</th><th style="text-align: left">Create, Delete and Edit Rules</th><th style="text-align: left">Access NCMEC data</th><th style="text-align: left">Access Insights</th></tr>
 </thead>
 <tbody>
 <tr><td style="text-align: left">Admin</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td></tr>
@@ -216,21 +216,22 @@
 </div>
 <p><strong>Admin</strong>: manage the entire organization. They have full control over all resources and settings within Coop.</p>
 <p><strong>Rules Manager</strong>: can create, edit, and deploy Live Rules, run retroaction and backtests, view rule insights, manage policies, use the Investigation tool, and bulk-action content. They cannot manage users, queues, or other organization-level settings.</p>
-<p><strong>Moderator Manager</strong>: can view and edit all queues within the Manual Review Tool, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.</p>
+<p><strong>Moderator Manager</strong>: can view and edit all queues within the Review Console, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.</p>
 <p><strong>Child Safety Moderator</strong>: the same permissions as Moderators, but can also review Child Safety jobs and see previous Child Safety decisions.</p>
-<p><strong>Moderator</strong>: can access the Manual Review Tool, but can only review jobs from queues they’ve been given permission to see. They cannot see any Child Safety-related jobs or decisions.</p>
-<p><strong>Analyst</strong>: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Manual Review Tool.</p>
-<p><strong>External Moderator</strong>: can only review jobs in the Manual Review Tool. They cannot see any decisions or use any other tooling.</p>
+<p><strong>Moderator</strong>: can access the Review Console, but can only review jobs from queues they’ve been given permission to see. They cannot see any Child Safety-related jobs or decisions.</p>
+<p><strong>Analyst</strong>: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Review Console.</p>
+<p><strong>External Moderator</strong>: can only review jobs in the Review Console. They cannot see any decisions or use any other tooling.</p>
 <h2 id="sso"><a class="header" href="#sso">SSO</a></h2>
-<p>Coop supports single sign-on via Okta SAML.</p>
-<h3 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h3>
+<p>Coop supports single sign-on via SAML, e.g. with Okta.</p>
+<h3 id="example-okta"><a class="header" href="#example-okta">Example: Okta</a></h3>
+<p>Configuring Okta SAML for Coop requires:</p>
 <ul>
 <li>Admin mode in Okta</li>
 <li>Group names that match exactly between Okta and SAML</li>
 <li>Admin permissions in Coop</li>
 <li>Ability to create a custom SAML application</li>
 </ul>
-<h3 id="configuration"><a class="header" href="#configuration">Configuration</a></h3>
+<p>To set it up:</p>
 <ol>
 <li>
 <p>Create a <a href="https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm">custom SAML application</a> in Okta with the following settings:</p>
