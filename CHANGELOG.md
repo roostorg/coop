@@ -166,7 +166,7 @@ As a critical open source project that empowers platforms to keep their users sa
 
 #### Security & dependencies
 
-When we first released Coop's source code, we knew there was a lot of work to be done around dependencies and security vulnerabilities. In addition to code simplification (which also removed a substantial number of dependencies), we ensured Coop 1.0 comes with
+When we first released Coop's source code, we knew there was a lot of work to be done around dependencies and security. In addition to code simplification (which also removed a substantial number of dependencies), we've ensured that Coop 1.0 addresses every known critical and high severity alert by removing unnecessary dependencies and updating to newer and patched dependency versions across the entire project. We also hardened our security practices, including by pinning Docker images and GitHub Actions to prevent certain classes of substitution attacks. Finally, we performed an audit of dependency licenses to ensure compatibility with Coop's Apache-2.0 license, and set up automated license scanning to enforce this in CI.
 
 - Automated license scanning added to CI (#611, #692)
 - Sequelize and undici patched for high-severity vulnerabilities (#138)
@@ -186,7 +186,7 @@ When we first released Coop's source code, we knew there was a lot of work to be
 
 #### Other improvements
 
-- End-to-end integration tests added: item submission, report flow, and rule changes (#488, #637, #640)
+- Integration tests for item submission, report flow, and rule changes (#488, #637, #640)
 - Recovery script provided for accidental queue cleanup (#479)
 - CI checks moved into Docker Compose services for consistency with local dev (#314)
 - Husky pre-commit hooks wired up with lint-staged (#391)
