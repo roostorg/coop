@@ -64,7 +64,7 @@
     "react-markdown": "^9.0.1",
     "react-player": "^2.10.1",
     "react-query": "^3.39.1",
-    "react-router-dom": "^6.27.0",
+    "react-router-dom": "^6.30.4",
     "react-router-hash-link": "^2.4.3",
     "react-syntax-highlighter": "^16.1.0",
     "react-table": "^7.7.0",
