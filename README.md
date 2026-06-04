@@ -2,7 +2,7 @@
 
 **Review and moderation, your way.**
 
-![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/coop-overview.png)
+![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/overview.png)
 
 Coop is the open source review and moderation tool from [ROOST](https://roost.tools) that provides a comprehensive solution for online safety:
 
@@ -12,7 +12,26 @@ Coop is the open source review and moderation tool from [ROOST](https://roost.to
 - **Rules Engine**: Automated content evaluation against customizable policies
 - **API Integration**: Simple REST and GraphQL APIs for seamless platform integration
 
-It's designed for trust and safety teams for online platforms of all sizes from small indie projects to large enterprise-scale deployments.
+## Who Coop is for
+
+Coop is for anyone who needs to make online safety decisions: platforms of all sizes, solo developers, and community teams without dedicated trust and safety staff.
+
+Most moderation tooling is proprietary and priced for platforms that can already afford it. Coop is free and open source so your data stays within your infrastructure, and you can customize it for your community's needs.
+
+A few things that shape how we build it:
+
+- **The platform owns its policy.** Coop is the plumbing to implement and enforce your own rules.
+- **Child safety is a prioritized workflow.** As the first free end-to-end online child safety system, it is one of the reasons Coop exists.
+- **The codebase is auditable**, with no hidden logic and no vendor lock-in.
+
+## Used in production
+
+Coop is used by:
+
+| ![Kyodo](docs/images/adopters/kyodo.png) | ![Notion](docs/images/adopters/notion.png) |
+| ---------------------------------------- | ------------------------------------------ |
+
+Using Coop and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/coop/edit/main/README.md)
 
 ## Built in the open
 
@@ -22,6 +41,12 @@ We want to hear from you! Whether you're testing it out, running into issues, or
 
 Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap).
 
+## Quick start
+
+Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.
+
 ## Learn more
 
-We maintain [documentation](docs/) directly in this repo covering functionality, development, integrations, and more. Versioned documentation is also [available online](https://roostorg.github.io/coop) for easier browsing.
+See our comprehensive [documentation](https://roostorg.github.io/coop/latest) covering both functional and technical information including a user guide, development guide, API reference, and integration details.
+
+The docs are also available [directly in this repo](docs/) for your convenience.

@@ -4,6 +4,41 @@ For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDK
 
 **IMPORTANT** When you run migrations, we create a sample org which contains users with default passwords. Make sure you clean up in a production environment.
 
+## Self-hosting checklist
+
+Coop does not currently ship a single production deployment recipe, but the repository does include the configuration surface you need to stand up a self-hosted instance. Treat the example environment files in `db/.env.example`, `server/.env.example`, and `client/.env.example` as the starting point for your deployment-specific configuration.
+
+### Required production configuration
+
+At minimum, a production deployment should provide:
+
+- Database connectivity for the API server Postgres instance and the database migrator.
+- Redis connectivity for queues and background processing.
+- Scylla connectivity for item submission history.
+- Session and token secrets such as `SESSION_SECRET` and `GRAPHQL_OPAQUE_SCALAR_SECRET`.
+- A public UI origin such as `UI_URL` / `VITE_UI_URL` so generated links and browser-facing flows point at the correct host.
+- Email sender addresses that match your deployment.
+
+You will usually also want to review the pool, timeout, TLS, and keepalive settings in `server/.env.example` before going live, since the defaults are tuned for local development rather than a long-running production environment.
+
+### Optional and deployment-specific configuration
+
+Many other settings are only required if you are enabling specific features or changing backend choices:
+
+- Analytics and warehouse backends are controlled by `WAREHOUSE_ADAPTER` and `ANALYTICS_ADAPTER`. See [Data Warehouse Abstraction Layer](data-warehouse.md) for the supported adapters and the related ClickHouse/PostgreSQL settings.
+- Child safety reporting is optional, but if you are using NCMEC reporting you must configure the org settings in Coop and set `NCMEC_ENV=production` on the server only when your deployment has been approved for live reporting. See [NCMEC CyberTipline](../integrations/ncmec.md#test-vs-production-submissions).
+- Client-side integrations such as Google Places and custom docs/content proxy URLs are optional and can be left unset if you do not use those capabilities.
+- Third-party integration keys in `server/.env.example` are generally optional unless you are enabling the corresponding integration.
+
+### Before going live
+
+After the first successful migration and bootstrap:
+
+1. Remove or secure the sample org and any users created with default passwords.
+2. Confirm the production hostname and email settings are correct.
+3. Verify your selected warehouse and analytics adapters match the backing services you actually deployed.
+4. Leave `NCMEC_ENV` unset or non-`production` unless you intentionally want live CyberTipline submissions.
+
 ## Settings
 
 Settings live across several database tables. Many are not yet exposed in the front-end UI and can only be configured directly in the database.

@@ -1,0 +1,121 @@
+services:
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'postgres']
+      interval: 2s
+      start_period: 2s
+    environment:
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+
+  redis:
+    image: redis:8.6.1-trixie
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --maxmemory
+      - '256mb'
+      - --maxmemory-policy
+      - noeviction
+
+  scylla:
+    image: scylladb/scylla:5.2
+    command: --smp 1 --memory 4G --overprovisioned 1 --developer-mode 1
+    volumes:
+      - scylla_data:/var/lib/scylla
+    healthcheck:
+      test: ['CMD-SHELL', 'nodetool status || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 28
+      start_period: 35s
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'clickhouse-client --host localhost --query "SELECT 1"']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrations:
+    image: node:24.14.1-bullseye-slim
+    command: bash -c 'set -e
+      && npm i
+      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
+    working_dir: /src
+    env_file: ./.env.docker
+    volumes:
+      - .:/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      scylla:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
+  seed:
+    image: ghcr.io/roostorg/coop-server:latest
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        PASSWORD=$$(node -e "process.stdout.write(require('crypto').randomBytes(18).toString('base64url'))")
+        OUTPUT=$$(node bin/create-org-and-user.js \
+          --name "Coop" \
+          --email "admin@coop.local" \
+          --website "https://coop.local" \
+          --firstName "Admin" \
+          --lastName "User" \
+          --password "$$PASSWORD" 2>&1) \
+        && echo "$$OUTPUT" \
+        && echo "" \
+        && echo "============================================" \
+        && echo "  Login:    admin@coop.local" \
+        && echo "  Password: $$PASSWORD" \
+        && echo "============================================" \
+        || { echo "$$OUTPUT"; echo "$$OUTPUT" | grep -q "duplicate key" && echo "Seed user already exists — skipping." || exit 1; }
+    env_file: ./.env.docker
+    environment:
+      NODE_ENV: development
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  server:
+    image: ghcr.io/roostorg/coop-server:latest
+    ports:
+      - '8080:8080'
+    env_file: ./.env.docker
+    environment:
+      NODE_ENV: development
+      PORT: '8080'
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  client:
+    image: ghcr.io/roostorg/coop-client:latest
+    ports:
+      - '3000:80'
+
+volumes:
+  pg_data:
+  scylla_data:
+  clickhouse_data:

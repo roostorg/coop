@@ -42,7 +42,7 @@ This user-centric aggregation means that even if a user has uploaded many pieces
 
 The NCMEC job UI is distinct from standard review jobs. It is designed around the user and all of their associated media.
 
-![NCMEC Reporting job view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors](../images/coop-ncmec-job.png)
+![NCMEC Reporting job view showing aggregated media for a user, keyboard shortcuts for industry classifications, incident type dropdown, and per-media label selectors](../images/ncmec-job.png)
 
 ### Incident Type
 
