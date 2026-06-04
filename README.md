@@ -2,7 +2,7 @@
 
 **Review and moderation, your way.**
 
-![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/coop-overview.png)
+![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/overview.png)
 
 Coop is the open source review and moderation tool from [ROOST](https://roost.tools) that provides a comprehensive solution for online safety:
 
