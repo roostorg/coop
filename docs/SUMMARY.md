@@ -24,7 +24,7 @@
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)
   - [Data Warehouse Abstraction](development/data-warehouse.md)
-  - [Docker](development/docker.md)
+  - [Docker Images](development/docker.md)
   - [Deployment](development/deployment.md)
 
 ---

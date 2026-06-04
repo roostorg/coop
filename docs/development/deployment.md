@@ -1,8 +1,9 @@
 # Deployment
 
-For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available on the [`0.1` branch](https://github.com/roostorg/coop/tree/0.1/.devops). That infrastructure code may have drifted from the current application architecture and is no longer maintained, but can serve as a reference for your own deployment.
+Get Coop running on your own infrastructure. You may also be interested in the [Docker images](docker.md) and [architecture information](architecture.md).
 
-**IMPORTANT** When you run migrations, we create a sample org which contains users with default passwords. Make sure you clean up in a production environment.
+> [!IMPORTANT]
+> When you run migrations, we create a sample org which contains users with default passwords. Make sure you clean up in a production environment.
 
 ## Self-hosting checklist
 
@@ -13,10 +14,15 @@ Coop does not currently ship a single production deployment recipe, but the repo
 At minimum, a production deployment should provide:
 
 - Database connectivity for the API server Postgres instance and the database migrator.
+
 - Redis connectivity for queues and background processing.
+
 - Scylla connectivity for item submission history.
+
 - Session and token secrets such as `SESSION_SECRET` and `GRAPHQL_OPAQUE_SCALAR_SECRET`.
+
 - A public UI origin such as `UI_URL` / `VITE_UI_URL` so generated links and browser-facing flows point at the correct host.
+
 - Email sender addresses that match your deployment.
 
 You will usually also want to review the pool, timeout, TLS, and keepalive settings in `server/.env.example` before going live, since the defaults are tuned for local development rather than a long-running production environment.
@@ -26,8 +32,11 @@ You will usually also want to review the pool, timeout, TLS, and keepalive setti
 Many other settings are only required if you are enabling specific features or changing backend choices:
 
 - Analytics and warehouse backends are controlled by `WAREHOUSE_ADAPTER` and `ANALYTICS_ADAPTER`. See [Data Warehouse Abstraction Layer](data-warehouse.md) for the supported adapters and the related ClickHouse/PostgreSQL settings.
+
 - Child safety reporting is optional, but if you are using NCMEC reporting you must configure the org settings in Coop and set `NCMEC_ENV=production` on the server only when your deployment has been approved for live reporting. See [NCMEC CyberTipline](../integrations/ncmec.md#test-vs-production-submissions).
+
 - Client-side integrations such as Google Places and custom docs/content proxy URLs are optional and can be left unset if you do not use those capabilities.
+
 - Third-party integration keys in `server/.env.example` are generally optional unless you are enabling the corresponding integration.
 
 ### Before going live
@@ -35,8 +44,11 @@ Many other settings are only required if you are enabling specific features or c
 After the first successful migration and bootstrap:
 
 1. Remove or secure the sample org and any users created with default passwords.
+
 2. Confirm the production hostname and email settings are correct.
+
 3. Verify your selected warehouse and analytics adapters match the backing services you actually deployed.
+
 4. Leave `NCMEC_ENV` unset or non-`production` unless you intentionally want live CyberTipline submissions.
 
 ## Settings
@@ -104,6 +116,10 @@ The `user_management_service.org_default_user_interface_settings` table stores t
 | `moderator_safety_blur_level` | `2`     | Default blur intensity (0–3) for new reviewers | **Settings** → **Wellness** |
 | `moderator_safety_grayscale`  | `true`  | Default grayscale mode for new reviewers       | **Settings** → **Wellness** |
 | `moderator_safety_mute_video` | `true`  | Default video mute state for new reviewers     | **Settings** → **Wellness** |
+
+## Historical reference
+
+For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available in the [`0.1` tag](https://github.com/roostorg/coop/tree/0.1/.devops). That infrastructure code may have drifted from the current application architecture and is no longer maintained, but may serve as a reference for your own deployment.
 
 <style>
   /* TODO: move this to site-wide style override */
