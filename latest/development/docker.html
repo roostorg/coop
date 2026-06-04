@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Docker - Coop Documentation</title>
+        <title>Docker Images - Coop Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-abf61722.js";
+            window.path_to_searchindex_js = "../searchindex-5a55f9fd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6b814170.js"></script>
+        <script src="../toc-bb10072b.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,9 +176,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="docker"><a class="header" href="#docker">Docker</a></h1>
-<h2 id="published-images"><a class="header" href="#published-images">Published images</a></h2>
-<p>Pre-built images are published to GitHub Container Registry on every push to <code>main</code>:</p>
+                        <h1 id="docker-images"><a class="header" href="#docker-images">Docker Images</a></h1>
+<p>Pre-built images are published to the GitHub Container Registry on every push to <code>main</code>:</p>
 <pre><code>ghcr.io/roostorg/coop-server   # API server
 ghcr.io/roostorg/coop-worker   # Background worker
 ghcr.io/roostorg/coop-client   # Frontend (nginx)
@@ -188,8 +187,9 @@ ghcr.io/roostorg/coop-client   # Frontend (nginx)
 <p>Pull the published images and run the full stack locally with a single command:</p>
 <pre><code class="language-bash">docker compose -f docker-compose.images.yaml up -d
 </code></pre>
-<blockquote>
-<p><strong>Warning:</strong> <code>docker-compose.images.yaml</code> uses <code>.env.docker</code>, which ships working defaults for local evaluation but includes placeholder secrets. Review and replace secrets before any non-local deployment.</p>
+<blockquote class="blockquote-tag blockquote-tag-warning">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p>
+<p><code>docker-compose.images.yaml</code> uses <code>.env.docker</code>, which ships working defaults for local evaluation but includes placeholder secrets. <strong>Review and replace secrets before any non-local deployment.</strong></p>
 </blockquote>
 <p>This starts:</p>
 <ul>
