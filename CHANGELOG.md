@@ -21,9 +21,9 @@ We focused a _ton_ of time and effort on making it faster, easier, and lighter-w
 
 #### Code & infrastructure simplification
 
-The largest internal change in Coop 1.0 is the near-complete migration from Sequelize to Kysely for database access, covering the rule engine, actions, policies, users, organizations, MRT, and backtests. On the infrastructure side, BullMQ replaces Kafka for item submission processing—removing one of the most operationally demanding dependencies from the default deployment. We also cleared out SaaS-era remnants that were never meant for self-hosted deployments.
+The largest internal change in Coop 1.0 is the near-complete migration from Sequelize to Kysely for database access, covering the rule engine, actions, policies, users, organizations, Review Console, and backtests. On the infrastructure side, BullMQ replaces Kafka for item submission processing—removing one of the most operationally demanding dependencies from the default deployment. We also cleared out SaaS-era remnants that were never meant for self-hosted deployments.
 
-- Completed Sequelize → Kysely migration across rule engine, actions, policies, users, organizations, MRT, and backtests (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
+- Completed Sequelize → Kysely migration across rule engine, actions, policies, users, organizations, Review Console, and backtests (#225, #260, #261, #271, #275, #290, #292, #349, #350, #354, #390)
 - BullMQ replaces Kafka for item submission processing (#137)
 - Express upgraded to v5 (#283)
 - SSL/TLS and body schema validation added (#326)
@@ -115,7 +115,7 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - Added horizontal scrollbar and increased max width for wide tables (#162)
 - Changed permission required to view policies in sidebar (#405)
 - Fixed hidden inputs in proactive rule form (#368)
-- Fixed Submit button being cut off when content overflows in MRT and Investigation (#463)
+- Fixed Submit button being cut off when content overflows in Review Console and Investigation (#463)
 - Fixed CoopButton links not respecting disabled state (#472)
 - User Strikes dashboard and UI (#597, #600)
 - Server-side enforcement of policy selection requirement (#533)
@@ -137,7 +137,7 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - Fixed NCMEC wellness permission check (#505)
 - Reviewer-friendly error messages now surface `last_error` for NCMEC jobs (#513)
 - IP address automatically added to NCMEC reports (#592, #641)
-- Fixed NCMEC MRT gallery display for MEDIA scalar fields (#694)
+- Fixed NCMEC Review Console gallery display for MEDIA scalar fields (#694)
 
 ### Reliability & sustainability
 
@@ -150,15 +150,15 @@ As a critical open source project that empowers platforms to keep their users sa
 - Server crashes on transient ClickHouse errors resolved; Scylla memory capped to prevent OOM (#412)
 - Scylla connection failures stopped; connection errors now surfaced visibly (#395)
 - Unbounded queries in review queues fixed (#160)
-- GraphQL depth-limit crashes and related MRT/insights issues resolved (#401)
-- MRT crash when `partialItems` returns an empty array fixed (#645)
+- GraphQL depth-limit crashes and related Review Console/insights issues resolved (#401)
+- Review Console crash when `partialItems` returns an empty array fixed (#645)
 - Server now fails fast on Redis outage during async item submission rather than hanging (#653)
 - Partial item rejects of extra top-level items fixed (#601)
 - Job fragment circular dependency resolved (#372)
 - Dashboard routes lazy-loaded to prevent cascading failures (#334)
 - Apollo retry behavior and org metadata cache improved (#184)
 - `createOrg` FK ordering and built-in action seeding fixed (#604)
-- MRT backfill job added (#347)
+- Review Console backfill job added (#347)
 - Demo request emails can now be disabled via env var (#352)
 - Coop SVG export fixed (#346)
 - Sidebar flickering and space shifting when navigating from settings to dashboard fixed (#140)
