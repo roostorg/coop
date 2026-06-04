@@ -4,7 +4,7 @@ The **Review Console** is where moderators work through reported content.
 
 ## Queues
 
-![Five example queues: media, default queue, fraud, scams, and spam. There are buttons to create a new queue, start reviewing each queue, delete all jobs, and edit or delete individual queues.](../images/coop-review-console.png)
+![Five example queues: media, default queue, fraud, scams, and spam. There are buttons to create a new queue, start reviewing each queue, delete all jobs, and edit or delete individual queues.](../images/review-console.png)
 
 Coop uses queues to organize review jobs. When content is reported (whether by a user on your platform or a [proactive rule](rules.md#proactive-rules)), it enters a queue until it is reviewed and a decision is made.
 
@@ -18,7 +18,7 @@ Queues can be starred per-user to pin them to the top of the Review Console. Eac
 
 Moderator managers and admins can create and edit queues for your organization.
 
-![Creating a queue in Coop, showing fields for name and hidden actions](../images/coop-create-queue.png)
+![Creating a queue in Coop, showing fields for name and hidden actions](../images/create-queue.png)
 
 When creating or editing a queue, you can configure **Reviewer Access** to determine which moderators can access and work jobs in that queue. **Hidden Actions** determines which actions are not available to moderators in this queue; this is useful for restricting what decisions reviewers can make in a given context, e.g. hiding permanent bans in a first-pass triage queue.
 
@@ -26,7 +26,7 @@ When creating or editing a queue, you can configure **Reviewer Access** to deter
 
 ## Job view
 
-![A review job in Coop with user data redacted. Shows what time the report was received, what kind of item it is, who created the report and for what reason, the number of reports on the job, and information about the post itself. Users can add internal comments for their teammates and view the policy to check what enforcement guidelines are. There is a list of decisions users can make on the job and a button to skip the job](../images/coop-task-view.png)
+![A review job in Coop with user data redacted. Shows what time the report was received, what kind of item it is, who created the report and for what reason, the number of reports on the job, and information about the post itself. Users can add internal comments for their teammates and view the policy to check what enforcement guidelines are. There is a list of decisions users can make on the job and a button to skip the job](../images/task-view.png)
 
 Each **job** in a queue displays the report and everything Coop knows about the flagged content or user being reviewed. Each job has its own URL and can be shared with anyone at your organization who has access to Coop.
 
@@ -62,7 +62,7 @@ Reviewer wellness and safety is a core concern in trust & safety work. Coop incl
 
 ### Organization-wide defaults
 
-![Coop's organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle](../images/coop-org-safety.png)
+![Coop's organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle](../images/org-wellness.png)
 
 Admins can set default wellness settings that apply to all users in the organization under **Settings → Wellness**.
 

@@ -2,7 +2,7 @@
 
 **Review and moderation, your way.**
 
-![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/coop-overview.png)
+![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/overview.png)
 
 Coop is the open source review and moderation tool from [ROOST](https://roost.tools) that provides a comprehensive solution for online safety:
 
@@ -23,6 +23,15 @@ A few things that shape how we build it:
 - **The platform owns its policy.** Coop is the plumbing to implement and enforce your own rules.
 - **Child safety is a prioritized workflow.** As the first free end-to-end online child safety system, it is one of the reasons Coop exists.
 - **The codebase is auditable**, with no hidden logic and no vendor lock-in.
+
+## Used in production
+
+Coop is used by:
+
+| ![Kyodo](docs/images/adopters/kyodo.png) | ![Notion](docs/images/adopters/notion.png) |
+| ---------------------------------------- | ------------------------------------------ |
+
+Using Coop and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/coop/edit/main/README.md)
 
 ## Built in the open
 
