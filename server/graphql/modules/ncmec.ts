@@ -1,4 +1,5 @@
 import { formatItemSubmissionForGQL } from '../../graphql/types.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import type {
   GQLMutationResolvers,
   GQLNcmecOrgSettings,
@@ -317,8 +318,10 @@ const Query: GQLQueryResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to view NCMEC settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view NCMEC settings',
+      );
     }
     const settings = await context.services.NcmecService.getNcmecOrgSettings(
       user.orgId,
@@ -333,8 +336,10 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to update NCMEC settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update NCMEC settings',
+      );
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
 
@@ -396,7 +401,9 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('VIEW_CHILD_SAFETY_DATA')) {
+    if (
+      !user.getPermissions().includes(UserPermission.VIEW_CHILD_SAFETY_DATA)
+    ) {
       throw forbiddenError(
         'VIEW_CHILD_SAFETY_DATA permission required to retry NCMEC submissions.',
       );

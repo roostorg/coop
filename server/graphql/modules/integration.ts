@@ -1,5 +1,6 @@
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   makeIntegrationConfigUnsupportedIntegrationError,
@@ -11,7 +12,7 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -221,6 +222,11 @@ const Query: GQLQueryResolvers = {
       if (user == null) {
         throw unauthenticatedError('Unauthenticated User');
       }
+      if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+        throw forbiddenError(
+          'User does not have permission to view integration configs',
+        );
+      }
 
       if (!getIntegrationRegistry().has(name)) {
         throw makeIntegrationConfigUnsupportedIntegrationError({
@@ -270,6 +276,11 @@ const Mutation: GQLMutationResolvers = {
       if (user == null) {
         throw unauthenticatedError('Unauthenticated User');
       }
+      if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+        throw forbiddenError(
+          'User does not have permission to update integration configs',
+        );
+      }
       const newConfig = await context.dataSources.integrationAPI.setConfig(
         params.input,
         user.orgId,
@@ -298,6 +309,11 @@ const Mutation: GQLMutationResolvers = {
       const user = context.getUser();
       if (user == null) {
         throw unauthenticatedError('Unauthenticated User');
+      }
+      if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+        throw forbiddenError(
+          'User does not have permission to update integration configs',
+        );
       }
       const newConfig =
         await context.dataSources.integrationAPI.setConfigByIntegrationId(

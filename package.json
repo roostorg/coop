@@ -2,6 +2,7 @@
   "name": "coop",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "start": "concurrently \"npm run server:start\" \"npm run client:start\" \"npm run generate:watch\" --kill-others",
     "compile": "concurrently \"npm run server:start\" \"BROWSER=none npm run client:start\" \"npm run generate:watch\" --kill-others",
@@ -23,7 +24,10 @@
     "up": "docker compose up --detach postgres clickhouse hma scylla redis otel-collector && (open http://localhost:16686 || xdg-open http://localhost:16686)",
     "down": "docker compose down"
   },
-  "dependencies": {
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "devDependencies": {
     "@graphiql/create-fetcher": "^0.1.0",
     "@graphql-codegen/add": "^6.0.0",
     "@graphql-codegen/cli": "^6.3.1",
@@ -32,12 +36,6 @@
     "@graphql-codegen/typescript-operations": "^5.0.9",
     "@graphql-codegen/typescript-react-apollo": "^4.4.2",
     "@graphql-codegen/typescript-resolvers": "^5.1.8",
-    "concurrently": "^9.2.1"
-  },
-  "engines": {
-    "node": "^24.0.0"
-  },
-  "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "lint-staged": "^16.4.0",
     "@types/express": "^5.0.6",
@@ -45,6 +43,7 @@
     "@types/node": "^24.0.0",
     "@types/passport": "^1.0.17",
     "@types/validator": "^13.15.10",
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "prettier": "^3.8.3",
     "ts-node": "^10.9.2",
