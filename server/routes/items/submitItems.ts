@@ -110,7 +110,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           try {
             const images = itemSubmission.itemSubmission.data.images as (
               | string
-              | { url: string }
+              | { url: string; [key: string]: unknown }
             )[];
 
             // Get all hash banks for this org once
@@ -120,6 +120,12 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
             const imageHashes = await Promise.all(
               images.map(async (image) => {
                 const url = typeof image === 'string' ? image : image.url;
+                // Preserve any fields the coercion step already populated on
+                // the media object (e.g. MEDIA's `mediaType`, which the manual
+                // review tool relies on to decide whether to render an image,
+                // video, or audio player). Rebuilding a fresh object below
+                // would otherwise silently drop them.
+                const coercedFields = typeof image === 'string' ? {} : image;
                 if (typeof url === 'string' && url) {
                   try {
                     const hmaHashWithRetries = await withRetries(
@@ -173,6 +179,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                     }
 
                     return {
+                      ...coercedFields,
                       url,
                       hashes,
                       matchedBanks:
@@ -182,6 +189,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                     };
                   } catch (e) {
                     return {
+                      ...coercedFields,
                       url,
                       hashes: {},
                     };

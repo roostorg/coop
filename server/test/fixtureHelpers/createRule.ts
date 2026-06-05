@@ -48,6 +48,8 @@ export default async function createRule(
     ruleType?: RuleType;
     status?: RuleStatus;
     conditionSet?: ConditionSet;
+    actionIds?: readonly string[];
+    contentTypeIds?: readonly string[];
   } = {},
 ) {
   const ruleId = extra.id ?? uid();
@@ -72,9 +74,9 @@ export default async function createRule(
     orgId,
     ruleType,
     parentId: null,
-    actionIds: [],
+    actionIds: extra.actionIds ?? [],
     policyIds: [],
-    contentTypeIds: [],
+    contentTypeIds: extra.contentTypeIds ?? [],
   }).catch(logErrorAndThrow);
 
   // `kyselyCreateRule` always seeds `INSUFFICIENT_DATA`; patch when callers

@@ -208,6 +208,11 @@ gql`
         status
         type
       }
+      ... on MissingRequiredPolicyForDecisionError {
+        title
+        status
+        type
+      }
     }
   }
 
@@ -552,6 +557,25 @@ function ManualReviewJobReviewImpl(props: {
               visible: true,
               modalBody:
                 'This org requires every decision to include a reason. Add a reason and resubmit.',
+              footer: [
+                {
+                  title: 'Ok',
+                  type: 'primary',
+                  onClick: hideModal,
+                },
+              ],
+            });
+            break;
+          }
+          case 'MissingRequiredPolicyForDecisionError': {
+            // Server-side backstop for `requiresPolicyForDecisionsInMrt`.
+            // Normally the canBeSubmitted gate prevents reaching this state,
+            // but the org setting could have flipped between page load and
+            // submit — surface a clear message and let the reviewer fix it.
+            setModalInfo({
+              visible: true,
+              modalBody:
+                'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
               footer: [
                 {
                   title: 'Ok',

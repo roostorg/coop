@@ -346,6 +346,15 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
+  type MissingRequiredPolicyForDecisionError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
   union SubmitDecisionResponse =
     | SubmitDecisionSuccessResponse
     | JobHasAlreadyBeenSubmittedError
@@ -353,6 +362,7 @@ const typeDefs = /* GraphQL */ `
     | NoJobWithIdInQueueError
     | RecordingJobDecisionFailedError
     | MissingRequiredDecisionReasonError
+    | MissingRequiredPolicyForDecisionError
 
   union DequeueManualReviewJobResponse = DequeueManualReviewJobSuccessResponse
 
@@ -2253,7 +2263,8 @@ const Mutation: GQLMutationResolvers = {
         isCoopErrorOfType(e, 'SubmittedJobActionNotFoundError') ||
         isCoopErrorOfType(e, 'NoJobWithIdInQueueError') ||
         isCoopErrorOfType(e, 'RecordingJobDecisionFailedError') ||
-        isCoopErrorOfType(e, 'MissingRequiredDecisionReasonError')
+        isCoopErrorOfType(e, 'MissingRequiredDecisionReasonError') ||
+        isCoopErrorOfType(e, 'MissingRequiredPolicyForDecisionError')
       ) {
         return gqlErrorResult(e);
       }

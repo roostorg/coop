@@ -185,11 +185,12 @@ export default class JobDecisioning {
     // (for security) before we save the data to the db. We accept that there
     // could be some legit policies/actions that are very rarely not found
     // (from eventually consistent pg lookup) as a reasonable tradeoff.
-    if (decisions.some((decision) => decision.type === 'CUSTOM_ACTION')) {
-      const allActionIds = decisions.flatMap((decision) =>
-        decision.type === 'CUSTOM_ACTION'
-          ? decision.actions.map((action) => action.id)
-          : [],
+    const customActionDecisions = decisions.flatMap((decision) =>
+      decision.type === 'CUSTOM_ACTION' ? [decision] : [],
+    );
+    if (customActionDecisions.length > 0) {
+      const allActionIds = customActionDecisions.flatMap((decision) =>
+        decision.actions.map((action) => action.id),
       );
       const validActions = await this.getCustomActionsByIds({
         ids: allActionIds,
@@ -198,6 +199,25 @@ export default class JobDecisioning {
       // We only throw if there aren't any valid actions.
       if (validActions.length === 0) {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
+      }
+
+      // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
+      // disables submit when this is on, but API/script callers can bypass that.
+      // Only check the flag when there's actually a policy-less decision to
+      // enforce against, so the common path avoids the extra DB hit.
+      const hasEmptyPolicyCustomAction = customActionDecisions.some(
+        (decision) => decision.policies.length === 0,
+      );
+      if (hasEmptyPolicyCustomAction) {
+        const requiresPolicy =
+          await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
+            orgId,
+          );
+        if (requiresPolicy) {
+          throw makeMissingRequiredPolicyForDecisionError({
+            shouldErrorSpan: true,
+          });
+        }
       }
     }
 
@@ -614,7 +634,8 @@ export type SubmitDecisionErrorType =
   | 'SubmittedJobActionNotFoundError'
   | 'NoJobWithIdInQueueError'
   | 'RecordingJobDecisionFailedError'
-  | 'MissingRequiredDecisionReasonError';
+  | 'MissingRequiredDecisionReasonError'
+  | 'MissingRequiredPolicyForDecisionError';
 
 export const makeJobHasAlreadyBeenSubmittedError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -661,5 +682,17 @@ export const makeMissingRequiredDecisionReasonError = (
     title:
       'This org requires every decision to include a reason. Add a reason and resubmit.',
     name: 'MissingRequiredDecisionReasonError',
+    ...data,
+  });
+
+export const makeMissingRequiredPolicyForDecisionError = (
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title:
+      'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
+    name: 'MissingRequiredPolicyForDecisionError',
     ...data,
   });
