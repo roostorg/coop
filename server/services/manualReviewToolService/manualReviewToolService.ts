@@ -1247,7 +1247,7 @@ export class ManualReviewToolService {
     return this.manualReviewToolSettings.getDefaultJobSortOrder(orgId);
   }
 
-  async updateDefaultJobSortOrder(orgId: string, sortOrder: string) {
+  async updateDefaultJobSortOrder(orgId: string, sortOrder: 'ASC' | 'DESC') {
     return this.manualReviewToolSettings.updateDefaultJobSortOrder(
       orgId,
       sortOrder,
