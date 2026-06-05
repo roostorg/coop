@@ -30,3 +30,9 @@ RUN chown -R coop:coop /app
 
 # kubernetes requires us to use a numeric id for the user
 USER 1001
+
+# Meant to run as a one-shot task (e.g. an ECS RunTask on deploy). The entrypoint
+# is empty so the runtime can supply the command (and the DB connection env vars),
+#   npm run db:update -- --db api-server-pg --env prod
+#   npm run db:create -- --db api-server-pg --env prod
+CMD ["node", "index.js"]
