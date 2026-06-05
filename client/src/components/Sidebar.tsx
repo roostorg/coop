@@ -99,7 +99,11 @@ export default function Sidebar(props: SidebarProps) {
         return;
       }
       if (item.subItems) {
-        items = item.subItems;
+        if (i === pathParts.length - 1) {
+          setSelectedMenuItem(item.title);
+        } else {
+          items = item.subItems;
+        }
       } else {
         setSelectedMenuItem(item.title);
       }
@@ -118,6 +122,7 @@ export default function Sidebar(props: SidebarProps) {
 
   const isSettingsSelected = useMemo(
     () =>
+      selectedMenuItem === 'Settings' ||
       accessibleSettingsSubItems.some(
         (item) => item.title === selectedMenuItem,
       ),

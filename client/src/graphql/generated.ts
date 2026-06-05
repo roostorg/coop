@@ -2469,21 +2469,31 @@ export type GQLMutation = {
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
+  readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
+  readonly updateDefaultJobSortOrder: Scalars['Boolean']['output'];
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
+  readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
+  readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
+  readonly updateHideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
+  readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
   readonly updateNcmecOrgSettings: GQLUpdateNcmecOrgSettingsResponse;
   readonly updateOrgInfo: GQLUpdateOrgInfoSuccessResponse;
   readonly updatePolicy: GQLUpdatePolicyResponse;
+  readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
+  readonly updateRequiresDecisionReason: Scalars['Boolean']['output'];
+  readonly updateRequiresPolicyForDecisions: Scalars['Boolean']['output'];
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
   readonly updateSSOCredentials: Scalars['Boolean']['output'];
+  readonly updateSamlEnabled: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
   readonly updateThreadItemType: GQLMutateThreadItemTypeResponse;
   readonly updateUserItemType: GQLMutateUserItemTypeResponse;
@@ -2740,6 +2750,10 @@ export type GQLMutationUpdateActionArgs = {
   input: GQLUpdateActionInput;
 };
 
+export type GQLMutationUpdateAllowMultiplePoliciesPerActionArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
 export type GQLMutationUpdateAppealSettingsArgs = {
   input: GQLAppealSettingsInput;
 };
@@ -2752,13 +2766,33 @@ export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
 };
 
+export type GQLMutationUpdateDefaultJobSortOrderArgs = {
+  sortOrder: GQLSortOrder;
+};
+
 export type GQLMutationUpdateExchangeCredentialsArgs = {
   apiName: Scalars['String']['input'];
   credentialsJson: Scalars['String']['input'];
 };
 
+export type GQLMutationUpdateHasAppealsEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateHasReportingRulesEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
 export type GQLMutationUpdateHashBankArgs = {
   input: GQLUpdateHashBankInput;
+};
+
+export type GQLMutationUpdateHideSkipButtonForNonAdminsArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateIgnoreCallbackUrlArgs = {
+  url?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLMutationUpdateLocationBankArgs = {
@@ -2781,8 +2815,20 @@ export type GQLMutationUpdatePolicyArgs = {
   input: GQLUpdatePolicyInput;
 };
 
+export type GQLMutationUpdatePreviewJobsViewEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
 export type GQLMutationUpdateReportingRuleArgs = {
   input: GQLUpdateReportingRuleInput;
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresPolicyForDecisionsArgs = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type GQLMutationUpdateRoleArgs = {
@@ -2799,6 +2845,10 @@ export type GQLMutationUpdateRoutingRuleArgs = {
 
 export type GQLMutationUpdateSsoCredentialsArgs = {
   input: GQLUpdateSsoCredentialsInput;
+};
+
+export type GQLMutationUpdateSamlEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type GQLMutationUpdateTextBankArgs = {
@@ -3078,6 +3128,7 @@ export type GQLOrg = {
   readonly banks?: Maybe<GQLMatchingBanks>;
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
+  readonly defaultJobSortOrder: GQLSortOrder;
   readonly email: Scalars['String']['output'];
   /**
    * NCMEC decisions that did not produce a successful CyberTip report. Returned
@@ -3091,6 +3142,7 @@ export type GQLOrg = {
   readonly hasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly hideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
   readonly id: Scalars['ID']['output'];
+  readonly ignoreCallbackUrl?: Maybe<Scalars['String']['output']>;
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -3107,6 +3159,7 @@ export type GQLOrg = {
   readonly requiresPolicyForDecisionsInMrt: Scalars['Boolean']['output'];
   readonly routingRules: ReadonlyArray<GQLRoutingRule>;
   readonly rules: ReadonlyArray<GQLRule>;
+  readonly samlEnabled: Scalars['Boolean']['output'];
   readonly signals: ReadonlyArray<GQLSignal>;
   readonly ssoCert?: Maybe<Scalars['String']['output']>;
   readonly ssoUrl?: Maybe<Scalars['String']['output']>;
@@ -24703,6 +24756,132 @@ export type GQLUpdateSsoCredentialsMutation = {
   readonly updateSSOCredentials: boolean;
 };
 
+export type GQLDeploymentSettingsQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLDeploymentSettingsQuery = {
+  readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly id: string;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly hasAppealsEnabled: boolean;
+    readonly hasReportingRulesEnabled: boolean;
+    readonly allowMultiplePoliciesPerAction: boolean;
+    readonly requiresPolicyForDecisionsInMrt: boolean;
+    readonly requiresDecisionReasonInMrt: boolean;
+    readonly previewJobsViewEnabled: boolean;
+    readonly hideSkipButtonForNonAdmins: boolean;
+    readonly userStrikeTTL: number;
+    readonly samlEnabled: boolean;
+    readonly ssoUrl?: string | null;
+    readonly ssoCert?: string | null;
+    readonly ignoreCallbackUrl?: string | null;
+    readonly defaultJobSortOrder: GQLSortOrder;
+  } | null;
+  readonly appealSettings?: {
+    readonly __typename: 'AppealSettings';
+    readonly appealsCallbackUrl?: string | null;
+    readonly appealsCallbackHeaders?: JsonObject | null;
+    readonly appealsCallbackBody?: JsonObject | null;
+  } | null;
+};
+
+export type GQLUpdateHasAppealsEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateHasAppealsEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateHasAppealsEnabled: boolean;
+};
+
+export type GQLUpdateHasReportingRulesEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateHasReportingRulesEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateHasReportingRulesEnabled: boolean;
+};
+
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateAllowMultiplePoliciesPerActionMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateAllowMultiplePoliciesPerAction: boolean;
+};
+
+export type GQLUpdateSamlEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateSamlEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateSamlEnabled: boolean;
+};
+
+export type GQLUpdateRequiresPolicyForDecisionsMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresPolicyForDecisionsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresPolicyForDecisions: boolean;
+};
+
+export type GQLUpdateRequiresDecisionReasonMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresDecisionReasonMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresDecisionReason: boolean;
+};
+
+export type GQLUpdateHideSkipButtonForNonAdminsMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateHideSkipButtonForNonAdminsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateHideSkipButtonForNonAdmins: boolean;
+};
+
+export type GQLUpdatePreviewJobsViewEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdatePreviewJobsViewEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updatePreviewJobsViewEnabled: boolean;
+};
+
+export type GQLUpdateIgnoreCallbackUrlMutationVariables = Exact<{
+  url?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+export type GQLUpdateIgnoreCallbackUrlMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateIgnoreCallbackUrl: boolean;
+};
+
+export type GQLUpdateDefaultJobSortOrderMutationVariables = Exact<{
+  sortOrder: GQLSortOrder;
+}>;
+
+export type GQLUpdateDefaultJobSortOrderMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateDefaultJobSortOrder: boolean;
+};
+
 export const GQLCustomActionFragmentFragmentDoc = gql`
   fragment CustomActionFragment on CustomAction {
     id
@@ -43976,6 +44155,618 @@ export type GQLUpdateSsoCredentialsMutationOptions = Apollo.BaseMutationOptions<
   GQLUpdateSsoCredentialsMutation,
   GQLUpdateSsoCredentialsMutationVariables
 >;
+export const GQLDeploymentSettingsDocument = gql`
+  query DeploymentSettings {
+    me {
+      id
+      permissions
+    }
+    myOrg {
+      id
+      hasAppealsEnabled
+      hasReportingRulesEnabled
+      allowMultiplePoliciesPerAction
+      requiresPolicyForDecisionsInMrt
+      requiresDecisionReasonInMrt
+      previewJobsViewEnabled
+      hideSkipButtonForNonAdmins
+      userStrikeTTL
+      samlEnabled
+      ssoUrl
+      ssoCert
+      ignoreCallbackUrl
+      defaultJobSortOrder
+    }
+    appealSettings {
+      appealsCallbackUrl
+      appealsCallbackHeaders
+      appealsCallbackBody
+    }
+  }
+`;
+
+/**
+ * __useGQLDeploymentSettingsQuery__
+ *
+ * To run a query within a React component, call `useGQLDeploymentSettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLDeploymentSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLDeploymentSettingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLDeploymentSettingsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >(GQLDeploymentSettingsDocument, options);
+}
+export function useGQLDeploymentSettingsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >(GQLDeploymentSettingsDocument, options);
+}
+// @ts-ignore
+export function useGQLDeploymentSettingsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLDeploymentSettingsQuery,
+  GQLDeploymentSettingsQueryVariables
+>;
+export function useGQLDeploymentSettingsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLDeploymentSettingsQuery,
+        GQLDeploymentSettingsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLDeploymentSettingsQuery | undefined,
+  GQLDeploymentSettingsQueryVariables
+>;
+export function useGQLDeploymentSettingsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLDeploymentSettingsQuery,
+        GQLDeploymentSettingsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >(GQLDeploymentSettingsDocument, options);
+}
+export type GQLDeploymentSettingsQueryHookResult = ReturnType<
+  typeof useGQLDeploymentSettingsQuery
+>;
+export type GQLDeploymentSettingsLazyQueryHookResult = ReturnType<
+  typeof useGQLDeploymentSettingsLazyQuery
+>;
+export type GQLDeploymentSettingsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLDeploymentSettingsSuspenseQuery
+>;
+export type GQLDeploymentSettingsQueryResult = Apollo.QueryResult<
+  GQLDeploymentSettingsQuery,
+  GQLDeploymentSettingsQueryVariables
+>;
+export const GQLUpdateHasAppealsEnabledDocument = gql`
+  mutation UpdateHasAppealsEnabled($enabled: Boolean!) {
+    updateHasAppealsEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateHasAppealsEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdateHasAppealsEnabledMutation,
+  GQLUpdateHasAppealsEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdateHasAppealsEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateHasAppealsEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHasAppealsEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateHasAppealsEnabledMutation, { data, loading, error }] = useGQLUpdateHasAppealsEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateHasAppealsEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateHasAppealsEnabledMutation,
+    GQLUpdateHasAppealsEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateHasAppealsEnabledMutation,
+    GQLUpdateHasAppealsEnabledMutationVariables
+  >(GQLUpdateHasAppealsEnabledDocument, options);
+}
+export type GQLUpdateHasAppealsEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateHasAppealsEnabledMutation
+>;
+export type GQLUpdateHasAppealsEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateHasAppealsEnabledMutation>;
+export type GQLUpdateHasAppealsEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateHasAppealsEnabledMutation,
+    GQLUpdateHasAppealsEnabledMutationVariables
+  >;
+export const GQLUpdateHasReportingRulesEnabledDocument = gql`
+  mutation UpdateHasReportingRulesEnabled($enabled: Boolean!) {
+    updateHasReportingRulesEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateHasReportingRulesEnabledMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateHasReportingRulesEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateHasReportingRulesEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHasReportingRulesEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateHasReportingRulesEnabledMutation, { data, loading, error }] = useGQLUpdateHasReportingRulesEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateHasReportingRulesEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >(GQLUpdateHasReportingRulesEnabledDocument, options);
+}
+export type GQLUpdateHasReportingRulesEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateHasReportingRulesEnabledMutation
+>;
+export type GQLUpdateHasReportingRulesEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateHasReportingRulesEnabledMutation>;
+export type GQLUpdateHasReportingRulesEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >;
+export const GQLUpdateAllowMultiplePoliciesPerActionDocument = gql`
+  mutation UpdateAllowMultiplePoliciesPerAction($enabled: Boolean!) {
+    updateAllowMultiplePoliciesPerAction(enabled: $enabled)
+  }
+`;
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateAllowMultiplePoliciesPerActionMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateAllowMultiplePoliciesPerActionMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateAllowMultiplePoliciesPerActionMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateAllowMultiplePoliciesPerActionMutation, { data, loading, error }] = useGQLUpdateAllowMultiplePoliciesPerActionMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateAllowMultiplePoliciesPerActionMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >(GQLUpdateAllowMultiplePoliciesPerActionDocument, options);
+}
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationHookResult =
+  ReturnType<typeof useGQLUpdateAllowMultiplePoliciesPerActionMutation>;
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationResult =
+  Apollo.MutationResult<GQLUpdateAllowMultiplePoliciesPerActionMutation>;
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >;
+export const GQLUpdateSamlEnabledDocument = gql`
+  mutation UpdateSamlEnabled($enabled: Boolean!) {
+    updateSamlEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateSamlEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdateSamlEnabledMutation,
+  GQLUpdateSamlEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdateSamlEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateSamlEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateSamlEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateSamlEnabledMutation, { data, loading, error }] = useGQLUpdateSamlEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateSamlEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateSamlEnabledMutation,
+    GQLUpdateSamlEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateSamlEnabledMutation,
+    GQLUpdateSamlEnabledMutationVariables
+  >(GQLUpdateSamlEnabledDocument, options);
+}
+export type GQLUpdateSamlEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateSamlEnabledMutation
+>;
+export type GQLUpdateSamlEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateSamlEnabledMutation>;
+export type GQLUpdateSamlEnabledMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateSamlEnabledMutation,
+  GQLUpdateSamlEnabledMutationVariables
+>;
+export const GQLUpdateRequiresPolicyForDecisionsDocument = gql`
+  mutation UpdateRequiresPolicyForDecisions($enabled: Boolean!) {
+    updateRequiresPolicyForDecisions(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresPolicyForDecisionsMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateRequiresPolicyForDecisionsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresPolicyForDecisionsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresPolicyForDecisionsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresPolicyForDecisionsMutation, { data, loading, error }] = useGQLUpdateRequiresPolicyForDecisionsMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresPolicyForDecisionsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >(GQLUpdateRequiresPolicyForDecisionsDocument, options);
+}
+export type GQLUpdateRequiresPolicyForDecisionsMutationHookResult = ReturnType<
+  typeof useGQLUpdateRequiresPolicyForDecisionsMutation
+>;
+export type GQLUpdateRequiresPolicyForDecisionsMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresPolicyForDecisionsMutation>;
+export type GQLUpdateRequiresPolicyForDecisionsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >;
+export const GQLUpdateRequiresDecisionReasonDocument = gql`
+  mutation UpdateRequiresDecisionReason($enabled: Boolean!) {
+    updateRequiresDecisionReason(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresDecisionReasonMutationFn = Apollo.MutationFunction<
+  GQLUpdateRequiresDecisionReasonMutation,
+  GQLUpdateRequiresDecisionReasonMutationVariables
+>;
+
+/**
+ * __useGQLUpdateRequiresDecisionReasonMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresDecisionReasonMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresDecisionReasonMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresDecisionReasonMutation, { data, loading, error }] = useGQLUpdateRequiresDecisionReasonMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresDecisionReasonMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresDecisionReasonMutation,
+    GQLUpdateRequiresDecisionReasonMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresDecisionReasonMutation,
+    GQLUpdateRequiresDecisionReasonMutationVariables
+  >(GQLUpdateRequiresDecisionReasonDocument, options);
+}
+export type GQLUpdateRequiresDecisionReasonMutationHookResult = ReturnType<
+  typeof useGQLUpdateRequiresDecisionReasonMutation
+>;
+export type GQLUpdateRequiresDecisionReasonMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresDecisionReasonMutation>;
+export type GQLUpdateRequiresDecisionReasonMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresDecisionReasonMutation,
+    GQLUpdateRequiresDecisionReasonMutationVariables
+  >;
+export const GQLUpdateHideSkipButtonForNonAdminsDocument = gql`
+  mutation UpdateHideSkipButtonForNonAdmins($enabled: Boolean!) {
+    updateHideSkipButtonForNonAdmins(enabled: $enabled)
+  }
+`;
+export type GQLUpdateHideSkipButtonForNonAdminsMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateHideSkipButtonForNonAdminsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateHideSkipButtonForNonAdminsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHideSkipButtonForNonAdminsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateHideSkipButtonForNonAdminsMutation, { data, loading, error }] = useGQLUpdateHideSkipButtonForNonAdminsMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateHideSkipButtonForNonAdminsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >(GQLUpdateHideSkipButtonForNonAdminsDocument, options);
+}
+export type GQLUpdateHideSkipButtonForNonAdminsMutationHookResult = ReturnType<
+  typeof useGQLUpdateHideSkipButtonForNonAdminsMutation
+>;
+export type GQLUpdateHideSkipButtonForNonAdminsMutationResult =
+  Apollo.MutationResult<GQLUpdateHideSkipButtonForNonAdminsMutation>;
+export type GQLUpdateHideSkipButtonForNonAdminsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >;
+export const GQLUpdatePreviewJobsViewEnabledDocument = gql`
+  mutation UpdatePreviewJobsViewEnabled($enabled: Boolean!) {
+    updatePreviewJobsViewEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdatePreviewJobsViewEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdatePreviewJobsViewEnabledMutation,
+  GQLUpdatePreviewJobsViewEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdatePreviewJobsViewEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdatePreviewJobsViewEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdatePreviewJobsViewEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdatePreviewJobsViewEnabledMutation, { data, loading, error }] = useGQLUpdatePreviewJobsViewEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdatePreviewJobsViewEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdatePreviewJobsViewEnabledMutation,
+    GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdatePreviewJobsViewEnabledMutation,
+    GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >(GQLUpdatePreviewJobsViewEnabledDocument, options);
+}
+export type GQLUpdatePreviewJobsViewEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdatePreviewJobsViewEnabledMutation
+>;
+export type GQLUpdatePreviewJobsViewEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdatePreviewJobsViewEnabledMutation>;
+export type GQLUpdatePreviewJobsViewEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdatePreviewJobsViewEnabledMutation,
+    GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >;
+export const GQLUpdateIgnoreCallbackUrlDocument = gql`
+  mutation UpdateIgnoreCallbackUrl($url: String) {
+    updateIgnoreCallbackUrl(url: $url)
+  }
+`;
+export type GQLUpdateIgnoreCallbackUrlMutationFn = Apollo.MutationFunction<
+  GQLUpdateIgnoreCallbackUrlMutation,
+  GQLUpdateIgnoreCallbackUrlMutationVariables
+>;
+
+/**
+ * __useGQLUpdateIgnoreCallbackUrlMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateIgnoreCallbackUrlMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateIgnoreCallbackUrlMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateIgnoreCallbackUrlMutation, { data, loading, error }] = useGQLUpdateIgnoreCallbackUrlMutation({
+ *   variables: {
+ *      url: // value for 'url'
+ *   },
+ * });
+ */
+export function useGQLUpdateIgnoreCallbackUrlMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateIgnoreCallbackUrlMutation,
+    GQLUpdateIgnoreCallbackUrlMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateIgnoreCallbackUrlMutation,
+    GQLUpdateIgnoreCallbackUrlMutationVariables
+  >(GQLUpdateIgnoreCallbackUrlDocument, options);
+}
+export type GQLUpdateIgnoreCallbackUrlMutationHookResult = ReturnType<
+  typeof useGQLUpdateIgnoreCallbackUrlMutation
+>;
+export type GQLUpdateIgnoreCallbackUrlMutationResult =
+  Apollo.MutationResult<GQLUpdateIgnoreCallbackUrlMutation>;
+export type GQLUpdateIgnoreCallbackUrlMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateIgnoreCallbackUrlMutation,
+    GQLUpdateIgnoreCallbackUrlMutationVariables
+  >;
+export const GQLUpdateDefaultJobSortOrderDocument = gql`
+  mutation UpdateDefaultJobSortOrder($sortOrder: SortOrder!) {
+    updateDefaultJobSortOrder(sortOrder: $sortOrder)
+  }
+`;
+export type GQLUpdateDefaultJobSortOrderMutationFn = Apollo.MutationFunction<
+  GQLUpdateDefaultJobSortOrderMutation,
+  GQLUpdateDefaultJobSortOrderMutationVariables
+>;
+
+/**
+ * __useGQLUpdateDefaultJobSortOrderMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateDefaultJobSortOrderMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateDefaultJobSortOrderMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateDefaultJobSortOrderMutation, { data, loading, error }] = useGQLUpdateDefaultJobSortOrderMutation({
+ *   variables: {
+ *      sortOrder: // value for 'sortOrder'
+ *   },
+ * });
+ */
+export function useGQLUpdateDefaultJobSortOrderMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateDefaultJobSortOrderMutation,
+    GQLUpdateDefaultJobSortOrderMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateDefaultJobSortOrderMutation,
+    GQLUpdateDefaultJobSortOrderMutationVariables
+  >(GQLUpdateDefaultJobSortOrderDocument, options);
+}
+export type GQLUpdateDefaultJobSortOrderMutationHookResult = ReturnType<
+  typeof useGQLUpdateDefaultJobSortOrderMutation
+>;
+export type GQLUpdateDefaultJobSortOrderMutationResult =
+  Apollo.MutationResult<GQLUpdateDefaultJobSortOrderMutation>;
+export type GQLUpdateDefaultJobSortOrderMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateDefaultJobSortOrderMutation,
+    GQLUpdateDefaultJobSortOrderMutationVariables
+  >;
 export const namedOperations = {
   Query: {
     ApiAuth: 'ApiAuth',
@@ -44104,6 +44895,7 @@ export const namedOperations = {
     OrgSettings: 'OrgSettings',
     PermissionGroups: 'PermissionGroups',
     GetSSOCredentials: 'GetSSOCredentials',
+    DeploymentSettings: 'DeploymentSettings',
   },
   Mutation: {
     RotateApiKey: 'RotateApiKey',
@@ -44187,6 +44979,17 @@ export const namedOperations = {
     UpdateRolePermissions: 'UpdateRolePermissions',
     RenameRole: 'RenameRole',
     UpdateSSOCredentials: 'UpdateSSOCredentials',
+    UpdateHasAppealsEnabled: 'UpdateHasAppealsEnabled',
+    UpdateHasReportingRulesEnabled: 'UpdateHasReportingRulesEnabled',
+    UpdateAllowMultiplePoliciesPerAction:
+      'UpdateAllowMultiplePoliciesPerAction',
+    UpdateSamlEnabled: 'UpdateSamlEnabled',
+    UpdateRequiresPolicyForDecisions: 'UpdateRequiresPolicyForDecisions',
+    UpdateRequiresDecisionReason: 'UpdateRequiresDecisionReason',
+    UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
+    UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
+    UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',
+    UpdateDefaultJobSortOrder: 'UpdateDefaultJobSortOrder',
   },
   Fragment: {
     CustomActionFragment: 'CustomActionFragment',
