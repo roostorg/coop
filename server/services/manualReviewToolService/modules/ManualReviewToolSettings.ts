@@ -17,6 +17,7 @@ export default class ManualReviewToolSettings {
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
         ignore_callback_url: undefined,
+        default_job_sort_order: 'DESC',
       })
       .onConflict((oc) => oc.column('org_id').doNothing())
       .execute();
@@ -58,5 +59,71 @@ export default class ManualReviewToolSettings {
       .where('org_id', '=', orgId)
       .executeTakeFirst();
     return row?.preview_jobs_view_enabled ?? false;
+  }
+
+  async getIgnoreCallbackUrl(orgId: string) {
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_tool_settings')
+      .select(['ignore_callback_url'])
+      .where('org_id', '=', orgId)
+      .executeTakeFirst();
+    return row?.ignore_callback_url ?? null;
+  }
+
+  async updateRequiresPolicyForDecisions(orgId: string, enabled: boolean) {
+    await this.pgQuery
+      .updateTable('manual_review_tool.manual_review_tool_settings')
+      .where('org_id', '=', orgId)
+      .set({ requires_policy_for_decisions: enabled })
+      .execute();
+  }
+
+  async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
+    await this.pgQuery
+      .updateTable('manual_review_tool.manual_review_tool_settings')
+      .where('org_id', '=', orgId)
+      .set({ mrt_requires_decision_reason: enabled })
+      .execute();
+  }
+
+  async updateHideSkipButtonForNonAdmins(orgId: string, enabled: boolean) {
+    await this.pgQuery
+      .updateTable('manual_review_tool.manual_review_tool_settings')
+      .where('org_id', '=', orgId)
+      .set({ hide_skip_button_for_non_admins: enabled })
+      .execute();
+  }
+
+  async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
+    await this.pgQuery
+      .updateTable('manual_review_tool.manual_review_tool_settings')
+      .where('org_id', '=', orgId)
+      .set({ preview_jobs_view_enabled: enabled })
+      .execute();
+  }
+
+  async updateIgnoreCallbackUrl(orgId: string, url: string | null) {
+    await this.pgQuery
+      .updateTable('manual_review_tool.manual_review_tool_settings')
+      .where('org_id', '=', orgId)
+      .set({ ignore_callback_url: url ?? undefined })
+      .execute();
+  }
+
+  async getDefaultJobSortOrder(orgId: string) {
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_tool_settings')
+      .select(['default_job_sort_order'])
+      .where('org_id', '=', orgId)
+      .executeTakeFirst();
+    return row?.default_job_sort_order ?? 'DESC';
+  }
+
+  async updateDefaultJobSortOrder(orgId: string, sortOrder: string) {
+    await this.pgQuery
+      .updateTable('manual_review_tool.manual_review_tool_settings')
+      .where('org_id', '=', orgId)
+      .set({ default_job_sort_order: sortOrder })
+      .execute();
   }
 }

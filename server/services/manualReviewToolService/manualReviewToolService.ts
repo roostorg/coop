@@ -957,6 +957,7 @@ export class ManualReviewToolService {
     orgId: string;
     queueId: string;
     limit?: number;
+    sortOrder?: 'ASC' | 'DESC';
   }) {
     return this.queueOps.getAllJobsForQueue(opts);
   }
@@ -1204,6 +1205,53 @@ export class ManualReviewToolService {
 
   async getPreviewJobsViewEnabled(orgId: string) {
     return this.manualReviewToolSettings.getPreviewJobsViewEnabled(orgId);
+  }
+
+  async getIgnoreCallbackUrl(orgId: string) {
+    return this.manualReviewToolSettings.getIgnoreCallbackUrl(orgId);
+  }
+
+  async updateRequiresPolicyForDecisions(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresPolicyForDecisions(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresDecisionReason(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateHideSkipButtonForNonAdmins(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateHideSkipButtonForNonAdmins(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updatePreviewJobsViewEnabled(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateIgnoreCallbackUrl(orgId: string, url: string | null) {
+    return this.manualReviewToolSettings.updateIgnoreCallbackUrl(orgId, url);
+  }
+
+  async getDefaultJobSortOrder(orgId: string) {
+    return this.manualReviewToolSettings.getDefaultJobSortOrder(orgId);
+  }
+
+  async updateDefaultJobSortOrder(orgId: string, sortOrder: string) {
+    return this.manualReviewToolSettings.updateDefaultJobSortOrder(
+      orgId,
+      sortOrder,
+    );
   }
 
   async getJobComments(opts: { orgId: string; jobId: string }) {
