@@ -164,7 +164,7 @@ export default function AppealsTab() {
                 Custom headers sent with appeal webhook requests (JSON format)
               </Text>
             </div>
-            <div className="w-96 shrink-0">
+            <div className="w-80 shrink-0">
               <Textarea
                 className="h-40 font-mono text-sm"
                 placeholder={'{\n  "Authorization": "Bearer YOUR_KEY"\n}'}
@@ -188,7 +188,7 @@ export default function AppealsTab() {
                 Custom body template for appeal webhook requests
               </Text>
             </div>
-            <div className="w-96 shrink-0">
+            <div className="w-80 shrink-0">
               <Textarea
                 className="h-40 font-mono text-sm"
                 placeholder={'{\n  "source": "coop"\n}'}

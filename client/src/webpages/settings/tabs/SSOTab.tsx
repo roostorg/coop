@@ -159,7 +159,7 @@ export default function SSOTab() {
                 The SAML identity provider signing certificate
               </Text>
             </div>
-            <div className="w-96 shrink-0">
+            <div className="w-80 shrink-0">
               <Textarea
                 className="h-44"
                 placeholder="-----BEGIN CERTIFICATE-----"
