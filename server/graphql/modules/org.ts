@@ -12,6 +12,7 @@ import {
   type GQLOrgResolvers,
   type GQLPendingInvite,
   type GQLQueryResolvers,
+  type GQLSortOrder,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
@@ -62,8 +63,11 @@ const typeDefs = /* GraphQL */ `
     userStrikeThresholds: [UserStrikeThreshold!]!
     userStrikeTTL: Int!
     isDemoOrg: Boolean!
+    samlEnabled: Boolean!
     ssoUrl: String
     ssoCert: String
+    ignoreCallbackUrl: String
+    defaultJobSortOrder: SortOrder!
     hasPartialItemsEndpoint: Boolean!
   }
 
@@ -140,6 +144,16 @@ const typeDefs = /* GraphQL */ `
     ): SetModeratorSafetySettingsSuccessResponse
     updateSSOCredentials(input: UpdateSSOCredentialsInput!): Boolean!
     updateOrgInfo(input: UpdateOrgInfoInput!): UpdateOrgInfoSuccessResponse!
+    updateHasAppealsEnabled(enabled: Boolean!): Boolean!
+    updateHasReportingRulesEnabled(enabled: Boolean!): Boolean!
+    updateAllowMultiplePoliciesPerAction(enabled: Boolean!): Boolean!
+    updateSamlEnabled(enabled: Boolean!): Boolean!
+    updateRequiresPolicyForDecisions(enabled: Boolean!): Boolean!
+    updateRequiresDecisionReason(enabled: Boolean!): Boolean!
+    updateHideSkipButtonForNonAdmins(enabled: Boolean!): Boolean!
+    updatePreviewJobsViewEnabled(enabled: Boolean!): Boolean!
+    updateIgnoreCallbackUrl(url: String): Boolean!
+    updateDefaultJobSortOrder(sortOrder: SortOrder!): Boolean!
   }
 `;
 
@@ -556,6 +570,13 @@ const Org: GQLOrgResolvers = {
       org.id,
     );
   },
+  async defaultJobSortOrder(org, _, context) {
+    const value =
+      await context.services.ManualReviewToolService.getDefaultJobSortOrder(
+        org.id,
+      );
+    return value as GQLSortOrder;
+  },
   async usersWhoCanReviewEveryQueue(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
@@ -593,6 +614,39 @@ const Org: GQLOrgResolvers = {
   },
   async isDemoOrg(org, _, context) {
     return context.services.OrgSettingsService.isDemoOrg(org.id);
+  },
+  async samlEnabled(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view SSO settings',
+      );
+    }
+
+    const settings = await context.services.OrgSettingsService.getSamlSettings(
+      org.id,
+    );
+    return settings?.saml_enabled ?? false;
+  },
+  async ignoreCallbackUrl(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view ignore callback settings',
+      );
+    }
+
+    return context.services.ManualReviewToolService.getIgnoreCallbackUrl(
+      org.id,
+    );
   },
   async ssoUrl(org, _, context) {
     const user = context.getUser();
@@ -765,6 +819,168 @@ const Mutation: GQLMutationResolvers = {
     await context.dataSources.orgAPI.updateOrgInfo(user.orgId, input);
 
     return gqlSuccessResult({}, 'UpdateOrgInfoSuccessResponse');
+  },
+  async updateHasAppealsEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateHasAppealsEnabled({
+      orgId: user.orgId,
+      enabled,
+    });
+    return true;
+  },
+  async updateHasReportingRulesEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateHasReportingRulesEnabled({
+      orgId: user.orgId,
+      enabled,
+    });
+    return true;
+  },
+  async updateAllowMultiplePoliciesPerAction(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateAllowMultiplePoliciesPerAction(
+      {
+        orgId: user.orgId,
+        enabled,
+      },
+    );
+    return true;
+  },
+  async updateSamlEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to manage SSO settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateSamlEnabled({
+      orgId: user.orgId,
+      enabled,
+    });
+    return true;
+  },
+  async updateRequiresPolicyForDecisions(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateRequiresPolicyForDecisions(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateRequiresDecisionReason(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateRequiresDecisionReason(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateHideSkipButtonForNonAdmins(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateHideSkipButtonForNonAdmins(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updatePreviewJobsViewEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updatePreviewJobsViewEnabled(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateIgnoreCallbackUrl(_, { url }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateIgnoreCallbackUrl(
+      user.orgId,
+      url ?? null,
+    );
+    return true;
+  },
+  async updateDefaultJobSortOrder(_, { sortOrder }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateDefaultJobSortOrder(
+      user.orgId,
+      sortOrder,
+    );
+    return true;
   },
 };
 

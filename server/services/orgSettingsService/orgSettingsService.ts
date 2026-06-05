@@ -189,6 +189,52 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         return false;
       }
     },
+    async updateHasAppealsEnabled(input: { orgId: string; enabled: boolean }) {
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({ has_appeals_enabled: input.enabled })
+        .execute();
+    },
+    async updateHasReportingRulesEnabled(input: {
+      orgId: string;
+      enabled: boolean;
+    }) {
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({ has_reporting_rules_enabled: input.enabled })
+        .execute();
+    },
+    async updateAllowMultiplePoliciesPerAction(input: {
+      orgId: string;
+      enabled: boolean;
+    }) {
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({ allow_multiple_policies_per_action: input.enabled })
+        .execute();
+    },
+    async updateSamlEnabled(input: { orgId: string; enabled: boolean }) {
+      if (input.enabled) {
+        const settings = await pgQuery
+          .selectFrom('public.org_settings')
+          .select(['sso_url', 'cert'])
+          .where('org_id', '=', input.orgId)
+          .executeTakeFirst();
+        if (!settings?.sso_url || !settings?.cert) {
+          throw new Error(
+            'Cannot enable SAML SSO without configuring SSO URL and certificate first',
+          );
+        }
+      }
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({ saml_enabled: input.enabled })
+        .execute();
+    },
     async isDemoOrg(orgId: string) {
       const rows = await pgQuery
         .selectFrom('public.org_settings')
