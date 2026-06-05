@@ -6,7 +6,7 @@ When a user on your platform is unsatisfied with a moderation decision and submi
 
 To populate appeals in your review queues, send Coop appealed decisions and create a routing rule targeting them.
 
-![Coop routing rule configured to send all appeals to a dedicated appeals queue](../images/coop-appeal-routing.png)
+![Coop routing rule configured to send all appeals to a dedicated appeals queue](../images/appeal-routing.png)
 
 Appeals arrive in the Review Console as jobs, similar to reports. The job shows the item that was originally actioned, the policies cited, the user's appeal reason, and any additional context you included when submitting the appeal.
 

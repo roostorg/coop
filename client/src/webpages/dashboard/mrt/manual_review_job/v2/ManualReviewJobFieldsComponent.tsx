@@ -30,6 +30,52 @@ import ManualReviewJobContentBlurableImage from '../ManualReviewJobContentBlurab
 import ManualReviewJobContentBlurableVideo from '../ManualReviewJobContentBlurableVideo';
 import { BlurStrength } from './ncmec/NCMECMediaViewer';
 
+// Best-effort media-kind inference from a URL's file extension. Mirrors the
+// server's `detectMediaKindFromUrl` so the review tool can still render a
+// preview when a MEDIA value's `mediaType` is absent — e.g. items submitted
+// before the field became MEDIA, or legacy data missing the resolved kind.
+const MEDIA_EXTENSION_TO_KIND: Readonly<Record<string, ScalarType>> = {
+  jpg: 'IMAGE',
+  jpeg: 'IMAGE',
+  png: 'IMAGE',
+  gif: 'IMAGE',
+  webp: 'IMAGE',
+  bmp: 'IMAGE',
+  svg: 'IMAGE',
+  avif: 'IMAGE',
+  heic: 'IMAGE',
+  heif: 'IMAGE',
+  tif: 'IMAGE',
+  tiff: 'IMAGE',
+  mp4: 'VIDEO',
+  m4v: 'VIDEO',
+  mov: 'VIDEO',
+  webm: 'VIDEO',
+  mkv: 'VIDEO',
+  avi: 'VIDEO',
+  flv: 'VIDEO',
+  mp3: 'AUDIO',
+  m4a: 'AUDIO',
+  wav: 'AUDIO',
+  aac: 'AUDIO',
+  flac: 'AUDIO',
+  opus: 'AUDIO',
+  wma: 'AUDIO',
+};
+
+function inferMediaKindFromUrl(url: string): ScalarType | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+  const dot = pathname.lastIndexOf('.');
+  if (dot < 0 || dot === pathname.length - 1) return null;
+  const ext = pathname.slice(dot + 1).toLowerCase();
+  return MEDIA_EXTENSION_TO_KIND[ext] ?? null;
+}
+
 type FieldsComponentOptions = {
   hideLabels?: boolean;
   maxWidthImage?: number;
@@ -245,13 +291,16 @@ function TableRowComponent(props: {
       );
     }
     case 'MEDIA': {
-      // Polymorphic field — render with the kind detected at coercion time,
-      // falling back to a plain link when detection didn't resolve.
+      // Polymorphic field — render with the kind detected at coercion time.
+      // When that's missing (legacy data, or items submitted before the field
+      // became MEDIA), fall back to inferring the kind from the URL extension,
+      // and only render a plain link if even that doesn't resolve.
       const url = value?.url;
       if (url == null) {
         return <NotProvidedComponent />;
       }
-      if (value.mediaType === 'IMAGE') {
+      const resolvedMediaType = value.mediaType ?? inferMediaKindFromUrl(url);
+      if (resolvedMediaType === 'IMAGE') {
         return (
           <div className="flex flex-col px-2 align-top text-start">
             <ManualReviewJobContentBlurableImage
@@ -275,7 +324,7 @@ function TableRowComponent(props: {
           </div>
         );
       }
-      if (value.mediaType === 'VIDEO') {
+      if (resolvedMediaType === 'VIDEO') {
         return (
           <div className="p-2 align-top text-start">
             <ManualReviewJobContentBlurableVideo
@@ -299,7 +348,7 @@ function TableRowComponent(props: {
           </div>
         );
       }
-      if (value.mediaType === 'AUDIO') {
+      if (resolvedMediaType === 'AUDIO') {
         return (
           <div className="flex flex-col px-2 align-top text-start">
             {label ? <div className="pr-3 font-bold">{label}</div> : null}

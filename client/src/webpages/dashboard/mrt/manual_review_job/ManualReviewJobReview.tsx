@@ -162,7 +162,7 @@ gql`
           ...JobFields
         }
       }
-      role
+      permissions
     }
   }
 
@@ -203,6 +203,11 @@ gql`
         status
         type
         detail
+      }
+      ... on MissingRequiredPolicyForDecisionError {
+        title
+        status
+        type
       }
     }
   }
@@ -573,6 +578,25 @@ function ManualReviewJobReviewImpl(props: {
             });
             break;
           }
+          case 'MissingRequiredPolicyForDecisionError': {
+            // Server-side backstop for `requiresPolicyForDecisionsInMrt`.
+            // Normally the canBeSubmitted gate prevents reaching this state,
+            // but the org setting could have flipped between page load and
+            // submit — surface a clear message and let the reviewer fix it.
+            setModalInfo({
+              visible: true,
+              modalBody:
+                'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
+              footer: [
+                {
+                  title: 'Ok',
+                  type: 'primary',
+                  onClick: hideModal,
+                },
+              ],
+            });
+            break;
+          }
         }
       },
     });
@@ -787,7 +811,10 @@ function ManualReviewJobReviewImpl(props: {
   if (!closedJob && !queue) {
     throw Error(`Queue not found for ID ${queueId}`);
   }
-  const userIsAdmin = data.me?.role === 'ADMIN';
+  const userCanBypassSkipRestriction = userHasPermissions(
+    data.me?.permissions,
+    [GQLUserPermission.ManageOrg],
+  );
 
   const filteredActions = org.actions.filter(
     ({ id }) => !queue?.hiddenActionIds?.includes(id),
@@ -1289,7 +1316,8 @@ function ManualReviewJobReviewImpl(props: {
   );
 
   const skipToNextJobButton =
-    org.hideSkipButtonForNonAdmins && !userIsAdmin ? undefined : (
+    org.hideSkipButtonForNonAdmins &&
+    !userCanBypassSkipRestriction ? undefined : (
       <Button
         className="bottom-0 w-1/3 !px-2 mb-2 overflow-hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]"
         onClick={skipToNextJob}

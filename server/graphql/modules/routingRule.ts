@@ -1,7 +1,4 @@
-import {
-  hasPermission,
-  UserPermission,
-} from '../../services/userManagementService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   isNonEmptyArray,
@@ -15,7 +12,7 @@ import {
   type GQLQueryResolvers,
   type GQLRoutingRuleResolvers,
 } from '../generated.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -127,10 +124,9 @@ const RoutingRule: GQLRoutingRuleResolvers = {
       throw unauthenticatedError('User required');
     }
 
-    const userCanEditMRTQueues = hasPermission(
-      UserPermission.EDIT_MRT_QUEUES,
-      user.role,
-    );
+    const userCanEditMRTQueues = user
+      .getPermissions()
+      .includes(UserPermission.EDIT_MRT_QUEUES);
 
     const queueSelector = {
       orgId: user.orgId,
@@ -178,6 +174,11 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('User required.');
     }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ROUTING_RULES)) {
+      throw forbiddenError(
+        'User does not have permission to manage routing rules',
+      );
+    }
 
     if (!itemTypeIdsAreValid(itemTypeIds)) {
       throw new Error('itemTypeIds must be a non-empty array');
@@ -216,6 +217,11 @@ const Mutation: GQLMutationResolvers = {
     const { itemTypeIds } = params.input;
     if (user == null) {
       throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ROUTING_RULES)) {
+      throw forbiddenError(
+        'User does not have permission to manage routing rules',
+      );
     }
 
     if (itemTypeIds && !itemTypeIdsAreValid(itemTypeIds)) {
@@ -262,6 +268,11 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('User required.');
     }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ROUTING_RULES)) {
+      throw forbiddenError(
+        'User does not have permission to manage routing rules',
+      );
+    }
 
     return context.services.ManualReviewToolService.deleteRoutingRule({
       id: params.input.id,
@@ -272,6 +283,11 @@ const Mutation: GQLMutationResolvers = {
     const user = context.getUser();
     if (user == null) {
       throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ROUTING_RULES)) {
+      throw forbiddenError(
+        'User does not have permission to manage routing rules',
+      );
     }
 
     const { order } = params.input;
