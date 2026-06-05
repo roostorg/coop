@@ -44,6 +44,17 @@ const typeDefs = /* GraphQL */ `
     integrationConfigs: [IntegrationConfig!]!
     hasReportingRulesEnabled: Boolean!
     hasNCMECReportingEnabled: Boolean!
+    """
+    How much media a reviewer must classify before they can send an NCMEC
+    report for this org. Readable by any org member (not just MANAGE_ORG) so the
+    NCMEC review UI can enforce the policy. Defaults to ALL when unset.
+    """
+    ncmecMediaReviewRequirement: NcmecMediaReviewRequirement!
+    """
+    Minimum number of media items that must be reviewed before sending an NCMEC
+    report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
+    """
+    ncmecMinMediaToReview: Int!
     hasAppealsEnabled: Boolean!
     ncmecReports: [NCMECReport!]!
     """
@@ -420,6 +431,26 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('User required.');
     }
     return context.services.NcmecService.hasNCMECReportingEnabled(org.id);
+  },
+  async ncmecMediaReviewRequirement(org, _, context) {
+    const user = context.getUser();
+    if (!user || user.orgId !== org.id) {
+      throw unauthenticatedError('User required.');
+    }
+    const settings = await context.services.NcmecService.getNcmecOrgSettings(
+      org.id,
+    );
+    return settings?.mediaReviewRequirement === 'MINIMUM' ? 'MINIMUM' : 'ALL';
+  },
+  async ncmecMinMediaToReview(org, _, context) {
+    const user = context.getUser();
+    if (!user || user.orgId !== org.id) {
+      throw unauthenticatedError('User required.');
+    }
+    const settings = await context.services.NcmecService.getNcmecOrgSettings(
+      org.id,
+    );
+    return settings?.minMediaToReview ?? 1;
   },
   async ncmecReports(org, _, context) {
     const user = context.getUser();

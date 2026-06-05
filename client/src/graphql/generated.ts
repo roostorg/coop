@@ -2967,6 +2967,19 @@ export type GQLNcmecMediaInput = {
   readonly url: Scalars['String']['input'];
 };
 
+/**
+ * How much media a reviewer must classify before an NCMEC report can be sent.
+ * ALL requires every piece of media on the account to be reviewed (the original
+ * behaviour); MINIMUM only requires `minMediaToReview` items, so reviewers
+ * don't have to classify hundreds of items to submit a report.
+ */
+export const GQLNcmecMediaReviewRequirement = {
+  All: 'ALL',
+  Minimum: 'MINIMUM',
+} as const;
+
+export type GQLNcmecMediaReviewRequirement =
+  (typeof GQLNcmecMediaReviewRequirement)[keyof typeof GQLNcmecMediaReviewRequirement];
 export type GQLNcmecOrgSettings = {
   readonly __typename: 'NcmecOrgSettings';
   readonly companyTemplate?: Maybe<Scalars['String']['output']>;
@@ -2978,6 +2991,8 @@ export type GQLNcmecOrgSettings = {
   readonly defaultInternetDetailType?: Maybe<GQLNcmecInternetDetailType>;
   readonly defaultNcmecQueueId?: Maybe<Scalars['String']['output']>;
   readonly legalUrl?: Maybe<Scalars['String']['output']>;
+  readonly mediaReviewRequirement?: Maybe<GQLNcmecMediaReviewRequirement>;
+  readonly minMediaToReview?: Maybe<Scalars['Int']['output']>;
   readonly moreInfoUrl?: Maybe<Scalars['String']['output']>;
   readonly ncmecAdditionalInfoEndpoint?: Maybe<Scalars['String']['output']>;
   readonly ncmecPreservationEndpoint?: Maybe<Scalars['String']['output']>;
@@ -2996,6 +3011,8 @@ export type GQLNcmecOrgSettingsInput = {
   readonly defaultInternetDetailType?: InputMaybe<GQLNcmecInternetDetailType>;
   readonly defaultNcmecQueueId?: InputMaybe<Scalars['String']['input']>;
   readonly legalUrl?: InputMaybe<Scalars['String']['input']>;
+  readonly mediaReviewRequirement?: InputMaybe<GQLNcmecMediaReviewRequirement>;
+  readonly minMediaToReview?: InputMaybe<Scalars['Int']['input']>;
   readonly moreInfoUrl?: InputMaybe<Scalars['String']['input']>;
   readonly ncmecAdditionalInfoEndpoint?: InputMaybe<Scalars['String']['input']>;
   readonly ncmecPreservationEndpoint?: InputMaybe<Scalars['String']['input']>;
@@ -3096,6 +3113,17 @@ export type GQLOrg = {
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
+  /**
+   * How much media a reviewer must classify before they can send an NCMEC
+   * report for this org. Readable by any org member (not just MANAGE_ORG) so the
+   * NCMEC review UI can enforce the policy. Defaults to ALL when unset.
+   */
+  readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+  /**
+   * Minimum number of media items that must be reviewed before sending an NCMEC
+   * report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
+   */
+  readonly ncmecMinMediaToReview: Scalars['Int']['output'];
   readonly ncmecReports: ReadonlyArray<GQLNcmecReport>;
   readonly onCallAlertEmail?: Maybe<Scalars['String']['output']>;
   readonly pendingInvites: ReadonlyArray<GQLPendingInvite>;
@@ -16725,6 +16753,19 @@ export type GQLGetLatestUserSubmittedItemsWithThreadsQuery = {
   }>;
 };
 
+export type GQLNcmecMediaReviewPolicyQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLNcmecMediaReviewPolicyQuery = {
+  readonly __typename: 'Query';
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+    readonly ncmecMinMediaToReview: number;
+  } | null;
+};
+
 export type GQLGetMoreInfoForThreadItemsQueryVariables = Exact<{
   ids: ReadonlyArray<GQLItemIdentifierInput> | GQLItemIdentifierInput;
 }>;
@@ -24532,6 +24573,8 @@ export type GQLNcmecOrgSettingsQuery = {
     readonly contactPersonFirstName?: string | null;
     readonly contactPersonLastName?: string | null;
     readonly contactPersonPhone?: string | null;
+    readonly mediaReviewRequirement?: GQLNcmecMediaReviewRequirement | null;
+    readonly minMediaToReview?: number | null;
   } | null;
   readonly myOrg?: {
     readonly __typename: 'Org';
@@ -35200,6 +35243,105 @@ export type GQLGetLatestUserSubmittedItemsWithThreadsQueryResult =
     GQLGetLatestUserSubmittedItemsWithThreadsQuery,
     GQLGetLatestUserSubmittedItemsWithThreadsQueryVariables
   >;
+export const GQLNcmecMediaReviewPolicyDocument = gql`
+  query NcmecMediaReviewPolicy {
+    myOrg {
+      ncmecMediaReviewRequirement
+      ncmecMinMediaToReview
+    }
+  }
+`;
+
+/**
+ * __useGQLNcmecMediaReviewPolicyQuery__
+ *
+ * To run a query within a React component, call `useGQLNcmecMediaReviewPolicyQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLNcmecMediaReviewPolicyQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLNcmecMediaReviewPolicyQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLNcmecMediaReviewPolicyQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >(GQLNcmecMediaReviewPolicyDocument, options);
+}
+export function useGQLNcmecMediaReviewPolicyLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >(GQLNcmecMediaReviewPolicyDocument, options);
+}
+// @ts-ignore
+export function useGQLNcmecMediaReviewPolicySuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLNcmecMediaReviewPolicyQuery,
+  GQLNcmecMediaReviewPolicyQueryVariables
+>;
+export function useGQLNcmecMediaReviewPolicySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLNcmecMediaReviewPolicyQuery,
+        GQLNcmecMediaReviewPolicyQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLNcmecMediaReviewPolicyQuery | undefined,
+  GQLNcmecMediaReviewPolicyQueryVariables
+>;
+export function useGQLNcmecMediaReviewPolicySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLNcmecMediaReviewPolicyQuery,
+        GQLNcmecMediaReviewPolicyQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >(GQLNcmecMediaReviewPolicyDocument, options);
+}
+export type GQLNcmecMediaReviewPolicyQueryHookResult = ReturnType<
+  typeof useGQLNcmecMediaReviewPolicyQuery
+>;
+export type GQLNcmecMediaReviewPolicyLazyQueryHookResult = ReturnType<
+  typeof useGQLNcmecMediaReviewPolicyLazyQuery
+>;
+export type GQLNcmecMediaReviewPolicySuspenseQueryHookResult = ReturnType<
+  typeof useGQLNcmecMediaReviewPolicySuspenseQuery
+>;
+export type GQLNcmecMediaReviewPolicyQueryResult = Apollo.QueryResult<
+  GQLNcmecMediaReviewPolicyQuery,
+  GQLNcmecMediaReviewPolicyQueryVariables
+>;
 export const GQLGetMoreInfoForThreadItemsDocument = gql`
   query getMoreInfoForThreadItems($ids: [ItemIdentifierInput!]!) {
     partialItems(input: $ids) {
@@ -43137,6 +43279,8 @@ export const GQLNcmecOrgSettingsDocument = gql`
       contactPersonFirstName
       contactPersonLastName
       contactPersonPhone
+      mediaReviewRequirement
+      minMediaToReview
     }
     myOrg {
       hasNCMECReportingEnabled
@@ -44039,6 +44183,7 @@ export const namedOperations = {
     AllManualReviewQueues: 'AllManualReviewQueues',
     getLatestUserSubmittedItemsWithThreads:
       'getLatestUserSubmittedItemsWithThreads',
+    NcmecMediaReviewPolicy: 'NcmecMediaReviewPolicy',
     getMoreInfoForThreadItems: 'getMoreInfoForThreadItems',
     getMoreInfoForPartialItems: 'getMoreInfoForPartialItems',
     getExistingJobsForItem: 'getExistingJobsForItem',
