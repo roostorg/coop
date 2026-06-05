@@ -2541,7 +2541,6 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
-  readonly updateDefaultJobSortOrder: Scalars['Boolean']['output'];
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
@@ -2832,10 +2831,6 @@ export type GQLMutationUpdateContentItemTypeArgs = {
 
 export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
-};
-
-export type GQLMutationUpdateDefaultJobSortOrderArgs = {
-  sortOrder: GQLSortOrder;
 };
 
 export type GQLMutationUpdateExchangeCredentialsArgs = {
@@ -3196,7 +3191,6 @@ export type GQLOrg = {
   readonly banks?: Maybe<GQLMatchingBanks>;
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
-  readonly defaultJobSortOrder: GQLSortOrder;
   readonly email: Scalars['String']['output'];
   /**
    * NCMEC decisions that did not produce a successful CyberTip report. Returned
@@ -11139,12 +11133,6 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateContentRuleArgs, 'input'>
   >;
-  updateDefaultJobSortOrder?: Resolver<
-    GQLResolversTypes['Boolean'],
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationUpdateDefaultJobSortOrderArgs, 'sortOrder'>
-  >;
   updateExchangeCredentials?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -11667,11 +11655,6 @@ export type GQLOrgResolvers<
   >;
   defaultInterfacePreferences?: Resolver<
     GQLResolversTypes['UserInterfacePreferences'],
-    ParentType,
-    ContextType
-  >;
-  defaultJobSortOrder?: Resolver<
-    GQLResolversTypes['SortOrder'],
     ParentType,
     ContextType
   >;

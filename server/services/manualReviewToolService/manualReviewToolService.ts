@@ -957,7 +957,6 @@ export class ManualReviewToolService {
     orgId: string;
     queueId: string;
     limit?: number;
-    sortOrder?: 'ASC' | 'DESC';
   }) {
     return this.queueOps.getAllJobsForQueue(opts);
   }
@@ -1241,17 +1240,6 @@ export class ManualReviewToolService {
 
   async updateIgnoreCallbackUrl(orgId: string, url: string | null) {
     return this.manualReviewToolSettings.updateIgnoreCallbackUrl(orgId, url);
-  }
-
-  async getDefaultJobSortOrder(orgId: string) {
-    return this.manualReviewToolSettings.getDefaultJobSortOrder(orgId);
-  }
-
-  async updateDefaultJobSortOrder(orgId: string, sortOrder: 'ASC' | 'DESC') {
-    return this.manualReviewToolSettings.updateDefaultJobSortOrder(
-      orgId,
-      sortOrder,
-    );
   }
 
   async getJobComments(opts: { orgId: string; jobId: string }) {

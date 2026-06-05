@@ -35,7 +35,6 @@ gql`
       ssoUrl
       ssoCert
       ignoreCallbackUrl
-      defaultJobSortOrder
     }
     appealSettings {
       appealsCallbackUrl
@@ -70,9 +69,6 @@ gql`
   }
   mutation UpdateIgnoreCallbackUrl($url: String) {
     updateIgnoreCallbackUrl(url: $url)
-  }
-  mutation UpdateDefaultJobSortOrder($sortOrder: SortOrder!) {
-    updateDefaultJobSortOrder(sortOrder: $sortOrder)
   }
 `;
 

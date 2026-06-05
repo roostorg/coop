@@ -81,7 +81,6 @@ const deploymentSettingsMock: MockedResponse = {
         hideSkipButtonForNonAdmins: false,
         previewJobsViewEnabled: false,
         ignoreCallbackUrl: null,
-        defaultJobSortOrder: 'DESC',
         userStrikeTTL: 90,
       },
       appealSettings: {
@@ -446,7 +445,6 @@ describe('SettingsPage', () => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
         expect(screen.getByText('Webhooks')).toBeInTheDocument();
-        expect(screen.getByText('Newest First')).toBeInTheDocument();
       });
     });
 

@@ -2473,7 +2473,6 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
-  readonly updateDefaultJobSortOrder: Scalars['Boolean']['output'];
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
@@ -2764,10 +2763,6 @@ export type GQLMutationUpdateContentItemTypeArgs = {
 
 export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
-};
-
-export type GQLMutationUpdateDefaultJobSortOrderArgs = {
-  sortOrder: GQLSortOrder;
 };
 
 export type GQLMutationUpdateExchangeCredentialsArgs = {
@@ -3128,7 +3123,6 @@ export type GQLOrg = {
   readonly banks?: Maybe<GQLMatchingBanks>;
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
-  readonly defaultJobSortOrder: GQLSortOrder;
   readonly email: Scalars['String']['output'];
   /**
    * NCMEC decisions that did not produce a successful CyberTip report. Returned
@@ -24782,7 +24776,6 @@ export type GQLDeploymentSettingsQuery = {
     readonly ssoUrl?: string | null;
     readonly ssoCert?: string | null;
     readonly ignoreCallbackUrl?: string | null;
-    readonly defaultJobSortOrder: GQLSortOrder;
   } | null;
   readonly appealSettings?: {
     readonly __typename: 'AppealSettings';
@@ -24871,15 +24864,6 @@ export type GQLUpdateIgnoreCallbackUrlMutationVariables = Exact<{
 export type GQLUpdateIgnoreCallbackUrlMutation = {
   readonly __typename: 'Mutation';
   readonly updateIgnoreCallbackUrl: boolean;
-};
-
-export type GQLUpdateDefaultJobSortOrderMutationVariables = Exact<{
-  sortOrder: GQLSortOrder;
-}>;
-
-export type GQLUpdateDefaultJobSortOrderMutation = {
-  readonly __typename: 'Mutation';
-  readonly updateDefaultJobSortOrder: boolean;
 };
 
 export const GQLCustomActionFragmentFragmentDoc = gql`
@@ -44175,7 +44159,6 @@ export const GQLDeploymentSettingsDocument = gql`
       ssoUrl
       ssoCert
       ignoreCallbackUrl
-      defaultJobSortOrder
     }
     appealSettings {
       appealsCallbackUrl
@@ -44718,55 +44701,6 @@ export type GQLUpdateIgnoreCallbackUrlMutationOptions =
     GQLUpdateIgnoreCallbackUrlMutation,
     GQLUpdateIgnoreCallbackUrlMutationVariables
   >;
-export const GQLUpdateDefaultJobSortOrderDocument = gql`
-  mutation UpdateDefaultJobSortOrder($sortOrder: SortOrder!) {
-    updateDefaultJobSortOrder(sortOrder: $sortOrder)
-  }
-`;
-export type GQLUpdateDefaultJobSortOrderMutationFn = Apollo.MutationFunction<
-  GQLUpdateDefaultJobSortOrderMutation,
-  GQLUpdateDefaultJobSortOrderMutationVariables
->;
-
-/**
- * __useGQLUpdateDefaultJobSortOrderMutation__
- *
- * To run a mutation, you first call `useGQLUpdateDefaultJobSortOrderMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateDefaultJobSortOrderMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlUpdateDefaultJobSortOrderMutation, { data, loading, error }] = useGQLUpdateDefaultJobSortOrderMutation({
- *   variables: {
- *      sortOrder: // value for 'sortOrder'
- *   },
- * });
- */
-export function useGQLUpdateDefaultJobSortOrderMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateDefaultJobSortOrderMutation,
-    GQLUpdateDefaultJobSortOrderMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLUpdateDefaultJobSortOrderMutation,
-    GQLUpdateDefaultJobSortOrderMutationVariables
-  >(GQLUpdateDefaultJobSortOrderDocument, options);
-}
-export type GQLUpdateDefaultJobSortOrderMutationHookResult = ReturnType<
-  typeof useGQLUpdateDefaultJobSortOrderMutation
->;
-export type GQLUpdateDefaultJobSortOrderMutationResult =
-  Apollo.MutationResult<GQLUpdateDefaultJobSortOrderMutation>;
-export type GQLUpdateDefaultJobSortOrderMutationOptions =
-  Apollo.BaseMutationOptions<
-    GQLUpdateDefaultJobSortOrderMutation,
-    GQLUpdateDefaultJobSortOrderMutationVariables
-  >;
 export const namedOperations = {
   Query: {
     ApiAuth: 'ApiAuth',
@@ -44989,7 +44923,6 @@ export const namedOperations = {
     UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
     UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
     UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',
-    UpdateDefaultJobSortOrder: 'UpdateDefaultJobSortOrder',
   },
   Fragment: {
     CustomActionFragment: 'CustomActionFragment',

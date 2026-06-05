@@ -17,7 +17,6 @@ export default class ManualReviewToolSettings {
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
         ignore_callback_url: null,
-        default_job_sort_order: 'DESC',
       })
       .onConflict((oc) => oc.column('org_id').doNothing())
       .execute();
@@ -107,23 +106,6 @@ export default class ManualReviewToolSettings {
       .updateTable('manual_review_tool.manual_review_tool_settings')
       .where('org_id', '=', orgId)
       .set({ ignore_callback_url: url })
-      .execute();
-  }
-
-  async getDefaultJobSortOrder(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['default_job_sort_order'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return row?.default_job_sort_order ?? 'DESC';
-  }
-
-  async updateDefaultJobSortOrder(orgId: string, sortOrder: 'ASC' | 'DESC') {
-    await this.pgQuery
-      .updateTable('manual_review_tool.manual_review_tool_settings')
-      .where('org_id', '=', orgId)
-      .set({ default_job_sort_order: sortOrder })
       .execute();
   }
 }

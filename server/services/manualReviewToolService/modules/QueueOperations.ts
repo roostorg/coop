@@ -797,10 +797,9 @@ export default class QueueOperations {
     orgId: string;
     queueId: string;
     limit?: number;
-    sortOrder?: 'ASC' | 'DESC';
   }) {
     const concurrencyLimit = pLimit(10);
-    const { orgId, queueId, sortOrder = 'DESC' } = opts;
+    const { orgId, queueId } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
     const maxJobs = Math.max(0, Math.min(opts.limit ?? 50, 50));
     const legacyJobs = await queue.getJobs(undefined, 0, maxJobs);
@@ -810,13 +809,7 @@ export default class QueueOperations {
         concurrencyLimit(async () => this.legacyJobToJob(job, orgId)),
       ),
     );
-    const result = filterNullOrUndefined(jobs).map((job) => job.data);
-    result.sort((a, b) => {
-      const diff =
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      return sortOrder === 'ASC' ? diff : -diff;
-    });
-    return result;
+    return filterNullOrUndefined(jobs).map((job) => job.data);
   }
 
   async updateJobForQueue(opts: {

@@ -1,24 +1,15 @@
 import { Button } from '@/coop-ui/Button';
 import { Input } from '@/coop-ui/Input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/coop-ui/Select';
 import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
   useGQLDeploymentSettingsQuery,
-  useGQLUpdateDefaultJobSortOrderMutation,
   useGQLUpdateHideSkipButtonForNonAdminsMutation,
   useGQLUpdateIgnoreCallbackUrlMutation,
   useGQLUpdatePreviewJobsViewEnabledMutation,
   useGQLUpdateRequiresDecisionReasonMutation,
   useGQLUpdateRequiresPolicyForDecisionsMutation,
-  type GQLSortOrder,
 } from '@/graphql/generated';
 import { isValidUrl } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -35,7 +26,6 @@ export default function ModeratorConsoleTab() {
 
   const [requirePolicy, setRequirePolicy] = useState(false);
   const [requireReason, setRequireReason] = useState(false);
-  const [sortOrder, setSortOrder] = useState<GQLSortOrder>('DESC');
   const [hideSkip, setHideSkip] = useState(false);
   const [previewJobs, setPreviewJobs] = useState(false);
   const [ignoreCallbackUrl, setIgnoreCallbackUrl] = useState('');
@@ -44,7 +34,6 @@ export default function ModeratorConsoleTab() {
     if (org) {
       setRequirePolicy(org.requiresPolicyForDecisionsInMrt);
       setRequireReason(org.requiresDecisionReasonInMrt);
-      setSortOrder(org.defaultJobSortOrder);
       setHideSkip(org.hideSkipButtonForNonAdmins);
       setPreviewJobs(org.previewJobsViewEnabled);
       setIgnoreCallbackUrl(org.ignoreCallbackUrl ?? '');
@@ -71,16 +60,12 @@ export default function ModeratorConsoleTab() {
     useGQLUpdatePreviewJobsViewEnabledMutation(mutationOpts);
   const [updateIgnoreUrl, { loading: saveLoading }] =
     useGQLUpdateIgnoreCallbackUrlMutation(mutationOpts);
-  const [updateSortOrder] =
-    useGQLUpdateDefaultJobSortOrderMutation(mutationOpts);
-
   if (loading) return <FullScreenLoading />;
   if (error || !org) return <div>Error loading moderator console settings</div>;
 
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||
     requireReason !== org.requiresDecisionReasonInMrt ||
-    sortOrder !== org.defaultJobSortOrder ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
     previewJobs !== org.previewJobsViewEnabled ||
     ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '');
@@ -91,9 +76,6 @@ export default function ModeratorConsoleTab() {
     }
     if (requireReason !== org.requiresDecisionReasonInMrt) {
       updateRequireReason({ variables: { enabled: requireReason } });
-    }
-    if (sortOrder !== org.defaultJobSortOrder) {
-      updateSortOrder({ variables: { sortOrder } });
     }
     if (hideSkip !== org.hideSkipButtonForNonAdmins) {
       updateHideSkipMutation({ variables: { enabled: hideSkip } });
@@ -155,30 +137,6 @@ export default function ModeratorConsoleTab() {
           </Heading>
         </div>
         <div className="flex flex-col gap-5">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Text size="SM" weight="medium">
-                Default Job Sort Order
-              </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
-                How jobs should be sorted by default when reviewers open a queue
-              </Text>
-            </div>
-            <div className="w-80 shrink-0">
-              <Select
-                value={sortOrder}
-                onValueChange={(value: GQLSortOrder) => setSortOrder(value)}
-              >
-                <SelectTrigger size="small">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DESC">Newest First</SelectItem>
-                  <SelectItem value="ASC">Oldest First</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Text size="SM" weight="medium">

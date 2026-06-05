@@ -66,7 +66,6 @@ const typeDefs = /* GraphQL */ `
     ssoUrl: String
     ssoCert: String
     ignoreCallbackUrl: String
-    defaultJobSortOrder: SortOrder!
     hasPartialItemsEndpoint: Boolean!
   }
 
@@ -152,7 +151,6 @@ const typeDefs = /* GraphQL */ `
     updateHideSkipButtonForNonAdmins(enabled: Boolean!): Boolean!
     updatePreviewJobsViewEnabled(enabled: Boolean!): Boolean!
     updateIgnoreCallbackUrl(url: String): Boolean!
-    updateDefaultJobSortOrder(sortOrder: SortOrder!): Boolean!
   }
 `;
 
@@ -569,13 +567,6 @@ const Org: GQLOrgResolvers = {
       org.id,
     );
   },
-  async defaultJobSortOrder(org, _, context) {
-    const value =
-      await context.services.ManualReviewToolService.getDefaultJobSortOrder(
-        org.id,
-      );
-    return value;
-  },
   async usersWhoCanReviewEveryQueue(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
@@ -962,22 +953,6 @@ const Mutation: GQLMutationResolvers = {
     await context.services.ManualReviewToolService.updateIgnoreCallbackUrl(
       user.orgId,
       url ?? null,
-    );
-    return true;
-  },
-  async updateDefaultJobSortOrder(_, { sortOrder }, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
-    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
-      throw forbiddenError(
-        'User does not have permission to update org settings',
-      );
-    }
-    await context.services.ManualReviewToolService.updateDefaultJobSortOrder(
-      user.orgId,
-      sortOrder,
     );
     return true;
   },
