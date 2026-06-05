@@ -20,7 +20,7 @@ Once connected, HMA signals will be available in Coop's signal library for use i
 
 Hash banks are collections of known-harmful media fingerprints that you can reference in your rules. You can create and manage banks through the Coop UI, or sync them from external sources like NCMEC.
 
-![Matching banks page showing a test hash bank created in the Coop UI](../images/coop-hma.png)
+![Matching banks page showing a test hash bank created in the Coop UI](../images/hma.png)
 
 ### Creating banks through Coop
 

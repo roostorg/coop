@@ -12,11 +12,11 @@ Rule conditions can be set to **AND** (all must match for the rule to match) or 
 
 Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement → Proactive Rules**.
 
-![Proactive Rules](../images/coop-rules.png)
+![Proactive Rules](../images/rules.png)
 
 All Proactive Rules that match an item fire, not just the first one. This means a single piece of content can trigger multiple automated actions if more than one rule matches.
 
-![Proactive Rule for scam](../images/coop-scam-rule.png)
+![Proactive Rule for scam](../images/scam-rule.png)
 
 The action of a Proactive Rule can be set to _Enqueue Item to Manual Review_ which will convert it to a report that will then be matched against Routing Rules in order to send it to the correct queue.
 
@@ -24,7 +24,7 @@ The action of a Proactive Rule can be set to _Enqueue Item to Manual Review_ whi
 
 Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under **Review Console → Routing**.
 
-![Routing Rules](../images/coop-routing-rules.png)
+![Routing Rules](../images/routing-rules.png)
 
 Rules are evaluated in order, and a report is routed to the queue of the first matching rule. If no rule matches, the report goes to the default queue. Each rule contains one or more conditions.
 
@@ -34,17 +34,17 @@ Rules are evaluated in order, and a report is routed to the queue of the first m
 
 Matching banks are reusable sets of values you can reference across many rules without repeating yourself. Instead of listing all banned keywords in every rule that needs them, you define a bank once and reference it wherever needed.
 
-![Banks](../images/coop-banks.png)
+![Banks](../images/banks.png)
 
 ### Text Banks
 
 Text banks hold lists of exact words or phrases, or regular expressions. Use them for keyword matching and pattern detection in text fields.
 
-![Text string bank](../images/coop-text-string-bank.png)
+![Text string bank](../images/text-string-bank.png)
 
 Coop also supports variant matching to catch evasion attempts, for example treating `h3||0` and `helllllllloooo` as matches for `hello`. See [Signals → Text analysis](signals.md#text-analysis) for details on text signal types.
 
-![Regex bank](../images/coop-regex-bank.png)
+![Regex bank](../images/regex-bank.png)
 
 ### Hash Banks
 
@@ -56,7 +56,7 @@ Hash banks hold perceptual fingerprints of known harmful media. Coop uses these 
 
 Location banks hold lists of [geohashes](https://en.wikipedia.org/wiki/Geohash) or Google Maps Places references. Use them to apply different rules to specific geographic areas, for example stricter content policies on college campuses, or targeted enforcement in particular regions.
 
-![Location bank](../images/coop-location-bank.png)
+![Location bank](../images/location-bank.png)
 
 For location matching to work, include a geohash in every item you send to Coop representing the location of the user who created the content.
 

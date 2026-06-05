@@ -4,7 +4,6 @@ import { GraphQLError } from 'graphql';
 
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
-import { isCoopErrorOfType } from '../../utils/errors.js';
 import { __throw } from '../../utils/misc.js';
 import {
   type GQLIntegrationConfig,
@@ -16,7 +15,7 @@ import {
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type Org {
@@ -68,39 +67,6 @@ const typeDefs = /* GraphQL */ `
     hasPartialItemsEndpoint: Boolean!
   }
 
-  input CreateOrgInput {
-    name: String!
-    email: String!
-    website: String!
-  }
-
-  type CreateOrgSuccessResponse {
-    id: ID!
-  }
-
-  type OrgWithEmailExistsError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
-
-  type OrgWithNameExistsError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
-
-  union CreateOrgResponse =
-    | CreateOrgSuccessResponse
-    | OrgWithEmailExistsError
-    | OrgWithNameExistsError
-
   input AppealSettingsInput {
     appealsCallbackUrl: String
     appealsCallbackHeaders: JSONObject
@@ -134,7 +100,6 @@ const typeDefs = /* GraphQL */ `
 
   type Query {
     org(id: ID!): Org
-    allOrgs: [Org!]! @publicResolver
     appealSettings: AppealSettings
   }
 
@@ -163,7 +128,6 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    createOrg(input: CreateOrgInput!): CreateOrgResponse! @publicResolver
     updateAppealSettings(input: AppealSettingsInput!): AppealSettings!
     setAllUserStrikeThresholds(
       input: SetAllUserStrikeThresholdsInput!
@@ -187,12 +151,6 @@ const Query: GQLQueryResolvers = {
     }
 
     return context.dataSources.orgAPI.getGraphQLOrgFromId(id);
-  },
-  // TODO(rui): this resolver is currently public in order to support
-  // the org dropdown in the signup page. We should deprecate that dropdown
-  // and remove the public directive.
-  async allOrgs(_, __, context) {
-    return context.dataSources.orgAPI.getAllGraphQLOrgs();
   },
   async appealSettings(_, __, context) {
     const user = context.getUser();
@@ -599,6 +557,10 @@ const Org: GQLOrgResolvers = {
     );
   },
   async usersWhoCanReviewEveryQueue(org, _, context) {
+    const user = context.getUser();
+    if (!user || user.orgId !== org.id) {
+      throw unauthenticatedError('User required.');
+    }
     const users = await context.dataSources.orgAPI.getOrgUsersForGraphQL(
       org.id,
     );
@@ -714,23 +676,6 @@ const MatchingBanks: GQLMatchingBanksResolvers = {
 };
 
 const Mutation: GQLMutationResolvers = {
-  async createOrg(_, params, context) {
-    try {
-      const org = await context.dataSources.orgAPI.createOrg(params);
-      return gqlSuccessResult({ id: org.id }, 'CreateOrgSuccessResponse');
-    } catch (e: unknown) {
-      if (
-        isCoopErrorOfType(e, [
-          'OrgWithEmailExistsError',
-          'OrgWithNameExistsError',
-        ])
-      ) {
-        return gqlErrorResult(e);
-      }
-
-      throw e;
-    }
-  },
   async updateAppealSettings(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {

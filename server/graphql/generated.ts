@@ -855,22 +855,6 @@ export type GQLCreateManualReviewQueueResponse =
   | GQLManualReviewQueueNameExistsError
   | GQLMutateManualReviewQueueSuccessResponse;
 
-export type GQLCreateOrgInput = {
-  readonly email: Scalars['String']['input'];
-  readonly name: Scalars['String']['input'];
-  readonly website: Scalars['String']['input'];
-};
-
-export type GQLCreateOrgResponse =
-  | GQLCreateOrgSuccessResponse
-  | GQLOrgWithEmailExistsError
-  | GQLOrgWithNameExistsError;
-
-export type GQLCreateOrgSuccessResponse = {
-  readonly __typename?: 'CreateOrgSuccessResponse';
-  readonly id: Scalars['ID']['output'];
-};
-
 export type GQLCreateReportingRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly conditionSet: GQLConditionSetInput;
@@ -2509,7 +2493,6 @@ export type GQLMutation = {
   readonly createLocationBank: GQLMutateLocationBankResponse;
   readonly createManualReviewJobComment: GQLAddManualReviewJobCommentResponse;
   readonly createManualReviewQueue: GQLCreateManualReviewQueueResponse;
-  readonly createOrg: GQLCreateOrgResponse;
   readonly createReportingRule: GQLCreateReportingRuleResponse;
   readonly createRoutingRule: GQLCreateRoutingRuleResponse;
   readonly createTextBank: GQLMutateBankResponse;
@@ -2543,7 +2526,6 @@ export type GQLMutation = {
   readonly removeFavoriteRule: GQLRemoveFavoriteRuleSuccessResponse;
   readonly renameRole: GQLRole;
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
-  readonly requestDemo?: Maybe<Scalars['Boolean']['output']>;
   readonly resetPassword: Scalars['Boolean']['output'];
   /**
    * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
@@ -2645,10 +2627,6 @@ export type GQLMutationCreateManualReviewJobCommentArgs = {
 
 export type GQLMutationCreateManualReviewQueueArgs = {
   input: GQLCreateManualReviewQueueInput;
-};
-
-export type GQLMutationCreateOrgArgs = {
-  input: GQLCreateOrgInput;
 };
 
 export type GQLMutationCreateReportingRuleArgs = {
@@ -2777,10 +2755,6 @@ export type GQLMutationRenameRoleArgs = {
 
 export type GQLMutationReorderRoutingRulesArgs = {
   input: GQLReorderRoutingRulesInput;
-};
-
-export type GQLMutationRequestDemoArgs = {
-  input: GQLRequestDemoInput;
 };
 
 export type GQLMutationResetPasswordArgs = {
@@ -3225,26 +3199,6 @@ export type GQLOrgSignalsArgs = {
   customOnly?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-export type GQLOrgWithEmailExistsError = GQLError & {
-  readonly __typename?: 'OrgWithEmailExistsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
-export type GQLOrgWithNameExistsError = GQLError & {
-  readonly __typename?: 'OrgWithNameExistsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 /** Information about the current page in a connection. */
 export type GQLPageInfo = {
   readonly __typename?: 'PageInfo';
@@ -3404,7 +3358,6 @@ export type GQLQuery = {
   readonly __typename?: 'Query';
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
-  readonly allOrgs: ReadonlyArray<GQLOrg>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String']['output'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
@@ -3943,24 +3896,6 @@ export const GQLReportingRuleStatus = {
 
 export type GQLReportingRuleStatus =
   (typeof GQLReportingRuleStatus)[keyof typeof GQLReportingRuleStatus];
-export type GQLRequestDemoInput = {
-  readonly company: Scalars['String']['input'];
-  readonly email: Scalars['String']['input'];
-  readonly interests: ReadonlyArray<GQLRequestDemoInterest>;
-  readonly isFromGoogleAds: Scalars['Boolean']['input'];
-  readonly ref: Scalars['String']['input'];
-  readonly website: Scalars['String']['input'];
-};
-
-export const GQLRequestDemoInterest = {
-  AutomatedEnforcement: 'AUTOMATED_ENFORCEMENT',
-  ComplianceToolkit: 'COMPLIANCE_TOOLKIT',
-  CustomAiModels: 'CUSTOM_AI_MODELS',
-  ModeratorConsole: 'MODERATOR_CONSOLE',
-} as const;
-
-export type GQLRequestDemoInterest =
-  (typeof GQLRequestDemoInterest)[keyof typeof GQLRequestDemoInterest];
 export type GQLResetPasswordInput = {
   readonly newPassword: Scalars['String']['input'];
   readonly token: Scalars['String']['input'];
@@ -5340,10 +5275,6 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | (Omit<GQLMutateManualReviewQueueSuccessResponse, 'data'> & {
         data: _RefType['ManualReviewQueue'];
       });
-  CreateOrgResponse:
-    | GQLCreateOrgSuccessResponse
-    | GQLOrgWithEmailExistsError
-    | GQLOrgWithNameExistsError;
   CreateReportingRuleResponse:
     | (Omit<GQLMutateReportingRuleSuccessResponse, 'data'> & {
         data: _RefType['ReportingRule'];
@@ -5595,8 +5526,6 @@ export type GQLResolversInterfaceTypes<
     | GQLMissingRequiredPolicyForDecisionError
     | GQLNoJobWithIdInQueueError
     | GQLNotFoundError
-    | GQLOrgWithEmailExistsError
-    | GQLOrgWithNameExistsError
     | GQLPartialItemsEndpointResponseError
     | GQLPartialItemsInvalidResponseError
     | GQLPartialItemsMissingEndpointError
@@ -5772,11 +5701,6 @@ export type GQLResolversTypes = {
   CreateManualReviewQueueResponse: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['CreateManualReviewQueueResponse']
   >;
-  CreateOrgInput: GQLCreateOrgInput;
-  CreateOrgResponse: ResolverTypeWrapper<
-    GQLResolversUnionTypes<GQLResolversTypes>['CreateOrgResponse']
-  >;
-  CreateOrgSuccessResponse: ResolverTypeWrapper<GQLCreateOrgSuccessResponse>;
   CreateReportingRuleInput: GQLCreateReportingRuleInput;
   CreateReportingRuleResponse: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['CreateReportingRuleResponse']
@@ -6180,8 +6104,6 @@ export type GQLResolversTypes = {
   OpenAiIntegrationApiCredential: ResolverTypeWrapper<GQLOpenAiIntegrationApiCredential>;
   OpenAiIntegrationApiCredentialInput: GQLOpenAiIntegrationApiCredentialInput;
   Org: ResolverTypeWrapper<GraphQLOrgParent>;
-  OrgWithEmailExistsError: ResolverTypeWrapper<GQLOrgWithEmailExistsError>;
-  OrgWithNameExistsError: ResolverTypeWrapper<GQLOrgWithNameExistsError>;
   PageInfo: ResolverTypeWrapper<GQLPageInfo>;
   PartialItemsEndpointResponseError: ResolverTypeWrapper<GQLPartialItemsEndpointResponseError>;
   PartialItemsInvalidResponseError: ResolverTypeWrapper<GQLPartialItemsInvalidResponseError>;
@@ -6262,8 +6184,6 @@ export type GQLResolversTypes = {
   ReportingRuleNameExistsError: ResolverTypeWrapper<GQLReportingRuleNameExistsError>;
   ReportingRulePassRateData: ResolverTypeWrapper<GQLReportingRulePassRateData>;
   ReportingRuleStatus: GQLReportingRuleStatus;
-  RequestDemoInput: GQLRequestDemoInput;
-  RequestDemoInterest: GQLRequestDemoInterest;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: ResolverTypeWrapper<GQLResolvedJobCount>;
   RetryNcmecSubmissionResponse: ResolverTypeWrapper<GQLRetryNcmecSubmissionResponse>;
@@ -6600,9 +6520,6 @@ export type GQLResolversParentTypes = {
   CreateManualReviewJobCommentInput: GQLCreateManualReviewJobCommentInput;
   CreateManualReviewQueueInput: GQLCreateManualReviewQueueInput;
   CreateManualReviewQueueResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['CreateManualReviewQueueResponse'];
-  CreateOrgInput: GQLCreateOrgInput;
-  CreateOrgResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['CreateOrgResponse'];
-  CreateOrgSuccessResponse: GQLCreateOrgSuccessResponse;
   CreateReportingRuleInput: GQLCreateReportingRuleInput;
   CreateReportingRuleResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['CreateReportingRuleResponse'];
   CreateRoutingRuleInput: GQLCreateRoutingRuleInput;
@@ -6892,8 +6809,6 @@ export type GQLResolversParentTypes = {
   OpenAiIntegrationApiCredential: GQLOpenAiIntegrationApiCredential;
   OpenAiIntegrationApiCredentialInput: GQLOpenAiIntegrationApiCredentialInput;
   Org: GraphQLOrgParent;
-  OrgWithEmailExistsError: GQLOrgWithEmailExistsError;
-  OrgWithNameExistsError: GQLOrgWithNameExistsError;
   PageInfo: GQLPageInfo;
   PartialItemsEndpointResponseError: GQLPartialItemsEndpointResponseError;
   PartialItemsInvalidResponseError: GQLPartialItemsInvalidResponseError;
@@ -6963,7 +6878,6 @@ export type GQLResolversParentTypes = {
   ReportingRuleInsights: ReportingRuleWithoutVersion;
   ReportingRuleNameExistsError: GQLReportingRuleNameExistsError;
   ReportingRulePassRateData: GQLReportingRulePassRateData;
-  RequestDemoInput: GQLRequestDemoInput;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: GQLResolvedJobCount;
   RetryNcmecSubmissionResponse: GQLRetryNcmecSubmissionResponse;
@@ -8284,29 +8198,6 @@ export type GQLCreateManualReviewQueueResponseResolvers<
   >;
 };
 
-export type GQLCreateOrgResponseResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['CreateOrgResponse'] =
-    GQLResolversParentTypes['CreateOrgResponse'],
-> = {
-  __resolveType: TypeResolveFn<
-    | 'CreateOrgSuccessResponse'
-    | 'OrgWithEmailExistsError'
-    | 'OrgWithNameExistsError',
-    ParentType,
-    ContextType
-  >;
-};
-
-export type GQLCreateOrgSuccessResponseResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['CreateOrgSuccessResponse'] =
-    GQLResolversParentTypes['CreateOrgSuccessResponse'],
-> = {
-  id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
 export type GQLCreateReportingRuleResponseResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['CreateReportingRuleResponse'] =
@@ -8855,8 +8746,6 @@ export type GQLErrorResolvers<
     | 'MissingRequiredPolicyForDecisionError'
     | 'NoJobWithIdInQueueError'
     | 'NotFoundError'
-    | 'OrgWithEmailExistsError'
-    | 'OrgWithNameExistsError'
     | 'PartialItemsEndpointResponseError'
     | 'PartialItemsInvalidResponseError'
     | 'PartialItemsMissingEndpointError'
@@ -10916,12 +10805,6 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationCreateManualReviewQueueArgs, 'input'>
   >;
-  createOrg?: Resolver<
-    GQLResolversTypes['CreateOrgResponse'],
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationCreateOrgArgs, 'input'>
-  >;
   createReportingRule?: Resolver<
     GQLResolversTypes['CreateReportingRuleResponse'],
     ParentType,
@@ -11118,12 +11001,6 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationReorderRoutingRulesArgs, 'input'>
-  >;
-  requestDemo?: Resolver<
-    Maybe<GQLResolversTypes['Boolean']>,
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationRequestDemoArgs, 'input'>
   >;
   resetPassword?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -11863,66 +11740,6 @@ export type GQLOrgResolvers<
   websiteUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
-export type GQLOrgWithEmailExistsErrorResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['OrgWithEmailExistsError'] =
-    GQLResolversParentTypes['OrgWithEmailExistsError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
-export type GQLOrgWithNameExistsErrorResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['OrgWithNameExistsError'] =
-    GQLResolversParentTypes['OrgWithNameExistsError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
 export type GQLPageInfoResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['PageInfo'] =
@@ -12257,11 +12074,6 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQueryActionStatisticsArgs, 'input'>
-  >;
-  allOrgs?: Resolver<
-    ReadonlyArray<GQLResolversTypes['Org']>,
-    ParentType,
-    ContextType
   >;
   allRuleInsights?: Resolver<
     Maybe<GQLResolversTypes['AllRuleInsights']>,
@@ -14897,8 +14709,6 @@ export type GQLResolvers<ContextType = Context> = {
   CreateBacktestResponse?: GQLCreateBacktestResponseResolvers<ContextType>;
   CreateContentRuleResponse?: GQLCreateContentRuleResponseResolvers<ContextType>;
   CreateManualReviewQueueResponse?: GQLCreateManualReviewQueueResponseResolvers<ContextType>;
-  CreateOrgResponse?: GQLCreateOrgResponseResolvers<ContextType>;
-  CreateOrgSuccessResponse?: GQLCreateOrgSuccessResponseResolvers<ContextType>;
   CreateReportingRuleResponse?: GQLCreateReportingRuleResponseResolvers<ContextType>;
   CreateRoutingRuleResponse?: GQLCreateRoutingRuleResponseResolvers<ContextType>;
   CreateUserRuleResponse?: GQLCreateUserRuleResponseResolvers<ContextType>;
@@ -15050,8 +14860,6 @@ export type GQLResolvers<ContextType = Context> = {
   Notification?: GQLNotificationResolvers<ContextType>;
   OpenAiIntegrationApiCredential?: GQLOpenAiIntegrationApiCredentialResolvers<ContextType>;
   Org?: GQLOrgResolvers<ContextType>;
-  OrgWithEmailExistsError?: GQLOrgWithEmailExistsErrorResolvers<ContextType>;
-  OrgWithNameExistsError?: GQLOrgWithNameExistsErrorResolvers<ContextType>;
   PageInfo?: GQLPageInfoResolvers<ContextType>;
   PartialItemsEndpointResponseError?: GQLPartialItemsEndpointResponseErrorResolvers<ContextType>;
   PartialItemsInvalidResponseError?: GQLPartialItemsInvalidResponseErrorResolvers<ContextType>;

@@ -1,8 +1,6 @@
-# Docker
+# Docker Images
 
-## Published images
-
-Pre-built images are published to GitHub Container Registry on every push to `main`:
+Pre-built images are published to the GitHub Container Registry on every push to `main`:
 
 ```
 ghcr.io/roostorg/coop-server   # API server
@@ -20,7 +18,8 @@ Pull the published images and run the full stack locally with a single command:
 docker compose -f docker-compose.images.yaml up -d
 ```
 
-> **Warning:** `docker-compose.images.yaml` uses `.env.docker`, which ships working defaults for local evaluation but includes placeholder secrets. Review and replace secrets before any non-local deployment.
+> [!WARNING]
+> `docker-compose.images.yaml` uses `.env.docker`, which ships working defaults for local evaluation but includes placeholder secrets. **Review and replace secrets before any non-local deployment.**
 
 This starts:
 

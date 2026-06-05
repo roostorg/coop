@@ -198,4 +198,52 @@ describe('Org resolvers', () => {
       );
     });
   });
+
+  describe('Org.usersWhoCanReviewEveryQueue is not readable cross-tenant (PII leak guard)', () => {
+    function makeCtx(opts: { orgId: string; callerOrgId?: string | null }) {
+      const getOrgUsersForGraphQL = jest.fn(async () => []);
+      const ctx = {
+        getUser: () =>
+          opts.callerOrgId === null
+            ? null
+            : { id: 'user-1', orgId: opts.callerOrgId ?? opts.orgId },
+        dataSources: {
+          orgAPI: { getOrgUsersForGraphQL },
+        },
+      };
+      return { ctx, getOrgUsersForGraphQL };
+    }
+
+    const orgParent = { id: 'org-1' };
+    const Org = resolvers.Org as Record<
+      'usersWhoCanReviewEveryQueue',
+      (
+        parent: typeof orgParent,
+        args: unknown,
+        ctx: unknown,
+      ) => Promise<unknown>
+    >;
+
+    it('throws when the caller belongs to a different org (IDOR guard)', async () => {
+      const { ctx, getOrgUsersForGraphQL } = makeCtx({
+        orgId: 'org-1',
+        callerOrgId: 'other-org',
+      });
+      await expect(
+        Org.usersWhoCanReviewEveryQueue(orgParent, {}, ctx),
+      ).rejects.toThrow('User required.');
+      expect(getOrgUsersForGraphQL).not.toHaveBeenCalled();
+    });
+
+    it('throws when there is no authenticated user', async () => {
+      const { ctx, getOrgUsersForGraphQL } = makeCtx({
+        orgId: 'org-1',
+        callerOrgId: null,
+      });
+      await expect(
+        Org.usersWhoCanReviewEveryQueue(orgParent, {}, ctx),
+      ).rejects.toThrow('User required.');
+      expect(getOrgUsersForGraphQL).not.toHaveBeenCalled();
+    });
+  });
 });
