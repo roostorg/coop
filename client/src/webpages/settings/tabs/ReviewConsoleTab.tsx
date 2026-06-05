@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
-export default function ModeratorConsoleTab() {
+export default function ReviewConsoleTab() {
   const { data, loading, error, refetch } = useGQLDeploymentSettingsQuery({
     fetchPolicy: 'network-only',
     nextFetchPolicy: 'cache-and-network',
@@ -42,11 +42,11 @@ export default function ModeratorConsoleTab() {
 
   const mutationOpts = {
     onCompleted: () => {
-      toast.success('Moderator console settings updated');
+      toast.success('Review console settings updated');
       refetch();
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? 'Failed to update moderator console settings');
+      toast.error(err.message ?? 'Failed to update review console settings');
     },
   };
 
@@ -61,7 +61,7 @@ export default function ModeratorConsoleTab() {
   const [updateIgnoreUrl, { loading: saveLoading }] =
     useGQLUpdateIgnoreCallbackUrlMutation(mutationOpts);
   if (loading) return <FullScreenLoading />;
-  if (error || !org) return <div>Error loading moderator console settings</div>;
+  if (error || !org) return <div>Error loading review console settings</div>;
 
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||

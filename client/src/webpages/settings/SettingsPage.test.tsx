@@ -152,7 +152,7 @@ describe('SettingsPage', () => {
       ).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /appeals/i })).toBeInTheDocument();
       expect(
-        screen.getByRole('tab', { name: /moderator console/i }),
+        screen.getByRole('tab', { name: /review console/i }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole('tab', { name: /wellness/i }),
@@ -171,9 +171,9 @@ describe('SettingsPage', () => {
     });
 
     it('respects ?tab= search param on initial render', async () => {
-      renderWithProviders([deploymentSettingsMock], 'moderator-console');
+      renderWithProviders([deploymentSettingsMock], 'review-console');
       expect(
-        screen.getByRole('tab', { name: /moderator console/i }),
+        screen.getByRole('tab', { name: /review console/i }),
       ).toHaveAttribute('aria-selected', 'true');
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
@@ -438,9 +438,9 @@ describe('SettingsPage', () => {
     });
   });
 
-  describe('Moderator Console tab', () => {
+  describe('Review Console tab', () => {
     it('shows all settings sections', async () => {
-      renderWithProviders([deploymentSettingsMock], 'moderator-console');
+      renderWithProviders([deploymentSettingsMock], 'review-console');
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
@@ -455,7 +455,7 @@ describe('SettingsPage', () => {
         hideSkipButtonForNonAdmins: true,
         previewJobsViewEnabled: true,
       });
-      renderWithProviders([mock], 'moderator-console');
+      renderWithProviders([mock], 'review-console');
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
       });
@@ -480,7 +480,7 @@ describe('SettingsPage', () => {
             newData: mutationFn,
           },
         ],
-        'moderator-console',
+        'review-console',
       );
       await waitFor(() => {
         expect(
@@ -497,7 +497,7 @@ describe('SettingsPage', () => {
     });
 
     it('validates and sends ignore callback URL', async () => {
-      renderWithProviders([deploymentSettingsMock], 'moderator-console');
+      renderWithProviders([deploymentSettingsMock], 'review-console');
       await waitFor(() => {
         expect(screen.getByText('Ignore Callback URL')).toBeInTheDocument();
       });
@@ -531,7 +531,7 @@ describe('SettingsPage', () => {
             newData: mutationFn,
           },
         ],
-        'moderator-console',
+        'review-console',
       );
       await waitFor(() => {
         expect(

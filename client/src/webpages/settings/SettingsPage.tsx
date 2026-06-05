@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
-import ModeratorConsoleIcon from '@/icons/lni/User/moderator-console.svg?react';
+import ReviewConsoleIcon from '@/icons/lni/User/review-console.svg?react';
 import { gql } from '@apollo/client';
 import { Building2, Gavel, Heart, KeyRound, Settings2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -9,9 +9,9 @@ import { useSearchParams } from 'react-router-dom';
 import DashboardHeader from '../dashboard/components/DashboardHeader';
 
 import AppealsTab from './tabs/AppealsTab';
-import ModeratorConsoleTab from './tabs/ModeratorConsoleTab';
 import OrganizationTab from './tabs/OrganizationTab';
 import OtherTab from './tabs/OtherTab';
+import ReviewConsoleTab from './tabs/ReviewConsoleTab';
 import SSOTab from './tabs/SSOTab';
 import WellnessTab from './tabs/WellnessTab';
 
@@ -76,7 +76,7 @@ type Tab =
   | 'organization'
   | 'sso'
   | 'appeals'
-  | 'moderator-console'
+  | 'review-console'
   | 'wellness'
   | 'other';
 
@@ -89,9 +89,9 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: 'sso', label: 'Single Sign-On', icon: <KeyRound size={16} /> },
   { value: 'appeals', label: 'Appeals', icon: <Gavel size={16} /> },
   {
-    value: 'moderator-console',
-    label: 'Moderator Console',
-    icon: <ModeratorConsoleIcon className="w-4.5 h-4.5" />,
+    value: 'review-console',
+    label: 'Review Console',
+    icon: <ReviewConsoleIcon className="w-4.5 h-4.5" />,
   },
   { value: 'wellness', label: 'Wellness', icon: <Heart size={16} /> },
   { value: 'other', label: 'Other', icon: <Settings2 size={16} /> },
@@ -148,7 +148,7 @@ export default function SettingsPage() {
         {activeTab === 'organization' && <OrganizationTab />}
         {activeTab === 'sso' && <SSOTab />}
         {activeTab === 'appeals' && <AppealsTab />}
-        {activeTab === 'moderator-console' && <ModeratorConsoleTab />}
+        {activeTab === 'review-console' && <ReviewConsoleTab />}
         {activeTab === 'wellness' && <WellnessTab />}
         {activeTab === 'other' && <OtherTab />}
       </div>
