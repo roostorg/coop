@@ -120,9 +120,9 @@ export default function OtherTab() {
                 Custom headers for partial items requests (JSON format)
               </Text>
             </div>
-            <div className="w-80 shrink-0">
+            <div className="w-96 shrink-0">
               <Textarea
-                className="h-24 font-mono text-sm"
+                className="h-40 font-mono text-sm"
                 placeholder={'{\n  "Authorization": "Bearer YOUR_KEY"\n}'}
                 value={partialItemsHeaders}
                 onChange={(e) => setPartialItemsHeaders(e.target.value)}
