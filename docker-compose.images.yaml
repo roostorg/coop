@@ -57,6 +57,8 @@ services:
       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
     working_dir: /src
     env_file: ./.env.docker
+    environment:
+      HUSKY: '0'
     volumes:
       - .:/src
     depends_on:
