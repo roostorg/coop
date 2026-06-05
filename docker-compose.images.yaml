@@ -58,7 +58,7 @@ services:
     working_dir: /src
     env_file: ./.env.docker
     environment:
-      HUSKY: '0'
+      NODE_ENV: development
     volumes:
       - .:/src
     depends_on:
