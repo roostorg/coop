@@ -29,10 +29,16 @@ services:
     volumes:
       - scylla_data:/var/lib/scylla
     healthcheck:
-      test: ['CMD-SHELL', 'nodetool status || exit 1']
+      # Real CQL query, not `nodetool status`, so 9042 accepts connections
+      # before migrations start.
+      test:
+        [
+          'CMD-SHELL',
+          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+        ]
       interval: 5s
-      timeout: 5s
-      retries: 28
+      timeout: 10s
+      retries: 30
       start_period: 35s
 
   clickhouse:

@@ -7,11 +7,11 @@
   "scripts": {
     "build": "tsc && cp -R src/scripts package.json build/",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:add": "node index.js add",
-    "db:clean": "node index.js clean",
-    "db:update": "node index.js apply",
-    "db:create": "node index.js create",
-    "db:drop": "node index.js drop"
+    "db:add": "node build/index.js add",
+    "db:clean": "node build/index.js clean",
+    "db:update": "node build/index.js apply",
+    "db:create": "node build/index.js create",
+    "db:drop": "node build/index.js drop"
   },
   "author": "Roostorg",
   "license": "ISC",
