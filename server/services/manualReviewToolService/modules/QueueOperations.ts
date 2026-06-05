@@ -24,6 +24,10 @@ import {
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys, safePick } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { WEEK_MS } from '../../../utils/time.js';
@@ -141,6 +145,7 @@ export default class QueueOperations {
   private readonly getBullAppealWorker: Cached<
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -148,6 +153,7 @@ export default class QueueOperations {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     redis: RedisConnection,
   ) {
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
     const getOrCreateBullQueue_ = getOrCreateBullQueue<StoredManualReviewJob>;
@@ -246,7 +252,7 @@ export default class QueueOperations {
     }
 
     try {
-      return await this.pgQuery.transaction().execute(async (transaction) => {
+      return await this.transactionWithRetry(async (transaction) => {
         // In newer versions of kysely, this is greatly simplified with
         // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
         // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
@@ -322,7 +328,7 @@ export default class QueueOperations {
       autoCloseJobs,
     } = input;
 
-    return this.pgQuery.transaction().execute(async (transaction) => {
+    return this.transactionWithRetry(async (transaction) => {
       const [updatedQueue, _, __] = await Promise.all([
         transaction
           .updateTable('manual_review_tool.manual_review_queues')
@@ -379,21 +385,31 @@ export default class QueueOperations {
 
     await queue.obliterate({ force: true });
 
-    const [{ numDeletedRows }, _] = await this.pgQuery
-      .transaction()
-      .execute(async (transaction) => {
-        return Promise.all([
-          transaction
-            .deleteFrom('manual_review_tool.manual_review_queues')
-            .where('id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .executeTakeFirstOrThrow(),
-          transaction
-            .deleteFrom('manual_review_tool.users_and_accessible_queues')
-            .where('queue_id', '=', queueId)
-            .execute(),
-        ]);
-      });
+    const numDeletedRows = await this.transactionWithRetry(
+      async (transaction) => {
+        // Delete the queue scoped by org first. If it doesn't belong to the
+        // caller's org, no rows are touched and we bail before deleting any
+        // join rows. `users_and_accessible_queues` has no `org_id` column,
+        // so an unscoped delete would otherwise wipe another org's access
+        // rows when the parent delete matches 0 rows.
+        const queueDelete = await transaction
+          .deleteFrom('manual_review_tool.manual_review_queues')
+          .where('id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+
+        if (queueDelete.numDeletedRows === 0n) {
+          return 0n;
+        }
+
+        await transaction
+          .deleteFrom('manual_review_tool.users_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .execute();
+
+        return queueDelete.numDeletedRows;
+      },
+    );
 
     return numDeletedRows === 1n;
   }
@@ -406,21 +422,28 @@ export default class QueueOperations {
 
     await queue.obliterate({ force: true });
 
-    const [{ numDeletedRows }, _] = await this.pgQuery
-      .transaction()
-      .execute(async (transaction) => {
-        return Promise.all([
-          transaction
-            .deleteFrom('manual_review_tool.manual_review_queues')
-            .where('id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .executeTakeFirstOrThrow(),
-          transaction
-            .deleteFrom('manual_review_tool.users_and_accessible_queues')
-            .where('queue_id', '=', queueId)
-            .execute(),
-        ]);
-      });
+    // See `deleteManualReviewQueue` for why this is serialized + ownership-
+    // checked. Same pattern, just without the default-queue guard.
+    const numDeletedRows = await this.transactionWithRetry(
+      async (transaction) => {
+        const queueDelete = await transaction
+          .deleteFrom('manual_review_tool.manual_review_queues')
+          .where('id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .executeTakeFirst();
+
+        if (queueDelete.numDeletedRows === 0n) {
+          return 0n;
+        }
+
+        await transaction
+          .deleteFrom('manual_review_tool.users_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .execute();
+
+        return queueDelete.numDeletedRows;
+      },
+    );
 
     return numDeletedRows === 1n;
   }

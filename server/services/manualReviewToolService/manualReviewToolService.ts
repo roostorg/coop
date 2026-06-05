@@ -789,10 +789,20 @@ export class ManualReviewToolService {
    * @param input - An object containing the id of the routing rule to be deleted.
    * @returns A promise that resolves to a boolean indicating the success of the operation.
    */
-  async deleteRoutingRule(input: { id: string; isAppealsRule?: boolean }) {
+  async deleteRoutingRule(input: {
+    id: string;
+    orgId: string;
+    isAppealsRule?: boolean;
+  }) {
     return input.isAppealsRule
-      ? this.appealsJobRouting.deleteAppealsRoutingRule({ id: input.id })
-      : this.jobRouting.deleteRoutingRule({ id: input.id });
+      ? this.appealsJobRouting.deleteAppealsRoutingRule({
+          id: input.id,
+          orgId: input.orgId,
+        })
+      : this.jobRouting.deleteRoutingRule({
+          id: input.id,
+          orgId: input.orgId,
+        });
   }
 
   async addAccessibleQueuesForUser(

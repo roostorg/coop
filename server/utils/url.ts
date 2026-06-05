@@ -65,9 +65,7 @@ export function makeUrlString(it: string) {
 
 export function validateUrlOrNull(
   value?: string,
-  // Ideally this wouldn't set its own default so that it would always use
-  // validateUrl's opts, but for some reason that breaks sequelize so if you
-  // update these opts update validateUrl's as well
+  // Keep this default in sync with `validateUrl`'s default.
   opts: UrlValidationOptions = {
     allowedSchemes: ['http', 'https'],
     blockedHostnames: defaultBlockedHostnames(),

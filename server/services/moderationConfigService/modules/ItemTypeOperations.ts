@@ -12,6 +12,10 @@ import {
   makeNotFoundError,
 } from '../../../utils/errors.js';
 import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
+import {
   __throw,
   assertUnreachable,
   removeUndefinedKeys,
@@ -71,11 +75,13 @@ export default class ItemTypeOperations {
   private readonly latestItemTypesCache: Cached<
     (orgId: string) => Promise<ItemType[]>
   >;
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
 
   constructor(
     private readonly pgQuery: Kysely<ModerationConfigServicePg>,
     private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
   ) {
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Cache of ItemTypeIdentifier -> ItemTypeVersion (which is immutable and
     // the same version/incarnation will always be returned for the same identifier)
     this.itemTypeVersionsCache = cached({
@@ -551,10 +557,9 @@ export default class ItemTypeOperations {
    */
   async deleteItemType(opts: { orgId: string; itemTypeId: string }) {
     const { orgId, itemTypeId } = opts;
-    const res = await this.pgQuery
-      .transaction()
-      .setIsolationLevel('repeatable read')
-      .execute(async (trx) => {
+    const res = await this.transactionWithRetry(
+      { isolationLevel: 'repeatable read' },
+      async (trx) => {
         const isDefaultUserType = await trx
           .selectFrom('public.item_types')
           .where('id', '=', itemTypeId)
@@ -584,7 +589,8 @@ export default class ItemTypeOperations {
           .where('id', '=', itemTypeId)
           .where('org_id', '=', orgId)
           .executeTakeFirst();
-      });
+      },
+    );
 
     await this.invalidateLatestItemTypesCache(orgId);
     await this.latestItemTypesCache(orgId, { maxAge: 0 });
@@ -605,10 +611,9 @@ export default class ItemTypeOperations {
       directives?.maxAge == null ? true : directives.maxAge > 4,
     );
 
-    const results = await pgQuery
-      .transaction()
-      .setIsolationLevel('repeatable read')
-      .execute(async (trx) => {
+    const results = await makeKyselyTransactionWithRetry(pgQuery)(
+      { isolationLevel: 'repeatable read' },
+      async (trx) => {
         const action = await trx
           .selectFrom('public.actions')
           // We have to select this as a text array in order for the postgres
@@ -625,29 +630,31 @@ export default class ItemTypeOperations {
           return [];
         }
 
+        // Reads use `trx` so they share the `repeatable read` snapshot.
         return action.appliesToAllItemsOfKind.length > 0
           ? getItemTypeVersionsBaseQuery({
               orgId,
               currentVersionsOnly: true,
-              pgQuery,
+              pgQuery: trx,
             })
               .where('kind', 'in', action.appliesToAllItemsOfKind)
               .execute()
           : getItemTypeVersionsBaseQuery({
               orgId,
               currentVersionsOnly: true,
-              pgQuery,
+              pgQuery: trx,
             })
               .where(
                 'id',
                 'in',
-                pgQuery
+                trx
                   .selectFrom('public.actions_and_item_types')
                   .select('item_type_id')
                   .where('action_id', '=', actionId),
               )
               .execute();
-      });
+      },
+    );
 
     return results.map((it) => dbResultToItemType(it));
   }

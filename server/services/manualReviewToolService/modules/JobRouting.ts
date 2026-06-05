@@ -25,6 +25,10 @@ import {
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { equalLengthZip } from '../../../utils/fp-helpers.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
 import { __throw, removeUndefinedKeys } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import {
@@ -103,6 +107,7 @@ const routingRuleSelection = [
 
 export default class JobRouting {
   private readonly routingRulesCache;
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -116,6 +121,7 @@ export default class JobRouting {
         this.#getRoutingRulesBypassCache(orgId, pgQuery),
       directives: { freshUntilAge: 15, maxStale: [0, 2, 2] },
     });
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
   }
 
   async getRoutingRules(opts: {
@@ -144,67 +150,64 @@ export default class JobRouting {
     // if the queue doesn't exist
     await this.queueOps.checkQueueExists(orgId, destinationQueueId);
 
-    return this.pgQuery
-      .transaction()
-      .execute(async (trx) => {
-        const routingRule = await trx
-          .insertInto('manual_review_tool.routing_rules')
-          .values(({ selectFrom }) => ({
-            id: uuidv1(),
-            org_id: orgId,
-            name,
-            description: replaceEmptyStringWithNull(description),
-            status,
-            condition_set: conditionSet,
-            destination_queue_id: destinationQueueId,
-            creator_id: creatorId,
-            sequence_number: selectFrom('manual_review_tool.routing_rules')
-              .where('org_id', '=', orgId)
-              .select(
-                sql<number>`coalesce(max(sequence_number), 0) + 1`.as(
-                  'sequence_number',
-                ),
+    return this.transactionWithRetry(async (trx) => {
+      const routingRule = await trx
+        .insertInto('manual_review_tool.routing_rules')
+        .values(({ selectFrom }) => ({
+          id: uuidv1(),
+          org_id: orgId,
+          name,
+          description: replaceEmptyStringWithNull(description),
+          status,
+          condition_set: conditionSet,
+          destination_queue_id: destinationQueueId,
+          creator_id: creatorId,
+          sequence_number: selectFrom('manual_review_tool.routing_rules')
+            .where('org_id', '=', orgId)
+            .select(
+              sql<number>`coalesce(max(sequence_number), 0) + 1`.as(
+                'sequence_number',
               ),
-          }))
-          .returning(routingRuleSelection)
-          .executeTakeFirstOrThrow();
+            ),
+        }))
+        .returning(routingRuleSelection)
+        .executeTakeFirstOrThrow();
 
-        await trx
-          .insertInto('manual_review_tool.routing_rules_to_item_types')
-          .values(
-            itemTypeIds.map((itemTypeId) => ({
-              routing_rule_id: routingRule.id,
-              item_type_id: itemTypeId,
-            })),
-          )
-          .returning('item_type_id as itemTypeId')
-          .execute();
+      await trx
+        .insertInto('manual_review_tool.routing_rules_to_item_types')
+        .values(
+          itemTypeIds.map((itemTypeId) => ({
+            routing_rule_id: routingRule.id,
+            item_type_id: itemTypeId,
+          })),
+        )
+        .returning('item_type_id as itemTypeId')
+        .execute();
 
-        if (sequenceNumber) {
-          await this.#reorderOneRoutingRule(
-            orgId,
-            routingRule.id,
-            sequenceNumber,
-            trx,
-          );
-        }
+      if (sequenceNumber) {
+        await this.#reorderOneRoutingRule(
+          orgId,
+          routingRule.id,
+          sequenceNumber,
+          trx,
+        );
+      }
 
-        return {
-          ...routingRule,
-          itemTypeIds,
-        };
-      })
-      .catch((e) => {
-        throw isRoutingRuleNameExistsError(e)
-          ? makeRoutingRuleNameExistsError({
-              detail:
-                'The routing rule was not recorded because the name ' +
-                'already exists.',
-              cause: e,
-              shouldErrorSpan: true,
-            })
-          : e;
-      });
+      return {
+        ...routingRule,
+        itemTypeIds,
+      };
+    }).catch((e) => {
+      throw isRoutingRuleNameExistsError(e)
+        ? makeRoutingRuleNameExistsError({
+            detail:
+              'The routing rule was not recorded because the name ' +
+              'already exists.',
+            cause: e,
+            shouldErrorSpan: true,
+          })
+        : e;
+    });
   }
 
   async updateRoutingRule(input: UpdateRoutingRuleInput) {
@@ -228,83 +231,80 @@ export default class JobRouting {
       await this.queueOps.checkQueueExists(orgId, destinationQueueId);
     }
 
-    return this.pgQuery
-      .transaction()
-      .execute(async (trx) => {
-        const updatedRoutingRule = await trx
-          .updateTable('manual_review_tool.routing_rules')
-          .set(
-            removeUndefinedKeys({
-              name,
-              description: replaceEmptyStringWithNull(description),
-              status,
-              condition_set: conditionSet,
-              destination_queue_id: destinationQueueId,
-            }),
+    return this.transactionWithRetry(async (trx) => {
+      const updatedRoutingRule = await trx
+        .updateTable('manual_review_tool.routing_rules')
+        .set(
+          removeUndefinedKeys({
+            name,
+            description: replaceEmptyStringWithNull(description),
+            status,
+            condition_set: conditionSet,
+            destination_queue_id: destinationQueueId,
+          }),
+        )
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .returning(routingRuleSelection)
+        .executeTakeFirstOrThrow();
+
+      if (itemTypeIds) {
+        // delete item types that will no longer be used
+        await trx
+          .deleteFrom('manual_review_tool.routing_rules_to_item_types')
+          .where(({ eb, and }) =>
+            and([
+              eb('routing_rule_id', '=', id),
+              eb('item_type_id', 'not in', itemTypeIds),
+            ]),
           )
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .returning(routingRuleSelection)
-          .executeTakeFirstOrThrow();
+          .execute();
 
-        if (itemTypeIds) {
-          // delete item types that will no longer be used
-          await trx
-            .deleteFrom('manual_review_tool.routing_rules_to_item_types')
-            .where(({ eb, and }) =>
-              and([
-                eb('routing_rule_id', '=', id),
-                eb('item_type_id', 'not in', itemTypeIds),
-              ]),
-            )
-            .execute();
+        // insert new item types, ignore if they're already there
+        await trx
+          .insertInto('manual_review_tool.routing_rules_to_item_types')
+          .values(
+            itemTypeIds.map((itemTypeId) => ({
+              routing_rule_id: id,
+              item_type_id: itemTypeId,
+            })),
+          )
+          .onConflict((oc) =>
+            oc.columns(['routing_rule_id', 'item_type_id']).doNothing(),
+          )
+          .execute();
+      }
 
-          // insert new item types, ignore if they're already there
-          await trx
-            .insertInto('manual_review_tool.routing_rules_to_item_types')
-            .values(
-              itemTypeIds.map((itemTypeId) => ({
-                routing_rule_id: id,
-                item_type_id: itemTypeId,
-              })),
-            )
-            .onConflict((oc) =>
-              oc.columns(['routing_rule_id', 'item_type_id']).doNothing(),
-            )
-            .execute();
-        }
+      if (sequenceNumber) {
+        await this.#reorderOneRoutingRule(orgId, id, sequenceNumber, trx);
+      }
 
-        if (sequenceNumber) {
-          await this.#reorderOneRoutingRule(orgId, id, sequenceNumber, trx);
-        }
+      return {
+        ...updatedRoutingRule,
+        itemTypeIds:
+          itemTypeIds ?? (await this.#getItemTypeIdsForRoutingRule(id, trx)),
+      };
+    }).catch((e) => {
+      if (isRoutingRuleNameExistsError(e))
+        throw makeRoutingRuleNameExistsError({
+          detail:
+            'The update for the routing rule was not recorded because ' +
+            'the new name already exists.',
+          cause: e,
+          shouldErrorSpan: true,
+        });
 
-        return {
-          ...updatedRoutingRule,
-          itemTypeIds:
-            itemTypeIds ?? (await this.#getItemTypeIdsForRoutingRule(id, trx)),
-        };
-      })
-      .catch((e) => {
-        if (isRoutingRuleNameExistsError(e))
-          throw makeRoutingRuleNameExistsError({
-            detail:
-              'The update for the routing rule was not recorded because ' +
-              'the new name already exists.',
-            cause: e,
-            shouldErrorSpan: true,
-          });
+      if (isRoutingRuleNotFoundError(e))
+        throw makeRoutingRuleNotFoundError({
+          detail:
+            'The provided routing rule was not found. Please ' +
+            'refresh the page and try again.',
+          cause: e,
+          shouldErrorSpan: true,
+        });
 
-        if (isRoutingRuleNotFoundError(e))
-          throw makeRoutingRuleNotFoundError({
-            detail:
-              'The provided routing rule was not found. Please ' +
-              'refresh the page and try again.',
-            cause: e,
-            shouldErrorSpan: true,
-          });
-
-        throw e;
-      });
+      throw e;
+    });
   }
 
   /**
@@ -314,22 +314,19 @@ export default class JobRouting {
    * @returns A promise that resolves to a boolean indicating the success of the
    *   operation.
    */
-  async deleteRoutingRule(input: { id: string }) {
-    const { id } = input;
-    await this.pgQuery.transaction().execute(async (trx) => {
-      try {
-        await trx
-          .deleteFrom('manual_review_tool.routing_rules')
-          .where('id', '=', id)
-          .executeTakeFirstOrThrow();
-
-        return true;
-      } catch (error) {
-        return false;
-      }
-    });
-
-    return true;
+  async deleteRoutingRule(input: {
+    id: string;
+    orgId: string;
+  }): Promise<boolean> {
+    const { id, orgId } = input;
+    const result = await this.transactionWithRetry(async (trx) =>
+      trx
+        .deleteFrom('manual_review_tool.routing_rules')
+        .where('id', '=', id)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst(),
+    );
+    return result.numDeletedRows === 1n;
   }
 
   async reorderRoutingRules(
