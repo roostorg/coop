@@ -119,7 +119,7 @@ export default class ManualReviewToolSettings {
     return row?.default_job_sort_order ?? 'DESC';
   }
 
-  async updateDefaultJobSortOrder(orgId: string, sortOrder: string) {
+  async updateDefaultJobSortOrder(orgId: string, sortOrder: 'ASC' | 'DESC') {
     await this.pgQuery
       .updateTable('manual_review_tool.manual_review_tool_settings')
       .where('org_id', '=', orgId)

@@ -12,7 +12,6 @@ import {
   type GQLOrgResolvers,
   type GQLPendingInvite,
   type GQLQueryResolvers,
-  type GQLSortOrder,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
@@ -575,7 +574,7 @@ const Org: GQLOrgResolvers = {
       await context.services.ManualReviewToolService.getDefaultJobSortOrder(
         org.id,
       );
-    return value as GQLSortOrder;
+    return value;
   },
   async usersWhoCanReviewEveryQueue(org, _, context) {
     const user = context.getUser();

@@ -207,7 +207,7 @@ export type ManualReviewToolServicePg = {
     hide_skip_button_for_non_admins: boolean;
     ignore_callback_url?: string;
     preview_jobs_view_enabled: boolean;
-    default_job_sort_order: string;
+    default_job_sort_order: 'ASC' | 'DESC';
   };
   'manual_review_tool.job_comments': {
     id: string;
