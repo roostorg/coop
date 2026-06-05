@@ -205,7 +205,7 @@ export type ManualReviewToolServicePg = {
     requires_policy_for_decisions: boolean;
     mrt_requires_decision_reason: boolean;
     hide_skip_button_for_non_admins: boolean;
-    ignore_callback_url?: string;
+    ignore_callback_url: string | null;
     preview_jobs_view_enabled: boolean;
     default_job_sort_order: 'ASC' | 'DESC';
   };

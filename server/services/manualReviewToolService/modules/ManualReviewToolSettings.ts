@@ -16,7 +16,7 @@ export default class ManualReviewToolSettings {
         mrt_requires_decision_reason: false,
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
-        ignore_callback_url: undefined,
+        ignore_callback_url: null,
         default_job_sort_order: 'DESC',
       })
       .onConflict((oc) => oc.column('org_id').doNothing())
@@ -106,7 +106,7 @@ export default class ManualReviewToolSettings {
     await this.pgQuery
       .updateTable('manual_review_tool.manual_review_tool_settings')
       .where('org_id', '=', orgId)
-      .set({ ignore_callback_url: url ?? undefined })
+      .set({ ignore_callback_url: url })
       .execute();
   }
 
