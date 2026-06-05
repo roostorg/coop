@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 /**
  * Integration test for #340: rule changes take effect.
  *
@@ -37,6 +38,7 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import { SignalType } from '../../services/signalsService/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import createActions from '../fixtureHelpers/createActions.js';
 import createContentItemTypes from '../fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
@@ -250,29 +252,27 @@ describe('Rule changes take effect (integration)', () => {
       // is now stale; reads within `freshUntilAge` will still see the original
       // condition. There is no explicit invalidation on the rule-update path.
       const kysely = harness.deps.KyselyPg as Kysely<CombinedPg>;
-      await kysely
-        .transaction()
-        .setIsolationLevel('repeatable read')
-        .execute(async (trx) => {
-          await kyselyUpdateRule(trx, {
-            id: rule!.id,
-            orgId,
-            name: undefined,
-            description: undefined,
-            conditionSet: makeTextContainsConditionSet(
-              scenario.itemTypeId,
-              'secondkeyword',
-            ),
-            tags: undefined,
-            ruleType: RuleType.CONTENT,
-            maxDailyActions: undefined,
-            expirationTime: undefined,
-            parentId: undefined,
-            actionIds: undefined,
-            policyIds: undefined,
-            contentTypeIds: undefined,
-          });
+      const txn = makeKyselyTransactionWithRetry(kysely);
+      await txn(async (trx) => {
+        await kyselyUpdateRule(trx, {
+          id: rule!.id,
+          orgId,
+          name: undefined,
+          description: undefined,
+          conditionSet: makeTextContainsConditionSet(
+            scenario.itemTypeId,
+            'secondkeyword',
+          ),
+          tags: undefined,
+          ruleType: RuleType.CONTENT,
+          maxDailyActions: undefined,
+          expirationTime: undefined,
+          parentId: undefined,
+          actionIds: undefined,
+          policyIds: undefined,
+          contentTypeIds: undefined,
         });
+      });
 
       // Wait past the cache TTL so the next read refetches and sees the update.
       await new Promise((r) => setTimeout(r, RULES_CACHE_REFRESH_BUFFER_MS));
