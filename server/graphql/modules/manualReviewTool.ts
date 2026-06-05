@@ -1651,10 +1651,15 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     const { orgId, id: queueId } = queue;
 
     if (jobIds == null) {
+      const sortOrder =
+        await context.services.ManualReviewToolService.getDefaultJobSortOrder(
+          orgId,
+        );
       return context.services.ManualReviewToolService.getAllJobsForQueue({
         orgId,
         queueId,
         limit: limit ?? undefined,
+        sortOrder: sortOrder as 'ASC' | 'DESC',
       });
     }
     // Empty array means "filter to no IDs" -> result is always []. Short-circuit
