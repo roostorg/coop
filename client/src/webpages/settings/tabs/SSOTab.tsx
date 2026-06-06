@@ -19,7 +19,7 @@ import { Heading, Text } from '@/coop-ui/Typography';
 import {
   useGQLDeploymentSettingsQuery,
   useGQLUpdateSamlEnabledMutation,
-  useGQLUpdateSsoCredentialsMutation,
+  useGQLUpdateSsoSamlCredentialsMutation,
 } from '@/graphql/generated';
 import { isValidUrl } from '@/lib/utils';
 import { gql } from '@apollo/client';
@@ -28,8 +28,8 @@ import { useEffect, useState } from 'react';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 gql`
-  mutation UpdateSSOCredentials($input: UpdateSSOCredentialsInput!) {
-    updateSSOCredentials(input: $input)
+  mutation UpdateSSOSamlCredentials($input: UpdateSSOSamlCredentialsInput!) {
+    updateSSOSamlCredentials(input: $input)
   }
 `;
 
@@ -66,8 +66,8 @@ export default function SSOTab() {
   };
 
   const [updateSamlEnabled] = useGQLUpdateSamlEnabledMutation(mutationOpts);
-  const [updateSSOCredentials, { loading: ssoSaveLoading }] =
-    useGQLUpdateSsoCredentialsMutation(mutationOpts);
+  const [updateSSOSamlCredentials, { loading: ssoSaveLoading }] =
+    useGQLUpdateSsoSamlCredentialsMutation(mutationOpts);
 
   if (loading) return <FullScreenLoading />;
   if (error || !org) return <div>Error loading SSO settings</div>;
@@ -90,8 +90,8 @@ export default function SSOTab() {
       updateSamlEnabled({ variables: { enabled: samlEnabled } });
     }
     if (credentialsChanged) {
-      updateSSOCredentials({
-        variables: { input: { ssoUrl, ssoCert } },
+      updateSSOSamlCredentials({
+        variables: { input: { samlEnabled, ssoUrl, ssoCert } },
       });
     }
   };

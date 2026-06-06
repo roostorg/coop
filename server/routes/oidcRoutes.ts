@@ -131,6 +131,8 @@ export function registerOidcRoutes(app: Express, deps: OidcDeps) {
         res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
       });
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[OIDC] Unexpected error in callback handler', e);
       return res.redirect(
         `${deps.ConfigService.uiUrl}/login/sso?error=sso_login_failed`,
       );
