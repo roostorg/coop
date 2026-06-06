@@ -26,18 +26,21 @@ export default function IframeContentDisplayComponent(props: {
     blur: boolean;
     grayscale: boolean;
     shouldTranslate: boolean;
+    sepia: boolean;
   }>({
     blur: true,
     grayscale: false,
     shouldTranslate: false,
+    sepia: false,
   });
 
-  const { blur, grayscale, shouldTranslate } = state;
+  const { blur, grayscale, shouldTranslate, sepia } = state;
 
   const { loading, data } = useGQLPersonalSafetySettingsQuery();
   const {
     moderatorSafetyBlurLevel = 2 as BlurStrength,
     moderatorSafetyGrayscale = true,
+    moderatorSafetySepia = false,
   } = data?.me?.interfacePreferences ?? {};
 
   useEffect(() => {
@@ -45,8 +48,9 @@ export default function IframeContentDisplayComponent(props: {
       blur: moderatorSafetyBlurLevel !== 0,
       grayscale: moderatorSafetyGrayscale,
       shouldTranslate: false,
+      sepia: moderatorSafetySepia,
     });
-  }, [moderatorSafetyBlurLevel, moderatorSafetyGrayscale]);
+  }, [moderatorSafetyBlurLevel, moderatorSafetyGrayscale, moderatorSafetySepia]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -73,6 +77,7 @@ export default function IframeContentDisplayComponent(props: {
               blur: blur ? moderatorSafetyBlurLevel : 0,
               grayscale,
               shouldTranslate,
+              sepia,
             },
             contentProxyUrl,
           );
@@ -89,6 +94,7 @@ export default function IframeContentDisplayComponent(props: {
                   blur: blur ? moderatorSafetyBlurLevel : 0,
                   grayscale,
                   shouldTranslate,
+                  sepia,
                 },
                 contentProxyUrl,
               );
@@ -112,6 +118,7 @@ export default function IframeContentDisplayComponent(props: {
       shouldTranslate,
       contentProxyUrl,
       isIframeLoading,
+      sepia,
     ],
   );
 

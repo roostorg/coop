@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import crypto from 'node:crypto';
 import { type Kysely } from 'kysely';
 
@@ -52,15 +53,17 @@ class UserManagementService {
 
     if (
       row &&
-      row.moderator_safety_grayscale &&
-      row.moderator_safety_blur_level &&
-      row.moderator_safety_mute_video
+      row.moderator_safety_grayscale != null &&
+      row.moderator_safety_blur_level != null &&
+      row.moderator_safety_mute_video != null &&
+      row.moderator_safety_sepia != null
     ) {
       // If all the user's settings have been set, just return them
       return {
         moderatorSafetyGrayscale: row.moderator_safety_grayscale,
         moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
         moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
+        moderatorSafetySepia: row.moderator_safety_sepia,
         mrtChartConfigurations: row.mrt_chart_configurations ?? [],
       };
     }
@@ -71,6 +74,8 @@ class UserManagementService {
     return {
       moderatorSafetyGrayscale:
         row?.moderator_safety_grayscale ?? orgDefaults.moderatorSafetyGrayscale,
+      moderatorSafetySepia:
+        row?.moderator_safety_sepia ?? orgDefaults.moderatorSafetySepia,
       moderatorSafetyBlurLevel:
         row?.moderator_safety_blur_level ??
         orgDefaults.moderatorSafetyBlurLevel,
@@ -161,6 +166,7 @@ class UserManagementService {
         moderatorSafetyMuteVideo: boolean;
         moderatorSafetyGrayscale: boolean;
         moderatorSafetyBlurLevel: number;
+        moderatorSafetySepia: boolean;
       };
       mrtChartConfigurations?: readonly MrtChartConfig[];
     };
@@ -174,6 +180,8 @@ class UserManagementService {
         ? {
             moderator_safety_grayscale:
               moderatorSafetySettings.moderatorSafetyGrayscale,
+            moderator_safety_sepia:
+              moderatorSafetySettings.moderatorSafetySepia,
             moderator_safety_blur_level:
               moderatorSafetySettings.moderatorSafetyBlurLevel,
             moderator_safety_mute_video:
@@ -219,6 +227,7 @@ class UserManagementService {
 
     return {
       moderatorSafetyGrayscale: row.moderator_safety_grayscale,
+      moderatorSafetySepia: row.moderator_safety_sepia,
       moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
       moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
     };
@@ -229,18 +238,23 @@ class UserManagementService {
     // If you don't provide these values, they will be set to the default values
     // configured on the pg table definition
     moderatorSafetyGrayscale?: boolean;
+    moderatorSafetySepia?: boolean;
     moderatorSafetyBlurLevel?: number;
     moderatorSafetyMuteVideo?: boolean;
   }) {
     const {
       orgId,
       moderatorSafetyGrayscale,
+      moderatorSafetySepia,
       moderatorSafetyBlurLevel,
       moderatorSafetyMuteVideo,
     } = opts;
     const updateFields = {
       ...(moderatorSafetyGrayscale !== undefined
         ? { moderator_safety_grayscale: moderatorSafetyGrayscale }
+        : {}),
+      ...(moderatorSafetySepia !== undefined
+        ? { moderator_safety_sepia: moderatorSafetySepia }
         : {}),
       ...(moderatorSafetyBlurLevel !== undefined
         ? { moderator_safety_blur_level: moderatorSafetyBlurLevel }
@@ -256,6 +270,7 @@ class UserManagementService {
         {
           org_id: orgId,
           moderator_safety_grayscale: moderatorSafetyGrayscale,
+          moderator_safety_sepia: moderatorSafetySepia,
           moderator_safety_blur_level: moderatorSafetyBlurLevel,
           moderator_safety_mute_video: moderatorSafetyMuteVideo,
         },

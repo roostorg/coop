@@ -33,6 +33,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -52,6 +53,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function ManualReviewSafetySettings() {
@@ -59,6 +61,7 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
 
   const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({ errorPolicy: 'all' });
@@ -83,11 +86,13 @@ export default function ManualReviewSafetySettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = data.myOrg.defaultInterfacePreferences;
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [data?.myOrg?.defaultInterfacePreferences]);
 
@@ -151,10 +156,23 @@ export default function ManualReviewSafetySettings() {
               <Switch
                 checked={safetySettings.moderatorSafetyGrayscale}
                 onCheckedChange={(value) =>
-                  setSafetySettings({
-                    ...safetySettings,
+                  setSafetySettings((prev) => ({
+                    ...prev,
                     moderatorSafetyGrayscale: value,
-                  })
+                  }))
+                }
+              />
+            </div>
+
+            <div className="flex gap-1 items-center justify-between">
+              <Label className="text-sm font-medium leading-none">Sepia</Label>
+              <Switch
+                checked={safetySettings.moderatorSafetySepia}
+                onCheckedChange={(value) =>
+                  setSafetySettings((prev) => ({
+                    ...prev,
+                    moderatorSafetySepia: value,
+                  }))
                 }
               />
             </div>
@@ -166,10 +184,10 @@ export default function ManualReviewSafetySettings() {
               <Switch
                 checked={safetySettings.moderatorSafetyMuteVideo}
                 onCheckedChange={(value) =>
-                  setSafetySettings({
-                    ...safetySettings,
+                  setSafetySettings((prev) => ({
+                    ...prev,
                     moderatorSafetyMuteVideo: value,
-                  })
+                  }))
                 }
               />
             </div>
@@ -178,7 +196,9 @@ export default function ManualReviewSafetySettings() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
+              safetySettings.moderatorSafetySepia ? 'sepia' : ''
+            }`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />
