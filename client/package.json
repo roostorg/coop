@@ -1,6 +1,7 @@
 {
   "name": "client",
   "version": "1.0.0",
+  "type": "module",
   "description": "Coop Client app",
   "scripts": {
     "analyze": "npm run build && source-map-explorer 'build/static/js/*.js'",
@@ -116,7 +117,6 @@
     "tailwindcss": "^3.4.19",
     "typescript": "^5.3.2",
     "vite": "^7.3.2",
-    "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-svgr": "^4.5.0",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.0"
