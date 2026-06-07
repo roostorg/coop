@@ -1537,6 +1537,27 @@ export type GQLIntegrationNoInputCredentialsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLInvalidateReportsFromReporterInput = {
+  /**
+   * Scopes the sweep to a single MRT job. When omitted, every pending job
+   * in the caller's org is scanned.
+   */
+  readonly jobId?: InputMaybe<Scalars['ID']['input']>;
+  readonly reason?: InputMaybe<Scalars['String']['input']>;
+  readonly reporter: GQLReporterIdInput;
+};
+
+export type GQLInvalidateReportsFromReporterSuccessResponse = {
+  readonly __typename?: 'InvalidateReportsFromReporterSuccessResponse';
+  readonly jobsDeleted: Scalars['Int']['output'];
+  readonly jobsScanned: Scalars['Int']['output'];
+  readonly jobsScrubbed: Scalars['Int']['output'];
+  readonly queuesScanned: Scalars['Int']['output'];
+  readonly reportsRemoved: Scalars['Int']['output'];
+  /** True when a queue exceeded the per-queue scan cap, so the sweep was partial. */
+  readonly truncated: Scalars['Boolean']['output'];
+};
+
 export type GQLInviteUserInput = {
   readonly email: Scalars['String']['input'];
   readonly role: GQLUserRole;
@@ -2315,6 +2336,16 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLMissingRequiredDecisionReasonError = GQLError & {
+  readonly __typename?: 'MissingRequiredDecisionReasonError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLMissingRequiredPolicyForDecisionError = GQLError & {
   readonly __typename?: 'MissingRequiredPolicyForDecisionError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -2505,6 +2536,14 @@ export type GQLMutation = {
   readonly deleteUser?: Maybe<Scalars['Boolean']['output']>;
   readonly dequeueManualReviewJob?: Maybe<GQLDequeueManualReviewJobResponse>;
   readonly generatePasswordResetToken?: Maybe<Scalars['String']['output']>;
+  /**
+   * Strips every entry sent by the given reporter from the report history of
+   * every pending MRT job in the caller's org. If a job's history becomes
+   * empty and it was originally enqueued from a user report, the job itself
+   * is removed. Intentionally non-persistent: future reports from the same
+   * reporter are NOT blocked. See issue #404.
+   */
+  readonly invalidateReportsFromReporter: GQLInvalidateReportsFromReporterSuccessResponse;
   readonly inviteUser?: Maybe<Scalars['String']['output']>;
   readonly logSkip: Scalars['Boolean']['output'];
   readonly login: GQLLoginResponse;
@@ -2714,6 +2753,10 @@ export type GQLMutationDequeueManualReviewJobArgs = {
 
 export type GQLMutationGeneratePasswordResetTokenArgs = {
   userId: Scalars['ID']['input'];
+};
+
+export type GQLMutationInvalidateReportsFromReporterArgs = {
+  input: GQLInvalidateReportsFromReporterInput;
 };
 
 export type GQLMutationInviteUserArgs = {
@@ -4481,6 +4524,7 @@ export type GQLSubmitDecisionInput = {
 
 export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
+  | GQLMissingRequiredDecisionReasonError
   | GQLMissingRequiredPolicyForDecisionError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
@@ -5485,6 +5529,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
   SignalOutputType: GQLEnumSignalOutputType | GQLScalarSignalOutputType;
   SubmitDecisionResponse:
     | GQLJobHasAlreadyBeenSubmittedError
+    | GQLMissingRequiredDecisionReasonError
     | GQLMissingRequiredPolicyForDecisionError
     | GQLNoJobWithIdInQueueError
     | GQLRecordingJobDecisionFailedError
@@ -5557,6 +5602,7 @@ export type GQLResolversInterfaceTypes<
     | GQLLoginUserDoesNotExistError
     | GQLManualReviewQueueNameExistsError
     | GQLMatchingBankNameExistsError
+    | GQLMissingRequiredDecisionReasonError
     | GQLMissingRequiredPolicyForDecisionError
     | GQLNoJobWithIdInQueueError
     | GQLNotFoundError
@@ -5873,6 +5919,8 @@ export type GQLResolversTypes = {
   IntegrationEmptyInputCredentialsError: ResolverTypeWrapper<GQLIntegrationEmptyInputCredentialsError>;
   IntegrationMetadata: ResolverTypeWrapper<GQLIntegrationMetadata>;
   IntegrationNoInputCredentialsError: ResolverTypeWrapper<GQLIntegrationNoInputCredentialsError>;
+  InvalidateReportsFromReporterInput: GQLInvalidateReportsFromReporterInput;
+  InvalidateReportsFromReporterSuccessResponse: ResolverTypeWrapper<GQLInvalidateReportsFromReporterSuccessResponse>;
   InviteUserInput: GQLInviteUserInput;
   InviteUserToken: ResolverTypeWrapper<GQLInviteUserToken>;
   InviteUserTokenExpiredError: ResolverTypeWrapper<GQLInviteUserTokenExpiredError>;
@@ -6010,6 +6058,7 @@ export type GQLResolversTypes = {
     }
   >;
   MetricsTimeDivisionOptions: GQLMetricsTimeDivisionOptions;
+  MissingRequiredDecisionReasonError: ResolverTypeWrapper<GQLMissingRequiredDecisionReasonError>;
   MissingRequiredPolicyForDecisionError: ResolverTypeWrapper<GQLMissingRequiredPolicyForDecisionError>;
   ModelCard: ResolverTypeWrapper<GQLModelCard>;
   ModelCardField: ResolverTypeWrapper<GQLModelCardField>;
@@ -6652,6 +6701,8 @@ export type GQLResolversParentTypes = {
   IntegrationEmptyInputCredentialsError: GQLIntegrationEmptyInputCredentialsError;
   IntegrationMetadata: GQLIntegrationMetadata;
   IntegrationNoInputCredentialsError: GQLIntegrationNoInputCredentialsError;
+  InvalidateReportsFromReporterInput: GQLInvalidateReportsFromReporterInput;
+  InvalidateReportsFromReporterSuccessResponse: GQLInvalidateReportsFromReporterSuccessResponse;
   InviteUserInput: GQLInviteUserInput;
   InviteUserToken: GQLInviteUserToken;
   InviteUserTokenExpiredError: GQLInviteUserTokenExpiredError;
@@ -6752,6 +6803,7 @@ export type GQLResolversParentTypes = {
   MessageWithIpAddress: Omit<GQLMessageWithIpAddress, 'message'> & {
     message: GQLResolversParentTypes['ContentItem'];
   };
+  MissingRequiredDecisionReasonError: GQLMissingRequiredDecisionReasonError;
   MissingRequiredPolicyForDecisionError: GQLMissingRequiredPolicyForDecisionError;
   ModelCard: GQLModelCard;
   ModelCardField: GQLModelCardField;
@@ -8774,6 +8826,7 @@ export type GQLErrorResolvers<
     | 'LoginUserDoesNotExistError'
     | 'ManualReviewQueueNameExistsError'
     | 'MatchingBankNameExistsError'
+    | 'MissingRequiredDecisionReasonError'
     | 'MissingRequiredPolicyForDecisionError'
     | 'NoJobWithIdInQueueError'
     | 'NotFoundError'
@@ -9286,6 +9339,20 @@ export type GQLIntegrationNoInputCredentialsErrorResolvers<
     ContextType
   >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLInvalidateReportsFromReporterSuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['InvalidateReportsFromReporterSuccessResponse'] =
+    GQLResolversParentTypes['InvalidateReportsFromReporterSuccessResponse'],
+> = {
+  jobsDeleted?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  jobsScanned?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  jobsScrubbed?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  queuesScanned?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  reportsRemoved?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  truncated?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type GQLInviteUserTokenResolvers<
@@ -10370,6 +10437,37 @@ export type GQLMessageWithIpAddressResolvers<
   message?: Resolver<GQLResolversTypes['ContentItem'], ParentType, ContextType>;
 };
 
+export type GQLMissingRequiredDecisionReasonErrorResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['MissingRequiredDecisionReasonError'] =
+    GQLResolversParentTypes['MissingRequiredDecisionReasonError'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLMissingRequiredPolicyForDecisionErrorResolvers<
   ContextType = Context,
   ParentType extends
@@ -10936,6 +11034,12 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationGeneratePasswordResetTokenArgs, 'userId'>
+  >;
+  invalidateReportsFromReporter?: Resolver<
+    GQLResolversTypes['InvalidateReportsFromReporterSuccessResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationInvalidateReportsFromReporterArgs, 'input'>
   >;
   inviteUser?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -13696,6 +13800,7 @@ export type GQLSubmitDecisionResponseResolvers<
 > = {
   __resolveType: TypeResolveFn<
     | 'JobHasAlreadyBeenSubmittedError'
+    | 'MissingRequiredDecisionReasonError'
     | 'MissingRequiredPolicyForDecisionError'
     | 'NoJobWithIdInQueueError'
     | 'RecordingJobDecisionFailedError'
@@ -14825,6 +14930,7 @@ export type GQLResolvers<ContextType = Context> = {
   IntegrationEmptyInputCredentialsError?: GQLIntegrationEmptyInputCredentialsErrorResolvers<ContextType>;
   IntegrationMetadata?: GQLIntegrationMetadataResolvers<ContextType>;
   IntegrationNoInputCredentialsError?: GQLIntegrationNoInputCredentialsErrorResolvers<ContextType>;
+  InvalidateReportsFromReporterSuccessResponse?: GQLInvalidateReportsFromReporterSuccessResponseResolvers<ContextType>;
   InviteUserToken?: GQLInviteUserTokenResolvers<ContextType>;
   InviteUserTokenExpiredError?: GQLInviteUserTokenExpiredErrorResolvers<ContextType>;
   InviteUserTokenMissingError?: GQLInviteUserTokenMissingErrorResolvers<ContextType>;
@@ -14879,6 +14985,7 @@ export type GQLResolvers<ContextType = Context> = {
   MatchingBanks?: GQLMatchingBanksResolvers<ContextType>;
   MatchingValues?: GQLMatchingValuesResolvers<ContextType>;
   MessageWithIpAddress?: GQLMessageWithIpAddressResolvers<ContextType>;
+  MissingRequiredDecisionReasonError?: GQLMissingRequiredDecisionReasonErrorResolvers<ContextType>;
   MissingRequiredPolicyForDecisionError?: GQLMissingRequiredPolicyForDecisionErrorResolvers<ContextType>;
   ModelCard?: GQLModelCardResolvers<ContextType>;
   ModelCardField?: GQLModelCardFieldResolvers<ContextType>;

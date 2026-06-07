@@ -276,6 +276,7 @@ const Mutation: GQLMutationResolvers = {
 
     return context.services.ManualReviewToolService.deleteRoutingRule({
       id: params.input.id,
+      orgId: user.orgId,
       isAppealsRule: params.input.isAppealsRule ?? false,
     });
   },

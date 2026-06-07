@@ -252,27 +252,30 @@ describe('Rule changes take effect (integration)', () => {
       // is now stale; reads within `freshUntilAge` will still see the original
       // condition. There is no explicit invalidation on the rule-update path.
       const kysely = harness.deps.KyselyPg as Kysely<CombinedPg>;
-      const txn = makeKyselyTransactionWithRetry(kysely);
-      await txn(async (trx) => {
-        await kyselyUpdateRule(trx, {
-          id: rule!.id,
-          orgId,
-          name: undefined,
-          description: undefined,
-          conditionSet: makeTextContainsConditionSet(
-            scenario.itemTypeId,
-            'secondkeyword',
-          ),
-          tags: undefined,
-          ruleType: RuleType.CONTENT,
-          maxDailyActions: undefined,
-          expirationTime: undefined,
-          parentId: undefined,
-          actionIds: undefined,
-          policyIds: undefined,
-          contentTypeIds: undefined,
-        });
-      });
+      const transactionWithRetry = makeKyselyTransactionWithRetry(kysely);
+      await transactionWithRetry(
+        { isolationLevel: 'repeatable read' },
+        async (trx) => {
+          await kyselyUpdateRule(trx, {
+            id: rule!.id,
+            orgId,
+            name: undefined,
+            description: undefined,
+            conditionSet: makeTextContainsConditionSet(
+              scenario.itemTypeId,
+              'secondkeyword',
+            ),
+            tags: undefined,
+            ruleType: RuleType.CONTENT,
+            maxDailyActions: undefined,
+            expirationTime: undefined,
+            parentId: undefined,
+            actionIds: undefined,
+            policyIds: undefined,
+            contentTypeIds: undefined,
+          });
+        },
+      );
 
       // Wait past the cache TTL so the next read refetches and sees the update.
       await new Promise((r) => setTimeout(r, RULES_CACHE_REFRESH_BUFFER_MS));

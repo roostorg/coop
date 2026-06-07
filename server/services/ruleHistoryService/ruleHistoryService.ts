@@ -1,11 +1,7 @@
 /**
  * @fileoverview This service exports various functions for querying rule
- * history/versions.
- *
- * Making the rule_versions view into a sequelize model wouldn't really make
- * sense, since the view is read-only, so many of the sequelize static methods
- * (`Model.update()` et al, plus the general idea of mutable instances to later
- * `save()`) don't apply. So we just expose these queries.
+ * history/versions. The underlying `rule_versions` view is read-only, so this
+ * surface intentionally only exposes queries — no mutations.
  */
 import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';

@@ -1469,6 +1469,27 @@ export type GQLIntegrationNoInputCredentialsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLInvalidateReportsFromReporterInput = {
+  /**
+   * Scopes the sweep to a single MRT job. When omitted, every pending job
+   * in the caller's org is scanned.
+   */
+  readonly jobId?: InputMaybe<Scalars['ID']['input']>;
+  readonly reason?: InputMaybe<Scalars['String']['input']>;
+  readonly reporter: GQLReporterIdInput;
+};
+
+export type GQLInvalidateReportsFromReporterSuccessResponse = {
+  readonly __typename: 'InvalidateReportsFromReporterSuccessResponse';
+  readonly jobsDeleted: Scalars['Int']['output'];
+  readonly jobsScanned: Scalars['Int']['output'];
+  readonly jobsScrubbed: Scalars['Int']['output'];
+  readonly queuesScanned: Scalars['Int']['output'];
+  readonly reportsRemoved: Scalars['Int']['output'];
+  /** True when a queue exceeded the per-queue scan cap, so the sweep was partial. */
+  readonly truncated: Scalars['Boolean']['output'];
+};
+
 export type GQLInviteUserInput = {
   readonly email: Scalars['String']['input'];
   readonly role: GQLUserRole;
@@ -2247,6 +2268,16 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLMissingRequiredDecisionReasonError = GQLError & {
+  readonly __typename: 'MissingRequiredDecisionReasonError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLMissingRequiredPolicyForDecisionError = GQLError & {
   readonly __typename: 'MissingRequiredPolicyForDecisionError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -2437,6 +2468,14 @@ export type GQLMutation = {
   readonly deleteUser?: Maybe<Scalars['Boolean']['output']>;
   readonly dequeueManualReviewJob?: Maybe<GQLDequeueManualReviewJobResponse>;
   readonly generatePasswordResetToken?: Maybe<Scalars['String']['output']>;
+  /**
+   * Strips every entry sent by the given reporter from the report history of
+   * every pending MRT job in the caller's org. If a job's history becomes
+   * empty and it was originally enqueued from a user report, the job itself
+   * is removed. Intentionally non-persistent: future reports from the same
+   * reporter are NOT blocked. See issue #404.
+   */
+  readonly invalidateReportsFromReporter: GQLInvalidateReportsFromReporterSuccessResponse;
   readonly inviteUser?: Maybe<Scalars['String']['output']>;
   readonly logSkip: Scalars['Boolean']['output'];
   readonly login: GQLLoginResponse;
@@ -2646,6 +2685,10 @@ export type GQLMutationDequeueManualReviewJobArgs = {
 
 export type GQLMutationGeneratePasswordResetTokenArgs = {
   userId: Scalars['ID']['input'];
+};
+
+export type GQLMutationInvalidateReportsFromReporterArgs = {
+  input: GQLInvalidateReportsFromReporterInput;
 };
 
 export type GQLMutationInviteUserArgs = {
@@ -4413,6 +4456,7 @@ export type GQLSubmitDecisionInput = {
 
 export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
+  | GQLMissingRequiredDecisionReasonError
   | GQLMissingRequiredPolicyForDecisionError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
@@ -12070,6 +12114,23 @@ export type GQLSetModeratorSafetySettingsMutation = {
   } | null;
 };
 
+export type GQLInvalidateReportsFromReporterMutationVariables = Exact<{
+  input: GQLInvalidateReportsFromReporterInput;
+}>;
+
+export type GQLInvalidateReportsFromReporterMutation = {
+  readonly __typename: 'Mutation';
+  readonly invalidateReportsFromReporter: {
+    readonly __typename: 'InvalidateReportsFromReporterSuccessResponse';
+    readonly queuesScanned: number;
+    readonly jobsScanned: number;
+    readonly jobsScrubbed: number;
+    readonly jobsDeleted: number;
+    readonly reportsRemoved: number;
+    readonly truncated: boolean;
+  };
+};
+
 export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
@@ -15086,6 +15147,12 @@ export type GQLSubmitManualReviewDecisionMutation = {
   readonly submitManualReviewDecision:
     | {
         readonly __typename: 'JobHasAlreadyBeenSubmittedError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+      }
+    | {
+        readonly __typename: 'MissingRequiredDecisionReasonError';
         readonly title: string;
         readonly status: number;
         readonly type: ReadonlyArray<string>;
@@ -34093,6 +34160,65 @@ export type GQLSetModeratorSafetySettingsMutationOptions =
     GQLSetModeratorSafetySettingsMutation,
     GQLSetModeratorSafetySettingsMutationVariables
   >;
+export const GQLInvalidateReportsFromReporterDocument = gql`
+  mutation InvalidateReportsFromReporter(
+    $input: InvalidateReportsFromReporterInput!
+  ) {
+    invalidateReportsFromReporter(input: $input) {
+      queuesScanned
+      jobsScanned
+      jobsScrubbed
+      jobsDeleted
+      reportsRemoved
+      truncated
+    }
+  }
+`;
+export type GQLInvalidateReportsFromReporterMutationFn =
+  Apollo.MutationFunction<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >;
+
+/**
+ * __useGQLInvalidateReportsFromReporterMutation__
+ *
+ * To run a mutation, you first call `useGQLInvalidateReportsFromReporterMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLInvalidateReportsFromReporterMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlInvalidateReportsFromReporterMutation, { data, loading, error }] = useGQLInvalidateReportsFromReporterMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLInvalidateReportsFromReporterMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >(GQLInvalidateReportsFromReporterDocument, options);
+}
+export type GQLInvalidateReportsFromReporterMutationHookResult = ReturnType<
+  typeof useGQLInvalidateReportsFromReporterMutation
+>;
+export type GQLInvalidateReportsFromReporterMutationResult =
+  Apollo.MutationResult<GQLInvalidateReportsFromReporterMutation>;
+export type GQLInvalidateReportsFromReporterMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >;
 export const GQLManualReviewJobInfoDocument = gql`
   query ManualReviewJobInfo($jobIds: [ID!]) {
     myOrg {
@@ -34160,6 +34286,7 @@ export const GQLManualReviewJobInfoDocument = gql`
     }
     me {
       id
+      permissions
       reviewableQueues {
         id
         name
@@ -34351,6 +34478,11 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
         status
         type
         detail
+      }
+      ... on MissingRequiredDecisionReasonError {
+        title
+        status
+        type
       }
       ... on MissingRequiredPolicyForDecisionError {
         title
@@ -44871,6 +45003,7 @@ export const namedOperations = {
     AddFavoriteMRTQueue: 'AddFavoriteMRTQueue',
     RemoveFavoriteMRTQueue: 'RemoveFavoriteMRTQueue',
     SetModeratorSafetySettings: 'SetModeratorSafetySettings',
+    InvalidateReportsFromReporter: 'InvalidateReportsFromReporter',
     DequeueManualReviewJob: 'DequeueManualReviewJob',
     SubmitManualReviewDecision: 'SubmitManualReviewDecision',
     LogSkip: 'LogSkip',

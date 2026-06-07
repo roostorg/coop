@@ -329,9 +329,9 @@ class RuleEngine {
       ? this.recordRuleActionLimitUsage(
           actionableRules.map((it) => it.id),
         ).catch(() => {
-          // This query sometimes fails from a Sequelize Acquire Connection
-          // timeout. While we're debugging the root cause of that further,
-          // swallow the error rather than crashing the process.
+          // This query sometimes fails from a connection-pool acquire timeout.
+          // While we're debugging the root cause further, swallow the error
+          // rather than crashing the process.
         })
       : undefined;
 
