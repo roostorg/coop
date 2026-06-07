@@ -5,8 +5,8 @@ import {
   GQLConditionConjunction,
   GQLScalarType,
   GQLValueComparator,
+  GQLSignal,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { CoopInput } from '../../types/enums';
 import {
   ConditionInput,
@@ -120,11 +120,11 @@ export default function RuleFormCondition(props: {
   isAutomatedRule?: boolean;
   onUpdateInput: (
     input: SimplifiedConditionInput,
-    allSignals: readonly CoreSignal[],
+    allSignals: readonly GQLSignal[],
   ) => void;
-  onUpdateSignal: (signal: CoreSignal) => void;
+  onUpdateSignal: (signal: GQLSignal) => void;
   onUpdateSignalSubcategory: (subcategory: string) => void;
-  onUpdateSignalArgs: (args: CoreSignal['args']) => void;
+  onUpdateSignalArgs: (args: GQLSignal['args']) => void;
   onUpdateMatchingValues: (
     matchingValues: RuleFormLeafCondition['matchingValues'],
   ) => void;

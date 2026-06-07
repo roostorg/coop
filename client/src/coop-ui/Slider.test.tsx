@@ -12,7 +12,7 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   }
-  global.ResizeObserver = ResizeObserverMock as any;
+  global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });
 
 describe('Slider Component', () => {

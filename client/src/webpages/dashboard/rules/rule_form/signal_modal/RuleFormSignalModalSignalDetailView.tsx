@@ -6,17 +6,17 @@ import CoopButton from '@/webpages/dashboard/components/CoopButton';
 import {
   GQLSignalPricingStructureType,
   GQLSignalSubcategory,
-} from '../../../../../graphql/generated';
+  GQLSignal,
+} from '@/graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
-import { CoreSignal } from '../../../../../models/signal';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import { signalDisplayName } from './RuleFormSignalModalMenuItem';
 
 export default function RuleFormSignalModalSignalDetailView(props: {
-  signal: CoreSignal;
+  signal: GQLSignal;
   subcategories: SignalSubcategory[];
   onSelectSignal: (
-    signal: CoreSignal,
+    signal: GQLSignal,
     subcategory?: GQLSignalSubcategory,
   ) => void;
 }) {
@@ -106,7 +106,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
           },
         ]),
   ];
-  const subcategorySection = ((signal: CoreSignal) => {
+  const subcategorySection = ((signal: GQLSignal) => {
     if (!signal.eligibleSubcategories.length) {
       return null;
     }

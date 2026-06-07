@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 
 import CoopModal from '../../../components/CoopModal';
 
-import { GQLSignalSubcategory } from '../../../../../graphql/generated';
-import { CoreSignal } from '../../../../../models/signal';
+import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/signalUtils';
 import RuleFormSignalModalSignalDetailView from './RuleFormSignalModalSignalDetailView';
 import RuleFormSignalModalSignalGallery from './RuleFormSignalModalSignalGallery';
@@ -11,10 +10,10 @@ import { RuleFormSignalModalSubcategoryGallery } from './RuleFormSignalModalSubc
 
 export default function RuleFormSignalModal(props: {
   visible: boolean;
-  allSignals: CoreSignal[];
-  onSelectSignal: (signal: CoreSignal, subcategoryOption?: string) => void;
+  allSignals: GQLSignal[];
+  onSelectSignal: (signal: GQLSignal, subcategoryOption?: string) => void;
   onClose: () => void;
-  selectedSignal?: CoreSignal;
+  selectedSignal?: GQLSignal;
   isAutomatedRule?: boolean;
 }) {
   const { visible, allSignals, onSelectSignal, onClose, selectedSignal, isAutomatedRule } =
@@ -27,12 +26,12 @@ export default function RuleFormSignalModal(props: {
   };
 
   // This state holds the signal selected for detail page
-  const [detailViewSignal, setDetailViewSignal] = useState<CoreSignal | null>(
+  const [detailViewSignal, setDetailViewSignal] = useState<GQLSignal | null>(
     null,
   );
   // This state holds the signal selected for the subcategory gallery page
   const [subcategoryGallerySignal, setSubcategoryGallerySignal] =
-    useState<CoreSignal | null>(null);
+    useState<GQLSignal | null>(null);
 
   useEffect(() => {
     if (selectedSignal) {
@@ -77,7 +76,7 @@ export default function RuleFormSignalModal(props: {
             detailViewSignal.eligibleSubcategories,
           )}
           onSelectSignal={(
-            signal: CoreSignal,
+            signal: GQLSignal,
             _subcategory?: GQLSignalSubcategory,
           ) => {
             if (signal.eligibleSubcategories.length > 0) {
@@ -91,10 +90,10 @@ export default function RuleFormSignalModal(props: {
       ) : (
         <RuleFormSignalModalSignalGallery
           allSignals={allSignals}
-          onSignalInfoSelected={(signal: CoreSignal) => {
+          onSignalInfoSelected={(signal: GQLSignal) => {
             setDetailViewSignal(signal);
           }}
-          onSelectSignal={(signal: CoreSignal) => {
+          onSelectSignal={(signal: GQLSignal) => {
             if (signal.eligibleSubcategories.length > 0) {
               setSubcategoryGallerySignal(signal);
             } else {

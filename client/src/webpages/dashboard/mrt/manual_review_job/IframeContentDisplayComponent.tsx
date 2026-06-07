@@ -3,11 +3,9 @@ import { Switch } from '@/coop-ui/Switch';
 import { useGQLPersonalSafetySettingsQuery } from '@/graphql/generated';
 import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import * as React from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
-import { type BlurStrength } from './v2/ncmec/NCMECMediaViewer';
 
 export default function IframeContentDisplayComponent(props: {
   contentUrl: string;
@@ -36,7 +34,7 @@ export default function IframeContentDisplayComponent(props: {
 
   const { loading, data } = useGQLPersonalSafetySettingsQuery();
   const {
-    moderatorSafetyBlurLevel = 2 as BlurStrength,
+    moderatorSafetyBlurLevel = 2,
     moderatorSafetyGrayscale = true,
   } = data?.me?.interfacePreferences ?? {};
 

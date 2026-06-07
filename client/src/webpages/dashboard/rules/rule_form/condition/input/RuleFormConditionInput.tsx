@@ -2,7 +2,7 @@ import { Form, Select } from 'antd';
 
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
-import { CoreSignal } from '../../../../../../models/signal';
+import { GQLSignal } from '@/graphql/generated';
 import { safePick } from '../../../../../../utils/misc';
 import {
   jsonParse,
@@ -53,7 +53,7 @@ export default function RuleFormConditionInput(props: {
   allSignals: RuleFormConfigResponse['signals'];
   onUpdateInput: (
     input: SimplifiedConditionInput,
-    allSignals: readonly CoreSignal[],
+    allSignals: readonly GQLSignal[],
   ) => void;
 }) {
   const {
@@ -159,7 +159,7 @@ export default function RuleFormConditionInput(props: {
             onSelect={(input: ReturnType<typeof getOptionValue>) =>
               onUpdateInput(
                 jsonParse(input),
-                allSignals satisfies readonly CoreSignal[],
+                allSignals satisfies readonly GQLSignal[],
               )
             }
             optionLabelProp="label"

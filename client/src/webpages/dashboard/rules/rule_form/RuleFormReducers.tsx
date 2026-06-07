@@ -8,10 +8,10 @@ import {
   GQLConditionSetFieldsFragment,
   GQLContentRuleFormConfigQuery,
   GQLScalarType,
+  GQLSignal,
   GQLSignalType,
   GQLValueComparator,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { DAY } from '../../../../utils/time';
 import { CoopInput } from '../../types/enums';
 import { ModalInfo } from '../../types/ModalInfo';
@@ -120,7 +120,7 @@ export type RuleFormReducerAction =
       payload: {
         selectedItemTypes: RuleFormConfigResponse['itemTypes'];
         allActions: RuleFormConfigResponse['actions'];
-        allSignals: readonly CoreSignal[];
+        allSignals: readonly GQLSignal[];
         form: FormInstance<any>;
       };
     }
@@ -129,16 +129,16 @@ export type RuleFormReducerAction =
       payload: {
         location: ConditionLocation;
         input: SimplifiedConditionInput;
-        allSignals: readonly CoreSignal[];
+        allSignals: readonly GQLSignal[];
       };
     }
   | {
       type: RuleFormReducerActionType.UpdateSignal;
-      payload: { location: ConditionLocation; signal: CoreSignal };
+      payload: { location: ConditionLocation; signal: GQLSignal };
     }
   | {
       type: RuleFormReducerActionType.UpdateSignalArgs;
-      payload: { location: ConditionLocation; args: CoreSignal['args'] };
+      payload: { location: ConditionLocation; args: GQLSignal['args'] };
     }
   | {
       type: RuleFormReducerActionType.UpdateSignalSubcategory;
@@ -188,7 +188,7 @@ export type RuleFormReducerAction =
         selectedItemTypes: RuleFormConfigResponse['itemTypes'];
         allActions: RuleFormConfigResponse['actions'];
         conditionSet: GQLConditionSetFieldsFragment;
-        allSignals: readonly CoreSignal[];
+        allSignals: readonly GQLSignal[];
         policyIds: string[];
         tags: string[];
         maxDailyActions: number | null;
@@ -492,7 +492,7 @@ function deleteConditionSet(
  */
 export function getNewEligibleInputs(
   selectedItemTypes: RuleFormConfigResponse['itemTypes'],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ) {
   const allBaseFields = selectedItemTypes.flatMap((it) => it.baseFields);
   const allDerivedFields = selectedItemTypes.flatMap((it) => it.derivedFields);
@@ -765,12 +765,11 @@ export function updateInput(
   // If the previously selected signal on this condition is no
   // longer compatible with the newly selected input, clear it out,
   // and clear out all subsequent fields in the condition
+  const currentSignal = newConditions[conditionIndex].signal;
   if (
-    newConditions[conditionIndex].signal != null &&
-    // Need to compare IDs instead of objects
-    !allNewSignals
-      .map((s) => s.type)
-      .includes(newConditions[conditionIndex].signal!.type)
+    currentSignal != null &&
+    // Compare by ID: type-based comparison fails for custom signals, which all share GQLSignalType.Custom
+    !allNewSignals.some((s) => s.id === currentSignal.id)
   ) {
     // Clear out all other fields on the Condition
     newConditions[conditionIndex] = {

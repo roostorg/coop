@@ -719,7 +719,8 @@ export default function ManualReviewDashboardInsightsChart(props: {
     ...allDatesArray,
   ];
 
-  const groupedData = formattedDataWithAllDates.reduce((result, item) => {
+  type ChartRow = Record<string, string | number>;
+  const groupedData = formattedDataWithAllDates.reduce<Record<string, ChartRow>>((result, item) => {
     const ds = item.ds;
 
     if (!(ds in result)) {

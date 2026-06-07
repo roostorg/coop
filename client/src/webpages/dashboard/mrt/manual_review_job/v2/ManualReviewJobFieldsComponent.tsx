@@ -550,7 +550,7 @@ function ContainerComponent(props: {
             }));
       }
       case 'MAP': {
-        const mapValue = data.value as { [key: string]: ScalarTypeRuntimeType };
+        const mapValue = data.value;
         return isPlainObject(mapValue)
           ? Object.keys(mapValue).map((key) => ({
               value: mapValue[key],

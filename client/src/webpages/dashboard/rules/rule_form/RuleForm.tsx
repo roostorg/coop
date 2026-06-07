@@ -36,8 +36,8 @@ import {
   useGQLRuleQuery,
   useGQLUpdateContentRuleMutation,
   useGQLUpdateUserRuleMutation,
-} from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
+  GQLSignal,
+} from '@/graphql/generated';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { DAY, HOUR, MONTH, WEEK } from '../../../../utils/time';
@@ -676,7 +676,7 @@ export default function RuleForm() {
             rule.__typename === 'ContentRule' ? rule.itemTypes : [],
           conditionSet: rule.conditionSet,
           allActions,
-          allSignals: allSignals satisfies readonly CoreSignal[],
+          allSignals: allSignals satisfies readonly GQLSignal[],
           policyIds: rule.policies.map((it) => it.id),
           tags: (rule.tags ?? []).filter((tag) => tag) as string[],
           maxDailyActions: rule.maxDailyActions ?? null,
@@ -1021,7 +1021,7 @@ export default function RuleForm() {
           (id: string) => allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
-        allSignals: allSignals satisfies readonly CoreSignal[],
+        allSignals: allSignals satisfies readonly GQLSignal[],
         form,
       },
     });

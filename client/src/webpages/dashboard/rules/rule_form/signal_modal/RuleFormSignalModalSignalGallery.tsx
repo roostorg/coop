@@ -1,17 +1,15 @@
-import { useGQLIsDemoOrgQuery } from '@/graphql/generated';
+import { GQLSignal, useGQLIsDemoOrgQuery } from '@/graphql/generated';
 import { SearchOutlined } from '@ant-design/icons';
 import { Input } from 'antd';
 import { useMemo, useState } from 'react';
-
-import { CoreSignal } from '../../../../../models/signal';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import RuleFormSignalModalMenuItem from './RuleFormSignalModalMenuItem';
 import RuleFormSignalModalNoSearchResults from './RuleFormSignalModalNoSearchResults';
 
 export default function RuleFormSignalModalSignalGallery(props: {
-  allSignals: CoreSignal[];
-  onSelectSignal: (signal: CoreSignal) => void;
-  onSignalInfoSelected: (signal: CoreSignal) => void;
+  allSignals: GQLSignal[];
+  onSelectSignal: (signal: GQLSignal) => void;
+  onSignalInfoSelected: (signal: GQLSignal) => void;
   isAutomatedRule?: boolean;
 }) {
   const { allSignals, onSelectSignal, onSignalInfoSelected, isAutomatedRule } = props;
