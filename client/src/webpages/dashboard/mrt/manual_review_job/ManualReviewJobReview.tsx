@@ -9,7 +9,7 @@ import { gql } from '@apollo/client';
 import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../components/common/CopyTextComponent';
@@ -47,7 +47,13 @@ import {
 } from '../../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../../utils/collections';
 import { getFieldValueForRole } from '../../../../utils/itemUtils';
-import { recomputeSelectedRelatedActions } from '../../../../utils/manualReviewTool';
+import {
+  buildSortedReviewUrl,
+  isSortedReviewMode,
+  pickNextSortedJob,
+  pickTopSortedJob,
+  recomputeSelectedRelatedActions,
+} from '../../../../utils/manualReviewTool';
 import HTMLRenderer from '../../policies/HTMLRenderer';
 import { ITEM_TYPE_FRAGMENT } from '../../rules/rule_form/RuleForm';
 import { JOB_FRAGMENT } from './jobFragment';
@@ -287,6 +293,14 @@ export type ManualReviewJobAction = {
   }[];
 };
 
+// In sorted mode, skipped jobs aren't dequeued from BullMQ — they remain in
+// the queue for other reviewers (or future sessions). This module-scoped set
+// tracks skips for the current session so the reviewer doesn't cycle back to
+// jobs they've already passed on. Cleared when a new sorted review starts or
+// when the reviewer enters a different queue.
+let sortedModeSkippedIdsQueueId: string | undefined;
+const sortedModeSkippedIds = new Set<string>();
+
 const appealPayloadTypenames = [
   'ContentAppealManualReviewJobPayload',
   'UserAppealManualReviewJobPayload',
@@ -358,21 +372,108 @@ function ManualReviewJobReviewImpl(props: {
     lockToken?: string;
   }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sortParam = searchParams.get('sort');
+  const isSortedMode = isSortedReviewMode(sortParam);
+  // sortMode is non-null whenever isSortedMode is true. All sortMode! assertions
+  // are inside callbacks/effects guarded by isSortedMode.
+  const sortMode = isSortedMode ? sortParam : undefined;
+
+  useEffect(() => {
+    if (isSortedMode && queueId !== sortedModeSkippedIdsQueueId) {
+      sortedModeSkippedIds.clear();
+      sortedModeSkippedIdsQueueId = queueId;
+    }
+  }, [isSortedMode, queueId]);
 
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
     setSelectedPrimaryPolicies([]);
     setSelectedRelatedActions([]);
     setDecisionReason(undefined);
-  };
+  }, []);
 
-  const { data, loading } = useGQLManualReviewJobInfoQuery({
-    variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
+  const {
+    data,
+    loading,
+    refetch: refetchJobInfo,
+  } = useGQLManualReviewJobInfoQuery({
+    variables: {
+      jobIds: closedJob
+        ? [closedJob.id]
+        : jobId
+          ? [jobId]
+          : isSortedMode
+            ? undefined
+            : [],
+    },
     fetchPolicy: 'no-cache',
   });
+
+  const navigateToSortedJob = useCallback(
+    (targetJobId: string) => {
+      navigate(buildSortedReviewUrl(queueId!, targetJobId, sortMode!), {
+        replace: true,
+      });
+    },
+    [navigate, queueId, sortMode],
+  );
+
+  const getNextSortedJob = useCallback(async () => {
+    const result = await refetchJobInfo({ jobIds: null });
+    const allJobs =
+      result.data?.me?.reviewableQueues?.find((q) => q.id === queueId)?.jobs ??
+      [];
+
+    const next = pickNextSortedJob(
+      filterNullOrUndefined(allJobs),
+      jobId,
+      sortedModeSkippedIds,
+      sortMode,
+    );
+
+    if (next) {
+      resetState();
+      navigateToSortedJob(next.id);
+    } else {
+      navigate('/dashboard/manual_review/queues');
+    }
+  }, [
+    refetchJobInfo,
+    queueId,
+    jobId,
+    navigateToSortedJob,
+    navigate,
+    resetState,
+    sortMode,
+  ]);
+
+  // In sorted mode, pick the most-reported job on initial load
+  useEffect(() => {
+    if (!isSortedMode || jobId || closedJob || loading) return;
+    sortedModeSkippedIds.clear();
+
+    const allJobs =
+      data?.me?.reviewableQueues?.find((q) => q.id === queueId)?.jobs ?? [];
+    if (allJobs.length === 0) return;
+
+    const top = pickTopSortedJob(filterNullOrUndefined(allJobs), sortMode);
+    if (top) {
+      navigateToSortedJob(top.id);
+    }
+  }, [
+    isSortedMode,
+    jobId,
+    closedJob,
+    loading,
+    data,
+    queueId,
+    sortMode,
+    navigateToSortedJob,
+  ]);
 
   const [
     getNextJob,
@@ -399,15 +500,25 @@ function ManualReviewJobReviewImpl(props: {
 
   useEffect(() => {
     if (
-      jobId == null &&
-      closedJob == null &&
-      !loading &&
-      !jobDataLoading &&
-      !jobData
+      isSortedMode ||
+      jobId != null ||
+      closedJob != null ||
+      loading ||
+      jobDataLoading ||
+      jobData
     ) {
-      getNextJob();
+      return;
     }
-  }, [getNextJob, jobId, closedJob, loading, jobDataLoading, jobData]);
+    getNextJob();
+  }, [
+    isSortedMode,
+    getNextJob,
+    jobId,
+    closedJob,
+    loading,
+    jobDataLoading,
+    jobData,
+  ]);
 
   useEffect(() => {
     // If we were looking for a specific job and it no longer exists in this
@@ -479,7 +590,11 @@ function ManualReviewJobReviewImpl(props: {
         switch (response.submitManualReviewDecision.__typename) {
           case 'SubmitDecisionSuccessResponse': {
             resetState();
-            await getNextJob();
+            if (isSortedMode) {
+              await getNextSortedJob();
+            } else {
+              await getNextJob();
+            }
             break;
           }
           case 'JobHasAlreadyBeenSubmittedError': {
@@ -492,7 +607,11 @@ function ManualReviewJobReviewImpl(props: {
                   title: 'Yes',
                   type: 'primary',
                   onClick: async () => {
-                    await getNextJob();
+                    if (isSortedMode) {
+                      await getNextSortedJob();
+                    } else {
+                      await getNextJob();
+                    }
                     hideModal();
                   },
                 },
@@ -702,6 +821,16 @@ function ManualReviewJobReviewImpl(props: {
   });
 
   const skipToNextJob = async () => {
+    if (isSortedMode) {
+      if (queueId && job?.id) {
+        sortedModeSkippedIds.add(job.id);
+        await logSkip();
+      }
+      resetState();
+      await getNextSortedJob();
+      return;
+    }
+
     // First, release the lock on the current job and log the skip
     if (queueId && job?.id && lockToken) {
       await Promise.all([
@@ -728,7 +857,11 @@ function ManualReviewJobReviewImpl(props: {
     }
   };
 
-  if (loading || jobDataLoading || (!closedJob && !lockToken)) {
+  if (
+    (loading && !data) ||
+    jobDataLoading ||
+    (!isSortedMode && !closedJob && !lockToken)
+  ) {
     return (
       <div className="flex items-center justify-center w-full h-screen">
         <ComponentLoading />
@@ -828,7 +961,9 @@ function ManualReviewJobReviewImpl(props: {
                     })),
                     queueId: queueId!,
                     jobId: job.id,
-                    // This is safe because we prevent both closedJob and lockToken from being null
+                    // In FIFO mode lockToken comes from the URL (set during dequeue).
+                    // In sorted mode lockToken is undefined — the server's removeJob
+                    // fallback accepts an invalid token and still processes the decision.
                     lockToken: lockToken!,
                     reportedItemDecisionComponents: [decision],
                     relatedItemActions: [],
@@ -1824,6 +1959,8 @@ function ManualReviewJobReviewImpl(props: {
                         })),
                         queueId: queueId!,
                         jobId: job.id,
+                        // In sorted mode lockToken is undefined (no dequeue lock);
+                        // server removeJob handles this gracefully.
                         lockToken: lockToken!,
                         reportedItemDecisionComponents: decisionComponents,
                         relatedItemActions: selectedRelatedActions.map(

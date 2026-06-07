@@ -9754,6 +9754,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
         readonly id: string;
         readonly createdAt: Date | string;
         readonly policyIds: ReadonlyArray<string>;
+        readonly numTimesReported?: number | null;
         readonly payload:
           | {
               readonly __typename: 'ContentAppealManualReviewJobPayload';
@@ -32436,6 +32437,7 @@ export const GQLManualReviewQueueJobsPreviewDocument = gql`
           id
           createdAt
           policyIds
+          numTimesReported
           payload {
             ... on ContentManualReviewJobPayload {
               item {

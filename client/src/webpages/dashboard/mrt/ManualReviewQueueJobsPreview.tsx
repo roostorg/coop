@@ -11,7 +11,7 @@ import {
   DateRangeColumnFilter,
   SelectColumnFilter,
 } from '../components/table/filters';
-import { stringSort } from '../components/table/sort';
+import { integerSort, stringSort } from '../components/table/sort';
 import Table from '../components/table/Table';
 
 import { useGQLManualReviewQueueJobsPreviewQuery } from '../../../graphql/generated';
@@ -41,6 +41,7 @@ gql`
           id
           createdAt
           policyIds
+          numTimesReported
           payload {
             ... on ContentManualReviewJobPayload {
               item {
@@ -132,6 +133,12 @@ export default function ManualReviewQueueJobsPreview() {
         canSort: false,
       },
       {
+        Header: '# Reports',
+        accessor: 'numReports',
+        sortDescFirst: true,
+        sortType: integerSort,
+      },
+      {
         Header: 'Created At',
         accessor: 'createdAt',
         Filter: (props: ColumnProps) =>
@@ -154,6 +161,7 @@ export default function ManualReviewQueueJobsPreview() {
             return {
               jobId: jobData.id,
               createdAt: jobData.createdAt,
+              numReports: (jobData.numTimesReported ?? 0).toLocaleString('en'),
               itemId: jobData.payload.item.id,
               itemData: jobData.payload.item.data,
               itemType: jobData.payload.item.type,
@@ -197,6 +205,7 @@ export default function ManualReviewQueueJobsPreview() {
               ))}
             </div>
           ),
+          numReports: <div>{values.numReports}</div>,
           createdAt: (
             <div>{format(new Date(values.createdAt), 'MM/dd/yy hh:mm a')}</div>
           ),
@@ -227,7 +236,12 @@ export default function ManualReviewQueueJobsPreview() {
   return (
     <div>
       <DashboardHeader title={`Jobs in ${queue.name}`} />
-      <Table rowLinkTo={rowLinkTo} columns={columns} data={tableData} />
+      <Table
+        rowLinkTo={rowLinkTo}
+        columns={columns}
+        data={tableData}
+        initialSortBy={[{ id: 'numReports', desc: true }]}
+      />
     </div>
   );
 }
