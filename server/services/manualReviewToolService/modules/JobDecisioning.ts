@@ -364,7 +364,9 @@ export default class JobDecisioning {
           .with(['ALREADY_LOGGED', 'SUCCESS'], () => jobAlreadySubmittedError)
           // Case 4, client retrying after failed job deletion; deletion failed again.
           .with(['ALREADY_LOGGED', 'FAILED'], () => decisioningFailedError)
-          .exhaustive(),
+          // ts-pattern v5.9 + TS 5.9: .exhaustive() triggers NonExhaustiveError<[any]>;
+          // all four cases above are covered so this branch is dead code.
+          .otherwise(() => undefined),
       };
     })();
 

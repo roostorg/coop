@@ -18,7 +18,8 @@ import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
-import helmet from 'helmet';
+import helmet_, { type HelmetOptions } from 'helmet';
+const helmet = helmet_ as unknown as (options?: Readonly<HelmetOptions>) => (req: unknown, res: unknown, next: (err?: unknown) => void) => void;
 import passport from 'passport';
 
 import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';

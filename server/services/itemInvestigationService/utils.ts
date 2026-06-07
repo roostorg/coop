@@ -1,6 +1,7 @@
 import type { ItemIdentifier } from '@roostorg/coop-types';
 import _ from 'lodash';
-import stringify from 'safe-stable-stringify';
+import stringify_ from 'safe-stable-stringify';
+const stringify = stringify_ as unknown as (value: unknown) => string | undefined;
 import _S2A from 'stream-to-async-iterator';
 
 import {

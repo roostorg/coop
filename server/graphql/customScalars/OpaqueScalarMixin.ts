@@ -43,6 +43,7 @@ export default <T extends object>(
   'serialize' | 'parseValue' | 'parseLiteral'
 > => ({
   serialize(value) {
+    // @ts-expect-error -- @types/jsonwebtoken@9 brands expiresIn as StringValue from ms; plain string is valid at runtime
     return jwt.sign(value as T, jwtSigningKey, {
       expiresIn: jwtExpiresIn,
     });

@@ -23,5 +23,5 @@ export function filterNullOrUndefined<T>(
 }
 
 export function arrayFromArrayOrSingleItem<T>(array: readonly T[] | T): T[] {
-  return Array.isArray(array) ? [...array] : [array];
+  return Array.isArray(array) ? [...(array as readonly T[])] : [array as T];
 }
