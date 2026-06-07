@@ -57,11 +57,11 @@ export default function Table(
 
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
     useTable(
-      /* @ts-ignore */
       {
         columns,
         data,
         filterTypes,
+        // @ts-ignore react-table v7 types don't include sortBy on TableState
         initialState: { sortBy: initialSortBy ?? [] },
       },
       useFilters,
