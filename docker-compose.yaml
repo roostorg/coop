@@ -54,8 +54,7 @@ services:
       - postgres
 
   postgres:
-    image: ankane/pgvector:v0.5.1
-    # image: postgres:15.3
+    image: postgres:15.18
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
