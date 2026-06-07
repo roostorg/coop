@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-5a55f9fd.js";
+            window.path_to_searchindex_js = "../searchindex-596b4321.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-bb10072b.js"></script>
@@ -190,6 +190,11 @@
 <p>If <code>reportedForReason.csam</code> is <code>true</code>, the job is routed directly to the NCMEC queue rather than going through the normal routing rule evaluation. See <a href="child-safety.html">Child Safety (NCMEC)</a> for details.</p>
 <h2 id="sending-reports-to-coop"><a class="header" href="#sending-reports-to-coop">Sending reports to Coop</a></h2>
 <p>Reports are submitted via <code>POST /api/v1/report</code>. For the full API schema (field definitions, types, and requirements), see the <a href="../api/report.html">Report API</a> reference.</p>
+<h2 id="invalidating-reports-from-a-bad-faith-reporter"><a class="header" href="#invalidating-reports-from-a-bad-faith-reporter">Invalidating reports from a bad-faith reporter</a></h2>
+<p>If a single user on your platform is mass-flagging non-violating content and clogging the review queue, moderators with the <code>EDIT_MRT_QUEUES</code> permission can invalidate every pending report from that reporter via the “Invalidate reports” action on any report’s detail view in the Manual Review Tool.</p>
+<p>By default the action is scoped to the current job: it strips this reporter’s entries from the job’s report history. If the job has no other reporters or report sources (for example, automated detectors) left afterwards, the job is removed from the queue. To instead sweep every pending job in your organization, tick “Apply across the whole organization” in the confirmation modal. Decided or closed jobs are never modified.</p>
+<p>This is a one-shot operation, not a persistent blocklist: future reports from the same reporter will land normally and need to be invalidated again if the behavior continues. Address recurring bad-faith reporters by banning or silencing them at the platform layer.</p>
+<p>Each invalidation emits a trace span on the server with the moderator who performed it, the targeted reporter, an optional reason, and the resulting counts; the span is the current source of truth for ad-hoc audit lookups.</p>
 <h2 id="appeals"><a class="header" href="#appeals">Appeals</a></h2>
 <p>If a user wants to contest a moderation decision, that’s handled through the Appeals API, a separate flow from reports. See <a href="appeals.html">Appeals</a> for details.</p>
 
