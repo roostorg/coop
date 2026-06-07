@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-596b4321.js";
+            window.path_to_searchindex_js = "../searchindex-efcf0d7c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-bb10072b.js"></script>
@@ -178,11 +178,15 @@
                     <main>
                         <h1 id="docker-images"><a class="header" href="#docker-images">Docker Images</a></h1>
 <p>Pre-built images are published to the GitHub Container Registry on every push to <code>main</code>:</p>
-<pre><code>ghcr.io/roostorg/coop-server   # API server
-ghcr.io/roostorg/coop-worker   # Background worker
-ghcr.io/roostorg/coop-client   # Frontend (nginx)
+<pre><code>ghcr.io/roostorg/coop-server       # API server
+ghcr.io/roostorg/coop-worker       # Background worker
+ghcr.io/roostorg/coop-client       # Frontend (nginx)
+ghcr.io/roostorg/coop-migrations   # One-shot database migrations runner
 </code></pre>
-<p>Images are tagged with <code>latest</code>, the git SHA, and semver tags on release.</p>
+<p>Images are tagged with <code>latest</code>, the git SHA, and semver tags on release. The
+<code>coop-migrations</code> image is only rebuilt when something under <code>db/</code> changes (e.g.
+a new migration script) or on a release, so its tags track the schema rather
+than every server/client change.</p>
 <h2 id="quick-start"><a class="header" href="#quick-start">Quick start</a></h2>
 <p>Pull the published images and run the full stack locally with a single command:</p>
 <pre><code class="language-bash">docker compose -f docker-compose.images.yaml up -d
@@ -238,10 +242,41 @@ docker compose -f docker-compose.images.yaml down -v
 <tr><td><code>coop-server</code></td><td><code>Dockerfile</code></td><td><code>build_server</code></td><td>node:24-bullseye-slim + dumb-init</td></tr>
 <tr><td><code>coop-worker</code></td><td><code>Dockerfile</code></td><td><code>build_worker_runner</code></td><td>node:24-bullseye-slim + dumb-init</td></tr>
 <tr><td><code>coop-client</code></td><td><code>client/Dockerfile</code></td><td><code>serve</code></td><td>nginx:1.27-bookworm</td></tr>
+<tr><td><code>coop-migrations</code></td><td><code>db/Dockerfile</code></td><td><em>(final stage)</em></td><td>node:24-bullseye-slim</td></tr>
 </tbody>
 </table>
 </div>
 <p>The client image serves the Vite-built SPA via nginx and proxies <code>/api/</code> requests (including <code>/api/v1/graphql</code>) to a backend service named <code>server</code> on port 8080.</p>
+<h2 id="running-migrations"><a class="header" href="#running-migrations">Running migrations</a></h2>
+<p>The <code>coop-migrations</code> image bundles the migration scripts under <code>db/</code> together
+with the migrator engine, so it can run as a one-shot task (an ECS <code>RunTask</code>, a
+Kubernetes <code>Job</code>, or the <code>migrations</code> service in <code>docker-compose.images.yaml</code>).
+It exposes the same <code>npm run db:*</code> commands used in local development, so the
+invocation matches what you’d run from the repo root:</p>
+<pre><code class="language-bash"># Apply all pending migrations to an existing prod database
+docker run --rm --env-file .env.docker ghcr.io/roostorg/coop-migrations:latest \
+  npm run db:update -- --db api-server-pg --env prod
+</code></pre>
+<p>Supported <code>--db</code> values are <code>api-server-pg</code>, <code>scylla</code>, and <code>clickhouse</code>.
+Connection settings come from environment variables (see <code>db/.env.example</code>),
+which must be present for any command since the database configs are read at
+startup.</p>
+<h3 id="what---env-controls"><a class="header" href="#what---env-controls">What <code>--env</code> controls</a></h3>
+<p><code>--env</code> (<code>staging</code> or <code>prod</code>) only affects <strong>seed scripts</strong>, not migrations:</p>
+<ul>
+<li>Migration scripts run in every environment.</li>
+<li>A seed named <code>*.seed.&lt;env&gt;.sql</code> runs <strong>only</strong> when <code>--env</code> matches it. Seed
+files are timestamp-prefixed; the repo currently ships
+<code>db/src/scripts/api-server-pg/2025.12.01T00.00.01.initial-test-data.seed.staging.sql</code>,
+which creates a sample org with default-password users — so <strong>use <code>--env prod</code>
+in production</strong> to skip it. Running <code>--env staging</code> against a prod database
+would seed that test data.</li>
+<li><code>db:create</code> ignores <code>--env</code> functionally and is allowed in prod, so you can
+provision schemas for self-hosted Scylla/ClickHouse (which have no managed
+“create the database” step).</li>
+<li><code>db:clean</code> and <code>db:drop</code> are destructive and <strong>reject <code>--env prod</code></strong> as a
+safety guard.</li>
+</ul>
 
                     </main>
 
