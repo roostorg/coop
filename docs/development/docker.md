@@ -112,10 +112,14 @@ startup.
 `--env` (`staging` or `prod`) only affects **seed scripts**, not migrations:
 
 - Migration scripts run in every environment.
-- A seed named `*.seed.<env>.sql` runs **only** when `--env` matches it. The repo
-  currently ships `initial-test-data.seed.staging.sql`, which creates a sample
-  org with default-password users — so **use `--env prod` in production** to skip
-  it. Running `--env staging` against a prod database would seed that test data.
-- `db:create`, `db:clean`, and `db:drop` ignore `--env` functionally but **reject
-  `--env prod`** as a safety guard. In production the database is expected to be
-  provisioned by your infrastructure, and you only run `db:update -- --env prod`.
+- A seed named `*.seed.<env>.sql` runs **only** when `--env` matches it. Seed
+  files are timestamp-prefixed; the repo currently ships
+  `db/src/scripts/api-server-pg/2025.12.01T00.00.01.initial-test-data.seed.staging.sql`,
+  which creates a sample org with default-password users — so **use `--env prod`
+  in production** to skip it. Running `--env staging` against a prod database
+  would seed that test data.
+- `db:create` ignores `--env` functionally and is allowed in prod, so you can
+  provision schemas for self-hosted Scylla/ClickHouse (which have no managed
+  "create the database" step).
+- `db:clean` and `db:drop` are destructive and **reject `--env prod`** as a
+  safety guard.

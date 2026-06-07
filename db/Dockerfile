@@ -27,7 +27,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # development and chown can take a long time to run
 FROM base
 
-RUN groupadd -r coop && useradd -r -g coop -u 1001 coop
+# -m creates a home dir for `coop` so `npm run` has a writable HOME for its
+# cache/logs (the container runs `npm run db:*` as this non-root user).
+RUN groupadd -r coop && useradd -r -g coop -u 1001 -m coop
 
 RUN chown -R coop:coop /app
 
