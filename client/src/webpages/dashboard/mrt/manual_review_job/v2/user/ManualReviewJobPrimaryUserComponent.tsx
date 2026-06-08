@@ -27,7 +27,6 @@ import { convertRelatedItemToFieldData } from './ManualReviewJobUserUtils';
 export default function ManualReviewJobPrimaryUserComponent(props: {
   user: GQLUserItem | ItemIdentifier;
   unblurAllMedia: boolean;
-  userScore: number | undefined;
   allItemTypes: readonly GQLItemType[];
   allActions: readonly Pick<
     ManualReviewJobAction,
@@ -46,7 +45,6 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
   const {
     user,
     unblurAllMedia,
-    userScore,
     allItemTypes,
     allActions,
     allPolicies,
@@ -180,10 +178,11 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
         </div>
         <FieldsComponent
           fields={[
-            ...convertRelatedItemToFieldData(
-              { id: user.id, typeId: user.type.id, name: 'User Score' },
-              userScore,
-            ),
+            ...convertRelatedItemToFieldData({
+              id: user.id,
+              typeId: user.type.id,
+              name: user.type.name,
+            }),
             ...fieldData,
           ]}
           itemTypeId={user.type.id}

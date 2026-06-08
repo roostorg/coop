@@ -1556,7 +1556,6 @@ function ManualReviewJobReviewImpl(props: {
         return (
           <ManualReviewJobPrimaryUserComponent
             user={payload.item as GQLUserItem}
-            userScore={payload.userScore ?? undefined}
             unblurAllMedia={unblurAllMedia}
             allItemTypes={org.itemTypes as GQLItemType[]}
             allActions={filteredActions}

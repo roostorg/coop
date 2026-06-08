@@ -7030,7 +7030,6 @@ export type GQLGetItemsWithIdQuery = {
           readonly data: JsonObject;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
-          readonly userScore: number;
           readonly type: {
             readonly __typename: 'UserItemType';
             readonly id: string;
@@ -8160,7 +8159,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
       readonly payload:
         | {
             readonly __typename: 'ContentAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -8310,7 +8308,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
           }
         | {
             readonly __typename: 'ContentManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly policyId?: string | null;
@@ -9071,7 +9068,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
           }
         | {
             readonly __typename: 'UserAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -9220,7 +9216,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
           }
         | {
             readonly __typename: 'UserManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly reportId: string;
@@ -10747,7 +10742,6 @@ export type GQLGetDecidedJobQuery = {
     readonly payload:
       | {
           readonly __typename: 'ContentAppealManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly appealReason?: string | null;
           readonly appealId: string;
           readonly actionsTaken: ReadonlyArray<string>;
@@ -10897,7 +10891,6 @@ export type GQLGetDecidedJobQuery = {
         }
       | {
           readonly __typename: 'ContentManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly reportHistory: ReadonlyArray<{
             readonly __typename: 'ReportHistoryEntry';
             readonly policyId?: string | null;
@@ -11658,7 +11651,6 @@ export type GQLGetDecidedJobQuery = {
         }
       | {
           readonly __typename: 'UserAppealManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly appealReason?: string | null;
           readonly appealId: string;
           readonly actionsTaken: ReadonlyArray<string>;
@@ -11807,7 +11799,6 @@ export type GQLGetDecidedJobQuery = {
         }
       | {
           readonly __typename: 'UserManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly reportHistory: ReadonlyArray<{
             readonly __typename: 'ReportHistoryEntry';
             readonly reportId: string;
@@ -12456,7 +12447,6 @@ export type GQLManualReviewJobInfoQuery = {
         readonly payload:
           | {
               readonly __typename: 'ContentAppealManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly appealReason?: string | null;
               readonly appealId: string;
               readonly actionsTaken: ReadonlyArray<string>;
@@ -12606,7 +12596,6 @@ export type GQLManualReviewJobInfoQuery = {
             }
           | {
               readonly __typename: 'ContentManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly reportHistory: ReadonlyArray<{
                 readonly __typename: 'ReportHistoryEntry';
                 readonly policyId?: string | null;
@@ -13367,7 +13356,6 @@ export type GQLManualReviewJobInfoQuery = {
             }
           | {
               readonly __typename: 'UserAppealManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly appealReason?: string | null;
               readonly appealId: string;
               readonly actionsTaken: ReadonlyArray<string>;
@@ -13516,7 +13504,6 @@ export type GQLManualReviewJobInfoQuery = {
             }
           | {
               readonly __typename: 'UserManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly reportHistory: ReadonlyArray<{
                 readonly __typename: 'ReportHistoryEntry';
                 readonly reportId: string;
@@ -13799,7 +13786,6 @@ export type GQLDequeueManualReviewJobMutation = {
       readonly payload:
         | {
             readonly __typename: 'ContentAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -13949,7 +13935,6 @@ export type GQLDequeueManualReviewJobMutation = {
           }
         | {
             readonly __typename: 'ContentManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly policyId?: string | null;
@@ -14710,7 +14695,6 @@ export type GQLDequeueManualReviewJobMutation = {
           }
         | {
             readonly __typename: 'UserAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -14859,7 +14843,6 @@ export type GQLDequeueManualReviewJobMutation = {
           }
         | {
             readonly __typename: 'UserManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly reportId: string;
@@ -15199,7 +15182,6 @@ export type GQLJobFieldsFragment = {
   readonly payload:
     | {
         readonly __typename: 'ContentAppealManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly appealReason?: string | null;
         readonly appealId: string;
         readonly actionsTaken: ReadonlyArray<string>;
@@ -15349,7 +15331,6 @@ export type GQLJobFieldsFragment = {
       }
     | {
         readonly __typename: 'ContentManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly reportHistory: ReadonlyArray<{
           readonly __typename: 'ReportHistoryEntry';
           readonly policyId?: string | null;
@@ -16110,7 +16091,6 @@ export type GQLJobFieldsFragment = {
       }
     | {
         readonly __typename: 'UserAppealManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly appealReason?: string | null;
         readonly appealId: string;
         readonly actionsTaken: ReadonlyArray<string>;
@@ -16259,7 +16239,6 @@ export type GQLJobFieldsFragment = {
       }
     | {
         readonly __typename: 'UserManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly reportHistory: ReadonlyArray<{
           readonly __typename: 'ReportHistoryEntry';
           readonly reportId: string;
@@ -17256,7 +17235,6 @@ export type GQLGetMoreInfoForItemsQuery = {
               readonly id: string;
               readonly submissionId: string;
               readonly data: JsonObject;
-              readonly userScore: number;
               readonly type: {
                 readonly __typename: 'UserItemType';
                 readonly id: string;
@@ -25115,7 +25093,6 @@ export const GQLJobFieldsFragmentDoc = gql`
     numTimesReported
     payload {
       ... on ContentManualReviewJobPayload {
-        userScore
         reportHistory {
           reporterId {
             id
@@ -25176,7 +25153,6 @@ export const GQLJobFieldsFragmentDoc = gql`
         }
       }
       ... on UserManualReviewJobPayload {
-        userScore
         reportHistory {
           reportId
           reporterId {
@@ -25291,7 +25267,6 @@ export const GQLJobFieldsFragmentDoc = gql`
         }
       }
       ... on ContentAppealManualReviewJobPayload {
-        userScore
         item {
           ... on ItemBase {
             ...ItemFields
@@ -25316,7 +25291,6 @@ export const GQLJobFieldsFragmentDoc = gql`
         }
       }
       ... on UserAppealManualReviewJobPayload {
-        userScore
         item {
           ... on ItemBase {
             ...ItemFields
@@ -30393,9 +30367,6 @@ export const GQLGetItemsWithIdDocument = gql`
               }
             }
           }
-        }
-        ... on UserItem {
-          userScore
         }
       }
     }
@@ -36002,7 +35973,6 @@ export const GQLGetMoreInfoForItemsDocument = gql`
               id
             }
             data
-            userScore
           }
         }
       }
