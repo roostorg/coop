@@ -106,6 +106,26 @@ describe('updateNcmecOrgSettings media review policy', () => {
     expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
   });
 
+  it('rejects a fractional MINIMUM threshold', async () => {
+    const { ctx, updateNcmecOrgSettings } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    await expect(
+      Mutation.updateNcmecOrgSettings(
+        {},
+        {
+          input: {
+            ...VALID_INPUT,
+            mediaReviewRequirement: 'MINIMUM',
+            minMediaToReview: 1.5,
+          },
+        },
+        ctx,
+      ),
+    ).rejects.toThrow('minMediaToReview');
+    expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
+  });
+
   it('rejects an unknown requirement value', async () => {
     const { ctx, updateNcmecOrgSettings } = makeCtx([
       UserPermission.MANAGE_ORG,

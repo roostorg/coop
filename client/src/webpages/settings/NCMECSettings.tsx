@@ -203,7 +203,7 @@ export default function NCMECSettings() {
     const isMinimumPolicy =
       settings.mediaReviewRequirement ===
       GQLNcmecMediaReviewRequirement.Minimum;
-    const parsedMinMedia = Number.parseInt(settings.minMediaToReview, 10);
+    const parsedMinMedia = Number(settings.minMediaToReview);
     if (
       isMinimumPolicy &&
       (!Number.isInteger(parsedMinMedia) || parsedMinMedia < 1)
@@ -499,13 +499,18 @@ export default function NCMECSettings() {
                   type="number"
                   min={1}
                   step={1}
+                  inputMode="numeric"
                   value={settings.minMediaToReview}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      minMediaToReview: e.target.value,
-                    })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Whole numbers only — fractional thresholds are invalid.
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setSettings({
+                        ...settings,
+                        minMediaToReview: value,
+                      });
+                    }
+                  }}
                   placeholder="1"
                 />
                 <Text size="XS" className="text-gray-500">
