@@ -1,27 +1,3 @@
-import { StarFilled, TapFilled } from '@/icons';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import Star from '@/icons/lni/Web and Technology/star.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
-import { gql } from '@apollo/client';
-import Button from 'antd/lib/button';
-import Checkbox from 'antd/lib/checkbox';
-import Input from 'antd/lib/input';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate } from 'react-router-dom';
-
-import FullScreenLoading from '../../../components/common/FullScreenLoading';
-import CoopButton from '../components/CoopButton';
-import CoopModal from '../components/CoopModal';
-import DashboardHeader from '../components/DashboardHeader';
-import RowMutations, { DeleteRowModalInfo } from '../components/RowMutations';
-import TabBar from '../components/TabBar';
-import { ColumnProps, DefaultColumnFilter } from '../components/table/filters';
-import { dateSort, integerSort, stringSort } from '../components/table/sort';
-import Table from '../components/table/Table';
-import CopyTextComponent from '@/components/common/CopyTextComponent';
-
 import {
   GQLUserPermission,
   namedOperations,
@@ -33,10 +9,42 @@ import {
   useGQLManualReviewQueuesQuery,
   useGQLRemoveFavoriteMrtQueueMutation,
   useGQLRoutingRulesQuery,
-} from '../../../graphql/generated';
-import { userHasPermissions } from '../../../routing/permissions';
-import { filterNullOrUndefined } from '../../../utils/collections';
-import type { QueueSortOption } from '../../../utils/manualReviewTool';
+} from '@/graphql/generated';
+import { StarFilled, TapFilled } from '@/icons';
+import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
+import Star from '@/icons/lni/Web and Technology/star.svg?react';
+import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
+import type { QueueSortOption } from '@/utils/manualReviewTool';
+import { gql } from '@apollo/client';
+import Button from 'antd/lib/button';
+import Checkbox from 'antd/lib/checkbox';
+import Input from 'antd/lib/input';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { Link, useNavigate } from 'react-router-dom';
+
+import CopyTextComponent from '@/components/common/CopyTextComponent';
+import FullScreenLoading from '@/components/common/FullScreenLoading';
+import CoopButton from '@/webpages/dashboard/components/CoopButton';
+import CoopModal from '@/webpages/dashboard/components/CoopModal';
+import DashboardHeader from '@/webpages/dashboard/components/DashboardHeader';
+import RowMutations, {
+  DeleteRowModalInfo,
+} from '@/webpages/dashboard/components/RowMutations';
+import TabBar from '@/webpages/dashboard/components/TabBar';
+import {
+  ColumnProps,
+  DefaultColumnFilter,
+} from '@/webpages/dashboard/components/table/filters';
+import {
+  dateSort,
+  integerSort,
+  stringSort,
+} from '@/webpages/dashboard/components/table/sort';
+import Table from '@/webpages/dashboard/components/table/Table';
 
 gql`
   query ManualReviewQueues {
@@ -914,9 +922,11 @@ export default function ManualReviewQueuesDashboard() {
           <div className="flex flex-col px-2 py-2">
             {(Object.keys(SORT_OPTION_LABELS) as QueueSortOption[]).map(
               (option) => (
-                <div
+                <button
                   key={option}
-                  className={`px-3 py-2 rounded cursor-pointer text-sm ${
+                  type="button"
+                  aria-current={sortOption === option}
+                  className={`px-3 py-2 rounded cursor-pointer text-sm text-start ${
                     sortOption === option
                       ? 'bg-indigo-50 text-primary font-semibold'
                       : 'hover:bg-gray-100 text-gray-700'
@@ -927,7 +937,7 @@ export default function ManualReviewQueuesDashboard() {
                   }}
                 >
                   {SORT_OPTION_LABELS[option]}
-                </div>
+                </button>
               ),
             )}
           </div>
