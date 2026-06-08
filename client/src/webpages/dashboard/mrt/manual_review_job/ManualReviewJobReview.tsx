@@ -157,6 +157,7 @@ gql`
     }
     me {
       id
+      permissions
       reviewableQueues {
         id
         name
@@ -519,23 +520,54 @@ function ManualReviewJobReviewImpl(props: {
     jobData,
   ]);
 
+  const [isAdvancingToNextJob, setIsAdvancingToNextJob] = useState(false);
+  // The jobId we deleted by invalidating its last report. Matching it by
+  // identity lets the redirect effect below skip its bounce-to-recent
+  // until we navigate onto the next job, with no timing window.
+  const invalidationDeletedJobIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    // If we were looking for a specific job and it no longer exists in this
-    // queue, redirect to the recent decisions page for it
+    // If the job we're viewing no longer exists in this queue, send the
+    // reviewer to recent decisions, unless we deleted it ourselves via
+    // invalidation (handleInvalidated advances to the next job instead).
     if (
-      jobId != null &&
-      data?.me?.reviewableQueues
-        .find((queue) => queue.id === queueId)
-        ?.jobs.find((job) => job.id === jobId) === undefined &&
-      !loading
+      jobId == null ||
+      closedJob ||
+      loading ||
+      isAdvancingToNextJob ||
+      invalidationDeletedJobIdRef.current === jobId
     ) {
-      if (!closedJob) {
-        navigate(`/dashboard/manual_review/recent/?jobId=${jobId}`, {
-          replace: true,
-        });
-      }
+      return;
     }
-  }, [jobId, data, loading, navigate, queueId, closedJob]);
+    const stillExists = data?.me?.reviewableQueues
+      .find((queue) => queue.id === queueId)
+      ?.jobs.find((job) => job.id === jobId);
+    if (stillExists) {
+      return;
+    }
+    navigate(`/dashboard/manual_review/recent/?jobId=${jobId}`, {
+      replace: true,
+    });
+  }, [
+    jobId,
+    data,
+    loading,
+    navigate,
+    queueId,
+    closedJob,
+    isAdvancingToNextJob,
+  ]);
+
+  // Drop a stale claim once we've moved to a different job so returning
+  // to the deleted job (e.g. browser back) still routes to recent.
+  useEffect(() => {
+    if (
+      invalidationDeletedJobIdRef.current != null &&
+      invalidationDeletedJobIdRef.current !== jobId
+    ) {
+      invalidationDeletedJobIdRef.current = null;
+    }
+  }, [jobId]);
   // Modal-driven entry of action parameters. Opening the modal in `create`
   // mode happens *before* the action is added to `selectedPrimaryActions`,
   // so cancelling leaves the picker exactly as it was. `edit` mode opens
@@ -819,6 +851,45 @@ function ManualReviewJobReviewImpl(props: {
     fetchPolicy: 'no-cache',
   });
 
+  const advanceToNextJobAfterInvalidation = useCallback(async () => {
+    setIsAdvancingToNextJob(true);
+    try {
+      resetState();
+      const result = await getNextJob();
+      if (result.data?.dequeueManualReviewJob == null) {
+        navigate('/dashboard/manual_review/queues');
+      }
+    } finally {
+      setIsAdvancingToNextJob(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getNextJob, navigate]);
+
+  // Runs after the invalidate mutation resolves. Refreshes the job view,
+  // and if invalidation deleted the current job, advances to the next one.
+  const handleInvalidated = useCallback(async () => {
+    if (jobId == null) return;
+    // Claim the job before refetching: the refetch may momentarily report
+    // it gone, and the redirect effect must not fire during that window.
+    invalidationDeletedJobIdRef.current = jobId;
+    try {
+      const refetched = await refetchJobInfo();
+      const stillExists = refetched.data?.me?.reviewableQueues
+        .find((queue) => queue.id === queueId)
+        ?.jobs.find((j) => j.id === jobId);
+      if (stillExists) {
+        // Job survived (other reporters remain); release the claim and stay.
+        invalidationDeletedJobIdRef.current = null;
+        return;
+      }
+      await advanceToNextJobAfterInvalidation();
+    } catch (e) {
+      // Release the claim so the redirect effect isn't suppressed forever.
+      invalidationDeletedJobIdRef.current = null;
+      throw e;
+    }
+  }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
+
   const skipToNextJob = async () => {
     if (isSortedMode) {
       if (queueId && job?.id) {
@@ -998,6 +1069,11 @@ function ManualReviewJobReviewImpl(props: {
     isAppeal && 'actionsTaken' in payload
       ? payload.actionsTaken.map(getActionName)
       : undefined;
+  const canInvalidateReports =
+    !isAppeal &&
+    userHasPermissions(data.me?.permissions ?? undefined, [
+      GQLUserPermission.EditMrtQueues,
+    ]);
 
   const reportInfo = (
     <ReportInfoComponent
@@ -1013,6 +1089,8 @@ function ManualReviewJobReviewImpl(props: {
       orgId={org.id}
       allItemTypes={org.itemTypes as GQLItemType[]}
       policies={org.policies}
+      viewerPermissions={data.me?.permissions ?? undefined}
+      onInvalidated={handleInvalidated}
     />
   );
   const otherReports =
@@ -1020,6 +1098,9 @@ function ManualReviewJobReviewImpl(props: {
       <MergedReportsComponent
         primaryReportId={reportHistory[0]?.reportId}
         reportHistory={reportHistory}
+        canInvalidateReports={canInvalidateReports}
+        jobId={job.id}
+        onInvalidated={handleInvalidated}
       />
     ) : null;
   const decisionActions = [

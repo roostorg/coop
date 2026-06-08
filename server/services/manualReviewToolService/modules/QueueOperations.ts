@@ -845,13 +845,223 @@ export default class QueueOperations {
     const queue = await this.#getBullQueue(orgId, queueId);
     const { bullId } = parseExternalId(jobId);
     const job = await queue.getJob(bullId);
-    await job?.updateData(data);
+    // updateData is unlocked; abort if the slot was already taken over by
+    // a new job for the same item (different external id) so we don't
+    // clobber a reviewer's in-flight decision payload.
+    if (!job || job.data.id !== jobId) {
+      return undefined;
+    }
+    await job.updateData(data);
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
     // data for this particular job won't be in the legacy format.
-    return job?.data satisfies StoredManualReviewJob | undefined as
-      | ManualReviewJob
-      | undefined;
+    return job.data satisfies StoredManualReviewJob as ManualReviewJob;
+  }
+
+  /**
+   * Yields every undecided job on a queue (waiting, delayed, or active) for
+   * bounded admin sweeps such as reporter invalidation. Includes `active`
+   * jobs so sweeps can update what a reviewer currently has dequeued;
+   * excludes terminal states (completed/failed). `maxJobs` caps a single
+   * sweep so it can't pin Redis indefinitely.
+   *
+   * Iterates in two phases: first snapshots all external JobIds (bounded
+   * by `maxJobs`), then fetches each by id and yields it. This keeps the
+   * iterator safe when callers delete or update jobs mid-traversal, which
+   * index-based pagination over a mutating list would not.
+   */
+  async *iteratePendingJobsForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    batchSize?: number;
+    maxJobs?: number;
+    // Set `truncated` when the queue exceeded `maxJobs`.
+    progress?: { truncated: boolean };
+  }): AsyncIterable<ManualReviewJob> {
+    const { orgId, queueId } = opts;
+    const batchSize = Math.max(1, Math.min(opts.batchSize ?? 200, 500));
+    const maxJobs = Math.max(0, opts.maxJobs ?? 10_000);
+
+    const queue = await this.#getBullQueue(orgId, queueId);
+
+    const snapshotIds: JobId[] = [];
+    let start = 0;
+    while (snapshotIds.length < maxJobs) {
+      const end = start + batchSize - 1;
+      const legacyJobs = await queue.getJobs(
+        ['waiting', 'delayed', 'active'],
+        start,
+        end,
+      );
+      if (legacyJobs.length === 0) {
+        break;
+      }
+      for (const legacy of legacyJobs) {
+        if (snapshotIds.length >= maxJobs) {
+          break;
+        }
+        snapshotIds.push(legacy.data.id);
+      }
+      if (legacyJobs.length < batchSize) {
+        break;
+      }
+      start += batchSize;
+    }
+
+    if (opts.progress != null) {
+      opts.progress.truncated = snapshotIds.length >= maxJobs;
+    }
+
+    for (const jobId of snapshotIds) {
+      // `getJobs` re-reads each job and converts to the current format. If
+      // the job was decided / removed between snapshot and now, the result
+      // is empty and we silently skip it.
+      const jobs = await this.getJobs({ orgId, queueId, jobIds: [jobId] });
+      if (jobs.length > 0) {
+        yield jobs[0];
+      }
+    }
+  }
+
+  /**
+   * Looks up a pending job by its external JobId without requiring a
+   * queueId. Fast path via `job_creations`; falls back to a per-queue
+   * Bull lookup (keyed on the derived BullJobId) for jobs whose
+   * `job_creations` row never landed.
+   *
+   * NB: the fallback path is O(non-appeal queues) Redis round-trips per
+   * call. Acceptable for admin-triggered actions (button click) but do
+   * not call from hot paths.
+   *
+   * Returns undefined when the job is no longer pending, or when the
+   * external id is malformed (admin pasted a stale / wrong id).
+   */
+  async findPendingJobByJobId(opts: {
+    orgId: string;
+    jobId: JobId;
+  }): Promise<{ job: ManualReviewJob; queueId: string } | undefined> {
+    const { orgId, jobId } = opts;
+    // External JobIds are `<b64url(bullId)>:<b64url(guid)>`. Reject
+    // anything that doesn't parse so we don't blow up the per-queue
+    // fallback below for stale / typo'd ids.
+    if (!isParsableExternalId(jobId)) {
+      return undefined;
+    }
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.job_creations')
+      .select(['queue_id'])
+      .where('org_id', '=', orgId)
+      .where('id', '=', jobId)
+      .executeTakeFirst();
+    if (row) {
+      const jobs = await this.getJobs({
+        orgId,
+        queueId: row.queue_id,
+        jobIds: [jobId],
+      });
+      if (jobs.length > 0) {
+        return { job: jobs[0], queueId: row.queue_id };
+      }
+    }
+    const queues =
+      await this.getAllQueuesForOrgAndDangerouslyBypassPermissioning(orgId);
+    for (const queue of queues) {
+      if (queue.isAppealsQueue) {
+        continue;
+      }
+      const jobs = await this.getJobs({
+        orgId,
+        queueId: queue.id,
+        jobIds: [jobId],
+      });
+      if (jobs.length > 0) {
+        return { job: jobs[0], queueId: queue.id };
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Removes a pending job from a queue by its external JobId without
+   * requiring a lock token. Used by admin-triggered bulk maintenance
+   * (e.g. invalidating reports from a reporter).
+   *
+   * Returns true if the job was removed, false if it was already gone.
+   * The Bull-internal `BullJobId` is derived from the external JobId, and
+   * we verify `job.data.id === externalId` before removal so a stale
+   * lookup that finds a *different* job for the same item is a no-op.
+   */
+  async removeJobByJobIdUnsafe(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+  }): Promise<boolean> {
+    const { orgId, queueId, jobId } = opts;
+    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const bullJobId = parseExternalId(jobId).bullId;
+
+    const job = await queue.getJob(bullJobId);
+    if (!job || job.data.id !== jobId) {
+      return false;
+    }
+    // Bull's `remove` throws when the job is currently locked by a worker;
+    // we want callers to fall back to scrub-in-place in that case. Other
+    // errors (e.g. Redis transient failures) must propagate so the caller
+    // doesn't conflate them with "already gone".
+    try {
+      const status = await queue.remove(bullJobId);
+      return status === 1;
+    } catch (err: unknown) {
+      if (isJobLockedError(err)) {
+        return false;
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Removes a pending job. Tries an unlocked `remove`; if the job is
+   * locked, atomically completes it with `invokerUserId` as the lock
+   * token (per the `lockToken === userId` convention) so a reviewer
+   * deleting a job they themselves dequeued succeeds without stealing
+   * another reviewer's lock. Returns `false` on token mismatch so
+   * callers can fall back to scrubbing.
+   */
+  async removeJobAllowingInvokerLock(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    invokerUserId: string;
+  }): Promise<boolean> {
+    const { orgId, queueId, jobId, invokerUserId } = opts;
+    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const { bullId: bullJobId } = parseExternalId(jobId);
+    const job = await queue.getJob(bullJobId);
+    if (!job || job.data.id !== jobId) {
+      return false;
+    }
+
+    try {
+      const status = await queue.remove(bullJobId);
+      if (status === 1) {
+        return true;
+      }
+    } catch (err: unknown) {
+      if (!isJobLockedError(err)) {
+        throw err;
+      }
+      // Locked: fall through to the token-validated path.
+    }
+
+    try {
+      await job.moveToCompleted(null, invokerUserId, false);
+      return true;
+    } catch {
+      // Lock token mismatch (different user) or the job's state moved
+      // between getJob and moveToCompleted. Either way, caller should
+      // scrub.
+      return false;
+    }
   }
 
   async deleteAllJobsFromQueue(opts: {
@@ -1587,6 +1797,41 @@ export const makeUnableToDeleteDefaultQueueError = (
     ...data,
   });
 };
+
+/**
+ * Cheap, non-throwing parse check for external JobIds. Used by callers
+ * that accept the id as user input (e.g. admin button) so a malformed id
+ * becomes a "not found" instead of a 500.
+ */
+// Both halves are base64url tokens (optionally `=`-padded), so reject input
+// that can't be one before paying for the per-queue fallback scan.
+const B64URL_TOKEN = /^[A-Za-z0-9_\-+/=]+$/;
+function isParsableExternalId(externalId: JobId): boolean {
+  const parts = (externalId as string).split(':');
+  return (
+    parts.length === 2 &&
+    B64URL_TOKEN.test(parts[0]) &&
+    B64URL_TOKEN.test(parts[1])
+  );
+}
+
+/**
+ * BullMQ surfaces "job is locked" as an Error whose message starts with
+ * "Could not remove job"; there is no exported error class to instanceof
+ * against. Match defensively on the message and on a likely future
+ * canonicalisation of the same condition.
+ */
+function isJobLockedError(err: unknown): boolean {
+  if (!(err instanceof Error)) {
+    return false;
+  }
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes('could not remove job') ||
+    msg.includes('locked by another worker') ||
+    msg.includes('lock mismatch')
+  );
+}
 
 export const makeManualReviewQueueNameExistsError = (data: ErrorInstanceData) =>
   new CoopError({

@@ -5,9 +5,11 @@ import {
   GQLNcmecFileAnnotation,
   GQLNcmecIndustryClassification,
   GQLSchemaFieldRoles,
+  GQLUserPermission,
   useGQLGetMoreInfoForItemsQuery,
   useGQLGetUserItemsQuery,
 } from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { getFieldValueForRole } from '@/utils/itemUtils';
 import { selectPreferredUserItem } from '@/utils/manualReviewTool';
@@ -18,6 +20,7 @@ import { Link } from 'react-router-dom';
 
 import CopyTextComponent from '@/components/common/CopyTextComponent';
 
+import InvalidateReportsButton from './InvalidateReportsButton';
 import { ManualReviewJobPayload } from './ManualReviewJobReview';
 import ManualReviewJobCommentSection from './v2/ManualReviewJobCommentSection';
 
@@ -44,6 +47,8 @@ export default function ReportInfoComponent(props: {
   orgId: string;
   allItemTypes: GQLItemType[];
   policies: readonly { id: string; name: string }[];
+  viewerPermissions?: readonly GQLUserPermission[];
+  onInvalidated?: () => Promise<void> | void;
 }) {
   const {
     reportPayload: payload,
@@ -57,7 +62,12 @@ export default function ReportInfoComponent(props: {
     allItemTypes,
     actionsTaken,
     policies,
+    viewerPermissions,
+    onInvalidated,
   } = props;
+  const canInvalidateReports =
+    !isAppeal &&
+    userHasPermissions(viewerPermissions, [GQLUserPermission.EditMrtQueues]);
   const reportedItem = payload.item;
   const reportedForReasons =
     payload.__typename === 'UserManualReviewJobPayload' ||
@@ -180,10 +190,12 @@ export default function ReportInfoComponent(props: {
                               latestReporterIdentifier.typeId,
                             );
                             return (
-                              <div>
-                                {`${typeName}: `}
-                                {reporterDisplayName ??
-                                  latestReporterIdentifier.id}
+                              <div className="flex flex-wrap items-center gap-x-2">
+                                <span>
+                                  {`${typeName}: `}
+                                  {reporterDisplayName ??
+                                    latestReporterIdentifier.id}
+                                </span>
                                 <Link
                                   to={`/dashboard/manual_review/investigation/?id=${latestReporterIdentifier.id}&typeId=${latestReporterIdentifier.typeId}`}
                                   target="_blank"
@@ -197,6 +209,21 @@ export default function ReportInfoComponent(props: {
                                     aria-label="Open reporter investigation page"
                                   ></Button>
                                 </Link>
+                                {canInvalidateReports && (
+                                  <InvalidateReportsButton
+                                    reporter={{
+                                      id: latestReporterIdentifier.id,
+                                      typeId: latestReporterIdentifier.typeId,
+                                    }}
+                                    reporterDisplayName={
+                                      typeof reporterDisplayName === 'string'
+                                        ? reporterDisplayName
+                                        : undefined
+                                    }
+                                    jobId={jobId}
+                                    onInvalidated={onInvalidated}
+                                  />
+                                )}
                               </div>
                             );
                           }
