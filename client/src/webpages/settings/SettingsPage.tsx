@@ -2,7 +2,7 @@
 import ReviewConsoleIcon from '@/icons/lni/User/review-console.svg?react';
 import { gql } from '@apollo/client';
 import { Building2, Gavel, Heart, KeyRound, Settings2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 
@@ -102,15 +102,13 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab') as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(
+  const activeTab: Tab =
     tabParam && TABS.some((t) => t.value === tabParam)
       ? tabParam
-      : 'organization',
-  );
+      : 'organization';
 
   const handleTabChange = useCallback(
     (tab: Tab) => {
-      setActiveTab(tab);
       setSearchParams({ tab }, { replace: true });
     },
     [setSearchParams],

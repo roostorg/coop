@@ -50,18 +50,25 @@ export default function ReviewConsoleTab() {
     },
   };
 
-  const [updateRequirePolicy] =
+  const [updateRequirePolicy, { loading: requirePolicyLoading }] =
     useGQLUpdateRequiresPolicyForDecisionsMutation(mutationOpts);
-  const [updateRequireReason] =
+  const [updateRequireReason, { loading: requireReasonLoading }] =
     useGQLUpdateRequiresDecisionReasonMutation(mutationOpts);
-  const [updateHideSkipMutation] =
+  const [updateHideSkipMutation, { loading: hideSkipLoading }] =
     useGQLUpdateHideSkipButtonForNonAdminsMutation(mutationOpts);
-  const [updatePreviewJobsMutation] =
+  const [updatePreviewJobsMutation, { loading: previewJobsLoading }] =
     useGQLUpdatePreviewJobsViewEnabledMutation(mutationOpts);
-  const [updateIgnoreUrl, { loading: saveLoading }] =
+  const [updateIgnoreUrl, { loading: ignoreUrlLoading }] =
     useGQLUpdateIgnoreCallbackUrlMutation(mutationOpts);
   if (loading) return <FullScreenLoading />;
   if (error || !org) return <div>Error loading review console settings</div>;
+
+  const saveLoading =
+    requirePolicyLoading ||
+    requireReasonLoading ||
+    hideSkipLoading ||
+    previewJobsLoading ||
+    ignoreUrlLoading;
 
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||

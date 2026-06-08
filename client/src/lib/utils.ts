@@ -21,7 +21,11 @@ export function validateJSON(value: string | undefined) {
   }
   try {
     const parsed = JSON.parse(value);
-    return typeof parsed === 'object' && parsed != null;
+    // These fields map to a GraphQL JSONObject (key-value map), so arrays and
+    // primitives are not valid even though `typeof [] === 'object'`.
+    return (
+      typeof parsed === 'object' && parsed != null && !Array.isArray(parsed)
+    );
   } catch {
     return false;
   }

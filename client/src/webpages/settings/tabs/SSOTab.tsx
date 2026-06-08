@@ -74,16 +74,22 @@ export default function SSOTab() {
 
   const hasSsoCredentials = Boolean(org.ssoUrl && org.ssoCert);
 
-  const hasChanges =
-    samlEnabled !== org.samlEnabled ||
-    ssoUrl !== (org.ssoUrl ?? '') ||
-    ssoCert !== (org.ssoCert ?? '');
+  const credentialsChanged =
+    ssoUrl !== (org.ssoUrl ?? '') || ssoCert !== (org.ssoCert ?? '');
+
+  const hasChanges = samlEnabled !== org.samlEnabled || credentialsChanged;
+
+  // Credentials only need to be present/valid when they're actually being
+  // changed; toggling SAML off (or other non-credential saves) must not be
+  // blocked by blank credentials.
+  const credentialsInvalid =
+    credentialsChanged && (!ssoUrl || !ssoCert || !isValidUrl(ssoUrl));
 
   const handleSave = () => {
     if (samlEnabled !== org.samlEnabled) {
       updateSamlEnabled({ variables: { enabled: samlEnabled } });
     }
-    if (ssoUrl !== (org.ssoUrl ?? '') || ssoCert !== (org.ssoCert ?? '')) {
+    if (credentialsChanged) {
       updateSSOCredentials({
         variables: { input: { ssoUrl, ssoCert } },
       });
@@ -180,13 +186,7 @@ export default function SSOTab() {
 
       <div className="flex justify-end border-t border-gray-200 pt-4">
         <Button
-          disabled={
-            !hasChanges ||
-            ssoSaveLoading ||
-            !ssoUrl ||
-            !ssoCert ||
-            !isValidUrl(ssoUrl)
-          }
+          disabled={!hasChanges || ssoSaveLoading || credentialsInvalid}
           loading={ssoSaveLoading}
           onClick={handleSave}
         >

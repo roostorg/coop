@@ -52,27 +52,33 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     directives: { freshUntilAge: (MINUTE_MS * 5) / 1000 },
   });
 
+  // Orgs created before `org_settings` defaults were seeded have no row, so a
+  // plain UPDATE would silently affect 0 rows. Every settings mutation calls
+  // this first to guarantee a row (with defaults) exists.
+  async function ensureOrgSettingsRow(orgId: string) {
+    await pgQuery
+      .insertInto('public.org_settings')
+      .values({
+        org_id: orgId,
+        has_reporting_rules_enabled: false,
+        has_appeals_enabled: false,
+        allow_multiple_policies_per_action: false,
+        user_strike_ttl_days: 90,
+        is_demo_org: false,
+        saml_enabled: false,
+        sso_url: null,
+        cert: null,
+        appeal_callback_url: null,
+        appeal_callback_headers: null,
+        appeal_callback_body: null,
+      })
+      .onConflict((oc) => oc.column('org_id').doNothing())
+      .execute();
+  }
+
   return {
     async upsertOrgDefaultSettings(opts: { orgId: string }) {
-      const { orgId } = opts;
-      await pgQuery
-        .insertInto('public.org_settings')
-        .values({
-          org_id: orgId,
-          has_reporting_rules_enabled: false,
-          has_appeals_enabled: false,
-          allow_multiple_policies_per_action: false,
-          user_strike_ttl_days: 90,
-          is_demo_org: false,
-          saml_enabled: false,
-          sso_url: null,
-          cert: null,
-          appeal_callback_url: null,
-          appeal_callback_headers: null,
-          appeal_callback_body: null,
-        })
-        .onConflict((oc) => oc.column('org_id').doNothing())
-        .execute();
+      await ensureOrgSettingsRow(opts.orgId);
     },
     async hasReportingRulesEnabled(orgId: string) {
       const rows = await pgQuery
@@ -123,6 +129,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       return rows?.user_strike_ttl_days ?? 90;
     },
     async updateUserStrikeTTL(input: { orgId: string; ttlDays: number }) {
+      await ensureOrgSettingsRow(input.orgId);
       return pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
@@ -138,6 +145,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       callbackHeaders: JsonObject | null;
       callbackBody: JsonObject | null;
     }) {
+      await ensureOrgSettingsRow(input.orgId);
       const row = await pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
@@ -172,27 +180,14 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       endpoint: string | null;
       requestHeaders: JsonObject | null;
     }) {
+      await ensureOrgSettingsRow(input.orgId);
       await pgQuery
-        .insertInto('public.org_settings')
-        .values({
-          org_id: input.orgId,
-          has_reporting_rules_enabled: false,
-          has_appeals_enabled: false,
-          allow_multiple_policies_per_action: false,
-          user_strike_ttl_days: 90,
-          is_demo_org: false,
-          saml_enabled: false,
-          sso_url: null,
-          cert: null,
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({
           partial_items_endpoint: input.endpoint,
           partial_items_request_headers: input.requestHeaders,
         })
-        .onConflict((oc) =>
-          oc.column('org_id').doUpdateSet({
-            partial_items_endpoint: input.endpoint,
-            partial_items_request_headers: input.requestHeaders,
-          }),
-        )
         .execute();
       // The read path is cached for 5 minutes; drop the entry so the new
       // values are visible immediately instead of after the TTL.
@@ -211,6 +206,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       cert: string;
     }) {
       try {
+        await ensureOrgSettingsRow(input.orgId);
         await pgQuery
           .updateTable('public.org_settings')
           .where('org_id', '=', input.orgId)
@@ -222,6 +218,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       }
     },
     async updateHasAppealsEnabled(input: { orgId: string; enabled: boolean }) {
+      await ensureOrgSettingsRow(input.orgId);
       await pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
@@ -232,6 +229,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       orgId: string;
       enabled: boolean;
     }) {
+      await ensureOrgSettingsRow(input.orgId);
       await pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
@@ -242,6 +240,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       orgId: string;
       enabled: boolean;
     }) {
+      await ensureOrgSettingsRow(input.orgId);
       await pgQuery
         .updateTable('public.org_settings')
         .where('org_id', '=', input.orgId)
@@ -249,6 +248,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         .execute();
     },
     async updateSamlEnabled(input: { orgId: string; enabled: boolean }) {
+      await ensureOrgSettingsRow(input.orgId);
       if (input.enabled) {
         const settings = await pgQuery
           .selectFrom('public.org_settings')
