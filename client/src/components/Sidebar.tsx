@@ -246,14 +246,14 @@ export default function Sidebar(props: SidebarProps) {
     );
   };
 
-  const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] = useState(true);
+  const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] =
+    useState(isSettingsSelected);
   useEffect(() => {
-    if (!isSettingsSelected) {
+    if (isSettingsSelected) {
       setIsSettingsMenuExpanded(true);
     }
   }, [isSettingsSelected]);
-  const isSettingsMenuVisible =
-    isSettingsSelected && !collapsed && isSettingsMenuExpanded;
+  const isSettingsMenuVisible = isSettingsMenuExpanded && !collapsed;
 
   const settingsMenu = (
     <div
@@ -350,10 +350,12 @@ export default function Sidebar(props: SidebarProps) {
             !(collapsed && selectedMenuItem === 'Account') && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link
-                    to="/dashboard/settings"
-                    onClick={(e) => {
-                      if (isSettingsSelected) {
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setIsSettingsMenuExpanded((prev) => !prev)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         setIsSettingsMenuExpanded((prev) => !prev);
                       }
@@ -368,7 +370,7 @@ export default function Sidebar(props: SidebarProps) {
                       style={{ width: '16px', height: '16px' }}
                       className="fill-black"
                     />
-                  </Link>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent side="top">Settings</TooltipContent>
               </Tooltip>
