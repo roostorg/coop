@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1fa1aad7.js";
+            window.path_to_searchindex_js = "../searchindex-8ec706be.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-bb10072b.js"></script>
+        <script src="../toc-ccdbac05.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,7 +180,7 @@
 <p>The <strong>Review Console</strong> is where moderators work through reported content.</p>
 <h2 id="queues"><a class="header" href="#queues">Queues</a></h2>
 <p><img src="../images/review-console.png" alt="Five example queues: media, default queue, fraud, scams, and spam. There are buttons to create a new queue, start reviewing each queue, delete all jobs, and edit or delete individual queues."></p>
-<p>Coop uses queues to organize review jobs. When content is reported (whether by a user on your platform or a <a href="rules.html#proactive-rules">proactive rule</a>), it enters a queue until it is reviewed and a decision is made.</p>
+<p>Coop uses queues to organize review jobs. When content is reported (whether by a user on your platform or a <a href="automated-enforcement.html#proactive-rules">proactive rule</a>), it enters a queue until it is reviewed and a decision is made.</p>
 <p>A moderator selects <strong>Start Reviewing</strong> on any queue to begin working through it. Coop pulls the oldest job first, and after you make a decision, the next one loads automatically until the queue is empty or you stop.</p>
 <p>Two moderators will never receive the same job, preventing duplicate work.</p>
 <p>Queues can be starred per-user to pin them to the top of the Review Console. Each queue shows a count of pending jobs so you can prioritize accordingly.</p>
@@ -188,7 +188,7 @@
 <p>Moderator managers and admins can create and edit queues for your organization.</p>
 <p><img src="../images/create-queue.png" alt="Creating a queue in Coop, showing fields for name and hidden actions"></p>
 <p>When creating or editing a queue, you can configure <strong>Reviewer Access</strong> to determine which moderators can access and work jobs in that queue. <strong>Hidden Actions</strong> determines which actions are not available to moderators in this queue; this is useful for restricting what decisions reviewers can make in a given context, e.g. hiding permanent bans in a first-pass triage queue.</p>
-<p><a href="rules.html#routing-rules">Routing Rules</a> determine which incoming jobs are directed to which queue.</p>
+<p><a href="automated-enforcement.html#routing-rules">Routing Rules</a> determine which incoming jobs are directed to which queue.</p>
 <h2 id="job-view"><a class="header" href="#job-view">Job view</a></h2>
 <p><img src="../images/task-view.png" alt="A review job in Coop with user data redacted. Shows what time the report was received, what kind of item it is, who created the report and for what reason, the number of reports on the job, and information about the post itself. Users can add internal comments for their teammates and view the policy to check what enforcement guidelines are. There is a list of decisions users can make on the job and a button to skip the job"></p>
 <p>Each <strong>job</strong> in a queue displays the report and everything Coop knows about the flagged content or user being reviewed. Each job has its own URL and can be shared with anyone at your organization who has access to Coop.</p>
@@ -222,7 +222,7 @@
 </li>
 </ul>
 <h3 id="organization-wide-defaults"><a class="header" href="#organization-wide-defaults">Organization-wide defaults</a></h3>
-<p><img src="../images/org-wellness.png" alt="Coop’s organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle"></p>
+<p><img src="../images/org-wellness-settings.png" alt="Coop’s organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle"></p>
 <p>Admins can set default wellness settings that apply to all users in the organization under <strong>Settings → Wellness</strong>.</p>
 <p>Any user can override the organization defaults with their own preferences under <strong>Account → Wellness</strong>.</p>
 
@@ -230,7 +230,7 @@
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../user/rules.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../user/automated-enforcement.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -244,7 +244,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../user/rules.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../user/automated-enforcement.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

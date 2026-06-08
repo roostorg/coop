@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1fa1aad7.js";
+            window.path_to_searchindex_js = "../searchindex-8ec706be.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-bb10072b.js"></script>
+        <script src="../toc-ccdbac05.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,7 +177,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="submit-items-api"><a class="header" href="#submit-items-api">Submit Items API</a></h1>
-<p>Send <a href="../user/concepts.html#item">Items</a> to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured <a href="../user/rules.html#proactive-rules">Proactive Rules</a>.</p>
+<p>Send <a href="../user/concepts.html#item">Items</a> to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured <a href="../user/automated-enforcement.html#proactive-rules">Proactive Rules</a>.</p>
 <p>Submit items when they are created, edited, reported, or otherwise need to be re-evaluated. You should also submit items retroactively if you configure new rules after launch. To support Coop fetching Items and their attributes on demand, see the <a href="../api/partial-items.html">Partial Items API</a>.</p>
 <h2 id="endpoint"><a class="header" href="#endpoint">Endpoint</a></h2>
 <pre><code class="language-http">POST /api/v1/items/async/
@@ -258,7 +258,7 @@
 <li>Fetch the image content from the provided URLs.</li>
 <li>Compute perceptual hashes for each image.</li>
 <li>Check these hashes against all <a href="../integrations/hma.html">HMA Matching Banks</a> configured for your organization.</li>
-<li>Add the resulting HMA signals to the item for evaluation against your <a href="../user/rules.html">Automated Rules</a>.</li>
+<li>Add the resulting HMA signals to the item for evaluation against your <a href="../user/automated-enforcement.html">Automated Rules</a>.</li>
 </ol>
 <h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
 <ul>

@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1fa1aad7.js";
+            window.path_to_searchindex_js = "../searchindex-8ec706be.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-bb10072b.js"></script>
+        <script src="../toc-ccdbac05.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -261,9 +261,9 @@
 <h3 id="actions-from-coop"><a class="header" href="#actions-from-coop">Actions from Coop</a></h3>
 <p>When an action is triggered by a proactive rule or moderator decision, Coop sends a webhook back to the organization’s platform. See <a href="../api/actions.html">Handling Actions</a> for details on the webhook format and how to process it.</p>
 <h2 id="rules"><a class="header" href="#rules">Rules</a></h2>
-<p>Coop supports two sets of <a href="../user/rules.html">rules</a>. Each has separate code paths, storage tables, and UI surfaces.</p>
+<p>Coop supports two sets of <a href="../user/automated-enforcement.html">rules</a>. Each has separate code paths, storage tables, and UI surfaces.</p>
 <h3 id="proactive-rules"><a class="header" href="#proactive-rules">Proactive Rules</a></h3>
-<p>When an item is submitted, Coop retrieves all <a href="../user/rules.html#proactive-rules">Proactive Rules</a> associated with the item’s type. Proactive Rules act in parallel to determine automatic actions, including potentially sending the item to the review console.</p>
+<p>When an item is submitted, Coop retrieves all <a href="../user/automated-enforcement.html#proactive-rules">Proactive Rules</a> associated with the item’s type. Proactive Rules act in parallel to determine automatic actions, including potentially sending the item to the review console.</p>
 <p>Each rule is evaluated by recursively processing its <code>conditionSet</code>, extracting values from the item, optionally passing them through signals, and comparing results using configured comparators.</p>
 <p>Rule status: <code>LIVE</code>, <code>DRAFT</code>, <code>BACKGROUND</code>, <code>EXPIRED</code></p>
 <ul>
@@ -280,7 +280,7 @@
 <li>UI: <code>/client/src/webpages/dashboard/rules/</code></li>
 </ul>
 <h3 id="routing-rules"><a class="header" href="#routing-rules">Routing Rules</a></h3>
-<p>When a report is submitted or a proactive rule sends an item to the review console, it is evaluated by <a href="../user/rules.html#routing-rules">Routing Rules</a>. The first routing rule that succeeds routes the item into the appropriate queue awaiting review as a job.</p>
+<p>When a report is submitted or a proactive rule sends an item to the review console, it is evaluated by <a href="../user/automated-enforcement.html#routing-rules">Routing Rules</a>. The first routing rule that succeeds routes the item into the appropriate queue awaiting review as a job.</p>
 <ul>
 <li>Code: <code>/server/services/manualReviewToolService/modules/JobRouting.ts</code></li>
 <li>Storage tables:

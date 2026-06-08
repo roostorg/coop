@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1fa1aad7.js";
+            window.path_to_searchindex_js = "../searchindex-8ec706be.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-bb10072b.js"></script>
+        <script src="../toc-ccdbac05.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -213,16 +213,16 @@
 <p>Once HMA is connected and hash banks are configured, the image hash signal is available in both routing rules and proactive rules.</p>
 <ul>
 <li>
-<p><strong>To route content from <a href="../api/report.html">user reports</a></strong>, create a <a href="../user/rules.html#routing-rules">routing rule</a> with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.</p>
+<p><strong>To route content from <a href="../api/report.html">user reports</a></strong>, create a <a href="../user/automated-enforcement.html#routing-rules">routing rule</a> with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.</p>
 <p><img src="../images/hma-routing-rule.png" alt="Routing rule using HMA hash matching"></p>
 </li>
 <li>
-<p><strong>For content submitted via the <a href="../api/items.html">items API</a></strong>, if you want Coop to proactively hash and flag matches without a user report, create a <a href="../user/rules.html#proactive-rules">proactive rule</a> with the image hash condition and “Enqueue to NCMEC” action.</p>
+<p><strong>For content submitted via the <a href="../api/items.html">items API</a></strong>, if you want Coop to proactively hash and flag matches without a user report, create a <a href="../user/automated-enforcement.html#proactive-rules">proactive rule</a> with the image hash condition and “Enqueue to NCMEC” action.</p>
 </li>
 </ul>
 <h2 id="see-also"><a class="header" href="#see-also">See also</a></h2>
 <ul>
-<li><a href="../user/rules.html">Automated Routing &amp; Enforcement</a> for more on building rules</li>
+<li><a href="../user/automated-enforcement.html">Automated Routing &amp; Enforcement</a> for more on building rules</li>
 <li><a href="ncmec.html">NCMEC CyberTipline</a> for details on configuring your NCMEC integration</li>
 </ul>
 
