@@ -11,6 +11,7 @@ import {
 } from '../services/integrationRegistry/index.js';
 import { logErrorJson, logJson } from '../utils/logging.js';
 import { sleep } from '../utils/misc.js';
+import { printStartupBanner } from '../utils/startupBanner.js';
 
 const { app, shutdown } = await getBottle().then(async (bottle) =>
   makeServer(bottle.container),
@@ -40,6 +41,7 @@ app.set('port', port);
 const server = http
   .createServer(app)
   .listen(port, () => {
+    printStartupBanner();
     // eslint-disable-next-line no-restricted-syntax
     logJson(`Server is running at http://localhost:${port}`);
   })
