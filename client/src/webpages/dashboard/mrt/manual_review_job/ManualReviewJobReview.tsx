@@ -1,27 +1,3 @@
-import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import { userHasPermissions } from '@/routing/permissions';
-import { __throw } from '@/utils/misc';
-import { isNonEmptyString } from '@/utils/string';
-import { multilevelListFromFlatList } from '@/utils/tree';
-import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
-import { gql } from '@apollo/client';
-import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-
-import ComponentLoading from '../../../../components/common/ComponentLoading';
-import CopyTextComponent from '../../../../components/common/CopyTextComponent';
-import CoopModal from '../../components/CoopModal';
-import { CoopModalFooterButtonProps } from '../../components/CoopModalFooter';
-import PolicyDropdown from '../../components/PolicyDropdown';
-import { type ActionParameterValues } from '@/components/ActionParameterInputs';
-import ActionParametersModal, {
-  defaultValuesForParameters,
-} from '@/components/ActionParametersModal';
-import Drawer from '@/components/common/Drawer';
-
 import {
   GQLContentAppealManualReviewJobPayload,
   GQLContentItem,
@@ -44,35 +20,58 @@ import {
   type GQLActionParameter,
   type GQLThreadManualReviewJobPayload,
   type GQLUserItem,
-} from '../../../../graphql/generated';
-import { filterNullOrUndefined } from '../../../../utils/collections';
-import { getFieldValueForRole } from '../../../../utils/itemUtils';
+} from '@/graphql/generated';
+import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
+import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
+import { getFieldValueForRole } from '@/utils/itemUtils';
 import {
   buildSortedReviewUrl,
   isSortedReviewMode,
   pickNextSortedJob,
   pickTopSortedJob,
   recomputeSelectedRelatedActions,
-} from '../../../../utils/manualReviewTool';
-import HTMLRenderer from '../../policies/HTMLRenderer';
-import { ITEM_TYPE_FRAGMENT } from '../../rules/rule_form/RuleForm';
-import { JOB_FRAGMENT } from './jobFragment';
-import ManualReviewJobDequeueErrorComponent from './ManualReviewJobDequeueErrorComponent';
-import MergedReportsComponent from './MergedReportsComponent';
-import ReportInfoComponent from './ReportInfoComponent';
-import ManualReviewJobContentView from './v2/ManualReviewJobContentView';
-import ManualReviewJobEmptyQueue from './v2/ManualReviewJobEmptyQueue';
-import { ManualReviewJobOtherItemsComponent } from './v2/ManualReviewJobOtherItemsComponent';
+} from '@/utils/manualReviewTool';
+import { __throw } from '@/utils/misc';
+import { isNonEmptyString } from '@/utils/string';
+import { multilevelListFromFlatList } from '@/utils/tree';
+import { JOB_FRAGMENT } from '@/webpages/dashboard/mrt/manual_review_job/jobFragment';
+import ManualReviewJobDequeueErrorComponent from '@/webpages/dashboard/mrt/manual_review_job/ManualReviewJobDequeueErrorComponent';
+import MergedReportsComponent from '@/webpages/dashboard/mrt/manual_review_job/MergedReportsComponent';
+import ReportInfoComponent from '@/webpages/dashboard/mrt/manual_review_job/ReportInfoComponent';
+import ManualReviewJobContentView from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobContentView';
+import ManualReviewJobEmptyQueue from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobEmptyQueue';
+import { ManualReviewJobOtherItemsComponent } from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobOtherItemsComponent';
 import {
   CustomAction,
   ManualReviewActionStore,
   ManualReviewActionStoreProvider,
-} from './v2/ManualReviewJobRelatedActionsStore';
-import NCMECReviewUser from './v2/ncmec/NCMECReviewUser';
-import ManualReviewJobEnqueuedRelatedActions from './v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
-import ManualReviewJobListOfThreadsComponent from './v2/threads/ManualReviewJobListOfThreadsComponent';
-import { useEnqueueActionGate } from './v2/useEnqueueActionGate';
-import ManualReviewJobPrimaryUserComponent from './v2/user/ManualReviewJobPrimaryUserComponent';
+} from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobRelatedActionsStore';
+import NCMECReviewUser from '@/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser';
+import ManualReviewJobEnqueuedRelatedActions from '@/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
+import ManualReviewJobListOfThreadsComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobListOfThreadsComponent';
+import { useEnqueueActionGate } from '@/webpages/dashboard/mrt/manual_review_job/v2/useEnqueueActionGate';
+import ManualReviewJobPrimaryUserComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent';
+import HTMLRenderer from '@/webpages/dashboard/policies/HTMLRenderer';
+import { ITEM_TYPE_FRAGMENT } from '@/webpages/dashboard/rules/rule_form/RuleForm';
+import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
+import { gql } from '@apollo/client';
+import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
+import ComponentLoading from '@/components/common/ComponentLoading';
+import CopyTextComponent from '@/components/common/CopyTextComponent';
+import Drawer from '@/components/common/Drawer';
+import CoopModal from '@/webpages/dashboard/components/CoopModal';
+import { CoopModalFooterButtonProps } from '@/webpages/dashboard/components/CoopModalFooter';
+import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -962,9 +961,9 @@ function ManualReviewJobReviewImpl(props: {
                     queueId: queueId!,
                     jobId: job.id,
                     // In FIFO mode lockToken comes from the URL (set during dequeue).
-                    // In sorted mode lockToken is undefined — the server's removeJob
-                    // fallback accepts an invalid token and still processes the decision.
-                    lockToken: lockToken!,
+                    // In sorted mode there's no dequeue lock — send empty string so
+                    // removeJob's fallback path removes the job without a lock.
+                    lockToken: lockToken ?? '',
                     reportedItemDecisionComponents: [decision],
                     relatedItemActions: [],
                   },
@@ -1959,9 +1958,9 @@ function ManualReviewJobReviewImpl(props: {
                         })),
                         queueId: queueId!,
                         jobId: job.id,
-                        // In sorted mode lockToken is undefined (no dequeue lock);
-                        // server removeJob handles this gracefully.
-                        lockToken: lockToken!,
+                        // In sorted mode there's no dequeue lock — send empty string so
+                        // removeJob's fallback path removes the job without a lock.
+                        lockToken: lockToken ?? '',
                         reportedItemDecisionComponents: decisionComponents,
                         relatedItemActions: selectedRelatedActions.map(
                           (action) => ({
