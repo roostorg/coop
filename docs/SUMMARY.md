@@ -6,7 +6,9 @@
 
 - [User Guide](user/README.md)
   - [Basic Concepts](user/concepts.md)
+  - [Organization Settings](user/settings.md)
   - [Automated Routing & Enforcement](user/rules.md)
+    - [User Strikes](user/user-strikes.md)
   - [Manual Review & Enforcement](user/review-console.md)
   - [Signals](user/signals.md)
   - [Investigation](user/investigation.md)
