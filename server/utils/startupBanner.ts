@@ -41,7 +41,7 @@ export function printStartupBanner(): void {
   const labelWidth = Math.max(...LINKS.map(([label]) => label.length));
   const linkLines = [
     'ROOST · Open Source Trust & Safety',
-    'Coop · Review and moderation tool',
+    'Coop · Review and enforcement tool',
     '',
     ...LINKS.map(([label, url]) => `  ${label.padEnd(labelWidth)}  ${url}`),
   ];
