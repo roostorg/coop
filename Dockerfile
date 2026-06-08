@@ -1,4 +1,4 @@
-# This is a fairly-standard multi-stage Dockerfile. We build 
+# This is a fairly-standard multi-stage Dockerfile. We build
 # backend in a Node image, and then we copy the built files
 # (but not the devDependencies [like typescript, etc.] or the raw source
 # files) to final images that we'll actually run. This makes the final image a
@@ -16,6 +16,13 @@ RUN npm ci
 COPY ["server", "./"]
 
 FROM server_base AS build_backend
+RUN npm run build
+
+FROM node:24.14.1-bullseye-slim AS build_client
+WORKDIR /app
+COPY ["client/package.json", "client/package-lock.json", "./"]
+RUN npm ci
+COPY ["client", "./"]
 RUN npm run build
 
 # make a shared layer that can be the base for worker and api images.
@@ -39,6 +46,7 @@ ENV BUILD_ID=$BUILD_ID
 # Expose 8080 because the backend will run on this port absent a
 # process.env.PORT to the contrary.
 FROM backend_base AS build_server
+COPY --from=build_client /app/build ./client-build
 EXPOSE 8080
 CMD ["node", "bin/www.js"]
 
