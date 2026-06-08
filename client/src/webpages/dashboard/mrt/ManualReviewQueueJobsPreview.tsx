@@ -1,24 +1,26 @@
+import { useGQLManualReviewQueueJobsPreviewQuery } from '@/graphql/generated';
+import { filterNullOrUndefined } from '@/utils/collections';
+import { getPrimaryContentFields } from '@/utils/itemUtils';
+import { ITEM_FRAGMENT } from '@/webpages/dashboard/item_types/ItemTypesDashboard';
+import FieldsComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent';
 import { gql } from '@apollo/client';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Row } from 'react-table';
 
-import ComponentLoading from '../../../components/common/ComponentLoading';
-import DashboardHeader from '../components/DashboardHeader';
+import ComponentLoading from '@/components/common/ComponentLoading';
+import DashboardHeader from '@/webpages/dashboard/components/DashboardHeader';
 import {
   ColumnProps,
   DateRangeColumnFilter,
   SelectColumnFilter,
-} from '../components/table/filters';
-import { integerSort, stringSort } from '../components/table/sort';
-import Table from '../components/table/Table';
-
-import { useGQLManualReviewQueueJobsPreviewQuery } from '../../../graphql/generated';
-import { filterNullOrUndefined } from '../../../utils/collections';
-import { getPrimaryContentFields } from '../../../utils/itemUtils';
-import { ITEM_FRAGMENT } from '../item_types/ItemTypesDashboard';
-import FieldsComponent from './manual_review_job/v2/ManualReviewJobFieldsComponent';
+} from '@/webpages/dashboard/components/table/filters';
+import {
+  integerSort,
+  stringSort,
+} from '@/webpages/dashboard/components/table/sort';
+import Table from '@/webpages/dashboard/components/table/Table';
 
 gql`
   ${ITEM_FRAGMENT}
