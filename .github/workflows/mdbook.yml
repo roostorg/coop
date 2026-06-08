@@ -48,12 +48,13 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           ref: ${{ inputs.ref }}
+          persist-credentials: false
 
       - name: Determine deployment path
         id: deploy-path
         run: |
           # For manual backfill, use the input ref; otherwise derive from the triggering ref
-          DEPLOY_REF="${{ inputs.ref }}"
+          DEPLOY_REF="${INPUTS_REF}"
           if [[ -z "$DEPLOY_REF" ]]; then
             if [[ "${{ github.event_name }}" == "workflow_dispatch" && "$GITHUB_REF_NAME" != "main" ]]; then
               echo "Dispatching from a non-main branch requires a ref input (e.g. a tag name)" >&2
@@ -70,6 +71,8 @@ jobs:
           else
             echo "path=latest" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          INPUTS_REF: ${{ inputs.ref }}
 
       - name: Cache mdBook binary
         id: cache-mdbook
@@ -77,6 +80,7 @@ jobs:
         with:
           path: mdbook-bin
           key: mdbook-${{ env.MDBOOK_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+          lookup-only: true
 
       - name: Install mdBook
         if: steps.cache-mdbook.outputs.cache-hit != 'true'
@@ -95,8 +99,9 @@ jobs:
       - name: Deploy to GitHub Pages
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          STEPS_DEPLOY_PATH_OUTPUTS_PATH: ${{ steps.deploy-path.outputs.path }}
         run: |
-          DEPLOY_PATH="${{ steps.deploy-path.outputs.path }}"
+          DEPLOY_PATH="${STEPS_DEPLOY_PATH_OUTPUTS_PATH}"
 
           # Clone the gh-pages branch, or initialize it if this is the first deployment
           if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
