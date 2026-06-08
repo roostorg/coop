@@ -61,7 +61,7 @@ export default function Table(
         columns,
         data,
         filterTypes,
-        // @ts-ignore react-table v7 types don't include sortBy on TableState
+        // @ts-expect-error react-table v7 types don't include sortBy on TableState
         initialState: { sortBy: initialSortBy ?? [] },
       },
       useFilters,
