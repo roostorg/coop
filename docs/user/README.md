@@ -6,7 +6,7 @@ Protect your users from harm with remarkable ease.
 
 Coop is the open source review and moderation tool from [ROOST](https://roost.tools) that provides a comprehensive solution for online safety:
 
-- **[Automated Enforcement](rules.md)**: Customizable multi-condition rules that evaluate every submitted item against signals to automatically take action or route reports to a human review queue based on your policies
+- **[Automated Enforcement](automated-enforcement.md)**: Customizable multi-condition rules that evaluate every submitted item against signals to automatically take action or route reports to a human review queue based on your policies
 
   | [![Rules](../images/rules.png)](../images/rules.png)          | [![Scam Rule](../images/scam-rule.png)](../images/scam-rule.png)               |
   | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
