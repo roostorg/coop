@@ -21,7 +21,6 @@ import {
   GQLSetOrgDefaultSafetySettingsDocument,
   GQLUpdateAppealSettingsDocument,
   GQLUpdateHasAppealsEnabledDocument,
-  GQLUpdateHasReportingRulesEnabledDocument,
   GQLUpdateIgnoreCallbackUrlDocument,
   GQLUpdateOrgInfoDocument,
   GQLUpdatePartialItemsSettingsDocument,
@@ -610,7 +609,6 @@ describe('SettingsPage', () => {
     it('shows toggles, strike TTL, and partial items', async () => {
       renderWithProviders([deploymentSettingsMock], 'other');
       await waitFor(() => {
-        expect(screen.getByText('Enable Reporting Rules')).toBeInTheDocument();
         expect(
           screen.getByText('Multiple Policies Per Action'),
         ).toBeInTheDocument();
@@ -621,36 +619,11 @@ describe('SettingsPage', () => {
           screen.getByText('Partial Items Request Headers'),
         ).toBeInTheDocument();
       });
-    });
-
-    it('calls reporting rules mutation on save', async () => {
-      const mutationFn = vi.fn(() => ({
-        data: { updateHasReportingRulesEnabled: true },
-      }));
-
-      renderWithProviders(
-        [
-          deploymentSettingsMock,
-          {
-            request: {
-              query: GQLUpdateHasReportingRulesEnabledDocument,
-              variables: { enabled: true },
-            },
-            newData: mutationFn,
-          },
-        ],
-        'other',
-      );
-      await waitFor(() => {
-        expect(screen.getByText('Enable Reporting Rules')).toBeInTheDocument();
-      });
-
-      userEvent.click(screen.getAllByRole('switch')[0]);
-      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
-
-      await waitFor(() => {
-        expect(mutationFn).toHaveBeenCalled();
-      });
+      // Reporting Rules is temporarily hidden from the UI while the feature
+      // is being reworked.
+      expect(
+        screen.queryByText('Enable Reporting Rules'),
+      ).not.toBeInTheDocument();
     });
 
     it('calls strike TTL mutation on save', async () => {

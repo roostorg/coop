@@ -189,6 +189,9 @@ export default function OtherTab() {
         </div>
 
         <div className="flex flex-col gap-5">
+          {/*
+            Reporting Rules are temporarily hidden from the UI while the
+            feature is being reworked. Restore this toggle to re-enable.
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Text size="SM" weight="medium">
@@ -203,6 +206,7 @@ export default function OtherTab() {
               onCheckedChange={setReportingEnabled}
             />
           </div>
+          */}
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Text size="SM" weight="medium">
