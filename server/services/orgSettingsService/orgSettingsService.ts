@@ -56,7 +56,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
   // plain UPDATE would silently affect 0 rows. Every settings mutation calls
   // this first to guarantee a row (with defaults) exists.
   async function ensureOrgSettingsRow(orgId: string) {
-    await pgQuery
+    const result = await pgQuery
       .insertInto('public.org_settings')
       .values({
         org_id: orgId,
@@ -73,7 +73,12 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         appeal_callback_body: null,
       })
       .onConflict((oc) => oc.column('org_id').doNothing())
-      .execute();
+      .executeTakeFirst();
+    // If a row was actually inserted, drop the partial-items cache: it may have
+    // memoized "no row" as undefined, which is now stale.
+    if (Number(result.numInsertedOrUpdatedRows ?? 0) > 0) {
+      await partialItemsEndpointCache.invalidate?.(orgId);
+    }
   }
 
   return {
