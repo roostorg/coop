@@ -74,16 +74,7 @@ jobs:
         env:
           INPUTS_REF: ${{ inputs.ref }}
 
-      - name: Cache mdBook binary
-        id: cache-mdbook
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
-        with:
-          path: mdbook-bin
-          key: mdbook-${{ env.MDBOOK_VERSION }}-${{ runner.os }}-${{ runner.arch }}
-          lookup-only: true
-
       - name: Install mdBook
-        if: steps.cache-mdbook.outputs.cache-hit != 'true'
         run: |
           ARCH="x86_64-unknown-linux-gnu"
           ARCHIVE="mdbook-v${MDBOOK_VERSION}-${ARCH}.tar.gz"
