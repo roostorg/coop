@@ -7,7 +7,12 @@ export function cn(...inputs: ClassValue[]) {
 
 export function isValidUrl(value: string) {
   if (!value) return true;
-  return URL.canParse(value);
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 export function validateJSON(value: string | undefined) {

@@ -173,12 +173,26 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       requestHeaders: JsonObject | null;
     }) {
       await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({
+        .insertInto('public.org_settings')
+        .values({
+          org_id: input.orgId,
+          has_reporting_rules_enabled: false,
+          has_appeals_enabled: false,
+          allow_multiple_policies_per_action: false,
+          user_strike_ttl_days: 90,
+          is_demo_org: false,
+          saml_enabled: false,
+          sso_url: null,
+          cert: null,
           partial_items_endpoint: input.endpoint,
           partial_items_request_headers: input.requestHeaders,
         })
+        .onConflict((oc) =>
+          oc.column('org_id').doUpdateSet({
+            partial_items_endpoint: input.endpoint,
+            partial_items_request_headers: input.requestHeaders,
+          }),
+        )
         .execute();
       // The read path is cached for 5 minutes; drop the entry so the new
       // values are visible immediately instead of after the TTL.

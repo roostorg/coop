@@ -6,6 +6,7 @@ import { type JsonObject } from 'type-fest';
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
+import { isValidUrl } from '../../utils/url.js';
 import {
   type GQLIntegrationConfig,
   type GQLMatchingBanksResolvers,
@@ -15,7 +16,11 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from '../utils/errors.js';
 import { gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -914,6 +919,15 @@ const Mutation: GQLMutationResolvers = {
         'User does not have permission to manage SSO settings',
       );
     }
+    if (enabled) {
+      const samlSettings =
+        await context.services.OrgSettingsService.getSamlSettings(user.orgId);
+      if (!samlSettings?.sso_url || !samlSettings.cert) {
+        throw userInputError(
+          'Cannot enable SAML SSO without configuring SSO URL and certificate first',
+        );
+      }
+    }
     await context.services.OrgSettingsService.updateSamlEnabled({
       orgId: user.orgId,
       enabled,
@@ -994,9 +1008,13 @@ const Mutation: GQLMutationResolvers = {
         'User does not have permission to update org settings',
       );
     }
+    const ignoreCallbackUrl = url || null;
+    if (ignoreCallbackUrl != null && !isValidUrl(ignoreCallbackUrl)) {
+      throw userInputError('Ignore callback URL must be a valid http(s) URL');
+    }
     await context.services.ManualReviewToolService.updateIgnoreCallbackUrl(
       user.orgId,
-      url ?? null,
+      ignoreCallbackUrl,
     );
     return true;
   },
@@ -1010,9 +1028,15 @@ const Mutation: GQLMutationResolvers = {
         'User does not have permission to update org settings',
       );
     }
+    const endpoint = input.partialItemsEndpoint || null;
+    if (endpoint != null && !isValidUrl(endpoint)) {
+      throw userInputError(
+        'Partial items endpoint must be a valid http(s) URL',
+      );
+    }
     await context.services.OrgSettingsService.updatePartialItemsSettings({
       orgId: user.orgId,
-      endpoint: input.partialItemsEndpoint ?? null,
+      endpoint,
       requestHeaders: input.partialItemsRequestHeaders ?? null,
     });
     return true;
