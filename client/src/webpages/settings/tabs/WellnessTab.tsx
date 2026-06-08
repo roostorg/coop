@@ -8,6 +8,7 @@ import {
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
+import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
@@ -16,6 +17,31 @@ import {
   BLUR_LEVELS,
   type BlurStrength,
 } from '../../dashboard/mrt/manual_review_job/v2/ncmec/NCMECMediaViewer';
+
+gql`
+  query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
+    myOrg {
+      defaultInterfacePreferences {
+        moderatorSafetyMuteVideo
+        moderatorSafetyGrayscale
+        moderatorSafetyBlurLevel
+      }
+    }
+  }
+
+  mutation SetOrgDefaultSafetySettings(
+    $orgDefaultSafetySettings: ModeratorSafetySettingsInput!
+  ) {
+    setOrgDefaultSafetySettings(
+      orgDefaultSafetySettings: $orgDefaultSafetySettings
+    ) {
+      _
+    }
+  }
+`;
 
 type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;

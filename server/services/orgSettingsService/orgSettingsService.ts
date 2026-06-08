@@ -14,7 +14,7 @@ export type OrgSettingsPg = {
     appeal_callback_url: string | null;
     appeal_callback_headers: JsonObject | null;
     appeal_callback_body: JsonObject | null;
-    partial_items_endpoint?: string;
+    partial_items_endpoint: string | null;
     partial_items_request_headers: JsonObject | null;
     allow_multiple_policies_per_action: boolean;
     user_strike_ttl_days: number;
@@ -160,11 +160,29 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       const partialItemsInfo = await partialItemsEndpointCache(orgId);
       return partialItemsInfo
         ? {
-            partialItemsEndpoint: partialItemsInfo.partial_items_endpoint,
+            partialItemsEndpoint:
+              partialItemsInfo.partial_items_endpoint ?? undefined,
             partialItemsRequestHeaders:
               partialItemsInfo.partial_items_request_headers,
           }
         : undefined;
+    },
+    async updatePartialItemsSettings(input: {
+      orgId: string;
+      endpoint: string | null;
+      requestHeaders: JsonObject | null;
+    }) {
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({
+          partial_items_endpoint: input.endpoint,
+          partial_items_request_headers: input.requestHeaders,
+        })
+        .execute();
+      // The read path is cached for 5 minutes; drop the entry so the new
+      // values are visible immediately instead of after the TTL.
+      await partialItemsEndpointCache.invalidate?.(input.orgId);
     },
     async getSamlSettings(orgId: string) {
       return pgQuery

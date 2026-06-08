@@ -35,6 +35,8 @@ gql`
       ssoUrl
       ssoCert
       ignoreCallbackUrl
+      partialItemsEndpoint
+      partialItemsRequestHeaders
     }
     appealSettings {
       appealsCallbackUrl

@@ -84,8 +84,8 @@ Custom endpoint and headers for fetching additional item data using the [Partial
 
 | Setting                         | Default | Description                                | Where to configure |
 | :------------------------------ | :------ | :----------------------------------------- | :----------------- |
-| `partial_items_endpoint`        | `NULL`  | Endpoint for fetching additional item data | Database-only      |
-| `partial_items_request_headers` | `NULL`  | Custom headers for partial items requests  | Database-only      |
+| `partial_items_endpoint`        | `NULL`  | Endpoint for fetching additional item data | Settings UI        |
+| `partial_items_request_headers` | `NULL`  | Custom headers for partial items requests  | Settings UI        |
 
 #### Others
 

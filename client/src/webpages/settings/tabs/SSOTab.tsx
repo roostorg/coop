@@ -22,9 +22,16 @@ import {
   useGQLUpdateSsoCredentialsMutation,
 } from '@/graphql/generated';
 import { isValidUrl } from '@/lib/utils';
+import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+
+gql`
+  mutation UpdateSSOCredentials($input: UpdateSSOCredentialsInput!) {
+    updateSSOCredentials(input: $input)
+  }
+`;
 
 export default function SSOTab() {
   const { data, loading, error, refetch } = useGQLDeploymentSettingsQuery({

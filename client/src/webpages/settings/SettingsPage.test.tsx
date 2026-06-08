@@ -24,6 +24,7 @@ import {
   GQLUpdateHasReportingRulesEnabledDocument,
   GQLUpdateIgnoreCallbackUrlDocument,
   GQLUpdateOrgInfoDocument,
+  GQLUpdatePartialItemsSettingsDocument,
   GQLUpdateRequiresPolicyForDecisionsDocument,
   GQLUpdateSsoCredentialsDocument,
   GQLUpdateUserStrikeTtlDocument,
@@ -82,6 +83,8 @@ const deploymentSettingsMock: MockedResponse = {
         previewJobsViewEnabled: false,
         ignoreCallbackUrl: null,
         userStrikeTTL: 90,
+        partialItemsEndpoint: null,
+        partialItemsRequestHeaders: null,
       },
       appealSettings: {
         appealsCallbackUrl: null,
@@ -604,7 +607,7 @@ describe('SettingsPage', () => {
   });
 
   describe('Other tab', () => {
-    it('shows toggles, strike TTL, and partial items section', async () => {
+    it('shows toggles, strike TTL, and partial items', async () => {
       renderWithProviders([deploymentSettingsMock], 'other');
       await waitFor(() => {
         expect(screen.getByText('Enable Reporting Rules')).toBeInTheDocument();
@@ -614,6 +617,9 @@ describe('SettingsPage', () => {
         expect(screen.getByText('User Strike TTL (Days)')).toBeInTheDocument();
         expect(screen.getByDisplayValue('90')).toBeInTheDocument();
         expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
+        expect(
+          screen.getByText('Partial Items Request Headers'),
+        ).toBeInTheDocument();
       });
     });
 
@@ -676,6 +682,44 @@ describe('SettingsPage', () => {
       fireEvent.change(screen.getByDisplayValue('90'), {
         target: { value: '30' },
       });
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(mutationFn).toHaveBeenCalled();
+      });
+    });
+
+    it('calls partial items mutation on save', async () => {
+      const mutationFn = vi.fn(() => ({
+        data: { updatePartialItemsSettings: true },
+      }));
+
+      renderWithProviders(
+        [
+          deploymentSettingsMock,
+          {
+            request: {
+              query: GQLUpdatePartialItemsSettingsDocument,
+              variables: {
+                input: {
+                  partialItemsEndpoint: 'https://api.example.com/items',
+                  partialItemsRequestHeaders: null,
+                },
+              },
+            },
+            newData: mutationFn,
+          },
+        ],
+        'other',
+      );
+      await waitFor(() => {
+        expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
+      });
+
+      fireEvent.change(
+        screen.getByPlaceholderText('https://api.example.com/items'),
+        { target: { value: 'https://api.example.com/items' } },
+      );
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {

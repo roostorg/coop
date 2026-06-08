@@ -11,9 +11,20 @@ import {
 } from '@/graphql/generated';
 import { isValidUrl, validateJSON } from '@/lib/utils';
 import { prettyPrintJsonValue } from '@/utils/string';
+import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+
+gql`
+  mutation UpdateAppealSettings($input: AppealSettingsInput!) {
+    updateAppealSettings(input: $input) {
+      appealsCallbackUrl
+      appealsCallbackHeaders
+      appealsCallbackBody
+    }
+  }
+`;
 
 export default function AppealsTab() {
   const { data, loading, error, refetch } = useGQLDeploymentSettingsQuery({

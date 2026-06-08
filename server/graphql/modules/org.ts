@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 
 import { GraphQLError } from 'graphql';
+import { type JsonObject } from 'type-fest';
 
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
@@ -67,6 +68,8 @@ const typeDefs = /* GraphQL */ `
     ssoCert: String
     ignoreCallbackUrl: String
     hasPartialItemsEndpoint: Boolean!
+    partialItemsEndpoint: String
+    partialItemsRequestHeaders: JSONObject
   }
 
   input AppealSettingsInput {
@@ -129,6 +132,11 @@ const typeDefs = /* GraphQL */ `
     _: Boolean
   }
 
+  input UpdatePartialItemsSettingsInput {
+    partialItemsEndpoint: String
+    partialItemsRequestHeaders: JSONObject
+  }
+
   type Mutation {
     updateAppealSettings(input: AppealSettingsInput!): AppealSettings!
     setAllUserStrikeThresholds(
@@ -151,6 +159,9 @@ const typeDefs = /* GraphQL */ `
     updateHideSkipButtonForNonAdmins(enabled: Boolean!): Boolean!
     updatePreviewJobsViewEnabled(enabled: Boolean!): Boolean!
     updateIgnoreCallbackUrl(url: String): Boolean!
+    updatePartialItemsSettings(
+      input: UpdatePartialItemsSettingsInput!
+    ): Boolean!
   }
 `;
 
@@ -689,6 +700,39 @@ const Org: GQLOrgResolvers = {
 
     return partialItemsEndpoint != null;
   },
+  async partialItemsEndpoint(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view partial items settings',
+      );
+    }
+    const partialItemsInfo =
+      await context.services.OrgSettingsService.partialItemsInfo(org.id);
+    return partialItemsInfo?.partialItemsEndpoint ?? null;
+  },
+  async partialItemsRequestHeaders(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view partial items settings',
+      );
+    }
+    const partialItemsInfo =
+      await context.services.OrgSettingsService.partialItemsInfo(org.id);
+    // The cache returns a deeply-readonly value; the resolver only serializes
+    // it, so casting to the mutable JSONObject type the schema expects is safe.
+    return (
+      (partialItemsInfo?.partialItemsRequestHeaders as JsonObject | null) ??
+      null
+    );
+  },
 };
 
 const MatchingBanks: GQLMatchingBanksResolvers = {
@@ -954,6 +998,23 @@ const Mutation: GQLMutationResolvers = {
       user.orgId,
       url ?? null,
     );
+    return true;
+  },
+  async updatePartialItemsSettings(_, { input }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updatePartialItemsSettings({
+      orgId: user.orgId,
+      endpoint: input.partialItemsEndpoint ?? null,
+      requestHeaders: input.partialItemsRequestHeaders ?? null,
+    });
     return true;
   },
 };

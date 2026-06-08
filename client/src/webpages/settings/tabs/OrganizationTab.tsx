@@ -6,9 +6,32 @@ import {
   useGQLOrgSettingsQuery,
   useGQLUpdateOrgInfoMutation,
 } from '@/graphql/generated';
+import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+
+gql`
+  query OrgSettings {
+    myOrg {
+      id
+      name
+      email
+      websiteUrl
+      onCallAlertEmail
+    }
+    me {
+      id
+      permissions
+    }
+  }
+
+  mutation UpdateOrgInfo($input: UpdateOrgInfoInput!) {
+    updateOrgInfo(input: $input) {
+      _
+    }
+  }
+`;
 
 export default function OrganizationTab() {
   const { data, loading, error } = useGQLOrgSettingsQuery();

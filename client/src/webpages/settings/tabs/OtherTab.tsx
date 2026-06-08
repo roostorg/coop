@@ -8,12 +8,23 @@ import {
   useGQLDeploymentSettingsQuery,
   useGQLUpdateAllowMultiplePoliciesPerActionMutation,
   useGQLUpdateHasReportingRulesEnabledMutation,
+  useGQLUpdatePartialItemsSettingsMutation,
   useGQLUpdateUserStrikeTtlMutation,
 } from '@/graphql/generated';
 import { isValidUrl, validateJSON } from '@/lib/utils';
+import { prettyPrintJsonValue } from '@/utils/string';
+import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+
+gql`
+  mutation UpdatePartialItemsSettings(
+    $input: UpdatePartialItemsSettingsInput!
+  ) {
+    updatePartialItemsSettings(input: $input)
+  }
+`;
 
 export default function OtherTab() {
   const { data, loading, error, refetch } = useGQLDeploymentSettingsQuery({
@@ -29,11 +40,21 @@ export default function OtherTab() {
   const [partialItemsEndpoint, setPartialItemsEndpoint] = useState('');
   const [partialItemsHeaders, setPartialItemsHeaders] = useState('');
 
+  const origPartialItemsHeaders = org?.partialItemsRequestHeaders
+    ? prettyPrintJsonValue(org.partialItemsRequestHeaders)
+    : '';
+
   useEffect(() => {
     if (org) {
       setReportingEnabled(org.hasReportingRulesEnabled);
       setMultiPolicy(org.allowMultiplePoliciesPerAction);
       setStrikeTTL(String(org.userStrikeTTL));
+      setPartialItemsEndpoint(org.partialItemsEndpoint ?? '');
+      setPartialItemsHeaders(
+        org.partialItemsRequestHeaders
+          ? prettyPrintJsonValue(org.partialItemsRequestHeaders)
+          : '',
+      );
     }
   }, [org]);
 
@@ -51,16 +72,27 @@ export default function OtherTab() {
     useGQLUpdateHasReportingRulesEnabledMutation(mutationOpts);
   const [updateMultiPolicyMutation] =
     useGQLUpdateAllowMultiplePoliciesPerActionMutation(mutationOpts);
-  const [updateStrikeTTL, { loading: saveLoading }] =
+  const [updateStrikeTTL, { loading: strikeSaveLoading }] =
     useGQLUpdateUserStrikeTtlMutation(mutationOpts);
+  const [updatePartialItems, { loading: partialItemsSaveLoading }] =
+    useGQLUpdatePartialItemsSettingsMutation(mutationOpts);
 
   if (loading) return <FullScreenLoading />;
   if (error || !org) return <div>Error loading settings</div>;
 
+  const isHeadersValid = validateJSON(partialItemsHeaders);
+  const isEndpointValid = isValidUrl(partialItemsEndpoint);
+  const saveLoading = strikeSaveLoading || partialItemsSaveLoading;
+
+  const partialItemsChanged =
+    partialItemsEndpoint !== (org.partialItemsEndpoint ?? '') ||
+    partialItemsHeaders !== origPartialItemsHeaders;
+
   const hasChanges =
     reportingEnabled !== org.hasReportingRulesEnabled ||
     multiPolicy !== org.allowMultiplePoliciesPerAction ||
-    strikeTTL !== String(org.userStrikeTTL);
+    strikeTTL !== String(org.userStrikeTTL) ||
+    partialItemsChanged;
 
   const handleSave = () => {
     if (reportingEnabled !== org.hasReportingRulesEnabled) {
@@ -76,6 +108,18 @@ export default function OtherTab() {
         },
       });
     }
+    if (partialItemsChanged) {
+      updatePartialItems({
+        variables: {
+          input: {
+            partialItemsEndpoint: partialItemsEndpoint || null,
+            partialItemsRequestHeaders: partialItemsHeaders
+              ? JSON.parse(partialItemsHeaders)
+              : null,
+          },
+        },
+      });
+    }
   };
 
   return (
@@ -88,7 +132,7 @@ export default function OtherTab() {
         </div>
 
         <div className="flex flex-col gap-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             <div className="flex-1">
               <Text size="SM" weight="medium">
                 Partial Items Endpoint
@@ -104,7 +148,7 @@ export default function OtherTab() {
                 value={partialItemsEndpoint}
                 onChange={(e) => setPartialItemsEndpoint(e.target.value)}
               />
-              {partialItemsEndpoint && !isValidUrl(partialItemsEndpoint) && (
+              {partialItemsEndpoint && !isEndpointValid && (
                 <Text size="SM" className="text-red-500 mt-1">
                   Must be a valid URL
                 </Text>
@@ -122,12 +166,12 @@ export default function OtherTab() {
             </div>
             <div className="w-80 shrink-0">
               <Textarea
-                className="h-40 font-mono text-sm"
+                className="h-24 font-mono text-sm"
                 placeholder={'{\n  "Authorization": "Bearer YOUR_KEY"\n}'}
                 value={partialItemsHeaders}
                 onChange={(e) => setPartialItemsHeaders(e.target.value)}
               />
-              {partialItemsHeaders && !validateJSON(partialItemsHeaders) && (
+              {partialItemsHeaders && !isHeadersValid && (
                 <Text size="SM" className="text-red-500 mt-1">
                   Must be valid JSON
                 </Text>
@@ -136,6 +180,7 @@ export default function OtherTab() {
           </div>
         </div>
       </div>
+
       <div className="flex flex-col gap-4">
         <div className="border-b border-gray-200 py-2">
           <Heading size="2XL" weight="semibold">
@@ -196,8 +241,8 @@ export default function OtherTab() {
             !hasChanges ||
             saveLoading ||
             (Boolean(strikeTTL) && Number(strikeTTL) < 1) ||
-            !validateJSON(partialItemsHeaders) ||
-            !isValidUrl(partialItemsEndpoint)
+            !isHeadersValid ||
+            !isEndpointValid
           }
           loading={saveLoading}
           onClick={handleSave}

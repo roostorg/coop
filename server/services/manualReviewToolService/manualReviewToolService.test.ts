@@ -616,4 +616,44 @@ describe('Manual Review Tool Service', () => {
       });
     });
   });
+
+  // Issue #615: orgs created before manual_review_tool_settings existed have no
+  // row, so a save against them used to UPDATE zero rows and silently no-op.
+  describe('settings persistence without a pre-existing row', () => {
+    const orgId = `no-row-${uuidv1()}`;
+
+    afterEach(async () => {
+      await mrtService['pgQuery']
+        .deleteFrom('manual_review_tool.manual_review_tool_settings')
+        .where('org_id', '=', orgId)
+        .execute();
+    });
+
+    it('persists a boolean toggle when the org has no settings row', async () => {
+      expect(await mrtService.getHideSkipButtonForNonAdmins(orgId)).toBe(false);
+
+      await mrtService.updateHideSkipButtonForNonAdmins(orgId, true);
+
+      expect(await mrtService.getHideSkipButtonForNonAdmins(orgId)).toBe(true);
+    });
+
+    it('persists the ignore callback url when the org has no settings row', async () => {
+      await mrtService.updateIgnoreCallbackUrl(
+        orgId,
+        'https://example.com/webhook/ignore',
+      );
+
+      expect(await mrtService.getIgnoreCallbackUrl(orgId)).toBe(
+        'https://example.com/webhook/ignore',
+      );
+    });
+
+    it('leaves other columns at their defaults when upserting one setting', async () => {
+      await mrtService.updatePreviewJobsViewEnabled(orgId, true);
+
+      expect(await mrtService.getPreviewJobsViewEnabled(orgId)).toBe(true);
+      expect(await mrtService.getRequiresPolicyForDecisions(orgId)).toBe(false);
+      expect(await mrtService.getRequiresDecisionReason(orgId)).toBe(false);
+    });
+  });
 });

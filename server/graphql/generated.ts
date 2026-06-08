@@ -2590,6 +2590,7 @@ export type GQLMutation = {
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
   readonly updateNcmecOrgSettings: GQLUpdateNcmecOrgSettingsResponse;
   readonly updateOrgInfo: GQLUpdateOrgInfoSuccessResponse;
+  readonly updatePartialItemsSettings: Scalars['Boolean']['output'];
   readonly updatePolicy: GQLUpdatePolicyResponse;
   readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
@@ -2915,6 +2916,10 @@ export type GQLMutationUpdateNcmecOrgSettingsArgs = {
 
 export type GQLMutationUpdateOrgInfoArgs = {
   input: GQLUpdateOrgInfoInput;
+};
+
+export type GQLMutationUpdatePartialItemsSettingsArgs = {
+  input: GQLUpdatePartialItemsSettingsInput;
 };
 
 export type GQLMutationUpdatePolicyArgs = {
@@ -3255,6 +3260,8 @@ export type GQLOrg = {
   readonly name: Scalars['String']['output'];
   readonly ncmecReports: ReadonlyArray<GQLNcmecReport>;
   readonly onCallAlertEmail?: Maybe<Scalars['String']['output']>;
+  readonly partialItemsEndpoint?: Maybe<Scalars['String']['output']>;
+  readonly partialItemsRequestHeaders?: Maybe<Scalars['JSONObject']['output']>;
   readonly pendingInvites: ReadonlyArray<GQLPendingInvite>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly previewJobsViewEnabled: Scalars['Boolean']['output'];
@@ -4801,6 +4808,13 @@ export type GQLUpdateOrgInfoInput = {
 export type GQLUpdateOrgInfoSuccessResponse = {
   readonly __typename?: 'UpdateOrgInfoSuccessResponse';
   readonly _?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type GQLUpdatePartialItemsSettingsInput = {
+  readonly partialItemsEndpoint?: InputMaybe<Scalars['String']['input']>;
+  readonly partialItemsRequestHeaders?: InputMaybe<
+    Scalars['JSONObject']['input']
+  >;
 };
 
 export type GQLUpdatePolicyInput = {
@@ -6430,6 +6444,7 @@ export type GQLResolversTypes = {
   UpdateNcmecOrgSettingsResponse: ResolverTypeWrapper<GQLUpdateNcmecOrgSettingsResponse>;
   UpdateOrgInfoInput: GQLUpdateOrgInfoInput;
   UpdateOrgInfoSuccessResponse: ResolverTypeWrapper<GQLUpdateOrgInfoSuccessResponse>;
+  UpdatePartialItemsSettingsInput: GQLUpdatePartialItemsSettingsInput;
   UpdatePolicyInput: GQLUpdatePolicyInput;
   UpdatePolicyResponse: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['UpdatePolicyResponse']
@@ -7086,6 +7101,7 @@ export type GQLResolversParentTypes = {
   UpdateNcmecOrgSettingsResponse: GQLUpdateNcmecOrgSettingsResponse;
   UpdateOrgInfoInput: GQLUpdateOrgInfoInput;
   UpdateOrgInfoSuccessResponse: GQLUpdateOrgInfoSuccessResponse;
+  UpdatePartialItemsSettingsInput: GQLUpdatePartialItemsSettingsInput;
   UpdatePolicyInput: GQLUpdatePolicyInput;
   UpdatePolicyResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['UpdatePolicyResponse'];
   UpdateReportingRuleInput: GQLUpdateReportingRuleInput;
@@ -11300,6 +11316,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateOrgInfoArgs, 'input'>
   >;
+  updatePartialItemsSettings?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationUpdatePartialItemsSettingsArgs, 'input'>
+  >;
   updatePolicy?: Resolver<
     GQLResolversTypes['UpdatePolicyResponse'],
     ParentType,
@@ -11823,6 +11845,16 @@ export type GQLOrgResolvers<
   >;
   onCallAlertEmail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  partialItemsEndpoint?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  partialItemsRequestHeaders?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
     ParentType,
     ContextType
   >;
