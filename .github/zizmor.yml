@@ -1,0 +1,7 @@
+# zizmor configuration
+# https://docs.zizmor.sh/configuration/
+
+rules:
+  dependabot-cooldown:
+    ignore:
+      - dependabot.yml
