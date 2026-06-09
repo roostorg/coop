@@ -104,7 +104,7 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
 
 const OPENAI: IntegrationManifestEntry = {
   modelCard: {
-    modelName: 'OpenAI',
+    modelName: 'OpenAI Moderation API',
     version: 'Omni-moderation-2024-09-26',
     releaseDate: 'September 2024',
     sections: [
@@ -186,13 +186,18 @@ const OPENAI: IntegrationManifestEntry = {
             label: 'Documentation',
             value: 'https://platform.openai.com/docs/guides/moderation',
           },
+          {
+            label: 'Model Card',
+            value:
+              'https://cdn.openai.com/API/docs/omni_moderation_information_for_developers.pdf',
+          },
         ],
       },
     ],
   },
   modelCardLearnMoreUrl:
     'https://cdn.openai.com/API/docs/omni_moderation_information_for_developers.pdf',
-  title: 'OpenAI',
+  title: 'OpenAI Moderation API',
   docsUrl: 'https://platform.openai.com/docs',
   requiresConfig: true,
 };
