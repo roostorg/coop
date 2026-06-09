@@ -170,7 +170,7 @@ function TableRowComponent(props: {
         },
       ],
     },
-    skip: type !== 'RELATED_ITEM',
+    skip: type !== 'RELATED_ITEM' || value == null,
   });
 
   if (value == null) {
