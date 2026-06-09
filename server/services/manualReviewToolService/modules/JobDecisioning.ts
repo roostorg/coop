@@ -180,6 +180,12 @@ export default class JobDecisioning {
     }
     const decisions = decisionComponents ?? [automaticCloseDecision];
 
+    // The require-policy and require-reason settings target custom-action
+    // moderation decisions on standard MRT jobs. NCMEC jobs use a
+    // different decision model (Submit NCMEC Report or Ignore) where
+    // these requirements don't apply, so bypass both checks. See #736.
+    const isNcmecJob = job.payload.kind === 'NCMEC';
+
     // If the decision included some actionIds or policyIds, we want to verify
     // that those ids actually correspond to known actions/policies in the org
     // (for security) before we save the data to the db. We accept that there
@@ -208,7 +214,7 @@ export default class JobDecisioning {
       const hasEmptyPolicyCustomAction = customActionDecisions.some(
         (decision) => decision.policies.length === 0,
       );
-      if (hasEmptyPolicyCustomAction) {
+      if (hasEmptyPolicyCustomAction && !isNcmecJob) {
         const requiresPolicy =
           await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
             orgId,
@@ -227,7 +233,11 @@ export default class JobDecisioning {
     // only read the flag when there's actually a missing reason to enforce
     // against, so the common path does no extra DB work. Matches the client
     // gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
-    if (decisionComponents != null && !isNonEmptyString(decisionReason)) {
+    if (
+      decisionComponents != null &&
+      !isNonEmptyString(decisionReason) &&
+      !isNcmecJob
+    ) {
       const requiresReason =
         await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
       if (requiresReason) {

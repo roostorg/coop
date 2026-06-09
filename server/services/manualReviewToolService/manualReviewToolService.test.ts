@@ -10,6 +10,7 @@ import {
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import {
   type ManualReviewToolService,
+  type NcmecContentItemSubmission,
   type ReportHistory,
 } from './manualReviewToolService.js';
 
@@ -39,6 +40,35 @@ function makeDummyJob() {
       enqueueSourceInfo: { kind: 'REPORT' },
     },
   } as const;
+}
+
+function makeDummyNcmecJob() {
+  return {
+    createdAt: new Date(),
+    policyIds: [] as string[],
+    payload: {
+      kind: 'NCMEC' as const,
+      reportHistory: [] as ReportHistory,
+      allMediaItems: [] as NcmecContentItemSubmission[],
+      item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
+        submissionId: makeSubmissionId(),
+        submissionTime: new Date(),
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        data: {} as NormalizedItemData,
+        itemTypeIdentifier: {
+          id: uuidv1(),
+          version: new Date().toISOString(),
+          schemaVariant: 'original',
+        },
+        creator: {
+          id: uuidv1(),
+          typeId: uuidv1(),
+        },
+        itemId: uuidv1(),
+      }),
+      enqueueSourceInfo: { kind: 'REPORT' as const },
+    },
+  };
 }
 
 describe('Manual Review Tool Service', () => {
@@ -428,6 +458,48 @@ describe('Manual Review Tool Service', () => {
         reviewerId,
         reviewerEmail,
         orgId,
+      });
+    });
+
+    // Issue #736: NCMEC review uses Submit NCMEC Report or Ignore, neither of
+    // which carries a written decision reason. The require-reason flag is for
+    // moderation decisions on standard MRT jobs and should not block the
+    // NCMEC path.
+    it('allows an IGNORE decision on an NCMEC job with no reason when the flag is on', async () => {
+      await setRequiresDecisionReason(true);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyNcmecJob();
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await mrtService.submitDecision({
+        queueId,
+        reportHistory: [],
+        jobId: dequeuedJob.job.id,
+        lockToken: dequeuedJob.lockToken,
+        decisionComponents: [{ type: 'IGNORE' }],
+        relatedActions: [],
+        reviewerId,
+        reviewerEmail,
+        orgId,
+        // decisionReason intentionally omitted
       });
     });
   });
