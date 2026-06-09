@@ -10,6 +10,7 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
+import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
@@ -203,7 +204,10 @@ export default class JobDecisioning {
       // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
       // disables submit when this is on, but API/script callers can bypass that.
       // Only check the flag when there's actually a policy-less decision to
-      // enforce against, so the common path avoids the extra DB hit.
+      // enforce against, so the common path avoids the extra DB hit. The check
+      // only fires for CUSTOM_ACTION decisions, so it applies even on NCMEC
+      // jobs that mix in a CUSTOM_ACTION (e.g. issuing a strike alongside an
+      // NCMEC ignore or report).
       const hasEmptyPolicyCustomAction = customActionDecisions.some(
         (decision) => decision.policies.length === 0,
       );
@@ -217,6 +221,34 @@ export default class JobDecisioning {
             shouldErrorSpan: true,
           });
         }
+      }
+    }
+
+    // Enforce `mrt_requires_decision_reason` server-side. The MRT UI already
+    // disables submit when this is on, but API/script callers can bypass that.
+    // Skip the AUTOMATIC_CLOSE path (no moderator, no reason to require) and
+    // only read the flag when there's actually a missing reason to enforce
+    // against, so the common path does no extra DB work. Matches the client
+    // gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
+    //
+    // Bypass the check when the decision is NCMEC-native (Submit NCMEC Report
+    // or Ignore on an NCMEC job, no CUSTOM_ACTION mixed in): those decisions
+    // don't carry a written reason and the flag is irrelevant for them. A
+    // CUSTOM_ACTION on an NCMEC job still requires a reason. See #736.
+    const isNcmecNativeDecision =
+      job.payload.kind === 'NCMEC' && customActionDecisions.length === 0;
+    if (
+      decisionComponents != null &&
+      !isNonEmptyString(decisionReason) &&
+      !isNcmecNativeDecision
+    ) {
+      const requiresReason =
+        await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
+      if (requiresReason) {
+        throw makeMissingRequiredDecisionReasonError({
+          detail: 'This org requires every decision to include a reason.',
+          shouldErrorSpan: true,
+        });
       }
     }
 
@@ -594,7 +626,7 @@ export default class JobDecisioning {
       .where('org_id', '=', orgId)
       .select('ignore_callback_url as ignoreCallback')
       .executeTakeFirst();
-    return settings?.ignoreCallback;
+    return settings?.ignoreCallback ?? undefined;
   }
 }
 
@@ -616,6 +648,7 @@ export type SubmitDecisionErrorType =
   | 'SubmittedJobActionNotFoundError'
   | 'NoJobWithIdInQueueError'
   | 'RecordingJobDecisionFailedError'
+  | 'MissingRequiredDecisionReasonError'
   | 'MissingRequiredPolicyForDecisionError';
 
 export const makeJobHasAlreadyBeenSubmittedError = (data: ErrorInstanceData) =>
@@ -651,6 +684,18 @@ export const makeNoJobWithIdInQueueError = (data: ErrorInstanceData) =>
     type: [ErrorType.NotFound],
     title: String(data.detail),
     name: 'NoJobWithIdInQueueError',
+    ...data,
+  });
+
+export const makeMissingRequiredDecisionReasonError = (
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title:
+      'This org requires every decision to include a reason. Add a reason and resubmit.',
+    name: 'MissingRequiredDecisionReasonError',
     ...data,
   });
 

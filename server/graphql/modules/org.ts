@@ -1,10 +1,12 @@
 /* eslint-disable max-lines */
 
 import { GraphQLError } from 'graphql';
+import { type JsonObject } from 'type-fest';
 
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
+import { isValidUrl } from '../../utils/url.js';
 import {
   type GQLIntegrationConfig,
   type GQLMatchingBanksResolvers,
@@ -14,7 +16,11 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from '../utils/errors.js';
 import { gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -44,6 +50,17 @@ const typeDefs = /* GraphQL */ `
     integrationConfigs: [IntegrationConfig!]!
     hasReportingRulesEnabled: Boolean!
     hasNCMECReportingEnabled: Boolean!
+    """
+    How much media a reviewer must classify before they can send an NCMEC
+    report for this org. Readable by any org member (not just MANAGE_ORG) so the
+    NCMEC review UI can enforce the policy. Defaults to ALL when unset.
+    """
+    ncmecMediaReviewRequirement: NcmecMediaReviewRequirement!
+    """
+    Minimum number of media items that must be reviewed before sending an NCMEC
+    report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
+    """
+    ncmecMinMediaToReview: Int!
     hasAppealsEnabled: Boolean!
     ncmecReports: [NCMECReport!]!
     """
@@ -62,9 +79,13 @@ const typeDefs = /* GraphQL */ `
     userStrikeThresholds: [UserStrikeThreshold!]!
     userStrikeTTL: Int!
     isDemoOrg: Boolean!
+    samlEnabled: Boolean!
     ssoUrl: String
     ssoCert: String
+    ignoreCallbackUrl: String
     hasPartialItemsEndpoint: Boolean!
+    partialItemsEndpoint: String
+    partialItemsRequestHeaders: JSONObject
   }
 
   input AppealSettingsInput {
@@ -127,6 +148,11 @@ const typeDefs = /* GraphQL */ `
     _: Boolean
   }
 
+  input UpdatePartialItemsSettingsInput {
+    partialItemsEndpoint: String
+    partialItemsRequestHeaders: JSONObject
+  }
+
   type Mutation {
     updateAppealSettings(input: AppealSettingsInput!): AppealSettings!
     setAllUserStrikeThresholds(
@@ -140,6 +166,18 @@ const typeDefs = /* GraphQL */ `
     ): SetModeratorSafetySettingsSuccessResponse
     updateSSOCredentials(input: UpdateSSOCredentialsInput!): Boolean!
     updateOrgInfo(input: UpdateOrgInfoInput!): UpdateOrgInfoSuccessResponse!
+    updateHasAppealsEnabled(enabled: Boolean!): Boolean!
+    updateHasReportingRulesEnabled(enabled: Boolean!): Boolean!
+    updateAllowMultiplePoliciesPerAction(enabled: Boolean!): Boolean!
+    updateSamlEnabled(enabled: Boolean!): Boolean!
+    updateRequiresPolicyForDecisions(enabled: Boolean!): Boolean!
+    updateRequiresDecisionReason(enabled: Boolean!): Boolean!
+    updateHideSkipButtonForNonAdmins(enabled: Boolean!): Boolean!
+    updatePreviewJobsViewEnabled(enabled: Boolean!): Boolean!
+    updateIgnoreCallbackUrl(url: String): Boolean!
+    updatePartialItemsSettings(
+      input: UpdatePartialItemsSettingsInput!
+    ): Boolean!
   }
 `;
 
@@ -421,6 +459,26 @@ const Org: GQLOrgResolvers = {
     }
     return context.services.NcmecService.hasNCMECReportingEnabled(org.id);
   },
+  async ncmecMediaReviewRequirement(org, _, context) {
+    const user = context.getUser();
+    if (!user || user.orgId !== org.id) {
+      throw unauthenticatedError('User required.');
+    }
+    const settings = await context.services.NcmecService.getNcmecOrgSettings(
+      org.id,
+    );
+    return settings?.mediaReviewRequirement === 'MINIMUM' ? 'MINIMUM' : 'ALL';
+  },
+  async ncmecMinMediaToReview(org, _, context) {
+    const user = context.getUser();
+    if (!user || user.orgId !== org.id) {
+      throw unauthenticatedError('User required.');
+    }
+    const settings = await context.services.NcmecService.getNcmecOrgSettings(
+      org.id,
+    );
+    return settings?.minMediaToReview ?? 1;
+  },
   async ncmecReports(org, _, context) {
     const user = context.getUser();
     if (!user || user.orgId !== org.id) {
@@ -594,6 +652,39 @@ const Org: GQLOrgResolvers = {
   async isDemoOrg(org, _, context) {
     return context.services.OrgSettingsService.isDemoOrg(org.id);
   },
+  async samlEnabled(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view SSO settings',
+      );
+    }
+
+    const settings = await context.services.OrgSettingsService.getSamlSettings(
+      org.id,
+    );
+    return settings?.saml_enabled ?? false;
+  },
+  async ignoreCallbackUrl(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view ignore callback settings',
+      );
+    }
+
+    return context.services.ManualReviewToolService.getIgnoreCallbackUrl(
+      org.id,
+    );
+  },
   async ssoUrl(org, _, context) {
     const user = context.getUser();
     if (user == null || user.orgId !== org.id) {
@@ -644,6 +735,39 @@ const Org: GQLOrgResolvers = {
     const partialItemsEndpoint = partialItemsInfo?.partialItemsEndpoint;
 
     return partialItemsEndpoint != null;
+  },
+  async partialItemsEndpoint(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view partial items settings',
+      );
+    }
+    const partialItemsInfo =
+      await context.services.OrgSettingsService.partialItemsInfo(org.id);
+    return partialItemsInfo?.partialItemsEndpoint ?? null;
+  },
+  async partialItemsRequestHeaders(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view partial items settings',
+      );
+    }
+    const partialItemsInfo =
+      await context.services.OrgSettingsService.partialItemsInfo(org.id);
+    // The cache returns a deeply-readonly value; the resolver only serializes
+    // it, so casting to the mutable JSONObject type the schema expects is safe.
+    return (
+      (partialItemsInfo?.partialItemsRequestHeaders as JsonObject | null) ??
+      null
+    );
   },
 };
 
@@ -765,6 +889,188 @@ const Mutation: GQLMutationResolvers = {
     await context.dataSources.orgAPI.updateOrgInfo(user.orgId, input);
 
     return gqlSuccessResult({}, 'UpdateOrgInfoSuccessResponse');
+  },
+  async updateHasAppealsEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateHasAppealsEnabled({
+      orgId: user.orgId,
+      enabled,
+    });
+    return true;
+  },
+  async updateHasReportingRulesEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateHasReportingRulesEnabled({
+      orgId: user.orgId,
+      enabled,
+    });
+    return true;
+  },
+  async updateAllowMultiplePoliciesPerAction(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.OrgSettingsService.updateAllowMultiplePoliciesPerAction(
+      {
+        orgId: user.orgId,
+        enabled,
+      },
+    );
+    return true;
+  },
+  async updateSamlEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to manage SSO settings',
+      );
+    }
+    if (enabled) {
+      const samlSettings =
+        await context.services.OrgSettingsService.getSamlSettings(user.orgId);
+      if (!samlSettings?.sso_url || !samlSettings.cert) {
+        throw userInputError(
+          'Cannot enable SAML SSO without configuring SSO URL and certificate first',
+        );
+      }
+    }
+    await context.services.OrgSettingsService.updateSamlEnabled({
+      orgId: user.orgId,
+      enabled,
+    });
+    return true;
+  },
+  async updateRequiresPolicyForDecisions(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateRequiresPolicyForDecisions(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateRequiresDecisionReason(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateRequiresDecisionReason(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateHideSkipButtonForNonAdmins(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateHideSkipButtonForNonAdmins(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updatePreviewJobsViewEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updatePreviewJobsViewEnabled(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateIgnoreCallbackUrl(_, { url }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    const ignoreCallbackUrl = url || null;
+    if (ignoreCallbackUrl != null && !isValidUrl(ignoreCallbackUrl)) {
+      throw userInputError('Ignore callback URL must be a valid http(s) URL');
+    }
+    await context.services.ManualReviewToolService.updateIgnoreCallbackUrl(
+      user.orgId,
+      ignoreCallbackUrl,
+    );
+    return true;
+  },
+  async updatePartialItemsSettings(_, { input }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    const endpoint = input.partialItemsEndpoint || null;
+    if (endpoint != null && !isValidUrl(endpoint)) {
+      throw userInputError(
+        'Partial items endpoint must be a valid http(s) URL',
+      );
+    }
+    await context.services.OrgSettingsService.updatePartialItemsSettings({
+      orgId: user.orgId,
+      endpoint,
+      requestHeaders: input.partialItemsRequestHeaders ?? null,
+    });
+    return true;
   },
 };
 

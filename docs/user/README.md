@@ -6,7 +6,7 @@ Protect your users from harm with remarkable ease.
 
 Coop is the open source review and moderation tool from [ROOST](https://roost.tools) that provides a comprehensive solution for online safety:
 
-- **[Automated Enforcement](rules.md)**: Customizable multi-condition rules that evaluate every submitted item against signals to automatically take action or route reports to a human review queue based on your policies
+- **[Automated Enforcement](automated-enforcement.md)**: Customizable multi-condition rules that evaluate every submitted item against signals to automatically take action or route reports to a human review queue based on your policies
 
   | [![Rules](../images/rules.png)](../images/rules.png)          | [![Scam Rule](../images/scam-rule.png)](../images/scam-rule.png)               |
   | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -14,9 +14,9 @@ Coop is the open source review and moderation tool from [ROOST](https://roost.to
 
 - **[Review Console](review-console.md)**: Configurable human review queues for moderators to quickly make complex policy-based moderation decisions, with added context and wellness features built-in
 
-  | [![Review Console](../images/review-console.png)](../images/review-console.png)                            | [![Job page](../images/job-page.png)](../images/job-page.png)                  |
-  | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-  | [![Review Console settings](../images/settings-review-console.png)](../images/settings-review-console.png) | [![Wellness settings](../images/org-wellness.png)](../images/org-wellness.png) |
+  | [![Review Console](../images/review-console.png)](../images/review-console.png)                            | [![Job page](../images/job-page.png)](../images/job-page.png)                                    |
+  | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+  | [![Review Console settings](../images/settings-review-console.png)](../images/settings-review-console.png) | [![Wellness settings](../images/org-wellness-settings.png)](../images/org-wellness-settings.png) |
 
 - **[Integrations](../integrations/) & [Rich Content Processing](signals.md)**: Support for reviewing and matching against text content and threads, images and video media, account data, and custom content types using built-in signals plus free safety APIs from Google, OpenAI, Zentropi, and NCMEC out of the box
 

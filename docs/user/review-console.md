@@ -6,7 +6,7 @@ The **Review Console** is where moderators work through reported content.
 
 ![Five example queues: media, default queue, fraud, scams, and spam. There are buttons to create a new queue, start reviewing each queue, delete all jobs, and edit or delete individual queues.](../images/review-console.png)
 
-Coop uses queues to organize review jobs. When content is reported (whether by a user on your platform or a [proactive rule](rules.md#proactive-rules)), it enters a queue until it is reviewed and a decision is made.
+Coop uses queues to organize review jobs. When content is reported (whether by a user on your platform or a [proactive rule](automated-enforcement.md#proactive-rules)), it enters a queue until it is reviewed and a decision is made.
 
 A moderator selects **Start Reviewing** on any queue to begin working through it. Coop pulls the oldest job first, and after you make a decision, the next one loads automatically until the queue is empty or you stop.
 
@@ -22,7 +22,7 @@ Moderator managers and admins can create and edit queues for your organization.
 
 When creating or editing a queue, you can configure **Reviewer Access** to determine which moderators can access and work jobs in that queue. **Hidden Actions** determines which actions are not available to moderators in this queue; this is useful for restricting what decisions reviewers can make in a given context, e.g. hiding permanent bans in a first-pass triage queue.
 
-[Routing Rules](rules.md#routing-rules) determine which incoming jobs are directed to which queue.
+[Routing Rules](automated-enforcement.md#routing-rules) determine which incoming jobs are directed to which queue.
 
 ## Job view
 
@@ -62,7 +62,7 @@ Reviewer wellness and safety is a core concern in trust & safety work. Coop incl
 
 ### Organization-wide defaults
 
-![Coop's organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle](../images/org-wellness.png)
+![Coop's organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle](../images/org-wellness-settings.png)
 
 Admins can set default wellness settings that apply to all users in the organization under **Settings → Wellness**.
 

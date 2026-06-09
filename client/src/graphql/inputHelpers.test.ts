@@ -15,8 +15,8 @@ describe('GraphQL input helpers', () => {
         },
       );
       expect(res).toMatchInlineSnapshot(`
-        Object {
-          "contentField": Object {
+        {
+          "contentField": {
             "contentTypeId": "abc",
             "name": "hi",
           },
@@ -34,8 +34,8 @@ describe('GraphQL input helpers', () => {
       );
 
       expect(res).toMatchInlineSnapshot(`
-        Object {
-          "contentFullObject": Object {},
+        {
+          "contentFullObject": {},
         }
       `);
     });
@@ -52,9 +52,9 @@ describe('GraphQL input helpers', () => {
           },
         ]),
       ).toMatchInlineSnapshot(`
-        Array [
-          Object {
-            "otherKey": Object {
+        [
+          {
+            "otherKey": {
               "otherOtherKey": true,
             },
             "someKey": true,

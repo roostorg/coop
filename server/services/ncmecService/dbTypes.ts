@@ -25,6 +25,8 @@ export type NcmecReportingServicePg = {
     contact_person_first_name?: string | null;
     contact_person_last_name?: string | null;
     contact_person_phone?: string | null;
+    media_review_requirement?: 'ALL' | 'MINIMUM';
+    min_media_to_review?: number | null;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
   } & (

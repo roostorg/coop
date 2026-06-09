@@ -1,27 +1,22 @@
 import { Button } from '@/coop-ui/Button';
-import { Label } from '@/coop-ui/Label';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
-  GQLUserPermission,
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
-import { userHasPermissions } from '@/routing/permissions';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { Navigate } from 'react-router-dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 import {
   BLUR_LEVELS,
   type BlurStrength,
-} from '../dashboard/mrt/manual_review_job/v2/ncmec/NCMECMediaViewer';
+} from '../../dashboard/mrt/manual_review_job/v2/ncmec/NCMECMediaViewer';
 
 gql`
   query OrgDefaultSafetySettings {
@@ -54,16 +49,20 @@ type SafetySettings = {
   moderatorSafetyMuteVideo: boolean;
 };
 
-export default function ManualReviewSafetySettings() {
+export default function WellnessTab() {
   const [safetySettings, setSafetySettings] = useState<SafetySettings>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
   });
 
-  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({ errorPolicy: 'all' });
+  const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({
+    errorPolicy: 'all',
+  });
 
-  const [saveSafetySettings, { loading: isSafetySettingsMutationLoading }] =
+  const defaultInterfacePreferences = data?.myOrg?.defaultInterfacePreferences;
+
+  const [saveSafetySettings, { loading: isSaving }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
       onCompleted: () => {
         toast.success('Default wellness settings saved!');
@@ -76,66 +75,61 @@ export default function ManualReviewSafetySettings() {
     });
 
   useEffect(() => {
-    if (!data?.myOrg?.defaultInterfacePreferences) {
-      return;
-    }
+    if (!defaultInterfacePreferences) return;
     const {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
-    } = data.myOrg.defaultInterfacePreferences;
+    } = defaultInterfacePreferences;
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
     });
-  }, [data?.myOrg?.defaultInterfacePreferences]);
+  }, [defaultInterfacePreferences]);
 
-  if (loading) {
-    return <FullScreenLoading />;
-  }
+  if (loading) return <FullScreenLoading />;
+  if (error) return <div>Error loading wellness settings</div>;
 
-  const permissions = data?.me?.permissions;
-  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
-    return <Navigate to="/dashboard/settings" replace />;
-  }
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data?.myOrg?.defaultInterfacePreferences) {
-    throw new Error('Could not load wellness settings');
-  }
+  const serverPrefs = defaultInterfacePreferences;
+  const hasChanges =
+    !serverPrefs ||
+    safetySettings.moderatorSafetyBlurLevel !==
+      serverPrefs.moderatorSafetyBlurLevel ||
+    safetySettings.moderatorSafetyGrayscale !==
+      serverPrefs.moderatorSafetyGrayscale ||
+    safetySettings.moderatorSafetyMuteVideo !==
+      serverPrefs.moderatorSafetyMuteVideo;
 
   return (
-    <>
-      <Helmet>
-        <title>Default Wellness Settings</title>
-      </Helmet>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
+        <div className="border-b border-gray-200 py-2">
+          <Heading weight="semibold" size="2XL">
+            Default Wellness Settings
+          </Heading>
+          <Text size="SM" className="text-gray-500 mt-2">
+            Configure your organization's default safety settings. When a new
+            user joins your team and needs to use Coop, these settings will be
+            applied by default to transform their safety and well-being. If a
+            user wants to override these settings, they can do so in their
+            personal wellness settings.
+          </Text>
+        </div>
 
-      <div className="w-[700px]">
-        <Heading size="2XL" className="mb-2">
-          Default Wellness Settings
-        </Heading>
-        <Text size="SM" className="mb-12">
-        Configure your organization's default wellness settings. When a new
-        user joins your team and needs to use Coop, these settings
-        will be applied by default to maintain their safety and well-being.
-        If a user wants to override these settings, they can do so in
-        their personal Wellness settings.
-        </Text>
-        <div className="flex gap-12 mb-8">
-          <div className="flex flex-col gap-5 w-64 pt-10">
-            <div className="flex gap-3 items-center justify-between">
-              <Label className="text-sm font-medium leading-none">Blur</Label>
+        <div className="flex gap-12 justify-between mt-8">
+          <div className="flex flex-col gap-5 w-80">
+            <div className="flex-col gap-3">
+              <Text className="text-base" weight="medium">
+                Blur Media
+              </Text>
               <Slider
-                className="w-32"
+                className="w-80 mt-4"
                 min={0}
                 max={Object.keys(BLUR_LEVELS).length - 1}
                 onValueChange={([strength]) => {
-                  setSafetySettings((prevSettings) => ({
-                    ...prevSettings,
+                  setSafetySettings((prev) => ({
+                    ...prev,
                     moderatorSafetyBlurLevel: strength as BlurStrength,
                   }));
                 }}
@@ -143,11 +137,10 @@ export default function ManualReviewSafetySettings() {
                 step={1}
               />
             </div>
-
-            <div className="flex gap-1 items-center justify-between">
-              <Label className="text-sm font-medium leading-none">
-                Grayscale
-              </Label>
+            <div className="flex gap-12 mt-2 items-center">
+              <Text className="text-base" weight="medium">
+                Greyscale
+              </Text>
               <Switch
                 checked={safetySettings.moderatorSafetyGrayscale}
                 onCheckedChange={(value) =>
@@ -158,11 +151,10 @@ export default function ManualReviewSafetySettings() {
                 }
               />
             </div>
-
-            <div className="flex gap-1 items-center justify-between">
-              <Label className="text-sm font-medium leading-none">
-                Mute Videos
-              </Label>
+            <div className="flex gap-12 mt-2 items-center">
+              <Text className="text-base" weight="medium">
+                Mute videos
+              </Text>
               <Switch
                 checked={safetySettings.moderatorSafetyMuteVideo}
                 onCheckedChange={(value) =>
@@ -174,7 +166,6 @@ export default function ManualReviewSafetySettings() {
               />
             </div>
           </div>
-
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
@@ -183,22 +174,21 @@ export default function ManualReviewSafetySettings() {
             src={GoldenRetrieverPuppies}
           />
         </div>
-
-        <div className="flex gap-2">
-          <Button
-            loading={isSafetySettingsMutationLoading}
-            onClick={() => {
-              saveSafetySettings({
-                variables: {
-                  orgDefaultSafetySettings: safetySettings,
-                },
-              });
-            }}
-          >
-            Save
-          </Button>
-        </div>
       </div>
-    </>
+
+      <div className="flex justify-end border-t border-gray-200 pt-4">
+        <Button
+          disabled={!hasChanges || isSaving}
+          loading={isSaving}
+          onClick={() => {
+            saveSafetySettings({
+              variables: { orgDefaultSafetySettings: safetySettings },
+            });
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
+    </div>
   );
 }

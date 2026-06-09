@@ -540,10 +540,9 @@ class RuleAPI {
     // use SERIALIZABLE to make the update + backtest cancelation logically
     // linearizable w/r/t concurrently started backtests, but that's overkill.
     try {
-      await this.kysely
-        .transaction()
-        .setIsolationLevel('repeatable read')
-        .execute(async (trx) => {
+      await this.kyselyTransactionWithRetry(
+        { isolationLevel: 'repeatable read' },
+        async (trx) => {
           await kyselyUpdateRule(trx, {
             id,
             orgId,
@@ -566,7 +565,8 @@ class RuleAPI {
           if (cancelRunningBacktests) {
             await kyselyCancelRunningBacktestsForRule(trx, id);
           }
-        });
+        },
+      );
     } catch (e) {
       throw isUniqueViolationError(e)
         ? makeRuleNameExistsError({ shouldErrorSpan: true })
@@ -586,13 +586,13 @@ class RuleAPI {
     return buildGraphqlRuleParent(plain, this.graphQlRuleParentDeps);
   }
 
-  async deleteRule(opts: { id: string; orgId: string }) {
+  async deleteRule(opts: { id: string; orgId: string }): Promise<boolean> {
     const { id, orgId } = opts;
 
     try {
-      await this.kysely.transaction().execute(async (trx) => {
-        await kyselyDeleteRule(trx, id, orgId);
-      });
+      return await this.kyselyTransactionWithRetry(async (trx) =>
+        kyselyDeleteRule(trx, id, orgId),
+      );
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
@@ -600,7 +600,6 @@ class RuleAPI {
       }
       return false;
     }
-    return true;
   }
 
   async getAllRuleInsights(orgId: string) {
