@@ -105,57 +105,11 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
 const OPENAI: IntegrationManifestEntry = {
   modelCard: {
     modelName: 'OpenAI',
-    version: 'v0.0',
-    releaseDate: 'January 2026',
+    version: 'Omni-moderation-2024-09-26',
+    releaseDate: 'September 2024',
     sections: [
-      {
-        id: 'trainingData',
-        title: 'Training Data Sources',
-        fields: [{ label: 'Data Sources', value: 'TBD' }],
-      },
-      {
-        id: 'policyAndTaxonomy',
-        title: 'Policy & Taxonomy Definitions',
-        fields: [{ label: 'Policies', value: 'TBD' }],
-      },
-      {
-        id: 'annotationMethodology',
-        title: 'Annotation Methodology',
-        fields: [{ label: 'Methodology', value: 'TBD' }],
-      },
-      {
-        id: 'performanceBenchmarks',
-        title: 'Performance Benchmarks',
-        fields: [{ label: 'Benchmarks', value: 'TBD' }],
-      },
-      {
-        id: 'biasAndLimitations',
-        title: 'Bias Documentation & Known Limits',
-        fields: [{ label: 'Known Limitations', value: 'TBD' }],
-      },
-      {
-        id: 'implementationGuidance',
-        title: 'Implementation Guidance',
-        fields: [
-          {
-            label: 'Credentials',
-            value: 'This integration requires one API Key.',
-          },
-        ],
-      },
-      {
-        id: 'relevantLinks',
-        title: 'Relevant Links',
-        fields: [
-          {
-            label: 'Documentation',
-            value: 'https://platform.openai.com/docs',
-          },
-        ],
-      },
-    ],
-  },
-  modelCardLearnMoreUrl: 'https://modelcards.withgoogle.com/',
+  
+  modelCardLearnMoreUrl: 'https://cdn.openai.com/API/docs/omni_moderation_information_for_developers.pdf',
   title: 'OpenAI',
   docsUrl: 'https://platform.openai.com/docs',
   requiresConfig: true,
