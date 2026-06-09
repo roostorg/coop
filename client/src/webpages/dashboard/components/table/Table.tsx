@@ -22,6 +22,7 @@ export default function Table(
     /** Force the horizontal scrollbar to always render. Opt-in because tables
      * that always fit the viewport would otherwise show an unnecessary scrollbar. */
     alwaysShowScrollbar?: boolean;
+    initialSortBy?: Array<{ id: string; desc: boolean }>;
   } & (
     | {
         isCollapsed?: boolean;
@@ -42,6 +43,7 @@ export default function Table(
     disableFilter,
     containerClassName,
     alwaysShowScrollbar,
+    initialSortBy,
   } = props;
   const {
     isCollapsed = undefined,
@@ -54,8 +56,17 @@ export default function Table(
   const filterTypes = useMemo(getFilterTypes, []);
 
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    /* @ts-ignore */
-    useTable({ columns, data, filterTypes }, useFilters, useSortBy);
+    useTable(
+      {
+        columns,
+        data,
+        filterTypes,
+        // @ts-expect-error react-table v7 types don't include sortBy on TableState
+        initialState: { sortBy: initialSortBy ?? [] },
+      },
+      useFilters,
+      useSortBy,
+    );
 
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
@@ -78,14 +89,16 @@ export default function Table(
         } ${isCollapsed ? 'flex-col gap-1' : ''}`}
       >
         {topLeftComponent}
-        {disableFilter ? null : (
-          <TableFilter
-            headers={[...headerGroups.values()].flatMap(
-              (group) => group.headers,
-            )}
-          />
-        )}
-        {topRightComponent}
+        <div className="flex items-start gap-4">
+          {disableFilter ? null : (
+            <TableFilter
+              headers={[...headerGroups.values()].flatMap(
+                (group) => group.headers,
+              )}
+            />
+          )}
+          {topRightComponent}
+        </div>
       </div>
       <div className="w-full min-w-0 border border-gray-200 border-solid rounded-md">
         <div

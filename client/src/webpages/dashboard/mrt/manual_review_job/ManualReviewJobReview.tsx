@@ -1,27 +1,3 @@
-import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import { userHasPermissions } from '@/routing/permissions';
-import { __throw } from '@/utils/misc';
-import { isNonEmptyString } from '@/utils/string';
-import { multilevelListFromFlatList } from '@/utils/tree';
-import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
-import { gql } from '@apollo/client';
-import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
-
-import ComponentLoading from '../../../../components/common/ComponentLoading';
-import CopyTextComponent from '../../../../components/common/CopyTextComponent';
-import CoopModal from '../../components/CoopModal';
-import { CoopModalFooterButtonProps } from '../../components/CoopModalFooter';
-import PolicyDropdown from '../../components/PolicyDropdown';
-import { type ActionParameterValues } from '@/components/ActionParameterInputs';
-import ActionParametersModal, {
-  defaultValuesForParameters,
-} from '@/components/ActionParametersModal';
-import Drawer from '@/components/common/Drawer';
-
 import {
   GQLContentAppealManualReviewJobPayload,
   GQLContentItem,
@@ -44,29 +20,58 @@ import {
   type GQLActionParameter,
   type GQLThreadManualReviewJobPayload,
   type GQLUserItem,
-} from '../../../../graphql/generated';
-import { filterNullOrUndefined } from '../../../../utils/collections';
-import { getFieldValueForRole } from '../../../../utils/itemUtils';
-import { recomputeSelectedRelatedActions } from '../../../../utils/manualReviewTool';
-import HTMLRenderer from '../../policies/HTMLRenderer';
-import { ITEM_TYPE_FRAGMENT } from '../../rules/rule_form/RuleForm';
-import { JOB_FRAGMENT } from './jobFragment';
-import ManualReviewJobDequeueErrorComponent from './ManualReviewJobDequeueErrorComponent';
-import MergedReportsComponent from './MergedReportsComponent';
-import ReportInfoComponent from './ReportInfoComponent';
-import ManualReviewJobContentView from './v2/ManualReviewJobContentView';
-import ManualReviewJobEmptyQueue from './v2/ManualReviewJobEmptyQueue';
-import { ManualReviewJobOtherItemsComponent } from './v2/ManualReviewJobOtherItemsComponent';
+} from '@/graphql/generated';
+import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
+import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
+import { getFieldValueForRole } from '@/utils/itemUtils';
+import {
+  buildSortedReviewUrl,
+  isSortedReviewMode,
+  pickNextSortedJob,
+  pickTopSortedJob,
+  recomputeSelectedRelatedActions,
+} from '@/utils/manualReviewTool';
+import { __throw } from '@/utils/misc';
+import { isNonEmptyString } from '@/utils/string';
+import { multilevelListFromFlatList } from '@/utils/tree';
+import { JOB_FRAGMENT } from '@/webpages/dashboard/mrt/manual_review_job/jobFragment';
+import ManualReviewJobDequeueErrorComponent from '@/webpages/dashboard/mrt/manual_review_job/ManualReviewJobDequeueErrorComponent';
+import MergedReportsComponent from '@/webpages/dashboard/mrt/manual_review_job/MergedReportsComponent';
+import ReportInfoComponent from '@/webpages/dashboard/mrt/manual_review_job/ReportInfoComponent';
+import ManualReviewJobContentView from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobContentView';
+import ManualReviewJobEmptyQueue from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobEmptyQueue';
+import { ManualReviewJobOtherItemsComponent } from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobOtherItemsComponent';
 import {
   CustomAction,
   ManualReviewActionStore,
   ManualReviewActionStoreProvider,
-} from './v2/ManualReviewJobRelatedActionsStore';
-import NCMECReviewUser from './v2/ncmec/NCMECReviewUser';
-import ManualReviewJobEnqueuedRelatedActions from './v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
-import ManualReviewJobListOfThreadsComponent from './v2/threads/ManualReviewJobListOfThreadsComponent';
-import { useEnqueueActionGate } from './v2/useEnqueueActionGate';
-import ManualReviewJobPrimaryUserComponent from './v2/user/ManualReviewJobPrimaryUserComponent';
+} from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobRelatedActionsStore';
+import NCMECReviewUser from '@/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser';
+import ManualReviewJobEnqueuedRelatedActions from '@/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
+import ManualReviewJobListOfThreadsComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobListOfThreadsComponent';
+import { useEnqueueActionGate } from '@/webpages/dashboard/mrt/manual_review_job/v2/useEnqueueActionGate';
+import ManualReviewJobPrimaryUserComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent';
+import HTMLRenderer from '@/webpages/dashboard/policies/HTMLRenderer';
+import { ITEM_TYPE_FRAGMENT } from '@/webpages/dashboard/rules/rule_form/RuleForm';
+import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
+import { gql } from '@apollo/client';
+import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
+import ComponentLoading from '@/components/common/ComponentLoading';
+import CopyTextComponent from '@/components/common/CopyTextComponent';
+import Drawer from '@/components/common/Drawer';
+import CoopModal from '@/webpages/dashboard/components/CoopModal';
+import { CoopModalFooterButtonProps } from '@/webpages/dashboard/components/CoopModalFooter';
+import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -288,6 +293,14 @@ export type ManualReviewJobAction = {
   }[];
 };
 
+// In sorted mode, skipped jobs aren't dequeued from BullMQ — they remain in
+// the queue for other reviewers (or future sessions). This module-scoped set
+// tracks skips for the current session so the reviewer doesn't cycle back to
+// jobs they've already passed on. Cleared when a new sorted review starts or
+// when the reviewer enters a different queue.
+let sortedModeSkippedIdsQueueId: string | undefined;
+const sortedModeSkippedIds = new Set<string>();
+
 const appealPayloadTypenames = [
   'ContentAppealManualReviewJobPayload',
   'UserAppealManualReviewJobPayload',
@@ -359,25 +372,108 @@ function ManualReviewJobReviewImpl(props: {
     lockToken?: string;
   }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sortParam = searchParams.get('sort');
+  const isSortedMode = isSortedReviewMode(sortParam);
+  // sortMode is non-null whenever isSortedMode is true. All sortMode! assertions
+  // are inside callbacks/effects guarded by isSortedMode.
+  const sortMode = isSortedMode ? sortParam : undefined;
+
+  useEffect(() => {
+    if (isSortedMode && queueId !== sortedModeSkippedIdsQueueId) {
+      sortedModeSkippedIds.clear();
+      sortedModeSkippedIdsQueueId = queueId;
+    }
+  }, [isSortedMode, queueId]);
 
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
     setSelectedPrimaryPolicies([]);
     setSelectedRelatedActions([]);
     setDecisionReason(undefined);
-  };
+  }, []);
 
   const {
     data,
     loading,
     refetch: refetchJobInfo,
   } = useGQLManualReviewJobInfoQuery({
-    variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
+    variables: {
+      jobIds: closedJob
+        ? [closedJob.id]
+        : jobId
+          ? [jobId]
+          : isSortedMode
+            ? undefined
+            : [],
+    },
     fetchPolicy: 'no-cache',
   });
+
+  const navigateToSortedJob = useCallback(
+    (targetJobId: string) => {
+      navigate(buildSortedReviewUrl(queueId!, targetJobId, sortMode!), {
+        replace: true,
+      });
+    },
+    [navigate, queueId, sortMode],
+  );
+
+  const getNextSortedJob = useCallback(async () => {
+    const result = await refetchJobInfo({ jobIds: null });
+    const allJobs =
+      result.data?.me?.reviewableQueues?.find((q) => q.id === queueId)?.jobs ??
+      [];
+
+    const next = pickNextSortedJob(
+      filterNullOrUndefined(allJobs),
+      jobId,
+      sortedModeSkippedIds,
+      sortMode,
+    );
+
+    if (next) {
+      resetState();
+      navigateToSortedJob(next.id);
+    } else {
+      navigate('/dashboard/manual_review/queues');
+    }
+  }, [
+    refetchJobInfo,
+    queueId,
+    jobId,
+    navigateToSortedJob,
+    navigate,
+    resetState,
+    sortMode,
+  ]);
+
+  // In sorted mode, pick the most-reported job on initial load
+  useEffect(() => {
+    if (!isSortedMode || jobId || closedJob || loading) return;
+    sortedModeSkippedIds.clear();
+
+    const allJobs =
+      data?.me?.reviewableQueues?.find((q) => q.id === queueId)?.jobs ?? [];
+    if (allJobs.length === 0) return;
+
+    const top = pickTopSortedJob(filterNullOrUndefined(allJobs), sortMode);
+    if (top) {
+      navigateToSortedJob(top.id);
+    }
+  }, [
+    isSortedMode,
+    jobId,
+    closedJob,
+    loading,
+    data,
+    queueId,
+    sortMode,
+    navigateToSortedJob,
+  ]);
 
   const [
     getNextJob,
@@ -404,15 +500,25 @@ function ManualReviewJobReviewImpl(props: {
 
   useEffect(() => {
     if (
-      jobId == null &&
-      closedJob == null &&
-      !loading &&
-      !jobDataLoading &&
-      !jobData
+      isSortedMode ||
+      jobId != null ||
+      closedJob != null ||
+      loading ||
+      jobDataLoading ||
+      jobData
     ) {
-      getNextJob();
+      return;
     }
-  }, [getNextJob, jobId, closedJob, loading, jobDataLoading, jobData]);
+    getNextJob();
+  }, [
+    isSortedMode,
+    getNextJob,
+    jobId,
+    closedJob,
+    loading,
+    jobDataLoading,
+    jobData,
+  ]);
 
   const [isAdvancingToNextJob, setIsAdvancingToNextJob] = useState(false);
   // The jobId we deleted by invalidating its last report. Matching it by
@@ -515,7 +621,11 @@ function ManualReviewJobReviewImpl(props: {
         switch (response.submitManualReviewDecision.__typename) {
           case 'SubmitDecisionSuccessResponse': {
             resetState();
-            await getNextJob();
+            if (isSortedMode) {
+              await getNextSortedJob();
+            } else {
+              await getNextJob();
+            }
             break;
           }
           case 'JobHasAlreadyBeenSubmittedError': {
@@ -528,7 +638,11 @@ function ManualReviewJobReviewImpl(props: {
                   title: 'Yes',
                   type: 'primary',
                   onClick: async () => {
-                    await getNextJob();
+                    if (isSortedMode) {
+                      await getNextSortedJob();
+                    } else {
+                      await getNextJob();
+                    }
                     hideModal();
                   },
                 },
@@ -777,6 +891,16 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
+    if (isSortedMode) {
+      if (queueId && job?.id) {
+        sortedModeSkippedIds.add(job.id);
+        await logSkip();
+      }
+      resetState();
+      await getNextSortedJob();
+      return;
+    }
+
     // First, release the lock on the current job and log the skip
     if (queueId && job?.id && lockToken) {
       await Promise.all([
@@ -803,7 +927,11 @@ function ManualReviewJobReviewImpl(props: {
     }
   };
 
-  if (loading || jobDataLoading || (!closedJob && !lockToken)) {
+  if (
+    (loading && !data) ||
+    jobDataLoading ||
+    (!isSortedMode && !closedJob && !lockToken)
+  ) {
     return (
       <div className="flex items-center justify-center w-full h-screen">
         <ComponentLoading />
@@ -903,8 +1031,10 @@ function ManualReviewJobReviewImpl(props: {
                     })),
                     queueId: queueId!,
                     jobId: job.id,
-                    // This is safe because we prevent both closedJob and lockToken from being null
-                    lockToken: lockToken!,
+                    // In FIFO mode lockToken comes from the URL (set during dequeue).
+                    // In sorted mode there's no dequeue lock — send empty string so
+                    // removeJob's fallback path removes the job without a lock.
+                    lockToken: lockToken ?? '',
                     reportedItemDecisionComponents: [decision],
                     relatedItemActions: [],
                   },
@@ -1908,7 +2038,9 @@ function ManualReviewJobReviewImpl(props: {
                         })),
                         queueId: queueId!,
                         jobId: job.id,
-                        lockToken: lockToken!,
+                        // In sorted mode there's no dequeue lock — send empty string so
+                        // removeJob's fallback path removes the job without a lock.
+                        lockToken: lockToken ?? '',
                         reportedItemDecisionComponents: decisionComponents,
                         relatedItemActions: selectedRelatedActions.map(
                           (action) => ({

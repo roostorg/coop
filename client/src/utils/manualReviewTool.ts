@@ -1,5 +1,55 @@
 import { ManualReviewJobEnqueuedActionData } from '../webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview';
 
+export type SortableJob = {
+  id: string;
+  createdAt: string | Date;
+  numTimesReported?: number | null;
+};
+export type QueueSortOption = 'oldest_first' | 'num_reports';
+
+const SORT_COMPARATORS: Record<
+  QueueSortOption,
+  (a: SortableJob, b: SortableJob) => number
+> = {
+  num_reports: (a, b) => (b.numTimesReported ?? 0) - (a.numTimesReported ?? 0),
+  oldest_first: (a, b) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+};
+
+export function isSortedReviewMode(
+  sortParam: string | null,
+): sortParam is QueueSortOption {
+  return sortParam === 'num_reports' || sortParam === 'oldest_first';
+}
+
+export function pickNextSortedJob<T extends SortableJob>(
+  jobs: readonly T[],
+  currentJobId: string | undefined,
+  skippedIds: ReadonlySet<string>,
+  sortMode: QueueSortOption = 'num_reports',
+): T | null {
+  const candidates = jobs
+    .filter((j) => j.id !== currentJobId && !skippedIds.has(j.id))
+    .sort(SORT_COMPARATORS[sortMode]);
+  return candidates[0] ?? null;
+}
+
+export function pickTopSortedJob<T extends SortableJob>(
+  jobs: readonly T[],
+  sortMode: QueueSortOption = 'num_reports',
+): T | null {
+  if (jobs.length === 0) return null;
+  return [...jobs].sort(SORT_COMPARATORS[sortMode])[0];
+}
+
+export function buildSortedReviewUrl(
+  queueId: string,
+  jobId: string,
+  sortMode: QueueSortOption,
+): string {
+  return `/dashboard/manual_review/queues/review/${queueId}/${jobId}?sort=${sortMode}`;
+}
+
 type ItemWithTypename = { __typename: string };
 
 /**
