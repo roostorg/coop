@@ -178,11 +178,14 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
         </div>
         <FieldsComponent
           fields={[
-            ...convertRelatedItemToFieldData({
-              id: user.id,
-              typeId: user.type.id,
-              name: user.type.name,
-            }),
+            ...convertRelatedItemToFieldData(
+              {
+                id: user.id,
+                typeId: user.type.id,
+                name: user.type.name,
+              },
+              fieldData.map((it) => it.name),
+            ),
             ...fieldData,
           ]}
           itemTypeId={user.type.id}

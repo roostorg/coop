@@ -328,7 +328,10 @@ export default function ManualReviewJobRelatedUserComponent(props: {
           <div className="flex justify-start w-full">
             <FieldsComponent
               fields={[
-                ...convertRelatedItemToFieldData(user),
+                ...convertRelatedItemToFieldData(
+                  user,
+                  (userSubmissionItems ?? []).map((it) => it.name),
+                ),
                 ...(userSubmissionItems ?? []),
               ]}
               itemTypeId={user.typeId}
