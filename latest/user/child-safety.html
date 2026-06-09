@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8ec706be.js";
+            window.path_to_searchindex_js = "../searchindex-d453ab01.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ccdbac05.js"></script>
@@ -271,7 +271,13 @@
 </table>
 </div>
 <h3 id="submitting-the-cybertip"><a class="header" href="#submitting-the-cybertip">Submitting the CyberTip</a></h3>
-<p>Once you have classified all media and selected the incident type, select <strong>Submit to NCMEC</strong>. Coop builds and submits the CyberTip automatically, including fetching enriched metadata, uploading media files, and finalizing the report with NCMEC. See <a href="../integrations/ncmec.html#cybertip-submission-flow">CyberTip Submission Flow</a> for the technical details.</p>
+<p>Once you have reviewed the required amount of media and selected the incident type, select <strong>Submit to NCMEC</strong>. Coop builds and submits the CyberTip automatically, including fetching enriched metadata, uploading media files, and finalizing the report with NCMEC. See <a href="../integrations/ncmec.html#cybertip-submission-flow">CyberTip Submission Flow</a> for the technical details.</p>
+<p>How much media you must review before sending is controlled by the <strong>Media review requirement</strong> org setting (Settings → NCMEC Settings):</p>
+<ul>
+<li><strong>Review all media</strong> (default): you must make a decision on every piece of media on the account before sending. This is the original behavior.</li>
+<li><strong>Require a minimum number of reviewed media</strong>: you only need to classify the configured minimum number of items. This avoids having to review hundreds of items just to report the relevant ones.</li>
+</ul>
+<p>In both cases at least one piece of media must be classified with a reporting category (not <code>None</code>) for the report to be sent.</p>
 <h2 id="viewing-submitted-reports"><a class="header" href="#viewing-submitted-reports">Viewing submitted reports</a></h2>
 <p>After a CyberTip is submitted, the report is stored in Coop and accessible from the NCMEC Reports dashboard. The report record includes:</p>
 <ul>
