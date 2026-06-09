@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ['**']
 
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -24,3 +28,11 @@ jobs:
 
       - name: Run zizmor
         uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d  # v0.5.6
+        with:
+          version: "1.25.2"
+          # only upload to github advanced security on `main`.
+          # on PRs from forks (which do not have permission to push SARIF results)
+          # we surface findings as PR annotations instead.
+          advanced-security: ${{ github.event_name == 'push' }}
+          annotations: ${{ github.event_name == 'pull_request' }}
+
