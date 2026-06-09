@@ -1,4 +1,4 @@
-import getBottle, {
+import {
   type Dependencies,
   type PublicInterface,
 } from '../../iocContainer/index.js';
@@ -7,6 +7,7 @@ import { type GetCurrentPeriodRuleAlarmStatuses } from '../../services/ruleAnoma
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { type Mocked } from '../../test/mockHelpers/jestMocks.js';
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import DetectRulePassRateAnomaliesJob from './detectRulePassRateAnomaliesJob.js';
@@ -68,178 +69,166 @@ function makeMockKyselyForRules(
 
 describe('Detect Rule Anomalies', () => {
   describe('worker', () => {
-    let deleteMockData: () => Promise<void>,
-      mockDummyRules: Array<{
-        id: string;
-        orgId: string;
-        creatorId: string;
-        name: string;
-        alarmStatus: RuleAlarmStatus;
-        statusIfUnexpired: string;
-      }>,
-      mockKysely: ReturnType<typeof makeMockKyselyForRules>,
-      mockGetCurrentPeriodRuleAlarmStatuses: GetCurrentPeriodRuleAlarmStatuses,
-      mockNotificationsService: Mocked<
-        PublicInterface<NotificationsService>,
-        'createNotifications'
-      >;
+    const testWithFixture = makeTransactionalTestWithFixture(
+      async ({ deps }) => {
+        const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
 
-    beforeAll(async () => {
-      /* eslint-disable functional/immutable-data */
-      const { ModerationConfigService, ApiKeyService, KyselyPg } = (
-        await getBottle()
-      ).container;
-
-      // make some fake rules (w/ stable ids so we can match them in a snapshot)
-      // in different initial alarm statuses, to test all 9 combinations [i.e.,
-      // starting and ending at one of (OK, ALARM, or INSUFFICENT_DATA), where
-      // the start and end states can be the same].
-      const { org, cleanup: orgCleanup } = await createOrg({
-        KyselyPg,
-        ModerationConfigService,
-        ApiKeyService,
-      });
-      const { org: org2, cleanup: org2Cleanup } = await createOrg(
-        {
+        // Make some fake rules (w/ stable ids so we can match them in a snapshot)
+        // in different initial alarm statuses, to test all 9 combinations [i.e.,
+        // starting and ending at one of (OK, ALARM, or INSUFFICENT_DATA), where
+        // the start and end states can be the same]. The rows are written inside
+        // the test transaction and rolled back afterward, so the stable ids never
+        // leak across runs.
+        const { org } = await createOrg({
           KyselyPg,
           ModerationConfigService,
           ApiKeyService,
-        },
-        undefined,
-        { onCallAlertEmail: 'test@gmail.com' },
-      );
-      const { user: ruleOwner, cleanup: ruleOwnerCleanup } = await createUser(
-        KyselyPg,
-        org.id,
-        { id: 'cb34377bcc3' },
-      );
-      const { user: ruleOwner2, cleanup: ruleOwner2Cleanup } = await createUser(
-        KyselyPg,
-        org.id,
-        { id: 'cb34377bcc4' },
-      );
-      const fakeRules = await Promise.all([
-        createRule(KyselyPg, org.id, {
-          alarmStatus: RuleAlarmStatus.ALARM,
-          id: '9d237a650c1',
-          creator: ruleOwner,
-        }),
-        createRule(KyselyPg, org.id, {
-          alarmStatus: RuleAlarmStatus.ALARM,
-          id: '386da8abc3b',
-          creator: ruleOwner,
-        }),
-        createRule(KyselyPg, org.id, {
-          alarmStatus: RuleAlarmStatus.ALARM,
-          id: 'd237a650c13',
-          creator: ruleOwner,
-        }),
-
-        createRule(KyselyPg, org.id, {
-          alarmStatus: RuleAlarmStatus.OK,
-          id: '86da8abc3b6',
-          creator: ruleOwner,
-        }),
-        createRule(KyselyPg, org.id, {
-          alarmStatus: RuleAlarmStatus.OK,
-          id: 'fdb4ee86f93',
-          creator: ruleOwner,
-        }),
-        createRule(KyselyPg, org.id, {
-          alarmStatus: RuleAlarmStatus.OK,
-          id: '237a650c134',
-          creator: ruleOwner,
-        }),
-
-        createRule(KyselyPg, org2.id, {
-          alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
-          id: 'db4ee86f938',
-          creator: ruleOwner2,
-        }),
-        createRule(KyselyPg, org2.id, {
-          alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
-          id: '37a650c1342',
-          creator: ruleOwner2,
-        }),
-        createRule(KyselyPg, org2.id, {
-          alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
-          id: 'b4ee86f9386',
-          creator: ruleOwner2,
-        }),
-      ]);
-
-      mockDummyRules = fakeRules.map((r) => ({
-        id: r.id,
-        orgId: r.orgId,
-        creatorId: r.creatorId,
-        name: r.name,
-        alarmStatus: r.alarmStatus,
-        statusIfUnexpired: r.statusIfUnexpired,
-      }));
-
-      mockGetCurrentPeriodRuleAlarmStatuses = async () => {
-        const newAlarmStatusByRule =
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          {} as Awaited<ReturnType<GetCurrentPeriodRuleAlarmStatuses>>;
-
-        fakeRules.forEach((rule, i) => {
-          newAlarmStatusByRule[rule.id] = {
-            status:
-              i % 3 === 0
-                ? RuleAlarmStatus.ALARM
-                : i % 3 === 1
-                  ? RuleAlarmStatus.OK
-                  : RuleAlarmStatus.INSUFFICIENT_DATA,
-            meta: { lastPeriodPassRate: 0.5, secondToLastPeriodPassRate: 0.4 },
-          };
         });
-        return newAlarmStatusByRule;
-      };
+        const { org: org2 } = await createOrg(
+          {
+            KyselyPg,
+            ModerationConfigService,
+            ApiKeyService,
+          },
+          undefined,
+          { onCallAlertEmail: 'test@gmail.com' },
+        );
+        const { user: ruleOwner } = await createUser(KyselyPg, org.id, {
+          id: 'cb34377bcc3',
+        });
+        const { user: ruleOwner2 } = await createUser(KyselyPg, org.id, {
+          id: 'cb34377bcc4',
+        });
+        const fakeRules = await Promise.all([
+          createRule(KyselyPg, org.id, {
+            alarmStatus: RuleAlarmStatus.ALARM,
+            id: '9d237a650c1',
+            creator: ruleOwner,
+          }),
+          createRule(KyselyPg, org.id, {
+            alarmStatus: RuleAlarmStatus.ALARM,
+            id: '386da8abc3b',
+            creator: ruleOwner,
+          }),
+          createRule(KyselyPg, org.id, {
+            alarmStatus: RuleAlarmStatus.ALARM,
+            id: 'd237a650c13',
+            creator: ruleOwner,
+          }),
 
-      mockNotificationsService = {
-        createNotifications: jest.fn(),
-        getNotificationsForUser: jest.fn(),
-      } as unknown as Mocked<
-        PublicInterface<NotificationsService>,
-        'createNotifications'
-      >;
+          createRule(KyselyPg, org.id, {
+            alarmStatus: RuleAlarmStatus.OK,
+            id: '86da8abc3b6',
+            creator: ruleOwner,
+          }),
+          createRule(KyselyPg, org.id, {
+            alarmStatus: RuleAlarmStatus.OK,
+            id: 'fdb4ee86f93',
+            creator: ruleOwner,
+          }),
+          createRule(KyselyPg, org.id, {
+            alarmStatus: RuleAlarmStatus.OK,
+            id: '237a650c134',
+            creator: ruleOwner,
+          }),
 
-      mockKysely = makeMockKyselyForRules(mockDummyRules, [
-        { id: org.id, on_call_alert_email: null },
-        { id: org2.id, on_call_alert_email: 'test@gmail.com' },
-      ]);
+          createRule(KyselyPg, org2.id, {
+            alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
+            id: 'db4ee86f938',
+            creator: ruleOwner2,
+          }),
+          createRule(KyselyPg, org2.id, {
+            alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
+            id: '37a650c1342',
+            creator: ruleOwner2,
+          }),
+          createRule(KyselyPg, org2.id, {
+            alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
+            id: 'b4ee86f9386',
+            creator: ruleOwner2,
+          }),
+        ]);
 
-      deleteMockData = async () => {
-        await Promise.all(fakeRules.map(async (it) => it.destroy()));
-        await Promise.all([ruleOwnerCleanup(), ruleOwner2Cleanup()]);
-        await orgCleanup();
-        await org2Cleanup();
-      };
-      /* eslint-enable functional/immutable-data */
-    });
+        const mockDummyRules = fakeRules.map((r) => ({
+          id: r.id,
+          orgId: r.orgId,
+          creatorId: r.creatorId,
+          name: r.name,
+          alarmStatus: r.alarmStatus,
+          statusIfUnexpired: r.statusIfUnexpired,
+        }));
 
-    afterAll(async () => {
-      return deleteMockData();
-    });
+        const mockGetCurrentPeriodRuleAlarmStatuses: GetCurrentPeriodRuleAlarmStatuses =
+          async () => {
+            const newAlarmStatusByRule =
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+              {} as Awaited<ReturnType<GetCurrentPeriodRuleAlarmStatuses>>;
 
-    test('should generate the proper notifications + update rules', async () => {
-      const worker = DetectRulePassRateAnomaliesJob(
-        mockKysely as unknown as Dependencies['KyselyPg'],
+            fakeRules.forEach((rule, i) => {
+              // eslint-disable-next-line functional/immutable-data
+              newAlarmStatusByRule[rule.id] = {
+                status:
+                  i % 3 === 0
+                    ? RuleAlarmStatus.ALARM
+                    : i % 3 === 1
+                      ? RuleAlarmStatus.OK
+                      : RuleAlarmStatus.INSUFFICIENT_DATA,
+                meta: {
+                  lastPeriodPassRate: 0.5,
+                  secondToLastPeriodPassRate: 0.4,
+                },
+              };
+            });
+            return newAlarmStatusByRule;
+          };
+
+        const mockNotificationsService = {
+          createNotifications: jest.fn(),
+          getNotificationsForUser: jest.fn(),
+        } as unknown as Mocked<
+          PublicInterface<NotificationsService>,
+          'createNotifications'
+        >;
+
+        const mockKysely = makeMockKyselyForRules(mockDummyRules, [
+          { id: org.id, on_call_alert_email: null },
+          { id: org2.id, on_call_alert_email: 'test@gmail.com' },
+        ]);
+
+        return {
+          mockKysely,
+          mockNotificationsService,
+          mockGetCurrentPeriodRuleAlarmStatuses,
+          mockDummyRules,
+        };
+      },
+    );
+
+    testWithFixture(
+      'should generate the proper notifications + update rules',
+      async ({
+        mockKysely,
         mockNotificationsService,
         mockGetCurrentPeriodRuleAlarmStatuses,
-        jest.fn<() => Promise<void>>(),
-      );
-      await worker.run();
+        mockDummyRules,
+      }) => {
+        const worker = DetectRulePassRateAnomaliesJob(
+          mockKysely as unknown as Dependencies['KyselyPg'],
+          mockNotificationsService,
+          mockGetCurrentPeriodRuleAlarmStatuses,
+          jest.fn<() => Promise<void>>(),
+        );
+        await worker.run();
 
-      const mockCreateNotifications =
-        mockNotificationsService.createNotifications;
+        const mockCreateNotifications =
+          mockNotificationsService.createNotifications;
 
-      expect(mockCreateNotifications).toHaveBeenCalledTimes(1);
-      expect(
-        mockCreateNotifications.mock.calls[0][0]
-          .slice(0)
-          .sort((a, b) => a.data.ruleId.localeCompare(b.data.ruleId)),
-      ).toMatchInlineSnapshot(`
+        expect(mockCreateNotifications).toHaveBeenCalledTimes(1);
+        expect(
+          mockCreateNotifications.mock.calls[0][0]
+            .slice(0)
+            .sort((a, b) => a.data.ruleId.localeCompare(b.data.ruleId)),
+        ).toMatchInlineSnapshot(`
         [
           {
             "data": {
@@ -312,11 +301,11 @@ describe('Detect Rule Anomalies', () => {
         ]
       `);
 
-      await mockGetCurrentPeriodRuleAlarmStatuses();
-      const expectedUpdates = mockDummyRules.filter(
-        (_rule, i) => ![0, 4, 8].includes(i),
-      ).length;
-      expect(mockKysely.updateTable).toHaveBeenCalledTimes(expectedUpdates);
-    });
+        const expectedUpdates = mockDummyRules.filter(
+          (_rule, i) => ![0, 4, 8].includes(i),
+        ).length;
+        expect(mockKysely.updateTable).toHaveBeenCalledTimes(expectedUpdates);
+      },
+    );
   });
 });
