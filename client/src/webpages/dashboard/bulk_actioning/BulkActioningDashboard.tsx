@@ -513,7 +513,7 @@ export default function BulkActioningDashboard() {
           </label>
           <Input.TextArea
             id="bulk-actioning-moderator-note"
-            placeholder="Sent to the action's webhook as `actorNote` and persisted to the audit log."
+            placeholder="Add a short note explaining this decision — it will be recorded in the audit log and included in any configured webhook payload."
             rows={2}
             maxLength={5000}
             value={moderatorNote}
