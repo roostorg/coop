@@ -1,0 +1,6 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  "project": ["src/**/*.{ts,tsx,js,jsx}"],
+  "ignore": ["src/graphql/generated.ts"],
+  "ignoreDependencies": ["@types/google.maps"]
+}
