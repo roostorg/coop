@@ -16,10 +16,14 @@ import { Link } from 'react-router-dom';
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 
 import {
+  GQLContentItem,
+  GQLContentSchemaFieldRoles,
   GQLItemType,
+  GQLThreadItem,
+  GQLThreadSchemaFieldRoles,
   GQLUserItem,
   GQLUserSchemaFieldRoles,
-  useGQLGetUserItemsQuery,
+  useGQLGetRelatedItemsQuery,
   useGQLItemTypeHiddenFieldsQuery,
   useGQLPersonalSafetySettingsQuery,
 } from '../../../../../graphql/generated';
@@ -156,7 +160,7 @@ function TableRowComponent(props: {
     type === 'RELATED_ITEM' && value
       ? itemTypes.find((itemType) => itemType.id === value.typeId)?.__typename
       : undefined;
-  const { data: userItem } = useGQLGetUserItemsQuery({
+  const { data: relatedItemData } = useGQLGetRelatedItemsQuery({
     variables: {
       itemIdentifiers: [
         {
@@ -166,7 +170,7 @@ function TableRowComponent(props: {
         },
       ],
     },
-    skip: type !== 'RELATED_ITEM' && relatedItemKind !== 'UserItemType',
+    skip: type !== 'RELATED_ITEM',
   });
 
   if (value == null) {
@@ -389,28 +393,43 @@ function TableRowComponent(props: {
         __throw(new Error(`Could not find item type for ID ${value.typeId}`));
       }
 
+      // Resolve a human-readable title for every related-item kind via its
+      // `displayName` schema role (not just users). The profile icon role only
+      // exists on user types, so it stays user-only.
       let displayName: string | undefined;
       let profilePhoto: { url: string } | undefined;
-      const user = userItem?.latestItemSubmissions[0] as GQLUserItem;
-      if (relatedItemKind === 'UserItemType' && user !== undefined) {
-        displayName = userItem
-          ? getFieldValueForRole<GQLUserSchemaFieldRoles, 'displayName'>(
-              {
-                data: user.data,
-                type: user.type,
-              },
-              'displayName',
-            )
-          : undefined;
-        profilePhoto = userItem
-          ? getFieldValueForRole<GQLUserSchemaFieldRoles, 'profileIcon'>(
-              {
-                data: user.data,
-                type: user.type,
-              },
-              'profileIcon',
-            )
-          : undefined;
+      const relatedItem = relatedItemData?.latestItemSubmissions[0];
+      switch (relatedItem?.__typename) {
+        case 'UserItem': {
+          const user = relatedItem as GQLUserItem;
+          displayName = getFieldValueForRole<
+            GQLUserSchemaFieldRoles,
+            'displayName'
+          >({ data: user.data, type: user.type }, 'displayName');
+          profilePhoto = getFieldValueForRole<
+            GQLUserSchemaFieldRoles,
+            'profileIcon'
+          >({ data: user.data, type: user.type }, 'profileIcon');
+          break;
+        }
+        case 'ContentItem': {
+          const content = relatedItem as GQLContentItem;
+          displayName = getFieldValueForRole<
+            GQLContentSchemaFieldRoles,
+            'displayName'
+          >({ data: content.data, type: content.type }, 'displayName');
+          break;
+        }
+        case 'ThreadItem': {
+          const thread = relatedItem as GQLThreadItem;
+          displayName = getFieldValueForRole<
+            GQLThreadSchemaFieldRoles,
+            'displayName'
+          >({ data: thread.data, type: thread.type }, 'displayName');
+          break;
+        }
+        default:
+          break;
       }
       return (
         <div className="flex flex-row align-top text-start">

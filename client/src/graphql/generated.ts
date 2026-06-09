@@ -16558,6 +16558,10 @@ export type GQLGetRelatedItemsQuery = {
               readonly valueScalarType: GQLScalarType;
             } | null;
           }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'ContentSchemaFieldRoles';
+            readonly displayName?: string | null;
+          };
         };
       }
     | {
@@ -16582,6 +16586,10 @@ export type GQLGetRelatedItemsQuery = {
               readonly valueScalarType: GQLScalarType;
             } | null;
           }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'ThreadSchemaFieldRoles';
+            readonly displayName?: string | null;
+          };
         };
       }
     | {
@@ -34529,6 +34537,9 @@ export const GQLGetRelatedItemsDocument = gql`
               valueScalarType
             }
           }
+          schemaFieldRoles {
+            displayName
+          }
         }
       }
       ... on ThreadItem {
@@ -34548,6 +34559,9 @@ export const GQLGetRelatedItemsDocument = gql`
               keyScalarType
               valueScalarType
             }
+          }
+          schemaFieldRoles {
+            displayName
           }
         }
       }
