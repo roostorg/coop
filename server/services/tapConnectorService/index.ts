@@ -28,6 +28,11 @@ import {
   getFieldValueForRole,
   type ItemSubmission,
 } from '../itemProcessingService/index.js';
+import {
+  buildAccountSubmission,
+  fetchBskyProfile,
+  submitAccountItem,
+} from './accountEnrichment.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type ReportingService } from '../reportingService/index.js';
 import { type ManualReviewToolService } from '../manualReviewToolService/index.js';
@@ -92,6 +97,10 @@ const makeTapConnectorWorker = inject(
     // the timestamp when first seen. Entries expire after 5 minutes.
     const DEDUP_TTL_MS = 5 * 60 * 1000;
     const seenItems = new Map<string, number>();
+
+    // Profile enrichment cache: DIDs we've already attempted to fetch.
+    // Long-lived for the process lifetime so we don't refetch.
+    const enrichedDids = new Set<string>();
 
     function isDuplicate(itemId: string): boolean {
       const now = Date.now();
@@ -259,6 +268,25 @@ const makeTapConnectorWorker = inject(
       await itemSubmissionQueueBulkWrite([message]);
     }
 
+    async function enrichAuthorAccount(did: string): Promise<void> {
+      if (enrichedDids.has(did)) return;
+      enrichedDids.add(did);
+      try {
+        const profile = await fetchBskyProfile(did);
+        if (!profile) return;
+        const rawSubmission = buildAccountSubmission(profile);
+        if (!rawSubmission) return;
+        await submitAccountItem({
+          rawSubmission,
+          orgId: config.orgId,
+          moderationConfigService,
+          submitViaItemsPath,
+        });
+      } catch {
+        // non-fatal — leave Unknown User in the UI rather than crash the batch
+      }
+    }
+
     async function processBatch(events: TapEvent[]): Promise<void> {
       if (events.length === 0) return;
 
@@ -273,6 +301,19 @@ const makeTapConnectorWorker = inject(
           const text = (s.data?.text as string) ?? '';
           return text.toLowerCase().includes(hashtagFilter);
         });
+
+      // Enrich author accounts for any post DIDs we haven't seen yet.
+      // Each DID is fetched once per process; failures are non-fatal.
+      const postAuthorDids = new Set<string>();
+      for (const sub of rawSubmissions) {
+        if (!('typeId' in sub) || sub.typeId !== 'ATproto-post') continue;
+        const authorDid = (sub.data as { authorDid?: { id?: string } })
+          .authorDid?.id;
+        if (authorDid) postAuthorDids.add(authorDid);
+      }
+      await Promise.all(
+        Array.from(postAuthorDids).map((did) => enrichAuthorAccount(did)),
+      );
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
       if (rawSubmissions.length === 0) return;
