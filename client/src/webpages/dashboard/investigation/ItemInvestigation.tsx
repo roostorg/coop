@@ -119,9 +119,6 @@ gql`
             }
           }
         }
-        ... on UserItem {
-          userScore
-        }
       }
     }
   }
@@ -422,7 +419,6 @@ export default function ItemInvestigation(props: {
                   ? (item as GQLUserItem)
                   : __throw(`User not found for item with ID ${itemId}`)
               }
-              userScore={item.userScore ?? undefined}
               unblurAllMedia={false}
               allItemTypes={(allItemTypes as GQLItemType[] | undefined) ?? []}
               allActions={allActions ?? []}

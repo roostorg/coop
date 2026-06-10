@@ -542,9 +542,8 @@ export default async function getBottle() {
   //   Non-Kysely Postgres consumers (e.g. the express-session store in
   //   `api.ts`) inject this so every connection passes through `createPgPool`.
   //
-  // - 'KyselyPg' is for issuing raw pg queries w/o sequelize (e.g., the queries
-  //   that some of the our "services" issue to pg, to the non-public schemas).
-  //   These queries go to our primary db, which accepts writes.
+  // - 'KyselyPg' is the primary Kysely instance used across services for typed
+  //   pg queries. These queries go to our primary db, which accepts writes.
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.

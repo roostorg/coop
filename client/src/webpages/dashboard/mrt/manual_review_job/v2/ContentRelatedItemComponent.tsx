@@ -52,6 +52,9 @@ gql`
               valueScalarType
             }
           }
+          schemaFieldRoles {
+            displayName
+          }
         }
       }
       ... on ThreadItem {
@@ -71,6 +74,9 @@ gql`
               keyScalarType
               valueScalarType
             }
+          }
+          schemaFieldRoles {
+            displayName
           }
         }
       }

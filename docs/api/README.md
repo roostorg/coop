@@ -18,7 +18,6 @@ You can find or rotate your API key under **Settings** → **API Keys** in the C
 | `POST /api/v1/report/appeal` | [Appeal](appeal.md): submit a user appeal                      |
 | `GET /api/v1/policies/`      | [Policies](policies.md): fetch your configured policies        |
 | `GET /api/v1/user_scores`    | [User Scores](user-scores.md): fetch a user's moderation score |
-| `POST /api/v1/gdpr/delete`   | [GDPR Deletion](gdpr.md): delete a user's data                 |
 
 See also:
 

@@ -1,5 +1,5 @@
-import path from 'path';
 import { glob } from 'node:fs/promises';
+import path from 'path';
 
 import '@total-typescript/ts-reset/array-includes';
 
@@ -330,18 +330,13 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
       command: 'create',
       describe: 'Creates the databases specified in the ENV vars.',
       builder: (yargs) => {
-        return yargs
-          .option('db', dbOpt)
-          .option('env', {
-            ...envOpt,
-            demand:
-              'Must provide an environment (even though it has no effect; the ' +
-              'connection-related env vars determine which db(s) are cleaned) ' +
-              'to help prevent accidentally deleting prod!',
-          })
-          .check((opts) => {
-            return opts.env !== 'prod';
-          });
+        return yargs.option('db', dbOpt).option('env', {
+          ...envOpt,
+          demand:
+            'Must provide an environment (even though it has no functional ' +
+            'effect; the connection-related env vars determine which db(s) ' +
+            'are created).',
+        });
       },
       handler: async ({ db: optDbs }) => {
         await Promise.all(

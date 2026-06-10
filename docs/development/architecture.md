@@ -86,11 +86,11 @@ When an action is triggered by a proactive rule or moderator decision, Coop send
 
 ## Rules
 
-Coop supports two sets of [rules](../user/rules.md). Each has separate code paths, storage tables, and UI surfaces.
+Coop supports two sets of [rules](../user/automated-enforcement.md). Each has separate code paths, storage tables, and UI surfaces.
 
 ### Proactive Rules
 
-When an item is submitted, Coop retrieves all [Proactive Rules](../user/rules.md#proactive-rules) associated with the item’s type. Proactive Rules act in parallel to determine automatic actions, including potentially sending the item to the review console.
+When an item is submitted, Coop retrieves all [Proactive Rules](../user/automated-enforcement.md#proactive-rules) associated with the item’s type. Proactive Rules act in parallel to determine automatic actions, including potentially sending the item to the review console.
 
 Each rule is evaluated by recursively processing its `conditionSet`, extracting values from the item, optionally passing them through signals, and comparing results using configured comparators.
 
@@ -107,7 +107,7 @@ Rule status: `LIVE`, `DRAFT`, `BACKGROUND`, `EXPIRED`
 
 ### Routing Rules
 
-When a report is submitted or a proactive rule sends an item to the review console, it is evaluated by [Routing Rules](../user/rules.md#routing-rules). The first routing rule that succeeds routes the item into the appropriate queue awaiting review as a job.
+When a report is submitted or a proactive rule sends an item to the review console, it is evaluated by [Routing Rules](../user/automated-enforcement.md#routing-rules). The first routing rule that succeeds routes the item into the appropriate queue awaiting review as a job.
 
 - Code: `/server/services/manualReviewToolService/modules/JobRouting.ts`
 - Storage tables:
