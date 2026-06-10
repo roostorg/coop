@@ -311,9 +311,11 @@ const makeTapConnectorWorker = inject(
           .authorDid?.id;
         if (authorDid) postAuthorDids.add(authorDid);
       }
-      await Promise.all(
-        Array.from(postAuthorDids).map((did) => enrichAuthorAccount(did)),
-      );
+      // Fire-and-forget — don't block submission on profile fetches.
+      // Account items will appear in the items pipeline shortly after.
+      for (const did of postAuthorDids) {
+        void enrichAuthorAccount(did);
+      }
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
       if (rawSubmissions.length === 0) return;
