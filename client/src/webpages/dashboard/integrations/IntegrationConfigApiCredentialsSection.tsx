@@ -1,5 +1,5 @@
 import { Button, Input } from 'antd';
-import { Plus, Trash2 } from 'lucide-react';
+import { Eye, EyeClosed, Plus, Trash2 } from 'lucide-react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
@@ -7,6 +7,9 @@ import {
   GQLOpenAiIntegrationApiCredential,
   GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
+
+const passwordIconRender = (visible: boolean) =>
+  visible ? <Eye size={14} /> : <EyeClosed size={14} />;
 
 export default function IntegrationConfigApiCredentialsSection(props: {
   name: string;
@@ -23,8 +26,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     return (
       <div className={`flex flex-col ${inputWidthClass}`}>
         <div className="mb-1">API Key</div>
-        <Input
+        <Input.Password
           value={apiCredential.apiKey}
+          iconRender={passwordIconRender}
           onChange={(event) =>
             setApiCredential({
               ...apiCredential,
@@ -42,8 +46,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     return (
       <div className={`flex flex-col ${inputWidthClass}`}>
         <div className="mb-1">API Key</div>
-        <Input
+        <Input.Password
           value={apiCredential.apiKey}
+          iconRender={passwordIconRender}
           onChange={(event) =>
             setApiCredential({
               ...apiCredential,
@@ -92,8 +97,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
       <div className="flex flex-col gap-4">
         <div className={`flex flex-col ${inputWidthClass}`}>
           <div className="mb-1">API Key</div>
-          <Input
+          <Input.Password
             value={apiCredential.apiKey}
+            iconRender={passwordIconRender}
             onChange={(event) =>
               setApiCredential({
                 ...apiCredential,
@@ -151,9 +157,10 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     truePercentage: 'True percentage (0–100)',
   };
 
-  const renderPluginCredential = (
-    pluginCredential: { __typename: 'PluginIntegrationApiCredential'; credential: Record<string, unknown> },
-  ) => {
+  const renderPluginCredential = (pluginCredential: {
+    __typename: 'PluginIntegrationApiCredential';
+    credential: Record<string, unknown>;
+  }) => {
     const credential = pluginCredential.credential ?? {};
     const entries = Object.entries(credential).filter(
       ([key]) => key !== 'name',
@@ -166,16 +173,15 @@ export default function IntegrationConfigApiCredentialsSection(props: {
       <div className="flex flex-col gap-4">
         {fieldsToShow.map(([key, value]) => (
           <div key={key} className={`flex flex-col ${inputWidthClass}`}>
-            <div className="mb-1">
-              {PLUGIN_FIELD_LABELS[key] ?? key}
-            </div>
+            <div className="mb-1">{PLUGIN_FIELD_LABELS[key] ?? key}</div>
             <Input
               value={String(value ?? '')}
               onChange={(event) => {
                 const next = { ...credential, [key]: event.target.value };
                 setApiCredential({
                   __typename: 'PluginIntegrationApiCredential',
-                  credential: next as import('../../../graphql/generated').Scalars['JSONObject'],
+                  credential:
+                    next as import('../../../graphql/generated').Scalars['JSONObject'],
                 });
               }}
             />
