@@ -13,6 +13,7 @@ import {
 const ATPROTO_POST_TYPE_ID = 'ATproto-post';
 const ATPROTO_ACCOUNT_TYPE_ID = 'ATproto-account';
 const BSKY_CDN_BASE = 'https://cdn.bsky.app/img/feed_thumbnail/plain';
+const BSKY_VIDEO_BASE = 'https://video.bsky.app/watch';
 
 /**
  * Constructs a Bluesky CDN URL for an image blob.
@@ -33,10 +34,7 @@ function buildAtUri(did: string, collection: string, rkey: string): string {
 /**
  * Extracts image URLs from a post's embed object.
  */
-function extractImageUrls(
-  did: string,
-  record: ATProtoPostRecord,
-): string[] {
+function extractImageUrls(did: string, record: ATProtoPostRecord): string[] {
   if (!record.embed?.images) return [];
 
   return record.embed.images
@@ -48,16 +46,26 @@ function extractImageUrls(
     .filter((url): url is string => url != null);
 }
 
+function extractVideoUrl(
+  did: string,
+  record: ATProtoPostRecord,
+): string | null {
+  const cid = record.embed?.video?.ref?.$link;
+  if (!cid) return null;
+  return `${BSKY_VIDEO_BASE}/${did}/${cid}/playlist.m3u8`;
+}
+
 /**
  * Transforms an app.bsky.feed.post record event into a RawItemSubmission
  * for the ATproto-post ItemType.
  */
 export function transformPost(event: TapRecordEvent): RawItemSubmission {
-  const { did, collection, rkey, cid, action } = event.record;
+  const { did, collection, rkey, cid } = event.record;
   const record = event.record.record as unknown as ATProtoPostRecord;
   const atUri = buildAtUri(did, collection, rkey);
 
   const images = extractImageUrls(did, record);
+  const video = extractVideoUrl(did, record);
 
   return {
     id: atUri,
@@ -71,11 +79,22 @@ export function transformPost(event: TapRecordEvent): RawItemSubmission {
       createdAt: record.createdAt ?? new Date().toISOString(),
       atUri,
       ...(images.length > 0 ? { images } : {}),
+      ...(video != null ? { video } : {}),
       ...(record.reply?.parent?.uri
-        ? { replyParent: { id: record.reply.parent.uri, typeId: ATPROTO_POST_TYPE_ID } }
+        ? {
+            replyParent: {
+              id: record.reply.parent.uri,
+              typeId: ATPROTO_POST_TYPE_ID,
+            },
+          }
         : {}),
       ...(record.reply?.root?.uri
-        ? { replyRoot: { id: record.reply.root.uri, typeId: ATPROTO_POST_TYPE_ID } }
+        ? {
+            replyRoot: {
+              id: record.reply.root.uri,
+              typeId: ATPROTO_POST_TYPE_ID,
+            },
+          }
         : {}),
       ...(record.langs ? { langs: record.langs } : {}),
       isLive: event.record.live,
@@ -87,9 +106,7 @@ export function transformPost(event: TapRecordEvent): RawItemSubmission {
  * Transforms an identity event into a RawItemSubmission
  * for the ATproto-account ItemType.
  */
-export function transformIdentity(
-  event: TapIdentityEvent,
-): RawItemSubmission {
+export function transformIdentity(event: TapIdentityEvent): RawItemSubmission {
   const { did, handle, isActive } = event.identity;
 
   return {
@@ -108,7 +125,7 @@ export function transformIdentity(
  * for the ATproto-account ItemType.
  */
 export function transformProfile(event: TapRecordEvent): RawItemSubmission {
-  const { did, action } = event.record;
+  const { did } = event.record;
   const record = event.record.record as unknown as ATProtoProfileRecord;
 
   const avatarCid = record.avatar?.ref?.$link;
@@ -122,12 +139,8 @@ export function transformProfile(event: TapRecordEvent): RawItemSubmission {
       handle: did, // handle may not be in the profile record; use DID as fallback
       ...(record.displayName ? { displayName: record.displayName } : {}),
       ...(record.description ? { description: record.description } : {}),
-      ...(avatarCid
-        ? { avatar: buildImageCdnUrl(did, avatarCid) }
-        : {}),
-      ...(bannerCid
-        ? { banner: buildImageCdnUrl(did, bannerCid) }
-        : {}),
+      ...(avatarCid ? { avatar: buildImageCdnUrl(did, avatarCid) } : {}),
+      ...(bannerCid ? { banner: buildImageCdnUrl(did, bannerCid) } : {}),
       ...(record.createdAt ? { createdAt: record.createdAt } : {}),
       isActive: true,
     },
@@ -146,7 +159,7 @@ export function transformTapEvent(
   }
 
   if (event.type === 'record') {
-    const { collection, action } = event.record;
+    const { collection } = event.record;
 
     // For deletions, we still transform but mark as deleted via the record data
     if (collection === 'app.bsky.feed.post') {

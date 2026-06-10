@@ -47,6 +47,7 @@ export interface ATProtoPostRecord {
       alt: string;
       image: { ref: { $link: string }; mimeType: string; size: number };
     }>;
+    video?: { ref: { $link: string }; mimeType: string; size: number };
   };
 }
 
