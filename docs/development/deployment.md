@@ -13,6 +13,7 @@ The following recommendations are intended as a starting point for self-hosted d
 | Resource         | Minimum                   | Recommended                             |
 | ---------------- | ------------------------- | --------------------------------------- |
 | Operating System | Modern Linux distribution | Latest supported LTS Linux distribution |
+| CPU              | 2 vCPUs                   | 4+ vCPUs                                |
 | Memory (RAM)     | 4 GiB                     | 8 GiB                                   |
 
 The documented development prerequisites recommend 8 GiB of RAM, with approximately 4 GiB required to run a Coop instance and additional memory used by supporting services and tooling.
