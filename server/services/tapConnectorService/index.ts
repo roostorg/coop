@@ -273,17 +273,24 @@ const makeTapConnectorWorker = inject(
       enrichedDids.add(did);
       try {
         const profile = await fetchBskyProfile(did);
-        if (!profile) return;
+        if (!profile) {
+          console.log(`[TapConnector] enrich: no profile for ${did}`);
+          return;
+        }
         const rawSubmission = buildAccountSubmission(profile);
-        if (!rawSubmission) return;
+        if (!rawSubmission) {
+          console.log(`[TapConnector] enrich: build failed for ${did}`);
+          return;
+        }
         await submitAccountItem({
           rawSubmission,
           orgId: config.orgId,
           moderationConfigService,
           submitViaItemsPath,
         });
-      } catch {
-        // non-fatal — leave Unknown User in the UI rather than crash the batch
+        console.log(`[TapConnector] enrich: submitted account ${did}`);
+      } catch (err) {
+        console.log(`[TapConnector] enrich: error for ${did}:`, err);
       }
     }
 
