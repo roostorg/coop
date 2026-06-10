@@ -1,11 +1,11 @@
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
-import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   type FilterableWarehouseDate,
   type WarehouseDate,
 } from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
+import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
   type ConditionSet,
@@ -205,7 +205,7 @@ export type ManualReviewToolServicePg = {
     requires_policy_for_decisions: boolean;
     mrt_requires_decision_reason: boolean;
     hide_skip_button_for_non_admins: boolean;
-    ignore_callback_url?: string;
+    ignore_callback_url: string | null;
     preview_jobs_view_enabled: boolean;
   };
   'manual_review_tool.job_comments': {

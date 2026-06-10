@@ -6,7 +6,8 @@
 
 - [User Guide](user/README.md)
   - [Basic Concepts](user/concepts.md)
-  - [Automated Routing & Enforcement](user/rules.md)
+  - [Organization Settings](user/settings.md)
+  - [Automated Routing & Enforcement](user/automated-enforcement.md)
   - [Manual Review & Enforcement](user/review-console.md)
   - [Signals](user/signals.md)
   - [Investigation](user/investigation.md)
@@ -24,6 +25,7 @@
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)
   - [Data Warehouse Abstraction](development/data-warehouse.md)
+  - [Docker Images](development/docker.md)
   - [Deployment](development/deployment.md)
 
 ---
@@ -34,7 +36,6 @@
   - [Appeal](api/appeal.md)
   - [Policies](api/policies.md)
   - [User Scores](api/user-scores.md)
-  - [GDPR Deletion](api/gdpr.md)
   - [Handling Actions](api/actions.md)
   - [Partial Items](api/partial-items.md)
   - [Errors](api/errors.md)

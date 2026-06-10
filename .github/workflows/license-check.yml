@@ -1,0 +1,52 @@
+name: License Check
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      ALLOWED_LICENSES: |
+        0BSD
+        Apache-2.0
+        BSD-2-Clause
+        BSD-3-Clause
+        BlueOak-1.0.0
+        BSL-1.0
+        CC0-1.0
+        ISC
+        MIT
+        Python-2.0
+        Unlicense
+    strategy:
+      matrix:
+        directory:
+          - .
+          - client
+          - db
+          - migrator
+          - nodejs-instrumentation
+          - server
+          - types
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Format license list
+        run: echo "ALLOWED_LICENSES=$(echo "$ALLOWED_LICENSES" | tr '\n' ';' | sed 's/;$//')" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.directory }}
+        run: npm ci --omit=dev --ignore-scripts
+
+      - name: Check licenses
+        working-directory: ${{ matrix.directory }}
+        run: npx --yes license-checker@25.0.1 --production --excludePrivatePackages --onlyAllow "$ALLOWED_LICENSES"

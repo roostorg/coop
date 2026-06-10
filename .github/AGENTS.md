@@ -1,0 +1,1 @@
+Coop is an open-source project. When working on GitHub Actions, remember that PRs will be opened by external contributors who have forked the main repo. Workflows that run on PRs should also work on these forks, i.e. they should not require permissions from the main repo.

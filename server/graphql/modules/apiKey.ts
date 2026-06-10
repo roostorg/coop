@@ -1,10 +1,11 @@
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
 import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
-import { forbiddenError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -70,8 +71,11 @@ const Query: GQLQueryResolvers = {
   async apiKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
-        'User does not have permission to check if key exists',
+        'User does not have permission to view the org API key',
       );
     }
 
@@ -89,11 +93,9 @@ const Mutation: GQLMutationResolvers = {
   async rotateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError(
-        'User does not have permission to rotate the API key',
-      );
+      throw unauthenticatedError('Authenticated user required');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to rotate the API key',
       );
@@ -142,11 +144,9 @@ const Mutation: GQLMutationResolvers = {
   async rotateWebhookSigningKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
-      throw forbiddenError(
-        'User does not have permission to rotate the webhook signing key',
-      );
+      throw unauthenticatedError('Authenticated user required');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to rotate the webhook signing key',
       );

@@ -1,4 +1,5 @@
 import { formatItemSubmissionForGQL } from '../../graphql/types.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import type {
   GQLMutationResolvers,
   GQLNcmecOrgSettings,
@@ -9,43 +10,12 @@ import {
   unauthenticatedError,
   userInputError,
 } from '../utils/errors.js';
-
-/** Input shape for updateNcmecOrgSettings; matches NcmecOrgSettingsInput in schema (used so resolver type-checks even if generated types are stale). */
-type NcmecOrgSettingsInputShape = {
-  username: string;
-  password: string;
-  contactEmail?: string | null;
-  moreInfoUrl?: string | null;
-  companyTemplate?: string | null;
-  legalUrl?: string | null;
-  ncmecPreservationEndpoint?: string | null;
-  ncmecAdditionalInfoEndpoint?: string | null;
-  defaultNcmecQueueId?: string | null;
-  defaultInternetDetailType?: string | null;
-  termsOfService?: string | null;
-  contactPersonEmail?: string | null;
-  contactPersonFirstName?: string | null;
-  contactPersonLastName?: string | null;
-  contactPersonPhone?: string | null;
-};
-
-const VALID_NCMEC_INTERNET_DETAIL_TYPES: readonly string[] = [
-  'WEB_PAGE',
-  'EMAIL',
-  'NEWSGROUP',
-  'CHAT_IM',
-  'ONLINE_GAMING',
-  'CELL_PHONE',
-  'NON_INTERNET',
-  'PEER_TO_PEER',
-];
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_EMAIL_LENGTH = 254;
-
-function isValidContactEmail(value: string): boolean {
-  return value.length <= MAX_EMAIL_LENGTH && EMAIL_PATTERN.test(value);
-}
+import {
+  isValidContactEmail,
+  parseInternetDetailType,
+  parseMediaReviewPolicy,
+  type NcmecOrgSettingsInputShape,
+} from './ncmecOrgSettingsValidation.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -80,6 +50,17 @@ const typeDefs = /* GraphQL */ `
     PEER_TO_PEER
   }
 
+  """
+  How much media a reviewer must classify before an NCMEC report can be sent.
+  ALL requires every piece of media on the account to be reviewed (the original
+  behaviour); MINIMUM only requires \`minMediaToReview\` items, so reviewers
+  don't have to classify hundreds of items to submit a report.
+  """
+  enum NcmecMediaReviewRequirement {
+    ALL
+    MINIMUM
+  }
+
   type NcmecOrgSettings {
     username: String!
     password: String!
@@ -96,6 +77,8 @@ const typeDefs = /* GraphQL */ `
     contactPersonFirstName: String
     contactPersonLastName: String
     contactPersonPhone: String
+    mediaReviewRequirement: NcmecMediaReviewRequirement
+    minMediaToReview: Int
   }
 
   input NcmecOrgSettingsInput {
@@ -114,6 +97,8 @@ const typeDefs = /* GraphQL */ `
     contactPersonFirstName: String
     contactPersonLastName: String
     contactPersonPhone: String
+    mediaReviewRequirement: NcmecMediaReviewRequirement
+    minMediaToReview: Int
   }
 
   type UpdateNcmecOrgSettingsResponse {
@@ -317,8 +302,10 @@ const Query: GQLQueryResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to view NCMEC settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view NCMEC settings',
+      );
     }
     const settings = await context.services.NcmecService.getNcmecOrgSettings(
       user.orgId,
@@ -333,8 +320,10 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('MANAGE_ORG')) {
-      throw forbiddenError('User does not have permission to update NCMEC settings');
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update NCMEC settings',
+      );
     }
     const input = rawInput as NcmecOrgSettingsInputShape;
 
@@ -355,21 +344,11 @@ const Mutation: GQLMutationResolvers = {
       );
     }
 
-    const defaultInternetDetailType =
-      input.defaultInternetDetailType == null
-        ? null
-        : (() => {
-            const trimmed = String(input.defaultInternetDetailType).trim();
-            if (
-              trimmed !== '' &&
-              !VALID_NCMEC_INTERNET_DETAIL_TYPES.includes(trimmed)
-            ) {
-              throw userInputError(
-                `defaultInternetDetailType must be one of: ${VALID_NCMEC_INTERNET_DETAIL_TYPES.join(', ')}`,
-              );
-            }
-            return trimmed === '' ? null : trimmed;
-          })();
+    const defaultInternetDetailType = parseInternetDetailType(input);
+
+    const { mediaReviewRequirement, minMediaToReview } =
+      parseMediaReviewPolicy(input);
+
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
       username,
@@ -387,6 +366,8 @@ const Mutation: GQLMutationResolvers = {
       contactPersonFirstName: input.contactPersonFirstName ?? null,
       contactPersonLastName: input.contactPersonLastName ?? null,
       contactPersonPhone: input.contactPersonPhone ?? null,
+      mediaReviewRequirement,
+      minMediaToReview,
     });
 
     return { success: true };
@@ -396,7 +377,9 @@ const Mutation: GQLMutationResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-    if (!user.getPermissions().includes('VIEW_CHILD_SAFETY_DATA')) {
+    if (
+      !user.getPermissions().includes(UserPermission.VIEW_CHILD_SAFETY_DATA)
+    ) {
       throw forbiddenError(
         'VIEW_CHILD_SAFETY_DATA permission required to retry NCMEC submissions.',
       );

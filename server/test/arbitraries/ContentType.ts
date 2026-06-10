@@ -46,8 +46,10 @@ export const GeohashArbitrary = fc
     }
   });
 
+// `noInvalidDate: true` keeps fast-check from drawing `Date(NaN)` values,
+// which would make `.toISOString()` throw `RangeError: Invalid time value`.
 export const DateStringArbitrary = fc
-  .date()
+  .date({ noInvalidDate: true })
   .map((date) => makeDateString(date.toISOString())!);
 
 // Id-like fields allow numbers and strings as inputs, but the normalized

@@ -20,7 +20,7 @@ Once connected, HMA signals will be available in Coop's signal library for use i
 
 Hash banks are collections of known-harmful media fingerprints that you can reference in your rules. You can create and manage banks through the Coop UI, or sync them from external sources like NCMEC.
 
-![Matching banks page showing a test hash bank created in the Coop UI](../images/coop-hma.png)
+![Matching banks page showing a test hash bank created in the Coop UI](../images/hma.png)
 
 ### Creating banks through Coop
 
@@ -48,13 +48,13 @@ See the [NCMEC CyberTipline integration](ncmec.md) for details.
 
 Once HMA is connected and hash banks are configured, the image hash signal is available in both routing rules and proactive rules.
 
-- **To route content from [user reports](../api/report.md)**, create a [routing rule](../user/rules.md#routing-rules) with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.
+- **To route content from [user reports](../api/report.md)**, create a [routing rule](../user/automated-enforcement.md#routing-rules) with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.
 
   ![Routing rule using HMA hash matching](../images/hma-routing-rule.png)
 
-- **For content submitted via the [items API](../api/items.md)**, if you want Coop to proactively hash and flag matches without a user report, create a [proactive rule](../user/rules.md#proactive-rules) with the image hash condition and "Enqueue to NCMEC" action.
+- **For content submitted via the [items API](../api/items.md)**, if you want Coop to proactively hash and flag matches without a user report, create a [proactive rule](../user/automated-enforcement.md#proactive-rules) with the image hash condition and "Enqueue to NCMEC" action.
 
 ## See also
 
-- [Automated Routing & Enforcement](../user/rules.md) for more on building rules
+- [Automated Routing & Enforcement](../user/automated-enforcement.md) for more on building rules
 - [NCMEC CyberTipline](ncmec.md) for details on configuring your NCMEC integration

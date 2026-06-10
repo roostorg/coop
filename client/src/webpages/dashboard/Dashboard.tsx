@@ -33,15 +33,7 @@ import {
   useGQLDashboardOrgQuery,
   useGQLLogoutMutation,
 } from '../../graphql/generated';
-import OrgSafetySettings from '../settings/OrgSafetySettings';
-import NCMECSettings from '../settings/NCMECSettings';
-import SSOSettings from '../settings/SSOSettings';
 import TapSettings from '../settings/TapSettings';
-import MatchingBanksDashboard from './banks/MatchingBanksDashboard';
-import ManualReviewAppealSettings from './mrt/ManualReviewAppealSettings';
-import Overview from './overview/Overview';
-import PolicyForm from './policies/PolicyForm';
-import UserStrikeDashboard from './userStrikes/UserStrikeDashboard';
 
 gql`
   query DashboardOrg {
@@ -334,13 +326,7 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/appeal_settings',
-        handle: {
-          isUsingLegacyCSS: true,
-          error: {
-            buttonTitle: 'Back to Manual Review Queues',
-          },
-        },
-        lazy: lazyRoute(async () => import('./mrt/ManualReviewAppealSettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=appeals" />,
       },
 
       // Redirect old Bulk Actioning Tool and Investigation paths
@@ -366,9 +352,9 @@ export function DashboardRoutes() {
         handle: { isUsingLegacyCSS: true },
         lazy: lazyRoute(async () => import('./policies/PolicyForm')),
       },
-      // TODO: uncomment this when final UI is finished
       {
-        path: 'user_strikes',
+        path: 'rules/user_strikes',
+        handle: { isUsingLegacyCSS: true },
         lazy: lazyRoute(
           async () => import('./userStrikes/UserStrikeDashboard'),
         ),
@@ -384,8 +370,8 @@ export function DashboardRoutes() {
       // Settings
       {
         path: 'settings',
-        element: <Navigate replace to="item_types" />,
-        handle: { isUsingLegacyCSS: true },
+        handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(async () => import('../settings/SettingsPage')),
       },
       {
         path: 'settings/item_types',
@@ -451,8 +437,7 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/org_safety_settings',
-        handle: { isUsingLegacyCSS: false },
-        lazy: lazyRoute(async () => import('../settings/OrgSafetySettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=wellness" />,
       },
       {
         path: 'settings/ncmec',
@@ -471,13 +456,15 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/sso',
-        handle: { isUsingLegacyCSS: true },
-        lazy: lazyRoute(async () => import('../settings/SSOSettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=sso" />,
       },
       {
         path: 'settings/organization',
-        handle: { isUsingLegacyCSS: false },
-        lazy: lazyRoute(async () => import('../settings/OrgSettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=organization" />,
+      },
+      {
+        path: 'settings/deployment',
+        element: <Navigate replace to="/dashboard/settings?tab=other" />,
       },
       // Account
       {
@@ -572,12 +559,11 @@ export default function Dashboard() {
           urlPath: 'banks',
           requiredPermissions: [GQLUserPermission.MutateNonLiveRules],
         },
-        //TODO: uncomment this when final UI is finished
-        // {
-        //   title: 'User Strikes',
-        //   urlPath: 'userStrikes',
-        //   requiredPermissions: [GQLUserPermission.ManageOrg],
-        // },
+        {
+          title: 'User Strikes' as const,
+          urlPath: 'user_strikes',
+          requiredPermissions: [GQLUserPermission.ManageOrg],
+        },
       ]),
     },
     {
@@ -655,21 +641,9 @@ export default function Dashboard() {
           urlPath: 'users',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
-        data?.myOrg?.hasAppealsEnabled
-          ? {
-              title: 'Appeal Settings' as const,
-              urlPath: 'appeal_settings',
-              requiredPermissions: [],
-            }
-          : null,
         {
-          title: 'Wellness' as const,
-          urlPath: 'org_safety_settings',
-          requiredPermissions: [GQLUserPermission.ManageOrg],
-        },
-        {
-          title: 'Organization' as const,
-          urlPath: 'organization',
+          title: 'Settings' as const,
+          urlPath: '',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
         {
@@ -710,10 +684,12 @@ export default function Dashboard() {
         return;
       }
       if (item.subItems) {
-        // If the item has subItems, we should continue searching down that path
-        items = item.subItems;
+        if (i === pathParts.length - 1) {
+          setSelectedMenuItem(item.title);
+        } else {
+          items = item.subItems;
+        }
       } else {
-        // If the item has no subItems, just return the item's title
         setSelectedMenuItem(item.title);
       }
     }

@@ -110,7 +110,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           try {
             const images = itemSubmission.itemSubmission.data.images as (
               | string
-              | { url: string }
+              | { url: string; [key: string]: unknown }
             )[];
 
             // Get all hash banks for this org once
@@ -120,6 +120,12 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
             const imageHashes = await Promise.all(
               images.map(async (image) => {
                 const url = typeof image === 'string' ? image : image.url;
+                // Preserve any fields the coercion step already populated on
+                // the media object (e.g. MEDIA's `mediaType`, which the manual
+                // review tool relies on to decide whether to render an image,
+                // video, or audio player). Rebuilding a fresh object below
+                // would otherwise silently drop them.
+                const coercedFields = typeof image === 'string' ? {} : image;
                 if (typeof url === 'string' && url) {
                   try {
                     const hmaHashWithRetries = await withRetries(
@@ -137,7 +143,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
 
                     // Check which banks match this image
                     const matchedBankNames: string[] = [];
-                     
+
                     if (
                       hashes &&
                       Object.keys(hashes).length > 0 &&
@@ -173,6 +179,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                     }
 
                     return {
+                      ...coercedFields,
                       url,
                       hashes,
                       matchedBanks:
@@ -182,6 +189,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                     };
                   } catch (e) {
                     return {
+                      ...coercedFields,
                       url,
                       hashes: {},
                     };
@@ -310,6 +318,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       });
 
       Meter.itemsEnqueued.add(submissionsToProcess.length);
+      let enqueueFailed = false;
       await Tracer.addActiveSpan(
         {
           resource: 'SubmitItems',
@@ -327,11 +336,15 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
                   'Unknown error in bulk write to item submission queue',
                 ),
             );
-            res.status(500).end();
+            enqueueFailed = true;
           }
         },
       );
 
+      if (enqueueFailed) {
+        res.status(500).end();
+        return;
+      }
       res.status(202).end();
     } else {
       // Return 202 immediately now that validation is complete, then keep executing other code
