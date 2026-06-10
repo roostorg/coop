@@ -35,7 +35,7 @@ function buildAtUri(did: string, collection: string, rkey: string): string {
  * Extracts image URLs from a post's embed object.
  */
 function extractImageUrls(did: string, record: ATProtoPostRecord): string[] {
-  if (!record.embed?.images) return [];
+  if (!record?.embed?.images) return [];
 
   return record.embed.images
     .map((img) => {
@@ -50,7 +50,7 @@ function extractVideoUrl(
   did: string,
   record: ATProtoPostRecord,
 ): string | null {
-  const cid = record.embed?.video?.ref?.$link;
+  const cid = record?.embed?.video?.ref?.$link;
   if (!cid) return null;
   return `${BSKY_VIDEO_BASE}/${did}/${cid}/playlist.m3u8`;
 }
@@ -59,9 +59,12 @@ function extractVideoUrl(
  * Transforms an app.bsky.feed.post record event into a RawItemSubmission
  * for the ATproto-post ItemType.
  */
-export function transformPost(event: TapRecordEvent): RawItemSubmission {
+export function transformPost(event: TapRecordEvent): RawItemSubmission | null {
   const { did, collection, rkey, cid } = event.record;
-  const record = event.record.record as unknown as ATProtoPostRecord;
+  const record = event.record.record as unknown as
+    | ATProtoPostRecord
+    | undefined;
+  if (!record) return null;
   const atUri = buildAtUri(did, collection, rkey);
 
   const images = extractImageUrls(did, record);
@@ -124,9 +127,14 @@ export function transformIdentity(event: TapIdentityEvent): RawItemSubmission {
  * Transforms an app.bsky.actor.profile record event into a RawItemSubmission
  * for the ATproto-account ItemType.
  */
-export function transformProfile(event: TapRecordEvent): RawItemSubmission {
+export function transformProfile(
+  event: TapRecordEvent,
+): RawItemSubmission | null {
   const { did } = event.record;
-  const record = event.record.record as unknown as ATProtoProfileRecord;
+  const record = event.record.record as unknown as
+    | ATProtoProfileRecord
+    | undefined;
+  if (!record) return null;
 
   const avatarCid = record.avatar?.ref?.$link;
   const bannerCid = record.banner?.ref?.$link;
