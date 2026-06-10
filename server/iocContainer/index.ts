@@ -611,6 +611,20 @@ export default async function getBottle() {
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
+          // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects
+          // every command with NOAUTH unless credentials are sent, which
+          // leaves ioredis stuck before "ready" and parks commands in the
+          // offline queue forever. Local dev Redis has no password, so only
+          // pass credentials when REDIS_PASSWORD is set; REDIS_USER may be
+          // set-but-empty, which means the default user.
+          ...(process.env.REDIS_PASSWORD
+            ? {
+                ...(process.env.REDIS_USER
+                  ? { username: process.env.REDIS_USER }
+                  : {}),
+                password: process.env.REDIS_PASSWORD,
+              }
+            : {}),
           ...(isEnvTrue('REDIS_TLS')
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
