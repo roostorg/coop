@@ -350,9 +350,11 @@ export function ManualReviewJobThreadComponent(props: {
       ? `Script for Video ${thread.id}`
       : displayNameField
         ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
-        : threadTypeName
-          ? `${threadTypeName} ID: ${thread.id}`
-          : `Thread ID: ${thread.id}`;
+        : threadTypeName === 'ATproto-post'
+          ? ''
+          : threadTypeName
+            ? `${threadTypeName} ID: ${thread.id}`
+            : `Thread ID: ${thread.id}`;
 
   if (loading) {
     return <ComponentLoading />;

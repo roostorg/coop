@@ -71,6 +71,15 @@ function getSyntheticThreadId(
     : jsonStringify([typeId, itemId]);
 }
 
+// Demo content filter: drop posts containing any term from the
+// comma-separated TAP_DENY_TERMS env var. Case-insensitive substring match.
+// The term list itself lives in .env (gitignored) so it isn't published.
+const NSFD_TERMS = (process.env.TAP_DENY_TERMS ?? '')
+  .toLowerCase()
+  .split(',')
+  .map((t) => t.trim())
+  .filter((t) => t.length > 0);
+
 const makeTapConnectorWorker = inject(
   [
     'ModerationConfigService',
@@ -350,6 +359,12 @@ const makeTapConnectorWorker = inject(
           if (!hashtagFilter) return true;
           const text = (s.data?.text as string) ?? '';
           return text.toLowerCase().includes(hashtagFilter);
+        })
+        .filter((s) => {
+          // Drop posts containing any NSFD term (demo content filter)
+          if (!('typeId' in s) || s.typeId !== 'ATproto-post') return true;
+          const text = ((s.data?.text as string) ?? '').toLowerCase();
+          return !NSFD_TERMS.some((term) => text.includes(term));
         });
 
       // Enrich author accounts for any post DIDs we haven't seen yet.
