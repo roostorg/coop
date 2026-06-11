@@ -1,11 +1,11 @@
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
-import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   type FilterableWarehouseDate,
   type WarehouseDate,
 } from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
+import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
   type ConditionSet,
@@ -75,6 +75,7 @@ export type ManualReviewToolServicePg = {
     is_default_queue: boolean;
     is_appeals_queue: boolean;
     auto_close_jobs: boolean;
+    job_sort_type: string;
   };
   'manual_review_tool.manual_review_decisions': {
     id: string;

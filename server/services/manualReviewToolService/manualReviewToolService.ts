@@ -293,6 +293,9 @@ export class ManualReviewToolService {
   private readonly reporterInvalidation: ReporterInvalidation;
 
   constructor(
+    // Lazy getter: breaks circular dep (MRT -> ReportingService -> ActionPublisher -> MRT).
+    // Call the outer function first to resolve, then call the result: this.getNumTimesReported()({orgId, itemId})
+    readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
@@ -437,6 +440,23 @@ export class ManualReviewToolService {
                   numAttemptsToEnqueue > 0 ? { maxAge: 0 } : undefined,
               }));
 
+            const queue =
+              await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+                {
+                  orgId: input.orgId,
+                  queueId: targetQueueForNewJob,
+                },
+              );
+
+            let priority: number | undefined;
+            if (queue?.jobSortType === 'NUM_REPORTS') {
+              const reportCount = await this.getNumTimesReported()({
+                orgId: input.orgId,
+                itemId: input.payload.item.itemId,
+              });
+              priority = reportCount ? 2147483647 - reportCount : undefined;
+            }
+
             const existingJobInSameQueue = await this.queueOps.getJobFromItemId(
               {
                 orgId: input.orgId,
@@ -463,6 +483,7 @@ export class ManualReviewToolService {
                     ...existingJobInSameQueue,
                     payload: finalJobPayload,
                   },
+                  priority,
                 })
               : await this.queueOps.addJob({
                   orgId: input.orgId,
@@ -472,8 +493,8 @@ export class ManualReviewToolService {
                     ...input,
                     payload: finalJobPayload,
                   },
+                  priority,
                 });
-
             if (!job) {
               // this means that we tried to update a job that was deleted
               // between when we looked up the existing job and did the update.
@@ -860,6 +881,7 @@ export class ManualReviewToolService {
     invokedBy: Invoker;
     isAppealsQueue: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: string;
   }): Promise<ManualReviewQueue> {
     return this.queueOps.createManualReviewQueue(input);
   }
@@ -873,8 +895,30 @@ export class ManualReviewToolService {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: string;
   }): Promise<ManualReviewQueue> {
-    return this.queueOps.updateManualReviewQueue(input);
+    const result = await this.queueOps.updateManualReviewQueue(input);
+
+    if (input.jobSortType) {
+      await this.queueOps.recomputePrioritiesForQueue({
+        orgId: input.orgId,
+        queueId: input.queueId,
+        getPriority: async (job) => {
+          if (input.jobSortType === 'NUM_REPORTS') {
+            const reportCount = await this.getNumTimesReported()({
+              orgId: input.orgId,
+              itemId: job.payload.item.itemId,
+            });
+            // BullMQ priority is a Redis sorted set score — lower = dequeued first.
+            // Subtract from max 32-bit int (number below) so more reports = lower score = reviewed sooner.
+            return 2147483647 - (reportCount ?? 0);
+          }
+          return 0;
+        },
+      });
+    }
+
+    return result;
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {
@@ -1091,8 +1135,9 @@ export class ManualReviewToolService {
     orgId: string;
     queueId: string;
     userId: string;
+    skipJobIds?: string[];
   }) {
-    const { orgId, queueId, userId } = opts;
+    const { orgId, queueId, userId, skipJobIds } = opts;
     const queue =
       await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
         orgId,
@@ -1104,6 +1149,7 @@ export class ManualReviewToolService {
       orgId,
       queueId,
       lockToken: userId,
+      skipJobIds,
     });
     if (!shouldBeAutoActioned || !job) {
       return job;
@@ -1167,6 +1213,7 @@ export class ManualReviewToolService {
           orgId,
           queueId,
           lockToken: userId,
+          skipJobIds,
         });
 
         if (!job) {

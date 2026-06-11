@@ -67,6 +67,7 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
+  jobSortType: string;
 };
 
 const PgQueueSelection = [
@@ -78,6 +79,7 @@ const PgQueueSelection = [
   'created_at as createdAt',
   'is_appeals_queue as isAppealsQueue',
   'auto_close_jobs as autoCloseJobs',
+  'job_sort_type as jobSortType',
 ] as const;
 
 // BullJobId represents the ID we give a job within Bull. It's only unique among
@@ -232,6 +234,7 @@ export default class QueueOperations {
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: string;
   }) {
     const {
       name,
@@ -241,6 +244,7 @@ export default class QueueOperations {
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType = 'FIFO',
     } = input;
     const { orgId } = invokedBy;
 
@@ -276,6 +280,7 @@ export default class QueueOperations {
               description: replaceEmptyStringWithNull(description),
               is_appeals_queue: isAppealsQueue ?? false,
               auto_close_jobs: autoCloseJobs ?? false,
+              job_sort_type: jobSortType,
             },
           ])
           .executeTakeFirstOrThrow();
@@ -316,6 +321,7 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: string;
   }) {
     const {
       queueId,
@@ -326,6 +332,7 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType = 'FIFO',
     } = input;
 
     return this.transactionWithRetry(async (transaction) => {
@@ -337,6 +344,7 @@ export default class QueueOperations {
               name,
               description: replaceEmptyStringWithNull(description),
               auto_close_jobs: autoCloseJobs,
+              job_sort_type: jobSortType,
             }),
           )
           .where('id', '=', queueId)
@@ -542,6 +550,7 @@ export default class QueueOperations {
         'queues.created_at as createdAt',
         'queues.is_appeals_queue as isAppealsQueue',
         'queues.auto_close_jobs as autoCloseJobs',
+        'queues.job_sort_type as jobSortType',
       ])
       .where('favorite_queues.user_id', '=', userId)
       .where('favorite_queues.org_id', '=', orgId)
@@ -697,9 +706,16 @@ export default class QueueOperations {
       payload: ManualReviewJobPayload;
     };
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo;
+    priority?: number;
   }) {
-    const { orgId, queueId, jobPayload, reenqueuedFrom, enqueueSourceInfo } =
-      opts;
+    const {
+      orgId,
+      queueId,
+      jobPayload,
+      reenqueuedFrom,
+      enqueueSourceInfo,
+      priority,
+    } = opts;
     const { payload, policyIds } = jobPayload;
 
     const queue = await this.#getBullQueue(orgId, queueId);
@@ -722,7 +738,7 @@ export default class QueueOperations {
         reenqueuedFrom,
         enqueueSourceInfo,
       },
-      { removeOnComplete: true, jobId: bullJobId },
+      { removeOnComplete: true, jobId: bullJobId, priority },
     );
 
     // Again, because new job data comes in in the non-legacy format, it's safe
@@ -840,8 +856,9 @@ export default class QueueOperations {
     queueId: string;
     jobId: JobId;
     data: ManualReviewJob;
+    priority?: number;
   }) {
-    const { orgId, queueId, jobId, data } = opts;
+    const { orgId, queueId, jobId, data, priority } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
     const { bullId } = parseExternalId(jobId);
     const job = await queue.getJob(bullId);
@@ -851,11 +868,42 @@ export default class QueueOperations {
     if (!job || job.data.id !== jobId) {
       return undefined;
     }
+    if (priority != null) {
+      await job.changePriority({ priority });
+    }
     await job.updateData(data);
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
     // data for this particular job won't be in the legacy format.
     return job.data satisfies StoredManualReviewJob as ManualReviewJob;
+  }
+
+  async recomputePrioritiesForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    getPriority: (job: ManualReviewJob) => Promise<number>;
+  }) {
+    const { orgId, queueId, getPriority } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const batchSize = 200;
+    let start = 0;
+
+    while (true) {
+      const jobs = await queue.getJobs(
+        ['waiting', 'delayed', 'active'],
+        start,
+        start + batchSize - 1,
+      );
+      if (jobs.length === 0) break;
+
+      for (const bullJob of jobs) {
+        const priority = await getPriority(bullJob.data as ManualReviewJob);
+        await bullJob.changePriority({ priority });
+      }
+
+      if (jobs.length < batchSize) break;
+      start += batchSize;
+    }
   }
 
   /**
@@ -1139,11 +1187,12 @@ export default class QueueOperations {
     orgId: string;
     queueId: string;
     lockToken: string;
+    skipJobIds?: string[];
   }): Promise<{
     job: ManualReviewJob;
     lockToken: string;
   } | null> {
-    const { orgId, queueId, lockToken } = opts;
+    const { orgId, queueId, lockToken, skipJobIds } = opts;
 
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullWorker({ orgId, queueId });
@@ -1154,6 +1203,10 @@ export default class QueueOperations {
 
       if (!job) {
         return null;
+      }
+      if (skipJobIds?.includes(job.data.id)) {
+        await job.moveToDelayed(Date.now() + 30 * 60 * 1000, lockToken);
+        continue;
       }
 
       const convertedJob = await this.legacyJobToJob(job, orgId);
