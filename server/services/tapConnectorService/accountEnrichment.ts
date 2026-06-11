@@ -41,8 +41,11 @@ export function buildAccountSubmission(
     data: {
       did: profile.did,
       handle: profile.handle,
-      // Always set displayName so MRT falls back to handle instead of DID
-      displayName: profile.displayName ?? profile.handle,
+      // Embed handle inside displayName so MRT's inline card shows both,
+      // matching Bluesky's "Name (@handle)" presentation.
+      displayName: profile.displayName
+        ? `${profile.displayName} (@${profile.handle})`
+        : `@${profile.handle}`,
       isActive: true,
       ...(profile.description ? { description: profile.description } : {}),
       ...(profile.avatar ? { avatar: profile.avatar } : {}),
