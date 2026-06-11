@@ -12,12 +12,10 @@ import {
 } from '@/graphql/generated';
 import { StarFilled, TapFilled } from '@/icons';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
 import Star from '@/icons/lni/Web and Technology/star.svg?react';
 import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
-import type { QueueSortOption } from '@/utils/manualReviewTool';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
@@ -66,6 +64,7 @@ gql`
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue
+        jobSortType
       }
     }
   }
@@ -186,12 +185,6 @@ type ColumnId =
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'mrt-queues-column-visibility';
 
-const QUEUE_SORT_STORAGE_KEY = 'mrt-queues-sort-option';
-const SORT_OPTION_LABELS: Record<QueueSortOption, string> = {
-  oldest_first: 'Oldest first',
-  num_reports: '# of User Reports',
-};
-
 const defaultColumnVisibility: Record<ColumnId, boolean> = {
   favoriteQueues: true,
   id: true,
@@ -261,48 +254,6 @@ export default function ManualReviewQueuesDashboard() {
     }
   }, [columnVisibility]);
 
-  // Queue sort option state (persisted to localStorage)
-  const [sortOption, setSortOption] = useState<QueueSortOption>(() => {
-    try {
-      const stored = localStorage.getItem(QUEUE_SORT_STORAGE_KEY);
-      if (stored === 'oldest_first' || stored === 'num_reports') {
-        return stored;
-      }
-    } catch (e) {
-      // Failed to load from localStorage
-    }
-    return 'oldest_first';
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(QUEUE_SORT_STORAGE_KEY, sortOption);
-    } catch (e) {
-      // Failed to save to localStorage
-    }
-  }, [sortOption]);
-
-  const [sortMenuVisible, setSortMenuVisible] = useState(false);
-  const sortMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        sortMenuRef.current &&
-        !sortMenuRef.current.contains(event.target as Node)
-      ) {
-        setSortMenuVisible(false);
-      }
-    };
-
-    if (sortMenuVisible) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [sortMenuVisible]);
-
   const toggleColumnVisibility = useCallback((columnId: ColumnId) => {
     setColumnVisibility((prev) => ({ ...prev, [columnId]: !prev[columnId] }));
   }, []);
@@ -371,14 +322,14 @@ export default function ManualReviewQueuesDashboard() {
       return (
         <Button
           className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
-          onClick={() => navigate(`review/${id}?sort=${sortOption}`)}
+          onClick={() => navigate(`review/${id}`)}
           disabled={pendingJobCount === 0}
         >
           Start Reviewing
         </Button>
       );
     },
-    [navigate, sortOption],
+    [navigate],
   );
   const onCancel = () => setModalInfo(null);
 
@@ -593,6 +544,11 @@ export default function ManualReviewQueuesDashboard() {
               sortType: integerSort,
             }
           : undefined,
+        {
+          Header: 'Sort Order',
+          accessor: 'jobSortType',
+          canSort: false,
+        },
         columnVisibility.startReviewing
           ? {
               Header: '',
@@ -643,6 +599,7 @@ export default function ManualReviewQueuesDashboard() {
                 pendingJobCount,
                 isDefaultQueue,
                 oldestJobCreatedAt,
+                jobSortType,
               }) => {
                 const rulesForQueue =
                   routingRules?.filter((it) => it.destinationQueue.id === id) ??
@@ -655,6 +612,10 @@ export default function ManualReviewQueuesDashboard() {
                   startReviewing: startReviewing(id, pendingJobCount),
                   pendingJobCount: pendingJobCount.toLocaleString('en'),
                   oldestJobCreatedAt,
+                  jobSortType:
+                    jobSortType === 'NUM_REPORTS'
+                      ? 'Most reported first'
+                      : 'FIFO',
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [
@@ -771,15 +732,6 @@ export default function ManualReviewQueuesDashboard() {
           if (a.isFavorited !== b.isFavorited) {
             return a.isFavorited ? -1 : 1;
           }
-          if (sortOption === 'oldest_first') {
-            const aTime = a.oldestJobCreatedAt
-              ? new Date(a.oldestJobCreatedAt).getTime()
-              : Infinity;
-            const bTime = b.oldestJobCreatedAt
-              ? new Date(b.oldestJobCreatedAt).getTime()
-              : Infinity;
-            if (aTime !== bTime) return aTime - bTime;
-          }
           return a.name.localeCompare(b.name);
         })
         .map((values) => {
@@ -835,7 +787,7 @@ export default function ManualReviewQueuesDashboard() {
             values,
           };
         }),
-    [dataValues, onAddFavoriteQueue, onRemoveFavoriteQueue, sortOption],
+    [dataValues, onAddFavoriteQueue, onRemoveFavoriteQueue],
   );
   if (error) {
     throw error;
@@ -898,48 +850,6 @@ export default function ManualReviewQueuesDashboard() {
                   </Checkbox>
                 </div>
               ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const sortLabel = SORT_OPTION_LABELS[sortOption];
-
-  const sortButton = (
-    <div ref={sortMenuRef} className="relative inline-block text-start">
-      <Button
-        className="font-semibold text-base rounded bg-white text-gray-600 hover:bg-white hover:text-gray-600"
-        onClick={() => setSortMenuVisible(!sortMenuVisible)}
-      >
-        Sort: {sortLabel}
-        <ChevronDown className="inline-block w-3 h-3 ml-2 fill-gray-500" />
-      </Button>
-      {sortMenuVisible && (
-        <div className="absolute right-0 z-20 flex flex-col mt-1 bg-white border border-solid border-gray-300 rounded shadow-md min-w-[200px]">
-          <div className="px-4 py-3 text-base font-semibold">Sort by</div>
-          <div className="!p-0 !m-0 divider" />
-          <div className="flex flex-col px-2 py-2">
-            {(Object.keys(SORT_OPTION_LABELS) as QueueSortOption[]).map(
-              (option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-current={sortOption === option}
-                  className={`px-3 py-2 rounded cursor-pointer text-sm text-start ${
-                    sortOption === option
-                      ? 'bg-indigo-50 text-primary font-semibold'
-                      : 'hover:bg-gray-100 text-gray-700'
-                  }`}
-                  onClick={() => {
-                    setSortOption(option);
-                    setSortMenuVisible(false);
-                  }}
-                >
-                  {SORT_OPTION_LABELS[option]}
-                </button>
-              ),
-            )}
           </div>
         </div>
       )}
@@ -1015,7 +925,7 @@ export default function ManualReviewQueuesDashboard() {
           columns={columns}
           data={tableData}
           topLeftComponent={columnsButton}
-          topRightComponent={sortButton}
+          topRightComponent={undefined}
           containerClassName="w-full"
         />
       }
