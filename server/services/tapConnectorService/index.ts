@@ -385,22 +385,20 @@ const makeTapConnectorWorker = inject(
         enrichAuthorAccount,
       );
 
-      // Reply parent/root post enrichment — gated by env var.
-      // Disabled by default because the extra DB lookups during enrichment
-      // can exhaust the Postgres connection pool under load.
-      if (process.env.TAP_ENRICH_REPLIES === 'true') {
-        const replyUris = new Set<string>();
-        for (const sub of rawSubmissions) {
-          if (!('typeId' in sub) || sub.typeId !== 'ATproto-post') continue;
-          const data = sub.data as {
-            replyParent?: { id?: string };
-            replyRoot?: { id?: string };
-          };
-          if (data.replyParent?.id) replyUris.add(data.replyParent.id);
-          if (data.replyRoot?.id) replyUris.add(data.replyRoot.id);
-        }
-        void runWithConcurrency(Array.from(replyUris), 2, enrichReferencedPost);
+      // Collect reply parent/root URIs and fetch those posts so threads
+      // resolve in MRT instead of showing raw at:// links. Posts are
+      // best-effort — fire-and-forget so we don't block the report flow.
+      const replyUris = new Set<string>();
+      for (const sub of rawSubmissions) {
+        if (!('typeId' in sub) || sub.typeId !== 'ATproto-post') continue;
+        const data = sub.data as {
+          replyParent?: { id?: string };
+          replyRoot?: { id?: string };
+        };
+        if (data.replyParent?.id) replyUris.add(data.replyParent.id);
+        if (data.replyRoot?.id) replyUris.add(data.replyRoot.id);
       }
+      void runWithConcurrency(Array.from(replyUris), 2, enrichReferencedPost);
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
       if (rawSubmissions.length === 0) return;
