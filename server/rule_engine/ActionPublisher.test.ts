@@ -246,6 +246,161 @@ describe('ActionPublisher', () => {
       expect(sentBody.actorEmail).toBe('mod@example.com');
     });
 
+    it('includes the resolved creator for a USER target (the target itself)', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({ fetchHTTP });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-user-target',
+              orgId: 'org-789',
+              name: 'Ban User',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:user-target' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'user-123',
+            itemType: {
+              id: 'user-type-1',
+              kind: 'USER' as const,
+              name: 'User',
+            },
+          },
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect(sentBody.creator).toEqual({
+        id: 'user-123',
+        typeId: 'user-type-1',
+      });
+    });
+
+    it('resolves and includes the creator for a CONTENT identifier-only target by fetching the submission', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getItemByIdentifier = jest.fn().mockResolvedValue({
+        latestSubmission: {
+          itemId: 'message-456',
+          submissionId: 'sub-1',
+          data: { text: 'hi' },
+          creator: { id: 'author-9', typeId: 'user-type-1' },
+        },
+      });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        itemInvestigationService: { getItemByIdentifier },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-content-target',
+              orgId: 'org-789',
+              name: 'Remove Message',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:content-target' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'message-456',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(getItemByIdentifier).toHaveBeenCalledTimes(1);
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect(sentBody.creator).toEqual({
+        id: 'author-9',
+        typeId: 'user-type-1',
+      });
+    });
+
+    it('omits the creator when a CONTENT target has no resolvable submission', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-no-creator',
+              orgId: 'org-789',
+              name: 'Action',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:no-creator' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('creator' in sentBody).toBe(false);
+    });
+
     it('omits actorNote from the webhook body entirely when no note is supplied', async () => {
       const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });

@@ -385,6 +385,14 @@ class ActionPublisher {
                 ...customMrtApiParamDecisionPayload,
               };
 
+              // The user the action concerns (USER target, or the content's
+              // creator). Omitted when unresolvable.
+              const creator =
+                getUserFromActionTargetItem(targetItem) ??
+                (targetItem.itemType.kind === 'CONTENT'
+                  ? (await getFullItem())?.creator
+                  : undefined);
+
               const body = {
                 item: {
                   id: targetItem.itemId,
@@ -400,6 +408,7 @@ class ActionPublisher {
                 // can't collide with a user-defined parameter named
                 // `actorNote`. Omitted from the body entirely when absent.
                 ...(actorNote !== undefined ? { actorNote } : {}),
+                ...(creator !== undefined ? { creator } : {}),
               };
 
               const response = await this.fetchHTTP({
