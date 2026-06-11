@@ -41,8 +41,9 @@ export function buildAccountSubmission(
     data: {
       did: profile.did,
       handle: profile.handle,
+      // Always set displayName so MRT falls back to handle instead of DID
+      displayName: profile.displayName ?? profile.handle,
       isActive: true,
-      ...(profile.displayName ? { displayName: profile.displayName } : {}),
       ...(profile.description ? { description: profile.description } : {}),
       ...(profile.avatar ? { avatar: profile.avatar } : {}),
       ...(profile.banner ? { banner: profile.banner } : {}),
