@@ -64,6 +64,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         user_strike_ttl_days: 90,
         is_demo_org: false,
         saml_enabled: false,
+        oidc_enabled: false,
         sso_url: null,
         cert: null,
         appeal_callback_url: null,
