@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Automated Routing &amp; Enforcement - Coop Documentation</title>
+        <title>Automated Enforcement &amp; Routing - Coop Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3ac01ff6.js";
+            window.path_to_searchindex_js = "../searchindex-8c307ef9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-f6f62465.js"></script>
+        <script src="../toc-8fdd957c.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,22 +176,22 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="automated-routing--enforcement"><a class="header" href="#automated-routing--enforcement">Automated Routing &amp; Enforcement</a></h1>
-<p>Coop supports automatically performing actions on submitted items with <a href="#proactive-rules">Proactive Rules</a>, and routing reports to the correct review queue with <a href="#routing-rules">Routing Rules</a>.</p>
+                        <h1 id="automated-enforcement--routing"><a class="header" href="#automated-enforcement--routing">Automated Enforcement &amp; Routing</a></h1>
+<p>Coop supports automatically performing actions on submitted items with <a href="#proactive-rules">Proactive Rules</a>, and routing reports to the correct review queue with <a href="#routing-rules">Routing Rules</a>. Repeated policy violations from users are managed with <a href="#user-strikes">User Strikes</a>.</p>
 <h2 id="rules"><a class="header" href="#rules">Rules</a></h2>
 <p>Both types of rules are built from the same building blocks: conditions that reference <a href="signals.html">Signals</a> and <a href="#matching-banks">Matching Banks</a>. Each rule is scoped to one or more item types, so you can have text-based rules for posts and comments, hash-matching rules for images and videos, or location-based rules for user-submitted content with geographic metadata.</p>
 <p>Rule conditions can be set to <strong>AND</strong> (all must match for the rule to match) or <strong>OR</strong> (the rule matches when any condition matches).</p>
 <h3 id="proactive-rules"><a class="header" href="#proactive-rules">Proactive Rules</a></h3>
-<p>Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule’s configured action is executed automatically. Configure them under <strong>Automated Enforcement → Proactive Rules</strong>.</p>
-<p><img src="../images/rules.png" alt="Proactive Rules"></p>
+<p>Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule’s configured action is executed automatically. Configure them under <strong>Automated Enforcement</strong> → <strong>Proactive Rules</strong>.</p>
+<p><img src="../images/proactive-rules.png" alt="Proactive Rules"></p>
 <p>All Proactive Rules that match an item fire, not just the first one. This means a single piece of content can trigger multiple automated actions if more than one rule matches.</p>
-<p><img src="../images/scam-rule.png" alt="Proactive Rule for scam"></p>
+<p><img src="../images/proactive-rule-scam.png" alt="Proactive Rule for scam"></p>
 <p>The action of a Proactive Rule can be set to <em>Enqueue Item to Manual Review</em> which will convert it to a report that will then be matched against Routing Rules in order to send it to the correct queue.</p>
 <h3 id="routing-rules"><a class="header" href="#routing-rules">Routing Rules</a></h3>
-<p>Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under <strong>Review Console → Routing</strong>.</p>
+<p>Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under <strong>Review Console</strong> → <strong>Routing</strong>.</p>
 <p><img src="../images/routing-rules.png" alt="Routing Rules"></p>
 <p>Rules are evaluated in order, and a report is routed to the queue of the first matching rule. If no rule matches, the report goes to the default queue. Each rule contains one or more conditions.</p>
-<p><img src="../images/hma-routing-rule.png" alt="HMA routing rule"></p>
+<p><img src="../images/routing-rule-hma.png" alt="HMA routing rule"></p>
 <h2 id="matching-banks"><a class="header" href="#matching-banks">Matching Banks</a></h2>
 <p>Matching banks are reusable sets of values you can reference across many rules without repeating yourself. Instead of listing all banned keywords in every rule that needs them, you define a bank once and reference it wherever needed.</p>
 <p><img src="../images/banks.png" alt="Banks"></p>
@@ -209,18 +209,18 @@
 <p>For location matching to work, include a geohash in every item you send to Coop representing the location of the user who created the content.</p>
 <h2 id="user-strikes"><a class="header" href="#user-strikes">User Strikes</a></h2>
 <p>User Strikes track repeated policy violations against individual users on your platform, so escalating responses can be applied automatically. Configure them through policies and actions: Coop keeps count of strikes, and triggers further actions when configured thresholds are crossed.</p>
-<p><img src="../images/coop-user-strikes.png" alt="User Strikes overview, showing the Policy Scores tab with policies and the strike score weight assigned to each one"></p>
-<p>Configure User Strikes under <strong>Automated Enforcement → User Strikes</strong>. The dashboard has four tabs.</p>
+<p><img src="../images/user-strikes.png" alt="User Strikes overview, showing the Policy Scores tab with policies and the strike score weight assigned to each one"></p>
+<p>Configure User Strikes under <strong>Automated Enforcement</strong> → <strong>User Strikes</strong>. The dashboard has four tabs.</p>
 <h3 id="policy-scores"><a class="header" href="#policy-scores">Policy Scores</a></h3>
 <p>Each policy can contribute a different weight to a user’s strike score. A serious policy violation might add 3 to the score, while a minor one might add 1. The strike score is the running total across all violations within the configured strike window.</p>
 <p>Sub-policies can either inherit their parent policy’s weight or override it. Use the <strong>Apply to sub-policies</strong> toggle to set inheritance.</p>
 <h3 id="strike-enabled-actions"><a class="header" href="#strike-enabled-actions">Strike Enabled Actions</a></h3>
 <p>The Strike Enabled Actions tab lists every action your org has defined and lets you toggle which ones add to a user’s strike score when applied. Not every action should count as a strike: for example a “send warning” action might not, while “remove content” or “ban account” should.</p>
-<p><img src="../images/coop-user-strike-actions.png" alt="Strike Enabled Actions tab listing each action with a toggle for whether it adds to the user’s strike score"></p>
+<p><img src="../images/user-strike-actions.png" alt="Strike Enabled Actions tab listing each action with a toggle for whether it adds to the user’s strike score"></p>
 <p>Toggle the <strong>Strike Enabled</strong> column on for any action that should increment the score. Strike score is computed using the policy weights from the previous tab combined with the action that was taken.</p>
 <h3 id="thresholds--settings"><a class="header" href="#thresholds--settings">Thresholds &amp; Settings</a></h3>
 <p>Define how long strikes stay on record and what happens when a user’s strike score crosses a threshold.</p>
-<p><img src="../images/coop-user-strike-thresholds.png" alt="Thresholds &amp; Settings tab showing the Strike Window (TTL) and a list of thresholds with associated actions"></p>
+<p><img src="../images/user-strike-thresholds.png" alt="Thresholds &amp; Settings tab showing the Strike Window (TTL) and a list of thresholds with associated actions"></p>
 <p><strong>Strike Window</strong> controls how long a strike stays on a user’s record. Strikes older than the window are excluded from the running score. The same value is editable from <a href="settings.html#other">Settings → Other → User Strike TTL</a>.</p>
 <p><strong>Thresholds</strong> are score values that, when crossed, trigger an action automatically. Configure as many as you want. For example:</p>
 <ul>
@@ -231,7 +231,7 @@
 <p>Actions in the dropdown come from your org’s <a href="administration.html#actions">defined actions</a>.</p>
 <h3 id="analytics"><a class="header" href="#analytics">Analytics</a></h3>
 <p>A distribution chart of strike scores across users in your organization. Helps you tune thresholds before turning them on: if most active users sit at score 0 to 2 and a small tail is at 8 or above, a threshold at 8 will catch the worst offenders without trapping average users.</p>
-<p><img src="../images/coop-user-strike-analytics.png" alt="Analytics tab showing a histogram of user strike scores across the org"></p>
+<p><img src="../images/user-strike-analytics.png" alt="Analytics tab showing a histogram of user strike scores across the org"></p>
 <h2 id="signals"><a class="header" href="#signals">Signals</a></h2>
 <p>Signals are what rule conditions actually evaluate. A signal takes an item field and returns a score, which the rule condition compares against a threshold. See <a href="signals.html">Signals</a> for more information.</p>
 

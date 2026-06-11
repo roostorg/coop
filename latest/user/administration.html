@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Administration - Coop Documentation</title>
+        <title>Administration &amp; Settings - Coop Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3ac01ff6.js";
+            window.path_to_searchindex_js = "../searchindex-8c307ef9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-f6f62465.js"></script>
+        <script src="../toc-8fdd957c.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,8 +176,29 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="administration"><a class="header" href="#administration">Administration</a></h1>
-<p>Admins manage organization-wide configuration including items, actions, policies, user access, authentication, and integrations settings. All of these settings are accessible under <strong>Settings</strong> in Coop.</p>
+                        <h1 id="administration--settings"><a class="header" href="#administration--settings">Administration &amp; Settings</a></h1>
+<p>Admins manage the organization’s configuration including settings as well as specific configuration for <a href="#item-types">items</a>, <a href="#actions">actions</a>, <a href="#policies">policies</a>, <a href="#user-management">user access</a>, and integrations from the <strong>Settings</strong> menu.</p>
+<h2 id="settings"><a class="header" href="#settings">Settings</a></h2>
+<p>Configure the organization profile and org-wide behavior including single sign-on, appeals, review console, wellness, and more under <strong>Settings</strong>. Many of the toggleable features are off by default, so opt in to the ones applicable to your platform and team.</p>
+<h3 id="organization"><a class="header" href="#organization">Organization</a></h3>
+<p>Identity and contact information for your Coop organization.</p>
+<p><img src="../images/settings-org.png" alt="Settings dashboard showing the Organization tab with fields for organization name, email, website URL, and on-call alert email"></p>
+<p>The On-Call Alert Email requires an email service to be integrated with your Coop deployment. Coop supports email service integration but does not ship with one configured.</p>
+<h3 id="single-sign-on"><a class="header" href="#single-sign-on">Single Sign-on</a></h3>
+<p>Enable SAML-based SSO so users authenticate through your identity provider instead of email and password. Coop supports any SAML 2.0 identity provider. See <a href="../development/deployment.html#single-sign-on">single sign-on</a> in the deployment guide for an example of setup using Okta.</p>
+<p><img src="../images/settings-sso.png" alt="SSO tab in Settings, showing the SAML/SSO enable toggle and fields for SSO URL and SAML Certificate"></p>
+<h3 id="appeals"><a class="header" href="#appeals">Appeals</a></h3>
+<p>Enable user user appeals of decisions made in Coop, and configure your platform’s appeals callback URL, headers, and body.</p>
+<p><img src="../images/settings-appeals.png" alt="Appeals tab in Settings showing toggle to enable appeals, callback URL, headers, and body fields"></p>
+<h3 id="review-console"><a class="header" href="#review-console">Review Console</a></h3>
+<p>Behavior of the <a href="review-console.html">Review Console</a> for reviewers in your org. Configure moderator requirements, queue management behavior, and webhooks.</p>
+<p><img src="../images/settings-review-console.png" alt="Review Console tab in Settings with toggles for Require Policy, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field"></p>
+<h3 id="wellness"><a class="header" href="#wellness">Wellness</a></h3>
+<p>Reviewer wellness controls for media displayed in the Review Console including blur, grayscale, and mute. These help reduce exposure to harmful media during review.</p>
+<p><img src="../images/settings-wellness.png" alt="Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle"></p>
+<h3 id="other"><a class="header" href="#other">Other</a></h3>
+<p>Settings that don’t fit cleanly into the other tabs including configuration for the <a href="../api/partial-items.html">Partial Items</a> endpoint and the ability for job decisions to reference multiple policies.</p>
+<p><img src="../images/settings-other.png" alt="Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers, plus toggles for Reporting Rules, Multiple Policies Per Action, and a User Strike TTL number input"></p>
 <h2 id="item-types"><a class="header" href="#item-types">Item Types</a></h2>
 <p>Item Types represent the different types of entities on your platform. See <a href="concepts.html#item-type">Concepts → Item Type</a> for details.</p>
 <p><img src="../images/items.png" alt="Configuration of an Item Type: a post from the firehose with a schema of fields that get sent to Coop including text, unique ID as well as what format the fields are in"></p>
@@ -193,77 +214,37 @@
 <p>Policies added in Coop’s UI are visible to reviewers directly in the <a href="review-console.html#job-view">Job view</a> of the Review Console.</p>
 <h2 id="user-management"><a class="header" href="#user-management">User management</a></h2>
 <p>Coop uses role-based access controls to ensure the right people can access the right data.</p>
-<p><img src="../images/manage-users.png" alt="User management page in Coop showing different users with different emails and roles assigned to them. There is an Approval Status column and a column showing when they were created"></p>
-<p>You can invite users from <strong>Settings → Users</strong>, either copying the invite link to share directly or configuring an email service to send it automatically.</p>
-<p><img src="../images/invite.png" alt="Coop’s user invitation flow"></p>
+<p><img src="../images/manage-users.png" alt="User management page showing different users with different emails, roles assigned, approval status, and date created"></p>
+<p>You can invite users from <strong>Settings</strong> → <strong>Users</strong>, either copying the invite link to share directly or configuring an email service to send it automatically.</p>
+<p><img src="../images/invite.png" alt="User invitation flow"></p>
 <h3 id="roles"><a class="header" href="#roles">Roles</a></h3>
-<p>Coop comes with seven predefined roles:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th style="text-align: left">User Role</th><th style="text-align: left">Access Review Console</th><th style="text-align: left">View all Queues</th><th style="text-align: left">Create, Delete and Edit Queues</th><th style="text-align: left">Create, Delete and Edit Rules</th><th style="text-align: left">Access NCMEC data</th><th style="text-align: left">Access Insights</th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: left">Admin</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td></tr>
-<tr><td style="text-align: left">Rules Manager</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td><td style="text-align: left">Yes</td></tr>
-<tr><td style="text-align: left">Moderator Manager</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td></tr>
-<tr><td style="text-align: left">Child Safety Moderator</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td></tr>
-<tr><td style="text-align: left">Moderator</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td></tr>
-<tr><td style="text-align: left">Analyst</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">Yes</td></tr>
-<tr><td style="text-align: left">External Moderator</td><td style="text-align: left">Yes</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td><td style="text-align: left">No</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Admin</strong>: manage the entire organization. They have full control over all resources and settings within Coop.</p>
-<p><strong>Rules Manager</strong>: can create, edit, and deploy Live Rules, run retroaction and backtests, view rule insights, manage policies, use the Investigation tool, and bulk-action content. They cannot manage users, queues, or other organization-level settings.</p>
-<p><strong>Moderator Manager</strong>: can view and edit all queues within the Review Console, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.</p>
-<p><strong>Child Safety Moderator</strong>: the same permissions as Moderators, but can also review Child Safety jobs and see previous Child Safety decisions.</p>
-<p><strong>Moderator</strong>: can access the Review Console, but can only review jobs from queues they’ve been given permission to see. They cannot see any Child Safety-related jobs or decisions.</p>
-<p><strong>Analyst</strong>: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Review Console.</p>
-<p><strong>External Moderator</strong>: can only review jobs in the Review Console. They cannot see any decisions or use any other tooling.</p>
-<h2 id="sso"><a class="header" href="#sso">SSO</a></h2>
-<p>Coop supports single sign-on via SAML, e.g. with Okta.</p>
-<h3 id="example-okta"><a class="header" href="#example-okta">Example: Okta</a></h3>
-<p>Configuring Okta SAML for Coop requires:</p>
+<p>Coop ships with seven default roles that cover most team structures out of the box:</p>
 <ul>
-<li>Admin mode in Okta</li>
-<li>Group names that match exactly between Okta and SAML</li>
-<li>Admin permissions in Coop</li>
-<li>Ability to create a custom SAML application</li>
+<li>
+<p><strong>Admin</strong>: manages the entire organization. They have full control over all resources and settings within Coop.</p>
+</li>
+<li>
+<p><strong>Rules Manager</strong>: can create, edit, and deploy Live Rules, run retroaction and backtests, view rule insights, manage policies, use the Investigation tool, and bulk-action content. They cannot manage users, queues, or other organization-level settings.</p>
+</li>
+<li>
+<p><strong>Moderator Manager</strong>: can view and edit all queues within the Review Console, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.</p>
+</li>
+<li>
+<p><strong>Child Safety Moderator</strong>: the same permissions as Moderators, but can also review Child Safety jobs and see previous Child Safety decisions.</p>
+</li>
+<li>
+<p><strong>Moderator</strong>: can access the Review Console, but can only review jobs from queues they’ve been given permission to see. They cannot see any Child Safety-related jobs or decisions.</p>
+</li>
+<li>
+<p><strong>Analyst</strong>: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Review Console.</p>
+</li>
+<li>
+<p><strong>External Moderator</strong>: can only review jobs in the Review Console. They cannot see any decisions or use any other tooling.</p>
+</li>
 </ul>
-<p>To set it up:</p>
-<ol>
-<li>
-<p>Create a <a href="https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm">custom SAML application</a> in Okta with the following settings:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th style="text-align: left">Setting</th><th style="text-align: left">Value</th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: left">Single sign-on URL</td><td style="text-align: left">Your organization’s callback URL (e.g. <code>https://your-coop-instance.com/login/saml/12345/callback</code>). Find this in Coop under <strong>Settings → SSO</strong>.</td></tr>
-<tr><td style="text-align: left">Audience URI (SP Entity ID)</td><td style="text-align: left">Your Coop instance base URL (e.g. <code>https://your-coop-instance.com</code>).</td></tr>
-<tr><td style="text-align: left"><code>email</code> attribute (in <strong>Attribute Statements</strong>)</td><td style="text-align: left"><code>email</code>. This depends on your identity provider’s attribute mappings (e.g. Google SSO may use “Primary Email”).</td></tr>
-</tbody>
-</table>
-</div>
-</li>
-<li>
-<p>In the <strong>Feedback</strong> tab, check <strong>I’m a software vendor. I’d like to integrate my app with Okta</strong>.</p>
-</li>
-<li>
-<p>In your app’s settings, go to the <strong>Sign On</strong> tab. Under <strong>SAML Signing Certificates → SHA-2</strong>, click <strong>Actions → View IdP metadata</strong>.</p>
-</li>
-<li>
-<p>Copy the contents of the XML file. In Coop, go to <strong>Settings → SSO</strong> and paste the XML into the <strong>Identity Provider Metadata</strong> field.</p>
-</li>
-<li>
-<p>On the same page, enter <code>email</code> in the <strong>Attributes</strong> section.</p>
-</li>
-<li>
-<p>In your Okta app under <strong>Assignments</strong>, assign users or groups to your app.</p>
-</li>
-</ol>
+<p>Admins can customize any role under <strong>Settings</strong> → <strong>Users</strong> → <strong>Roles</strong>. Open the menu on any role card to edit its display name, description, and permissions; individual permissions are grouped by area (organization management, rules, manual review, and investigation) and can be toggled on or off. <strong>View Permissions</strong> opens a matrix comparing all roles at a glance.</p>
+<p><img src="../images/role-management.png" alt="Roles Management tab showing role cards for each of the seven default roles, with name, description, user count, and permission count"></p>
+<p>Changes apply immediately to every user assigned that role. Access to the role editor requires the <strong>Manage Roles</strong> permission, which Admins have by default.</p>
 <h2 id="api-keys"><a class="header" href="#api-keys">API Keys</a></h2>
 <p>Coop uses API keys to authenticate requests between your platform and Coop.</p>
 <h3 id="coop-api-key"><a class="header" href="#coop-api-key">Coop API key</a></h3>
@@ -271,7 +252,7 @@
 <pre><code>X-API-KEY: &lt;&lt;apiKey&gt;&gt;
 Content-Type: application/json
 </code></pre>
-<p>To verify that incoming requests to your Action endpoints were sent by Coop, use the webhook signature verification key shown in <strong>Settings → API Keys</strong>. See <a href="../development/api-auth.html">API Keys and Authentication</a> in the Development Guide for implementation details.</p>
+<p>To verify that incoming requests to your Action endpoints were sent by Coop, use the webhook signature verification key shown in <strong>Settings</strong> → <strong>API Keys</strong>. See <a href="../development/api-auth.html">API Keys and Authentication</a> in the Development Guide for implementation details.</p>
 
                     </main>
 
