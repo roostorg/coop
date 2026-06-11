@@ -74,9 +74,10 @@ function inferMediaKindFromUrl(url: string): ScalarType | null {
   } catch {
     return null;
   }
-  const dot = pathname.lastIndexOf('.');
-  if (dot < 0 || dot === pathname.length - 1) return null;
-  const ext = pathname.slice(dot + 1).toLowerCase();
+  // Some CDNs (e.g. Bluesky's bafkrei...@jpeg) use `@<ext>` instead of `.<ext>`
+  const sep = Math.max(pathname.lastIndexOf('.'), pathname.lastIndexOf('@'));
+  if (sep < 0 || sep === pathname.length - 1) return null;
+  const ext = pathname.slice(sep + 1).toLowerCase();
   return MEDIA_EXTENSION_TO_KIND[ext] ?? null;
 }
 
