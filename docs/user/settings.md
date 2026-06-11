@@ -19,7 +19,7 @@ The On-Call Alert Email requires an email service to be integrated with your Coo
 
 ## Single Sign-On
 
-Enable SAML-based SSO so users authenticate through your identity provider instead of email and password. Coop supports any SAML 2.0 IdP. See [Administration → SSO](administration.md#sso) for the step-by-step Okta setup.
+Enable SAML-based SSO so users authenticate through your identity provider instead of email and password. Coop supports any SAML 2.0 IdP. See [Administration → SSO](administration.md#single-sign-on) for the step-by-step Okta setup.
 
 ![SSO tab in Settings, showing the SAML/SSO enable toggle and fields for SSO URL and SAML Certificate](../images/settings-sso.png)
 

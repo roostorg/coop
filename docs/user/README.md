@@ -52,7 +52,7 @@ We recommend beginning by familiarizing yourself with Coop's [basic concepts](co
 
 2. Define your [Item Types](administration.md#item-types); the kinds of content and actors on your platform
 
-3. Input your detailed platform [Policies](administration.html#policies)
+3. Input your detailed platform [Policies](administration.md#policies)
 
 4. Define your [Actions](administration.md#actions) and expose [callback endpoints](../api/actions.md) so Coop can trigger enforcement on your platform
 

@@ -2,7 +2,7 @@
 
 Fetch the current moderation score for a specific user. Scores range from 1 (worst) to 5 (best) and reflect a user's ratio of penalty points to total submissions.
 
-For details on how scores are calculated and what thresholds map to which score values, see [User Score](../user/concepts.md#user-score) in Basic Concepts.
+For details on how scores are calculated and what thresholds map to which score values, see [User Score](../user/concepts.md) in Basic Concepts.
 
 ## Endpoint
 

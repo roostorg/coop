@@ -51,11 +51,9 @@ After the first successful migration and bootstrap:
 
 4. Leave `NCMEC_ENV` unset or non-`production` unless you intentionally want live CyberTipline submissions.
 
-## Settings
-
 ## Single Sign-on
 
-Coop supports single sign-on via SAML, e.g. with Okta.
+Coop supports single sign-on via SAML, e.g. with Okta. Enable SSO and configure the URL and certificate under [Settings → Single Sign-on](../user/administration.md#single-sign-on).
 
 ### Example: Okta
 
