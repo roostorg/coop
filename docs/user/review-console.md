@@ -1,6 +1,6 @@
 # Manual Review & Enforcement
 
-The **Review Console** is where moderators work through reported content.
+The **Review Console** is where moderators work through reported content and make moderation decisions.
 
 ## Queues
 

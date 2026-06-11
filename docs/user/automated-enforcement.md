@@ -1,6 +1,6 @@
-# Automated Routing & Enforcement
+# Automated Enforcement & Routing
 
-Coop supports automatically performing actions on submitted items with [Proactive Rules](#proactive-rules), and routing reports to the correct review queue with [Routing Rules](#routing-rules).
+Coop supports automatically performing actions on submitted items with [Proactive Rules](#proactive-rules), and routing reports to the correct review queue with [Routing Rules](#routing-rules). Repeated policy violations from users are managed with [User Strikes](#user-strikes).
 
 ## Rules
 
@@ -10,25 +10,25 @@ Rule conditions can be set to **AND** (all must match for the rule to match) or 
 
 ### Proactive Rules
 
-Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement → Proactive Rules**.
+Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement** → **Proactive Rules**.
 
-![Proactive Rules](../images/rules.png)
+![Proactive Rules](../images/proactive-rules.png)
 
 All Proactive Rules that match an item fire, not just the first one. This means a single piece of content can trigger multiple automated actions if more than one rule matches.
 
-![Proactive Rule for scam](../images/scam-rule.png)
+![Proactive Rule for scam](../images/proactive-rule-scam.png)
 
 The action of a Proactive Rule can be set to _Enqueue Item to Manual Review_ which will convert it to a report that will then be matched against Routing Rules in order to send it to the correct queue.
 
 ### Routing Rules
 
-Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under **Review Console → Routing**.
+Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under **Review Console** → **Routing**.
 
 ![Routing Rules](../images/routing-rules.png)
 
 Rules are evaluated in order, and a report is routed to the queue of the first matching rule. If no rule matches, the report goes to the default queue. Each rule contains one or more conditions.
 
-![HMA routing rule](../images/hma-routing-rule.png)
+![HMA routing rule](../images/routing-rule-hma.png)
 
 ## Matching Banks
 
@@ -66,7 +66,7 @@ User Strikes track repeated policy violations against individual users on your p
 
 ![User Strikes overview, showing the Policy Scores tab with policies and the strike score weight assigned to each one](../images/user-strikes.png)
 
-Configure User Strikes under **Automated Enforcement → User Strikes**. The dashboard has four tabs.
+Configure User Strikes under **Automated Enforcement** → **User Strikes**. The dashboard has four tabs.
 
 ### Policy Scores
 

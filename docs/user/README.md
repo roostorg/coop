@@ -8,9 +8,9 @@ Coop is the open source review and moderation tool from [ROOST](https://roost.to
 
 - **[Automated Enforcement](automated-enforcement.md)**: Customizable multi-condition rules that evaluate every submitted item against signals to automatically take action or route reports to a human review queue based on your policies
 
-  | [![Rules](../images/rules.png)](../images/rules.png)          | [![Scam Rule](../images/scam-rule.png)](../images/scam-rule.png)               |
-  | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-  | [![Policies](../images/policies.png)](../images/policies.png) | [![Text bank](../images/text-string-bank.png)](../images/text-string-bank.png) |
+  | [![Rules](../images/proactive-rules.png)](../images/proactive-rules.png) | [![Scam Rule](../images/proactive-rule-scam.png)](../images/proactive-rule-scam.png) |
+  | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+  | [![Policies](../images/policies.png)](../images/policies.png)            | [![Text bank](../images/text-string-bank.png)](../images/text-string-bank.png)       |
 
 - **[Review Console](review-console.md)**: Configurable human review queues for moderators to quickly make complex policy-based moderation decisions, with added context and wellness features built-in
 
@@ -22,7 +22,7 @@ Coop is the open source review and moderation tool from [ROOST](https://roost.to
 
   | [![Integrations](../images/integrations.png)](../images/integrations.png) | [![Items](../images/items.png)](../images/items.png)                             |
   | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-  | [![NCMEC job](../images/ncmec-job.png)](../images/ncmec-job.png)          | [![HMA routing](../images/hma-routing-rule.png)](../images/hma-routing-rule.png) |
+  | [![NCMEC job](../images/ncmec-job.png)](../images/ncmec-job.png)          | [![HMA routing](../images/routing-rule-hma.png)](../images/routing-rule-hma.png) |
 
 - **[Metrics & Reporting](metrics.md)**: Dashboards and detailed audit logs for accountability and insights into moderation effectiveness and trends
 
@@ -34,7 +34,7 @@ Coop is the open source review and moderation tool from [ROOST](https://roost.to
   | [![Action](../images/define-action.png)](../images/define-action.png) | [![API keys](../images/api-keys.png)](../images/api-keys.png) |
   | --------------------------------------------------------------------- | ------------------------------------------------------------- |
 
-- **So much more.** Coop supports NCMEC reporting, hash matching, appeals, investigation, bulk actioning, powerful user/role management, location-based enforcement, and single sign-on to name a few. And as an open source project with custom integration support, the potential for adaptability is limitless.
+- **So much more.** Coop supports NCMEC reporting, hash matching, user strikes, appeals, investigation, bulk actioning, powerful user/role management, location-based enforcement, and single sign-on to name a few. And as an open source project with custom integration support, the potential for adaptability is limitless.
 
 ## How Coop works
 
