@@ -25,13 +25,10 @@ import { Navigate } from 'react-router-dom';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 import {
-  GQLSsoMethod,
   GQLUserPermission,
   useGQLGetSsoCallbackUrlsQuery,
   useGQLGetSsoCredentialsQuery,
-  useGQLSwitchSsoMethodMutation,
-  useGQLUpdateSsoOidcCredentialsMutation,
-  useGQLUpdateSsoSamlCredentialsMutation,
+  useGQLUpdateSsoSettingsMutation,
 } from '../../graphql/generated';
 
 gql`
@@ -58,23 +55,15 @@ gql`
     }
   }
 
-  mutation UpdateSSOSamlCredentials($input: UpdateSSOSamlCredentialsInput!) {
-    updateSSOSamlCredentials(input: $input)
-  }
-
-  mutation UpdateSSOOidcCredentials($input: UpdateSSOOidcCredentialsInput!) {
-    updateSSOOidcCredentials(input: $input)
-  }
-
-  mutation SwitchSSOMethod($input: SwitchSSOMethodInput!) {
-    switchSSOMethod(input: $input) {
-        id
-        samlEnabled
-        oidcEnabled
-        ssoUrl
-        ssoCert
-        issuerUrl
-        clientId
+  mutation UpdateSSOSettings($input: UpdateSSOSettingsInput!) {
+    updateSSOSettings(input: $input) {
+      id
+      samlEnabled
+      oidcEnabled
+      ssoUrl
+      ssoCert
+      issuerUrl
+      clientId
     }
   }
 `;
@@ -98,11 +87,7 @@ export default function SSOSettings() {
     variables: { orgId: orgId ?? '' },
     skip: !orgId,
   });
-  const [updateSSOSamlCredentials, { loading: samlUpdateLoading }] =
-    useGQLUpdateSsoSamlCredentialsMutation();
-  const [updateSSOOidcCredentials, { loading: oidcUpdateLoading }] =
-    useGQLUpdateSsoOidcCredentialsMutation();
-  const [switchSSOMethod, { loading: switchLoading }] = useGQLSwitchSsoMethodMutation();
+  const [updateSSOSettings, { loading: updateLoading }] = useGQLUpdateSsoSettingsMutation();
 
   useEffect(() => {
     if (data?.myOrg == null) return;
@@ -150,25 +135,23 @@ export default function SSOSettings() {
 
   const isSamlFormValid = ssoUrl.length > 0 && ssoCert.length > 0;
   const isOidcFormValid =
-    issuerUrl.length > 0 && clientId.length > 0 && (clientSecret.length > 0 || oidcEnabled);
+    issuerUrl.length > 0 && clientId.length > 0 && clientSecret.length > 0;
   const isFormValid = activeTab === 'SAML' ? isSamlFormValid : isOidcFormValid;
-
-  const updateLoading = samlUpdateLoading || oidcUpdateLoading || switchLoading;
 
   const handleSaveSaml = (closeDialog = false) => {
     if (!stringIsAValidUrl(ssoUrl)) {
       toast.error('SSO URL is not a valid URL');
       return;
     }
-    updateSSOSamlCredentials({
-      variables: { input: { samlEnabled: true, ssoUrl, ssoCert } },
+    updateSSOSettings({
+      variables: { input: { saml: { ssoUrl, ssoCert } } },
       refetchQueries: ['GetSSOCredentials'],
       onCompleted: () => {
-        toast.success('SAML credentials updated');
+        toast.success(isSwitching ? 'Switched to SAML' : 'SAML credentials updated');
         if (closeDialog) setShowSwitchDialog(false);
       },
       onError: (e) => {
-        toast.error(`Error updating SAML credentials: ${e.message}`);
+        toast.error(`Error saving SAML settings: ${e.message}`);
         if (closeDialog) setShowSwitchDialog(false);
       },
     });
@@ -180,23 +163,23 @@ export default function SSOSettings() {
       toast.error('Domain is not valid (e.g. your-tenant.auth0.com)');
       return;
     }
-    updateSSOOidcCredentials({
+    updateSSOSettings({
       variables: {
         input: {
-          oidcEnabled: true,
-          issuerUrl: normalizedIssuerUrl,
-          clientId,
-          clientSecret,
+          oidc: {
+            issuerUrl: normalizedIssuerUrl,
+            clientId,
+            clientSecret,
+          },
         },
       },
       refetchQueries: ['GetSSOCredentials'],
       onCompleted: () => {
-        setIssuerUrl(normalizedIssuerUrl);
-        toast.success('OIDC credentials updated');
+        toast.success(isSwitching ? 'Switched to OIDC' : 'OIDC credentials updated');
         if (closeDialog) setShowSwitchDialog(false);
       },
       onError: (e) => {
-        toast.error(`Error updating OIDC credentials: ${e.message}`);
+        toast.error(`Error saving OIDC settings: ${e.message}`);
         if (closeDialog) setShowSwitchDialog(false);
       },
     });
@@ -205,57 +188,8 @@ export default function SSOSettings() {
   const isEnablingFromPassword = currentMethod === 'Password';
 
   const handleSwitch = () => {
-    if (isEnablingFromPassword) {
-      if (activeTab === 'SAML') handleSaveSaml(true);
-      else handleSaveOidc(true);
-      return;
-    }
-    if (activeTab === 'SAML') {
-      if (!stringIsAValidUrl(ssoUrl)) {
-        toast.error('SSO URL is not a valid URL');
-        setShowSwitchDialog(false);
-        return;
-      }
-      switchSSOMethod({
-        variables: { input: { method: GQLSsoMethod.Saml, ssoUrl, ssoCert } },
-        refetchQueries: ['GetSSOCredentials'],
-        onCompleted: () => {
-          toast.success('Switched to SAML');
-          setShowSwitchDialog(false);
-        },
-        onError: (e) => {
-          toast.error(`Error switching SSO method: ${e.message}`);
-          setShowSwitchDialog(false);
-        },
-      });
-    } else {
-      const normalizedIssuerUrl = normalizeIssuerDomain(issuerUrl);
-      if (!isValidIssuerDomain(normalizedIssuerUrl)) {
-        toast.error('Domain is not valid (e.g. your-tenant.auth0.com)');
-        setShowSwitchDialog(false);
-        return;
-      }
-      switchSSOMethod({
-        variables: {
-          input: {
-            method: GQLSsoMethod.Oidc,
-            issuerUrl: normalizedIssuerUrl,
-            clientId,
-            clientSecret,
-          },
-        },
-        refetchQueries: ['GetSSOCredentials'],
-        onCompleted: () => {
-          setIssuerUrl(normalizedIssuerUrl);
-          toast.success('Switched to OIDC');
-          setShowSwitchDialog(false);
-        },
-        onError: (e) => {
-          toast.error(`Error switching SSO method: ${e.message}`);
-          setShowSwitchDialog(false);
-        },
-      });
-    }
+    if (activeTab === 'SAML') handleSaveSaml(true);
+    else handleSaveOidc(true);
   };
 
   const handleSave = () => {
@@ -496,7 +430,7 @@ export default function SSOSettings() {
             <Button variant="outline" onClick={() => setShowSwitchDialog(false)}>
               Cancel
             </Button>
-            <Button loading={isEnablingFromPassword ? updateLoading : switchLoading} onClick={handleSwitch}>
+            <Button loading={updateLoading} onClick={handleSwitch}>
               {isEnablingFromPassword ? `Enable ${activeTab}` : `Switch to ${activeTab}`}
             </Button>
           </DialogFooter>

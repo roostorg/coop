@@ -2576,7 +2576,6 @@ export type GQLMutation = {
   readonly setPluginIntegrationConfig: GQLSetIntegrationConfigResponse;
   readonly signUp: GQLSignUpResponse;
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
-  readonly switchSSOMethod: GQLOrg;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
@@ -2602,8 +2601,7 @@ export type GQLMutation = {
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
-  readonly updateSSOOidcCredentials: Scalars['Boolean']['output'];
-  readonly updateSSOSamlCredentials: Scalars['Boolean']['output'];
+  readonly updateSSOSettings: GQLOrg;
   readonly updateSamlEnabled: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
   readonly updateThreadItemType: GQLMutateThreadItemTypeResponse;
@@ -2856,10 +2854,6 @@ export type GQLMutationSubmitManualReviewDecisionArgs = {
   input: GQLSubmitDecisionInput;
 };
 
-export type GQLMutationSwitchSsoMethodArgs = {
-  input: GQLSwitchSsoMethodInput;
-};
-
 export type GQLMutationUpdateAccountInfoArgs = {
   firstName?: InputMaybe<Scalars['String']['input']>;
   lastName?: InputMaybe<Scalars['String']['input']>;
@@ -2962,12 +2956,8 @@ export type GQLMutationUpdateRoutingRuleArgs = {
   input: GQLUpdateRoutingRuleInput;
 };
 
-export type GQLMutationUpdateSsoOidcCredentialsArgs = {
-  input: GQLUpdateSsoOidcCredentialsInput;
-};
-
-export type GQLMutationUpdateSsoSamlCredentialsArgs = {
-  input: GQLUpdateSsoSamlCredentialsInput;
+export type GQLMutationUpdateSsoSettingsArgs = {
+  input: GQLUpdateSsoSettingsInput;
 };
 
 export type GQLMutationUpdateSamlEnabledArgs = {
@@ -4282,12 +4272,6 @@ export type GQLSsoCallbackUrls = {
   readonly samlIssuer: Scalars['String']['output'];
 };
 
-export const GQLSsoMethod = {
-  Oidc: 'OIDC',
-  Saml: 'SAML',
-} as const;
-
-export type GQLSsoMethod = (typeof GQLSsoMethod)[keyof typeof GQLSsoMethod];
 export type GQLScalarSignalOutputType = {
   readonly __typename?: 'ScalarSignalOutputType';
   readonly scalarType: GQLScalarType;
@@ -4632,15 +4616,6 @@ export type GQLSubmittedJobActionNotFoundError = GQLError & {
 
 export type GQLSupportedLanguages = GQLAllLanguages | GQLLanguages;
 
-export type GQLSwitchSsoMethodInput = {
-  readonly clientId?: InputMaybe<Scalars['String']['input']>;
-  readonly clientSecret?: InputMaybe<Scalars['String']['input']>;
-  readonly issuerUrl?: InputMaybe<Scalars['String']['input']>;
-  readonly method: GQLSsoMethod;
-  readonly ssoCert?: InputMaybe<Scalars['String']['input']>;
-  readonly ssoUrl?: InputMaybe<Scalars['String']['input']>;
-};
-
 export type GQLTableDecisionCount = {
   readonly __typename?: 'TableDecisionCount';
   readonly action_id?: Maybe<Scalars['String']['output']>;
@@ -4947,18 +4922,20 @@ export type GQLUpdateRoutingRuleResponse =
   | GQLQueueDoesNotExistError
   | GQLRoutingRuleNameExistsError;
 
-export type GQLUpdateSsoOidcCredentialsInput = {
+export type GQLUpdateSsoOidcInput = {
   readonly clientId: Scalars['String']['input'];
   readonly clientSecret: Scalars['String']['input'];
   readonly issuerUrl: Scalars['String']['input'];
-  readonly oidcEnabled: Scalars['Boolean']['input'];
 };
 
-export type GQLUpdateSsoSamlCredentialsInput = {
-  readonly samlEnabled: Scalars['Boolean']['input'];
+export type GQLUpdateSsoSamlInput = {
   readonly ssoCert: Scalars['String']['input'];
   readonly ssoUrl: Scalars['String']['input'];
 };
+
+export type GQLUpdateSsoSettingsInput =
+  | { readonly oidc: GQLUpdateSsoOidcInput; readonly saml?: never }
+  | { readonly oidc?: never; readonly saml: GQLUpdateSsoSamlInput };
 
 export type GQLUpdateTextBankInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -6414,7 +6391,6 @@ export type GQLResolversTypes = {
   >;
   RunRetroactionSuccessResponse: ResolverTypeWrapper<GQLRunRetroactionSuccessResponse>;
   SSOCallbackUrls: ResolverTypeWrapper<GQLSsoCallbackUrls>;
-  SSOMethod: GQLSsoMethod;
   ScalarSignalOutputType: ResolverTypeWrapper<GQLScalarSignalOutputType>;
   ScalarType: GQLScalarType;
   SchemaFieldRoles: ResolverTypeWrapper<
@@ -6483,7 +6459,6 @@ export type GQLResolversTypes = {
   SupportedLanguages: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['SupportedLanguages']
   >;
-  SwitchSSOMethodInput: GQLSwitchSsoMethodInput;
   TableDecisionCount: ResolverTypeWrapper<GQLTableDecisionCount>;
   TextBank: ResolverTypeWrapper<GQLTextBank>;
   TextBankType: GQLTextBankType;
@@ -6542,8 +6517,9 @@ export type GQLResolversTypes = {
   UpdateRoutingRuleResponse: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['UpdateRoutingRuleResponse']
   >;
-  UpdateSSOOidcCredentialsInput: GQLUpdateSsoOidcCredentialsInput;
-  UpdateSSOSamlCredentialsInput: GQLUpdateSsoSamlCredentialsInput;
+  UpdateSSOOidcInput: GQLUpdateSsoOidcInput;
+  UpdateSSOSamlInput: GQLUpdateSsoSamlInput;
+  UpdateSSOSettingsInput: GQLUpdateSsoSettingsInput;
   UpdateTextBankInput: GQLUpdateTextBankInput;
   UpdateThreadItemTypeInput: GQLUpdateThreadItemTypeInput;
   UpdateUserItemTypeInput: GQLUpdateUserItemTypeInput;
@@ -7150,7 +7126,6 @@ export type GQLResolversParentTypes = {
   SubmitNcmecReportInput: GQLSubmitNcmecReportInput;
   SubmittedJobActionNotFoundError: GQLSubmittedJobActionNotFoundError;
   SupportedLanguages: GQLResolversUnionTypes<GQLResolversParentTypes>['SupportedLanguages'];
-  SwitchSSOMethodInput: GQLSwitchSsoMethodInput;
   TableDecisionCount: GQLTableDecisionCount;
   TextBank: GQLTextBank;
   ThreadAppealManualReviewJobPayload: ThreadAppealReviewJobPayload;
@@ -7196,8 +7171,9 @@ export type GQLResolversParentTypes = {
   UpdateRolePermissionsInput: GQLUpdateRolePermissionsInput;
   UpdateRoutingRuleInput: GQLUpdateRoutingRuleInput;
   UpdateRoutingRuleResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['UpdateRoutingRuleResponse'];
-  UpdateSSOOidcCredentialsInput: GQLUpdateSsoOidcCredentialsInput;
-  UpdateSSOSamlCredentialsInput: GQLUpdateSsoSamlCredentialsInput;
+  UpdateSSOOidcInput: GQLUpdateSsoOidcInput;
+  UpdateSSOSamlInput: GQLUpdateSsoSamlInput;
+  UpdateSSOSettingsInput: GQLUpdateSsoSettingsInput;
   UpdateTextBankInput: GQLUpdateTextBankInput;
   UpdateThreadItemTypeInput: GQLUpdateThreadItemTypeInput;
   UpdateUserItemTypeInput: GQLUpdateUserItemTypeInput;
@@ -11302,12 +11278,6 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationSubmitManualReviewDecisionArgs, 'input'>
   >;
-  switchSSOMethod?: Resolver<
-    GQLResolversTypes['Org'],
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationSwitchSsoMethodArgs, 'input'>
-  >;
   updateAccountInfo?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
     ParentType,
@@ -11464,17 +11434,11 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateRoutingRuleArgs, 'input'>
   >;
-  updateSSOOidcCredentials?: Resolver<
-    GQLResolversTypes['Boolean'],
+  updateSSOSettings?: Resolver<
+    GQLResolversTypes['Org'],
     ParentType,
     ContextType,
-    RequireFields<GQLMutationUpdateSsoOidcCredentialsArgs, 'input'>
-  >;
-  updateSSOSamlCredentials?: Resolver<
-    GQLResolversTypes['Boolean'],
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationUpdateSsoSamlCredentialsArgs, 'input'>
+    RequireFields<GQLMutationUpdateSsoSettingsArgs, 'input'>
   >;
   updateSamlEnabled?: Resolver<
     GQLResolversTypes['Boolean'],

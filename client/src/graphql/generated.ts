@@ -2508,7 +2508,6 @@ export type GQLMutation = {
   readonly setPluginIntegrationConfig: GQLSetIntegrationConfigResponse;
   readonly signUp: GQLSignUpResponse;
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
-  readonly switchSSOMethod: GQLOrg;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
@@ -2534,8 +2533,7 @@ export type GQLMutation = {
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
-  readonly updateSSOOidcCredentials: Scalars['Boolean']['output'];
-  readonly updateSSOSamlCredentials: Scalars['Boolean']['output'];
+  readonly updateSSOSettings: GQLOrg;
   readonly updateSamlEnabled: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
   readonly updateThreadItemType: GQLMutateThreadItemTypeResponse;
@@ -2788,10 +2786,6 @@ export type GQLMutationSubmitManualReviewDecisionArgs = {
   input: GQLSubmitDecisionInput;
 };
 
-export type GQLMutationSwitchSsoMethodArgs = {
-  input: GQLSwitchSsoMethodInput;
-};
-
 export type GQLMutationUpdateAccountInfoArgs = {
   firstName?: InputMaybe<Scalars['String']['input']>;
   lastName?: InputMaybe<Scalars['String']['input']>;
@@ -2894,12 +2888,8 @@ export type GQLMutationUpdateRoutingRuleArgs = {
   input: GQLUpdateRoutingRuleInput;
 };
 
-export type GQLMutationUpdateSsoOidcCredentialsArgs = {
-  input: GQLUpdateSsoOidcCredentialsInput;
-};
-
-export type GQLMutationUpdateSsoSamlCredentialsArgs = {
-  input: GQLUpdateSsoSamlCredentialsInput;
+export type GQLMutationUpdateSsoSettingsArgs = {
+  input: GQLUpdateSsoSettingsInput;
 };
 
 export type GQLMutationUpdateSamlEnabledArgs = {
@@ -4214,12 +4204,6 @@ export type GQLSsoCallbackUrls = {
   readonly samlIssuer: Scalars['String']['output'];
 };
 
-export const GQLSsoMethod = {
-  Oidc: 'OIDC',
-  Saml: 'SAML',
-} as const;
-
-export type GQLSsoMethod = (typeof GQLSsoMethod)[keyof typeof GQLSsoMethod];
 export type GQLScalarSignalOutputType = {
   readonly __typename: 'ScalarSignalOutputType';
   readonly scalarType: GQLScalarType;
@@ -4564,15 +4548,6 @@ export type GQLSubmittedJobActionNotFoundError = GQLError & {
 
 export type GQLSupportedLanguages = GQLAllLanguages | GQLLanguages;
 
-export type GQLSwitchSsoMethodInput = {
-  readonly clientId?: InputMaybe<Scalars['String']['input']>;
-  readonly clientSecret?: InputMaybe<Scalars['String']['input']>;
-  readonly issuerUrl?: InputMaybe<Scalars['String']['input']>;
-  readonly method: GQLSsoMethod;
-  readonly ssoCert?: InputMaybe<Scalars['String']['input']>;
-  readonly ssoUrl?: InputMaybe<Scalars['String']['input']>;
-};
-
 export type GQLTableDecisionCount = {
   readonly __typename: 'TableDecisionCount';
   readonly action_id?: Maybe<Scalars['String']['output']>;
@@ -4879,18 +4854,20 @@ export type GQLUpdateRoutingRuleResponse =
   | GQLQueueDoesNotExistError
   | GQLRoutingRuleNameExistsError;
 
-export type GQLUpdateSsoOidcCredentialsInput = {
+export type GQLUpdateSsoOidcInput = {
   readonly clientId: Scalars['String']['input'];
   readonly clientSecret: Scalars['String']['input'];
   readonly issuerUrl: Scalars['String']['input'];
-  readonly oidcEnabled: Scalars['Boolean']['input'];
 };
 
-export type GQLUpdateSsoSamlCredentialsInput = {
-  readonly samlEnabled: Scalars['Boolean']['input'];
+export type GQLUpdateSsoSamlInput = {
   readonly ssoCert: Scalars['String']['input'];
   readonly ssoUrl: Scalars['String']['input'];
 };
+
+export type GQLUpdateSsoSettingsInput =
+  | { readonly oidc: GQLUpdateSsoOidcInput; readonly saml?: never }
+  | { readonly oidc?: never; readonly saml: GQLUpdateSsoSamlInput };
 
 export type GQLUpdateTextBankInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -24827,31 +24804,13 @@ export type GQLGetSsoCallbackUrlsQuery = {
   };
 };
 
-export type GQLUpdateSsoSamlCredentialsMutationVariables = Exact<{
-  input: GQLUpdateSsoSamlCredentialsInput;
+export type GQLUpdateSsoSettingsMutationVariables = Exact<{
+  input: GQLUpdateSsoSettingsInput;
 }>;
 
-export type GQLUpdateSsoSamlCredentialsMutation = {
+export type GQLUpdateSsoSettingsMutation = {
   readonly __typename: 'Mutation';
-  readonly updateSSOSamlCredentials: boolean;
-};
-
-export type GQLUpdateSsoOidcCredentialsMutationVariables = Exact<{
-  input: GQLUpdateSsoOidcCredentialsInput;
-}>;
-
-export type GQLUpdateSsoOidcCredentialsMutation = {
-  readonly __typename: 'Mutation';
-  readonly updateSSOOidcCredentials: boolean;
-};
-
-export type GQLSwitchSsoMethodMutationVariables = Exact<{
-  input: GQLSwitchSsoMethodInput;
-}>;
-
-export type GQLSwitchSsoMethodMutation = {
-  readonly __typename: 'Mutation';
-  readonly switchSSOMethod: {
+  readonly updateSSOSettings: {
     readonly __typename: 'Org';
     readonly id: string;
     readonly samlEnabled: boolean;
@@ -25033,6 +24992,21 @@ export type GQLUpdatePartialItemsSettingsMutationVariables = Exact<{
 export type GQLUpdatePartialItemsSettingsMutation = {
   readonly __typename: 'Mutation';
   readonly updatePartialItemsSettings: boolean;
+};
+
+export type GQLUpdateSsoSamlSettingsMutationVariables = Exact<{
+  input: GQLUpdateSsoSettingsInput;
+}>;
+
+export type GQLUpdateSsoSamlSettingsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateSSOSettings: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly samlEnabled: boolean;
+    readonly ssoUrl?: string | null;
+    readonly ssoCert?: string | null;
+  };
 };
 
 export type GQLOrgDefaultSafetySettingsQueryVariables = Exact<{
@@ -44096,107 +44070,9 @@ export type GQLGetSsoCallbackUrlsQueryResult = Apollo.QueryResult<
   GQLGetSsoCallbackUrlsQuery,
   GQLGetSsoCallbackUrlsQueryVariables
 >;
-export const GQLUpdateSsoSamlCredentialsDocument = gql`
-  mutation UpdateSSOSamlCredentials($input: UpdateSSOSamlCredentialsInput!) {
-    updateSSOSamlCredentials(input: $input)
-  }
-`;
-export type GQLUpdateSsoSamlCredentialsMutationFn = Apollo.MutationFunction<
-  GQLUpdateSsoSamlCredentialsMutation,
-  GQLUpdateSsoSamlCredentialsMutationVariables
->;
-
-/**
- * __useGQLUpdateSsoSamlCredentialsMutation__
- *
- * To run a mutation, you first call `useGQLUpdateSsoSamlCredentialsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateSsoSamlCredentialsMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlUpdateSsoSamlCredentialsMutation, { data, loading, error }] = useGQLUpdateSsoSamlCredentialsMutation({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLUpdateSsoSamlCredentialsMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateSsoSamlCredentialsMutation,
-    GQLUpdateSsoSamlCredentialsMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLUpdateSsoSamlCredentialsMutation,
-    GQLUpdateSsoSamlCredentialsMutationVariables
-  >(GQLUpdateSsoSamlCredentialsDocument, options);
-}
-export type GQLUpdateSsoSamlCredentialsMutationHookResult = ReturnType<
-  typeof useGQLUpdateSsoSamlCredentialsMutation
->;
-export type GQLUpdateSsoSamlCredentialsMutationResult =
-  Apollo.MutationResult<GQLUpdateSsoSamlCredentialsMutation>;
-export type GQLUpdateSsoSamlCredentialsMutationOptions =
-  Apollo.BaseMutationOptions<
-    GQLUpdateSsoSamlCredentialsMutation,
-    GQLUpdateSsoSamlCredentialsMutationVariables
-  >;
-export const GQLUpdateSsoOidcCredentialsDocument = gql`
-  mutation UpdateSSOOidcCredentials($input: UpdateSSOOidcCredentialsInput!) {
-    updateSSOOidcCredentials(input: $input)
-  }
-`;
-export type GQLUpdateSsoOidcCredentialsMutationFn = Apollo.MutationFunction<
-  GQLUpdateSsoOidcCredentialsMutation,
-  GQLUpdateSsoOidcCredentialsMutationVariables
->;
-
-/**
- * __useGQLUpdateSsoOidcCredentialsMutation__
- *
- * To run a mutation, you first call `useGQLUpdateSsoOidcCredentialsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateSsoOidcCredentialsMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlUpdateSsoOidcCredentialsMutation, { data, loading, error }] = useGQLUpdateSsoOidcCredentialsMutation({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLUpdateSsoOidcCredentialsMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateSsoOidcCredentialsMutation,
-    GQLUpdateSsoOidcCredentialsMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLUpdateSsoOidcCredentialsMutation,
-    GQLUpdateSsoOidcCredentialsMutationVariables
-  >(GQLUpdateSsoOidcCredentialsDocument, options);
-}
-export type GQLUpdateSsoOidcCredentialsMutationHookResult = ReturnType<
-  typeof useGQLUpdateSsoOidcCredentialsMutation
->;
-export type GQLUpdateSsoOidcCredentialsMutationResult =
-  Apollo.MutationResult<GQLUpdateSsoOidcCredentialsMutation>;
-export type GQLUpdateSsoOidcCredentialsMutationOptions =
-  Apollo.BaseMutationOptions<
-    GQLUpdateSsoOidcCredentialsMutation,
-    GQLUpdateSsoOidcCredentialsMutationVariables
-  >;
-export const GQLSwitchSsoMethodDocument = gql`
-  mutation SwitchSSOMethod($input: SwitchSSOMethodInput!) {
-    switchSSOMethod(input: $input) {
+export const GQLUpdateSsoSettingsDocument = gql`
+  mutation UpdateSSOSettings($input: UpdateSSOSettingsInput!) {
+    updateSSOSettings(input: $input) {
       id
       samlEnabled
       oidcEnabled
@@ -44207,48 +44083,48 @@ export const GQLSwitchSsoMethodDocument = gql`
     }
   }
 `;
-export type GQLSwitchSsoMethodMutationFn = Apollo.MutationFunction<
-  GQLSwitchSsoMethodMutation,
-  GQLSwitchSsoMethodMutationVariables
+export type GQLUpdateSsoSettingsMutationFn = Apollo.MutationFunction<
+  GQLUpdateSsoSettingsMutation,
+  GQLUpdateSsoSettingsMutationVariables
 >;
 
 /**
- * __useGQLSwitchSsoMethodMutation__
+ * __useGQLUpdateSsoSettingsMutation__
  *
- * To run a mutation, you first call `useGQLSwitchSsoMethodMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLSwitchSsoMethodMutation` returns a tuple that includes:
+ * To run a mutation, you first call `useGQLUpdateSsoSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateSsoSettingsMutation` returns a tuple that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - An object with fields that represent the current status of the mutation's execution
  *
  * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
  *
  * @example
- * const [gqlSwitchSsoMethodMutation, { data, loading, error }] = useGQLSwitchSsoMethodMutation({
+ * const [gqlUpdateSsoSettingsMutation, { data, loading, error }] = useGQLUpdateSsoSettingsMutation({
  *   variables: {
  *      input: // value for 'input'
  *   },
  * });
  */
-export function useGQLSwitchSsoMethodMutation(
+export function useGQLUpdateSsoSettingsMutation(
   baseOptions?: Apollo.MutationHookOptions<
-    GQLSwitchSsoMethodMutation,
-    GQLSwitchSsoMethodMutationVariables
+    GQLUpdateSsoSettingsMutation,
+    GQLUpdateSsoSettingsMutationVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useMutation<
-    GQLSwitchSsoMethodMutation,
-    GQLSwitchSsoMethodMutationVariables
-  >(GQLSwitchSsoMethodDocument, options);
+    GQLUpdateSsoSettingsMutation,
+    GQLUpdateSsoSettingsMutationVariables
+  >(GQLUpdateSsoSettingsDocument, options);
 }
-export type GQLSwitchSsoMethodMutationHookResult = ReturnType<
-  typeof useGQLSwitchSsoMethodMutation
+export type GQLUpdateSsoSettingsMutationHookResult = ReturnType<
+  typeof useGQLUpdateSsoSettingsMutation
 >;
-export type GQLSwitchSsoMethodMutationResult =
-  Apollo.MutationResult<GQLSwitchSsoMethodMutation>;
-export type GQLSwitchSsoMethodMutationOptions = Apollo.BaseMutationOptions<
-  GQLSwitchSsoMethodMutation,
-  GQLSwitchSsoMethodMutationVariables
+export type GQLUpdateSsoSettingsMutationResult =
+  Apollo.MutationResult<GQLUpdateSsoSettingsMutation>;
+export type GQLUpdateSsoSettingsMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateSsoSettingsMutation,
+  GQLUpdateSsoSettingsMutationVariables
 >;
 export const GQLDeploymentSettingsDocument = gql`
   query DeploymentSettings {
@@ -45073,6 +44949,60 @@ export type GQLUpdatePartialItemsSettingsMutationOptions =
     GQLUpdatePartialItemsSettingsMutation,
     GQLUpdatePartialItemsSettingsMutationVariables
   >;
+export const GQLUpdateSsoSamlSettingsDocument = gql`
+  mutation UpdateSSOSamlSettings($input: UpdateSSOSettingsInput!) {
+    updateSSOSettings(input: $input) {
+      id
+      samlEnabled
+      ssoUrl
+      ssoCert
+    }
+  }
+`;
+export type GQLUpdateSsoSamlSettingsMutationFn = Apollo.MutationFunction<
+  GQLUpdateSsoSamlSettingsMutation,
+  GQLUpdateSsoSamlSettingsMutationVariables
+>;
+
+/**
+ * __useGQLUpdateSsoSamlSettingsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateSsoSamlSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateSsoSamlSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateSsoSamlSettingsMutation, { data, loading, error }] = useGQLUpdateSsoSamlSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateSsoSamlSettingsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateSsoSamlSettingsMutation,
+    GQLUpdateSsoSamlSettingsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateSsoSamlSettingsMutation,
+    GQLUpdateSsoSamlSettingsMutationVariables
+  >(GQLUpdateSsoSamlSettingsDocument, options);
+}
+export type GQLUpdateSsoSamlSettingsMutationHookResult = ReturnType<
+  typeof useGQLUpdateSsoSamlSettingsMutation
+>;
+export type GQLUpdateSsoSamlSettingsMutationResult =
+  Apollo.MutationResult<GQLUpdateSsoSamlSettingsMutation>;
+export type GQLUpdateSsoSamlSettingsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateSsoSamlSettingsMutation,
+    GQLUpdateSsoSamlSettingsMutationVariables
+  >;
 export const GQLOrgDefaultSafetySettingsDocument = gql`
   query OrgDefaultSafetySettings {
     me {
@@ -45443,9 +45373,7 @@ export const namedOperations = {
     UpdateNcmecOrgSettings: 'UpdateNcmecOrgSettings',
     UpdateRolePermissions: 'UpdateRolePermissions',
     RenameRole: 'RenameRole',
-    UpdateSSOSamlCredentials: 'UpdateSSOSamlCredentials',
-    UpdateSSOOidcCredentials: 'UpdateSSOOidcCredentials',
-    SwitchSSOMethod: 'SwitchSSOMethod',
+    UpdateSSOSettings: 'UpdateSSOSettings',
     UpdateHasAppealsEnabled: 'UpdateHasAppealsEnabled',
     UpdateHasReportingRulesEnabled: 'UpdateHasReportingRulesEnabled',
     UpdateAllowMultiplePoliciesPerAction:
@@ -45459,6 +45387,7 @@ export const namedOperations = {
     UpdateAppealSettings: 'UpdateAppealSettings',
     UpdateOrgInfo: 'UpdateOrgInfo',
     UpdatePartialItemsSettings: 'UpdatePartialItemsSettings',
+    UpdateSSOSamlSettings: 'UpdateSSOSamlSettings',
     SetOrgDefaultSafetySettings: 'SetOrgDefaultSafetySettings',
   },
   Fragment: {

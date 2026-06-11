@@ -273,7 +273,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
           })
           .executeTakeFirst();
       } else {
-        const issuerUrl = input.issuerUrl ? normalizeIssuerUrl(input.issuerUrl) : undefined;
+        const issuerUrl = input.issuerUrl;
 
         await pgQuery
           .updateTable('public.org_settings')
