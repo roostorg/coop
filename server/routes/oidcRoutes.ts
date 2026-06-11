@@ -5,10 +5,7 @@
 import type { Express } from 'express';
 import * as oidcClient from 'openid-client';
 
-import {
-  kyselyUserFindByEmail,
-  kyselyUserUpdateLoginMethods,
-} from '../graphql/datasources/userKyselyPersistence.js';
+import { kyselyUserFindByEmail } from '../graphql/datasources/userKyselyPersistence.js';
 /* eslint-enable import/no-restricted-paths */
 import type { Dependencies } from '../iocContainer/index.js';
 import { discoverOidcConfig } from '../services/SSOService/index.js';
@@ -114,19 +111,7 @@ export function registerOidcRoutes(app: Express, deps: OidcDeps) {
         );
       }
 
-      let loginUser = user;
-      if (!user.loginMethods.includes('oidc')) {
-        const updatedUser = await kyselyUserUpdateLoginMethods(
-          KyselyPg,
-          user.id,
-          [...user.loginMethods, 'oidc'],
-        );
-        if (updatedUser != null) {
-          loginUser = updatedUser;
-        }
-      }
-
-      req.login(loginUser, (err) => {
+      req.login(user, (err) => {
         if (err) return next(err);
         res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
       });
