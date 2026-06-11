@@ -1,6 +1,6 @@
 # Handling Actions
 
-When Coop triggers an Action—either through an automated rule or a moderator's decision in the Review Console—it sends a POST request to the callback URL you configured for that Action. Your server receives this request and performs the corresponding operation.
+When Coop triggers an Action—whether through an automated rule, a moderator's decision in the Review Console, or a user crossing a User Strike threshold—it sends a POST request to the callback URL you configured for that Action. Your server receives this request and performs the corresponding operation.
 
 ## Setting up your callback endpoint
 
@@ -58,6 +58,18 @@ Failed deliveries are retried up to five times with exponential backoff.
 | `id`   | String | Coop's unique rule ID |
 | `name` | String | Rule name             |
 
+### User Strikes
+
+When a user's cumulative strike score crosses a configured threshold, Coop executes the action associated with that threshold using the same callback mechanism described above. The only differences from a rule-triggered action callback are:
+
+- `policies` is always an empty array; the threshold fires on cumulative score, not a specific policy violation in this request
+
+- `rules` is always an empty array; no rule directly triggered the callback
+
+- `actorEmail` and `actorNote` are never present; there is no human actor
+
+For more on setting up and configuring user strikes, thresholds, and associated actions, see [User Strikes](../user/automated-enforcement.md#user-strikes) in the user guide.
+
 ## Appeal decision callback
 
 When a moderator reviews an appeal in the Review Console and makes a decision, Coop sends a POST request to the Appeal callback URL configured in your Appeals Dashboard.
@@ -83,3 +95,20 @@ When a moderator reviews an appeal in the Review Console and makes a decision, C
 | `custom`         | Object         | Not always      | Custom parameters configured in the Appeal Configuration Form under "Body"                                   |
 
 For the full appeal submission flow, see [Appeals](../user/appeals.md).
+
+<style>
+  /* TODO: move this to site-wide style override */
+  table {
+    width: 100%;
+  }
+
+  table td,
+  table thead th {
+    padding: 0.25em 0.5em;
+  }
+
+  table td {
+    text-wrap: balance;
+    word-wrap: anywhere;
+  }
+</style>

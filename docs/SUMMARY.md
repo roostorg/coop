@@ -35,7 +35,6 @@
   - [Report](api/report.md)
   - [Appeal](api/appeal.md)
   - [Policies](api/policies.md)
-  - [User Scores](api/user-scores.md)
   - [Handling Actions](api/actions.md)
   - [Partial Items](api/partial-items.md)
   - [Errors](api/errors.md)
