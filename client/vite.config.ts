@@ -13,6 +13,7 @@ export default defineConfig({
     commonjs(),
   ],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, './src'),
       // Redirect `recharts-scale/es6/getNiceTickValues` through our wrapper so

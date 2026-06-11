@@ -6,7 +6,6 @@ import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/dis
 import { expressMiddleware } from '@as-integrations/express5';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
-import { MultiSamlStrategy } from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   ATTR_EXCEPTION_MESSAGE,
@@ -21,9 +20,7 @@ import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
 import {
-  kyselyUserFindByEmail,
   kyselyUserFindById,
 } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
@@ -34,13 +31,13 @@ import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
+import { registerOidcRoutes } from './routes/oidcRoutes.js';
+import { registerSamlRoutes } from './routes/samlRoutes.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
   ErrorType,
   getErrorsFromAggregateError,
-  makeBadRequestError,
-  makeInternalServerError,
   makeNotFoundError,
   sanitizeError,
   type SerializableError,
@@ -70,6 +67,16 @@ function getCPUInfo() {
     idle,
     total,
   };
+}
+
+declare module 'express-session' {
+  interface SessionData {
+    oidc?: {
+      code_verifier: string;
+      state: string;
+      org_id: string;
+    };
+  }
 }
 
 async function getCPUUsage() {
@@ -145,116 +152,8 @@ export default async function makeApiServer(deps: Dependencies) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.use(
-    new MultiSamlStrategy(
-      {
-        passReqToCallback: true,
-        async getSamlOptions(req, done) {
-          // orgId path param should be set in the /saml/* route handlers.
-          const rawOrgId = req.params['orgId'];
-          const orgId = typeof rawOrgId === 'string' ? rawOrgId : undefined;
-
-          if (!orgId) {
-            return done(
-              makeNotFoundError('orgId not found in path.', {
-                shouldErrorSpan: true,
-              }),
-            );
-          }
-
-          const samlSettings =
-            await deps.OrgSettingsService.getSamlSettings(orgId);
-
-          if (!samlSettings)
-            return done(
-              makeInternalServerError('Unexpected error.', {
-                shouldErrorSpan: true,
-              }),
-            );
-
-          if (!samlSettings.saml_enabled)
-            return done(
-              makeBadRequestError('SAML not enabled for this organization.', {
-                shouldErrorSpan: true,
-              }),
-            );
-
-          done(null, {
-            entryPoint: samlSettings.sso_url as string,
-            idpCert: samlSettings.cert as string,
-            // I could use UI_URL here but technically the API could be hosted
-            // on a different domain in the future so hopefully this is more
-            // robust, not that it will likely matter.
-            callbackUrl: `${deps.ConfigService.uiUrl}/api/v1/saml/login/${orgId}/callback`,
-            issuer: deps.ConfigService.uiUrl,
-          });
-        },
-      },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
-    ),
-  );
-
-  app.get(
-    '/saml/login/:orgId',
-    passport.authenticate('saml', { failureRedirect: '/', failureFlash: true }),
-  );
-
-  app.post(
-    `/saml/login/:orgId/callback`,
-    express.urlencoded(),
-    passport.authenticate('saml', {
-      failureRedirect: '/',
-      failureFlash: true,
-    }),
-    (_req, res) => {
-      res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
-    },
-  );
+  registerSamlRoutes(app, deps);
+  registerOidcRoutes(app, deps);
 
   passport.serializeUser((user, done) => {
     done(null, user.id);

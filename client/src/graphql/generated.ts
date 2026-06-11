@@ -1498,6 +1498,7 @@ export type GQLInviteUserInput = {
 export type GQLInviteUserToken = {
   readonly __typename: 'InviteUserToken';
   readonly email: Scalars['String']['output'];
+  readonly oidcEnabled: Scalars['Boolean']['output'];
   readonly orgId: Scalars['String']['output'];
   readonly role: GQLUserRole;
   readonly samlEnabled: Scalars['Boolean']['output'];
@@ -2039,6 +2040,7 @@ export type GQLLoginInput = {
 };
 
 export const GQLLoginMethod = {
+  Oidc: 'OIDC',
   Password: 'PASSWORD',
   Saml: 'SAML',
 } as const;
@@ -2531,7 +2533,7 @@ export type GQLMutation = {
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
-  readonly updateSSOCredentials: Scalars['Boolean']['output'];
+  readonly updateSSOSettings: GQLOrg;
   readonly updateSamlEnabled: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
   readonly updateThreadItemType: GQLMutateThreadItemTypeResponse;
@@ -2886,8 +2888,8 @@ export type GQLMutationUpdateRoutingRuleArgs = {
   input: GQLUpdateRoutingRuleInput;
 };
 
-export type GQLMutationUpdateSsoCredentialsArgs = {
-  input: GQLUpdateSsoCredentialsInput;
+export type GQLMutationUpdateSsoSettingsArgs = {
+  input: GQLUpdateSsoSettingsInput;
 };
 
 export type GQLMutationUpdateSamlEnabledArgs = {
@@ -3186,6 +3188,7 @@ export type GQLOrg = {
   readonly apiKey: Scalars['String']['output'];
   readonly appealsRoutingRules: ReadonlyArray<GQLRoutingRule>;
   readonly banks?: Maybe<GQLMatchingBanks>;
+  readonly clientId?: Maybe<Scalars['String']['output']>;
   readonly contentTypes: ReadonlyArray<GQLContentType>;
   readonly defaultInterfacePreferences: GQLUserInterfacePreferences;
   readonly email: Scalars['String']['output'];
@@ -3204,6 +3207,7 @@ export type GQLOrg = {
   readonly ignoreCallbackUrl?: Maybe<Scalars['String']['output']>;
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
+  readonly issuerUrl?: Maybe<Scalars['String']['output']>;
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
@@ -3219,6 +3223,7 @@ export type GQLOrg = {
    */
   readonly ncmecMinMediaToReview: Scalars['Int']['output'];
   readonly ncmecReports: ReadonlyArray<GQLNcmecReport>;
+  readonly oidcEnabled: Scalars['Boolean']['output'];
   readonly onCallAlertEmail?: Maybe<Scalars['String']['output']>;
   readonly partialItemsEndpoint?: Maybe<Scalars['String']['output']>;
   readonly partialItemsRequestHeaders?: Maybe<Scalars['JSONObject']['output']>;
@@ -3423,6 +3428,8 @@ export type GQLQuery = {
   readonly getRecentDecisions: ReadonlyArray<GQLManualReviewDecision>;
   readonly getResolvedJobCounts: ReadonlyArray<GQLResolvedJobCount>;
   readonly getResolvedJobsForUser: Scalars['Int']['output'];
+  readonly getSSOCallbackUrls: GQLSsoCallbackUrls;
+  readonly getSSOOidcCallbackUrl?: Maybe<Scalars['String']['output']>;
   readonly getSSORedirectUrl?: Maybe<Scalars['String']['output']>;
   readonly getSkippedJobCounts: ReadonlyArray<GQLSkippedJobCount>;
   readonly getSkippedJobsForUser: Scalars['Int']['output'];
@@ -3531,6 +3538,10 @@ export type GQLQueryGetResolvedJobCountsArgs = {
 
 export type GQLQueryGetResolvedJobsForUserArgs = {
   timeZone: Scalars['String']['input'];
+};
+
+export type GQLQueryGetSsoCallbackUrlsArgs = {
+  orgId: Scalars['String']['input'];
 };
 
 export type GQLQueryGetSsoRedirectUrlArgs = {
@@ -4186,6 +4197,13 @@ export type GQLRunRetroactionSuccessResponse = {
   readonly _?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type GQLSsoCallbackUrls = {
+  readonly __typename: 'SSOCallbackUrls';
+  readonly oidcCallbackUrl: Scalars['String']['output'];
+  readonly samlCallbackUrl: Scalars['String']['output'];
+  readonly samlIssuer: Scalars['String']['output'];
+};
+
 export type GQLScalarSignalOutputType = {
   readonly __typename: 'ScalarSignalOutputType';
   readonly scalarType: GQLScalarType;
@@ -4836,10 +4854,20 @@ export type GQLUpdateRoutingRuleResponse =
   | GQLQueueDoesNotExistError
   | GQLRoutingRuleNameExistsError;
 
-export type GQLUpdateSsoCredentialsInput = {
+export type GQLUpdateSsoOidcInput = {
+  readonly clientId: Scalars['String']['input'];
+  readonly clientSecret: Scalars['String']['input'];
+  readonly issuerUrl: Scalars['String']['input'];
+};
+
+export type GQLUpdateSsoSamlInput = {
   readonly ssoCert: Scalars['String']['input'];
   readonly ssoUrl: Scalars['String']['input'];
 };
+
+export type GQLUpdateSsoSettingsInput =
+  | { readonly oidc: GQLUpdateSsoOidcInput; readonly saml?: never }
+  | { readonly oidc?: never; readonly saml: GQLUpdateSsoSamlInput };
 
 export type GQLUpdateTextBankInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -5545,6 +5573,7 @@ export type GQLInviteUserTokenQuery = {
           readonly role: GQLUserRole;
           readonly orgId: string;
           readonly samlEnabled: boolean;
+          readonly oidcEnabled: boolean;
         };
       };
 };
@@ -24739,6 +24768,60 @@ export type GQLRenameRoleMutation = {
   };
 };
 
+export type GQLGetSsoCredentialsQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLGetSsoCredentialsQuery = {
+  readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly samlEnabled: boolean;
+    readonly oidcEnabled: boolean;
+    readonly ssoUrl?: string | null;
+    readonly ssoCert?: string | null;
+    readonly issuerUrl?: string | null;
+    readonly clientId?: string | null;
+  } | null;
+};
+
+export type GQLGetSsoCallbackUrlsQueryVariables = Exact<{
+  orgId: Scalars['String']['input'];
+}>;
+
+export type GQLGetSsoCallbackUrlsQuery = {
+  readonly __typename: 'Query';
+  readonly getSSOCallbackUrls: {
+    readonly __typename: 'SSOCallbackUrls';
+    readonly samlCallbackUrl: string;
+    readonly samlIssuer: string;
+    readonly oidcCallbackUrl: string;
+  };
+};
+
+export type GQLUpdateSsoSettingsMutationVariables = Exact<{
+  input: GQLUpdateSsoSettingsInput;
+}>;
+
+export type GQLUpdateSsoSettingsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateSSOSettings: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly samlEnabled: boolean;
+    readonly oidcEnabled: boolean;
+    readonly ssoUrl?: string | null;
+    readonly ssoCert?: string | null;
+    readonly issuerUrl?: string | null;
+    readonly clientId?: string | null;
+  };
+};
+
 export type GQLDeploymentSettingsQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -24911,13 +24994,19 @@ export type GQLUpdatePartialItemsSettingsMutation = {
   readonly updatePartialItemsSettings: boolean;
 };
 
-export type GQLUpdateSsoCredentialsMutationVariables = Exact<{
-  input: GQLUpdateSsoCredentialsInput;
+export type GQLUpdateSsoSamlSettingsMutationVariables = Exact<{
+  input: GQLUpdateSsoSettingsInput;
 }>;
 
-export type GQLUpdateSsoCredentialsMutation = {
+export type GQLUpdateSsoSamlSettingsMutation = {
   readonly __typename: 'Mutation';
-  readonly updateSSOCredentials: boolean;
+  readonly updateSSOSettings: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly samlEnabled: boolean;
+    readonly ssoUrl?: string | null;
+    readonly ssoCert?: string | null;
+  };
 };
 
 export type GQLOrgDefaultSafetySettingsQueryVariables = Exact<{
@@ -27473,6 +27562,7 @@ export const GQLInviteUserTokenDocument = gql`
           role
           orgId
           samlEnabled
+          oidcEnabled
         }
       }
       ... on InviteUserTokenExpiredError {
@@ -43768,6 +43858,274 @@ export type GQLRenameRoleMutationOptions = Apollo.BaseMutationOptions<
   GQLRenameRoleMutation,
   GQLRenameRoleMutationVariables
 >;
+export const GQLGetSsoCredentialsDocument = gql`
+  query GetSSOCredentials {
+    me {
+      permissions
+    }
+    myOrg {
+      id
+      samlEnabled
+      oidcEnabled
+      ssoUrl
+      ssoCert
+      issuerUrl
+      clientId
+    }
+  }
+`;
+
+/**
+ * __useGQLGetSsoCredentialsQuery__
+ *
+ * To run a query within a React component, call `useGQLGetSsoCredentialsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetSsoCredentialsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetSsoCredentialsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLGetSsoCredentialsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLGetSsoCredentialsQuery,
+    GQLGetSsoCredentialsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetSsoCredentialsQuery,
+    GQLGetSsoCredentialsQueryVariables
+  >(GQLGetSsoCredentialsDocument, options);
+}
+export function useGQLGetSsoCredentialsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetSsoCredentialsQuery,
+    GQLGetSsoCredentialsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetSsoCredentialsQuery,
+    GQLGetSsoCredentialsQueryVariables
+  >(GQLGetSsoCredentialsDocument, options);
+}
+// @ts-ignore
+export function useGQLGetSsoCredentialsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetSsoCredentialsQuery,
+    GQLGetSsoCredentialsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetSsoCredentialsQuery,
+  GQLGetSsoCredentialsQueryVariables
+>;
+export function useGQLGetSsoCredentialsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetSsoCredentialsQuery,
+        GQLGetSsoCredentialsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetSsoCredentialsQuery | undefined,
+  GQLGetSsoCredentialsQueryVariables
+>;
+export function useGQLGetSsoCredentialsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetSsoCredentialsQuery,
+        GQLGetSsoCredentialsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetSsoCredentialsQuery,
+    GQLGetSsoCredentialsQueryVariables
+  >(GQLGetSsoCredentialsDocument, options);
+}
+export type GQLGetSsoCredentialsQueryHookResult = ReturnType<
+  typeof useGQLGetSsoCredentialsQuery
+>;
+export type GQLGetSsoCredentialsLazyQueryHookResult = ReturnType<
+  typeof useGQLGetSsoCredentialsLazyQuery
+>;
+export type GQLGetSsoCredentialsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLGetSsoCredentialsSuspenseQuery
+>;
+export type GQLGetSsoCredentialsQueryResult = Apollo.QueryResult<
+  GQLGetSsoCredentialsQuery,
+  GQLGetSsoCredentialsQueryVariables
+>;
+export const GQLGetSsoCallbackUrlsDocument = gql`
+  query GetSSOCallbackUrls($orgId: String!) {
+    getSSOCallbackUrls(orgId: $orgId) {
+      samlCallbackUrl
+      samlIssuer
+      oidcCallbackUrl
+    }
+  }
+`;
+
+/**
+ * __useGQLGetSsoCallbackUrlsQuery__
+ *
+ * To run a query within a React component, call `useGQLGetSsoCallbackUrlsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetSsoCallbackUrlsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetSsoCallbackUrlsQuery({
+ *   variables: {
+ *      orgId: // value for 'orgId'
+ *   },
+ * });
+ */
+export function useGQLGetSsoCallbackUrlsQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLGetSsoCallbackUrlsQuery,
+    GQLGetSsoCallbackUrlsQueryVariables
+  > &
+    (
+      | { variables: GQLGetSsoCallbackUrlsQueryVariables; skip?: boolean }
+      | { skip: boolean }
+    ),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetSsoCallbackUrlsQuery,
+    GQLGetSsoCallbackUrlsQueryVariables
+  >(GQLGetSsoCallbackUrlsDocument, options);
+}
+export function useGQLGetSsoCallbackUrlsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetSsoCallbackUrlsQuery,
+    GQLGetSsoCallbackUrlsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetSsoCallbackUrlsQuery,
+    GQLGetSsoCallbackUrlsQueryVariables
+  >(GQLGetSsoCallbackUrlsDocument, options);
+}
+// @ts-ignore
+export function useGQLGetSsoCallbackUrlsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetSsoCallbackUrlsQuery,
+    GQLGetSsoCallbackUrlsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetSsoCallbackUrlsQuery,
+  GQLGetSsoCallbackUrlsQueryVariables
+>;
+export function useGQLGetSsoCallbackUrlsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetSsoCallbackUrlsQuery,
+        GQLGetSsoCallbackUrlsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetSsoCallbackUrlsQuery | undefined,
+  GQLGetSsoCallbackUrlsQueryVariables
+>;
+export function useGQLGetSsoCallbackUrlsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetSsoCallbackUrlsQuery,
+        GQLGetSsoCallbackUrlsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetSsoCallbackUrlsQuery,
+    GQLGetSsoCallbackUrlsQueryVariables
+  >(GQLGetSsoCallbackUrlsDocument, options);
+}
+export type GQLGetSsoCallbackUrlsQueryHookResult = ReturnType<
+  typeof useGQLGetSsoCallbackUrlsQuery
+>;
+export type GQLGetSsoCallbackUrlsLazyQueryHookResult = ReturnType<
+  typeof useGQLGetSsoCallbackUrlsLazyQuery
+>;
+export type GQLGetSsoCallbackUrlsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLGetSsoCallbackUrlsSuspenseQuery
+>;
+export type GQLGetSsoCallbackUrlsQueryResult = Apollo.QueryResult<
+  GQLGetSsoCallbackUrlsQuery,
+  GQLGetSsoCallbackUrlsQueryVariables
+>;
+export const GQLUpdateSsoSettingsDocument = gql`
+  mutation UpdateSSOSettings($input: UpdateSSOSettingsInput!) {
+    updateSSOSettings(input: $input) {
+      id
+      samlEnabled
+      oidcEnabled
+      ssoUrl
+      ssoCert
+      issuerUrl
+      clientId
+    }
+  }
+`;
+export type GQLUpdateSsoSettingsMutationFn = Apollo.MutationFunction<
+  GQLUpdateSsoSettingsMutation,
+  GQLUpdateSsoSettingsMutationVariables
+>;
+
+/**
+ * __useGQLUpdateSsoSettingsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateSsoSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateSsoSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateSsoSettingsMutation, { data, loading, error }] = useGQLUpdateSsoSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateSsoSettingsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateSsoSettingsMutation,
+    GQLUpdateSsoSettingsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateSsoSettingsMutation,
+    GQLUpdateSsoSettingsMutationVariables
+  >(GQLUpdateSsoSettingsDocument, options);
+}
+export type GQLUpdateSsoSettingsMutationHookResult = ReturnType<
+  typeof useGQLUpdateSsoSettingsMutation
+>;
+export type GQLUpdateSsoSettingsMutationResult =
+  Apollo.MutationResult<GQLUpdateSsoSettingsMutation>;
+export type GQLUpdateSsoSettingsMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateSsoSettingsMutation,
+  GQLUpdateSsoSettingsMutationVariables
+>;
 export const GQLDeploymentSettingsDocument = gql`
   query DeploymentSettings {
     me {
@@ -44591,54 +44949,60 @@ export type GQLUpdatePartialItemsSettingsMutationOptions =
     GQLUpdatePartialItemsSettingsMutation,
     GQLUpdatePartialItemsSettingsMutationVariables
   >;
-export const GQLUpdateSsoCredentialsDocument = gql`
-  mutation UpdateSSOCredentials($input: UpdateSSOCredentialsInput!) {
-    updateSSOCredentials(input: $input)
+export const GQLUpdateSsoSamlSettingsDocument = gql`
+  mutation UpdateSSOSamlSettings($input: UpdateSSOSettingsInput!) {
+    updateSSOSettings(input: $input) {
+      id
+      samlEnabled
+      ssoUrl
+      ssoCert
+    }
   }
 `;
-export type GQLUpdateSsoCredentialsMutationFn = Apollo.MutationFunction<
-  GQLUpdateSsoCredentialsMutation,
-  GQLUpdateSsoCredentialsMutationVariables
+export type GQLUpdateSsoSamlSettingsMutationFn = Apollo.MutationFunction<
+  GQLUpdateSsoSamlSettingsMutation,
+  GQLUpdateSsoSamlSettingsMutationVariables
 >;
 
 /**
- * __useGQLUpdateSsoCredentialsMutation__
+ * __useGQLUpdateSsoSamlSettingsMutation__
  *
- * To run a mutation, you first call `useGQLUpdateSsoCredentialsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateSsoCredentialsMutation` returns a tuple that includes:
+ * To run a mutation, you first call `useGQLUpdateSsoSamlSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateSsoSamlSettingsMutation` returns a tuple that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - An object with fields that represent the current status of the mutation's execution
  *
  * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
  *
  * @example
- * const [gqlUpdateSsoCredentialsMutation, { data, loading, error }] = useGQLUpdateSsoCredentialsMutation({
+ * const [gqlUpdateSsoSamlSettingsMutation, { data, loading, error }] = useGQLUpdateSsoSamlSettingsMutation({
  *   variables: {
  *      input: // value for 'input'
  *   },
  * });
  */
-export function useGQLUpdateSsoCredentialsMutation(
+export function useGQLUpdateSsoSamlSettingsMutation(
   baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateSsoCredentialsMutation,
-    GQLUpdateSsoCredentialsMutationVariables
+    GQLUpdateSsoSamlSettingsMutation,
+    GQLUpdateSsoSamlSettingsMutationVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useMutation<
-    GQLUpdateSsoCredentialsMutation,
-    GQLUpdateSsoCredentialsMutationVariables
-  >(GQLUpdateSsoCredentialsDocument, options);
+    GQLUpdateSsoSamlSettingsMutation,
+    GQLUpdateSsoSamlSettingsMutationVariables
+  >(GQLUpdateSsoSamlSettingsDocument, options);
 }
-export type GQLUpdateSsoCredentialsMutationHookResult = ReturnType<
-  typeof useGQLUpdateSsoCredentialsMutation
+export type GQLUpdateSsoSamlSettingsMutationHookResult = ReturnType<
+  typeof useGQLUpdateSsoSamlSettingsMutation
 >;
-export type GQLUpdateSsoCredentialsMutationResult =
-  Apollo.MutationResult<GQLUpdateSsoCredentialsMutation>;
-export type GQLUpdateSsoCredentialsMutationOptions = Apollo.BaseMutationOptions<
-  GQLUpdateSsoCredentialsMutation,
-  GQLUpdateSsoCredentialsMutationVariables
->;
+export type GQLUpdateSsoSamlSettingsMutationResult =
+  Apollo.MutationResult<GQLUpdateSsoSamlSettingsMutation>;
+export type GQLUpdateSsoSamlSettingsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateSsoSamlSettingsMutation,
+    GQLUpdateSsoSamlSettingsMutationVariables
+  >;
 export const GQLOrgDefaultSafetySettingsDocument = gql`
   query OrgDefaultSafetySettings {
     me {
@@ -44924,6 +45288,8 @@ export const namedOperations = {
     HasNcmecReportingEnabled: 'HasNcmecReportingEnabled',
     NcmecOrgSettings: 'NcmecOrgSettings',
     PermissionGroups: 'PermissionGroups',
+    GetSSOCredentials: 'GetSSOCredentials',
+    GetSSOCallbackUrls: 'GetSSOCallbackUrls',
     DeploymentSettings: 'DeploymentSettings',
     OrgSettings: 'OrgSettings',
     OrgDefaultSafetySettings: 'OrgDefaultSafetySettings',
@@ -45007,6 +45373,7 @@ export const namedOperations = {
     UpdateNcmecOrgSettings: 'UpdateNcmecOrgSettings',
     UpdateRolePermissions: 'UpdateRolePermissions',
     RenameRole: 'RenameRole',
+    UpdateSSOSettings: 'UpdateSSOSettings',
     UpdateHasAppealsEnabled: 'UpdateHasAppealsEnabled',
     UpdateHasReportingRulesEnabled: 'UpdateHasReportingRulesEnabled',
     UpdateAllowMultiplePoliciesPerAction:
@@ -45020,7 +45387,7 @@ export const namedOperations = {
     UpdateAppealSettings: 'UpdateAppealSettings',
     UpdateOrgInfo: 'UpdateOrgInfo',
     UpdatePartialItemsSettings: 'UpdatePartialItemsSettings',
-    UpdateSSOCredentials: 'UpdateSSOCredentials',
+    UpdateSSOSamlSettings: 'UpdateSSOSamlSettings',
     SetOrgDefaultSafetySettings: 'SetOrgDefaultSafetySettings',
   },
   Fragment: {

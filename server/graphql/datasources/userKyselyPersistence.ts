@@ -361,6 +361,26 @@ export async function kyselyUserUpdate(
   return row === undefined ? undefined : rowToGraphQLUserParent(row);
 }
 
+export async function kyselyUserUpdateLoginMethods(
+  db: UsersDb,
+  userId: string,
+  loginMethods: readonly LoginMethod[],
+): Promise<GraphQLUserParent | undefined> {
+  const row = await db
+    .updateTable('public.users')
+    .set({
+      login_methods: [...loginMethods],
+      updated_at: new Date(),
+    })
+    .where('id', '=', userId)
+    .returning(USER_COLUMNS)
+    .returning(loginMethodsAsTextArray)
+    .returning(permissionsArray)
+    .executeTakeFirst();
+
+  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+}
+
 export async function kyselyUserDeleteById(
   db: UsersDb,
   userId: string,

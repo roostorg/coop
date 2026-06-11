@@ -4,7 +4,9 @@ import { type ReadonlyObjectDeep } from 'type-fest/source/readonly-deep.js';
 
 import { inject } from '../../iocContainer/index.js';
 import { cached } from '../../utils/caching.js';
+import { encrypt, decrypt } from '../../utils/crypto.js';
 import { MINUTE_MS } from '../../utils/time.js';
+import { normalizeIssuerUrl } from '../SSOService/index.js';
 
 export type OrgSettingsPg = {
   'public.org_settings': {
@@ -19,19 +21,15 @@ export type OrgSettingsPg = {
     allow_multiple_policies_per_action: boolean;
     user_strike_ttl_days: number;
     is_demo_org: boolean;
-  } & (
-    | {
-        saml_enabled: true;
-        sso_url: string;
-        // TODO: rename this to something more descriptive like sso_cert
-        cert: string;
-      }
-    | {
-        saml_enabled: false;
-        sso_url: string | null;
-        cert: string | null;
-      }
-  );
+    saml_enabled: boolean;
+    sso_url: string | null;
+    // TODO: rename this to something more descriptive like sso_cert
+    cert: string | null;
+    oidc_enabled: boolean;
+    client_id: string | null;
+    client_secret: string | null;
+    issuer_url: string | null;
+  }
 };
 type PartialItemsInfo = {
   partialItemsEndpoint?: string;
@@ -66,6 +64,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         user_strike_ttl_days: 90,
         is_demo_org: false,
         saml_enabled: false,
+        oidc_enabled: false,
         sso_url: null,
         cert: null,
         appeal_callback_url: null,
@@ -207,6 +206,7 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     },
     async updateSamlSettings(input: {
       orgId: string;
+      samlEnabled: boolean;
       ssoUrl: string;
       cert: string;
     }) {
@@ -215,12 +215,81 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         await pgQuery
           .updateTable('public.org_settings')
           .where('org_id', '=', input.orgId)
-          .set({ sso_url: input.ssoUrl, cert: input.cert })
+          .set({ saml_enabled: input.samlEnabled, sso_url: input.ssoUrl, cert: input.cert })
           .executeTakeFirst();
         return true;
       } catch (e) {
         return false;
       }
+    },
+    async getOidcSettings(orgId: string) {
+      const row = await pgQuery
+        .selectFrom('public.org_settings')
+        .select(['oidc_enabled', 'client_id', 'client_secret', 'issuer_url'])
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+      if (row?.client_secret) {
+        return { ...row, client_secret: decrypt(row.client_secret) };
+      }
+      return row;
+    },
+    async updateOidcSettings(input: {
+      orgId: string;
+      oidcEnabled: boolean;
+      issuerUrl: string;
+      clientId: string;
+      clientSecret?: string;
+    }) {
+      const issuerUrl = normalizeIssuerUrl(input.issuerUrl);
+
+      await pgQuery
+        .updateTable('public.org_settings')
+        .where('org_id', '=', input.orgId)
+        .set({
+          oidc_enabled: input.oidcEnabled,
+          issuer_url: issuerUrl,
+          client_id: input.clientId,
+          ...(input.clientSecret ? { client_secret: encrypt(input.clientSecret) } : {}),
+        })
+        .executeTakeFirst();
+      return true;
+    },
+    async switchSSOMethod(input: {
+      orgId: string;
+      method: 'saml' | 'oidc';
+      ssoUrl?: string;
+      cert?: string;
+      issuerUrl?: string;
+      clientId?: string;
+      clientSecret?: string;
+    }) {
+      if (input.method === 'saml') {
+        await pgQuery
+          .updateTable('public.org_settings')
+          .where('org_id', '=', input.orgId)
+          .set({
+            saml_enabled: true, oidc_enabled: false,
+            sso_url: input.ssoUrl, cert: input.cert,
+            issuer_url: null, client_id: null, client_secret: null,
+          })
+          .executeTakeFirst();
+      } else {
+        const issuerUrl = input.issuerUrl;
+
+        await pgQuery
+          .updateTable('public.org_settings')
+          .where('org_id', '=', input.orgId)
+          .set({
+            saml_enabled: false,
+            oidc_enabled: true,
+            issuer_url: issuerUrl,
+            client_id: input.clientId,
+            client_secret: input.clientSecret ? encrypt(input.clientSecret) : undefined,
+            sso_url: null, cert: null,
+          })
+          .executeTakeFirst();
+      }
+      return true;
     },
     async updateHasAppealsEnabled(input: { orgId: string; enabled: boolean }) {
       await ensureOrgSettingsRow(input.orgId);
