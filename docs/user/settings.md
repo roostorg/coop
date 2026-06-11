@@ -2,7 +2,7 @@
 
 Admins configure organization-wide behavior under **Settings**. Most of these settings are off by default, so opt in to the ones you want. Use the side menu to switch between tabs.
 
-![Settings dashboard showing the Organization tab with fields for organization name, email, website URL, and on-call alert email](../images/coop-org-settings.png)
+![Settings dashboard showing the Organization tab with fields for organization name, email, website URL, and on-call alert email](../images/settings-org.png)
 
 ## Organization
 
@@ -21,7 +21,7 @@ The On-Call Alert Email requires an email service to be integrated with your Coo
 
 Enable SAML-based SSO so users authenticate through your identity provider instead of email and password. Coop supports any SAML 2.0 IdP. See [Administration → SSO](administration.md#sso) for the step-by-step Okta setup.
 
-![SSO tab in Settings, showing the SAML/SSO enable toggle and fields for SSO URL and SAML Certificate](../images/coop-sso-settings.png)
+![SSO tab in Settings, showing the SAML/SSO enable toggle and fields for SSO URL and SAML Certificate](../images/settings-sso.png)
 
 | Field            | Purpose                                             |
 | :--------------- | :-------------------------------------------------- |
@@ -33,7 +33,7 @@ Enable SAML-based SSO so users authenticate through your identity provider inste
 
 Configure how Coop handles user appeals of decisions made in Coop.
 
-![Appeals tab in Settings showing toggle to enable appeals, callback URL, headers, and body fields](../images/coop-appeals-settings.png)
+![Appeals tab in Settings showing toggle to enable appeals, callback URL, headers, and body fields](../images/settings-appeals.png)
 
 | Field                   | Purpose                                                                       |
 | :---------------------- | :---------------------------------------------------------------------------- |
@@ -46,7 +46,7 @@ Configure how Coop handles user appeals of decisions made in Coop.
 
 Behavior of the [Review Console](review-console.md) for reviewers in your org.
 
-![Review Console tab in Settings with toggles for Require Policy, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/coop-review-console-settings.png)
+![Review Console tab in Settings with toggles for Require Policy, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
 
 | Field                           | Purpose                                                                                                                              |
 | :------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------- |
@@ -60,7 +60,7 @@ Behavior of the [Review Console](review-console.md) for reviewers in your org.
 
 Reviewer wellness controls for content displayed in the Review Console. These help reduce exposure to harmful media during review.
 
-![Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle](../images/org-wellness-settings.png)
+![Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle](../images/settings-wellness.png)
 
 | Field       | Purpose                                                                                                                       |
 | :---------- | :---------------------------------------------------------------------------------------------------------------------------- |
@@ -72,7 +72,7 @@ Reviewer wellness controls for content displayed in the Review Console. These he
 
 Settings that don't fit cleanly into the other tabs.
 
-![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers, plus toggles for Reporting Rules, Multiple Policies Per Action, and a User Strike TTL number input](../images/coop-other-settings.png)
+![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers, plus toggles for Reporting Rules, Multiple Policies Per Action, and a User Strike TTL number input](../images/settings-other.png)
 
 | Field                         | Purpose                                                                                                                                                                                                      |
 | :---------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
