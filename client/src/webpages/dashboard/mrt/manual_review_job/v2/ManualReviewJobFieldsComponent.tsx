@@ -58,6 +58,7 @@ const MEDIA_EXTENSION_TO_KIND: Readonly<Record<string, ScalarType>> = {
   mkv: 'VIDEO',
   avi: 'VIDEO',
   flv: 'VIDEO',
+  m3u8: 'VIDEO',
   mp3: 'AUDIO',
   m4a: 'AUDIO',
   wav: 'AUDIO',
