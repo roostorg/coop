@@ -318,11 +318,12 @@ const makeTapConnectorWorker = inject(
           .authorDid?.id;
         if (authorDid) postAuthorDids.add(authorDid);
       }
-      // Fire-and-forget — don't block submission on profile fetches.
-      // Account items will appear in the items pipeline shortly after.
-      for (const did of postAuthorDids) {
-        void enrichAuthorAccount(did);
-      }
+      // Await enrichment so account items exist before posts that reference
+      // them are submitted. With the hashtag filter, batches usually have
+      // only a few new DIDs, so this stays fast.
+      await Promise.all(
+        Array.from(postAuthorDids).map((did) => enrichAuthorAccount(did)),
+      );
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
       if (rawSubmissions.length === 0) return;
