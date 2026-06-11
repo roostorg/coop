@@ -33,6 +33,11 @@ import {
   fetchBskyProfile,
   submitAccountItem,
 } from './accountEnrichment.js';
+import {
+  buildPostSubmission,
+  fetchBskyPost,
+  submitPostItem,
+} from './postEnrichment.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type ReportingService } from '../reportingService/index.js';
 import { type ManualReviewToolService } from '../manualReviewToolService/index.js';
@@ -101,6 +106,7 @@ const makeTapConnectorWorker = inject(
     // Profile enrichment cache: DIDs we've already attempted to fetch.
     // Long-lived for the process lifetime so we don't refetch.
     const enrichedDids = new Set<string>();
+    const enrichedPosts = new Set<string>();
 
     function isDuplicate(itemId: string): boolean {
       const now = Date.now();
@@ -268,6 +274,32 @@ const makeTapConnectorWorker = inject(
       await itemSubmissionQueueBulkWrite([message]);
     }
 
+    async function enrichReferencedPost(uri: string): Promise<void> {
+      if (enrichedPosts.has(uri)) return;
+      enrichedPosts.add(uri);
+      try {
+        const post = await fetchBskyPost(uri);
+        if (!post) {
+          console.log(`[TapConnector] enrich: no post for ${uri}`);
+          return;
+        }
+        const rawSubmission = buildPostSubmission(uri, post);
+        if (!rawSubmission) {
+          console.log(`[TapConnector] enrich: build post failed for ${uri}`);
+          return;
+        }
+        await submitPostItem({
+          rawSubmission,
+          orgId: config.orgId,
+          moderationConfigService,
+          submitViaItemsPath,
+        });
+        console.log(`[TapConnector] enrich: submitted post ${uri}`);
+      } catch (err) {
+        console.log(`[TapConnector] enrich: post error for ${uri}:`, err);
+      }
+    }
+
     async function enrichAuthorAccount(did: string): Promise<void> {
       if (enrichedDids.has(did)) return;
       enrichedDids.add(did);
@@ -323,6 +355,22 @@ const makeTapConnectorWorker = inject(
       // only a few new DIDs, so this stays fast.
       await Promise.all(
         Array.from(postAuthorDids).map((did) => enrichAuthorAccount(did)),
+      );
+
+      // Collect reply parent/root URIs and fetch those posts so threads
+      // resolve in MRT instead of showing raw at:// links.
+      const replyUris = new Set<string>();
+      for (const sub of rawSubmissions) {
+        if (!('typeId' in sub) || sub.typeId !== 'ATproto-post') continue;
+        const data = sub.data as {
+          replyParent?: { id?: string };
+          replyRoot?: { id?: string };
+        };
+        if (data.replyParent?.id) replyUris.add(data.replyParent.id);
+        if (data.replyRoot?.id) replyUris.add(data.replyRoot.id);
+      }
+      await Promise.all(
+        Array.from(replyUris).map((uri) => enrichReferencedPost(uri)),
       );
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
