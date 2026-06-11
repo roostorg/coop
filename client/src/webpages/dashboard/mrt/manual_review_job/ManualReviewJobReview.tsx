@@ -1762,7 +1762,9 @@ function ManualReviewJobReviewImpl(props: {
               {enqueueGate.modalElement}
             </div>
             <div className="shrink-0 pt-3">
-              <div
+              <button
+                type="button"
+                disabled={!canBeSubmitted}
                 className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
                   canBeSubmitted
                     ? 'border-none text-white cursor-pointer bg-coop-blue hover:bg-coop-blue-hover focus:bg-coop-blue active:bg-coop-blue'
@@ -1860,21 +1862,21 @@ function ManualReviewJobReviewImpl(props: {
                                   (policy) => policy.id,
                                 ),
                                 actionIdsToMrtApiParamDecisionPayload: {
+                                  // Only CustomActions have an `id`; including
+                                  // built-ins or MOVE would add an `"undefined"`
+                                  // key.
                                   ...selectedPrimaryActions
                                     .filter(
-                                      (it) =>
-                                        !(
-                                          'type' in it.action &&
-                                          it.action.type !== 'MOVE'
-                                        ),
+                                      (
+                                        it,
+                                      ): it is ManualReviewJobEnqueuedPrimaryActionData & {
+                                        action: CustomAction;
+                                      } => !('type' in it.action),
                                     )
                                     .reduce(
                                       (acc, action) => ({
                                         ...acc,
-                                        // This cast is safe because of the filter
-                                        // step above, but typescript doesn't
-                                        // narrow the type based on that
-                                        [(action.action as CustomAction).id]:
+                                        [action.action.id]:
                                           action.customMrtApiParamDecisionPayload,
                                       }),
                                       {},
@@ -1941,7 +1943,7 @@ function ManualReviewJobReviewImpl(props: {
                 ) : (
                   <div className="text-base">Submit</div>
                 )}
-              </div>
+              </button>
             </div>
           </div>
         ) : null}
