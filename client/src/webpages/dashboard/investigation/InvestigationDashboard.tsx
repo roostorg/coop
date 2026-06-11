@@ -20,10 +20,11 @@ gql`
 
 export default function InvestigationDashboard() {
   const [searchParams] = useSearchParams();
-  const [id, typeId, submissionTime] = [
+  const [id, typeId, submissionTime, ip] = [
     searchParams.get('id') ?? undefined,
     searchParams.get('typeId') ?? undefined,
     searchParams.get('submissionTime') ?? undefined,
+    searchParams.get('ip') ?? undefined,
   ];
 
   return (
@@ -37,9 +38,15 @@ export default function InvestigationDashboard() {
       />
       <div className="mb-4 divider" />
       <ItemInvestigation
+        // Remount when the investigated item (or IP) in the URL changes so the
+        // component re-seeds its internal state and refetches. Without this,
+        // navigating between items (e.g. via the "Other items from IP" panel)
+        // updates the URL but leaves the previously selected item on screen.
+        key={`${id ?? ''}-${typeId ?? ''}-${submissionTime ?? ''}-${ip ?? ''}`}
         itemId={id}
         itemTypeId={typeId}
         submissionTime={submissionTime}
+        ipAddress={ip}
       />
     </div>
   );

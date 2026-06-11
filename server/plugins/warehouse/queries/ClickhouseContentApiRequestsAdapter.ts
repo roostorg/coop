@@ -6,6 +6,7 @@ import { SIX_MONTHS_MS } from '../../../utils/time.js';
 import { formatClickhouseQuery } from '../utils/clickhouseSql.js';
 import {
   type ContentApiImageCountRecord,
+  type ContentApiRequestByIpRecord,
   type ContentApiRequestCountRecord,
   type ContentApiRequestQueryOptions,
   type ContentApiRequestRecord,
@@ -22,6 +23,11 @@ interface ClickhouseContentApiRow {
   item_creator_type_id: string | null;
   item_type_version: string;
   item_type_schema_variant: string;
+}
+
+interface ClickhouseContentApiByIpRow extends ClickhouseContentApiRow {
+  item_id: string;
+  item_type_id: string;
 }
 
 interface CountRow {
@@ -79,6 +85,55 @@ export class ClickhouseContentApiRequestsAdapter implements IContentApiRequestsA
     const rows = (await this.query(sql, params)) as ClickhouseContentApiRow[];
 
     return rows.map<ContentApiRequestRecord>((row) => ({
+      submissionId: row.submission_id,
+      itemData: row.item_data,
+      itemTypeVersion: row.item_type_version,
+      itemTypeSchemaVariant: row.item_type_schema_variant,
+      itemCreatorId: row.item_creator_id,
+      itemCreatorTypeId: row.item_creator_type_id,
+      occurredAt: new Date(row.ts),
+    }));
+  }
+
+  async getSuccessfulRequestsByIpAddress(
+    orgId: string,
+    ipAddress: string,
+    options?: ContentApiRequestQueryOptions,
+  ): Promise<ReadonlyArray<ContentApiRequestByIpRecord>> {
+    const { lookbackWindowMs = SIX_MONTHS_MS } = options ?? {};
+
+    const lookbackStart = new Date(Date.now() - Math.max(1, lookbackWindowMs));
+    const lookbackStartDate = lookbackStart.toISOString().slice(0, 10);
+
+    const sql = `
+      SELECT
+        item_id,
+        item_type_id,
+        item_data,
+        submission_id,
+        ts,
+        item_creator_id,
+        item_creator_type_id,
+        item_type_version,
+        item_type_schema_variant
+      FROM analytics.CONTENT_API_REQUESTS
+      WHERE org_id = ?
+        AND event = 'REQUEST_SUCCEEDED'
+        AND item_ip_address = ?
+        AND item_ip_address != ''
+        AND ds >= toDate(?)
+      ORDER BY ts DESC
+    `;
+
+    const rows = (await this.query(sql, [
+      orgId,
+      ipAddress,
+      lookbackStartDate,
+    ])) as ClickhouseContentApiByIpRow[];
+
+    return rows.map<ContentApiRequestByIpRecord>((row) => ({
+      itemId: row.item_id,
+      itemTypeId: row.item_type_id,
       submissionId: row.submission_id,
       itemData: row.item_data,
       itemTypeVersion: row.item_type_version,

@@ -308,6 +308,56 @@ describe('POST Report', () => {
     ]);
   });
 
+  test('Should accept non-Content (user) items in additional items', async () => {
+    const payload = {
+      reporter: { kind: 'user', id: '5123521', typeId: contentTypeId },
+      reportedAt: new Date().toISOString(),
+      reportedForReason: { policyId: '1231241254', reason: 'Some Reason' },
+      reportedItem: {
+        id: '21342135',
+        typeId: contentTypeId,
+        data: { name: 'Some name' },
+      },
+      additionalItems: [
+        {
+          id: '12345123',
+          typeId: userTypeId,
+          data: { name: 'Some name' },
+        },
+      ],
+    };
+
+    await request
+      .post('/api/v1/report')
+      .set('x-api-key', apiKey)
+      .send(payload)
+      .expect(201);
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    expect(getBulkWriteMock().mock.calls[0]).toMatchObject([
+      'REPORTING_SERVICE.REPORTS',
+      [
+        {
+          org_id: orgId,
+          reported_item_id: '21342135',
+          reported_item_type_kind: 'CONTENT',
+          additional_items: [
+            {
+              id: '12345123',
+              typeIdentifier: {
+                id: userTypeId,
+                version: expect.any(String),
+                schemaVariant: 'original',
+              },
+              data: { name: 'Some name' },
+            },
+          ],
+        },
+      ],
+    ]);
+  });
+
   test('Should return the expected response for content report and additional items', async () => {
     const payload = {
       reporter: { kind: 'user', id: '5123521', typeId: contentTypeId },

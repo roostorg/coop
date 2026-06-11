@@ -10,6 +10,16 @@ export interface ContentApiRequestRecord {
   occurredAt: Date;
 }
 
+/**
+ * Like {@link ContentApiRequestRecord} but also carries the item's identity,
+ * since IP-based lookups can return submissions across many different items
+ * (and item types).
+ */
+export interface ContentApiRequestByIpRecord extends ContentApiRequestRecord {
+  itemId: string;
+  itemTypeId: string;
+}
+
 export interface ContentApiRequestQueryOptions {
   latestOnly?: boolean;
   lookbackWindowMs?: number;
@@ -42,6 +52,17 @@ export interface IContentApiRequestsAdapter {
     item: ItemIdentifier,
     options?: ContentApiRequestQueryOptions,
   ): Promise<ReadonlyArray<ContentApiRequestRecord>>;
+
+  /**
+   * Returns successful submissions whose denormalized `item_ip_address` matches
+   * the given IP, ordered most-recent first. Used by investigation to find every
+   * item associated with an IP beyond Scylla's TTL window.
+   */
+  getSuccessfulRequestsByIpAddress(
+    orgId: string,
+    ipAddress: string,
+    options?: ContentApiRequestQueryOptions,
+  ): Promise<ReadonlyArray<ContentApiRequestByIpRecord>>;
 
   getSuccessfulRequestCountsByDay(
     orgId: string,

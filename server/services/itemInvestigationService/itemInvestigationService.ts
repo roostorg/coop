@@ -5,6 +5,7 @@ import _ from 'lodash';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import {
+  type ContentApiRequestByIpRecord,
   type ContentApiRequestRecord,
   type IContentApiRequestsAdapter,
 } from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
@@ -207,6 +208,16 @@ export class ItemInvestigationService {
           ]
         : [];
 
+    // Denormalize the IP address (if the item type maps an `ipAddress` field
+    // role) so it can be indexed by the `item_submission_by_ip` materialized
+    // view for reverse lookups during investigation.
+    const ipAddress = getFieldValueForRole(
+      itemType.schema,
+      itemType.schemaFieldRoles,
+      'ipAddress',
+      item.data,
+    );
+
     const itemIdentifier = { id: item.itemId, typeId: itemType.id };
     const syntheticThreadId = getSyntheticThreadId(itemIdentifier, threadId);
 
@@ -237,6 +248,7 @@ export class ItemInvestigationService {
         item_type_schema_field_roles: jsonStringify(itemType.schemaFieldRoles),
         item_type_schema: jsonStringify(itemType.schema),
         item_type_schema_variant: itemType.schemaVariant,
+        item_ip_address: ipAddress ?? null,
       },
     });
 
@@ -943,6 +955,163 @@ export class ItemInvestigationService {
         break;
       }
       emptyQueryResult = true;
+    }
+  }
+
+  /**
+   * Reverse lookup of every item associated with a given IP address, mirroring
+   * `getItemSubmissionsByCreator` but keyed on the denormalized
+   * `item_ip_address` column. Items are returned in reverse chronological order.
+   *
+   * This reads from two tiers: the Scylla `item_submission_by_ip` materialized
+   * view (hot, ~30 days) first, then falls back to the ClickHouse analytics
+   * warehouse for older history, de-duplicating items already seen in Scylla.
+   */
+  async *getItemSubmissionsByIpAddress(opts: {
+    orgId: string;
+    ipAddress: string;
+    limit?: number;
+    oldestReturnedSubmissionDate?: Date;
+    earliestReturnedSubmissionDate?: Date;
+    latestSubmissionsOnly?: boolean;
+  }): AsyncIterable<SubmissionsForItemWithTypeIdentifier> {
+    const {
+      orgId,
+      ipAddress,
+      limit = 100,
+      // NB: `item_synthetic_created_at` is the item's platform `createdAt` (per
+      // the schema field role), NOT its submission/write time. User accounts
+      // commonly have a `createdAt` from months or years ago, so a recent
+      // lower bound would silently drop them from IP results even though their
+      // submission is freshly indexed. Scylla's write-time TTL already bounds
+      // what's actually present, so we search the full createdAt range here.
+      // We also pad the upper bound into the future to tolerate items whose
+      // `createdAt` is slightly ahead of now (clock skew / future-dated data).
+      oldestReturnedSubmissionDate = new Date(0),
+      earliestReturnedSubmissionDate = new Date(Date.now() + DAY_MS),
+      latestSubmissionsOnly = true,
+    } = opts;
+
+    const seenItemKeys = new Set<string>();
+    let returnedItemCount = 0;
+
+    // Tier 1: Scylla hot storage (bounded by the table's ~30-day write TTL).
+    let emptyQueryResult = true;
+    let searchStartDate = earliestReturnedSubmissionDate;
+    const now = Date.now();
+    while (returnedItemCount < limit) {
+      const stream = this.selectStream({
+        from: 'item_submission_by_ip',
+        select: '*',
+        where: [
+          ['org_id', '=', orgId],
+          ['item_ip_address', '=', ipAddress],
+          ['item_synthetic_created_at', '<', searchStartDate],
+          ['item_synthetic_created_at', '>', oldestReturnedSubmissionDate],
+        ],
+        limit: Math.floor(
+          (limit - returnedItemCount) * ARTIFICIAL_LIMIT_MULTIPLIER,
+        ),
+        sortOrder: [['item_synthetic_created_at', 'DESC']],
+      });
+
+      const groupedStream = chunkAsyncIterableByKey(
+        stream,
+        (it: ScyllaItemSubmissionsRow) => jsonStringify(it.item_identifier),
+      );
+
+      for await (const itemGroup of groupedStream) {
+        const { latestSubmission, priorSubmissions } =
+          partitionLatestAndPriorSubmissions(itemGroup);
+        const difference = Math.abs(
+          now - latestSubmission.item_submission_time.getTime(),
+        );
+        this.meter.scyllaRecordAgeHistogram.record(
+          Math.floor(difference / DAY_MS),
+        );
+
+        seenItemKeys.add(jsonStringify(latestSubmission.item_identifier));
+        yield {
+          latestSubmission:
+            dbRowToItemSubmissionWithItemTypeIdentifier(latestSubmission),
+          priorSubmissions: latestSubmissionsOnly
+            ? undefined
+            : priorSubmissions.map(dbRowToItemSubmissionWithItemTypeIdentifier),
+        };
+        returnedItemCount++;
+        emptyQueryResult = false;
+        if (returnedItemCount >= limit) {
+          break;
+        }
+        searchStartDate = latestSubmission.item_synthetic_created_at;
+      }
+      if (emptyQueryResult) {
+        break;
+      }
+      emptyQueryResult = true;
+    }
+
+    if (returnedItemCount >= limit) {
+      return;
+    }
+
+    // Tier 2: ClickHouse analytics warehouse (history beyond Scylla's TTL).
+    const records = await this.contentApiRequestsAdapter
+      .getSuccessfulRequestsByIpAddress(orgId, ipAddress, {
+        lookbackWindowMs: 6 * MONTH_MS,
+      })
+      .catch(() => [] as ContentApiRequestByIpRecord[]);
+
+    // Rows arrive ordered most-recent first, so the first record per item is
+    // its latest submission.
+    const recordsByItem = new Map<string, ContentApiRequestByIpRecord[]>();
+    for (const record of records) {
+      const key = jsonStringify({
+        id: record.itemId,
+        type_id: record.itemTypeId,
+      });
+      if (seenItemKeys.has(key)) {
+        continue;
+      }
+      const group = recordsByItem.get(key) ?? [];
+      group.push(record);
+      recordsByItem.set(key, group);
+    }
+
+    const toSubmission = (record: ContentApiRequestByIpRecord) =>
+      dbRowToItemSubmissionWithItemTypeIdentifier({
+        submission_id: record.submissionId as SubmissionId,
+        item_identifier: {
+          id: tryParseNonEmptyString(record.itemId),
+          type_id: tryParseNonEmptyString(record.itemTypeId),
+        },
+        item_type_version: record.itemTypeVersion,
+        item_creator_identifier:
+          record.itemCreatorId && record.itemCreatorTypeId
+            ? {
+                id: tryParseNonEmptyString(record.itemCreatorId),
+                type_id: tryParseNonEmptyString(record.itemCreatorTypeId),
+              }
+            : ({ id: '', type_id: '' } as const),
+        item_data: record.itemData as JsonOf<NormalizedItemData>,
+        item_submission_time: record.occurredAt,
+        item_type_schema_variant: record.itemTypeSchemaVariant as
+          | 'original'
+          | 'partial',
+      });
+
+    for (const group of recordsByItem.values()) {
+      if (returnedItemCount >= limit) {
+        break;
+      }
+      const [latestRecord, ...priorRecords] = group;
+      yield {
+        latestSubmission: toSubmission(latestRecord),
+        priorSubmissions: latestSubmissionsOnly
+          ? undefined
+          : priorRecords.map(toSubmission),
+      };
+      returnedItemCount++;
     }
   }
 

@@ -220,6 +220,19 @@ export default function submitReport({
         );
       };
 
+      // `additionalItems` are only indexed (for investigation context) and
+      // recorded on the report row; they are not run through reporting rules or
+      // used for MRT enqueue. They may therefore be any item kind (e.g. USER),
+      // unlike thread messages, which must be Content.
+      const isAllValidItems = (
+        maybeItemSubmissions: Awaited<ReturnType<typeof toItemSubmission>>[],
+      ): maybeItemSubmissions is {
+        itemSubmission: ItemSubmission;
+        error: undefined;
+      }[] => {
+        return maybeItemSubmissions.every((it) => !it.error);
+      };
+
       // We disable this lint rule here and below because using `??` here would
       // match the intended semantics less well/be less clear, but casting these
       // expressions to strict booleans with Boolean() confuses TS control flow
@@ -228,7 +241,7 @@ export default function submitReport({
         (reportedThreadSubmission &&
           !isAllValidContentItems(reportedThreadSubmission)) ||
         (additionalItemSubmissions &&
-          !isAllValidContentItems(additionalItemSubmissions));
+          !isAllValidItems(additionalItemSubmissions));
 
       const isInvalidReportedAtDate = !isValidDate(
         new Date(req.body.reportedAt),
@@ -259,7 +272,7 @@ export default function submitReport({
               threadOrAdditionalItemsHadInvalidOrIllegalItems
                 ? [
                     makeBadRequestError(
-                      `Invalid report containing a thread or additional items containing items that aren't entirely Content Types`,
+                      `Invalid report: thread messages must all be valid Content Types, and additional items must all be valid item submissions`,
                       { shouldErrorSpan: true },
                     ),
                   ]
