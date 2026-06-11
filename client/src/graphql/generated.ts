@@ -779,6 +779,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
+  readonly jobSortType?: InputMaybe<Scalars['String']['input']>;
   readonly name: Scalars['String']['input'];
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -2207,6 +2208,7 @@ export type GQLManualReviewQueue = {
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
   readonly isDefaultQueue: Scalars['Boolean']['output'];
+  readonly jobSortType: Scalars['String']['output'];
   readonly jobs: ReadonlyArray<GQLManualReviewJob>;
   readonly name: Scalars['String']['output'];
   readonly oldestJobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
@@ -2672,6 +2674,7 @@ export type GQLMutationDeleteUserArgs = {
 
 export type GQLMutationDequeueManualReviewJobArgs = {
   queueId: Scalars['ID']['input'];
+  skipJobIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
 };
 
 export type GQLMutationGeneratePasswordResetTokenArgs = {
@@ -4662,6 +4665,7 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
+  readonly jobSortType?: InputMaybe<Scalars['String']['input']>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -9695,6 +9699,7 @@ export type GQLManualReviewQueueQuery = {
     readonly hiddenActionIds: ReadonlyArray<string>;
     readonly isAppealsQueue: boolean;
     readonly autoCloseJobs: boolean;
+    readonly jobSortType: string;
     readonly explicitlyAssignedReviewers: ReadonlyArray<{
       readonly __typename: 'User';
       readonly id: string;
@@ -10305,6 +10310,7 @@ export type GQLManualReviewQueuesQuery = {
       readonly oldestJobCreatedAt?: Date | string | null;
       readonly isDefaultQueue: boolean;
       readonly isAppealsQueue: boolean;
+      readonly jobSortType: string;
     }>;
   } | null;
 };
@@ -13752,6 +13758,9 @@ export type GQLManualReviewJobInfoQuery = {
 
 export type GQLDequeueManualReviewJobMutationVariables = Exact<{
   queueId: Scalars['ID']['input'];
+  skipJobIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
+  >;
 }>;
 
 export type GQLDequeueManualReviewJobMutation = {
@@ -32234,6 +32243,7 @@ export const GQLManualReviewQueueDocument = gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        jobSortType
       }
     }
   }
@@ -32657,6 +32667,7 @@ export const GQLManualReviewQueuesDocument = gql`
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue
+        jobSortType
       }
     }
   }
@@ -34234,8 +34245,8 @@ export type GQLManualReviewJobInfoQueryResult = Apollo.QueryResult<
   GQLManualReviewJobInfoQueryVariables
 >;
 export const GQLDequeueManualReviewJobDocument = gql`
-  mutation DequeueManualReviewJob($queueId: ID!) {
-    dequeueManualReviewJob(queueId: $queueId) {
+  mutation DequeueManualReviewJob($queueId: ID!, $skipJobIds: [ID!]) {
+    dequeueManualReviewJob(queueId: $queueId, skipJobIds: $skipJobIds) {
       ... on DequeueManualReviewJobSuccessResponse {
         job {
           ...JobFields
@@ -34266,6 +34277,7 @@ export type GQLDequeueManualReviewJobMutationFn = Apollo.MutationFunction<
  * const [gqlDequeueManualReviewJobMutation, { data, loading, error }] = useGQLDequeueManualReviewJobMutation({
  *   variables: {
  *      queueId: // value for 'queueId'
+ *      skipJobIds: // value for 'skipJobIds'
  *   },
  * });
  */

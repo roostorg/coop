@@ -847,6 +847,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
+  readonly jobSortType?: InputMaybe<Scalars['String']['input']>;
   readonly name: Scalars['String']['input'];
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -2275,6 +2276,7 @@ export type GQLManualReviewQueue = {
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
   readonly isDefaultQueue: Scalars['Boolean']['output'];
+  readonly jobSortType: Scalars['String']['output'];
   readonly jobs: ReadonlyArray<GQLManualReviewJob>;
   readonly name: Scalars['String']['output'];
   readonly oldestJobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
@@ -2740,6 +2742,7 @@ export type GQLMutationDeleteUserArgs = {
 
 export type GQLMutationDequeueManualReviewJobArgs = {
   queueId: Scalars['ID']['input'];
+  skipJobIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
 };
 
 export type GQLMutationGeneratePasswordResetTokenArgs = {
@@ -4730,6 +4733,7 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
+  readonly jobSortType?: InputMaybe<Scalars['String']['input']>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -10250,6 +10254,7 @@ export type GQLManualReviewQueueResolvers<
     ParentType,
     ContextType
   >;
+  jobSortType?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   jobs?: Resolver<
     ReadonlyArray<GQLResolversTypes['ManualReviewJob']>,
     ParentType,

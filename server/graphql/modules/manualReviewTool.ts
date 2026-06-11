@@ -55,6 +55,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    jobSortType: String!
   }
 
   type ManualReviewJob {
@@ -401,6 +402,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    jobSortType: String
   }
 
   input UpdateManualReviewQueueInput {
@@ -411,6 +413,7 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
+    jobSortType: String
   }
 
   input AddAccessibleQueuesToUserInput {
@@ -953,7 +956,10 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    dequeueManualReviewJob(queueId: ID!): DequeueManualReviewJobResponse
+    dequeueManualReviewJob(
+      queueId: ID!
+      skipJobIds: [ID!]
+    ): DequeueManualReviewJobResponse
     submitManualReviewDecision(
       input: SubmitDecisionInput!
     ): SubmitDecisionResponse!
@@ -2171,7 +2177,7 @@ const Query: GQLQueryResolvers = {
 };
 
 const Mutation: GQLMutationResolvers = {
-  async dequeueManualReviewJob(_, { queueId }, context) {
+  async dequeueManualReviewJob(_, { queueId, skipJobIds }, context) {
     const user = context.getUser();
     if (user == null) {
       throw unauthenticatedError('User required.');
@@ -2183,6 +2189,7 @@ const Mutation: GQLMutationResolvers = {
         orgId,
         queueId,
         userId,
+        skipJobIds: skipJobIds ? [...skipJobIds] : undefined,
       });
     if (!nextJob) {
       return null;
@@ -2317,6 +2324,7 @@ const Mutation: GQLMutationResolvers = {
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType = 'FIFO',
     } = params.input;
     try {
       const queue =
@@ -2332,6 +2340,7 @@ const Mutation: GQLMutationResolvers = {
             permissions: user.getPermissions(),
             orgId: user.orgId,
           },
+          jobSortType: jobSortType ?? undefined,
         });
 
       const res = gqlSuccessResult(
@@ -2364,6 +2373,7 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType = 'FIFO',
     } = params.input;
     try {
       const queue =
@@ -2378,6 +2388,7 @@ const Mutation: GQLMutationResolvers = {
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
+          jobSortType: jobSortType ?? undefined,
         });
       return gqlSuccessResult(
         { data: queue },
