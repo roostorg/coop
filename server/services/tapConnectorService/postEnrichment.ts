@@ -57,7 +57,7 @@ export async function fetchBskyPost(
     rkey: parsed.rkey,
   });
   const resp = await fetch(`${RECORD_ENDPOINT}?${params.toString()}`, {
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!resp.ok) return null;
   return (await resp.json()) as BskyPostResponse;

@@ -371,7 +371,8 @@ const makeTapConnectorWorker = inject(
       );
 
       // Collect reply parent/root URIs and fetch those posts so threads
-      // resolve in MRT instead of showing raw at:// links.
+      // resolve in MRT instead of showing raw at:// links. Posts are
+      // best-effort — fire-and-forget so we don't block the report flow.
       const replyUris = new Set<string>();
       for (const sub of rawSubmissions) {
         if (!('typeId' in sub) || sub.typeId !== 'ATproto-post') continue;
@@ -382,11 +383,7 @@ const makeTapConnectorWorker = inject(
         if (data.replyParent?.id) replyUris.add(data.replyParent.id);
         if (data.replyRoot?.id) replyUris.add(data.replyRoot.id);
       }
-      await runWithConcurrency(
-        Array.from(replyUris),
-        5,
-        enrichReferencedPost,
-      );
+      void runWithConcurrency(Array.from(replyUris), 2, enrichReferencedPost);
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
       if (rawSubmissions.length === 0) return;
