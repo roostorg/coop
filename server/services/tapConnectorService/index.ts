@@ -274,6 +274,17 @@ const makeTapConnectorWorker = inject(
       await itemSubmissionQueueBulkWrite([message]);
     }
 
+    async function runWithConcurrency<T>(
+      items: T[],
+      limit: number,
+      worker: (item: T) => Promise<void>,
+    ): Promise<void> {
+      for (let i = 0; i < items.length; i += limit) {
+        const chunk = items.slice(i, i + limit);
+        await Promise.all(chunk.map(worker));
+      }
+    }
+
     async function enrichReferencedPost(uri: string): Promise<void> {
       if (enrichedPosts.has(uri)) return;
       enrichedPosts.add(uri);
@@ -351,10 +362,12 @@ const makeTapConnectorWorker = inject(
         if (authorDid) postAuthorDids.add(authorDid);
       }
       // Await enrichment so account items exist before posts that reference
-      // them are submitted. With the hashtag filter, batches usually have
-      // only a few new DIDs, so this stays fast.
-      await Promise.all(
-        Array.from(postAuthorDids).map((did) => enrichAuthorAccount(did)),
+      // them are submitted. Limit concurrency so we don't blast Bluesky's
+      // public API with hundreds of simultaneous connections.
+      await runWithConcurrency(
+        Array.from(postAuthorDids),
+        5,
+        enrichAuthorAccount,
       );
 
       // Collect reply parent/root URIs and fetch those posts so threads
@@ -369,8 +382,10 @@ const makeTapConnectorWorker = inject(
         if (data.replyParent?.id) replyUris.add(data.replyParent.id);
         if (data.replyRoot?.id) replyUris.add(data.replyRoot.id);
       }
-      await Promise.all(
-        Array.from(replyUris).map((uri) => enrichReferencedPost(uri)),
+      await runWithConcurrency(
+        Array.from(replyUris),
+        5,
+        enrichReferencedPost,
       );
 
       console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
