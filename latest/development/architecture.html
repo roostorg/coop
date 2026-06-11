@@ -34,10 +34,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8c307ef9.js";
+            window.path_to_searchindex_js = "../searchindex-fb891982.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-8fdd957c.js"></script>
+        <script src="../toc-674f44ea.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -295,7 +295,7 @@
 <li>UI: <code>/client/src/webpages/dashboard/mrt/queue_routing/</code></li>
 </ul>
 <h2 id="review-console"><a class="header" href="#review-console">Review Console</a></h2>
-<p>The <a href="../user/review-console.html">Review Console</a> (sometimes referred to as “manual review tool” or “MRT” in the codebase) is a BullMQ-backed queue system used for human review. Items enter the review console as a <a href="../user/concepts.html#jobs">Job</a> via rule actions or user reports. Each Job is enriched with context (user scores, related items) and routed to a named queue via routing rules configured in the UI. Moderators claim Jobs via exclusive locks (so only one person can claim one Job) and make decisions by performing <a href="../user/concepts.html#actions">Actions</a>, which trigger downstream callbacks or reporting workflows (ie. NCMEC).</p>
+<p>The <a href="../user/review-console.html">Review Console</a> (sometimes referred to as “manual review tool” or “MRT” in the codebase) is a BullMQ-backed queue system used for human review. Items enter the review console as a <a href="../user/concepts.html#jobs">Job</a> via rule actions or user reports. Each Job is enriched with context (number of reports, user strikes, related items) and routed to a named queue via routing rules configured in the UI. Moderators claim Jobs via exclusive locks (so only one person can claim one Job) and make decisions by performing <a href="../user/concepts.html#actions">Actions</a>, which trigger downstream callbacks or reporting workflows (ie. NCMEC).</p>
 <h3 id="queue-operations"><a class="header" href="#queue-operations">Queue operations</a></h3>
 <p><strong>File</strong>: <code>/server/services/manualReviewToolService/modules/QueueOperations.ts</code></p>
 <p>Jobs can be enqueued from:</p>
