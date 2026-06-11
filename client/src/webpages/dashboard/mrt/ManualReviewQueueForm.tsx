@@ -62,6 +62,7 @@ gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        jobSortType
       }
     }
   }
@@ -130,6 +131,7 @@ export default function ManualReviewQueueForm() {
     [],
   );
   const [hiddenActionIds, setHiddenActionIds] = useState<string[]>([]);
+  const [jobSortType, setJobSortType] = useState<string | undefined>('FIFO');
   const [autoCloseJobs, setAutoCloseJobs] = useState<boolean>(false);
   const [isAppealsQueue, setIsAppealsQueue] = useState<boolean>(false);
   const navigate = useNavigate();
@@ -273,6 +275,7 @@ export default function ManualReviewQueueForm() {
     setModeratorsWithAccess(sortedUsers.map((it) => it.id));
     setHiddenActionIds([...queue.hiddenActionIds]);
     setAutoCloseJobs(queue.autoCloseJobs);
+    setJobSortType(queue.jobSortType ?? 'FIFO');
     setIsAppealsQueue(queue.isAppealsQueue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue, queue?.autoCloseJobs]);
@@ -295,6 +298,7 @@ export default function ManualReviewQueueForm() {
             hiddenActionIds,
             isAppealsQueue,
             autoCloseJobs,
+            jobSortType,
           },
         },
       }),
@@ -306,6 +310,7 @@ export default function ManualReviewQueueForm() {
       moderatorsWithAccess,
       queueDescription,
       queueName,
+      jobSortType,
     ],
   );
 
@@ -329,6 +334,7 @@ export default function ManualReviewQueueForm() {
               hiddenActionIds,
             ),
             autoCloseJobs,
+            jobSortType,
           },
         },
       }),
@@ -341,6 +347,7 @@ export default function ManualReviewQueueForm() {
       queueDescription,
       queueName,
       updateManualReviewQueue,
+      jobSortType,
     ],
   );
 
@@ -488,6 +495,25 @@ export default function ManualReviewQueueForm() {
           </div>
         </div>
       ) : null}
+      <div className="mt-8">
+        <div className="font-semibold">Job Sort Order</div>
+        <div className="mb-2 text-slate-500">
+          Controls how jobs in this queue are ordered for reviewers.
+        </div>
+        <Select
+          className="self-start !min-w-[160px]"
+          value={jobSortType}
+          onChange={setJobSortType}
+        >
+          <Option value="FIFO">First in, first out</Option>
+          <Option value="NUM_REPORTS">Most reported first</Option>
+        </Select>
+        <div className="mt-2 text-sm text-slate-400">
+          {jobSortType === 'FIFO'
+            ? 'Jobs are reviewed in the order they were received.'
+            : 'Jobs with more user reports are surfaced to reviewers first. Report counts are determined at enqueue time and updated when new reports arrive.'}
+        </div>
+      </div>
       {divider()}
       <div className="self-start">
         <CoopButton

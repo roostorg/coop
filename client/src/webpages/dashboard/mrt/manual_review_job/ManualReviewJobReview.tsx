@@ -26,13 +26,7 @@ import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react
 import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { getFieldValueForRole } from '@/utils/itemUtils';
-import {
-  buildSortedReviewUrl,
-  isSortedReviewMode,
-  pickNextSortedJob,
-  pickTopSortedJob,
-  recomputeSelectedRelatedActions,
-} from '@/utils/manualReviewTool';
+import { recomputeSelectedRelatedActions } from '@/utils/manualReviewTool';
 import { __throw } from '@/utils/misc';
 import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
@@ -60,7 +54,7 @@ import { gql } from '@apollo/client';
 import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { type ActionParameterValues } from '@/components/ActionParameterInputs';
 import ActionParametersModal, {
@@ -171,8 +165,8 @@ gql`
     }
   }
 
-  mutation DequeueManualReviewJob($queueId: ID!) {
-    dequeueManualReviewJob(queueId: $queueId) {
+  mutation DequeueManualReviewJob($queueId: ID!, $skipJobIds: [ID!]) {
+    dequeueManualReviewJob(queueId: $queueId, skipJobIds: $skipJobIds) {
       ... on DequeueManualReviewJobSuccessResponse {
         job {
           ...JobFields
@@ -293,14 +287,6 @@ export type ManualReviewJobAction = {
   }[];
 };
 
-// In sorted mode, skipped jobs aren't dequeued from BullMQ — they remain in
-// the queue for other reviewers (or future sessions). This module-scoped set
-// tracks skips for the current session so the reviewer doesn't cycle back to
-// jobs they've already passed on. Cleared when a new sorted review starts or
-// when the reviewer enters a different queue.
-let sortedModeSkippedIdsQueueId: string | undefined;
-const sortedModeSkippedIds = new Set<string>();
-
 const appealPayloadTypenames = [
   'ContentAppealManualReviewJobPayload',
   'UserAppealManualReviewJobPayload',
@@ -372,22 +358,10 @@ function ManualReviewJobReviewImpl(props: {
     lockToken?: string;
   }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const sortParam = searchParams.get('sort');
-  const isSortedMode = isSortedReviewMode(sortParam);
-  // sortMode is non-null whenever isSortedMode is true. All sortMode! assertions
-  // are inside callbacks/effects guarded by isSortedMode.
-  const sortMode = isSortedMode ? sortParam : undefined;
-
-  useEffect(() => {
-    if (isSortedMode && queueId !== sortedModeSkippedIdsQueueId) {
-      sortedModeSkippedIds.clear();
-      sortedModeSkippedIdsQueueId = queueId;
-    }
-  }, [isSortedMode, queueId]);
-
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
+
+  const [skippedJobIds, setSkippedJobIds] = useState<string[]>([]);
 
   const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
@@ -402,84 +376,15 @@ function ManualReviewJobReviewImpl(props: {
     refetch: refetchJobInfo,
   } = useGQLManualReviewJobInfoQuery({
     variables: {
-      jobIds: closedJob
-        ? [closedJob.id]
-        : jobId
-          ? [jobId]
-          : isSortedMode
-            ? undefined
-            : [],
+      jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [],
     },
     fetchPolicy: 'no-cache',
   });
-
-  const navigateToSortedJob = useCallback(
-    (targetJobId: string) => {
-      navigate(buildSortedReviewUrl(queueId!, targetJobId, sortMode!), {
-        replace: true,
-      });
-    },
-    [navigate, queueId, sortMode],
-  );
-
-  const getNextSortedJob = useCallback(async () => {
-    const result = await refetchJobInfo({ jobIds: null });
-    const allJobs =
-      result.data?.me?.reviewableQueues?.find((q) => q.id === queueId)?.jobs ??
-      [];
-
-    const next = pickNextSortedJob(
-      filterNullOrUndefined(allJobs),
-      jobId,
-      sortedModeSkippedIds,
-      sortMode,
-    );
-
-    if (next) {
-      resetState();
-      navigateToSortedJob(next.id);
-    } else {
-      navigate('/dashboard/manual_review/queues');
-    }
-  }, [
-    refetchJobInfo,
-    queueId,
-    jobId,
-    navigateToSortedJob,
-    navigate,
-    resetState,
-    sortMode,
-  ]);
-
-  // In sorted mode, pick the most-reported job on initial load
-  useEffect(() => {
-    if (!isSortedMode || jobId || closedJob || loading) return;
-    sortedModeSkippedIds.clear();
-
-    const allJobs =
-      data?.me?.reviewableQueues?.find((q) => q.id === queueId)?.jobs ?? [];
-    if (allJobs.length === 0) return;
-
-    const top = pickTopSortedJob(filterNullOrUndefined(allJobs), sortMode);
-    if (top) {
-      navigateToSortedJob(top.id);
-    }
-  }, [
-    isSortedMode,
-    jobId,
-    closedJob,
-    loading,
-    data,
-    queueId,
-    sortMode,
-    navigateToSortedJob,
-  ]);
 
   const [
     getNextJob,
     { data: jobData, loading: jobDataLoading, error: jobDataError },
   ] = useGQLDequeueManualReviewJobMutation({
-    variables: { queueId: queueId! },
     fetchPolicy: 'no-cache',
     onCompleted: (data) => {
       // Here, we update the URL to include the queue ID, job ID, and lock
@@ -500,7 +405,6 @@ function ManualReviewJobReviewImpl(props: {
 
   useEffect(() => {
     if (
-      isSortedMode ||
       jobId != null ||
       closedJob != null ||
       loading ||
@@ -509,12 +413,13 @@ function ManualReviewJobReviewImpl(props: {
     ) {
       return;
     }
-    getNextJob();
+    getNextJob({ variables: { queueId: queueId!, skipJobIds: skippedJobIds } });
   }, [
-    isSortedMode,
     getNextJob,
     jobId,
     closedJob,
+    queueId,
+    skippedJobIds,
     loading,
     jobDataLoading,
     jobData,
@@ -621,11 +526,9 @@ function ManualReviewJobReviewImpl(props: {
         switch (response.submitManualReviewDecision.__typename) {
           case 'SubmitDecisionSuccessResponse': {
             resetState();
-            if (isSortedMode) {
-              await getNextSortedJob();
-            } else {
-              await getNextJob();
-            }
+            await getNextJob({
+              variables: { queueId: queueId!, skipJobIds: skippedJobIds },
+            });
             break;
           }
           case 'JobHasAlreadyBeenSubmittedError': {
@@ -638,11 +541,12 @@ function ManualReviewJobReviewImpl(props: {
                   title: 'Yes',
                   type: 'primary',
                   onClick: async () => {
-                    if (isSortedMode) {
-                      await getNextSortedJob();
-                    } else {
-                      await getNextJob();
-                    }
+                    await getNextJob({
+                      variables: {
+                        queueId: queueId!,
+                        skipJobIds: skippedJobIds,
+                      },
+                    });
                     hideModal();
                   },
                 },
@@ -855,7 +759,9 @@ function ManualReviewJobReviewImpl(props: {
     setIsAdvancingToNextJob(true);
     try {
       resetState();
-      const result = await getNextJob();
+      const result = await getNextJob({
+        variables: { queueId: queueId!, skipJobIds: skippedJobIds },
+      });
       if (result.data?.dequeueManualReviewJob == null) {
         navigate('/dashboard/manual_review/queues');
       }
@@ -891,16 +797,6 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
-    if (isSortedMode) {
-      if (queueId && job?.id) {
-        sortedModeSkippedIds.add(job.id);
-        await logSkip();
-      }
-      resetState();
-      await getNextSortedJob();
-      return;
-    }
-
     // First, release the lock on the current job and log the skip
     if (queueId && job?.id && lockToken) {
       await Promise.all([
@@ -917,9 +813,13 @@ function ManualReviewJobReviewImpl(props: {
       ]);
     }
 
+    const newSkippedIds = job?.id ? [...skippedJobIds, job.id] : skippedJobIds;
+    setSkippedJobIds(newSkippedIds);
     // Reset state and try to get the next job
     resetState();
-    const result = await getNextJob();
+    const result = await getNextJob({
+      variables: { queueId: queueId!, skipJobIds: newSkippedIds },
+    });
 
     // If there's no next job, redirect to the queues page
     if (result.data?.dequeueManualReviewJob == null) {
@@ -927,11 +827,7 @@ function ManualReviewJobReviewImpl(props: {
     }
   };
 
-  if (
-    (loading && !data) ||
-    jobDataLoading ||
-    (!isSortedMode && !closedJob && !lockToken)
-  ) {
+  if ((loading && !data) || jobDataLoading || (!closedJob && !lockToken)) {
     return (
       <div className="flex items-center justify-center w-full h-screen">
         <ComponentLoading />
