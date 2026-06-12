@@ -451,7 +451,7 @@ describe('ActionPublisher', () => {
       expect('actorNote' in sentBody).toBe(false);
     });
 
-    it('includes the decision reason as a top-level `reason` field', async () => {
+    it('includes the decision reason as a top-level `decisionReason` field', async () => {
       const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
@@ -492,12 +492,12 @@ describe('ActionPublisher', () => {
       );
 
       const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
-      expect(sentBody.reason).toBe('Violated spam policy');
+      expect(sentBody.decisionReason).toBe('Violated spam policy');
       // Top-level, not nested under `custom`.
-      expect(sentBody.custom.reason).toBeUndefined();
+      expect(sentBody.custom.decisionReason).toBeUndefined();
     });
 
-    it('omits `reason` from the webhook body when no decision reason is supplied', async () => {
+    it('omits `decisionReason` from the webhook body when no decision reason is supplied', async () => {
       const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
@@ -538,7 +538,7 @@ describe('ActionPublisher', () => {
       );
 
       const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
-      expect('reason' in sentBody).toBe(false);
+      expect('decisionReason' in sentBody).toBe(false);
     });
 
     it('includes the user strike total (current total plus strikes this event applies)', async () => {

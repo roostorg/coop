@@ -353,7 +353,7 @@ class ActionPublisher {
       string | boolean | unknown
     >,
     actorNote?: string,
-    reason?: string,
+    decisionReason?: string,
     userStrikeCount?: number,
   ): Promise<boolean> {
     return this.tracer.addActiveSpan(
@@ -463,7 +463,7 @@ class ActionPublisher {
                 ...(creator !== undefined ? { creator } : {}),
                 // The moderator's decision reason, top-level for the same
                 // collision-safety reason as `actorNote`. Omitted when absent.
-                ...(reason !== undefined ? { reason } : {}),
+                ...(decisionReason !== undefined ? { decisionReason } : {}),
                 // The user's cumulative strike total after this event. Omitted
                 // when there's no resolvable user.
                 ...(userStrikeCount !== undefined ? { userStrikeCount } : {}),
