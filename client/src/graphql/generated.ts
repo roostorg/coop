@@ -5054,6 +5054,7 @@ export type GQLUserItem = GQLItemBase & {
   readonly submissionTime?: Maybe<Scalars['DateTime']['output']>;
   readonly type: GQLUserItemType;
   readonly userScore: Scalars['Int']['output'];
+  readonly userStrikeCount: Scalars['Int']['output'];
 };
 
 export type GQLUserItemType = GQLItemTypeBase & {
@@ -7157,6 +7158,7 @@ export type GQLGetItemsWithIdQuery = {
           readonly data: JsonObject;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
+          readonly userStrikeCount: number;
           readonly type: {
             readonly __typename: 'UserItemType';
             readonly id: string;
@@ -9249,6 +9251,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
             readonly actionsTaken: ReadonlyArray<string>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -9406,6 +9409,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
             }>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -11835,6 +11839,7 @@ export type GQLGetDecidedJobQuery = {
           readonly actionsTaken: ReadonlyArray<string>;
           readonly item: {
             readonly __typename: 'UserItem';
+            readonly userStrikeCount: number;
             readonly id: string;
             readonly submissionId: string;
             readonly submissionTime?: Date | string | null;
@@ -11992,6 +11997,7 @@ export type GQLGetDecidedJobQuery = {
           }>;
           readonly item: {
             readonly __typename: 'UserItem';
+            readonly userStrikeCount: number;
             readonly id: string;
             readonly submissionId: string;
             readonly submissionTime?: Date | string | null;
@@ -13541,6 +13547,7 @@ export type GQLManualReviewJobInfoQuery = {
               readonly actionsTaken: ReadonlyArray<string>;
               readonly item: {
                 readonly __typename: 'UserItem';
+                readonly userStrikeCount: number;
                 readonly id: string;
                 readonly submissionId: string;
                 readonly submissionTime?: Date | string | null;
@@ -13698,6 +13705,7 @@ export type GQLManualReviewJobInfoQuery = {
               }>;
               readonly item: {
                 readonly __typename: 'UserItem';
+                readonly userStrikeCount: number;
                 readonly id: string;
                 readonly submissionId: string;
                 readonly submissionTime?: Date | string | null;
@@ -14880,6 +14888,7 @@ export type GQLDequeueManualReviewJobMutation = {
             readonly actionsTaken: ReadonlyArray<string>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -15037,6 +15046,7 @@ export type GQLDequeueManualReviewJobMutation = {
             }>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -16276,6 +16286,7 @@ export type GQLJobFieldsFragment = {
         readonly actionsTaken: ReadonlyArray<string>;
         readonly item: {
           readonly __typename: 'UserItem';
+          readonly userStrikeCount: number;
           readonly id: string;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
@@ -16433,6 +16444,7 @@ export type GQLJobFieldsFragment = {
         }>;
         readonly item: {
           readonly __typename: 'UserItem';
+          readonly userStrikeCount: number;
           readonly id: string;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
@@ -17481,6 +17493,7 @@ export type GQLGetUserItemsQuery = {
         readonly submissionId: string;
         readonly submissionTime?: Date | string | null;
         readonly data: JsonObject;
+        readonly userStrikeCount: number;
         readonly type: {
           readonly __typename: 'UserItemType';
           readonly id: string;
@@ -25516,6 +25529,9 @@ export const GQLJobFieldsFragmentDoc = gql`
           ... on ItemBase {
             ...ItemFields
           }
+          ... on UserItem {
+            userStrikeCount
+          }
         }
         itemThreadContentItems {
           ... on ContentItem {
@@ -25643,6 +25659,9 @@ export const GQLJobFieldsFragmentDoc = gql`
         item {
           ... on ItemBase {
             ...ItemFields
+          }
+          ... on UserItem {
+            userStrikeCount
           }
         }
         additionalContentItems {
@@ -30767,6 +30786,9 @@ export const GQLGetItemsWithIdDocument = gql`
               }
             }
           }
+        }
+        ... on UserItem {
+          userStrikeCount
         }
       }
     }
@@ -36724,6 +36746,7 @@ export const GQLGetUserItemsDocument = gql`
         submissionId
         submissionTime
         data
+        userStrikeCount
         type {
           id
           name

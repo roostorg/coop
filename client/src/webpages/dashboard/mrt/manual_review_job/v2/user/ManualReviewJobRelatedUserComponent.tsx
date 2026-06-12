@@ -23,7 +23,10 @@ import FieldsComponent from '../ManualReviewJobFieldsComponent';
 import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImageComponent';
 import ManualReviewJobEnqueueRelatedActionWithPoliciesButton from '../related_actions/ManualReviewJobEnqueueRelatedActionWithPoliciesButton';
 import ManualReviewJobLatestSubmissionsWithThreadComponent from './ManualReviewJobLatestSubmissionsWithThreadComponent';
-import { convertRelatedItemToFieldData } from './ManualReviewJobUserUtils';
+import {
+  convertRelatedItemToFieldData,
+  userStrikeCountField,
+} from './ManualReviewJobUserUtils';
 
 gql`
   query OrgData {
@@ -87,6 +90,7 @@ gql`
         submissionId
         submissionTime
         data
+        userStrikeCount
         type {
           id
           name
@@ -332,6 +336,9 @@ export default function ManualReviewJobRelatedUserComponent(props: {
                   user,
                   (userSubmissionItems ?? []).map((it) => it.name),
                 ),
+                ...(userItem
+                  ? [userStrikeCountField(userItem.userStrikeCount)]
+                  : []),
                 ...(userSubmissionItems ?? []),
               ]}
               itemTypeId={user.typeId}

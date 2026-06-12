@@ -85,6 +85,9 @@ export const JOB_FRAGMENT = gql`
           ... on ItemBase {
             ...ItemFields
           }
+          ... on UserItem {
+            userStrikeCount
+          }
         }
         itemThreadContentItems {
           ... on ContentItem {
@@ -212,6 +215,9 @@ export const JOB_FRAGMENT = gql`
         item {
           ... on ItemBase {
             ...ItemFields
+          }
+          ... on UserItem {
+            userStrikeCount
           }
         }
         additionalContentItems {

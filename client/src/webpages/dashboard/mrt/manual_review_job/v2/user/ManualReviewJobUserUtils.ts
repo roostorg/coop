@@ -7,6 +7,13 @@ const createFieldType = (name: string, type: ScalarType) =>
 
 const normalizeFieldName = (name: string) => name.trim().toLowerCase();
 
+export const userStrikeCountField = (
+  count: number,
+): ItemTypeFieldFieldData => ({
+  ...createFieldType('Strikes', 'NUMBER'),
+  value: count,
+});
+
 // `schemaRenderedFieldNames` are fields the caller already renders from the
 // typed schema; inlined keys matching one are skipped to avoid showing the same
 // field twice (roostorg/coop#716). Match is case/whitespace-insensitive.
