@@ -233,8 +233,7 @@ export default class JobDecisioning {
     //
     // Bypass the check for decisions that don't carry a written reason by
     // nature: NCMEC-native decisions (Submit NCMEC Report or Ignore on an
-    // NCMEC job) and a plain Ignore on any job. Ignoring a job is a dismissal,
-    // not a reasoned moderation action, so the flag is irrelevant for it.
+    // NCMEC job) and a plain Ignore on any job.
     // Neither bypass applies when a CUSTOM_ACTION is mixed in — that still
     // requires a reason. See #736 (NCMEC) and #757 (standard Ignore).
     const isNcmecNativeDecision =
