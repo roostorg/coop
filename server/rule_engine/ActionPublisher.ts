@@ -174,11 +174,18 @@ class ActionPublisher {
       decisionReason,
     } = executionContext;
 
-    // Strike total for the webhook body, computed once so every webhook in the
-    // batch agrees.
+    // Resolve the action user once and reuse it for both `creator` and the
+    // strike total. Only needed when a CUSTOM_ACTION webhook will carry them.
+    const hasWebhook = triggeredActions.some(
+      (it) => it.action.actionType === ActionType.CUSTOM_ACTION,
+    );
+    const { user: actionUser, isDirect: isDirectUser } = hasWebhook
+      ? await this.resolveActionUser(orgId, targetItem)
+      : { user: undefined, isDirect: false };
     const userStrikeCount = await this.getUserStrikeCountForWebhook(
       orgId,
-      targetItem,
+      actionUser,
+      isDirectUser,
       triggeredActions,
     );
 
@@ -247,6 +254,7 @@ class ActionPublisher {
                 actorNote,
                 decisionReason,
                 userStrikeCount,
+                actionUser,
               );
             },
           );
@@ -299,39 +307,74 @@ class ActionPublisher {
   }
 
   /**
-   * The user's cumulative strike total after this event (current total + the
-   * strikes this event applies), for CUSTOM_ACTION webhooks. Computed directly
-   * rather than read back from the async strike write, which races delivery.
-   * Undefined when there's no webhook to carry it or no resolvable user.
-   * Best-effort: a read failure must not break delivery.
+   * Resolves the user a webhook action concerns, once per batch. `isDirect` is
+   * true when the target resolves the way the strike service resolves it (USER
+   * target or a full submission's creator); for identifier-only CONTENT we fall
+   * back to fetching the latest submission's creator (`isDirect` false).
+   * Best-effort: a failed fetch yields no user rather than throwing.
+   */
+  private async resolveActionUser(
+    orgId: string,
+    targetItem: ActionTargetItem,
+  ): Promise<{ user: ItemIdentifier | undefined; isDirect: boolean }> {
+    const directUser = getUserFromActionTargetItem(targetItem);
+    if (directUser) {
+      return { user: directUser, isDirect: true };
+    }
+    if (targetItem.itemType.kind !== 'CONTENT') {
+      return { user: undefined, isDirect: false };
+    }
+    if (isFullSubmission(targetItem)) {
+      return { user: targetItem.creator, isDirect: false };
+    }
+    try {
+      const submission = (
+        await this.itemInvestigationService.getItemByIdentifier({
+          orgId,
+          itemIdentifier: {
+            id: targetItem.itemId,
+            typeId: targetItem.itemType.id,
+          },
+          latestSubmissionOnly: true,
+        })
+      )?.latestSubmission;
+      return { user: submission?.creator, isDirect: false };
+    } catch {
+      return { user: undefined, isDirect: false };
+    }
+  }
+
+  /**
+   * The user's cumulative strike total after this event (current total + strikes
+   * this event applies), for CUSTOM_ACTION webhooks. The applied delta is only
+   * added when the user resolved directly (`isDirect`) — i.e. when the strike
+   * service actually applies a strike. Best-effort; undefined when unresolvable.
    */
   private async getUserStrikeCountForWebhook<
     T extends ActionExecutionCorrelationId,
   >(
     orgId: string,
-    targetItem: ActionTargetItem,
+    user: ItemIdentifier | undefined,
+    isDirect: boolean,
     triggeredActions: Omit<
       Omit<ActionExecutionData<T>, 'action'> & { action: Action },
       'orgId' | 'correlationId' | 'targetItem'
     >[],
   ): Promise<number | undefined> {
-    const targetUser = getUserFromActionTargetItem(targetItem);
-    const hasWebhook = triggeredActions.some(
-      (it) => it.action.actionType === ActionType.CUSTOM_ACTION,
-    );
-    if (!targetUser || !hasWebhook) {
+    if (!user) {
       return undefined;
     }
     try {
       const currentTotal = await this.userStrikeService.getUserStrikeValue(
         orgId,
-        targetUser,
+        user,
       );
-      const mostSevere =
-        this.userStrikeService.findMostSeverePolicyViolationFromActions(
-          triggeredActions,
-        );
-      return currentTotal + (mostSevere?.userStrikeCount ?? 0);
+      const appliedStrikes = isDirect
+        ? (this.userStrikeService.findMostSeverePolicyViolationFromActions(
+            triggeredActions,
+          )?.userStrikeCount ?? 0)
+        : 0;
+      return currentTotal + appliedStrikes;
     } catch {
       return undefined;
     }
@@ -355,6 +398,7 @@ class ActionPublisher {
     actorNote?: string,
     decisionReason?: string,
     userStrikeCount?: number,
+    creator?: ItemIdentifier,
   ): Promise<boolean> {
     return this.tracer.addActiveSpan(
       { resource: 'actionPublisher', operation: 'publishAction' },
@@ -436,14 +480,6 @@ class ActionPublisher {
                 ...customBody,
                 ...customMrtApiParamDecisionPayload,
               };
-
-              // The user the action concerns (USER target, or the content's
-              // creator). Omitted when unresolvable.
-              const creator =
-                getUserFromActionTargetItem(targetItem) ??
-                (targetItem.itemType.kind === 'CONTENT'
-                  ? (await getFullItem())?.creator
-                  : undefined);
 
               const body = {
                 item: {

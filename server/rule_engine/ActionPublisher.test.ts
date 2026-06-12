@@ -407,6 +407,58 @@ describe('ActionPublisher', () => {
       expect('creator' in sentBody).toBe(false);
     });
 
+    it('still delivers the webhook (with creator omitted) when the creator lookup rejects', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        itemInvestigationService: {
+          getItemByIdentifier: jest
+            .fn()
+            .mockRejectedValue(new Error('lookup failed')),
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-lookup-fail',
+              orgId: 'org-789',
+              name: 'Action',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:lookup-fail' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(fetchHTTP).toHaveBeenCalledTimes(1);
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('creator' in sentBody).toBe(false);
+    });
+
     it('omits actorNote from the webhook body entirely when no note is supplied', async () => {
       const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
@@ -658,6 +710,87 @@ describe('ActionPublisher', () => {
       expect(getUserStrikeValue).not.toHaveBeenCalled();
       const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
       expect('userStrikeCount' in sentBody).toBe(false);
+    });
+
+    it('reports the resolved creator strike total (no applied delta) for an identifier-only CONTENT target', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = jest.fn().mockResolvedValue(4);
+      // A strike weight exists, but for identifier-only CONTENT no strike is
+      // actually applied, so it must not be added to the reported total.
+      const findMostSeverePolicyViolationFromActions = jest
+        .fn()
+        .mockReturnValue({ id: 'policy-1', userStrikeCount: 3 });
+      const getItemByIdentifier = jest.fn().mockResolvedValue({
+        latestSubmission: {
+          itemId: 'message-77',
+          submissionId: 'sub-77',
+          data: { text: 'hi' },
+          creator: { id: 'author-77', typeId: 'user-type-1' },
+        },
+      });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        userStrikeService: {
+          getUserStrikeValue,
+          findMostSeverePolicyViolationFromActions,
+        },
+        itemInvestigationService: { getItemByIdentifier },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-content-strike',
+              orgId: 'org-789',
+              name: 'Strike',
+              description: null,
+              applyUserStrikes: true,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [
+              {
+                id: 'policy-1',
+                name: 'Policy 1',
+                penalty: 'NONE' as const,
+                userStrikeCount: 3,
+              },
+            ],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:content-strike' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'message-77',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(getUserStrikeValue).toHaveBeenCalledWith('org-789', {
+        id: 'author-77',
+        typeId: 'user-type-1',
+      });
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      // Current total (4) with no applied delta for identifier-only CONTENT.
+      expect(sentBody.userStrikeCount).toBe(4);
+      expect(sentBody.creator).toEqual({
+        id: 'author-77',
+        typeId: 'user-type-1',
+      });
     });
 
     it('forwards moderator-supplied parameter values and actor note to the logger', async () => {
