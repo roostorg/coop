@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8963145c.js";
+            window.path_to_searchindex_js = "../searchindex-eda03e52.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e025b471.js"></script>
@@ -189,7 +189,10 @@
   "policies": [{ "id": "policy-id", "name": "Spam", "penalty": "MEDIUM" }],
   "rules": [{ "id": "rule-id", "name": "Spam detector" }],
   "custom": {},
-  "actorEmail": "moderator@example.com"
+  "actorEmail": "moderator@example.com",
+  "creator": { "id": "user-id", "typeId": "user-type-id" },
+  "decisionReason": "Violated spam policy",
+  "userStrikeCount": 3
 }
 </code></pre>
 <h3 id="field-reference"><a class="header" href="#field-reference">Field reference</a></h3>
@@ -203,9 +206,12 @@
 <tr><td style="text-align: left"><code>action</code></td><td style="text-align: left">Action</td><td style="text-align: left">Always</td><td style="text-align: left">The Action being triggered</td></tr>
 <tr><td style="text-align: left"><code>policies</code></td><td style="text-align: left">Array&lt;Policy&gt;</td><td style="text-align: left">Always</td><td style="text-align: left">Policies associated with this action. May contain multiple entries if several rules triggered the same action</td></tr>
 <tr><td style="text-align: left"><code>rules</code></td><td style="text-align: left">Array&lt;Rule&gt;</td><td style="text-align: left">Not always</td><td style="text-align: left">Rules that triggered this action. Empty if triggered via manual review or bulk actioning</td></tr>
-<tr><td style="text-align: left"><code>custom</code></td><td style="text-align: left">Object</td><td style="text-align: left">Not always</td><td style="text-align: left">Custom parameters configured in the Action form under “Body”</td></tr>
+<tr><td style="text-align: left"><code>custom</code></td><td style="text-align: left">Object</td><td style="text-align: left">Not always</td><td style="text-align: left">Custom parameters configured in the Action form under “Body”. For Review Console decisions on reported items, Coop also merges <code>reason</code> and <code>reportHistory</code> into this object (see “Custom object” below)</td></tr>
 <tr><td style="text-align: left"><code>actorEmail</code></td><td style="text-align: left">String</td><td style="text-align: left">Not always</td><td style="text-align: left">Email of the Coop user who took the action. Omitted for automated rule-triggered actions</td></tr>
 <tr><td style="text-align: left"><code>actorNote</code></td><td style="text-align: left">String</td><td style="text-align: left">Not always</td><td style="text-align: left">Note added by the moderator when taking the action. Omitted if no note was provided</td></tr>
+<tr><td style="text-align: left"><code>creator</code></td><td style="text-align: left">ItemIdentifier</td><td style="text-align: left">Not always</td><td style="text-align: left">The user the action concerns: the target itself for <code>USER</code> items, or the content’s author for <code>CONTENT</code> items. Omitted when no creator can be resolved (e.g. a content id with no known submission)</td></tr>
+<tr><td style="text-align: left"><code>decisionReason</code></td><td style="text-align: left">String</td><td style="text-align: left">Not always</td><td style="text-align: left">The moderator’s decision reason, as supplied via the Review Console or Submit Decision API. Present for Review Console decisions that include a reason; omitted otherwise</td></tr>
+<tr><td style="text-align: left"><code>userStrikeCount</code></td><td style="text-align: left">Number</td><td style="text-align: left">Not always</td><td style="text-align: left">The user’s cumulative strike total after this action (existing strikes plus any applied by this event). Omitted when no target user can be resolved</td></tr>
 </tbody>
 </table>
 </div>
@@ -244,6 +250,19 @@
 <tbody>
 <tr><td style="text-align: left"><code>id</code></td><td style="text-align: left">String</td><td style="text-align: left">Coop’s unique rule ID</td></tr>
 <tr><td style="text-align: left"><code>name</code></td><td style="text-align: left">String</td><td style="text-align: left">Rule name</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Custom object:</strong></p>
+<p>Besides the parameters you configure under “Body”, Coop merges the following into <code>custom</code> for Review Console decisions made on <strong>reported</strong> items. (The decision reason is also delivered as the top-level <code>decisionReason</code> field; it appears in both places.)</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Field</th><th style="text-align: left">Type</th><th style="text-align: left">Description</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>reason</code></td><td style="text-align: left">String</td><td style="text-align: left">The moderator’s decision reason (same value as the top-level <code>decisionReason</code>)</td></tr>
+<tr><td style="text-align: left"><code>reportHistory</code></td><td style="text-align: left">Array&lt;Report&gt;</td><td style="text-align: left">The reports filed against the item, each as <code>{ reason, reporter }</code></td></tr>
 </tbody>
 </table>
 </div>
