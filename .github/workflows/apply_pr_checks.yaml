@@ -5,8 +5,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
-  checks: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -29,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          persist-credentials: false
       - name: Check generated GraphQL is up to date
         run: docker compose run --rm --quiet-pull codegen-check
 
@@ -41,11 +41,13 @@ jobs:
           ref: ${{ github.base_ref || 'main' }}
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
+          persist-credentials: false
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           # this is needed to fetch the main branch
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
+          persist-credentials: false
 
       - name: Check changed migration files
         id: check-changed-migration-files
@@ -83,7 +85,7 @@ jobs:
 
           # Checkout main so that we're correctly identifying the existing migrations
           # in the loop below.
-          git checkout ${{ github.base_ref || 'main' }}
+          git checkout "$BASE_REF"
 
           # Loop through each sub-directory under the scripts directory
           for subdir in ${SCRIPTS_DIR}*/ ; do
@@ -91,7 +93,7 @@ jobs:
             IFS=$'\n' sorted_existing_migrations=($(sort <<<"${existing_migrations[*]}"))
             most_recent_migration_datestamp=$(datestamp ${sorted_existing_migrations[-1]})
 
-            readarray -t CHANGED_FILES < <(git diff --name-only $GITHUB_SHA ${{ github.base_ref || 'main' }})
+            readarray -t CHANGED_FILES < <(git diff --name-only "$GITHUB_SHA" "$BASE_REF")
 
             # Identify and validate changed migration files in the current sub-directory
             printf "%s\n" "${existing_migrations[@]}"
@@ -109,6 +111,8 @@ jobs:
           done
 
           exit 0
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
 
   # jobs have to be defined in the root workflow file in order to be marked as
   # 'Required Checks' in GitHub CI
@@ -117,9 +121,15 @@ jobs:
     if: needs.check_for_server_changes.outputs.result == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: write  # for dorny/test-reporter to create a check run
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Lint
         run: docker compose run --rm --quiet-pull backend npm run lint
@@ -156,6 +166,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: Lint client
         run: docker compose run --rm --quiet-pull client npm run lint

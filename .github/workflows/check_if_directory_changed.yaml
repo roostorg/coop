@@ -27,11 +27,13 @@ jobs:
           fetch-depth: 1
           sparse-checkout: '${{ inputs.directory }}'
           ref: ${{ github.base_ref || 'main' }}
+          persist-credentials: false
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           sparse-checkout: '${{ inputs.directory }}'
           fetch-depth: 1
+          persist-credentials: false
 
       # Nb: we may be able to simplify this a lot with
       # https://github.com/marketplace/actions/changed-files
@@ -39,15 +41,18 @@ jobs:
       - name: Verify Changed Server files
         id: check-files-changed
         run: |
-          git checkout ${{ github.base_ref || 'main' }}
-          git diff --name-only $GITHUB_SHA ${{ github.base_ref || 'main' }} > files.txt
-          git checkout $GITHUB_SHA
+          git checkout "$BASE_REF"
+          git diff --name-only "$GITHUB_SHA" "$BASE_REF" > files.txt
+          git checkout "$GITHUB_SHA"
           while IFS= read -r file
           do
             echo $file
-            if [[ $file == "${{ inputs.directory }}/"* ]]; then
-              echo "This file is under the directory '${{ inputs.directory }}'."
+            if [[ $file == "${INPUTS_DIRECTORY}/"* ]]; then
+              echo "This file is under the directory '${INPUTS_DIRECTORY}'."
               echo "files_changed=true" >> $GITHUB_OUTPUT
               break
             fi
           done < files.txt
+        env:
+          INPUTS_DIRECTORY: ${{ inputs.directory }}
+          BASE_REF: ${{ github.base_ref || 'main' }}
