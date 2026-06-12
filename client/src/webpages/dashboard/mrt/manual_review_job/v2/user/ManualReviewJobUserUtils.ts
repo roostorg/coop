@@ -10,7 +10,10 @@ const normalizeFieldName = (name: string) => name.trim().toLowerCase();
 export const userStrikeCountField = (
   count: number,
 ): ItemTypeFieldFieldData => ({
-  ...createFieldType('Strikes', 'NUMBER'),
+  name: 'Strikes',
+  type: 'NUMBER',
+  required: false,
+  container: null,
   value: count,
 });
 
