@@ -1056,9 +1056,11 @@ export class ItemInvestigationService {
     }
 
     // Tier 2: ClickHouse analytics warehouse (history beyond Scylla's TTL).
+    const remaining = limit - returnedItemCount;
     const records = await this.contentApiRequestsAdapter
       .getSuccessfulRequestsByIpAddress(orgId, ipAddress, {
         lookbackWindowMs: 6 * MONTH_MS,
+        limit: Math.floor(remaining * ARTIFICIAL_LIMIT_MULTIPLIER),
       })
       .catch(() => [] as ContentApiRequestByIpRecord[]);
 

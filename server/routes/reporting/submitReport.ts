@@ -220,10 +220,9 @@ export default function submitReport({
         );
       };
 
-      // `additionalItems` are only indexed (for investigation context) and
-      // recorded on the report row; they are not run through reporting rules or
-      // used for MRT enqueue. They may therefore be any item kind (e.g. USER),
-      // unlike thread messages, which must be Content.
+      // `additionalItems` may be any kind (e.g. USER), unlike thread messages
+      // which must be Content. All kinds are indexed and recorded on the report
+      // row; only Content ones are forwarded to MRT's `additionalContentItems`.
       const isAllValidItems = (
         maybeItemSubmissions: Awaited<ReturnType<typeof toItemSubmission>>[],
       ): maybeItemSubmissions is {
@@ -443,12 +442,19 @@ export default function submitReport({
                       : {}),
                     ...(additionalItemSubmissions
                       ? {
-                          additionalContentItems: additionalItemSubmissions.map(
-                            (it) =>
+                          // MRT's `additionalContentItems` is Content-only, so
+                          // drop non-Content items (e.g. USER); they're still
+                          // indexed above.
+                          additionalContentItems: additionalItemSubmissions
+                            .filter(
+                              (it) =>
+                                it.itemSubmission.itemType.kind === 'CONTENT',
+                            )
+                            .map((it) =>
                               itemSubmissionToItemSubmissionWithTypeIdentifier(
                                 it.itemSubmission,
                               ),
-                          ),
+                            ),
                         }
                       : {}),
                     ...(req.body.reportedItemsInThread

@@ -100,10 +100,15 @@ export class ClickhouseContentApiRequestsAdapter implements IContentApiRequestsA
     ipAddress: string,
     options?: ContentApiRequestQueryOptions,
   ): Promise<ReadonlyArray<ContentApiRequestByIpRecord>> {
-    const { lookbackWindowMs = SIX_MONTHS_MS } = options ?? {};
+    const { lookbackWindowMs = SIX_MONTHS_MS, limit } = options ?? {};
 
     const lookbackStart = new Date(Date.now() - Math.max(1, lookbackWindowMs));
     const lookbackStartDate = lookbackStart.toISOString().slice(0, 10);
+
+    // Bound the result set so a high-volume IP can't pull an unbounded number of
+    // rows into memory. Only apply when the caller asks for a positive cap.
+    const hasLimit =
+      typeof limit === 'number' && Number.isFinite(limit) && limit > 0;
 
     const sql = `
       SELECT
@@ -123,13 +128,18 @@ export class ClickhouseContentApiRequestsAdapter implements IContentApiRequestsA
         AND item_ip_address != ''
         AND ds >= toDate(?)
       ORDER BY ts DESC
+      ${hasLimit ? 'LIMIT ?' : ''}
     `;
 
-    const rows = (await this.query(sql, [
-      orgId,
-      ipAddress,
-      lookbackStartDate,
-    ])) as ClickhouseContentApiByIpRow[];
+    const params: unknown[] = [orgId, ipAddress, lookbackStartDate];
+    if (hasLimit) {
+      params.push(Math.floor(limit));
+    }
+
+    const rows = (await this.query(
+      sql,
+      params,
+    )) as ClickhouseContentApiByIpRow[];
 
     return rows.map<ContentApiRequestByIpRecord>((row) => ({
       itemId: row.item_id,

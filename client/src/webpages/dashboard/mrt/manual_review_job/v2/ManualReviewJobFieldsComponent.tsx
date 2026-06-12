@@ -223,6 +223,7 @@ function TableRowComponent(props: {
               String(value),
             )}`}
             target="_blank"
+            rel="noopener noreferrer"
           >
             {String(value)}
           </Link>

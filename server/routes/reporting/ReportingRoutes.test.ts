@@ -327,35 +327,54 @@ describe('POST Report', () => {
       ],
     };
 
-    await request
-      .post('/api/v1/report')
-      .set('x-api-key', apiKey)
-      .send(payload)
-      .expect(201);
+    // Spy (calling through) so we can assert what gets forwarded to MRT.
+    const enqueueSpy = jest.spyOn(deps.ManualReviewToolService, 'enqueue');
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      await request
+        .post('/api/v1/report')
+        .set('x-api-key', apiKey)
+        .send(payload)
+        .expect(201);
 
-    expect(getBulkWriteMock().mock.calls[0]).toMatchObject([
-      'REPORTING_SERVICE.REPORTS',
-      [
-        {
-          org_id: orgId,
-          reported_item_id: '21342135',
-          reported_item_type_kind: 'CONTENT',
-          additional_items: [
-            {
-              id: '12345123',
-              typeIdentifier: {
-                id: userTypeId,
-                version: expect.any(String),
-                schemaVariant: 'original',
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // The user item is still indexed/recorded on the report row...
+      expect(getBulkWriteMock().mock.calls[0]).toMatchObject([
+        'REPORTING_SERVICE.REPORTS',
+        [
+          {
+            org_id: orgId,
+            reported_item_id: '21342135',
+            reported_item_type_kind: 'CONTENT',
+            additional_items: [
+              {
+                id: '12345123',
+                typeIdentifier: {
+                  id: userTypeId,
+                  version: expect.any(String),
+                  schemaVariant: 'original',
+                },
+                data: { name: 'Some name' },
               },
-              data: { name: 'Some name' },
-            },
-          ],
-        },
-      ],
-    ]);
+            ],
+          },
+        ],
+      ]);
+
+      // ...but it must NOT leak into MRT's Content-only `additionalContentItems`.
+      expect(enqueueSpy).toHaveBeenCalled();
+      const enqueueArg = enqueueSpy.mock.calls[0]?.[0] as
+        | {
+            payload?: {
+              additionalContentItems?: ReadonlyArray<{ id: string }>;
+            };
+          }
+        | undefined;
+      expect(enqueueArg?.payload?.additionalContentItems ?? []).toEqual([]);
+    } finally {
+      enqueueSpy.mockRestore();
+    }
   });
 
   test('Should return the expected response for content report and additional items', async () => {
