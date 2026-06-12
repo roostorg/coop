@@ -5122,6 +5122,7 @@ export type GQLUserItem = GQLItemBase & {
   readonly submissionTime?: Maybe<Scalars['DateTime']['output']>;
   readonly type: GQLUserItemType;
   readonly userScore: Scalars['Int']['output'];
+  readonly userStrikeCount: Scalars['Int']['output'];
 };
 
 export type GQLUserItemType = GQLItemTypeBase & {
@@ -14733,6 +14734,7 @@ export type GQLUserItemResolvers<
   >;
   type?: Resolver<GQLResolversTypes['UserItemType'], ParentType, ContextType>;
   userScore?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  userStrikeCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
