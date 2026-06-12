@@ -13,19 +13,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check_for_client_changes:
-    uses: ./.github/workflows/check_if_directory_changed.yaml
-    with:
-      directory: 'client'
-  check_for_server_changes:
-    uses: ./.github/workflows/check_if_directory_changed.yaml
-    with:
-      directory: 'server'
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'server/**'
+            client:
+              - 'client/**'
 
   check_generated_graphql:
     timeout-minutes: 4
-    needs: [check_for_client_changes, check_for_server_changes]
-    if: needs.check_for_server_changes.outputs.result == 'true' || needs.check_for_client_changes.outputs.result == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
@@ -113,8 +122,8 @@ jobs:
   # jobs have to be defined in the root workflow file in order to be marked as
   # 'Required Checks' in GitHub CI
   check_api_server:
-    needs: check_for_server_changes
-    if: needs.check_for_server_changes.outputs.result == 'true'
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -149,8 +158,8 @@ jobs:
           reporter: jest-junit # Format of test results
 
   run_frontend_checks_if_changed:
-    needs: check_for_client_changes
-    if: needs.check_for_client_changes.outputs.result == 'true'
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

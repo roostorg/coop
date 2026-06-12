@@ -51,71 +51,34 @@ After the first successful migration and bootstrap:
 
 4. Leave `NCMEC_ENV` unset or non-`production` unless you intentionally want live CyberTipline submissions.
 
-## Settings
+## Single Sign-on
 
-Settings live across several database tables. Many are not yet exposed in the front-end UI and can only be configured directly in the database.
+Coop supports single sign-on via SAML, e.g. with Okta. Enable SSO and configure the URL and certificate under [Settings → Single Sign-on](../user/administration.md#single-sign-on).
 
-### Organization
+### Example: Okta
 
-The `public.org_settings` table is the main catch-all for org-level feature flags and integration configuration. It controls which major features are enabled (appeals, reporting rules, multi-policy actions), integration points (SSO/SAML, the Partial Items API, appeal callbacks), and behavioral settings like how long user strikes remain active.
+Configuring Okta SAML for Coop requires:
 
-#### Appeals
+- Admin mode in Okta
+- Group names that match exactly between Okta and SAML
+- Admin permissions in Coop
+- Ability to create a custom SAML application
 
-Settings for [Appeals](../user/appeals.md) using the [Appeals API](../api/appeals.md).
+To set it up:
 
-| Setting                   | Default | Description                                      | Where to configure                 |
-| :------------------------ | :------ | :----------------------------------------------- | :--------------------------------- |
-| `has_appeals_enabled`     | `false` | Enables the appeals feature for the org          | Database-only                      |
-| `appeal_callback_url`     | `NULL`  | Webhook URL called when an appeal is submitted   | **Settings** → **Appeal Settings** |
-| `appeal_callback_headers` | `NULL`  | Custom headers sent with appeal webhook requests | **Settings** → **Appeal Settings** |
-| `appeal_callback_body`    | `NULL`  | Custom body template for appeal webhook requests | **Settings** → **Appeal Settings** |
+1. Create a [custom SAML application](https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm) in Okta with the following settings:
 
-#### Single-sign-on
+   | Setting                                         | Value                                                                                                                                               |
+   | :---------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Single sign-on URL                              | Your organization's callback URL (e.g. `https://your-coop-instance.com/login/saml/12345/callback`). Find this in Coop under **Settings** → **SSO**. |
+   | Audience URI (SP Entity ID)                     | Your Coop instance base URL (e.g. `https://your-coop-instance.com`).                                                                                |
+   | `email` attribute (in **Attribute Statements**) | `email`. This depends on your identity provider's attribute mappings (e.g. Google SSO may use "Primary Email").                                     |
 
-| Setting        | Default | Description                                    | Where to configure     |
-| :------------- | :------ | :--------------------------------------------- | :--------------------- |
-| `saml_enabled` | `false` | Activates SAML/SSO for the org                 | Database-only          |
-| `sso_url`      | `NULL`  | The SAML identity provider endpoint            | **Settings** → **SSO** |
-| `cert`         | `NULL`  | The SAML identity provider signing certificate | **Settings** → **SSO** |
-
-#### Partial Items
-
-Custom endpoint and headers for fetching additional item data using the [Partial Items API](../api/partial-items.md).
-
-| Setting                         | Default | Description                                | Where to configure |
-| :------------------------------ | :------ | :----------------------------------------- | :----------------- |
-| `partial_items_endpoint`        | `NULL`  | Endpoint for fetching additional item data | Settings UI        |
-| `partial_items_request_headers` | `NULL`  | Custom headers for partial items requests  | Settings UI        |
-
-#### Others
-
-| Setting                              | Default | Description                                                            | Where to configure |
-| :----------------------------------- | :------ | :--------------------------------------------------------------------- | :----------------- |
-| `has_reporting_rules_enabled`        | `false` | Enables Report Rules for proactive actions in response to user reports | Database-only      |
-| `allow_multiple_policies_per_action` | `false` | Job decisions can reference multiple policies                          | Database-only      |
-| `user_strike_ttl_days`               | `90`    | Days before user strikes expire                                        | Database-only      |
-
-### Review Console
-
-The `manual_review_tool.manual_review_tool_settings` table affects reviewer capabilities in the Review Console.
-
-| Setting                           | Default | Description                                                           | Where to configure |
-| :-------------------------------- | :------ | :-------------------------------------------------------------------- | :----------------- |
-| `requires_policy_for_decisions`   | `false` | Moderators must choose a policy when performing a job action          | Database-only      |
-| `mrt_requires_decision_reason`    | `false` | Moderators must provide a written decision when completing a job      | Database-only      |
-| `hide_skip_button_for_non_admins` | `false` | Non-admins must work jobs in order and may not skip a job             | Database-only      |
-| `preview_jobs_view_enabled`       | `false` | Anyone who can edit queues may preview a queue without claiming a job | Database-only      |
-| `ignore_callback_url`             | `NULL`  | Where to send a webhook with item data when a job is ignored          | Database-only      |
-
-### Wellness
-
-The `user_management_service.org_default_user_interface_settings` table stores the org-wide defaults for reviewer wellness interface preferences. These values apply to new reviewers when they join; individual reviewers can override them in their own settings.
-
-| Setting                       | Default | Description                                    | Where to configure          |
-| :---------------------------- | :------ | :--------------------------------------------- | :-------------------------- |
-| `moderator_safety_blur_level` | `2`     | Default blur intensity (0–3) for new reviewers | **Settings** → **Wellness** |
-| `moderator_safety_grayscale`  | `true`  | Default grayscale mode for new reviewers       | **Settings** → **Wellness** |
-| `moderator_safety_mute_video` | `true`  | Default video mute state for new reviewers     | **Settings** → **Wellness** |
+2. In the **Feedback** tab, check **I'm a software vendor. I'd like to integrate my app with Okta**.
+3. In your app's settings, go to the **Sign On** tab. Under **SAML Signing Certificates** → **SHA-2**, click **Actions** → **View IdP metadata**.
+4. Copy the contents of the XML file. In Coop, go to **Settings** → **SSO** and paste the XML into the **Identity Provider Metadata** field.
+5. On the same page, enter `email` in the **Attributes** section.
+6. In your Okta app under **Assignments**, assign users or groups to your app.
 
 ## Historical reference
 

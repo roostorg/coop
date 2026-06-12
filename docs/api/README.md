@@ -11,16 +11,15 @@ Content-Type: application/json
 
 You can find or rotate your API key under **Settings** → **API Keys** in the Coop UI. For details on verifying the signatures Coop adds to outgoing webhook requests, see [API Keys & Authentication](../development/api-auth.md).
 
-| Endpoint                     | Description                                                    |
-| :--------------------------- | :------------------------------------------------------------- |
-| `POST /api/v1/items/async/`  | [Items](items.md): send content for rule evaluation            |
-| `POST /api/v1/report`        | [Report](report.md): submit a user report                      |
-| `POST /api/v1/report/appeal` | [Appeal](appeal.md): submit a user appeal                      |
-| `GET /api/v1/policies/`      | [Policies](policies.md): fetch your configured policies        |
-| `GET /api/v1/user_scores`    | [User Scores](user-scores.md): fetch a user's moderation score |
+| Endpoint                     | Description                                             |
+| :--------------------------- | :------------------------------------------------------ |
+| `POST /api/v1/items/async/`  | [Items](items.md): send content for rule evaluation     |
+| `POST /api/v1/report`        | [Report](report.md): submit a user report               |
+| `POST /api/v1/report/appeal` | [Appeal](appeal.md): submit a user appeal               |
+| `GET /api/v1/policies/`      | [Policies](policies.md): fetch your configured policies |
 
 See also:
 
-- [Handling Actions](actions.md): information about receiving action webhooks from Coop
+- [Handling Actions](actions.md): receive action webhooks from Coop for automated actions, moderator decisions, crossing user strike thresholds, and appeal decisions
 - [Partial Items API](../api/partial-items.md): support Coop fetching Items and their attributes on demand
 - [Errors](errors.md): details of error responses from Coop

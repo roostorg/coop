@@ -1,6 +1,6 @@
-# Automated Routing & Enforcement
+# Automated Enforcement & Routing
 
-Coop supports automatically performing actions on submitted items with [Proactive Rules](#proactive-rules), and routing reports to the correct review queue with [Routing Rules](#routing-rules).
+Coop supports automatically performing actions on submitted items with [Proactive Rules](#proactive-rules), and routing reports to the correct review queue with [Routing Rules](#routing-rules). Repeated policy violations from users are managed with [User Strikes](#user-strikes).
 
 ## Rules
 
@@ -10,25 +10,25 @@ Rule conditions can be set to **AND** (all must match for the rule to match) or 
 
 ### Proactive Rules
 
-Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement → Proactive Rules**.
+Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement** → **Proactive Rules**.
 
-![Proactive Rules](../images/rules.png)
+![Proactive Rules](../images/proactive-rules.png)
 
 All Proactive Rules that match an item fire, not just the first one. This means a single piece of content can trigger multiple automated actions if more than one rule matches.
 
-![Proactive Rule for scam](../images/scam-rule.png)
+![Proactive Rule for scam](../images/proactive-rule-scam.png)
 
 The action of a Proactive Rule can be set to _Enqueue Item to Manual Review_ which will convert it to a report that will then be matched against Routing Rules in order to send it to the correct queue.
 
 ### Routing Rules
 
-Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under **Review Console → Routing**.
+Routing Rules direct incoming reports to the correct Review Console queue. Configure them in Coop under **Review Console** → **Routing**.
 
 ![Routing Rules](../images/routing-rules.png)
 
 Rules are evaluated in order, and a report is routed to the queue of the first matching rule. If no rule matches, the report goes to the default queue. Each rule contains one or more conditions.
 
-![HMA routing rule](../images/hma-routing-rule.png)
+![HMA routing rule](../images/routing-rule-hma.png)
 
 ## Matching Banks
 
@@ -64,9 +64,9 @@ For location matching to work, include a geohash in every item you send to Coop 
 
 User Strikes track repeated policy violations against individual users on your platform, so escalating responses can be applied automatically. Configure them through policies and actions: Coop keeps count of strikes, and triggers further actions when configured thresholds are crossed.
 
-![User Strikes overview, showing the Policy Scores tab with policies and the strike score weight assigned to each one](../images/coop-user-strikes.png)
+![User Strikes overview, showing the Policy Scores tab with policies and the strike score weight assigned to each one](../images/user-strikes.png)
 
-Configure User Strikes under **Automated Enforcement → User Strikes**. The dashboard has four tabs.
+Configure User Strikes under **Automated Enforcement** → **User Strikes**. The dashboard has four tabs.
 
 ### Policy Scores
 
@@ -78,7 +78,7 @@ Sub-policies can either inherit their parent policy's weight or override it. Use
 
 The Strike Enabled Actions tab lists every action your org has defined and lets you toggle which ones add to a user's strike score when applied. Not every action should count as a strike: for example a "send warning" action might not, while "remove content" or "ban account" should.
 
-![Strike Enabled Actions tab listing each action with a toggle for whether it adds to the user's strike score](../images/coop-user-strike-actions.png)
+![Strike Enabled Actions tab listing each action with a toggle for whether it adds to the user's strike score](../images/user-strike-actions.png)
 
 Toggle the **Strike Enabled** column on for any action that should increment the score. Strike score is computed using the policy weights from the previous tab combined with the action that was taken.
 
@@ -86,7 +86,7 @@ Toggle the **Strike Enabled** column on for any action that should increment the
 
 Define how long strikes stay on record and what happens when a user's strike score crosses a threshold.
 
-![Thresholds & Settings tab showing the Strike Window (TTL) and a list of thresholds with associated actions](../images/coop-user-strike-thresholds.png)
+![Thresholds & Settings tab showing the Strike Window (TTL) and a list of thresholds with associated actions](../images/user-strike-thresholds.png)
 
 **Strike Window** controls how long a strike stays on a user's record. Strikes older than the window are excluded from the running score. The same value is editable from [Settings → Other → User Strike TTL](settings.md#other).
 
@@ -102,7 +102,7 @@ Actions in the dropdown come from your org's [defined actions](administration.md
 
 A distribution chart of strike scores across users in your organization. Helps you tune thresholds before turning them on: if most active users sit at score 0 to 2 and a small tail is at 8 or above, a threshold at 8 will catch the worst offenders without trapping average users.
 
-![Analytics tab showing a histogram of user strike scores across the org](../images/coop-user-strike-analytics.png)
+![Analytics tab showing a histogram of user strike scores across the org](../images/user-strike-analytics.png)
 
 ## Signals
 

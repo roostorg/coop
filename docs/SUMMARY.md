@@ -6,8 +6,7 @@
 
 - [User Guide](user/README.md)
   - [Basic Concepts](user/concepts.md)
-  - [Organization Settings](user/settings.md)
-  - [Automated Routing & Enforcement](user/automated-enforcement.md)
+  - [Automated Enforcement & Routing](user/automated-enforcement.md)
   - [Manual Review & Enforcement](user/review-console.md)
   - [Signals](user/signals.md)
   - [Investigation](user/investigation.md)
@@ -16,7 +15,7 @@
   - [Appeals](user/appeals.md)
   - [Child Safety (NCMEC)](user/child-safety.md)
   - [Metrics & Reporting](user/metrics.md)
-  - [Administration](user/administration.md)
+  - [Administration & Settings](user/administration.md)
 
 ---
 
@@ -35,7 +34,6 @@
   - [Report](api/report.md)
   - [Appeal](api/appeal.md)
   - [Policies](api/policies.md)
-  - [User Scores](api/user-scores.md)
   - [Handling Actions](api/actions.md)
   - [Partial Items](api/partial-items.md)
   - [Errors](api/errors.md)

@@ -50,7 +50,7 @@ Once HMA is connected and hash banks are configured, the image hash signal is av
 
 - **To route content from [user reports](../api/report.md)**, create a [routing rule](../user/automated-enforcement.md#routing-rules) with the hash match logic and set it to route to the desired queue. For NCMEC matches, this should be your configured NCMEC queue.
 
-  ![Routing rule using HMA hash matching](../images/hma-routing-rule.png)
+  ![Routing rule using HMA hash matching](../images/routing-rule-hma.png)
 
 - **For content submitted via the [items API](../api/items.md)**, if you want Coop to proactively hash and flag matches without a user report, create a [proactive rule](../user/automated-enforcement.md#proactive-rules) with the image hash condition and "Enqueue to NCMEC" action.
 

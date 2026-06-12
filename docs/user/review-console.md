@@ -1,6 +1,6 @@
 # Manual Review & Enforcement
 
-The **Review Console** is where moderators work through reported content.
+The **Review Console** is where moderators work through reported content and make moderation decisions.
 
 ## Queues
 
@@ -62,7 +62,7 @@ Reviewer wellness and safety is a core concern in trust & safety work. Coop incl
 
 ### Organization-wide defaults
 
-![Coop's organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle](../images/org-wellness-settings.png)
+![Coop's organization wellness settings where you can set the baseline resilience settings on media such as a blurring scale, grayscale toggle, and auto-mute video toggle](../images/settings-wellness.png)
 
 Admins can set default wellness settings that apply to all users in the organization under **Settings → Wellness**.
 
