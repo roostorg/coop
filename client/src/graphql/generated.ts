@@ -3443,6 +3443,7 @@ export type GQLQuery = {
   readonly itemWithHistory: GQLItemHistoryResponse;
   readonly itemsWithId: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemSubmissions: ReadonlyArray<GQLItem>;
+  readonly latestItemsByIpAddress: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedBy: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedByWithThread: ReadonlyArray<GQLThreadWithMessages>;
   readonly locationBank?: Maybe<GQLLocationBank>;
@@ -3600,6 +3601,13 @@ export type GQLQueryItemsWithIdArgs = {
 
 export type GQLQueryLatestItemSubmissionsArgs = {
   itemIdentifiers: ReadonlyArray<GQLItemIdentifierInput>;
+};
+
+export type GQLQueryLatestItemsByIpAddressArgs = {
+  earliestReturnedSubmissionDate?: InputMaybe<Scalars['DateTime']['input']>;
+  ipAddress: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  oldestReturnedSubmissionDate?: InputMaybe<Scalars['DateTime']['input']>;
 };
 
 export type GQLQueryLatestItemsCreatedByArgs = {
@@ -7308,6 +7316,55 @@ export type GQLInvestigationItemsQuery = {
         }>;
       }
     | { readonly __typename: 'NotFoundError'; readonly title: string };
+};
+
+export type GQLGetItemsByIpAddressQueryVariables = Exact<{
+  ipAddress: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+export type GQLGetItemsByIpAddressQuery = {
+  readonly __typename: 'Query';
+  readonly latestItemsByIpAddress: ReadonlyArray<{
+    readonly __typename: 'ItemSubmissions';
+    readonly latest:
+      | {
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly version: string;
+          };
+        }
+      | {
+          readonly __typename: 'ThreadItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly type: {
+            readonly __typename: 'ThreadItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly version: string;
+          };
+        }
+      | {
+          readonly __typename: 'UserItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly type: {
+            readonly __typename: 'UserItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly version: string;
+          };
+        };
+  }>;
 };
 
 export type GQLGetAuthorInfoQueryVariables = Exact<{
@@ -30688,6 +30745,123 @@ export type GQLInvestigationItemsQueryResult = Apollo.QueryResult<
   GQLInvestigationItemsQuery,
   GQLInvestigationItemsQueryVariables
 >;
+export const GQLGetItemsByIpAddressDocument = gql`
+  query GetItemsByIpAddress($ipAddress: String!, $limit: Int) {
+    latestItemsByIpAddress(ipAddress: $ipAddress, limit: $limit) {
+      latest {
+        ... on ItemBase {
+          id
+          submissionId
+          submissionTime
+          type {
+            ... on ItemTypeBase {
+              id
+              name
+              version
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLGetItemsByIpAddressQuery__
+ *
+ * To run a query within a React component, call `useGQLGetItemsByIpAddressQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetItemsByIpAddressQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetItemsByIpAddressQuery({
+ *   variables: {
+ *      ipAddress: // value for 'ipAddress'
+ *      limit: // value for 'limit'
+ *   },
+ * });
+ */
+export function useGQLGetItemsByIpAddressQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  > &
+    (
+      | { variables: GQLGetItemsByIpAddressQueryVariables; skip?: boolean }
+      | { skip: boolean }
+    ),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >(GQLGetItemsByIpAddressDocument, options);
+}
+export function useGQLGetItemsByIpAddressLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >(GQLGetItemsByIpAddressDocument, options);
+}
+// @ts-ignore
+export function useGQLGetItemsByIpAddressSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetItemsByIpAddressQuery,
+  GQLGetItemsByIpAddressQueryVariables
+>;
+export function useGQLGetItemsByIpAddressSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetItemsByIpAddressQuery,
+        GQLGetItemsByIpAddressQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetItemsByIpAddressQuery | undefined,
+  GQLGetItemsByIpAddressQueryVariables
+>;
+export function useGQLGetItemsByIpAddressSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetItemsByIpAddressQuery,
+        GQLGetItemsByIpAddressQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >(GQLGetItemsByIpAddressDocument, options);
+}
+export type GQLGetItemsByIpAddressQueryHookResult = ReturnType<
+  typeof useGQLGetItemsByIpAddressQuery
+>;
+export type GQLGetItemsByIpAddressLazyQueryHookResult = ReturnType<
+  typeof useGQLGetItemsByIpAddressLazyQuery
+>;
+export type GQLGetItemsByIpAddressSuspenseQueryHookResult = ReturnType<
+  typeof useGQLGetItemsByIpAddressSuspenseQuery
+>;
+export type GQLGetItemsByIpAddressQueryResult = Apollo.QueryResult<
+  GQLGetItemsByIpAddressQuery,
+  GQLGetItemsByIpAddressQueryVariables
+>;
 export const GQLGetAuthorInfoDocument = gql`
   query GetAuthorInfo($userIdentifiers: [ItemIdentifierInput!]!) {
     latestItemSubmissions(itemIdentifiers: $userIdentifiers) {
@@ -44831,6 +45005,7 @@ export const namedOperations = {
     GetOrgData: 'GetOrgData',
     GetItemsWithId: 'GetItemsWithId',
     InvestigationItems: 'InvestigationItems',
+    GetItemsByIpAddress: 'GetItemsByIpAddress',
     GetAuthorInfo: 'GetAuthorInfo',
     ItemType: 'ItemType',
     ItemTypeFormOrg: 'ItemTypeFormOrg',

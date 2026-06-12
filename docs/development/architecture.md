@@ -120,7 +120,7 @@ When a report is submitted or a proactive rule sends an item to the review conso
 
 ## Review Console
 
-The [Review Console](../user/review-console.md) (sometimes referred to as "manual review tool" or "MRT" in the codebase) is a BullMQ-backed queue system used for human review. Items enter the review console as a [Job](../user/concepts.md#jobs) via rule actions or user reports. Each Job is enriched with context (user scores, related items) and routed to a named queue via routing rules configured in the UI. Moderators claim Jobs via exclusive locks (so only one person can claim one Job) and make decisions by performing [Actions](../user/concepts.md#actions), which trigger downstream callbacks or reporting workflows (ie. NCMEC).
+The [Review Console](../user/review-console.md) (sometimes referred to as "manual review tool" or "MRT" in the codebase) is a BullMQ-backed queue system used for human review. Items enter the review console as a [Job](../user/concepts.md#jobs) via rule actions or user reports. Each Job is enriched with context (number of reports, user strikes, related items) and routed to a named queue via routing rules configured in the UI. Moderators claim Jobs via exclusive locks (so only one person can claim one Job) and make decisions by performing [Actions](../user/concepts.md#actions), which trigger downstream callbacks or reporting workflows (ie. NCMEC).
 
 ### Queue operations
 

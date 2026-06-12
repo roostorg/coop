@@ -3511,6 +3511,7 @@ export type GQLQuery = {
   readonly itemWithHistory: GQLItemHistoryResponse;
   readonly itemsWithId: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemSubmissions: ReadonlyArray<GQLItem>;
+  readonly latestItemsByIpAddress: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedBy: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedByWithThread: ReadonlyArray<GQLThreadWithMessages>;
   readonly locationBank?: Maybe<GQLLocationBank>;
@@ -3668,6 +3669,13 @@ export type GQLQueryItemsWithIdArgs = {
 
 export type GQLQueryLatestItemSubmissionsArgs = {
   itemIdentifiers: ReadonlyArray<GQLItemIdentifierInput>;
+};
+
+export type GQLQueryLatestItemsByIpAddressArgs = {
+  earliestReturnedSubmissionDate?: InputMaybe<Scalars['DateTime']['input']>;
+  ipAddress: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  oldestReturnedSubmissionDate?: InputMaybe<Scalars['DateTime']['input']>;
 };
 
 export type GQLQueryLatestItemsCreatedByArgs = {
@@ -12537,6 +12545,12 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQueryLatestItemSubmissionsArgs, 'itemIdentifiers'>
+  >;
+  latestItemsByIpAddress?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ItemSubmissions']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLQueryLatestItemsByIpAddressArgs, 'ipAddress'>
   >;
   latestItemsCreatedBy?: Resolver<
     ReadonlyArray<GQLResolversTypes['ItemSubmissions']>,

@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Alert, Input } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
@@ -17,11 +17,13 @@ import {
   useGQLGetOrgDataQuery,
 } from '../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../utils/collections';
+import { getFieldValueForRole } from '../../../utils/itemUtils';
 import { __throw } from '../../../utils/misc';
 import ManualReviewJobPrimaryUserComponent from '../mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
 import ItemInvestigationRuleResults from './ItemInvestigationRuleResults';
 import ItemInvestigationSummary from './ItemInvestigationSummary';
+import ItemsByIpAddress from './ItemsByIpAddress';
 import ThreadInvestigation from './ThreadInvestigation';
 
 export type RuleExecutionHistory = GQLItemHistoryResult['executions'][0];
@@ -215,11 +217,13 @@ export default function ItemInvestigation(props: {
   itemId: string | undefined;
   itemTypeId: string | undefined;
   submissionTime: string | undefined;
+  ipAddress?: string | undefined;
 }) {
   const {
     itemId: initialItemId,
     itemTypeId: initialItemTypeId,
     submissionTime: initialSubmissionTime,
+    ipAddress,
   } = props;
 
   if (initialItemTypeId && !initialItemId) {
@@ -388,9 +392,39 @@ export default function ItemInvestigation(props: {
       allowMultiplePoliciesPerAction = false,
     } = orgData?.myOrg ?? {};
 
+    // The item type's `ipAddress` field role (when configured) tells us which
+    // field holds the IP, so we can offer a reverse lookup of other items that
+    // share it. Named distinctly from the `ipAddress` prop (URL `?ip=`) to avoid
+    // shadowing it.
+    const derivedIpAddress = (() => {
+      try {
+        return getFieldValueForRole(
+          {
+            // eslint-disable-next-line custom-rules/no-casting-in-getFieldValueForRole
+            type: item.type as Parameters<
+              typeof getFieldValueForRole
+            >[0]['type'],
+            data: item.data,
+          },
+          'ipAddress',
+        );
+      } catch {
+        return undefined;
+      }
+    })();
+
+    const ipPanel = derivedIpAddress ? (
+      <ItemsByIpAddress
+        ipAddress={derivedIpAddress}
+        currentItemId={item.id}
+        currentItemTypeId={item.type.id}
+      />
+    ) : null;
+
+    let investigationContent: ReactNode = null;
     switch (item.__typename) {
       case 'ContentItem':
-        return (
+        investigationContent = (
           <div className="flex flex-col w-full mb-8">
             <ItemInvestigationSummary
               item={{
@@ -409,8 +443,9 @@ export default function ItemInvestigation(props: {
             />
           </div>
         );
+        break;
       case 'UserItem':
-        return (
+        investigationContent = (
           <div className="flex flex-col w-full mb-8">
             {syntheticBanner}
             <ManualReviewJobPrimaryUserComponent
@@ -433,8 +468,9 @@ export default function ItemInvestigation(props: {
             />
           </div>
         );
+        break;
       case 'ThreadItem':
-        return (
+        investigationContent = (
           <div className="flex flex-col w-full mb-8">
             <ThreadInvestigation
               threadItem={item as GQLThreadItem}
@@ -452,7 +488,15 @@ export default function ItemInvestigation(props: {
             />
           </div>
         );
+        break;
     }
+
+    return (
+      <>
+        {investigationContent}
+        {ipPanel}
+      </>
+    );
   })();
 
   return (
@@ -493,6 +537,9 @@ export default function ItemInvestigation(props: {
         </div>
         {selectedItem ? <ItemAction itemIdentifier={selectedItem} /> : null}
       </div>
+      {!selectedItem && ipAddress ? (
+        <ItemsByIpAddress ipAddress={ipAddress} />
+      ) : null}
       {results}
     </div>
   );

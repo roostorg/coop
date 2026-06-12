@@ -195,7 +195,6 @@ function TableRowComponent(props: {
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'IP_ADDRESS':
     case 'STRING': {
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
@@ -205,6 +204,29 @@ function TableRowComponent(props: {
             </div>
           ) : null}
           <div className="text-start">{String(value)}</div>
+        </div>
+      );
+    }
+    case 'IP_ADDRESS': {
+      // Make the IP clickable so a moderator can pivot to every other item
+      // associated with the same IP (ban evasion, coordinated abuse, etc.).
+      return (
+        <div className="flex flex-col whitespace-normal align-top text-start">
+          {label ? (
+            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+              {label}
+            </div>
+          ) : null}
+          <Link
+            className="cursor-pointer break-all"
+            to={`/dashboard/manual_review/investigation?ip=${encodeURIComponent(
+              String(value),
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {String(value)}
+          </Link>
         </div>
       );
     }

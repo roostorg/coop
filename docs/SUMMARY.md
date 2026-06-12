@@ -6,7 +6,6 @@
 
 - [User Guide](user/README.md)
   - [Basic Concepts](user/concepts.md)
-  - [Organization Settings](user/settings.md)
   - [Automated Enforcement & Routing](user/automated-enforcement.md)
   - [Manual Review & Enforcement](user/review-console.md)
   - [Signals](user/signals.md)
@@ -35,7 +34,6 @@
   - [Report](api/report.md)
   - [Appeal](api/appeal.md)
   - [Policies](api/policies.md)
-  - [User Scores](api/user-scores.md)
   - [Handling Actions](api/actions.md)
   - [Partial Items](api/partial-items.md)
   - [Errors](api/errors.md)
