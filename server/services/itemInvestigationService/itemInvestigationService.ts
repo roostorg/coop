@@ -208,15 +208,19 @@ export class ItemInvestigationService {
           ]
         : [];
 
-    // Denormalize the IP address (if the item type maps an `ipAddress` field
-    // role) so it can be indexed by the `item_submission_by_ip` materialized
-    // view for reverse lookups during investigation.
-    const ipAddress = getFieldValueForRole(
+    // Denormalize the IP for the `item_submission_by_ip` MV. Trim to null for
+    // blanks: it's part of the partition key, so empty strings would hot-spot
+    // and whitespace would miss trimmed lookups.
+    const rawIpAddress = getFieldValueForRole(
       itemType.schema,
       itemType.schemaFieldRoles,
       'ipAddress',
       item.data,
     );
+    const ipAddress =
+      typeof rawIpAddress === 'string' && rawIpAddress.trim() !== ''
+        ? rawIpAddress.trim()
+        : null;
 
     const itemIdentifier = { id: item.itemId, typeId: itemType.id };
     const syntheticThreadId = getSyntheticThreadId(itemIdentifier, threadId);
@@ -248,7 +252,7 @@ export class ItemInvestigationService {
         item_type_schema_field_roles: jsonStringify(itemType.schemaFieldRoles),
         item_type_schema: jsonStringify(itemType.schema),
         item_type_schema_variant: itemType.schemaVariant,
-        item_ip_address: ipAddress ?? null,
+        item_ip_address: ipAddress,
       },
     });
 

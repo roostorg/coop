@@ -394,8 +394,9 @@ export default function ItemInvestigation(props: {
 
     // The item type's `ipAddress` field role (when configured) tells us which
     // field holds the IP, so we can offer a reverse lookup of other items that
-    // share it.
-    const ipAddress = (() => {
+    // share it. Named distinctly from the `ipAddress` prop (URL `?ip=`) to avoid
+    // shadowing it.
+    const derivedIpAddress = (() => {
       try {
         return getFieldValueForRole(
           {
@@ -412,9 +413,9 @@ export default function ItemInvestigation(props: {
       }
     })();
 
-    const ipPanel = ipAddress ? (
+    const ipPanel = derivedIpAddress ? (
       <ItemsByIpAddress
-        ipAddress={ipAddress}
+        ipAddress={derivedIpAddress}
         currentItemId={item.id}
         currentItemTypeId={item.type.id}
       />
@@ -536,7 +537,9 @@ export default function ItemInvestigation(props: {
         </div>
         {selectedItem ? <ItemAction itemIdentifier={selectedItem} /> : null}
       </div>
-      {ipAddress ? <ItemsByIpAddress ipAddress={ipAddress} /> : null}
+      {!selectedItem && ipAddress ? (
+        <ItemsByIpAddress ipAddress={ipAddress} />
+      ) : null}
       {results}
     </div>
   );

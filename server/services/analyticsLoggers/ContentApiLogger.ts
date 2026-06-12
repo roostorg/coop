@@ -57,7 +57,7 @@ class ContentApiLogger {
     // role) into its own column so investigation can look up items by IP without
     // parsing `item_data` JSON at query time. Only attempt this for successful
     // requests, since failed requests may carry un-normalized item data.
-    const ipAddress =
+    const rawIpAddress =
       failureReason == null
         ? getFieldValueForRole(
             itemType.schema,
@@ -66,6 +66,8 @@ class ContentApiLogger {
             itemSubmission.data as NormalizedItemData,
           )
         : undefined;
+    const ipAddress =
+      typeof rawIpAddress === 'string' ? rawIpAddress.trim() : undefined;
 
     await this.analytics.bulkWrite(
       'CONTENT_API_REQUESTS',
