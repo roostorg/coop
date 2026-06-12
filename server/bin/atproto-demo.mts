@@ -433,7 +433,13 @@ function connect() {
         }
       }
 
-      // User item submission (once per DID, independent of rate limits)
+      // Item submission
+      if (!limiter.tryConsume()) {
+        skipped++;
+        return;
+      }
+
+      // User item submission (once per DID, for authors of submitted posts only)
       if (userTypeId && !submittedUserDids.has(msg.did)) {
         submittedUserDids.add(msg.did);
         didToUserItem(msg.did)
@@ -485,12 +491,6 @@ function connect() {
         } else {
           reportsSkipped++;
         }
-      }
-
-      // Item submission
-      if (!limiter.tryConsume()) {
-        skipped++;
-        return;
       }
 
       postToCoopItem(msg.did, msg.commit.rkey, record)
