@@ -679,11 +679,17 @@ function ManualReviewJobReviewImpl(props: {
       }
     }
 
-    // If the org requires a decision reason, and no decision reason has been
-    // provided, return false
+    // If the org requires a decision reason and none has been provided, block
+    // submission — unless the only decision is Ignore. Ignoring a job is a
+    // dismissal, not a reasoned moderation action, so it's exempt from the
+    // requirement (mirrors the server gate in JobDecisioning.ts). See #757.
+    const isIgnoreOnlyDecision = selectedPrimaryActions.every(
+      (it) => 'type' in it.action && it.action.type === 'IGNORE',
+    );
     if (
       data?.myOrg?.requiresDecisionReasonInMrt &&
-      !isNonEmptyString(decisionReason)
+      !isNonEmptyString(decisionReason) &&
+      !isIgnoreOnlyDecision
     ) {
       return false;
     }
