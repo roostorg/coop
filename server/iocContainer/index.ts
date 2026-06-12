@@ -956,6 +956,7 @@ export default async function getBottle() {
             item,
             actorId,
             actorEmail,
+            decisionReason,
           } = params;
           const actionIds = decisionActions.map((action) => action.actionId);
           const [actions, policies] = await Promise.all([
@@ -1021,6 +1022,7 @@ export default async function getBottle() {
                 targetItem: itemSubmission,
                 actorId,
                 actorEmail,
+                decisionReason,
               },
             )
             .catch((error) => {
@@ -1214,6 +1216,7 @@ export default async function getBottle() {
                   item: job.payload.item,
                   actorId: reviewerId,
                   actorEmail: reviewerEmail,
+                  decisionReason,
                 });
                 break;
               case 'SUBMIT_NCMEC_REPORT': {
