@@ -502,6 +502,48 @@ describe('Manual Review Tool Service', () => {
         // decisionReason intentionally omitted
       });
     });
+
+    // Issue #757: a plain Ignore on a standard MRT job is a dismissal, not a
+    // reasoned moderation action, so the require-reason flag should not block
+    // it — mirroring the NCMEC Ignore case above. A CUSTOM_ACTION mixed in
+    // still requires a reason (covered by the rejection test above).
+    it('allows an IGNORE decision on a standard job with no reason when the flag is on', async () => {
+      await setRequiresDecisionReason(true);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyJob();
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await mrtService.submitDecision({
+        queueId,
+        reportHistory: [],
+        jobId: dequeuedJob.job.id,
+        lockToken: dequeuedJob.lockToken,
+        decisionComponents: [{ type: 'IGNORE' }],
+        relatedActions: [],
+        reviewerId,
+        reviewerEmail,
+        orgId,
+        // decisionReason intentionally omitted
+      });
+    });
   });
 
   // Issue #389: when an org sets `requires_policy_for_decisions`, submitDecision

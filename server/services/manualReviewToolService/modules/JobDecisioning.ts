@@ -231,16 +231,22 @@ export default class JobDecisioning {
     // against, so the common path does no extra DB work. Matches the client
     // gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
     //
-    // Bypass the check when the decision is NCMEC-native (Submit NCMEC Report
-    // or Ignore on an NCMEC job, no CUSTOM_ACTION mixed in): those decisions
-    // don't carry a written reason and the flag is irrelevant for them. A
-    // CUSTOM_ACTION on an NCMEC job still requires a reason. See #736.
+    // Bypass the check for decisions that don't carry a written reason by
+    // nature: NCMEC-native decisions (Submit NCMEC Report or Ignore on an
+    // NCMEC job) and a plain Ignore on any job.
+    // Neither bypass applies when a CUSTOM_ACTION is mixed in — that still
+    // requires a reason. See #736 (NCMEC) and #757 (standard Ignore).
     const isNcmecNativeDecision =
       job.payload.kind === 'NCMEC' && customActionDecisions.length === 0;
+    const isIgnoreOnlyDecision =
+      customActionDecisions.length === 0 &&
+      decisions.length > 0 &&
+      decisions.every((decision) => decision.type === 'IGNORE');
     if (
       decisionComponents != null &&
       !isNonEmptyString(decisionReason) &&
-      !isNcmecNativeDecision
+      !isNcmecNativeDecision &&
+      !isIgnoreOnlyDecision
     ) {
       const requiresReason =
         await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
