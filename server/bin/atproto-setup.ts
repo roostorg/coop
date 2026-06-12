@@ -12,7 +12,6 @@
  *   cd server && npm run atproto:setup -- --org-id <orgId>
  *   cd server && npm run atproto:setup -- --org-id <orgId> --post-type-id <id> --user-type-id <id>
  */
-
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -59,6 +58,7 @@ const USER_ROLES = {
 const POST_SCHEMA = [
   { name: 'text', type: 'STRING', required: true, container: null },
   { name: 'url', type: 'URL', required: true, container: null },
+  { name: 'creator', type: 'RELATED_ITEM', required: false, container: null },
   { name: 'did', type: 'STRING', required: false, container: null },
   { name: 'handle', type: 'STRING', required: false, container: null },
   { name: 'displayName', type: 'STRING', required: false, container: null },
@@ -68,13 +68,19 @@ const POST_SCHEMA = [
   { name: 'embedType', type: 'STRING', required: false, container: null },
   { name: 'embedUrl', type: 'URL', required: false, container: null },
   { name: 'embedTitle', type: 'STRING', required: false, container: null },
-  { name: 'embedDescription', type: 'STRING', required: false, container: null },
+  {
+    name: 'embedDescription',
+    type: 'STRING',
+    required: false,
+    container: null,
+  },
   { name: 'embedThumb', type: 'URL', required: false, container: null },
 ] as const;
 
 const POST_ROLES = {
   displayName: 'text',
   createdAt: 'createdAt',
+  creatorId: 'creator',
 } as const;
 
 async function setup() {

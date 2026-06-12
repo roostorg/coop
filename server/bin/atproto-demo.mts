@@ -172,6 +172,7 @@ interface CoopItem {
   data: {
     text: string;
     url: string;
+    creator?: { id: string; typeId: string };
     did: string;
     handle: string;
     displayName?: string;
@@ -206,6 +207,7 @@ async function postToCoopItem(
     data: {
       text: record.text,
       url: buildBskyUrl(did, rkey),
+      ...(userTypeId ? { creator: { id: did, typeId: userTypeId } } : {}),
       did,
       handle: profile.handle,
       ...(profile.displayName ? { displayName: profile.displayName } : {}),
