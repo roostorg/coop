@@ -220,9 +220,6 @@ export default function submitReport({
         );
       };
 
-      // `additionalItems` may be any kind (e.g. USER), unlike thread messages
-      // which must be Content. All kinds are indexed and recorded on the report
-      // row; only Content ones are forwarded to MRT's `additionalContentItems`.
       const isAllValidItems = (
         maybeItemSubmissions: Awaited<ReturnType<typeof toItemSubmission>>[],
       ): maybeItemSubmissions is {

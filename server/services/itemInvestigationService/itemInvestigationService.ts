@@ -963,13 +963,9 @@ export class ItemInvestigationService {
   }
 
   /**
-   * Reverse lookup of every item associated with a given IP address, mirroring
-   * `getItemSubmissionsByCreator` but keyed on the denormalized
-   * `item_ip_address` column. Items are returned in reverse chronological order.
-   *
-   * This reads from two tiers: the Scylla `item_submission_by_ip` materialized
-   * view (hot, ~30 days) first, then falls back to the ClickHouse analytics
-   * warehouse for older history, de-duplicating items already seen in Scylla.
+   * Reverse lookup of items by IP, newest first. Reads the Scylla
+   * `item_submission_by_ip` MV first, then falls back to ClickHouse for older
+   * history, de-duplicating items already seen in Scylla.
    */
   async *getItemSubmissionsByIpAddress(opts: {
     orgId: string;
@@ -983,14 +979,8 @@ export class ItemInvestigationService {
       orgId,
       ipAddress,
       limit = 100,
-      // NB: `item_synthetic_created_at` is the item's platform `createdAt` (per
-      // the schema field role), NOT its submission/write time. User accounts
-      // commonly have a `createdAt` from months or years ago, so a recent
-      // lower bound would silently drop them from IP results even though their
-      // submission is freshly indexed. Scylla's write-time TTL already bounds
-      // what's actually present, so we search the full createdAt range here.
-      // We also pad the upper bound into the future to tolerate items whose
-      // `createdAt` is slightly ahead of now (clock skew / future-dated data).
+      // Bounds apply to `item_synthetic_created_at` (item `createdAt`, not write
+      // time), so search the full range (TTL bounds Scylla);
       oldestReturnedSubmissionDate = new Date(0),
       earliestReturnedSubmissionDate = new Date(Date.now() + DAY_MS),
       latestSubmissionsOnly = true,

@@ -23,11 +23,6 @@ export interface ContentApiRequestByIpRecord extends ContentApiRequestRecord {
 export interface ContentApiRequestQueryOptions {
   latestOnly?: boolean;
   lookbackWindowMs?: number;
-  /**
-   * Hard cap on the number of rows the query returns. Used to bound IP lookups
-   * for high-volume addresses so we never pull an unbounded result set into
-   * memory.
-   */
   limit?: number;
 }
 

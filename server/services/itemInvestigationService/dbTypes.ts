@@ -55,8 +55,6 @@ export type ScyllaItemSubmissionsRow = {
   item_type_schema_field_roles: JsonOf<SchemaFieldRoles>;
   item_type_schema: JsonOf<ItemSchema>;
   item_type_schema_variant: 'original' | 'partial';
-  // Denormalized from the item's `ipAddress` field role at write time; `null`
-  // when the item type doesn't map an IP field or the value is absent.
   item_ip_address: string | null;
 };
 

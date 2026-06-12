@@ -151,7 +151,6 @@ export type ItemSubmissionsRow = {
   ITEM_TYPE_SCHEMA_FIELD_ROLES: SchemaFieldRoles;
   ITEM_TYPE_ID: string;
   ITEM_TYPE_SCHEMA: JsonOf<ItemSchema>;
-  // Denormalized from the item's `ipAddress` field role; '' when absent.
   ITEM_IP_ADDRESS: string;
   TS: ColumnType<WarehouseDate, number, never>;
   DS: ColumnType<FilterableWarehouseDate, string, never>;

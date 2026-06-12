@@ -38,7 +38,6 @@ gql`
  */
 export default function ItemsByIpAddress(props: {
   ipAddress: string;
-  /** Item currently being viewed, excluded from the results. */
   currentItemId?: string;
   currentItemTypeId?: string;
 }) {
