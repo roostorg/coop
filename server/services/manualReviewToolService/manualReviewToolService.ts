@@ -1255,6 +1255,10 @@ export class ManualReviewToolService {
     return this.manualReviewToolSettings.getPreviewJobsViewEnabled(orgId);
   }
 
+  async getNcmecMessagesEnabled(orgId: string) {
+    return this.manualReviewToolSettings.getNcmecMessagesEnabled(orgId);
+  }
+
   async getIgnoreCallbackUrl(orgId: string) {
     return this.manualReviewToolSettings.getIgnoreCallbackUrl(orgId);
   }
@@ -1282,6 +1286,13 @@ export class ManualReviewToolService {
 
   async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
     return this.manualReviewToolSettings.updatePreviewJobsViewEnabled(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateNcmecMessagesEnabled(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateNcmecMessagesEnabled(
       orgId,
       enabled,
     );

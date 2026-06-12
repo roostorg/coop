@@ -72,6 +72,7 @@ const typeDefs = /* GraphQL */ `
     requiresPolicyForDecisionsInMrt: Boolean!
     requiresDecisionReasonInMrt: Boolean!
     previewJobsViewEnabled: Boolean!
+    ncmecMessagesEnabled: Boolean!
     allowMultiplePoliciesPerAction: Boolean!
     hideSkipButtonForNonAdmins: Boolean!
     usersWhoCanReviewEveryQueue: [User!]!
@@ -174,6 +175,7 @@ const typeDefs = /* GraphQL */ `
     updateRequiresDecisionReason(enabled: Boolean!): Boolean!
     updateHideSkipButtonForNonAdmins(enabled: Boolean!): Boolean!
     updatePreviewJobsViewEnabled(enabled: Boolean!): Boolean!
+    updateNcmecMessagesEnabled(enabled: Boolean!): Boolean!
     updateIgnoreCallbackUrl(url: String): Boolean!
     updatePartialItemsSettings(
       input: UpdatePartialItemsSettingsInput!
@@ -604,6 +606,11 @@ const Org: GQLOrgResolvers = {
       org.id,
     );
   },
+  async ncmecMessagesEnabled(org, _, context) {
+    return context.services.ManualReviewToolService.getNcmecMessagesEnabled(
+      org.id,
+    );
+  },
   async allowMultiplePoliciesPerAction(org, _, context) {
     return context.services.OrgSettingsService.allowMultiplePoliciesPerAction(
       org.id,
@@ -1024,6 +1031,22 @@ const Mutation: GQLMutationResolvers = {
       );
     }
     await context.services.ManualReviewToolService.updatePreviewJobsViewEnabled(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateNcmecMessagesEnabled(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateNcmecMessagesEnabled(
       user.orgId,
       enabled,
     );
