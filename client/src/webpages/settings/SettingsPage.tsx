@@ -29,6 +29,7 @@ gql`
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
       previewJobsViewEnabled
+      ncmecMessagesEnabled
       hideSkipButtonForNonAdmins
       userStrikeTTL
       samlEnabled
@@ -68,6 +69,9 @@ gql`
   }
   mutation UpdatePreviewJobsViewEnabled($enabled: Boolean!) {
     updatePreviewJobsViewEnabled(enabled: $enabled)
+  }
+  mutation UpdateNcmecMessagesEnabled($enabled: Boolean!) {
+    updateNcmecMessagesEnabled(enabled: $enabled)
   }
   mutation UpdateIgnoreCallbackUrl($url: String) {
     updateIgnoreCallbackUrl(url: $url)

@@ -7,6 +7,7 @@ import {
   useGQLDeploymentSettingsQuery,
   useGQLUpdateHideSkipButtonForNonAdminsMutation,
   useGQLUpdateIgnoreCallbackUrlMutation,
+  useGQLUpdateNcmecMessagesEnabledMutation,
   useGQLUpdatePreviewJobsViewEnabledMutation,
   useGQLUpdateRequiresDecisionReasonMutation,
   useGQLUpdateRequiresPolicyForDecisionsMutation,
@@ -28,6 +29,7 @@ export default function ReviewConsoleTab() {
   const [requireReason, setRequireReason] = useState(false);
   const [hideSkip, setHideSkip] = useState(false);
   const [previewJobs, setPreviewJobs] = useState(false);
+  const [ncmecMessages, setNcmecMessages] = useState(false);
   const [ignoreCallbackUrl, setIgnoreCallbackUrl] = useState('');
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function ReviewConsoleTab() {
       setRequireReason(org.requiresDecisionReasonInMrt);
       setHideSkip(org.hideSkipButtonForNonAdmins);
       setPreviewJobs(org.previewJobsViewEnabled);
+      setNcmecMessages(org.ncmecMessagesEnabled);
       setIgnoreCallbackUrl(org.ignoreCallbackUrl ?? '');
     }
   }, [org]);
@@ -58,6 +61,8 @@ export default function ReviewConsoleTab() {
     useGQLUpdateHideSkipButtonForNonAdminsMutation(mutationOpts);
   const [updatePreviewJobsMutation, { loading: previewJobsLoading }] =
     useGQLUpdatePreviewJobsViewEnabledMutation(mutationOpts);
+  const [updateNcmecMessagesEnabled, { loading: ncmecMessagesLoading }] =
+    useGQLUpdateNcmecMessagesEnabledMutation(mutationOpts);
   const [updateIgnoreUrl, { loading: ignoreUrlLoading }] =
     useGQLUpdateIgnoreCallbackUrlMutation(mutationOpts);
   if (loading) return <FullScreenLoading />;
@@ -68,6 +73,7 @@ export default function ReviewConsoleTab() {
     requireReasonLoading ||
     hideSkipLoading ||
     previewJobsLoading ||
+    ncmecMessagesLoading ||
     ignoreUrlLoading;
 
   const hasChanges =
@@ -75,6 +81,7 @@ export default function ReviewConsoleTab() {
     requireReason !== org.requiresDecisionReasonInMrt ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
     previewJobs !== org.previewJobsViewEnabled ||
+    ncmecMessages !== org.ncmecMessagesEnabled ||
     ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '');
 
   const handleSave = () => {
@@ -89,6 +96,9 @@ export default function ReviewConsoleTab() {
     }
     if (previewJobs !== org.previewJobsViewEnabled) {
       updatePreviewJobsMutation({ variables: { enabled: previewJobs } });
+    }
+    if (ncmecMessages !== org.ncmecMessagesEnabled) {
+      updateNcmecMessagesEnabled({ variables: { enabled: ncmecMessages } });
     }
     if (ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '')) {
       updateIgnoreUrl({
@@ -166,6 +176,31 @@ export default function ReviewConsoleTab() {
               </Text>
             </div>
             <Switch checked={previewJobs} onCheckedChange={setPreviewJobs} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <div className="border-b border-gray-200 py-2">
+          <Heading size="2XL" weight="semibold">
+            NCMEC
+          </Heading>
+        </div>
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Text size="SM" weight="medium">
+                Enable NCMEC Messages Panel
+              </Text>
+              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                Show the Messages tab in NCMEC review so moderators can include
+                message threads in CyberTipline reports
+              </Text>
+            </div>
+            <Switch
+              checked={ncmecMessages}
+              onCheckedChange={setNcmecMessages}
+            />
           </div>
         </div>
       </div>
