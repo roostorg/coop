@@ -20,22 +20,26 @@ Failed deliveries are retried up to five times with exponential backoff.
   "rules": [{ "id": "rule-id", "name": "Spam detector" }],
   "custom": {},
   "actorEmail": "moderator@example.com",
-  "creator": { "id": "user-id", "typeId": "user-type-id" }
+  "creator": { "id": "user-id", "typeId": "user-type-id" },
+  "reason": "Violated spam policy",
+  "userStrikeCount": 3
 }
 ```
 
 ### Field reference
 
-| Field        | Type            | Always present? | Description                                                                                                                                                                                         |
-| :----------- | :-------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `item`       | Item            | Always          | The item that should receive this Action                                                                                                                                                            |
-| `action`     | Action          | Always          | The Action being triggered                                                                                                                                                                          |
-| `policies`   | Array\<Policy\> | Always          | Policies associated with this action. May contain multiple entries if several rules triggered the same action                                                                                       |
-| `rules`      | Array\<Rule\>   | Not always      | Rules that triggered this action. Empty if triggered via manual review or bulk actioning                                                                                                            |
-| `custom`     | Object          | Not always      | Custom parameters configured in the Action form under "Body"                                                                                                                                        |
-| `actorEmail` | String          | Not always      | Email of the Coop user who took the action. Omitted for automated rule-triggered actions                                                                                                            |
-| `actorNote`  | String          | Not always      | Note added by the moderator when taking the action. Omitted if no note was provided                                                                                                                 |
-| `creator`    | ItemIdentifier  | Not always      | The user the action concerns: the target itself for `USER` items, or the content's author for `CONTENT` items. Omitted when no creator can be resolved (e.g. a content id with no known submission) |
+| Field             | Type            | Always present? | Description                                                                                                                                                                                         |
+| :---------------- | :-------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `item`            | Item            | Always          | The item that should receive this Action                                                                                                                                                            |
+| `action`          | Action          | Always          | The Action being triggered                                                                                                                                                                          |
+| `policies`        | Array\<Policy\> | Always          | Policies associated with this action. May contain multiple entries if several rules triggered the same action                                                                                       |
+| `rules`           | Array\<Rule\>   | Not always      | Rules that triggered this action. Empty if triggered via manual review or bulk actioning                                                                                                            |
+| `custom`          | Object          | Not always      | Custom parameters configured in the Action form under "Body"                                                                                                                                        |
+| `actorEmail`      | String          | Not always      | Email of the Coop user who took the action. Omitted for automated rule-triggered actions                                                                                                            |
+| `actorNote`       | String          | Not always      | Note added by the moderator when taking the action. Omitted if no note was provided                                                                                                                 |
+| `creator`         | ItemIdentifier  | Not always      | The user the action concerns: the target itself for `USER` items, or the content's author for `CONTENT` items. Omitted when no creator can be resolved (e.g. a content id with no known submission) |
+| `reason`          | String          | Not always      | The moderator's decision reason. Present for Review Console decisions that include a reason; omitted otherwise                                                                                      |
+| `userStrikeCount` | Number          | Not always      | The user's cumulative strike total after this action (existing strikes plus any applied by this event). Omitted when no target user can be resolved                                                 |
 
 **Item schema:**
 

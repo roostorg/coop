@@ -171,7 +171,16 @@ class ActionPublisher {
       actorId,
       actorEmail,
       actorNote,
+      decisionReason,
     } = executionContext;
+
+    // Strike total for the webhook body, computed once so every webhook in the
+    // batch agrees.
+    const userStrikeCount = await this.getUserStrikeCountForWebhook(
+      orgId,
+      targetItem,
+      triggeredActions,
+    );
 
     // Apply user strikes from the actions that were triggered.
     // we do this without awaiting to not block the action publishing
@@ -236,6 +245,8 @@ class ActionPublisher {
                 relatedRules,
                 customMrtApiParamDecisionPayload,
                 actorNote,
+                decisionReason,
+                userStrikeCount,
               );
             },
           );
@@ -287,6 +298,45 @@ class ActionPublisher {
     ]);
   }
 
+  /**
+   * The user's cumulative strike total after this event (current total + the
+   * strikes this event applies), for CUSTOM_ACTION webhooks. Computed directly
+   * rather than read back from the async strike write, which races delivery.
+   * Undefined when there's no webhook to carry it or no resolvable user.
+   * Best-effort: a read failure must not break delivery.
+   */
+  private async getUserStrikeCountForWebhook<
+    T extends ActionExecutionCorrelationId,
+  >(
+    orgId: string,
+    targetItem: ActionTargetItem,
+    triggeredActions: Omit<
+      Omit<ActionExecutionData<T>, 'action'> & { action: Action },
+      'orgId' | 'correlationId' | 'targetItem'
+    >[],
+  ): Promise<number | undefined> {
+    const targetUser = getUserFromActionTargetItem(targetItem);
+    const hasWebhook = triggeredActions.some(
+      (it) => it.action.actionType === ActionType.CUSTOM_ACTION,
+    );
+    if (!targetUser || !hasWebhook) {
+      return undefined;
+    }
+    try {
+      const currentTotal = await this.userStrikeService.getUserStrikeValue(
+        orgId,
+        targetUser,
+      );
+      const mostSevere =
+        this.userStrikeService.findMostSeverePolicyViolationFromActions(
+          triggeredActions,
+        );
+      return currentTotal + (mostSevere?.userStrikeCount ?? 0);
+    } catch {
+      return undefined;
+    }
+  }
+
   async publishAction(
     orgId: string,
     action: Action,
@@ -303,6 +353,8 @@ class ActionPublisher {
       string | boolean | unknown
     >,
     actorNote?: string,
+    reason?: string,
+    userStrikeCount?: number,
   ): Promise<boolean> {
     return this.tracer.addActiveSpan(
       { resource: 'actionPublisher', operation: 'publishAction' },
@@ -409,6 +461,12 @@ class ActionPublisher {
                 // `actorNote`. Omitted from the body entirely when absent.
                 ...(actorNote !== undefined ? { actorNote } : {}),
                 ...(creator !== undefined ? { creator } : {}),
+                // The moderator's decision reason, top-level for the same
+                // collision-safety reason as `actorNote`. Omitted when absent.
+                ...(reason !== undefined ? { reason } : {}),
+                // The user's cumulative strike total after this event. Omitted
+                // when there's no resolvable user.
+                ...(userStrikeCount !== undefined ? { userStrikeCount } : {}),
               };
 
               const response = await this.fetchHTTP({

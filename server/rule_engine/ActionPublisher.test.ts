@@ -21,6 +21,7 @@ type IsolatedPublisherOptions = {
   ncmecService?: Partial<Dependencies['NcmecService']>;
   itemInvestigationService?: Partial<Dependencies['ItemInvestigationService']>;
   getItemTypeEventuallyConsistent?: Dependencies['getItemTypeEventuallyConsistent'];
+  userStrikeService?: Partial<Dependencies['UserStrikeService']>;
 };
 
 function makeNoopTracer(): Dependencies['Tracer'] {
@@ -48,6 +49,11 @@ function makeIsolatedPublisher(opts: IsolatedPublisherOptions) {
   }) as Dependencies['ItemInvestigationService'];
   const userStrikeService = {
     applyUserStrikeFromPublishedActions: jest.fn().mockResolvedValue(undefined),
+    getUserStrikeValue: jest.fn().mockResolvedValue(0),
+    findMostSeverePolicyViolationFromActions: jest
+      .fn()
+      .mockReturnValue(undefined),
+    ...opts.userStrikeService,
   } as unknown as Dependencies['UserStrikeService'];
   const getItemTypeEventuallyConsistent =
     opts.getItemTypeEventuallyConsistent ??
@@ -443,6 +449,215 @@ describe('ActionPublisher', () => {
 
       const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
       expect('actorNote' in sentBody).toBe(false);
+    });
+
+    it('includes the decision reason as a top-level `reason` field', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({ fetchHTTP });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-reason',
+              orgId: 'org-789',
+              name: 'Remove',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId: 'mrt-decision:reason' as CorrelationId<'mrt-decision'>,
+          targetItem: {
+            itemId: 'item-reason',
+            itemType: {
+              id: 'type-789',
+              kind: 'CONTENT' as const,
+              name: 'Social Post',
+            },
+          },
+          decisionReason: 'Violated spam policy',
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect(sentBody.reason).toBe('Violated spam policy');
+      // Top-level, not nested under `custom`.
+      expect(sentBody.custom.reason).toBeUndefined();
+    });
+
+    it('omits `reason` from the webhook body when no decision reason is supplied', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({ fetchHTTP });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-no-reason',
+              orgId: 'org-789',
+              name: 'Remove',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:no-reason' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'item-no-reason',
+            itemType: {
+              id: 'type-789',
+              kind: 'CONTENT' as const,
+              name: 'Social Post',
+            },
+          },
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('reason' in sentBody).toBe(false);
+    });
+
+    it('includes the user strike total (current total plus strikes this event applies)', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = jest.fn().mockResolvedValue(2);
+      const findMostSeverePolicyViolationFromActions = jest
+        .fn()
+        .mockReturnValue({ id: 'policy-1', userStrikeCount: 3 });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        userStrikeService: {
+          getUserStrikeValue,
+          findMostSeverePolicyViolationFromActions,
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-strikes',
+              orgId: 'org-789',
+              name: 'Strike',
+              description: null,
+              applyUserStrikes: true,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [
+              {
+                id: 'policy-1',
+                name: 'Policy 1',
+                penalty: 'NONE' as const,
+                userStrikeCount: 3,
+              },
+            ],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:strikes' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'user-123',
+            itemType: {
+              id: 'user-type-1',
+              kind: 'USER' as const,
+              name: 'User',
+            },
+          },
+        },
+      );
+
+      expect(getUserStrikeValue).toHaveBeenCalledWith('org-789', {
+        id: 'user-123',
+        typeId: 'user-type-1',
+      });
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      // 2 existing + 3 applied this event = 5
+      expect(sentBody.userStrikeCount).toBe(5);
+    });
+
+    it('omits the user strike total when there is no resolvable target user', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = jest.fn();
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        userStrikeService: { getUserStrikeValue },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-no-user',
+              orgId: 'org-789',
+              name: 'Action',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:no-user' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            // Identifier-only CONTENT with no submission => no resolvable user.
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(getUserStrikeValue).not.toHaveBeenCalled();
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('userStrikeCount' in sentBody).toBe(false);
     });
 
     it('forwards moderator-supplied parameter values and actor note to the logger', async () => {
