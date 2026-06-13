@@ -3,6 +3,7 @@ import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
 import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
 import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { HOST_URL } from '@/lib/config';
+import { filterNullOrUndefined } from '@/utils/collections';
 import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Checkbox, Input, Tooltip } from 'antd';
@@ -27,7 +28,6 @@ import {
   useGQLGetSkipsForRecentDecisionsLazyQuery,
   useGQLOrgLookupDataQuery,
 } from '../../../graphql/generated';
-import { filterNullOrUndefined } from '../../../utils/collections';
 import { assertUnreachable } from '../../../utils/misc';
 import {
   parseDatetimeToReadableStringInCurrentTimeZone,
@@ -173,6 +173,18 @@ const columnLabels: Record<ColumnId, string> = {
 
 const DECISION_REASON_PREVIEW_LENGTH = 50;
 
+// Escape a value for a CSV field per RFC 4180: wrap in double quotes and double
+// any embedded quotes so free-form text (e.g. decision reasons containing
+// quotes or newlines) doesn't corrupt the output. Also neutralize spreadsheet
+// formula prefixes (=, +, -, @) so a cell can't be interpreted as a formula.
+const toCsvField = (value: unknown): string => {
+  let str = String(value ?? '');
+  if (/^[=+\-@]/.test(str)) {
+    str = `'${str}`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+};
+
 export default function ManualReviewRecentDecisions() {
   const [searchParams] = useSearchParams();
   const [decisionId] = [searchParams.get('decisionId') ?? undefined];
@@ -215,7 +227,14 @@ export default function ManualReviewRecentDecisions() {
   }, [columnVisibility]);
 
   const toggleColumnVisibility = useCallback((columnId: ColumnId) => {
-    setColumnVisibility((prev) => ({ ...prev, [columnId]: !prev[columnId] }));
+    setColumnVisibility((prev) => {
+      const next = { ...prev, [columnId]: !prev[columnId] };
+      // Keep at least one column visible to avoid a blank, unusable table.
+      if (!Object.values(next).some(Boolean)) {
+        return prev;
+      }
+      return next;
+    });
   }, []);
 
   const [columnsMenuVisible, setColumnsMenuVisible] = useState(false);
@@ -703,7 +722,7 @@ export default function ManualReviewRecentDecisions() {
 
         // Combine the headers and rows into a CSV string
         const csvContent = [headers, ...rows]
-          .map((row) => row.map((field) => `"${field}"`).join(',')) // Ensure each field is enclosed in double quotes
+          .map((row) => row.map(toCsvField).join(',')) // RFC 4180: quote fields and escape embedded quotes
           .join('\n');
 
         // Create a Blob from the CSV content
@@ -753,7 +772,7 @@ export default function ManualReviewRecentDecisions() {
 
         // Combine the headers and rows into a CSV string
         const csvContent = [headers, ...rows]
-          .map((row) => row.map((field) => `"${field}"`).join(',')) // Ensure each field is enclosed in double quotes
+          .map((row) => row.map(toCsvField).join(',')) // RFC 4180: quote fields and escape embedded quotes
           .join('\n');
 
         // Create a Blob from the CSV content
@@ -921,6 +940,9 @@ export default function ManualReviewRecentDecisions() {
               <div key={columnId} className="py-2">
                 <Checkbox
                   checked={columnVisibility[columnId]}
+                  disabled={
+                    columnVisibility[columnId] && visibleColumnsCount === 1
+                  }
                   onChange={() => toggleColumnVisibility(columnId)}
                 >
                   {columnLabels[columnId]}
