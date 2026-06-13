@@ -1,11 +1,12 @@
 import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
 import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
 import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
+import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { HOST_URL } from '@/lib/config';
 import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { Button, Input } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Checkbox, Input, Tooltip } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -26,6 +27,7 @@ import {
   useGQLGetSkipsForRecentDecisionsLazyQuery,
   useGQLOrgLookupDataQuery,
 } from '../../../graphql/generated';
+import { filterNullOrUndefined } from '../../../utils/collections';
 import { assertUnreachable } from '../../../utils/misc';
 import {
   parseDatetimeToReadableStringInCurrentTimeZone,
@@ -140,6 +142,37 @@ gql`
 type RecentDecision =
   GQLGetRecentDecisionsQuery['getRecentDecisions'][number]['decisions'][number];
 
+// Column visibility configuration
+type ColumnId =
+  | 'decisionTime'
+  | 'decisions'
+  | 'policies'
+  | 'reviewer'
+  | 'queue'
+  | 'decisionReason';
+
+const COLUMN_VISIBILITY_STORAGE_KEY = 'mrt-recent-decisions-column-visibility';
+
+const defaultColumnVisibility: Record<ColumnId, boolean> = {
+  decisionTime: true,
+  decisions: true,
+  decisionReason: true,
+  policies: true,
+  reviewer: true,
+  queue: true,
+};
+
+const columnLabels: Record<ColumnId, string> = {
+  decisionTime: 'Decision Time',
+  decisions: 'Decisions',
+  decisionReason: 'Decision Reason',
+  policies: 'Policies',
+  reviewer: 'Reviewer',
+  queue: 'Queue',
+};
+
+const DECISION_REASON_PREVIEW_LENGTH = 50;
+
 export default function ManualReviewRecentDecisions() {
   const [searchParams] = useSearchParams();
   const [decisionId] = [searchParams.get('decisionId') ?? undefined];
@@ -153,6 +186,59 @@ export default function ManualReviewRecentDecisions() {
   const [unsavedFilterValue, setUnsavedFilterValue] = useState<
     RecentDecisionsFilterInput | undefined
   >(undefined);
+
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState<
+    Record<ColumnId, boolean>
+  >(() => {
+    try {
+      const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+      if (stored) {
+        return { ...defaultColumnVisibility, ...JSON.parse(stored) };
+      }
+    } catch (e) {
+      // Failed to load from localStorage, use defaults
+    }
+    return defaultColumnVisibility;
+  });
+
+  // Save column visibility to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        COLUMN_VISIBILITY_STORAGE_KEY,
+        JSON.stringify(columnVisibility),
+      );
+    } catch (e) {
+      // Failed to save to localStorage
+    }
+  }, [columnVisibility]);
+
+  const toggleColumnVisibility = useCallback((columnId: ColumnId) => {
+    setColumnVisibility((prev) => ({ ...prev, [columnId]: !prev[columnId] }));
+  }, []);
+
+  const [columnsMenuVisible, setColumnsMenuVisible] = useState(false);
+  const columnsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close columns menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        columnsMenuRef.current &&
+        !columnsMenuRef.current.contains(event.target as Node)
+      ) {
+        setColumnsMenuVisible(false);
+      }
+    };
+
+    if (columnsMenuVisible) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [columnsMenuVisible]);
 
   const { data: orgLookupData } = useGQLOrgLookupDataQuery({
     fetchPolicy: 'cache-and-network',
@@ -257,35 +343,53 @@ export default function ManualReviewRecentDecisions() {
   ]);
 
   const columns = useMemo(
-    () => [
-      {
-        Header: 'Decision Time',
-        accessor: 'decisionTime',
-        sortDescFirst: true,
-        sortType: stringSort,
-      },
-      {
-        Header: 'Decisions',
-        accessor: 'decisions',
-        canSort: false,
-      },
-      {
-        Header: 'Policies',
-        accessor: 'policies',
-        canSort: false,
-      },
-      {
-        Header: 'Reviewer',
-        accessor: 'reviewer',
-        canSort: false,
-      },
-      {
-        Header: 'Queue',
-        accessor: 'queue',
-        canSort: true,
-      },
-    ],
-    [],
+    () =>
+      filterNullOrUndefined([
+        columnVisibility.decisionTime
+          ? {
+              Header: 'Decision Time',
+              accessor: 'decisionTime',
+              sortDescFirst: true,
+              sortType: stringSort,
+            }
+          : undefined,
+        columnVisibility.decisions
+          ? {
+              Header: 'Decisions',
+              accessor: 'decisions',
+              canSort: false,
+            }
+          : undefined,
+        columnVisibility.decisionReason
+          ? {
+              Header: 'Decision Reason',
+              accessor: 'decisionReason',
+              canSort: false,
+            }
+          : undefined,
+        columnVisibility.policies
+          ? {
+              Header: 'Policies',
+              accessor: 'policies',
+              canSort: false,
+            }
+          : undefined,
+        columnVisibility.reviewer
+          ? {
+              Header: 'Reviewer',
+              accessor: 'reviewer',
+              canSort: false,
+            }
+          : undefined,
+        columnVisibility.queue
+          ? {
+              Header: 'Queue',
+              accessor: 'queue',
+              canSort: true,
+            }
+          : undefined,
+      ]),
+    [columnVisibility],
   );
 
   const getReviewerName = useCallback(
@@ -488,6 +592,20 @@ export default function ManualReviewRecentDecisions() {
                 )}
               </div>
             ),
+            decisionReason: value.decisionReason ? (
+              <Tooltip title={value.decisionReason}>
+                <div className="max-w-xs truncate">
+                  {value.decisionReason.length > DECISION_REASON_PREVIEW_LENGTH
+                    ? `${value.decisionReason.slice(
+                        0,
+                        DECISION_REASON_PREVIEW_LENGTH,
+                      )}…`
+                    : value.decisionReason}
+                </div>
+              </Tooltip>
+            ) : (
+              <div className="text-slate-400">—</div>
+            ),
             values: value,
           };
         })
@@ -558,6 +676,7 @@ export default function ManualReviewRecentDecisions() {
               new Date(decision.createdAt),
             ),
             policies,
+            decisionReason: decision.decisionReason ?? '',
           };
         });
         // Define the CSV headers
@@ -567,6 +686,7 @@ export default function ManualReviewRecentDecisions() {
           'Reviewer',
           'Queue',
           'Decision Time',
+          'Decision Reason',
           'Link',
         ];
 
@@ -577,6 +697,7 @@ export default function ManualReviewRecentDecisions() {
           item.reviewer,
           item.queue,
           item.createdAt,
+          item.decisionReason,
           `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
         ]);
 
@@ -746,7 +867,7 @@ export default function ManualReviewRecentDecisions() {
   };
 
   const userSearchInput = (
-    <div className="flex items-start gap-2 pb-6">
+    <div className="flex items-start gap-2 pb-1">
       <Input
         className="rounded-lg w-[300px]"
         placeholder="Input a user's ID or username"
@@ -773,12 +894,58 @@ export default function ManualReviewRecentDecisions() {
     </div>
   );
 
+  const visibleColumnsCount =
+    Object.values(columnVisibility).filter(Boolean).length;
+
+  const columnsButton = (
+    <div ref={columnsMenuRef} className="relative inline-block text-start">
+      <Button
+        className={`font-semibold text-base rounded ${
+          visibleColumnsCount === Object.keys(columnLabels).length
+            ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
+            : 'bg-gray-600 text-white border-none hover:bg-gray-500'
+        }`}
+        icon={
+          <GridAlt className="inline-block w-4 h-4 mr-2" fill="currentColor" />
+        }
+        onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
+      >
+        Columns
+      </Button>
+      {columnsMenuVisible && (
+        <div className="absolute left-0 z-20 flex flex-col mt-1 bg-white border border-solid border-gray-300 rounded shadow-md min-w-[240px]">
+          <div className="px-4 py-4 text-base font-semibold">Show Columns</div>
+          <div className="!p-0 !m-0 divider" />
+          <div className="flex flex-col px-4 py-2">
+            {(Object.keys(columnLabels) as ColumnId[]).map((columnId) => (
+              <div key={columnId} className="py-2">
+                <Checkbox
+                  checked={columnVisibility[columnId]}
+                  onChange={() => toggleColumnVisibility(columnId)}
+                >
+                  {columnLabels[columnId]}
+                </Checkbox>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const userSearchAndRefresh = (
     <div className="flex gap-8">
       {userSearchInput}
       {refreshButton}
       {downloadButton}
       {downloadSkips}
+    </div>
+  );
+
+  const tableControls = (
+    <div className="flex flex-col gap-2">
+      {userSearchAndRefresh}
+      {columnsButton}
     </div>
   );
 
@@ -817,17 +984,19 @@ export default function ManualReviewRecentDecisions() {
         <ComponentLoading />
       ) : (
         <div className="flex w-full">
-          <div>
+          <div className={selectedDecision ? undefined : 'w-full min-w-0'}>
             <Table
               columns={columns}
               // @ts-ignore
               data={tableData}
+              alwaysShowScrollbar
+              containerClassName={selectedDecision ? undefined : 'w-full'}
               onSelectRow={(rowData) =>
                 setSelectedDecision(
                   rowData.original.values.originalDecisionData,
                 )
               }
-              topLeftComponent={selectedDecision ? null : userSearchAndRefresh}
+              topLeftComponent={selectedDecision ? null : tableControls}
               topRightComponent={<div className="pb-8">{filter}</div>}
               isCollapsed={selectedDecision != null}
               collapsedColumnTitle="Decisions"
