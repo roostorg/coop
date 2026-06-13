@@ -74,7 +74,18 @@ const POST_SCHEMA = [
     required: false,
     container: null,
   },
-  { name: 'embedThumb', type: 'URL', required: false, container: null },
+  { name: 'embedThumb', type: 'IMAGE', required: false, container: null },
+  {
+    name: 'images',
+    type: 'ARRAY',
+    required: false,
+    container: {
+      containerType: 'ARRAY',
+      keyScalarType: null,
+      valueScalarType: 'IMAGE',
+    },
+  },
+  { name: 'video', type: 'VIDEO', required: false, container: null },
 ] as const;
 
 const POST_ROLES = {

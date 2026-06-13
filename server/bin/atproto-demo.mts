@@ -142,8 +142,9 @@ interface BlueskyPost {
   };
   embed?: {
     $type: string;
-    external?: { uri: string; title?: string; description?: string };
-    images?: Array<unknown>;
+    external?: { uri: string; title?: string; description?: string; thumb?: { ref: { $link: string } } };
+    images?: Array<{ image: { ref: { $link: string } }; alt?: string }>;
+    video?: { ref: { $link: string } };
   };
 }
 
@@ -197,6 +198,17 @@ function buildBskyProfileUrl(did: string): string {
   return `https://bsky.app/profile/${did}`;
 }
 
+const BSKY_CDN_BASE = 'https://cdn.bsky.app/img/feed_thumbnail/plain';
+const BSKY_VIDEO_BASE = 'https://video.bsky.app/watch';
+
+function buildImageCdnUrl(did: string, cid: string): string {
+  return `${BSKY_CDN_BASE}/${did}/${cid}@jpeg`;
+}
+
+function buildVideoUrl(did: string, cid: string): string {
+  return `${BSKY_VIDEO_BASE}/${did}/${cid}/playlist.m3u8`;
+}
+
 async function postToCoopItem(
   did: string,
   rkey: string,
@@ -204,6 +216,15 @@ async function postToCoopItem(
 ): Promise<CoopItem> {
   const atUri = buildAtUri(did, rkey);
   const profile = await fetchProfile(did);
+
+  const images = (record.embed?.images ?? [])
+    .map((img) => img.image?.ref?.$link)
+    .filter((cid): cid is string => cid != null)
+    .map((cid) => buildImageCdnUrl(did, cid));
+
+  const videoCid = record.embed?.video?.ref?.$link ?? null;
+  const video = videoCid ? buildVideoUrl(did, videoCid) : null;
+
   return {
     id: atUri,
     typeId: postTypeId as string,
@@ -231,8 +252,13 @@ async function postToCoopItem(
             ...(record.embed.external?.description
               ? { embedDescription: record.embed.external.description }
               : {}),
+            ...(record.embed.external?.thumb?.ref?.$link
+              ? { embedThumb: buildImageCdnUrl(did, record.embed.external.thumb.ref.$link) }
+              : {}),
           }
         : {}),
+      ...(images.length > 0 ? { images } : {}),
+      ...(video ? { video } : {}),
     },
   };
 }
