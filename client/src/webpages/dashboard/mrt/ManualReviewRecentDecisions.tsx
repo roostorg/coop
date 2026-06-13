@@ -410,10 +410,15 @@ export default function ManualReviewRecentDecisions() {
     if (!allDecisionsData || !orgLookupData?.myOrg) {
       return undefined;
     }
+    const fetchedDecision =
+      decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision;
     const allDecisions = [
       ...allDecisionsData.getRecentDecisions,
-      ...(decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision
-        ? [decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision]
+      ...(fetchedDecision &&
+      !allDecisionsData.getRecentDecisions.some(
+        (decision) => decision.id === fetchedDecision.id,
+      )
+        ? [fetchedDecision]
         : []),
     ];
 
