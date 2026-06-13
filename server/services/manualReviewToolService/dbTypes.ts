@@ -207,6 +207,7 @@ export type ManualReviewToolServicePg = {
     hide_skip_button_for_non_admins: boolean;
     ignore_callback_url: string | null;
     preview_jobs_view_enabled: boolean;
+    ncmec_messages_enabled: boolean;
   };
   'manual_review_tool.job_comments': {
     id: string;

@@ -2520,6 +2520,7 @@ export type GQLMutation = {
   readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
+  readonly updateNcmecMessagesEnabled: Scalars['Boolean']['output'];
   readonly updateNcmecOrgSettings: GQLUpdateNcmecOrgSettingsResponse;
   readonly updateOrgInfo: GQLUpdateOrgInfoSuccessResponse;
   readonly updatePartialItemsSettings: Scalars['Boolean']['output'];
@@ -2840,6 +2841,10 @@ export type GQLMutationUpdateLocationBankArgs = {
 
 export type GQLMutationUpdateManualReviewQueueArgs = {
   input: GQLUpdateManualReviewQueueInput;
+};
+
+export type GQLMutationUpdateNcmecMessagesEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type GQLMutationUpdateNcmecOrgSettingsArgs = {
@@ -3213,6 +3218,7 @@ export type GQLOrg = {
    * NCMEC review UI can enforce the policy. Defaults to ALL when unset.
    */
   readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+  readonly ncmecMessagesEnabled: Scalars['Boolean']['output'];
   /**
    * Minimum number of media items that must be reviewed before sending an NCMEC
    * report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
@@ -12202,6 +12208,7 @@ export type GQLManualReviewJobInfoQuery = {
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly id: string;
+    readonly ncmecMessagesEnabled: boolean;
     readonly hasNCMECReportingEnabled: boolean;
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
@@ -24816,6 +24823,7 @@ export type GQLDeploymentSettingsQuery = {
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
     readonly previewJobsViewEnabled: boolean;
+    readonly ncmecMessagesEnabled: boolean;
     readonly hideSkipButtonForNonAdmins: boolean;
     readonly userStrikeTTL: number;
     readonly samlEnabled: boolean;
@@ -24903,6 +24911,15 @@ export type GQLUpdatePreviewJobsViewEnabledMutationVariables = Exact<{
 export type GQLUpdatePreviewJobsViewEnabledMutation = {
   readonly __typename: 'Mutation';
   readonly updatePreviewJobsViewEnabled: boolean;
+};
+
+export type GQLUpdateNcmecMessagesEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateNcmecMessagesEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateNcmecMessagesEnabled: boolean;
 };
 
 export type GQLUpdateIgnoreCallbackUrlMutationVariables = Exact<{
@@ -34310,6 +34327,7 @@ export const GQLManualReviewJobInfoDocument = gql`
         isAppealsQueue
         autoCloseJobs
       }
+      ncmecMessagesEnabled
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
@@ -43956,6 +43974,7 @@ export const GQLDeploymentSettingsDocument = gql`
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
       previewJobsViewEnabled
+      ncmecMessagesEnabled
       hideSkipButtonForNonAdmins
       userStrikeTTL
       samlEnabled
@@ -44456,6 +44475,55 @@ export type GQLUpdatePreviewJobsViewEnabledMutationOptions =
   Apollo.BaseMutationOptions<
     GQLUpdatePreviewJobsViewEnabledMutation,
     GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >;
+export const GQLUpdateNcmecMessagesEnabledDocument = gql`
+  mutation UpdateNcmecMessagesEnabled($enabled: Boolean!) {
+    updateNcmecMessagesEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateNcmecMessagesEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdateNcmecMessagesEnabledMutation,
+  GQLUpdateNcmecMessagesEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdateNcmecMessagesEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateNcmecMessagesEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateNcmecMessagesEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateNcmecMessagesEnabledMutation, { data, loading, error }] = useGQLUpdateNcmecMessagesEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateNcmecMessagesEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateNcmecMessagesEnabledMutation,
+    GQLUpdateNcmecMessagesEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateNcmecMessagesEnabledMutation,
+    GQLUpdateNcmecMessagesEnabledMutationVariables
+  >(GQLUpdateNcmecMessagesEnabledDocument, options);
+}
+export type GQLUpdateNcmecMessagesEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateNcmecMessagesEnabledMutation
+>;
+export type GQLUpdateNcmecMessagesEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateNcmecMessagesEnabledMutation>;
+export type GQLUpdateNcmecMessagesEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateNcmecMessagesEnabledMutation,
+    GQLUpdateNcmecMessagesEnabledMutationVariables
   >;
 export const GQLUpdateIgnoreCallbackUrlDocument = gql`
   mutation UpdateIgnoreCallbackUrl($url: String) {
@@ -45191,6 +45259,7 @@ export const namedOperations = {
     UpdateRequiresDecisionReason: 'UpdateRequiresDecisionReason',
     UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
     UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
+    UpdateNcmecMessagesEnabled: 'UpdateNcmecMessagesEnabled',
     UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',
     UpdateAppealSettings: 'UpdateAppealSettings',
     UpdateOrgInfo: 'UpdateOrgInfo',

@@ -23,6 +23,7 @@ export default class ManualReviewToolSettings {
         mrt_requires_decision_reason: false,
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
+        ncmec_messages_enabled: false,
         ignore_callback_url: null,
       })
       .onConflict((oc) => oc.column('org_id').doNothing())
@@ -67,6 +68,15 @@ export default class ManualReviewToolSettings {
     return row?.preview_jobs_view_enabled ?? false;
   }
 
+  async getNcmecMessagesEnabled(orgId: string) {
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_tool_settings')
+      .select(['ncmec_messages_enabled'])
+      .where('org_id', '=', orgId)
+      .executeTakeFirst();
+    return row?.ncmec_messages_enabled ?? false;
+  }
+
   async getIgnoreCallbackUrl(orgId: string) {
     const row = await this.pgQuery
       .selectFrom('manual_review_tool.manual_review_tool_settings')
@@ -90,6 +100,7 @@ export default class ManualReviewToolSettings {
         mrt_requires_decision_reason: false,
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
+        ncmec_messages_enabled: false,
         ignore_callback_url: null,
         ...changes,
       })
@@ -115,6 +126,10 @@ export default class ManualReviewToolSettings {
 
   async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
     await this.upsertSettings(orgId, { preview_jobs_view_enabled: enabled });
+  }
+
+  async updateNcmecMessagesEnabled(orgId: string, enabled: boolean) {
+    await this.upsertSettings(orgId, { ncmec_messages_enabled: enabled });
   }
 
   async updateIgnoreCallbackUrl(orgId: string, url: string | null) {

@@ -727,5 +727,15 @@ describe('Manual Review Tool Service', () => {
       expect(await mrtService.getRequiresPolicyForDecisions(orgId)).toBe(false);
       expect(await mrtService.getRequiresDecisionReason(orgId)).toBe(false);
     });
+
+    it('persists the ncmec messages toggle when the org has no settings row', async () => {
+      expect(await mrtService.getNcmecMessagesEnabled(orgId)).toBe(false);
+
+      await mrtService.updateNcmecMessagesEnabled(orgId, true);
+
+      expect(await mrtService.getNcmecMessagesEnabled(orgId)).toBe(true);
+      expect(await mrtService.getPreviewJobsViewEnabled(orgId)).toBe(false);
+      expect(await mrtService.getRequiresPolicyForDecisions(orgId)).toBe(false);
+    });
   });
 });

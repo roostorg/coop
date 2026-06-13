@@ -2588,6 +2588,7 @@ export type GQLMutation = {
   readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
+  readonly updateNcmecMessagesEnabled: Scalars['Boolean']['output'];
   readonly updateNcmecOrgSettings: GQLUpdateNcmecOrgSettingsResponse;
   readonly updateOrgInfo: GQLUpdateOrgInfoSuccessResponse;
   readonly updatePartialItemsSettings: Scalars['Boolean']['output'];
@@ -2908,6 +2909,10 @@ export type GQLMutationUpdateLocationBankArgs = {
 
 export type GQLMutationUpdateManualReviewQueueArgs = {
   input: GQLUpdateManualReviewQueueInput;
+};
+
+export type GQLMutationUpdateNcmecMessagesEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type GQLMutationUpdateNcmecOrgSettingsArgs = {
@@ -3281,6 +3286,7 @@ export type GQLOrg = {
    * NCMEC review UI can enforce the policy. Defaults to ALL when unset.
    */
   readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+  readonly ncmecMessagesEnabled: Scalars['Boolean']['output'];
   /**
    * Minimum number of media items that must be reviewed before sending an NCMEC
    * report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
@@ -11341,6 +11347,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateManualReviewQueueArgs, 'input'>
   >;
+  updateNcmecMessagesEnabled?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationUpdateNcmecMessagesEnabledArgs, 'enabled'>
+  >;
   updateNcmecOrgSettings?: Resolver<
     GQLResolversTypes['UpdateNcmecOrgSettingsResponse'],
     ParentType,
@@ -11887,6 +11899,11 @@ export type GQLOrgResolvers<
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   ncmecMediaReviewRequirement?: Resolver<
     GQLResolversTypes['NcmecMediaReviewRequirement'],
+    ParentType,
+    ContextType
+  >;
+  ncmecMessagesEnabled?: Resolver<
+    GQLResolversTypes['Boolean'],
     ParentType,
     ContextType
   >;

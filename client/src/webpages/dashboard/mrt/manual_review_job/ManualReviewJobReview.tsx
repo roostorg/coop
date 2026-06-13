@@ -144,6 +144,7 @@ gql`
         isAppealsQueue
         autoCloseJobs
       }
+      ncmecMessagesEnabled
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
@@ -871,23 +872,13 @@ function ManualReviewJobReviewImpl(props: {
         />
       );
     } else {
-      // TODO: remove this when we launch messages for real. For now, allow Niles, Nick, Alex and EA
-      const allowedUsersForMessages = [
-        '77541281dc8',
-        '4804fecc0ad',
-        'eb372ef7940',
-        '9f48683715a',
-        '839009f7cc7',
-      ];
       return (
         <div>
           <NCMECReviewUser
             orgId={org.id}
             payload={payload}
             isActionable={true}
-            showMessages={
-              data.me?.id ? allowedUsersForMessages.includes(data.me.id) : false
-            }
+            showMessages={org.ncmecMessagesEnabled}
             submitDecision={async (decision) => {
               await submitDecision({
                 variables: {
