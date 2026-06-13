@@ -2,6 +2,10 @@ import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { arrayFromArrayOrSingleItem } from '@/utils/collections';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
+import {
+  convertRelatedItemToFieldData,
+  userStrikeCountField,
+} from '@/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobUserUtils';
 import { LoadingOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
@@ -23,10 +27,6 @@ import FieldsComponent from '../ManualReviewJobFieldsComponent';
 import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImageComponent';
 import ManualReviewJobEnqueueRelatedActionWithPoliciesButton from '../related_actions/ManualReviewJobEnqueueRelatedActionWithPoliciesButton';
 import ManualReviewJobLatestSubmissionsWithThreadComponent from './ManualReviewJobLatestSubmissionsWithThreadComponent';
-import {
-  convertRelatedItemToFieldData,
-  userStrikeCountField,
-} from './ManualReviewJobUserUtils';
 
 gql`
   query OrgData {
