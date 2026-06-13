@@ -7,6 +7,20 @@ Get Coop running on your own infrastructure. You may also be interested in the [
 
 ## Self-hosting checklist
 
+### Infrastructure requirements and recommendations
+
+The following recommendations are intended as a starting point for self-hosted deployments. Actual requirements will vary depending on workload, moderation volume, retention settings, and enabled integrations.
+
+| Resource         | Minimum                   | Recommended                             |
+| ---------------- | ------------------------- | --------------------------------------- |
+| Operating System | Modern Linux distribution | Latest supported LTS Linux distribution |
+| CPU              | 2 vCPUs                   | 4+ vCPUs                                |
+| Memory (RAM)     | 4 GiB                     | 8 GiB                                   |
+
+The documented development prerequisites recommend 8 GiB of RAM, with approximately 4 GiB required to run a Coop instance and additional memory used by supporting services and tooling.
+
+Production deployments should monitor resource utilization and scale infrastructure as needed.
+
 Coop does not currently ship a single production deployment recipe, but the repository does include the configuration surface you need to stand up a self-hosted instance. Treat the example environment files in `db/.env.example`, `server/.env.example`, and `client/.env.example` as the starting point for your deployment-specific configuration.
 
 ### Required production configuration
