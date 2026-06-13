@@ -22,7 +22,10 @@ import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImage
 import ManualReviewJobCurrentJobsComponent from './ManualReviewJobCurrentJobsComponent';
 import ManualReviewJobLatestSubmissionsWithThreadComponent from './ManualReviewJobLatestSubmissionsWithThreadComponent';
 import ManualReviewJobRelatedUserComponent from './ManualReviewJobRelatedUserComponent';
-import { convertRelatedItemToFieldData } from './ManualReviewJobUserUtils';
+import {
+  convertRelatedItemToFieldData,
+  userStrikeCountField,
+} from './ManualReviewJobUserUtils';
 
 export default function ManualReviewJobPrimaryUserComponent(props: {
   user: GQLUserItem | ItemIdentifier;
@@ -186,6 +189,7 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
               },
               fieldData.map((it) => it.name),
             ),
+            userStrikeCountField(user.userStrikeCount),
             ...fieldData,
           ]}
           itemTypeId={user.type.id}

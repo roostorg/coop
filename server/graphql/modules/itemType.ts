@@ -203,6 +203,7 @@ const typeDefs = /* GraphQL */ `
     submissionId: ID!
     submissionTime: DateTime
     userScore: Int!
+    userStrikeCount: Int!
   }
 
   type ThreadItem implements ItemBase {
@@ -544,6 +545,19 @@ const UserItem: GQLUserItemResolvers = {
 
     const { id, type } = userItem;
     return context.services.UserStatisticsService.getUserScore(user.orgId, {
+      id,
+      typeId: type.id,
+    });
+  },
+
+  async userStrikeCount(userItem, __, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+
+    const { id, type } = userItem;
+    return context.services.UserStrikeService.getUserStrikeValue(user.orgId, {
       id,
       typeId: type.id,
     });
