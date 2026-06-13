@@ -238,3 +238,67 @@ npm run recover-mrt-queue -- \
 - Report history is best-effort: only inbound `submitReport` rows that made
   it into `REPORTING_SERVICE.REPORTS` are restored. Rule-driven enqueues
   (`ENQUEUE_TO_MRT`) never had a report history to begin with.
+
+---
+
+## atproto-proxy.mts
+
+Content proxy for the MRT job review iframe. The review UI embeds post content in an iframe via a proxy URL (default: `http://localhost:4000`). bsky.app blocks direct embedding with `X-Frame-Options: SAMEORIGIN`, so this script fetches post data from the Bluesky public API instead and renders it as a standalone HTML page. It also handles blur and grayscale postMessage events sent by the review UI's wellness settings.
+
+Run this alongside `atproto:demo` in a separate terminal:
+
+```sh
+cd server && npm run atproto:proxy
+```
+
+You also need to set `VITE_CONTENT_URL_PATTERN=bsky.app` in `client/.env` so the review UI knows to show the iframe for Bluesky post URLs.
+
+**Options:**
+- `--port` — port to listen on (default: `4000`)
+
+---
+
+## atproto-setup.ts
+
+Creates (or updates) the AT Protocol item types needed by the atproto demo firehose connector. Run this once after `npm run create-org` to register the item types, then pass the printed item type IDs to `npm run atproto:demo`.
+
+**Create mode** (first run):
+
+```sh
+cd server && npm run atproto:setup -- --org-id <orgId>
+```
+
+**Update mode** (to add new fields to an existing org's item types):
+
+```sh
+cd server && npm run atproto:setup -- --org-id <orgId> --post-type-id <id> --user-type-id <id>
+```
+
+The script prints an **atproto Post item type ID** and an **atproto User item type ID** — copy both for use with `atproto:demo`.
+
+## atproto-demo.mts
+
+Feed a local Coop instance with real content from the [AT Protocol](https://atproto.com/) (Bluesky) firehose.
+
+1. Create the Bluesky item types (run once after `npm run create-org`):
+
+   ```sh
+   cd server && npm run atproto:setup -- --org-id <orgId>
+   ```
+
+   Copy both the **Post item type ID** and the **User item type ID** from the output.
+
+2. Start the firehose connector (in a separate terminal):
+
+   ```sh
+   npm run atproto:demo -- \
+     --api-key <apiKey> \
+     --post-type-id <postTypeId> \
+     --user-type-id <userTypeId>
+   ```
+
+Posts from the Bluesky firehose will appear as submitted items. With `--user-type-id` set, posts are also submitted as mock reports at a separate rate, routed to your default queue. Omit `--user-type-id` to skip report submission entirely.
+
+Pass `--rate-limit <n>` to adjust the item submission cap (default: 100/min) and `--report-rate-limit <n>` for the report cap (default: 1/min). Use `--dry-run` to preview submissions without sending them.
+
+See `atproto-demo.mts` for the full list of options.
