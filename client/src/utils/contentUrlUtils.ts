@@ -64,13 +64,22 @@ export function getContentUrlPatterns(): string[] {
 
 /**
  * Check if a URL should be displayed in an iframe
+ *
+ * Patterns are matched against the URL's hostname only (not the full URL), so a
+ * pattern can't be smuggled in via the path or query string (e.g.
+ * `https://evil.example/?ref=bsky.app` does not match the `bsky.app` pattern).
  * @param url The URL to check
  * @returns True if the URL should be displayed in an iframe
  */
 export function shouldDisplayInIframe(url: string): boolean {
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
   const patterns = getContentUrlPatterns();
-  const urlLower = url.toLowerCase();
-  return patterns.some((pattern) => urlLower.includes(pattern.toLowerCase()));
+  return patterns.some((pattern) => hostname.includes(pattern.toLowerCase()));
 }
 
 /**
