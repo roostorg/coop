@@ -111,6 +111,16 @@ export default function ReviewConsoleTab() {
     }
   };
 
+  // The "Require Decision Reason" master toggle is derived from the two
+  // underlying flags: it's on when a reason is required for either action or
+  // ignore decisions. Turning it on defaults to requiring a reason for actions
+  // only; turning it off clears both.
+  const requireReasonAny = requireReason || requireReasonOnIgnore;
+  const handleRequireReasonToggle = (checked: boolean) => {
+    setRequireReason(checked);
+    setRequireReasonOnIgnore(false);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
@@ -134,34 +144,43 @@ export default function ReviewConsoleTab() {
               onCheckedChange={setRequirePolicy}
             />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Text size="SM" weight="medium">
-                Require Decision Reason (for violating jobs)
-              </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
-                Moderators must provide a written reason when taking an action
-                on a job
-              </Text>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Text size="SM" weight="medium">
+                  Require Decision Reason
+                </Text>
+                <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                  Moderators must provide a written reason when completing a job
+                </Text>
+              </div>
+              <Switch
+                checked={requireReasonAny}
+                onCheckedChange={handleRequireReasonToggle}
+              />
             </div>
-            <Switch
-              checked={requireReason}
-              onCheckedChange={setRequireReason}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Text size="SM" weight="medium">
-                Require Decision Reason (when ignoring jobs)
-              </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
-                Moderators must provide a written reason when ignoring a job
-              </Text>
-            </div>
-            <Switch
-              checked={requireReasonOnIgnore}
-              onCheckedChange={setRequireReasonOnIgnore}
-            />
+            {requireReasonAny ? (
+              <div className="ml-1 flex flex-col gap-3 border-l border-gray-200 pl-4">
+                <div className="flex items-center justify-between">
+                  <Text size="SM" className="text-gray-700">
+                    When applying an action
+                  </Text>
+                  <Switch
+                    checked={requireReason}
+                    onCheckedChange={setRequireReason}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Text size="SM" className="text-gray-700">
+                    When ignoring jobs
+                  </Text>
+                  <Switch
+                    checked={requireReasonOnIgnore}
+                    onCheckedChange={setRequireReasonOnIgnore}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
