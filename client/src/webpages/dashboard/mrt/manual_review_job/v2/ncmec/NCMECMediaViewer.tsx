@@ -37,15 +37,6 @@ type NCMECMediaViewerOptions = {
   isConfirmedCsam: boolean;
 };
 
-export function safetySetting(text: string, component: React.ReactNode) {
-  return (
-    <div className="flex items-center mr-3">
-      {text}
-      <div className="ml-3 text-start">{component}</div>
-    </div>
-  );
-}
-
 export default function NCMECMediaViewer(props: {
   mediaId: NCMECMediaIdentifier;
   index: number;
@@ -218,12 +209,12 @@ export default function NCMECMediaViewer(props: {
                     state!.category === 'A1'
                       ? 'border-red-400'
                       : state!.category === 'A2'
-                      ? 'border-orange-400'
-                      : state!.category === 'B1'
-                      ? 'border-amber-400'
-                      : state!.category === 'B2'
-                      ? 'border-blue-400'
-                      : 'border-slate-500'
+                        ? 'border-orange-400'
+                        : state!.category === 'B1'
+                          ? 'border-amber-400'
+                          : state!.category === 'B2'
+                            ? 'border-blue-400'
+                            : 'border-slate-500'
                   }`
                 : 'border-transparent'
             }`}

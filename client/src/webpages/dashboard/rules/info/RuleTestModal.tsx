@@ -38,7 +38,7 @@ gql`
   }
 `;
 
-export const spotTestForbiddenFieldTypes = [
+const spotTestForbiddenFieldTypes = [
   'MAP',
   'DATETIME',
   'RELATED_ITEM',

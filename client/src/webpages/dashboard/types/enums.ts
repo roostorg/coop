@@ -8,7 +8,3 @@ export enum CoopInput {
   POLICY_ID = 'Relevant Policy',
   SOURCE = 'Creation Source',
 }
-
-export const CoopInputEnumInverted = Object.fromEntries(
-  Object.entries(CoopInput).map(([key, value]) => [value, key]),
-) as { [key: string]: string | undefined };

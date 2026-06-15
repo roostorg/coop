@@ -86,7 +86,7 @@ const skippedJobCountFilterColumns = [
   'reviewerIds',
 ] as const satisfies readonly (keyof GQLSkippedJobCountFilterByColumns)[];
 
-export function groupByColumnToFilterByColumns(
+function groupByColumnToFilterByColumns(
   groupBy: ManualReviewDashboardInsightsGroupByColumns[],
 ): FilterByColumnName[] {
   return groupBy.flatMap((groupByColumn) => {
@@ -231,8 +231,8 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
             id === 'IGNORE'
               ? 'IGNORE'
               : id === 'SUBMIT_NCMEC_REPORT'
-              ? 'SUBMIT_NCMEC_REPORT'
-              : undefined,
+                ? 'SUBMIT_NCMEC_REPORT'
+                : undefined,
           ),
         ),
         actionIds: filterNullOrUndefined(
@@ -240,8 +240,8 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
             id === 'IGNORE'
               ? undefined
               : id === 'SUBMIT_NCMEC_REPORT'
-              ? undefined
-              : id,
+                ? undefined
+                : id,
           ),
         ),
       });
@@ -360,17 +360,19 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
       'sources' in unsavedFilterValues
         ? unsavedFilterValues[column as GQLJobCreationFilterByColumnName]
         : 'actionIds' in unsavedFilterValues
-        ? [
-            ...(unsavedFilterValues[
-              column as GQLDecisionCountFilterByColumnName
-            ] ?? []),
-            ...(unsavedFilterValues.type ?? []),
-          ]
-        : metric === 'REVIEWED_JOBS' && 'reviewerIds' in unsavedFilterValues
-        ? unsavedFilterValues[column as GQLJobCountFilterByColumnName]
-        : metric === 'SKIPPED_JOBS' && 'reviewerIds' in unsavedFilterValues
-        ? unsavedFilterValues[column as GQLSkippedJobCountFilterByColumnName]
-        : [];
+          ? [
+              ...(unsavedFilterValues[
+                column as GQLDecisionCountFilterByColumnName
+              ] ?? []),
+              ...(unsavedFilterValues.type ?? []),
+            ]
+          : metric === 'REVIEWED_JOBS' && 'reviewerIds' in unsavedFilterValues
+            ? unsavedFilterValues[column as GQLJobCountFilterByColumnName]
+            : metric === 'SKIPPED_JOBS' && 'reviewerIds' in unsavedFilterValues
+              ? unsavedFilterValues[
+                  column as GQLSkippedJobCountFilterByColumnName
+                ]
+              : [];
 
     return (
       <Select

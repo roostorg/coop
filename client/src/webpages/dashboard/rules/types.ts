@@ -1,8 +1,6 @@
 import {
-  GQLBaseField,
   GQLConditionConjunction,
   GQLConditionResult,
-  GQLDerivedField,
   GQLDerivedFieldSpec,
   GQLLeafConditionWithResult,
   GQLLocationAreaInput,
@@ -25,10 +23,6 @@ export type ConditionInput =
   | { type: 'CONTENT_FIELD'; name: string; contentTypeId: string }
   | { type: 'CONTENT_COOP_INPUT'; name: CoopInput }
   | { type: 'CONTENT_DERIVED_FIELD'; name: string; spec: GQLDerivedFieldSpec };
-
-// GQLField is the interface for Fields.
-// This type is the two concrete types that the schema defines.
-export type Field = GQLBaseField | GQLDerivedField;
 
 export enum MatchingValueType {
   STRING = 'STRING',
@@ -74,23 +68,6 @@ export type LeafConditionWithResult = Omit<
 > & {
   input?: SimplifiedConditionInput;
   signal?: GQLLeafConditionWithResult['signal'] & { name: string };
-};
-
-// Incomplete type, but better than nothing.
-export type RuleExecutionResult = {
-  date: string;
-  ts: string;
-  contentId: string;
-  itemTypeName: string;
-  itemTypeId: string;
-  userId: string;
-  userTypeId: string;
-  content: string;
-  result: ConditionSetWithResult | null;
-  passed: boolean;
-  ruleId: string;
-  ruleName: string;
-  tags: string[];
 };
 
 export type RuleFormCondition = RuleFormConditionSet | RuleFormLeafCondition;
@@ -144,14 +121,5 @@ export function getFlattenedConditions(
 ): RuleFormLeafCondition[] {
   return conditions.flatMap((it) =>
     isConditionSet(it) ? getFlattenedConditions(it.conditions) : [it],
-  );
-}
-
-export function isMediaType(it: GQLScalarType): boolean {
-  return (
-    it === GQLScalarType.Audio ||
-    it === GQLScalarType.Video ||
-    it === GQLScalarType.Image ||
-    it === GQLScalarType.Media
   );
 }

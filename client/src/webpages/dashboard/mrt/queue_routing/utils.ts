@@ -316,35 +316,6 @@ export function addConditionSet(currentConditionSet: RuleFormConditionSet) {
   return newConditionSet;
 }
 
-export function updateComparator(params: {
-  conditionSet: RuleFormConditionSet;
-  location: ConditionLocation;
-  comparator: GQLValueComparator;
-}) {
-  const { conditionSet, location, comparator } = params;
-
-  return updateConditionComponent(
-    conditionSet,
-    location,
-    comparator,
-    (condition, value) => ({ ...condition, comparator: value }),
-  );
-}
-
-export function updateThreshold(params: {
-  conditionSet: RuleFormConditionSet;
-  location: ConditionLocation;
-  threshold: string;
-}) {
-  const { conditionSet, location, threshold } = params;
-  return updateConditionComponent(
-    conditionSet,
-    location,
-    threshold,
-    (condition, value) => ({ ...condition, threshold: value }),
-  );
-}
-
 /**
  *
  * @param conditionSet - Parent condition set for the rule

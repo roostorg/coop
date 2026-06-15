@@ -50,7 +50,7 @@ export type DetailViewData = {
   item: { identifier: ItemIdentifier; date: string } | undefined;
 };
 
-export enum RuleEnvironment {
+enum RuleEnvironment {
   BACKGROUND = 'BACKGROUND',
   BACKTEST = 'BACKTEST',
   LIVE = 'LIVE',

@@ -10,6 +10,7 @@ import { TapFilled } from '@/icons';
 import Download from '@/icons/lni/Web and Technology/download.svg?react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import type { TimeDivisionOptions } from '@/webpages/dashboard/overview/Overview';
+import { format } from 'date-fns';
 import flatten from 'lodash/flatten';
 import keys from 'lodash/keys';
 import map from 'lodash/map';
@@ -18,7 +19,6 @@ import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import { format } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
 import {
@@ -55,9 +55,7 @@ import { getDisplayNameForGroupByOption } from './insightsUtils';
 import RuleInsightsFilterBy from './RuleInsightsFilterBy';
 import { TimeWindow } from './RulesDashboardInsights';
 
-export type RuleInsightsChartMetric = 'ACTIONS';
-
-export function getEmptyFilterState(
+function getEmptyFilterState(
   lookback: LookbackLength,
 ): GQLActionStatisticsFilters {
   return {
@@ -197,7 +195,10 @@ export default function RuleDashboardInsightsChart(props: {
 
   const formattedData = countsByDay?.map((it) => {
     const obj: { [key: string]: any } = {
-      ds: format(new Date(parseInt(it.time)), timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd'),
+      ds: format(
+        new Date(parseInt(it.time)),
+        timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd',
+      ),
     };
     obj[getLineNameFromCount(it)] = it.count;
     return obj;
@@ -538,7 +539,10 @@ export default function RuleDashboardInsightsChart(props: {
         </div>
       </div>
       <div className="z-10 flex flex-col w-full h-full min-h-[400px] pb-4">
-        {!loading && (finalChartData.length === 0 || uniqueLines.length === 0 || !hasNonZeroData) ? (
+        {!loading &&
+        (finalChartData.length === 0 ||
+          uniqueLines.length === 0 ||
+          !hasNonZeroData) ? (
           emptyChart
         ) : (
           <ResponsiveContainer width="100%" height={400}>

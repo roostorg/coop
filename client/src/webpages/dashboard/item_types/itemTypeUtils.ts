@@ -236,7 +236,3 @@ export function generateFakeScalarFieldValue(fieldType: ScalarType) {
     }
   }
 }
-
-export type ItemTypeScalarFieldData<T extends ScalarType = ScalarType> = {
-  [K in T]: Field<K> & { value: FieldTypeRuntimeType<K> | undefined };
-}[T];

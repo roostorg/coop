@@ -9,7 +9,6 @@ import CoopButton from '../components/CoopButton';
 import ItemAction from '@/components/ItemAction';
 
 import {
-  GQLItemHistoryResult,
   GQLItemType,
   GQLThreadItem,
   GQLUserItem,
@@ -25,8 +24,6 @@ import ItemInvestigationRuleResults from './ItemInvestigationRuleResults';
 import ItemInvestigationSummary from './ItemInvestigationSummary';
 import ItemsByIpAddress from './ItemsByIpAddress';
 import ThreadInvestigation from './ThreadInvestigation';
-
-export type RuleExecutionHistory = GQLItemHistoryResult['executions'][0];
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
