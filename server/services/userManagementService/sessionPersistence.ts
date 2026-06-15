@@ -12,7 +12,7 @@ import { sql, type Kysely } from 'kysely';
 export async function deleteSessionsForUser(
   // `Kysely<any>` because the session table is managed by connect-pg-simple and
   // is intentionally absent from our typed schema; injected instances are
-  // themselves `Kysely<any>` (see `server/iocContainer/index.ts`).
+  // themselves `Kysely<any>`.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: Kysely<any>,
   userId: string,
