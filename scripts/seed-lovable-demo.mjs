@@ -127,7 +127,7 @@ async function submit(item, i) {
     additionalItemSubmissions: [accountItem],
   };
 
-  const resp = await fetch(`${API_URL}/report`, {
+  const resp = await fetch(`${API_URL}/api/v1/report`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
