@@ -10,6 +10,7 @@ const mockDb = {
   insertInto: jest.fn(),
   updateTable: jest.fn(),
   deleteFrom: jest.fn(),
+  transaction: jest.fn(),
 } as unknown as Kysely<UserManagementPg>;
 
 const mockSendEmail = jest.fn();
@@ -238,6 +239,11 @@ describe('UserManagementService', () => {
         (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
         (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
         (mockDb.deleteFrom as jest.Mock).mockReturnValue(mockDelete);
+        // Steps 2-4 run inside makeKyselyTransactionWithRetry, which calls
+        // `pgQuery.transaction().execute(cb)`. Run the callback against mockDb.
+        (mockDb.transaction as jest.Mock).mockReturnValue({
+          execute: (cb: (trx: typeof mockDb) => unknown) => cb(mockDb),
+        });
 
         await sut.resetPasswordForToken({
           token: 'plaintext-token',

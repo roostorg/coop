@@ -24,8 +24,19 @@ function makeMockKyselyPg() {
   const updateTable = jest.fn().mockReturnValue(updateBuilder);
   const deleteFrom = jest.fn().mockReturnValue(deleteBuilder);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const kyselyPg = { updateTable, deleteFrom } as unknown as Kysely<any>;
+  // changePassword runs inside makeKyselyTransactionWithRetry, which calls
+  // `kysely.transaction().execute(cb)`. Run the callback against this same mock.
+  const transaction = jest.fn().mockReturnValue({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test trx stub
+    execute: (cb: (trx: any) => unknown) => cb(kyselyPg),
+  });
+
+   
+  const kyselyPg = {
+    updateTable,
+    deleteFrom,
+    transaction,
+  } as unknown as Kysely<any>;
   return { kyselyPg, updateExecuteTakeFirst, deleteFrom, deleteWhere };
 }
 
@@ -66,15 +77,17 @@ describe('UserAPI', () => {
         });
 
         // Remaining constructor deps are unused by changePassword.
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         const sut = new UserAPI(
           kyselyPg,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unused mock dep
           {} as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unused mock dep
           {} as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unused mock dep
           {} as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unused mock dep
           {} as any,
         );
-        /* eslint-enable @typescript-eslint/no-explicit-any */
 
         const user = {
           id: userId,
