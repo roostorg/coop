@@ -189,6 +189,21 @@ export async function kyselyUserFindByEmail(
   return row === undefined ? undefined : rowToGraphQLUserParent(row);
 }
 
+export async function kyselyUserFindByEmailAndOrg(
+  db: UsersDb,
+  opts: { email: string; orgId: string },
+): Promise<GraphQLUserParent | undefined> {
+  const row = await db
+    .selectFrom('public.users')
+    .select(USER_COLUMNS)
+    .select(loginMethodsAsTextArray)
+    .select(permissionsArray)
+    .where('email', '=', opts.email)
+    .where('org_id', '=', opts.orgId)
+    .executeTakeFirst();
+  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+}
+
 export async function kyselyUserFindByIds(
   db: UsersDb,
   ids: readonly string[],

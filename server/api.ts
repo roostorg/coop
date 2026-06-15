@@ -21,15 +21,15 @@ import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
 import {
-  kyselyUserFindByEmail,
+  kyselyUserFindByEmailAndOrg,
   kyselyUserFindById,
 } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
+import { resolveSamlUser } from './graphql/utils/resolveSamlUser.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { safeGetEnvInt } from './iocContainer/utils.js';
@@ -190,52 +190,23 @@ export default async function makeApiServer(deps: Dependencies) {
           });
         },
       },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
+      // Bind the user lookup to the org named in the callback path so an
+      // assertion authenticating one org can never resolve a user from another
+      // (GHSA-2v93-383c-9fw2). Same helper for the signon and logout verify.
+      async (req, profile, done) =>
+        resolveSamlUser(
+          async (opts) => kyselyUserFindByEmailAndOrg(KyselyPg, opts),
+          req,
+          profile,
+          done,
+        ),
+      async (req, profile, done) =>
+        resolveSamlUser(
+          async (opts) => kyselyUserFindByEmailAndOrg(KyselyPg, opts),
+          req,
+          profile,
+          done,
+        ),
     ),
   );
 
