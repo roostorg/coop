@@ -8,8 +8,16 @@
 
 const API_URL = process.env.API_URL || 'http://localhost:8080';
 const API_KEY = process.env.API_KEY || process.env.TAP_API_KEY;
+const POST_TYPE_ID = process.env.POST_TYPE_ID;
+const ACCOUNT_TYPE_ID = process.env.ACCOUNT_TYPE_ID;
 if (!API_KEY) {
   console.error('API_KEY (or TAP_API_KEY) env var required');
+  process.exit(1);
+}
+if (!POST_TYPE_ID || !ACCOUNT_TYPE_ID) {
+  console.error('POST_TYPE_ID and ACCOUNT_TYPE_ID env vars required.');
+  console.error('Get them via:');
+  console.error('  docker compose exec postgres psql -U postgres -d postgres -c "SELECT id, name FROM item_types WHERE name LIKE \'ATproto%\';"');
   process.exit(1);
 }
 
@@ -91,10 +99,10 @@ async function submit(item, i) {
 
   const reportedItem = {
     id: atUri,
-    typeId: 'ATproto-post',
+    typeId: POST_TYPE_ID,
     data: {
       text: item.text,
-      authorDid: { id: did, typeId: 'ATproto-account' },
+      authorDid: { id: did, typeId: ACCOUNT_TYPE_ID },
       rkey,
       cid: `bafy${rkey}`,
       createdAt,
@@ -106,7 +114,7 @@ async function submit(item, i) {
   // Also include a synthetic account item alongside so the author renders
   const accountItem = {
     id: did,
-    typeId: 'ATproto-account',
+    typeId: ACCOUNT_TYPE_ID,
     data: {
       did,
       handle: item.handle,
@@ -118,7 +126,7 @@ async function submit(item, i) {
   const body = {
     reporter: {
       kind: 'user',
-      typeId: 'ATproto-account',
+      typeId: ACCOUNT_TYPE_ID,
       id: REPORTER_DID,
     },
     reportedAt: createdAt,
