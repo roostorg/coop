@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc && cp -R src/scripts package.json build/",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:add": "node build/index.js add",
     "db:clean": "node build/index.js clean",
