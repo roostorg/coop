@@ -17,6 +17,7 @@ import {
   type Invoker,
   type UserRole,
 } from './permissioning.js';
+import { deleteSessionsForUser } from './sessionPersistence.js';
 import { hashPassword } from './utils.js';
 
 class UserManagementService {
@@ -464,7 +465,11 @@ class UserManagementService {
       .where('id', '=', fetchedToken.user_id)
       .execute();
 
-    // Step 3: Delete all tokens for the user
+    // Step 3: Invalidate all of the user's sessions so a phished/attacker
+    // session can't outlive the reset (GHSA-g5xq-67g7-36r2).
+    await deleteSessionsForUser(this.pgQuery, fetchedToken.user_id);
+
+    // Step 4: Delete all tokens for the user
     await this.pgQuery
       .deleteFrom('user_management_service.password_reset_tokens')
       .where('user_id', '=', fetchedToken.user_id)

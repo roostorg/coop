@@ -4,6 +4,7 @@ import { uid } from 'uid';
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
+  deleteSessionsForUser,
   hashPassword,
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
@@ -233,6 +234,9 @@ class UserAPI {
   async changePassword(
     user: GraphQLUserParent,
     params: { currentPassword: string; newPassword: string },
+    // The caller's current session id, preserved so the user isn't logged out
+    // of the session they're changing their password from.
+    currentSid?: string,
   ) {
     const { currentPassword, newPassword } = params;
 
@@ -271,6 +275,12 @@ class UserAPI {
         shouldErrorSpan: true,
       });
     }
+
+    // Invalidate the user's other sessions so a phished/attacker session can't
+    // outlive the change (GHSA-g5xq-67g7-36r2); keep the caller's own session.
+    await deleteSessionsForUser(this.kyselyPg, user.id, {
+      exceptSid: currentSid,
+    });
 
     return {
       __typename: 'ChangePasswordSuccessResponse' as const,
