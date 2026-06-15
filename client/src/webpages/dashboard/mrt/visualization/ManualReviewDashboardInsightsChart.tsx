@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Tooltip as AntTooltip } from 'antd';
+import { format } from 'date-fns';
 import flatten from 'lodash/flatten';
 import keys from 'lodash/keys';
 import map from 'lodash/map';
@@ -21,7 +22,6 @@ import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import { format } from 'date-fns';
 import React, {
   ReactNode,
   useCallback,
@@ -182,7 +182,7 @@ export type ManualReviewDashboardInsightsChartMetric =
   | 'REVIEWED_JOBS'
   | 'SKIPPED_JOBS';
 
-export function getEmptyFilterState(
+function getEmptyFilterState(
   metric: ManualReviewDashboardInsightsChartMetric,
   timeWindow: TimeWindow,
 ): ManualReviewDashboardInsightsFilterByInput {
@@ -698,7 +698,10 @@ export default function ManualReviewDashboardInsightsChart(props: {
 
   const formattedData = countsByDay?.map((it) => {
     const obj: { [key: string]: any } = {
-      ds: format(new Date(parseInt(it.time)), timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd'),
+      ds: format(
+        new Date(parseInt(it.time)),
+        timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd',
+      ),
     };
     obj[getLineNameFromCount(it)] = it.count;
     return obj;

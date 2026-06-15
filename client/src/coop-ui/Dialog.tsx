@@ -121,8 +121,6 @@ const DialogCloseButton = () => (
 
 export {
   Dialog,
-  DialogPortal,
-  DialogOverlay,
   DialogTrigger,
   DialogClose,
   DialogContent,

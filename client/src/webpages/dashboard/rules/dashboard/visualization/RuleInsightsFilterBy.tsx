@@ -37,7 +37,7 @@ const actionStatisiticsFilterByColumns = [
   'sources',
 ] as const satisfies readonly (keyof GQLActionStatisticsFilterByColumns)[];
 
-export function groupByColumnToFilterByColumns(
+function groupByColumnToFilterByColumns(
   groupBy: GQLActionStatisticsGroupByColumns,
 ): FilterByColumnName[] {
   switch (groupBy) {
@@ -53,8 +53,6 @@ export function groupByColumnToFilterByColumns(
       return ['policyIds'];
   }
 }
-
-export type RuleInsightsFilterByColumns = GQLActionStatisticsFilters;
 
 export default function RuleInsightsFilterBy(props: {
   savedFilterBys: GQLActionStatisticsFilters;

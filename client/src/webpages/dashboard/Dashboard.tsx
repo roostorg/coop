@@ -481,7 +481,7 @@ export type RouteHandle = {
 /**
  * Org Dashboard screen
  */
-export default function Dashboard() {
+function Dashboard() {
   const { pathname } = useLocation();
   const { loading, error, data } = useGQLDashboardOrgQuery();
   const navigate = useNavigate();

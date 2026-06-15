@@ -54,7 +54,7 @@ export function inferMediaKindFromUrl(url: string): MediaKind | null {
  * Defaults to 'notion' for backward compatibility
  * Supports comma-separated patterns
  */
-export function getContentUrlPatterns(): string[] {
+function getContentUrlPatterns(): string[] {
   const pattern: string = import.meta.env.VITE_CONTENT_URL_PATTERN ?? 'notion';
   return pattern
     .split(',')

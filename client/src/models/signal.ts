@@ -1,5 +1,4 @@
 import {
-  GQLIntegration,
   GQLScalarType,
   GQLSignal,
   GQLSignalOutputType,
@@ -43,52 +42,6 @@ export function receivesRegexInput(type: string) {
     type === GQLSignalType.TextMatchingContainsRegex ||
     type === GQLSignalType.TextMatchingNotContainsRegex
   );
-}
-
-/**
- * Returns the integration type for a given signal type.
- * @param type Signal type (built-in or plugin)
- * @returns a GQLIntegration enum value, or null for non-integration signals or plugin signals
- */
-export function integrationForSignalType(type: string) {
-  switch (type) {
-    case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
-      return GQLIntegration.GoogleContentSafetyApi;
-    case 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL':
-    case 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL':
-    case 'OPEN_AI_HATE_TEXT_MODEL':
-    case 'OPEN_AI_HATE_THREATENING_TEXT_MODEL':
-    case 'OPEN_AI_SELF_HARM_IMAGE_MODEL':
-    case 'OPEN_AI_SELF_HARM_TEXT_MODEL':
-    case 'OPEN_AI_SEXUAL_IMAGE_MODEL':
-    case 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL':
-    case 'OPEN_AI_SEXUAL_TEXT_MODEL':
-    case 'OPEN_AI_VIOLENCE_IMAGE_MODEL':
-    case 'OPEN_AI_VIOLENCE_TEXT_MODEL':
-    case 'OPEN_AI_WHISPER_TRANSCRIPTION':
-      return GQLIntegration.OpenAi;
-    case 'ZENTROPI_LABELER':
-      return GQLIntegration.Zentropi;
-    case 'AGGREGATION':
-    case 'CUSTOM':
-    case 'GEO_CONTAINED_WITHIN':
-    case 'IMAGE_EXACT_MATCH':
-    case 'IMAGE_SIMILARITY_MATCH':
-    case 'IMAGE_SIMILARITY_DOES_NOT_MATCH':
-    case 'IMAGE_SIMILARITY_SCORE':
-    case 'TEXT_MATCHING_CONTAINS_REGEX':
-    case 'TEXT_MATCHING_CONTAINS_TEXT':
-    case 'TEXT_MATCHING_CONTAINS_VARIANT':
-    case 'TEXT_MATCHING_NOT_CONTAINS_REGEX':
-    case 'TEXT_MATCHING_NOT_CONTAINS_TEXT':
-    case 'TEXT_SIMILARITY_SCORE':
-    case 'USER_SCORE':
-    case 'USER_STRIKE_VALUE':
-      return null;
-    default:
-      // Plugin signal types (e.g. RANDOM_SIGNAL_SELECTION) or unknown: no built-in integration
-      return null;
-  }
 }
 
 export function outputTypeToComparators(outputType: GQLSignalOutputType) {

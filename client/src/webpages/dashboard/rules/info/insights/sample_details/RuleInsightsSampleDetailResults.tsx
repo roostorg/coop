@@ -55,26 +55,6 @@ export function getDisplayName(outcome?: GQLConditionOutcome) {
   }
 }
 
-export function outcomeString(outcome?: GQLConditionOutcome, prefix?: string) {
-  const className = ((outcome?: GQLConditionOutcome) => {
-    switch (outcome) {
-      case GQLConditionOutcome.Passed:
-        return 'ml-3 font-bold text-base text-red-800';
-      case GQLConditionOutcome.Failed:
-      case GQLConditionOutcome.Errored:
-        return 'ml-3 font-bold text-base text-teal-800';
-      case GQLConditionOutcome.Inapplicable:
-      case undefined:
-        return 'ml-3 font-bold text-base text-zinc-500';
-    }
-  })(outcome);
-  return (
-    <div className={className}>
-      {`${prefix ? prefix + ' ' : ''}${getDisplayName(outcome)}`}
-    </div>
-  );
-}
-
 export function outcomeIcon(outcome?: GQLConditionOutcome) {
   switch (outcome) {
     case GQLConditionOutcome.Passed:

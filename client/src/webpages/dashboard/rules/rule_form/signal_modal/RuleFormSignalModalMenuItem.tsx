@@ -11,7 +11,7 @@ import { CoreSignal } from '../../../../../models/signal';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 
 /** Vendor/company name for display. Uses signal.integrationTitle (from API) when set, else static config, else formatted id. */
-export function vendorName(signal: CoreSignal) {
+function vendorName(signal: CoreSignal) {
   if (signal.type === GQLSignalType.Custom) {
     return 'Custom';
   }
