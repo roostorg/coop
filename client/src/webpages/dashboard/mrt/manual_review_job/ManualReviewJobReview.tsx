@@ -147,6 +147,7 @@ gql`
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       allowMultiplePoliciesPerAction
       hideSkipButtonForNonAdmins
     }
@@ -680,11 +681,16 @@ function ManualReviewJobReviewImpl(props: {
     }
 
     // If the org requires a decision reason, and no decision reason has been
-    // provided, return false
-    if (
-      data?.myOrg?.requiresDecisionReasonInMrt &&
-      !isNonEmptyString(decisionReason)
-    ) {
+    // provided, return false. The requirement is split (see #757): ignoring a
+    // job (a decision made up solely of the built-in IGNORE action) is governed
+    // by its own setting, separate from acting on a violating job.
+    const isIgnoreDecision = selectedPrimaryActions.every(
+      (it) => 'type' in it.action && it.action.type === 'IGNORE',
+    );
+    const reasonRequired = isIgnoreDecision
+      ? data?.myOrg?.requiresDecisionReasonOnIgnoreInMrt
+      : data?.myOrg?.requiresDecisionReasonInMrt;
+    if (reasonRequired && !isNonEmptyString(decisionReason)) {
       return false;
     }
 
@@ -1669,14 +1675,13 @@ function ManualReviewJobReviewImpl(props: {
                 <div className="self-start my-2 text-lg font-bold">Policy</div>
                 {policiesSection}
               </div>
-              {org.requiresDecisionReasonInMrt ? (
-                <div className="flex flex-col mb-4">
-                  <div className="self-start my-2 text-lg font-bold">
-                    Reason
-                  </div>
-                  {decisionReasonSection}
-                </div>
-              ) : null}
+              {/* The reason field is always shown; whether it's required
+                  depends on the org's require-decision-reason settings and the
+                  decision type (see canBeSubmitted). */}
+              <div className="flex flex-col mb-4">
+                <div className="self-start my-2 text-lg font-bold">Reason</div>
+                {decisionReasonSection}
+              </div>
               <ManualReviewJobEnqueuedRelatedActions
                 actionsData={selectedRelatedActions.map((action) => ({
                   // NB: We don't include any iconUrl or otherImageUrls here yet, since we're still

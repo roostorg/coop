@@ -9,6 +9,7 @@ import {
   useGQLUpdateIgnoreCallbackUrlMutation,
   useGQLUpdatePreviewJobsViewEnabledMutation,
   useGQLUpdateRequiresDecisionReasonMutation,
+  useGQLUpdateRequiresDecisionReasonOnIgnoreMutation,
   useGQLUpdateRequiresPolicyForDecisionsMutation,
 } from '@/graphql/generated';
 import { isValidUrl } from '@/lib/utils';
@@ -26,6 +27,7 @@ export default function ReviewConsoleTab() {
 
   const [requirePolicy, setRequirePolicy] = useState(false);
   const [requireReason, setRequireReason] = useState(false);
+  const [requireReasonOnIgnore, setRequireReasonOnIgnore] = useState(false);
   const [hideSkip, setHideSkip] = useState(false);
   const [previewJobs, setPreviewJobs] = useState(false);
   const [ignoreCallbackUrl, setIgnoreCallbackUrl] = useState('');
@@ -34,6 +36,7 @@ export default function ReviewConsoleTab() {
     if (org) {
       setRequirePolicy(org.requiresPolicyForDecisionsInMrt);
       setRequireReason(org.requiresDecisionReasonInMrt);
+      setRequireReasonOnIgnore(org.requiresDecisionReasonOnIgnoreInMrt);
       setHideSkip(org.hideSkipButtonForNonAdmins);
       setPreviewJobs(org.previewJobsViewEnabled);
       setIgnoreCallbackUrl(org.ignoreCallbackUrl ?? '');
@@ -54,6 +57,10 @@ export default function ReviewConsoleTab() {
     useGQLUpdateRequiresPolicyForDecisionsMutation(mutationOpts);
   const [updateRequireReason, { loading: requireReasonLoading }] =
     useGQLUpdateRequiresDecisionReasonMutation(mutationOpts);
+  const [
+    updateRequireReasonOnIgnore,
+    { loading: requireReasonOnIgnoreLoading },
+  ] = useGQLUpdateRequiresDecisionReasonOnIgnoreMutation(mutationOpts);
   const [updateHideSkipMutation, { loading: hideSkipLoading }] =
     useGQLUpdateHideSkipButtonForNonAdminsMutation(mutationOpts);
   const [updatePreviewJobsMutation, { loading: previewJobsLoading }] =
@@ -66,6 +73,7 @@ export default function ReviewConsoleTab() {
   const saveLoading =
     requirePolicyLoading ||
     requireReasonLoading ||
+    requireReasonOnIgnoreLoading ||
     hideSkipLoading ||
     previewJobsLoading ||
     ignoreUrlLoading;
@@ -73,6 +81,7 @@ export default function ReviewConsoleTab() {
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||
     requireReason !== org.requiresDecisionReasonInMrt ||
+    requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
     previewJobs !== org.previewJobsViewEnabled ||
     ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '');
@@ -83,6 +92,11 @@ export default function ReviewConsoleTab() {
     }
     if (requireReason !== org.requiresDecisionReasonInMrt) {
       updateRequireReason({ variables: { enabled: requireReason } });
+    }
+    if (requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt) {
+      updateRequireReasonOnIgnore({
+        variables: { enabled: requireReasonOnIgnore },
+      });
     }
     if (hideSkip !== org.hideSkipButtonForNonAdmins) {
       updateHideSkipMutation({ variables: { enabled: hideSkip } });
@@ -123,15 +137,30 @@ export default function ReviewConsoleTab() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Text size="SM" weight="medium">
-                Require Decision Reason
+                Require Decision Reason (for violating jobs)
               </Text>
               <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
-                Moderators must provide a written decision when completing a job
+                Moderators must provide a written reason when taking an action
+                on a job
               </Text>
             </div>
             <Switch
               checked={requireReason}
               onCheckedChange={setRequireReason}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Text size="SM" weight="medium">
+                Require Decision Reason (when ignoring jobs)
+              </Text>
+              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                Moderators must provide a written reason when ignoring a job
+              </Text>
+            </div>
+            <Switch
+              checked={requireReasonOnIgnore}
+              onCheckedChange={setRequireReasonOnIgnore}
             />
           </div>
         </div>

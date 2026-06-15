@@ -203,7 +203,8 @@ export type ManualReviewToolServicePg = {
   'manual_review_tool.manual_review_tool_settings': {
     org_id: string;
     requires_policy_for_decisions: boolean;
-    mrt_requires_decision_reason: boolean;
+    mrt_requires_decision_reason_on_action: boolean;
+    mrt_requires_decision_reason_on_ignore: boolean;
     hide_skip_button_for_non_admins: boolean;
     ignore_callback_url: string | null;
     preview_jobs_view_enabled: boolean;

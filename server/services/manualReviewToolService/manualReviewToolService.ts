@@ -1251,6 +1251,12 @@ export class ManualReviewToolService {
     return this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
   }
 
+  async getRequiresDecisionReasonOnIgnore(orgId: string) {
+    return this.manualReviewToolSettings.getRequiresDecisionReasonOnIgnore(
+      orgId,
+    );
+  }
+
   async getPreviewJobsViewEnabled(orgId: string) {
     return this.manualReviewToolSettings.getPreviewJobsViewEnabled(orgId);
   }
@@ -1268,6 +1274,13 @@ export class ManualReviewToolService {
 
   async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
     return this.manualReviewToolSettings.updateRequiresDecisionReason(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateRequiresDecisionReasonOnIgnore(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresDecisionReasonOnIgnore(
       orgId,
       enabled,
     );

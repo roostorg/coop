@@ -224,26 +224,38 @@ export default class JobDecisioning {
       }
     }
 
-    // Enforce `mrt_requires_decision_reason` server-side. The MRT UI already
-    // disables submit when this is on, but API/script callers can bypass that.
-    // Skip the AUTOMATIC_CLOSE path (no moderator, no reason to require) and
-    // only read the flag when there's actually a missing reason to enforce
-    // against, so the common path does no extra DB work. Matches the client
-    // gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
+    // Enforce the "require decision reason" settings server-side. The MRT UI
+    // already disables submit when these are on, but API/script callers can
+    // bypass that. Skip the AUTOMATIC_CLOSE path (no moderator, no reason to
+    // require) and only read a flag when there's actually a missing reason to
+    // enforce against, so the common path does no extra DB work. Matches the
+    // client gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
     //
-    // Bypass the check when the decision is NCMEC-native (Submit NCMEC Report
-    // or Ignore on an NCMEC job, no CUSTOM_ACTION mixed in): those decisions
-    // don't carry a written reason and the flag is irrelevant for them. A
-    // CUSTOM_ACTION on an NCMEC job still requires a reason. See #736.
+    // The requirement is split in two (see #757): ignoring a job means "no
+    // violation / no action" and is governed by its own flag, separate from
+    // the flag for violating (non-ignore) decisions. A decision composed
+    // solely of IGNORE components is an ignore; anything else (custom actions,
+    // appeals, etc.) is a violating decision.
+    //
+    // Bypass the check entirely when the decision is NCMEC-native (Submit NCMEC
+    // Report or Ignore on an NCMEC job, no CUSTOM_ACTION mixed in): those
+    // decisions don't carry a written reason and the flags are irrelevant for
+    // them. A CUSTOM_ACTION on an NCMEC job still requires a reason. See #736.
     const isNcmecNativeDecision =
       job.payload.kind === 'NCMEC' && customActionDecisions.length === 0;
+    const isIgnoreDecision =
+      decisions.length > 0 &&
+      decisions.every((decision) => decision.type === 'IGNORE');
     if (
       decisionComponents != null &&
       !isNonEmptyString(decisionReason) &&
       !isNcmecNativeDecision
     ) {
-      const requiresReason =
-        await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
+      const requiresReason = isIgnoreDecision
+        ? await this.manualReviewToolSettings.getRequiresDecisionReasonOnIgnore(
+            orgId,
+          )
+        : await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
       if (requiresReason) {
         throw makeMissingRequiredDecisionReasonError({
           detail: 'This org requires every decision to include a reason.',

@@ -71,6 +71,7 @@ const typeDefs = /* GraphQL */ `
     failedNcmecSubmissions: [NcmecFailedSubmission!]!
     requiresPolicyForDecisionsInMrt: Boolean!
     requiresDecisionReasonInMrt: Boolean!
+    requiresDecisionReasonOnIgnoreInMrt: Boolean!
     previewJobsViewEnabled: Boolean!
     allowMultiplePoliciesPerAction: Boolean!
     hideSkipButtonForNonAdmins: Boolean!
@@ -172,6 +173,7 @@ const typeDefs = /* GraphQL */ `
     updateSamlEnabled(enabled: Boolean!): Boolean!
     updateRequiresPolicyForDecisions(enabled: Boolean!): Boolean!
     updateRequiresDecisionReason(enabled: Boolean!): Boolean!
+    updateRequiresDecisionReasonOnIgnore(enabled: Boolean!): Boolean!
     updateHideSkipButtonForNonAdmins(enabled: Boolean!): Boolean!
     updatePreviewJobsViewEnabled(enabled: Boolean!): Boolean!
     updateIgnoreCallbackUrl(url: String): Boolean!
@@ -599,6 +601,11 @@ const Org: GQLOrgResolvers = {
       org.id,
     );
   },
+  async requiresDecisionReasonOnIgnoreInMrt(org, _, context) {
+    return context.services.ManualReviewToolService.getRequiresDecisionReasonOnIgnore(
+      org.id,
+    );
+  },
   async previewJobsViewEnabled(org, _, context) {
     return context.services.ManualReviewToolService.getPreviewJobsViewEnabled(
       org.id,
@@ -992,6 +999,22 @@ const Mutation: GQLMutationResolvers = {
       );
     }
     await context.services.ManualReviewToolService.updateRequiresDecisionReason(
+      user.orgId,
+      enabled,
+    );
+    return true;
+  },
+  async updateRequiresDecisionReasonOnIgnore(_, { enabled }, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to update org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.updateRequiresDecisionReasonOnIgnore(
       user.orgId,
       enabled,
     );
