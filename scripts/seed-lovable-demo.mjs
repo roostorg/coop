@@ -21,56 +21,47 @@ if (!POST_TYPE_ID || !ACCOUNT_TYPE_ID) {
   process.exit(1);
 }
 
-// Lovable-themed demo content. Mix of safe (most), borderline, and violations.
+// Lovable-themed demo content. Posts containing "review" should trigger the
+// Generated App Reviews routing rule. Others land in the appropriate flagged
+// queues via signal-based routing rules (OpenAI Moderation, text matching).
 const DEMO_POSTS = [
-  // SAFE — show "normal traffic" in queue
+  // GENERATED APP REVIEWS — contain "review" so the keyword routing rule fires
   {
-    text: 'Just shipped my Lovable portfolio site, took 20 minutes start to finish 🎨',
+    text: 'New Lovable build submitted for review: vintage car portfolio site, please take a look 🚗',
     handle: 'designerdana.bsky.social',
     displayName: 'Dana K',
   },
   {
-    text: 'Vibe coded a meal planner this weekend with Lovable. What features should I add??',
+    text: 'Meal planner app finished, requesting review before I publish it on the Lovable showcase',
     handle: 'cookbookevan.bsky.social',
     displayName: 'Evan H',
   },
   {
-    text: 'My Pokemon-themed habit tracker is live, all generated in Lovable. Catch them all = build habits 🐾',
+    text: 'Pokemon habit tracker is ready for review. Built it entirely in Lovable, took two evenings 🐾',
     handle: 'pokedex.bsky.social',
     displayName: 'Mia',
   },
   {
-    text: 'Houseplant care app built in Lovable + deployed in a single afternoon. AI tooling is wild.',
+    text: 'Submitted my houseplant care app for review. Hoping to ship it this week — feedback welcome',
     handle: 'greenthumb.bsky.social',
     displayName: 'Aisha P',
   },
   {
-    text: 'anyone else hit the Lovable rate limit constantly? need to upgrade soon',
-    handle: 'mvpguy.bsky.social',
-    displayName: 'Sam',
-  },
-  {
-    text: 'Built a flashcard app with Lovable for studying ML interviews. Open sourced it, link below!',
+    text: 'ML interview flashcards app in review queue now. Made the whole thing with Lovable + open sourced',
     handle: 'gradstudent.bsky.social',
     displayName: 'Priya R',
   },
-  // BORDERLINE — policy ambiguity, good for reviewer judgment calls
   {
-    text: 'Built a dashboard for tracking my ex’s social media activity with Lovable (research purposes)',
-    handle: 'definitelyfine.bsky.social',
-    displayName: 'Alex',
+    text: 'Recipe organizer ready for review! Lovable handled the auth + DB, I just designed the UI',
+    handle: 'chefatheart.bsky.social',
+    displayName: 'Marco T',
   },
   {
-    text: 'Made an AI girlfriend chatbot in Lovable, very wholesome trust me',
-    handle: 'lonelydev.bsky.social',
-    displayName: 'Tom',
+    text: 'Reading list tracker awaiting review. Goodreads import works, fingers crossed it passes 📚',
+    handle: 'bookworm22.bsky.social',
+    displayName: 'Sarah B',
   },
-  {
-    text: 'casino app generated in Lovable, totally educational for learning JS',
-    handle: 'devluck.bsky.social',
-    displayName: 'Jordan',
-  },
-  // CLEAR VIOLATIONS — the demo moments
+  // USER PROMPT FLAGS — clear violations + borderline content for review queue
   {
     text: 'Built a Netflix login clone in Lovable that captures credentials for "testing" lol',
     handle: 'phisher.bsky.social',
@@ -82,9 +73,34 @@ const DEMO_POSTS = [
     displayName: 'IRS Refunds',
   },
   {
-    text: 'Generated a password cracker for school accounts with Lovable',
+    text: 'Generated a password cracker for school accounts with Lovable. Bypass auth easily',
     handle: 'h4cker.bsky.social',
     displayName: 'kingofschool',
+  },
+  {
+    text: 'Lovable made me a deepfake nude generator, can edit anyone into porn now',
+    handle: 'badidea.bsky.social',
+    displayName: 'Robin',
+  },
+  {
+    text: 'Built a doxxing site with Lovable that scrapes home addresses of journalists I dislike',
+    handle: 'doxxxor.bsky.social',
+    displayName: 'doxxxor',
+  },
+  {
+    text: 'Crypto pump bot built in Lovable. Auto-shills tokens before dumping. Free money',
+    handle: 'pumpkin.bsky.social',
+    displayName: 'CoinKing',
+  },
+  {
+    text: 'Stalker dashboard for tracking my ex’s real time location. Lovable made it easy',
+    handle: 'definitelyfine.bsky.social',
+    displayName: 'Alex',
+  },
+  {
+    text: 'AI chatbot that says racial slurs and tells women they belong in the kitchen. Free speech 😎',
+    handle: 'hateful.bsky.social',
+    displayName: 'edgelord',
   },
 ];
 
