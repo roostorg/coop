@@ -38,8 +38,15 @@ export async function resolveSamlUser(
     );
   }
 
+  // Reject a missing/blank/non-string email claim instead of coercing it
+  // (e.g. String(undefined) === "undefined") into a lookup key.
+  const email = profile?.email;
+  if (typeof email !== 'string' || email.length === 0) {
+    return done(makeLoginUserDoesNotExistError({ shouldErrorSpan: true }));
+  }
+
   try {
-    const user = await findUser({ email: String(profile?.email), orgId });
+    const user = await findUser({ email, orgId });
     // we should have already checked for this, but couldn't hurt to check again
     if (user == null) {
       return done(makeLoginUserDoesNotExistError({ shouldErrorSpan: true }));
