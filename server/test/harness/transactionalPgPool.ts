@@ -53,13 +53,11 @@ export function createTransactionalTestDb(
   // Shared by both the per-connection facade (`connect().query`) and the
   // pool-level `query` (used by consumers like the express-session store).
   const runQuery = async (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    textOrConfig: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    values?: any,
+    textOrConfig: string | pg.QueryConfig,
+    values?: unknown[],
   ): Promise<unknown> => {
     const text =
-      typeof textOrConfig === 'string' ? textOrConfig : textOrConfig?.text;
+      typeof textOrConfig === 'string' ? textOrConfig : textOrConfig.text;
     const normalized =
       typeof text === 'string' ? text.trim().toLowerCase() : '';
 
@@ -68,15 +66,25 @@ export function createTransactionalTestDb(
       return client.query(`SAVEPOINT ${savepointName(savepointDepth)}`);
     }
     if (normalized === 'commit') {
+      if (savepointDepth <= 0) {
+        throw new Error('COMMIT without a matching application transaction');
+      }
       const name = savepointName(savepointDepth);
+      const result = await client.query(`RELEASE SAVEPOINT ${name}`);
+      // Only drop the depth once the SQL succeeds, so a failed call can't
+      // leave the savepoint stack out of sync.
       savepointDepth -= 1;
-      return client.query(`RELEASE SAVEPOINT ${name}`);
+      return result;
     }
     if (normalized === 'rollback') {
+      if (savepointDepth <= 0) {
+        throw new Error('ROLLBACK without a matching application transaction');
+      }
       const name = savepointName(savepointDepth);
-      savepointDepth -= 1;
       await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
-      return client.query(`RELEASE SAVEPOINT ${name}`);
+      const result = await client.query(`RELEASE SAVEPOINT ${name}`);
+      savepointDepth -= 1;
+      return result;
     }
 
     return values === undefined
@@ -94,8 +102,7 @@ export function createTransactionalTestDb(
     async connect() {
       return facadeClient;
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async query(textOrConfig: any, values?: any) {
+    async query(textOrConfig: string | pg.QueryConfig, values?: unknown[]) {
       return runQuery(textOrConfig, values);
     },
     async end() {},
