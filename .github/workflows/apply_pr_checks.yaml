@@ -2,6 +2,8 @@ name: Run all PR checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -190,9 +192,7 @@ jobs:
       - name: Build client
         run: docker compose run --rm --quiet-pull client npm run build
 
-  # db and migrator have no ESLint setup, so CI only typechecks them. They're
-  # standalone npm packages, so we install and run tsc directly rather than
-  # going through docker compose (as the server/client jobs do).
+  # db and migrator have no ESLint setup, so CI only typechecks them.
   typecheck_db:
     needs: changes
     if: needs.changes.outputs.db == 'true'
