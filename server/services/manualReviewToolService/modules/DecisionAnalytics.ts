@@ -470,6 +470,7 @@ export default class DecisionAnalytics {
         sql<string>`(((job_payload->'payload'::text)->'item'::text) -> 'itemTypeIdentifier'::text) ->> 'id'::text`.as(
           'item_type_id',
         ),
+        'decision_reason',
         sql<string>`(job_payload->>'id')::text`.as('job_id'),
       ])
       .where('created_at', '>=', new Date('2023-10-01'))
@@ -518,6 +519,7 @@ export default class DecisionAnalytics {
           type: 'RELATED_ACTION' as const,
         })),
         createdAt: decisionWithPayload.created_at,
+        decisionReason: decisionWithPayload.decision_reason,
         jobId: decisionWithPayload.job_id,
       },
     };
