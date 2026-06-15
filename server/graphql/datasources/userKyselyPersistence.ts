@@ -58,7 +58,7 @@ export type GraphQLUserParent = {
 // Aligns with `ruleKyselyPersistence.ts`: persistence helpers operate on the
 // full app schema. Lets fixtures and `kyselyCreateRule` callers share a single
 // `Kysely<CombinedPg>` handle without running into Kysely's invariant generic.
-type UsersDb = Kysely<CombinedPg>;
+export type UsersDb = Kysely<CombinedPg>;
 
 type UserRow = {
   id: string;

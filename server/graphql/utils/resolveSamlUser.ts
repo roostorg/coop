@@ -6,12 +6,10 @@ import {
   makeNotFoundError,
 } from '../../utils/errors.js';
 import { makeLoginUserDoesNotExistError } from '../datasources/userApiErrors.js';
-import { type GraphQLUserParent } from '../datasources/userKyselyPersistence.js';
-
-type FindUserByEmailAndOrg = (opts: {
-  email: string;
-  orgId: string;
-}) => Promise<GraphQLUserParent | undefined>;
+import {
+  kyselyUserFindByEmailAndOrg,
+  type UsersDb,
+} from '../datasources/userKyselyPersistence.js';
 
 /**
  * Resolves the authenticated user for a SAML assertion, binding the lookup to
@@ -25,7 +23,7 @@ type FindUserByEmailAndOrg = (opts: {
  * the bypass: a user from another org simply isn't found, and login fails.
  */
 export async function resolveSamlUser(
-  findUser: FindUserByEmailAndOrg,
+  db: UsersDb,
   req: Pick<Request, 'params'>,
   profile: Pick<Profile, 'email'> | null,
   done: VerifiedCallback,
@@ -46,7 +44,7 @@ export async function resolveSamlUser(
   }
 
   try {
-    const user = await findUser({ email, orgId });
+    const user = await kyselyUserFindByEmailAndOrg(db, { email, orgId });
     // we should have already checked for this, but couldn't hurt to check again
     if (user == null) {
       return done(makeLoginUserDoesNotExistError({ shouldErrorSpan: true }));

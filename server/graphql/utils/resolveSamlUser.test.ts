@@ -1,133 +1,165 @@
+import { faker } from '@faker-js/faker';
 import { type Profile } from '@node-saml/passport-saml';
 import { type Request } from 'express';
+import { uid } from 'uid';
 
-import { type GraphQLUserParent } from '../datasources/userKyselyPersistence.js';
+import { UserRole } from '../../services/userManagementService/index.js';
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import { makeMockedServer } from '../../test/setupMockedServer.js';
+import { makeTestWithFixture } from '../../test/utils.js';
+import {
+  kyselyUserDeleteById,
+  kyselyUserInsert,
+} from '../datasources/userKyselyPersistence.js';
 import { resolveSamlUser } from './resolveSamlUser.js';
-
-const stubUser = { id: 'u1', orgId: 'org-a', email: 'a@x.com' };
-const userInOrgA = stubUser as unknown as GraphQLUserParent;
 
 function makeReq(orgId?: string): Pick<Request, 'params'> {
   return { params: orgId === undefined ? {} : { orgId } };
 }
 
+function samlUserInput(orgId: string) {
+  return {
+    id: uid(),
+    orgId,
+    email: faker.internet.email(),
+    firstName: faker.name.firstName(),
+    lastName: faker.name.lastName(),
+    role: UserRole.ADMIN,
+    loginMethods: ['saml'] as const,
+    password: null,
+  };
+}
+
 describe('resolveSamlUser', () => {
-  it('passes the user to done when the email + path org match', async () => {
-    const findUser = jest.fn(async () => userInOrgA);
-    const done = jest.fn();
-
-    await resolveSamlUser(
-      findUser,
-      makeReq('org-a'),
-      { email: 'a@x.com' },
-      done,
+  const testWithFixture = makeTestWithFixture(async () => {
+    const { deps, shutdown } = await makeMockedServer();
+    const { org, cleanup: orgCleanup } = await createOrg(
+      {
+        KyselyPg: deps.KyselyPg,
+        ModerationConfigService: deps.ModerationConfigService,
+        ApiKeyService: deps.ApiKeyService,
+      },
+      uid(),
     );
-
-    expect(findUser).toHaveBeenCalledWith({ email: 'a@x.com', orgId: 'org-a' });
-    expect(done).toHaveBeenCalledWith(null, userInOrgA);
+    return {
+      deps,
+      org,
+      async cleanup() {
+        await orgCleanup();
+        await shutdown();
+      },
+    };
   });
 
-  // Security regression (GHSA-2v93-383c-9fw2): an assertion authenticating
-  // org-b must not resolve a user who only exists in another org. The lookup
-  // is org-scoped, so a cross-org email yields no user and login is rejected.
-  it('rejects (error, no user) when the email belongs to a different org', async () => {
-    const findUser = jest.fn(async () => undefined);
-    const done = jest.fn();
-
-    await resolveSamlUser(
-      findUser,
-      makeReq('org-b'),
-      { email: 'a@x.com' },
-      done,
-    );
-
-    expect(findUser).toHaveBeenCalledWith({ email: 'a@x.com', orgId: 'org-b' });
-    const [err, user] = done.mock.calls[0];
-    expect(err).toBeInstanceOf(Error);
-    expect(user).toBeUndefined();
-  });
-
-  it('errors without looking up a user when orgId is missing from the path', async () => {
-    const findUser = jest.fn(async () => userInOrgA);
-    const done = jest.fn();
-
-    await resolveSamlUser(
-      findUser,
-      makeReq(undefined),
-      { email: 'a@x.com' },
-      done,
-    );
-
-    expect(findUser).not.toHaveBeenCalled();
-    expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
-  });
-
-  // A missing/blank email claim must be rejected outright, never coerced
-  // (e.g. String(undefined) === "undefined") and used as a lookup key.
-  it.each([
-    ['missing', {}],
-    ['undefined', { email: undefined }],
-    ['empty', { email: '' }],
-  ])(
-    'errors without looking up a user when the email claim is %s',
-    async (_label, profile) => {
-      const findUser = jest.fn(async () => userInOrgA);
+  testWithFixture(
+    'passes the user to done when the email belongs to the path org',
+    async ({ deps, org }) => {
+      const input = samlUserInput(org.id);
+      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
       const done = jest.fn();
+      try {
+        await resolveSamlUser(
+          deps.KyselyPg,
+          makeReq(org.id),
+          { email: input.email },
+          done,
+        );
+        expect(done).toHaveBeenCalledTimes(1);
+        const [err, user] = done.mock.calls[0];
+        expect(err).toBeNull();
+        expect(user).toMatchObject({ id: input.id, orgId: org.id });
+      } finally {
+        await kyselyUserDeleteById(deps.KyselyPg, input.id);
+      }
+    },
+  );
 
-      await resolveSamlUser(findUser, makeReq('org-a'), profile, done);
+  // Security regression (GHSA-2v93-383c-9fw2): an assertion authenticating one
+  // org must never resolve a user who lives in another org.
+  testWithFixture(
+    'rejects when the email belongs to a different org',
+    async ({ deps, org }) => {
+      const input = samlUserInput(org.id);
+      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+      const done = jest.fn();
+      try {
+        await resolveSamlUser(
+          deps.KyselyPg,
+          makeReq(`different-org-${uid()}`),
+          { email: input.email },
+          done,
+        );
+        const [err, user] = done.mock.calls[0];
+        expect(err).toBeInstanceOf(Error);
+        expect(user).toBeUndefined();
+      } finally {
+        await kyselyUserDeleteById(deps.KyselyPg, input.id);
+      }
+    },
+  );
 
-      expect(findUser).not.toHaveBeenCalled();
+  testWithFixture(
+    'rejects when no user exists for the email in that org',
+    async ({ deps, org }) => {
+      const done = jest.fn();
+      await resolveSamlUser(
+        deps.KyselyPg,
+        makeReq(org.id),
+        { email: `missing-${uid()}@example.com` },
+        done,
+      );
       expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
       expect(done.mock.calls[0][1]).toBeUndefined();
     },
   );
 
-  // Defensive: node-saml types email as a string, but a multi-valued
-  // attribute could arrive as an array at runtime — reject, don't coerce.
-  it('errors without looking up a user when the email claim is not a string', async () => {
-    const arrayProfile = { email: ['a@x.com'] };
-    const findUser = jest.fn(async () => userInOrgA);
-    const done = jest.fn();
+  testWithFixture(
+    'rejects when orgId is missing from the path',
+    async ({ deps }) => {
+      const done = jest.fn();
+      await resolveSamlUser(
+        deps.KyselyPg,
+        makeReq(undefined),
+        { email: 'a@example.com' },
+        done,
+      );
+      expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
+    },
+  );
 
-    await resolveSamlUser(
-      findUser,
-      makeReq('org-a'),
-      arrayProfile as unknown as Pick<Profile, 'email'>,
-      done,
+  // A missing/blank email claim must be rejected outright, never coerced
+  // (e.g. String(undefined) === "undefined") and used as a lookup key.
+  for (const [label, profile] of [
+    ['missing', {}],
+    ['undefined', { email: undefined }],
+    ['empty', { email: '' }],
+  ] as const) {
+    testWithFixture(
+      `rejects without a match when the email claim is ${label}`,
+      async ({ deps, org }) => {
+        const done = jest.fn();
+        await resolveSamlUser(deps.KyselyPg, makeReq(org.id), profile, done);
+        expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
+        expect(done.mock.calls[0][1]).toBeUndefined();
+      },
     );
+  }
 
-    expect(findUser).not.toHaveBeenCalled();
-    expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(done.mock.calls[0][1]).toBeUndefined();
-  });
-
-  it('errors when no user exists for the email in that org', async () => {
-    const findUser = jest.fn(async () => undefined);
-    const done = jest.fn();
-
-    await resolveSamlUser(
-      findUser,
-      makeReq('org-a'),
-      { email: 'missing@x.com' },
-      done,
-    );
-
-    expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(done.mock.calls[0][1]).toBeUndefined();
-  });
-
-  // A failed lookup must surface to passport via `done(err)`, never as an
-  // unhandled rejection out of the verify callback.
-  it('reports lookup failures through done instead of rejecting', async () => {
-    const findUser = jest.fn(async () => {
-      throw new Error('db down');
-    });
-    const done = jest.fn();
-
-    await expect(
-      resolveSamlUser(findUser, makeReq('org-a'), { email: 'a@x.com' }, done),
-    ).resolves.toBeUndefined();
-    expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(done.mock.calls[0][1]).toBeUndefined();
-  });
+  // Defensive: node-saml types email as a string, but a multi-valued attribute
+  // could arrive as an array at runtime — reject, don't coerce.
+  testWithFixture(
+    'rejects when the email claim is not a string',
+    async ({ deps, org }) => {
+      const arrayProfile = { email: ['a@example.com'] };
+      const done = jest.fn();
+      await resolveSamlUser(
+        deps.KyselyPg,
+        makeReq(org.id),
+        arrayProfile as unknown as Pick<Profile, 'email'>,
+        done,
+      );
+      expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
+      expect(done.mock.calls[0][1]).toBeUndefined();
+    },
+  );
 });

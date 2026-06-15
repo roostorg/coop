@@ -21,10 +21,7 @@ import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import {
-  kyselyUserFindByEmailAndOrg,
-  kyselyUserFindById,
-} from './graphql/datasources/userKyselyPersistence.js';
+import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
@@ -194,19 +191,9 @@ export default async function makeApiServer(deps: Dependencies) {
       // assertion authenticating one org can never resolve a user from another
       // (GHSA-2v93-383c-9fw2). Same helper for the signon and logout verify.
       async (req, profile, done) =>
-        resolveSamlUser(
-          async (opts) => kyselyUserFindByEmailAndOrg(KyselyPg, opts),
-          req,
-          profile,
-          done,
-        ),
+        resolveSamlUser(KyselyPg, req, profile, done),
       async (req, profile, done) =>
-        resolveSamlUser(
-          async (opts) => kyselyUserFindByEmailAndOrg(KyselyPg, opts),
-          req,
-          profile,
-          done,
-        ),
+        resolveSamlUser(KyselyPg, req, profile, done),
     ),
   );
 
