@@ -88,8 +88,7 @@ describe('UserAPI', () => {
           currentSid,
         );
 
-        // The caller's own session is preserved; all others are invalidated
-        // (GHSA-g5xq-67g7-36r2).
+        // The caller's own session is preserved; all others are invalidated.
         expect(deleteFrom).toHaveBeenCalledWith('public.session');
         expect(deleteWhere).toHaveBeenCalledWith('sid', '!=', currentSid);
       },

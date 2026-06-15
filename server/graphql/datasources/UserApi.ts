@@ -277,7 +277,7 @@ class UserAPI {
     }
 
     // Invalidate the user's other sessions so a phished/attacker session can't
-    // outlive the change (GHSA-g5xq-67g7-36r2); keep the caller's own session.
+    // outlive the change; keep the caller's own session.
     await deleteSessionsForUser(this.kyselyPg, user.id, {
       exceptSid: currentSid,
     });

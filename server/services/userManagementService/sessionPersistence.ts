@@ -2,7 +2,7 @@ import { sql, type Kysely } from 'kysely';
 
 /**
  * Delete connect-pg-simple session rows for a user, to force re-authentication
- * after a password change (GHSA-g5xq-67g7-36r2). Passport stores the user id at
+ * after a password change. Passport stores the user id at
  * `sess -> 'passport' ->> 'user'` (see `passport.serializeUser` in
  * `server/api.ts`, which serializes `user.id`).
  *

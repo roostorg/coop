@@ -466,7 +466,7 @@ class UserManagementService {
       .execute();
 
     // Step 3: Invalidate all of the user's sessions so a phished/attacker
-    // session can't outlive the reset (GHSA-g5xq-67g7-36r2).
+    // session can't outlive the reset.
     await deleteSessionsForUser(this.pgQuery, fetchedToken.user_id);
 
     // Step 4: Delete all tokens for the user

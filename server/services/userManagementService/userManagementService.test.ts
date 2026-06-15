@@ -247,7 +247,7 @@ describe('UserManagementService', () => {
         // The password row is updated...
         expect(mockDb.updateTable).toHaveBeenCalledWith('public.users');
         // ...and the user's sessions are deleted so a phished session can't
-        // outlive the reset (GHSA-g5xq-67g7-36r2).
+        // outlive the reset.
         expect(mockDb.deleteFrom).toHaveBeenCalledWith('public.session');
       },
     );
