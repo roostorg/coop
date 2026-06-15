@@ -7,7 +7,7 @@ import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackgrou
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 
 /** Vendor/company name for display. Uses signal.integrationTitle (from API) when set, else static config, else formatted id. */
-export function vendorName(signal: GQLSignal) {
+function vendorName(signal: GQLSignal) {
   if (signal.type === GQLSignalType.Custom) {
     return 'Custom';
   }

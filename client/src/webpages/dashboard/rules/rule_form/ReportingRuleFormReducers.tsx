@@ -287,7 +287,7 @@ export function reducer(
   }
 }
 
-export function addCondition(
+function addCondition(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.AddCondition;
@@ -313,7 +313,7 @@ export function addCondition(
   };
 }
 
-export function deleteCondition(
+function deleteCondition(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.DeleteCondition;
@@ -392,7 +392,7 @@ function deleteConditionSet(
  * map's keys, and each corresponding value is a list of inputs in that group.
  * The groups are added to the map in an order that's convenient for the UI.
  */
-export function getNewEligibleInputs(
+function getNewEligibleInputs(
   selectedItemTypes: ReportingRuleFormOrgDataResponse['itemTypes'],
   allSignals: readonly GQLSignal[],
 ) {
@@ -519,7 +519,7 @@ function getNewEligibleActions(
   );
 }
 
-export function updateItemTypes(
+function updateItemTypes(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateItemTypes;
@@ -592,7 +592,7 @@ export function updateItemTypes(
   };
 }
 
-export function updateInput(
+function updateInput(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateInput;
@@ -756,7 +756,7 @@ function updateConditionComponent<T>(
   };
 }
 
-export function updateSignal(
+function updateSignal(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateSignal;
@@ -775,7 +775,7 @@ export function updateSignal(
   );
 }
 
-export function updateSignalArgs(
+function updateSignalArgs(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateSignalArgs;
@@ -788,7 +788,7 @@ export function updateSignalArgs(
   });
 }
 
-export function updateSignalSubcategory(
+function updateSignalSubcategory(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateSignalSubcategory;
@@ -806,7 +806,7 @@ export function updateSignalSubcategory(
   );
 }
 
-export function updateMatchingValues(
+function updateMatchingValues(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateMatchingValues;
@@ -824,7 +824,7 @@ export function updateMatchingValues(
   );
 }
 
-export function updateComparator(
+function updateComparator(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateComparator;
@@ -842,7 +842,7 @@ export function updateComparator(
   );
 }
 
-export function updateThreshold(
+function updateThreshold(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.UpdateThreshold;
@@ -900,7 +900,7 @@ function updateNestedConditionSetConjunction(
   };
 }
 
-export function updateInitialStateWithRule(
+function updateInitialStateWithRule(
   state: ReportingRuleFormState,
   action: ReportingRuleFormReducerAction & {
     type: ReportingRuleFormReducerActionType.RuleQueryCompleted;

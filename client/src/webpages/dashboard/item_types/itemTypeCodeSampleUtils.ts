@@ -40,7 +40,7 @@ export function generateRequestCode(opts: RequestParameters) {
   }
 }
 
-export function generateItemData(
+function generateItemData(
   apiRoute: ApiRoute,
   itemType: GQLItemType,
   defaultUserItemTypeId?: string,
@@ -116,7 +116,7 @@ export function generateItemData(
 type JsonValue =
   string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
 
-export function translateJSONObjectToPHP(json: JsonValue): string {
+function translateJSONObjectToPHP(json: JsonValue): string {
   function translateValue(value: JsonValue, indentLevel: number = 0): string {
     const indent = '    '; // 4 spaces for indentation
     const currentIndent = indent.repeat(indentLevel);

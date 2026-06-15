@@ -12,7 +12,7 @@ import {
   useGQLPermissionsQuery,
 } from '../../../../../../graphql/generated';
 
-export const NCMECDecision = makeEnumLike([
+const NCMECDecision = makeEnumLike([
   'Send',
   'Ignore',
   'Move to Different Queue',

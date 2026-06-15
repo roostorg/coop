@@ -85,7 +85,7 @@ const skippedJobCountFilterColumns = [
   'reviewerIds',
 ] as const satisfies readonly (keyof GQLSkippedJobCountFilterByColumns)[];
 
-export function groupByColumnToFilterByColumns(
+function groupByColumnToFilterByColumns(
   groupBy: ManualReviewDashboardInsightsGroupByColumns[],
 ): FilterByColumnName[] {
   return groupBy.flatMap((groupByColumn) => {

@@ -385,7 +385,7 @@ export function reducer(
   }
 }
 
-export function addCondition(
+function addCondition(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.AddCondition;
@@ -411,7 +411,7 @@ export function addCondition(
   };
 }
 
-export function deleteCondition(
+function deleteCondition(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.DeleteCondition;
@@ -490,7 +490,7 @@ function deleteConditionSet(
  * map's keys, and each corresponding value is a list of inputs in that group.
  * The groups are added to the map in an order that's convenient for the UI.
  */
-export function getNewEligibleInputs(
+function getNewEligibleInputs(
   selectedItemTypes: RuleFormConfigResponse['itemTypes'],
   allSignals: readonly GQLSignal[],
 ) {
@@ -617,7 +617,7 @@ function getNewEligibleActions(
   );
 }
 
-export function updateItemTypes(
+function updateItemTypes(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateItemTypes;
@@ -856,7 +856,7 @@ function updateConditionComponent<T>(
   };
 }
 
-export function updateSignal(
+function updateSignal(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateSignal;
@@ -875,7 +875,7 @@ export function updateSignal(
   );
 }
 
-export function updateSignalArgs(
+function updateSignalArgs(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateSignalArgs;
@@ -888,7 +888,7 @@ export function updateSignalArgs(
   });
 }
 
-export function updateSignalSubcategory(
+function updateSignalSubcategory(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateSignalSubcategory;
@@ -906,7 +906,7 @@ export function updateSignalSubcategory(
   );
 }
 
-export function updateMatchingValues(
+function updateMatchingValues(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateMatchingValues;
@@ -924,7 +924,7 @@ export function updateMatchingValues(
   );
 }
 
-export function updateComparator(
+function updateComparator(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateComparator;
@@ -942,7 +942,7 @@ export function updateComparator(
   );
 }
 
-export function updateThreshold(
+function updateThreshold(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.UpdateThreshold;
@@ -1000,7 +1000,7 @@ function updateNestedConditionSetConjunction(
   };
 }
 
-export function updateInitialStateWithRule(
+function updateInitialStateWithRule(
   state: RuleFormState,
   action: RuleFormReducerAction & {
     type: RuleFormReducerActionType.RuleQueryCompleted;

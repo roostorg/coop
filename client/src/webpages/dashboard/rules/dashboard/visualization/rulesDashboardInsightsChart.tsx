@@ -54,9 +54,7 @@ import { getDisplayNameForGroupByOption } from './insightsUtils';
 import RuleInsightsFilterBy from './RuleInsightsFilterBy';
 import { TimeWindow } from './RulesDashboardInsights';
 
-export type RuleInsightsChartMetric = 'ACTIONS';
-
-export function getEmptyFilterState(
+function getEmptyFilterState(
   lookback: LookbackLength,
 ): GQLActionStatisticsFilters {
   return {

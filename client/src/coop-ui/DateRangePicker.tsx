@@ -58,7 +58,7 @@ interface DateRange {
   to: Date | undefined;
 }
 
-export enum Preset {
+enum Preset {
   Today = 'Today',
   Yesterday = 'Yesterday',
   Last7 = 'Last 7 Days',

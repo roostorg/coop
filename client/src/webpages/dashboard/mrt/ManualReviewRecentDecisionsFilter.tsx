@@ -40,7 +40,7 @@ export type RecentDecisionsFilterInput = Omit<
   };
 };
 
-export type DecisionOrAction =
+type DecisionOrAction =
   | {
       type: 'CUSTOM_ACTION';
       actionId: string;

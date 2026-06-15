@@ -57,7 +57,7 @@ interface TimeToActionByQueueChartProps {
   onSelectTimeDivision?: (timeDivision: TimeDivisionOptions) => void;
 }
 
-export function getEmptyFilterState(
+function getEmptyFilterState(
   timeWindow: TimeWindow,
 ): GQLTimeToActionFilterByInput {
   return {

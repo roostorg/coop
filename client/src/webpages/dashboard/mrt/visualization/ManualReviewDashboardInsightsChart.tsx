@@ -194,7 +194,7 @@ export function getPieChartData(
   }));
 }
 
-export function getEmptyFilterState(
+function getEmptyFilterState(
   metric: ManualReviewDashboardInsightsChartMetric,
   timeWindow: TimeWindow,
 ): ManualReviewDashboardInsightsFilterByInput {

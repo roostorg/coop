@@ -11,7 +11,7 @@ import { JsonObject } from 'type-fest';
 
 import { GQLBaseField, GQLSchemaFieldRoles } from '../graphql/generated';
 
-export type FieldRoleToScalarType = {
+type FieldRoleToScalarType = {
   creatorId: ScalarTypes['RELATED_ITEM'];
   parentId: ScalarTypes['RELATED_ITEM'];
   threadId: ScalarTypes['RELATED_ITEM'];

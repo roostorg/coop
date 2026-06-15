@@ -1,5 +1,3 @@
-import { FormInstance } from 'antd';
-import lodashIsPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import unzip from 'lodash/unzip';
 
@@ -16,12 +14,6 @@ export function safePick<T extends object, U extends keyof T>(
   props: U[],
 ) {
   return pick(obj, props);
-}
-
-export function isPlainObject(
-  obj: unknown,
-): obj is { [k: string | number | symbol]: unknown } {
-  return lodashIsPlainObject(obj);
 }
 
 /**
@@ -43,30 +35,6 @@ export function assertUnreachable(
 }
 
 /**
- * A helper for debugging antd forms.
- *
- * @returns A pretty-printed JSON string of the form's state, which you can
- * console.log or render on the screen during dev.
- */
-export function antdFormState(form: FormInstance, _fieldNames: string[]) {
-  const fieldNamesAndValues = form.getFieldsValue();
-  return JSON.stringify(
-    Object.fromEntries(
-      Object.entries(fieldNamesAndValues).map(([name, value]) => [
-        name,
-        {
-          value,
-          touched: form.isFieldTouched(name),
-          errors: form.getFieldError(name),
-        },
-      ]),
-    ),
-    undefined,
-    4,
-  );
-}
-
-/**
  * A type-safe wrapper around lodash unzip, that only works for arrays of
  * 2-tuples, but also handles inverting a `zip([], []) => []`, which callers
  * rely on and which unzip can't do, because it doesn't know how many source
@@ -85,7 +53,7 @@ type OmitDistributive<T, K extends PropertyKey> = T extends any
     : T
   : never;
 type Id<T> = {} & { [P in keyof T]: T[P] }; // Cosmetic to make tooltips expand the type
-export type OmitRecursively<T extends any, K extends PropertyKey> = Omit<
+type OmitRecursively<T extends any, K extends PropertyKey> = Omit<
   { [P in keyof T]: OmitDistributive<T[P], K> },
   K
 >;

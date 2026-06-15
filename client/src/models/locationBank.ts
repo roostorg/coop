@@ -13,7 +13,7 @@ export type LatLng = {
   lng: number;
 };
 
-export type LocationWithRadius = {
+type LocationWithRadius = {
   center: LatLng;
   radius: number;
 };
@@ -29,14 +29,6 @@ export type GQLGooglePlaceLocationAreaInput = GQLLocationAreaInput & {
   googlePlaceId: string;
 };
 
-export type LocationBank = {
-  id: string;
-  name: string;
-  description?: string;
-  locations: LocationArea[];
-};
-
-export type LocationAreaOrBank = LocationArea | LocationBank;
 export type LocationGeometry = Pick<LocationArea, 'geometry'>;
 
 export type LocationFormLocation = {
@@ -56,7 +48,7 @@ export function isGooglePlaceLocationAreaInput(
   return Boolean(it.googlePlaceId);
 }
 
-export function areLocationGeometriesEqual(
+function areLocationGeometriesEqual(
   geo1: LocationGeometry,
   geo2: LocationGeometry,
 ) {

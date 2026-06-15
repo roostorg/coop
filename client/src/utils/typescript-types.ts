@@ -1,7 +1,5 @@
 import { type Opaque } from 'type-fest';
 
-export type NonEmptyArray<T> = [T, ...T[]];
-
 export type ReadonlyDeep<T> = T extends object
   ? { readonly [P in keyof T]: ReadonlyDeep<T[P]> }
   : T;

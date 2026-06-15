@@ -13,7 +13,7 @@ type ManualReviewActionContextType = {
   setActions: React.Dispatch<React.SetStateAction<ManualReviewActionStoreType>>;
 };
 
-export type ManualReviewActionStoreType = {
+type ManualReviewActionStoreType = {
   itemId: string;
   action: CustomAction;
 }[];

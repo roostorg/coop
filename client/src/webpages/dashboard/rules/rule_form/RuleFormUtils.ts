@@ -148,24 +148,6 @@ export function isConditionComplete(condition: RuleFormCondition): boolean {
 }
 
 /**
- * This function can be used to see if the user has actually selected anything within a
- * given condition or condition set
- */
-export function conditionHasUserInput(condition: RuleFormCondition): boolean {
-  if (isConditionSet(condition)) {
-    return condition.conditions.some((c) => conditionHasUserInput(c));
-  }
-
-  return (
-    condition.input != null ||
-    condition.signal != null ||
-    condition.matchingValues != null ||
-    condition.comparator != null ||
-    condition.threshold != null
-  );
-}
-
-/**
  * Looks for a ConditionInput object inside an Array. Objects need to be
  * shallow-compared to each other to determine equality of all the fields
  */

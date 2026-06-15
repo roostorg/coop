@@ -177,7 +177,7 @@ export class Tree<T extends any> {
   }
 }
 
-export function sortTreeNodeList(nodeList: readonly any[], agg: any[]): any[] {
+function sortTreeNodeList(nodeList: readonly any[], agg: any[]): any[] {
   if (nodeList.length === 0) {
     return agg;
   }

@@ -19,21 +19,13 @@ export enum LookbackLength {
   ONE_YEAR = '1Y',
 }
 
-export const SECOND = 1000;
-export const MINUTE = SECOND * 60;
+const SECOND = 1000;
+const MINUTE = SECOND * 60;
 export const HOUR = MINUTE * 60;
 export const DAY = HOUR * 24;
 export const WEEK = DAY * 7;
 export const MONTH = DAY * 30;
-export const YEAR = DAY * 365;
-
-/**
- * Transforms a Date object to a string formatted as
- * YYYY-MM-DD
- */
-export function formatDate(date = new Date()): string {
-  return date.toISOString().split('T')[0];
-}
+const YEAR = DAY * 365;
 
 function toDate(date: string | DateString | Date): Date {
   return date instanceof Date ? date : new Date(date);
