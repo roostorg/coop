@@ -258,7 +258,7 @@ export default class JobDecisioning {
         : await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
       if (requiresReason) {
         throw makeMissingRequiredDecisionReasonError({
-          detail: 'This org requires every decision to include a reason.',
+          detail: 'This org requires a decision reason for this decision',
           shouldErrorSpan: true,
         });
       }
