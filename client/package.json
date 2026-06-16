@@ -129,7 +129,7 @@
     "source-map-explorer": {
       "rimraf": "^6.1.2"
     },
-    "protobufjs": "^7.5.8",
+    "protobufjs": "^7.6.4",
     "@protobufjs/utf8": "^1.1.1"
   },
   "browserslist": {
