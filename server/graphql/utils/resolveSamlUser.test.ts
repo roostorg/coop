@@ -7,9 +7,11 @@ import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeMockedServer } from '../../test/setupMockedServer.js';
 import { makeTestWithFixture } from '../../test/utils.js';
+import { type default as SafeTracer } from '../../utils/SafeTracer.js';
 import {
   kyselyUserDeleteById,
   kyselyUserInsert,
+  type UsersDb,
 } from '../datasources/userKyselyPersistence.js';
 import { resolveSamlUser } from './resolveSamlUser.js';
 
@@ -60,6 +62,7 @@ describe('resolveSamlUser', () => {
       try {
         await resolveSamlUser(
           deps.KyselyPg,
+          deps.Tracer,
           makeReq(org.id),
           { email: input.email },
           done,
@@ -85,6 +88,7 @@ describe('resolveSamlUser', () => {
       try {
         await resolveSamlUser(
           deps.KyselyPg,
+          deps.Tracer,
           makeReq(`different-org-${uid()}`),
           { email: input.email },
           done,
@@ -104,6 +108,7 @@ describe('resolveSamlUser', () => {
       const done = jest.fn();
       await resolveSamlUser(
         deps.KyselyPg,
+        deps.Tracer,
         makeReq(org.id),
         { email: `missing-${uid()}@example.com` },
         done,
@@ -119,6 +124,7 @@ describe('resolveSamlUser', () => {
       const done = jest.fn();
       await resolveSamlUser(
         deps.KyselyPg,
+        deps.Tracer,
         makeReq(undefined),
         { email: 'a@example.com' },
         done,
@@ -138,7 +144,13 @@ describe('resolveSamlUser', () => {
       `rejects without a match when the email claim is ${label}`,
       async ({ deps, org }) => {
         const done = jest.fn();
-        await resolveSamlUser(deps.KyselyPg, makeReq(org.id), profile, done);
+        await resolveSamlUser(
+          deps.KyselyPg,
+          deps.Tracer,
+          makeReq(org.id),
+          profile,
+          done,
+        );
         expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
         expect(done.mock.calls[0][1]).toBeUndefined();
       },
@@ -154,6 +166,7 @@ describe('resolveSamlUser', () => {
       const done = jest.fn();
       await resolveSamlUser(
         deps.KyselyPg,
+        deps.Tracer,
         makeReq(org.id),
         arrayProfile as unknown as Pick<Profile, 'email'>,
         done,
@@ -162,4 +175,31 @@ describe('resolveSamlUser', () => {
       expect(done.mock.calls[0][1]).toBeUndefined();
     },
   );
+
+  // A genuine DB failure during the lookup must be logged to the tracer (so
+  // outages are observable) and surfaced as an internal error, not swallowed.
+  test('logs to the tracer and returns an internal error on a DB failure', async () => {
+    const dbError = new Error('connection refused');
+    const db = {
+      selectFrom() {
+        throw dbError;
+      },
+    } as unknown as UsersDb;
+    const tracer = {
+      logActiveSpanFailedIfAny: jest.fn(),
+    } as unknown as SafeTracer;
+    const done = jest.fn();
+
+    await resolveSamlUser(
+      db,
+      tracer,
+      makeReq('some-org'),
+      { email: 'a@example.com' },
+      done,
+    );
+
+    expect(tracer.logActiveSpanFailedIfAny).toHaveBeenCalledWith(dbError);
+    expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(done.mock.calls[0][1]).toBeUndefined();
+  });
 });

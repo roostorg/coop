@@ -5,31 +5,27 @@ import {
   makeInternalServerError,
   makeNotFoundError,
 } from '../../utils/errors.js';
+import { type default as SafeTracer } from '../../utils/SafeTracer.js';
 import { makeLoginUserDoesNotExistError } from '../datasources/userApiErrors.js';
 import {
   kyselyUserFindByEmailAndOrg,
+  type GraphQLUserParent,
   type UsersDb,
 } from '../datasources/userKyselyPersistence.js';
+import { getOrgIdFromPath } from './orgIdFromPath.js';
 
 /**
  * Resolves the authenticated user for a SAML assertion, binding the lookup to
  * the org named in the callback path (`/saml/login/:orgId/callback`).
- *
- * Security (GHSA-2v93-383c-9fw2): the assertion's signature is verified against
- * the path org's IdP cert, but the user must also belong to that same org.
- * Looking up by email alone would let an assertion signed by org A's IdP
- * resolve a user who lives in org B (same email across tenants), creating a
- * session as that cross-tenant user. Scoping the lookup to the path org closes
- * the bypass: a user from another org simply isn't found, and login fails.
  */
 export async function resolveSamlUser(
   db: UsersDb,
+  tracer: SafeTracer,
   req: Pick<Request, 'params'>,
   profile: Pick<Profile, 'email'> | null,
   done: VerifiedCallback,
 ): Promise<void> {
-  const rawOrgId = req.params['orgId'];
-  const orgId = typeof rawOrgId === 'string' ? rawOrgId : undefined;
+  const orgId = getOrgIdFromPath(req);
   if (!orgId) {
     return done(
       makeNotFoundError('orgId not found in path.', { shouldErrorSpan: true }),
@@ -43,19 +39,24 @@ export async function resolveSamlUser(
     return done(makeLoginUserDoesNotExistError({ shouldErrorSpan: true }));
   }
 
+  // Scope the catch to the DB lookup so a genuine outage is logged and surfaced
+  // as an internal error, while the `done` dispatch below isn't swallowed.
+  let user: GraphQLUserParent | undefined;
   try {
-    const user = await kyselyUserFindByEmailAndOrg(db, { email, orgId });
-    // we should have already checked for this, but couldn't hurt to check again
-    if (user == null) {
-      return done(makeLoginUserDoesNotExistError({ shouldErrorSpan: true }));
-    }
-
-    return done(null, user);
-  } catch {
+    user = await kyselyUserFindByEmailAndOrg(db, { email, orgId });
+  } catch (e) {
+    tracer.logActiveSpanFailedIfAny(e);
     return done(
       makeInternalServerError('Unknown error during login attempt', {
         shouldErrorSpan: true,
       }),
     );
   }
+
+  // we should have already checked for this, but couldn't hurt to check again
+  if (user == null) {
+    return done(makeLoginUserDoesNotExistError({ shouldErrorSpan: true }));
+  }
+
+  return done(null, user);
 }
