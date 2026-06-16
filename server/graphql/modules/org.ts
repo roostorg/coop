@@ -1,8 +1,12 @@
 /* eslint-disable max-lines */
 
 import { GraphQLError } from 'graphql';
-import { type JsonObject } from 'type-fest';
+import { type JsonObject, type JsonValue } from 'type-fest';
 
+import {
+  parseStoredParameters,
+  validateActionParameterValues,
+} from '../../services/moderationConfigService/index.js';
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
@@ -104,11 +108,14 @@ const typeDefs = /* GraphQL */ `
     id: String!
     threshold: Int!
     actions: [ID!]!
+    # Per-action configured parameter values: actionId -> name -> value.
+    actionParameters: JSONObject!
   }
 
   input SetUserStrikeThresholdInput {
     threshold: Int!
     actions: [String!]!
+    actionParameters: JSONObject
   }
 
   input SetAllUserStrikeThresholdsInput {
@@ -241,6 +248,61 @@ export async function resolveOrgActions(
   return hasNcmecEnabled
     ? actions
     : actions.filter((it) => it.actionType !== 'ENQUEUE_TO_NCMEC');
+}
+
+// Validates each threshold's configured parameter values against the actions'
+// specs, dropping values for actions no longer attached. Throws (surfaced to
+// the admin) on any invalid value.
+async function validateUserStrikeThresholdActionParameters(
+  context: Context,
+  orgId: string,
+  thresholds: readonly {
+    threshold: number;
+    actions: readonly string[];
+    actionParameters?: JsonObject | null;
+  }[],
+): Promise<
+  { threshold: number; actions: string[]; actionParameters: JsonObject }[]
+> {
+  const allActionIds = [...new Set(thresholds.flatMap((t) => [...t.actions]))];
+  const actions =
+    allActionIds.length > 0
+      ? await context.services.ModerationConfigService.getActions({
+          orgId,
+          ids: allActionIds,
+        })
+      : [];
+  const specByActionId = new Map(
+    actions.map((a) => [
+      a.id,
+      parseStoredParameters(
+        a.actionType === 'CUSTOM_ACTION' ? a.customMrtApiParams : null,
+      ),
+    ]),
+  );
+
+  return thresholds.map((t) => {
+    const attached = new Set(t.actions);
+    const raw: JsonObject = t.actionParameters ?? {};
+    const validated: JsonObject = {};
+    for (const actionId of Object.keys(raw)) {
+      if (!attached.has(actionId)) {
+        continue;
+      }
+      const spec = specByActionId.get(actionId) ?? [];
+      const values = validateActionParameterValues(spec, raw[actionId]);
+      if (Object.keys(values).length > 0) {
+        // Validated values are JSON by construction (the validator only emits
+        // coerced primitives/arrays).
+        validated[actionId] = values as JsonValue;
+      }
+    }
+    return {
+      threshold: t.threshold,
+      actions: [...t.actions],
+      actionParameters: validated,
+    };
+  });
 }
 
 const Org: GQLOrgResolvers = {
@@ -840,9 +902,15 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
 
+    const thresholds = await validateUserStrikeThresholdActionParameters(
+      context,
+      user.orgId,
+      params.input.thresholds,
+    );
+
     await context.services.ModerationConfigService.setAllUserStrikeThresholds({
       orgId: user.orgId,
-      thresholds: params.input.thresholds,
+      thresholds,
     });
     return gqlSuccessResult({}, 'SetAllUserStrikeThresholdsSuccessResponse');
   },

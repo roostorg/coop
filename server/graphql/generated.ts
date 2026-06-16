@@ -660,6 +660,7 @@ export type GQLContentManualReviewJobPayload = {
 
 export type GQLContentRule = GQLRule & {
   readonly __typename?: 'ContentRule';
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -808,6 +809,9 @@ export type GQLCreateContentItemTypeInput = {
 
 export type GQLCreateContentRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly contentTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -910,6 +914,9 @@ export type GQLCreateUserItemTypeInput = {
 
 export type GQLCreateUserRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly expirationTime?: InputMaybe<Scalars['DateTime']['input']>;
@@ -4131,6 +4138,7 @@ export const GQLRoutingRuleStatus = {
 export type GQLRoutingRuleStatus =
   (typeof GQLRoutingRuleStatus)[keyof typeof GQLRoutingRuleStatus];
 export type GQLRule = {
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -4151,6 +4159,17 @@ export type GQLRule = {
 
 export type GQLRuleBacktestsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+};
+
+export type GQLRuleActionParameterValues = {
+  readonly __typename?: 'RuleActionParameterValues';
+  readonly actionId: Scalars['ID']['output'];
+  readonly parameters: Scalars['JSONObject']['output'];
+};
+
+export type GQLRuleActionParameterValuesInput = {
+  readonly actionId: Scalars['ID']['input'];
+  readonly parameters: Scalars['JSONObject']['input'];
 };
 
 export const GQLRuleEnvironment = {
@@ -4335,6 +4354,7 @@ export type GQLSetPluginIntegrationConfigInput = {
 };
 
 export type GQLSetUserStrikeThresholdInput = {
+  readonly actionParameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly actions: ReadonlyArray<Scalars['String']['input']>;
   readonly threshold: Scalars['Int']['input'];
 };
@@ -4777,6 +4797,9 @@ export type GQLUpdateContentItemTypeInput = {
 
 export type GQLUpdateContentRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly contentTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -4945,6 +4968,9 @@ export type GQLUpdateUserItemTypeInput = {
 
 export type GQLUpdateUserRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -5146,6 +5172,7 @@ export const GQLUserRole = {
 export type GQLUserRole = (typeof GQLUserRole)[keyof typeof GQLUserRole];
 export type GQLUserRule = GQLRule & {
   readonly __typename?: 'UserRule';
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -5195,6 +5222,7 @@ export type GQLUserStrikeBucket = {
 
 export type GQLUserStrikeThreshold = {
   readonly __typename?: 'UserStrikeThreshold';
+  readonly actionParameters: Scalars['JSONObject']['output'];
   readonly actions: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['String']['output'];
   readonly threshold: Scalars['Int']['output'];
@@ -6336,6 +6364,8 @@ export type GQLResolversTypes = {
   RoutingRuleNameExistsError: ResolverTypeWrapper<GQLRoutingRuleNameExistsError>;
   RoutingRuleStatus: GQLRoutingRuleStatus;
   Rule: ResolverTypeWrapper<GraphQLRuleParent>;
+  RuleActionParameterValues: ResolverTypeWrapper<GQLRuleActionParameterValues>;
+  RuleActionParameterValuesInput: GQLRuleActionParameterValuesInput;
   RuleEnvironment: GQLRuleEnvironment;
   RuleExecutionEnqueueSourceInfo: ResolverTypeWrapper<
     Omit<GQLRuleExecutionEnqueueSourceInfo, 'rules'> & {
@@ -7028,6 +7058,8 @@ export type GQLResolversParentTypes = {
   RoutingRule: RoutingRuleWithoutVersion;
   RoutingRuleNameExistsError: GQLRoutingRuleNameExistsError;
   Rule: GraphQLRuleParent;
+  RuleActionParameterValues: GQLRuleActionParameterValues;
+  RuleActionParameterValuesInput: GQLRuleActionParameterValuesInput;
   RuleExecutionEnqueueSourceInfo: Omit<
     GQLRuleExecutionEnqueueSourceInfo,
     'rules'
@@ -8086,6 +8118,11 @@ export type GQLContentRuleResolvers<
   ParentType extends GQLResolversParentTypes['ContentRule'] =
     GQLResolversParentTypes['ContentRule'],
 > = {
+  actionParameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['RuleActionParameterValues']>,
+    ParentType,
+    ContextType
+  >;
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
     ParentType,
@@ -13327,6 +13364,19 @@ export type GQLRuleResolvers<
   >;
 };
 
+export type GQLRuleActionParameterValuesResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['RuleActionParameterValues'] =
+    GQLResolversParentTypes['RuleActionParameterValues'],
+> = {
+  actionId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
+  parameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLRuleExecutionEnqueueSourceInfoResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['RuleExecutionEnqueueSourceInfo'] =
@@ -14744,6 +14794,11 @@ export type GQLUserRuleResolvers<
   ParentType extends GQLResolversParentTypes['UserRule'] =
     GQLResolversParentTypes['UserRule'],
 > = {
+  actionParameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['RuleActionParameterValues']>,
+    ParentType,
+    ContextType
+  >;
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
     ParentType,
@@ -14852,6 +14907,11 @@ export type GQLUserStrikeThresholdResolvers<
   ParentType extends GQLResolversParentTypes['UserStrikeThreshold'] =
     GQLResolversParentTypes['UserStrikeThreshold'],
 > = {
+  actionParameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['ID']>,
     ParentType,
@@ -15172,6 +15232,7 @@ export type GQLResolvers<ContextType = Context> = {
   RoutingRule?: GQLRoutingRuleResolvers<ContextType>;
   RoutingRuleNameExistsError?: GQLRoutingRuleNameExistsErrorResolvers<ContextType>;
   Rule?: GQLRuleResolvers<ContextType>;
+  RuleActionParameterValues?: GQLRuleActionParameterValuesResolvers<ContextType>;
   RuleExecutionEnqueueSourceInfo?: GQLRuleExecutionEnqueueSourceInfoResolvers<ContextType>;
   RuleExecutionResult?: GQLRuleExecutionResultResolvers<ContextType>;
   RuleExecutionResultEdge?: GQLRuleExecutionResultEdgeResolvers<ContextType>;

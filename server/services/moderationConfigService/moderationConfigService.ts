@@ -1,6 +1,6 @@
 import { type Kysely } from 'kysely';
 import _ from 'lodash';
-import { type ReadonlyDeep } from 'type-fest';
+import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../userManagementService/index.js';
@@ -296,6 +296,14 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.actionOps.getActionsForRuleId(opts);
   }
 
+  async getActionsWithParametersForRuleId(opts: {
+    orgId: string;
+    ruleId: string;
+    readFromReplica?: boolean;
+  }) {
+    return this.actionOps.getActionsWithParametersForRuleId(opts);
+  }
+
   async getPoliciesByRuleIds(ruleIds: readonly string[]) {
     return this.policyOps.getPoliciesByRuleIds({
       ruleIds,
@@ -397,6 +405,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     thresholdSettings: {
       threshold: number;
       actions: string[];
+      actionParameters?: JsonObject;
     };
   }) {
     return this.userStrikeOps.createUserStrikeThreshold(opts);
@@ -407,6 +416,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     thresholds: readonly {
       threshold: number;
       actions: readonly string[];
+      actionParameters?: JsonObject;
     }[];
   }) {
     return this.userStrikeOps.setAllUserStrikeThresholds(opts);
@@ -414,7 +424,12 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
 
   async updateUserStrikeThreshold(opts: {
     orgId: string;
-    thresholdSettings: { id: string; threshold?: number; actions?: string[] };
+    thresholdSettings: {
+      id: string;
+      threshold?: number;
+      actions?: string[];
+      actionParameters?: JsonObject;
+    };
   }) {
     return this.userStrikeOps.updateUserStrikeThreshold(opts);
   }

@@ -18,6 +18,7 @@ import { filterNullOrUndefined } from '../../utils/collections.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import {
+  resolveConfiguredActionParameterValues,
   type Action,
   type ModerationConfigService,
 } from '../moderationConfigService/index.js';
@@ -158,6 +159,9 @@ export class UserStrikeService {
       ids: thresholdRuleToApply.actions,
       readFromReplica: true,
     });
+    // Per-action values configured on the threshold, so a crossed threshold
+    // fires parameterized actions with the same inputs a moderator would give.
+    const configuredParameters = thresholdRuleToApply.actionParameters;
     const actionExecutionDataArray = actionsToPublish.map((action) => ({
       action,
       orgId: executionContext.orgId,
@@ -165,6 +169,14 @@ export class UserStrikeService {
       policies: [],
       matchingRules: undefined,
       ruleEnvironment: undefined,
+      customMrtApiParamDecisionPayload: resolveConfiguredActionParameterValues({
+        customMrtApiParams:
+          action.actionType === 'CUSTOM_ACTION'
+            ? action.customMrtApiParams
+            : null,
+        rawValues: configuredParameters[action.id],
+        actionId: action.id,
+      }),
     }));
     await this.publishActions(actionExecutionDataArray, {
       orgId: executionContext.orgId,

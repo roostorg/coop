@@ -75,7 +75,7 @@ export const makeGetActionsForRuleEventuallyConsistent = inject(
         fromString: (it) => jsonParse(it),
       },
       async producer(key: { orgId: string; ruleId: string }) {
-        return moderationConfigService.getActionsForRuleId({
+        return moderationConfigService.getActionsWithParametersForRuleId({
           orgId: key.orgId,
           ruleId: key.ruleId,
           readFromReplica: true,

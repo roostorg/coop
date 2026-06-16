@@ -41,6 +41,17 @@ export function buildGraphqlRuleParent(
         ruleId: plain.id,
       });
     },
+    async getActionParameters() {
+      const withParams =
+        await deps.moderationConfigService.getActionsWithParametersForRuleId({
+          orgId: plain.orgId,
+          ruleId: plain.id,
+        });
+      return withParams.map((it) => ({
+        actionId: it.action.id,
+        parameters: it.parameters,
+      }));
+    },
     async getPolicies() {
       const byRule = await deps.moderationConfigService.getPoliciesByRuleIds([
         plain.id,

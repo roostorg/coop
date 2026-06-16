@@ -67,6 +67,8 @@ export type ModerationConfigServicePg = {
   'public.rules_and_actions': {
     action_id: string;
     rule_id: string;
+    // Configured `name -> value` parameters sent when this rule fires the action.
+    action_parameters: Generated<JsonObject>;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
     sys_period: GeneratedAlways<unknown>;
@@ -162,6 +164,8 @@ export type ModerationConfigServicePg = {
     org_id: string;
     threshold: number;
     actions: string[];
+    // Per-action configured parameters: `action_id -> { name -> value }`.
+    action_parameters: Generated<JsonObject>;
   };
   'public.text_banks': {
     id: string;

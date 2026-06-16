@@ -592,6 +592,7 @@ export type GQLContentManualReviewJobPayload = {
 
 export type GQLContentRule = GQLRule & {
   readonly __typename: 'ContentRule';
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -740,6 +741,9 @@ export type GQLCreateContentItemTypeInput = {
 
 export type GQLCreateContentRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly contentTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -842,6 +846,9 @@ export type GQLCreateUserItemTypeInput = {
 
 export type GQLCreateUserRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly expirationTime?: InputMaybe<Scalars['DateTime']['input']>;
@@ -4063,6 +4070,7 @@ export const GQLRoutingRuleStatus = {
 export type GQLRoutingRuleStatus =
   (typeof GQLRoutingRuleStatus)[keyof typeof GQLRoutingRuleStatus];
 export type GQLRule = {
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -4083,6 +4091,17 @@ export type GQLRule = {
 
 export type GQLRuleBacktestsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+};
+
+export type GQLRuleActionParameterValues = {
+  readonly __typename: 'RuleActionParameterValues';
+  readonly actionId: Scalars['ID']['output'];
+  readonly parameters: Scalars['JSONObject']['output'];
+};
+
+export type GQLRuleActionParameterValuesInput = {
+  readonly actionId: Scalars['ID']['input'];
+  readonly parameters: Scalars['JSONObject']['input'];
 };
 
 export const GQLRuleEnvironment = {
@@ -4267,6 +4286,7 @@ export type GQLSetPluginIntegrationConfigInput = {
 };
 
 export type GQLSetUserStrikeThresholdInput = {
+  readonly actionParameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly actions: ReadonlyArray<Scalars['String']['input']>;
   readonly threshold: Scalars['Int']['input'];
 };
@@ -4709,6 +4729,9 @@ export type GQLUpdateContentItemTypeInput = {
 
 export type GQLUpdateContentRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly contentTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -4877,6 +4900,9 @@ export type GQLUpdateUserItemTypeInput = {
 
 export type GQLUpdateUserRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -5078,6 +5104,7 @@ export const GQLUserRole = {
 export type GQLUserRole = (typeof GQLUserRole)[keyof typeof GQLUserRole];
 export type GQLUserRule = GQLRule & {
   readonly __typename: 'UserRule';
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -5127,6 +5154,7 @@ export type GQLUserStrikeBucket = {
 
 export type GQLUserStrikeThreshold = {
   readonly __typename: 'UserStrikeThreshold';
+  readonly actionParameters: Scalars['JSONObject']['output'];
   readonly actions: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['String']['output'];
   readonly threshold: Scalars['Int']['output'];
@@ -5839,6 +5867,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes?: boolean | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
         }
       | {
           readonly __typename: 'EnqueueAuthorToMrtAction';
@@ -22038,6 +22083,23 @@ export type GQLReportingRuleFormOrgDataQuery = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -22817,6 +22879,23 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22905,6 +22984,11 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         >;
       }
   >;
+  readonly actionParameters: ReadonlyArray<{
+    readonly __typename: 'RuleActionParameterValues';
+    readonly actionId: string;
+    readonly parameters: JsonObject;
+  }>;
 };
 
 type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
@@ -23087,6 +23171,23 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23175,6 +23276,11 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         >;
       }
   >;
+  readonly actionParameters: ReadonlyArray<{
+    readonly __typename: 'RuleActionParameterValues';
+    readonly actionId: string;
+    readonly parameters: JsonObject;
+  }>;
 };
 
 export type GQLRuleFormRuleFieldsFragmentFragment =
@@ -23547,6 +23653,23 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly parameters: ReadonlyArray<{
+                readonly __typename: 'ActionParameter';
+                readonly name: string;
+                readonly displayName: string;
+                readonly description?: string | null;
+                readonly type: GQLActionParameterType;
+                readonly required: boolean;
+                readonly min?: number | null;
+                readonly max?: number | null;
+                readonly maxLength?: number | null;
+                readonly defaultValue?: JsonValue | null;
+                readonly options?: ReadonlyArray<{
+                  readonly __typename: 'ActionParameterOption';
+                  readonly value: string;
+                  readonly label: string;
+                }> | null;
+              }>;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23635,6 +23758,11 @@ export type GQLRuleQuery = {
               >;
             }
         >;
+        readonly actionParameters: ReadonlyArray<{
+          readonly __typename: 'RuleActionParameterValues';
+          readonly actionId: string;
+          readonly parameters: JsonObject;
+        }>;
       }
     | {
         readonly __typename: 'UserRule';
@@ -23816,6 +23944,23 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly parameters: ReadonlyArray<{
+                readonly __typename: 'ActionParameter';
+                readonly name: string;
+                readonly displayName: string;
+                readonly description?: string | null;
+                readonly type: GQLActionParameterType;
+                readonly required: boolean;
+                readonly min?: number | null;
+                readonly max?: number | null;
+                readonly maxLength?: number | null;
+                readonly defaultValue?: JsonValue | null;
+                readonly options?: ReadonlyArray<{
+                  readonly __typename: 'ActionParameterOption';
+                  readonly value: string;
+                  readonly label: string;
+                }> | null;
+              }>;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23904,6 +24049,11 @@ export type GQLRuleQuery = {
               >;
             }
         >;
+        readonly actionParameters: ReadonlyArray<{
+          readonly __typename: 'RuleActionParameterValues';
+          readonly actionId: string;
+          readonly parameters: JsonObject;
+        }>;
       }
     | null;
 };
@@ -23913,6 +24063,23 @@ type GQLActionFragmentCustomActionFragment = {
   readonly id: string;
   readonly name: string;
   readonly description?: string | null;
+  readonly parameters: ReadonlyArray<{
+    readonly __typename: 'ActionParameter';
+    readonly name: string;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly type: GQLActionParameterType;
+    readonly required: boolean;
+    readonly min?: number | null;
+    readonly max?: number | null;
+    readonly maxLength?: number | null;
+    readonly defaultValue?: JsonValue | null;
+    readonly options?: ReadonlyArray<{
+      readonly __typename: 'ActionParameterOption';
+      readonly value: string;
+      readonly label: string;
+    }> | null;
+  }>;
   readonly itemTypes: ReadonlyArray<
     | {
         readonly __typename: 'ContentItemType';
@@ -24209,6 +24376,23 @@ export type GQLContentRuleFormConfigQuery = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -24472,6 +24656,7 @@ export type GQLUserStrikeThresholdsQuery = {
       readonly id: string;
       readonly threshold: number;
       readonly actions: ReadonlyArray<string>;
+      readonly actionParameters: JsonObject;
     }>;
   } | null;
 };
@@ -25909,6 +26094,21 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        parameters {
+          name
+          displayName
+          description
+          type
+          required
+          options {
+            value
+            label
+          }
+          min
+          max
+          maxLength
+          defaultValue
+        }
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25950,6 +26150,10 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         }
       }
     }
+    actionParameters {
+      actionId
+      parameters
+    }
   }
   ${GQLConditionSetFieldsFragmentDoc}
 `;
@@ -25959,6 +26163,21 @@ export const GQLActionFragmentFragmentDoc = gql`
       id
       name
       description
+      parameters {
+        name
+        displayName
+        description
+        type
+        required
+        options {
+          value
+          label
+        }
+        min
+        max
+        maxLength
+        defaultValue
+      }
       itemTypes {
         ... on ItemTypeBase {
           id
@@ -28279,6 +28498,23 @@ export const GQLActionsDocument = gql`
           description
           penalty
           applyUserStrikes
+        }
+        ... on CustomAction {
+          parameters {
+            name
+            displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
+          }
         }
       }
     }
@@ -42373,6 +42609,7 @@ export const GQLUserStrikeThresholdsDocument = gql`
         id
         threshold
         actions
+        actionParameters
       }
       userStrikeTTL
     }

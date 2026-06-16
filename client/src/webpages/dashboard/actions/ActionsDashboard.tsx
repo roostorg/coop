@@ -40,6 +40,23 @@ gql`
           penalty
           applyUserStrikes
         }
+        ... on CustomAction {
+          parameters {
+            name
+            displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
+          }
+        }
       }
     }
     me {

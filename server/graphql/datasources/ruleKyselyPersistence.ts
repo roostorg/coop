@@ -1,4 +1,5 @@
 import { sql, type Insertable, type Kysely, type Updateable } from 'kysely';
+import { type JsonObject } from 'type-fest';
 
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type BacktestStatusDb } from '../../services/coreAppTables.js';
@@ -23,6 +24,9 @@ import { type GraphQLUserParent } from './userKyselyPersistence.js';
 export type GraphQLRuleParent = PlainRuleWithLatestVersion & {
   getCreator(): Promise<GraphQLUserParent>;
   getActions(): Promise<Action[]>;
+  getActionParameters(): Promise<
+    { actionId: string; parameters: JsonObject }[]
+  >;
   getPolicies(): Promise<Policy[]>;
 };
 
@@ -81,6 +85,8 @@ async function replaceRuleActions(
   trx: Kysely<CombinedPg>,
   ruleId: string,
   actionIds: readonly string[],
+  // Per-action parameters; actions absent from the map are persisted as `{}`.
+  actionParameters?: ReadonlyMap<string, JsonObject>,
 ) {
   await trx
     .deleteFrom('public.rules_and_actions')
@@ -92,7 +98,11 @@ async function replaceRuleActions(
   await trx
     .insertInto('public.rules_and_actions')
     .values(
-      actionIds.map((actionId) => ({ rule_id: ruleId, action_id: actionId })),
+      actionIds.map((actionId) => ({
+        rule_id: ruleId,
+        action_id: actionId,
+        action_parameters: actionParameters?.get(actionId) ?? {},
+      })),
     )
     .execute();
 }
@@ -162,6 +172,7 @@ export async function kyselyCreateRule(
     ruleType: RuleType;
     parentId: string | null | undefined;
     actionIds: readonly string[];
+    actionParameters?: ReadonlyMap<string, JsonObject>;
     policyIds: readonly string[];
     contentTypeIds: readonly string[];
   },
@@ -203,7 +214,12 @@ export async function kyselyCreateRule(
   };
   await trx.insertInto('public.rules').values(ruleValues).execute();
 
-  await replaceRuleActions(trx, input.id, input.actionIds);
+  await replaceRuleActions(
+    trx,
+    input.id,
+    input.actionIds,
+    input.actionParameters,
+  );
   await replaceRulePolicies(trx, input.id, input.policyIds);
   if (input.ruleType === RuleType.CONTENT) {
     await replaceRuleItemTypes(trx, input.id, input.contentTypeIds);
@@ -225,6 +241,7 @@ export async function kyselyUpdateRule(
     expirationTime: Date | null | undefined;
     parentId: string | null | undefined;
     actionIds: readonly string[] | undefined;
+    actionParameters?: ReadonlyMap<string, JsonObject>;
     policyIds: readonly string[] | undefined;
     contentTypeIds: readonly string[] | undefined;
   },
@@ -322,7 +339,12 @@ export async function kyselyUpdateRule(
   }
 
   if (input.actionIds != null) {
-    await replaceRuleActions(trx, input.id, input.actionIds);
+    await replaceRuleActions(
+      trx,
+      input.id,
+      input.actionIds,
+      input.actionParameters,
+    );
   }
   if (input.policyIds != null) {
     await replaceRulePolicies(trx, input.id, input.policyIds);

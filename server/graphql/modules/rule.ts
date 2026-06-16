@@ -1,5 +1,7 @@
 /* eslint-disable max-lines */
 
+import { type JsonObject } from 'type-fest';
+
 import { isConditionSet } from '../../condition_evaluator/condition.js';
 import {
   getNameForDerivedField,
@@ -26,8 +28,8 @@ import {
   type GQLUserRuleResolvers,
 } from '../generated.js';
 import { type Context, type ResolverMap } from '../resolvers.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -46,6 +48,11 @@ const typeDefs = /* GraphQL */ `
     deleteRule(id: ID!): Boolean
   }
 
+  type RuleActionParameterValues {
+    actionId: ID!
+    parameters: JSONObject!
+  }
+
   interface Rule {
     id: ID!
     parentId: ID
@@ -57,6 +64,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
+    actionParameters: [RuleActionParameterValues!]!
     policies: [Policy!]!
     tags: [String]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -77,6 +85,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
+    actionParameters: [RuleActionParameterValues!]!
     policies: [Policy!]!
     tags: [String]
     maxDailyActions: Float
@@ -98,6 +107,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
+    actionParameters: [RuleActionParameterValues!]!
     policies: [Policy!]!
     tags: [String]
     maxDailyActions: Float
@@ -204,7 +214,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union DerivedFieldSource =
-      DerivedFieldFullItemSource
+    | DerivedFieldFullItemSource
     | DerivedFieldFieldSource
     | DerivedFieldCoopInputSource
 
@@ -286,6 +296,11 @@ const typeDefs = /* GraphQL */ `
     ERRORED
   }
 
+  input RuleActionParameterValuesInput {
+    actionId: ID!
+    parameters: JSONObject!
+  }
+
   input CreateContentRuleInput {
     name: String!
     description: String
@@ -293,6 +308,7 @@ const typeDefs = /* GraphQL */ `
     contentTypeIds: [ID!]!
     conditionSet: ConditionSetInput!
     actionIds: [ID!]!
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]!
     tags: [String!]!
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -309,6 +325,7 @@ const typeDefs = /* GraphQL */ `
     contentTypeIds: [ID!]
     conditionSet: ConditionSetInput
     actionIds: [ID!]
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]
     tags: [String!]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -324,6 +341,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSetInput!
     actionIds: [ID!]!
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]!
     tags: [String!]!
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -339,6 +357,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus
     conditionSet: ConditionSetInput
     actionIds: [ID!]
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]
     tags: [String!]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -447,21 +466,21 @@ const typeDefs = /* GraphQL */ `
   }
 
   union CreateContentRuleResponse =
-      MutateContentRuleSuccessResponse
+    | MutateContentRuleSuccessResponse
     | RuleNameExistsError
 
   union UpdateContentRuleResponse =
-      MutateContentRuleSuccessResponse
+    | MutateContentRuleSuccessResponse
     | RuleNameExistsError
     | RuleHasRunningBacktestsError
     | NotFoundError
 
   union CreateUserRuleResponse =
-      MutateUserRuleSuccessResponse
+    | MutateUserRuleSuccessResponse
     | RuleNameExistsError
 
   union UpdateUserRuleResponse =
-      MutateUserRuleSuccessResponse
+    | MutateUserRuleSuccessResponse
     | RuleNameExistsError
     | RuleHasRunningBacktestsError
     | NotFoundError
@@ -634,6 +653,25 @@ const Rule: GQLRuleResolvers = {
   },
 };
 
+// Resolver shared by ContentRule and UserRule; omits actions with no
+// configured values so they don't surface as empty entries.
+async function resolveRuleActionParameters(
+  context: Context,
+  orgId: string,
+  ruleId: string,
+): Promise<{ actionId: string; parameters: JsonObject }[]> {
+  const withParams =
+    await context.services.ModerationConfigService.getActionsWithParametersForRuleId(
+      { orgId, ruleId },
+    );
+  return withParams
+    .filter((it) => Object.keys(it.parameters).length > 0)
+    .map((it) => ({
+      actionId: it.action.id,
+      parameters: it.parameters,
+    }));
+}
+
 const ContentRule: GQLContentRuleResolvers = {
   async creator(rule, _, context) {
     const user = context.getUser();
@@ -663,6 +701,13 @@ const ContentRule: GQLContentRuleResolvers = {
       orgId: user.orgId,
       ruleId: rule.id,
     });
+  },
+  async actionParameters(rule, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    return resolveRuleActionParameters(context, user.orgId, rule.id);
   },
   async policies(rule, _, context) {
     const user = context.getUser();
@@ -716,6 +761,13 @@ const UserRule: GQLUserRuleResolvers = {
       orgId: user.orgId,
       ruleId: rule.id,
     });
+  },
+  async actionParameters(rule, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    return resolveRuleActionParameters(context, user.orgId, rule.id);
   },
   async policies(rule, _, context) {
     const user = context.getUser();

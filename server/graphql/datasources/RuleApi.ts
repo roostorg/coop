@@ -3,6 +3,7 @@
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
+import { type JsonObject } from 'type-fest';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
@@ -14,7 +15,9 @@ import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
+  parseStoredParameters,
   RuleType,
+  validateActionParameterValues,
   type Condition,
   type ConditionInput,
   type ConditionSet,
@@ -367,6 +370,48 @@ class RuleAPI {
     );
   }
 
+  // Validates configured parameter values against each action's spec and
+  // returns the `actionId -> values` map persistence expects. Throws (surfaced
+  // to the admin) on invalid values; ignores entries for unattached actions.
+  private async buildRuleActionParametersMap(
+    orgId: string,
+    actionIds: readonly string[],
+    actionParameters:
+      | readonly { actionId: string; parameters: unknown }[]
+      | null
+      | undefined,
+  ): Promise<ReadonlyMap<string, JsonObject> | undefined> {
+    if (actionParameters == null || actionParameters.length === 0) {
+      return undefined;
+    }
+    const attachedIds = new Set(actionIds);
+    const relevant = actionParameters.filter((it) =>
+      attachedIds.has(it.actionId),
+    );
+    if (relevant.length === 0) {
+      return undefined;
+    }
+    const actions = await this.moderationConfigService.getActions({
+      orgId,
+      ids: relevant.map((it) => it.actionId),
+    });
+    const actionsById = new Map(actions.map((a) => [a.id, a]));
+    const out = new Map<string, JsonObject>();
+    for (const entry of relevant) {
+      const action = actionsById.get(entry.actionId);
+      const spec = parseStoredParameters(
+        action?.actionType === 'CUSTOM_ACTION'
+          ? action.customMrtApiParams
+          : null,
+      );
+      const validated = validateActionParameterValues(spec, entry.parameters);
+      // Validated values are JSON by construction (the validator only emits
+      // coerced primitives/arrays).
+      out.set(entry.actionId, validated as JsonObject);
+    }
+    return out.size > 0 ? out : undefined;
+  }
+
   private async createRule(
     input:
       | (GQLCreateContentRuleInput & { ruleType: typeof RuleType.CONTENT })
@@ -380,6 +425,7 @@ class RuleAPI {
       status,
       conditionSet,
       actionIds,
+      actionParameters,
       policyIds,
       tags,
       ruleType,
@@ -387,6 +433,12 @@ class RuleAPI {
       expirationTime,
       parentId,
     } = input;
+
+    const actionParametersMap = await this.buildRuleActionParametersMap(
+      orgId,
+      actionIds,
+      actionParameters,
+    );
 
     const contentTypeIds: readonly string[] =
       input.ruleType === RuleType.CONTENT ? input.contentTypeIds : [];
@@ -418,6 +470,7 @@ class RuleAPI {
           ruleType,
           parentId,
           actionIds,
+          actionParameters: actionParametersMap,
           policyIds,
           contentTypeIds,
         });
@@ -472,6 +525,7 @@ class RuleAPI {
       status,
       conditionSet,
       actionIds,
+      actionParameters,
       policyIds,
       tags,
       ruleType,
@@ -524,6 +578,14 @@ class RuleAPI {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
 
+    // Only meaningful when actionIds is also being set — persistence rewrites
+    // the action attachments (and their parameters) together.
+    const actionParametersMap = await this.buildRuleActionParametersMap(
+      orgId,
+      actionIds ?? [],
+      actionParameters,
+    );
+
     // Before we actually send any updates (which will happen as soon as we call
     // setXXX to set the associations), we need to make sure that there are no
     // active backtests for this rule because, if there are, we should fail the
@@ -559,6 +621,7 @@ class RuleAPI {
             expirationTime: normalizeExpirationInput(expirationTime),
             parentId,
             actionIds: actionIds ?? undefined,
+            actionParameters: actionParametersMap,
             policyIds: policyIds ?? undefined,
             contentTypeIds: contentTypeIds ?? undefined,
           });

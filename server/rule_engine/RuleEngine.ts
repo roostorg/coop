@@ -12,6 +12,7 @@ import { type RuleExecutionCorrelationId } from '../services/analyticsLoggers/in
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
 import {
   ConditionCompletionOutcome,
+  resolveConfiguredActionParameterValues,
   RuleStatus,
   type Action,
   type ConditionSet,
@@ -223,18 +224,56 @@ class RuleEngine {
 
     const actionableRules = passingRules;
 
-    const actionableRulesToActions = new Map(
+    const actionableRulesToActionsWithParameters = new Map(
       await Promise.all(
         actionableRules.map(async (rule) => {
-          const actions = (await this.getRuleActionsEventuallyConsistent({
-            orgId: evaluationContext.org.id,
-            ruleId: rule.id,
-          })) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[];
-
-          return [rule, actions] as const;
+          const actionsWithParameters =
+            await this.getRuleActionsEventuallyConsistent({
+              orgId: evaluationContext.org.id,
+              ruleId: rule.id,
+            });
+          return [rule, actionsWithParameters] as const;
         }),
       ),
     );
+
+    const actionableRulesToActions = new Map(
+      [...actionableRulesToActionsWithParameters.entries()].map(
+        ([rule, actionsWithParameters]) =>
+          [
+            rule,
+            actionsWithParameters.map(
+              (it) => it.action,
+            ) satisfies readonly ReadonlyDeep<Action>[] as readonly Action[],
+          ] as const,
+      ),
+    );
+
+    // Map of actionId -> the parameter values configured on the rule that
+    // attached it. When several rules attach the same action (deduped below),
+    // the first non-empty configuration wins, mirroring the action dedup.
+    const configuredParametersByActionId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const actionsWithParameters of actionableRulesToActionsWithParameters.values()) {
+      for (const { action, parameters } of actionsWithParameters) {
+        if (configuredParametersByActionId.has(action.id)) {
+          continue;
+        }
+        const resolved = resolveConfiguredActionParameterValues({
+          customMrtApiParams:
+            action.actionType === 'CUSTOM_ACTION'
+              ? action.customMrtApiParams
+              : null,
+          rawValues: parameters,
+          actionId: action.id,
+        });
+        if (resolved !== undefined && Object.keys(resolved).length > 0) {
+          configuredParametersByActionId.set(action.id, resolved);
+        }
+      }
+    }
 
     // NB: while we only run _deduped_ actions, we record the actions and
     // update the rule action run counts as though no deduping took place,
@@ -291,6 +330,8 @@ class RuleEngine {
           return {
             action,
             ruleEnvironment: environment,
+            customMrtApiParamDecisionPayload:
+              configuredParametersByActionId.get(action.id),
             matchingRules: [...actionableRulesToActions.entries()].flatMap(
               ([rule, actions]) =>
                 actions.includes(action)
