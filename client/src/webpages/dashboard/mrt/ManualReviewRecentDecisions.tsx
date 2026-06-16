@@ -16,7 +16,6 @@ import CoopBadge, { type BadgeColorVariant } from '../components/CoopBadge';
 import FormHeader from '../components/FormHeader';
 import { stringSort } from '../components/table/sort';
 import Table from '../components/table/Table';
-import TruncatedListTableCell from '../components/table/TruncatedListTableCell';
 import UserWithAvatar from '../components/UserWithAvatar';
 
 import {
@@ -598,8 +597,8 @@ export default function ManualReviewRecentDecisions() {
               </div>
             ),
             policies: (
-              <div className="flex flex-wrap gap-1">
-                <TruncatedListTableCell list={value.policies} />
+              <div className="max-w-[220px] whitespace-normal break-words">
+                {value.policies.join(', ')}
               </div>
             ),
             reviewer: <UserWithAvatar name={value.reviewer} />,
