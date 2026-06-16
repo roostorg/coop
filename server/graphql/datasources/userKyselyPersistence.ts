@@ -58,7 +58,7 @@ export type GraphQLUserParent = {
 // Aligns with `ruleKyselyPersistence.ts`: persistence helpers operate on the
 // full app schema. Lets fixtures and `kyselyCreateRule` callers share a single
 // `Kysely<CombinedPg>` handle without running into Kysely's invariant generic.
-type UsersDb = Kysely<CombinedPg>;
+export type UsersDb = Kysely<CombinedPg>;
 
 type UserRow = {
   id: string;
@@ -185,6 +185,21 @@ export async function kyselyUserFindByEmail(
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('email', '=', email)
+    .executeTakeFirst();
+  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+}
+
+export async function kyselyUserFindByEmailAndOrg(
+  db: UsersDb,
+  opts: { email: string; orgId: string },
+): Promise<GraphQLUserParent | undefined> {
+  const row = await db
+    .selectFrom('public.users')
+    .select(USER_COLUMNS)
+    .select(loginMethodsAsTextArray)
+    .select(permissionsArray)
+    .where('email', '=', opts.email)
+    .where('org_id', '=', opts.orgId)
     .executeTakeFirst();
   return row === undefined ? undefined : rowToGraphQLUserParent(row);
 }
