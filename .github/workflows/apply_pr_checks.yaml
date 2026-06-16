@@ -2,6 +2,8 @@ name: Run all PR checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -19,6 +21,8 @@ jobs:
     outputs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
+      db: ${{ steps.filter.outputs.db }}
+      migrator: ${{ steps.filter.outputs.migrator }}
     steps:
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: filter
@@ -28,6 +32,10 @@ jobs:
               - 'server/**'
             client:
               - 'client/**'
+            db:
+              - 'db/**'
+            migrator:
+              - 'migrator/**'
 
   check_generated_graphql:
     timeout-minutes: 4
@@ -35,7 +43,7 @@ jobs:
     if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
       - name: Check generated GraphQL is up to date
@@ -44,14 +52,14 @@ jobs:
   check_migration_order:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # this is needed to fetch the main branch
           ref: ${{ github.base_ref || 'main' }}
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
           persist-credentials: false
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # this is needed to fetch the main branch
           fetch-depth: 1
@@ -133,10 +141,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-      checks: write  # for dorny/test-reporter to create a check run
+      checks: write # for dorny/test-reporter to create a check run
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
 
@@ -160,7 +168,7 @@ jobs:
 
       - name: Test Report
         if: always() # run this step even if previous step failed
-        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5  # v1.9.1
+        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5 # v1.9.1
         continue-on-error: true
         with:
           name: JEST Tests # Name of the check run which will be created
@@ -174,7 +182,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
 
@@ -184,4 +192,51 @@ jobs:
       - name: Build client
         run: docker compose run --rm --quiet-pull client npm run build
 
+  # db and migrator have no ESLint setup, so CI only typechecks them.
+  typecheck_db:
+    needs: changes
+    if: needs.changes.outputs.db == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'db/package-lock.json'
+
+      - name: Typecheck db
+        run: |
+          cd db
+          npm ci
+          npm run typecheck
+
+  typecheck_migrator:
+    needs: changes
+    if: needs.changes.outputs.migrator == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'migrator/package-lock.json'
+
+      - name: Typecheck migrator
+        run: |
+          cd migrator
+          npm ci
+          npm run typecheck
