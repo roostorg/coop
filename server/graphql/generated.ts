@@ -2595,6 +2595,7 @@ export type GQLMutation = {
   readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
   readonly updateRequiresDecisionReason: Scalars['Boolean']['output'];
+  readonly updateRequiresDecisionReasonOnIgnore: Scalars['Boolean']['output'];
   readonly updateRequiresPolicyForDecisions: Scalars['Boolean']['output'];
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
@@ -2935,6 +2936,10 @@ export type GQLMutationUpdateReportingRuleArgs = {
 };
 
 export type GQLMutationUpdateRequiresDecisionReasonArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs = {
   enabled: Scalars['Boolean']['input'];
 };
 
@@ -3296,6 +3301,7 @@ export type GQLOrg = {
   readonly publicSigningKey: Scalars['String']['output'];
   readonly reportingRules: ReadonlyArray<GQLReportingRule>;
   readonly requiresDecisionReasonInMrt: Scalars['Boolean']['output'];
+  readonly requiresDecisionReasonOnIgnoreInMrt: Scalars['Boolean']['output'];
   readonly requiresPolicyForDecisionsInMrt: Scalars['Boolean']['output'];
   readonly routingRules: ReadonlyArray<GQLRoutingRule>;
   readonly rules: ReadonlyArray<GQLRule>;
@@ -11383,6 +11389,15 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateRequiresDecisionReasonArgs, 'enabled'>
   >;
+  updateRequiresDecisionReasonOnIgnore?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs,
+      'enabled'
+    >
+  >;
   updateRequiresPolicyForDecisions?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -11941,6 +11956,11 @@ export type GQLOrgResolvers<
     ContextType
   >;
   requiresDecisionReasonInMrt?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  requiresDecisionReasonOnIgnoreInMrt?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
     ContextType

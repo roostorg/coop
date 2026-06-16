@@ -78,6 +78,7 @@ const deploymentSettingsMock: MockedResponse = {
         allowMultiplePoliciesPerAction: false,
         requiresPolicyForDecisionsInMrt: false,
         requiresDecisionReasonInMrt: false,
+        requiresDecisionReasonOnIgnoreInMrt: false,
         hideSkipButtonForNonAdmins: false,
         previewJobsViewEnabled: false,
         ignoreCallbackUrl: null,
@@ -454,6 +455,7 @@ describe('SettingsPage', () => {
       const mock = makeDeploymentMock({
         requiresPolicyForDecisionsInMrt: true,
         requiresDecisionReasonInMrt: true,
+        requiresDecisionReasonOnIgnoreInMrt: true,
         hideSkipButtonForNonAdmins: true,
         previewJobsViewEnabled: true,
       });
