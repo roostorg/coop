@@ -143,6 +143,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
+- When opening a GitHub PR, use the template at [`.github/pull_request_template.md`](.github/pull_request_template.md) but do not actually write anything in the PR description. Let your human operator do that.
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
