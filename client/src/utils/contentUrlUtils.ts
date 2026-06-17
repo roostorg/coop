@@ -63,11 +63,31 @@ export function getContentUrlPatterns(): string[] {
 }
 
 /**
+ * Check whether a single pattern matches a hostname.
+ *
+ * Domain-like patterns (those containing a dot, e.g. `bsky.app`) are matched on
+ * host boundaries so a pattern can't be smuggled via a lookalike or subdomain
+ * (`evilbsky.app` and `bsky.app.evil.example` do NOT match `bsky.app`). Legacy
+ * patterns without a dot (e.g. the default `notion`) keep substring matching for
+ * backward compatibility with existing `VITE_CONTENT_URL_PATTERN` configs.
+ */
+function hostnameMatchesPattern(hostname: string, pattern: string): boolean {
+  const normalized = pattern.toLowerCase().replace(/^\.+|\.+$/g, '');
+  if (normalized.length === 0) return false;
+  if (normalized.includes('.')) {
+    return hostname === normalized || hostname.endsWith(`.${normalized}`);
+  }
+  return hostname.includes(normalized);
+}
+
+/**
  * Check if a URL should be displayed in an iframe
  *
  * Patterns are matched against the URL's hostname only (not the full URL), so a
  * pattern can't be smuggled in via the path or query string (e.g.
  * `https://evil.example/?ref=bsky.app` does not match the `bsky.app` pattern).
+ * Domain-like patterns are further matched on host boundaries; see
+ * {@link hostnameMatchesPattern}.
  * @param url The URL to check
  * @returns True if the URL should be displayed in an iframe
  */
@@ -79,7 +99,7 @@ export function shouldDisplayInIframe(url: string): boolean {
     return false;
   }
   const patterns = getContentUrlPatterns();
-  return patterns.some((pattern) => hostname.includes(pattern.toLowerCase()));
+  return patterns.some((pattern) => hostnameMatchesPattern(hostname, pattern));
 }
 
 /**
