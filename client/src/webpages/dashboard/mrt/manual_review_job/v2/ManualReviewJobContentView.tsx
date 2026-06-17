@@ -147,10 +147,9 @@ export default function ManualReviewJobContentView(props: {
         </div>
       </div>
       {'url' in payload.item.data &&
-      shouldDisplayInIframe(String(payload.item.data.url)) ? (
-        <IframeContentDisplayComponent
-          contentUrl={String(payload.item.data.url)}
-        />
+      typeof payload.item.data.url === 'string' &&
+      shouldDisplayInIframe(payload.item.data.url) ? (
+        <IframeContentDisplayComponent contentUrl={payload.item.data.url} />
       ) : null}
       {!contentThread ? null : (
         <div className="my-6">

@@ -2534,6 +2534,7 @@ export type GQLMutation = {
   readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
   readonly updateRequiresDecisionReason: Scalars['Boolean']['output'];
+  readonly updateRequiresDecisionReasonOnIgnore: Scalars['Boolean']['output'];
   readonly updateRequiresPolicyForDecisions: Scalars['Boolean']['output'];
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
@@ -2874,6 +2875,10 @@ export type GQLMutationUpdateReportingRuleArgs = {
 };
 
 export type GQLMutationUpdateRequiresDecisionReasonArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs = {
   enabled: Scalars['Boolean']['input'];
 };
 
@@ -3235,6 +3240,7 @@ export type GQLOrg = {
   readonly publicSigningKey: Scalars['String']['output'];
   readonly reportingRules: ReadonlyArray<GQLReportingRule>;
   readonly requiresDecisionReasonInMrt: Scalars['Boolean']['output'];
+  readonly requiresDecisionReasonOnIgnoreInMrt: Scalars['Boolean']['output'];
   readonly requiresPolicyForDecisionsInMrt: Scalars['Boolean']['output'];
   readonly routingRules: ReadonlyArray<GQLRoutingRule>;
   readonly rules: ReadonlyArray<GQLRule>;
@@ -12250,6 +12256,7 @@ export type GQLManualReviewJobInfoQuery = {
     readonly hasNCMECReportingEnabled: boolean;
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
+    readonly requiresDecisionReasonOnIgnoreInMrt: boolean;
     readonly allowMultiplePoliciesPerAction: boolean;
     readonly hideSkipButtonForNonAdmins: boolean;
     readonly policies: ReadonlyArray<{
@@ -25000,6 +25007,7 @@ export type GQLDeploymentSettingsQuery = {
     readonly allowMultiplePoliciesPerAction: boolean;
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
+    readonly requiresDecisionReasonOnIgnoreInMrt: boolean;
     readonly previewJobsViewEnabled: boolean;
     readonly hideSkipButtonForNonAdmins: boolean;
     readonly userStrikeTTL: number;
@@ -25070,6 +25078,15 @@ export type GQLUpdateRequiresDecisionReasonMutationVariables = Exact<{
 export type GQLUpdateRequiresDecisionReasonMutation = {
   readonly __typename: 'Mutation';
   readonly updateRequiresDecisionReason: boolean;
+};
+
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresDecisionReasonOnIgnore: boolean;
 };
 
 export type GQLUpdateHideSkipButtonForNonAdminsMutationVariables = Exact<{
@@ -34549,6 +34566,7 @@ export const GQLManualReviewJobInfoDocument = gql`
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       allowMultiplePoliciesPerAction
       hideSkipButtonForNonAdmins
     }
@@ -44192,6 +44210,7 @@ export const GQLDeploymentSettingsDocument = gql`
       allowMultiplePoliciesPerAction
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       previewJobsViewEnabled
       hideSkipButtonForNonAdmins
       userStrikeTTL
@@ -44594,6 +44613,55 @@ export type GQLUpdateRequiresDecisionReasonMutationOptions =
   Apollo.BaseMutationOptions<
     GQLUpdateRequiresDecisionReasonMutation,
     GQLUpdateRequiresDecisionReasonMutationVariables
+  >;
+export const GQLUpdateRequiresDecisionReasonOnIgnoreDocument = gql`
+  mutation UpdateRequiresDecisionReasonOnIgnore($enabled: Boolean!) {
+    updateRequiresDecisionReasonOnIgnore(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateRequiresDecisionReasonOnIgnoreMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresDecisionReasonOnIgnoreMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresDecisionReasonOnIgnoreMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresDecisionReasonOnIgnoreMutation, { data, loading, error }] = useGQLUpdateRequiresDecisionReasonOnIgnoreMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresDecisionReasonOnIgnoreMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >(GQLUpdateRequiresDecisionReasonOnIgnoreDocument, options);
+}
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationHookResult =
+  ReturnType<typeof useGQLUpdateRequiresDecisionReasonOnIgnoreMutation>;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresDecisionReasonOnIgnoreMutation>;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
   >;
 export const GQLUpdateHideSkipButtonForNonAdminsDocument = gql`
   mutation UpdateHideSkipButtonForNonAdmins($enabled: Boolean!) {
@@ -45426,6 +45494,8 @@ export const namedOperations = {
     UpdateSamlEnabled: 'UpdateSamlEnabled',
     UpdateRequiresPolicyForDecisions: 'UpdateRequiresPolicyForDecisions',
     UpdateRequiresDecisionReason: 'UpdateRequiresDecisionReason',
+    UpdateRequiresDecisionReasonOnIgnore:
+      'UpdateRequiresDecisionReasonOnIgnore',
     UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
     UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
     UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',

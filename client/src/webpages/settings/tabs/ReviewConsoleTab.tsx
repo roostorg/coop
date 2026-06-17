@@ -9,6 +9,7 @@ import {
   useGQLUpdateIgnoreCallbackUrlMutation,
   useGQLUpdatePreviewJobsViewEnabledMutation,
   useGQLUpdateRequiresDecisionReasonMutation,
+  useGQLUpdateRequiresDecisionReasonOnIgnoreMutation,
   useGQLUpdateRequiresPolicyForDecisionsMutation,
 } from '@/graphql/generated';
 import { isValidUrl } from '@/lib/utils';
@@ -26,6 +27,7 @@ export default function ReviewConsoleTab() {
 
   const [requirePolicy, setRequirePolicy] = useState(false);
   const [requireReason, setRequireReason] = useState(false);
+  const [requireReasonOnIgnore, setRequireReasonOnIgnore] = useState(false);
   const [hideSkip, setHideSkip] = useState(false);
   const [previewJobs, setPreviewJobs] = useState(false);
   const [ignoreCallbackUrl, setIgnoreCallbackUrl] = useState('');
@@ -34,6 +36,7 @@ export default function ReviewConsoleTab() {
     if (org) {
       setRequirePolicy(org.requiresPolicyForDecisionsInMrt);
       setRequireReason(org.requiresDecisionReasonInMrt);
+      setRequireReasonOnIgnore(org.requiresDecisionReasonOnIgnoreInMrt);
       setHideSkip(org.hideSkipButtonForNonAdmins);
       setPreviewJobs(org.previewJobsViewEnabled);
       setIgnoreCallbackUrl(org.ignoreCallbackUrl ?? '');
@@ -54,6 +57,10 @@ export default function ReviewConsoleTab() {
     useGQLUpdateRequiresPolicyForDecisionsMutation(mutationOpts);
   const [updateRequireReason, { loading: requireReasonLoading }] =
     useGQLUpdateRequiresDecisionReasonMutation(mutationOpts);
+  const [
+    updateRequireReasonOnIgnore,
+    { loading: requireReasonOnIgnoreLoading },
+  ] = useGQLUpdateRequiresDecisionReasonOnIgnoreMutation(mutationOpts);
   const [updateHideSkipMutation, { loading: hideSkipLoading }] =
     useGQLUpdateHideSkipButtonForNonAdminsMutation(mutationOpts);
   const [updatePreviewJobsMutation, { loading: previewJobsLoading }] =
@@ -66,6 +73,7 @@ export default function ReviewConsoleTab() {
   const saveLoading =
     requirePolicyLoading ||
     requireReasonLoading ||
+    requireReasonOnIgnoreLoading ||
     hideSkipLoading ||
     previewJobsLoading ||
     ignoreUrlLoading;
@@ -73,6 +81,7 @@ export default function ReviewConsoleTab() {
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||
     requireReason !== org.requiresDecisionReasonInMrt ||
+    requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
     previewJobs !== org.previewJobsViewEnabled ||
     ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '');
@@ -83,6 +92,11 @@ export default function ReviewConsoleTab() {
     }
     if (requireReason !== org.requiresDecisionReasonInMrt) {
       updateRequireReason({ variables: { enabled: requireReason } });
+    }
+    if (requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt) {
+      updateRequireReasonOnIgnore({
+        variables: { enabled: requireReasonOnIgnore },
+      });
     }
     if (hideSkip !== org.hideSkipButtonForNonAdmins) {
       updateHideSkipMutation({ variables: { enabled: hideSkip } });
@@ -95,6 +109,16 @@ export default function ReviewConsoleTab() {
         variables: { url: ignoreCallbackUrl || null },
       });
     }
+  };
+
+  // The "Require Decision Reason" master toggle is derived from the two
+  // underlying flags: it's on when a reason is required for either action or
+  // ignore decisions. Turning it on defaults to requiring a reason for actions
+  // only; turning it off clears both.
+  const requireReasonAny = requireReason || requireReasonOnIgnore;
+  const handleRequireReasonToggle = (checked: boolean) => {
+    setRequireReason(checked);
+    setRequireReasonOnIgnore(false);
   };
 
   return (
@@ -120,19 +144,43 @@ export default function ReviewConsoleTab() {
               onCheckedChange={setRequirePolicy}
             />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Text size="SM" weight="medium">
-                Require Decision Reason
-              </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
-                Moderators must provide a written decision when completing a job
-              </Text>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Text size="SM" weight="medium">
+                  Require Decision Reason
+                </Text>
+                <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                  Moderators must provide a written reason when completing a job
+                </Text>
+              </div>
+              <Switch
+                checked={requireReasonAny}
+                onCheckedChange={handleRequireReasonToggle}
+              />
             </div>
-            <Switch
-              checked={requireReason}
-              onCheckedChange={setRequireReason}
-            />
+            {requireReasonAny ? (
+              <div className="ml-1 flex flex-col gap-3 border-l border-gray-200 pl-4">
+                <div className="flex items-center justify-between">
+                  <Text size="SM" className="text-gray-700">
+                    When applying an action
+                  </Text>
+                  <Switch
+                    checked={requireReason}
+                    onCheckedChange={setRequireReason}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Text size="SM" className="text-gray-700">
+                    When ignoring jobs
+                  </Text>
+                  <Switch
+                    checked={requireReasonOnIgnore}
+                    onCheckedChange={setRequireReasonOnIgnore}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

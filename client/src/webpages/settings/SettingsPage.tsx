@@ -28,6 +28,7 @@ gql`
       allowMultiplePoliciesPerAction
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       previewJobsViewEnabled
       hideSkipButtonForNonAdmins
       userStrikeTTL
@@ -62,6 +63,9 @@ gql`
   }
   mutation UpdateRequiresDecisionReason($enabled: Boolean!) {
     updateRequiresDecisionReason(enabled: $enabled)
+  }
+  mutation UpdateRequiresDecisionReasonOnIgnore($enabled: Boolean!) {
+    updateRequiresDecisionReasonOnIgnore(enabled: $enabled)
   }
   mutation UpdateHideSkipButtonForNonAdmins($enabled: Boolean!) {
     updateHideSkipButtonForNonAdmins(enabled: $enabled)
