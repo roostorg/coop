@@ -63,16 +63,36 @@ export function getContentUrlPatterns(): string[] {
 }
 
 /**
+ * Normalize a configured pattern to a bare host fragment, stripping any scheme,
+ * port, or path so legacy full-URL configs keep working. Dotless fragments are
+ * returned as-is for substring matching.
+ */
+function normalizePatternHost(pattern: string): string {
+  const trimmed = pattern.trim().toLowerCase();
+  if (trimmed.length === 0) return '';
+  let host = trimmed;
+  if (/[:/]/.test(trimmed)) {
+    try {
+      host = new URL(trimmed.includes('://') ? trimmed : `http://${trimmed}`)
+        .hostname;
+    } catch {
+      // Not parseable as a URL; fall back to the raw fragment.
+    }
+  }
+  return host.replace(/^\.+|\.+$/g, '');
+}
+
+/**
  * Check whether a single pattern matches a hostname.
  *
- * Domain-like patterns (those containing a dot, e.g. `bsky.app`) are matched on
- * host boundaries so a pattern can't be smuggled via a lookalike or subdomain
- * (`evilbsky.app` and `bsky.app.evil.example` do NOT match `bsky.app`). Legacy
- * patterns without a dot (e.g. the default `notion`) keep substring matching for
- * backward compatibility with existing `VITE_CONTENT_URL_PATTERN` configs.
+ * Domain-like patterns (those containing a dot, e.g. `example.com`) are matched
+ * on host boundaries so a pattern can't be smuggled via a lookalike or subdomain
+ * (`notexample.com` and `example.com.evil.test` do NOT match `example.com`).
+ * Legacy patterns without a dot keep substring matching for backward
+ * compatibility with existing `VITE_CONTENT_URL_PATTERN` configs.
  */
 function hostnameMatchesPattern(hostname: string, pattern: string): boolean {
-  const normalized = pattern.toLowerCase().replace(/^\.+|\.+$/g, '');
+  const normalized = normalizePatternHost(pattern);
   if (normalized.length === 0) return false;
   if (normalized.includes('.')) {
     return hostname === normalized || hostname.endsWith(`.${normalized}`);
@@ -85,7 +105,7 @@ function hostnameMatchesPattern(hostname: string, pattern: string): boolean {
  *
  * Patterns are matched against the URL's hostname only (not the full URL), so a
  * pattern can't be smuggled in via the path or query string (e.g.
- * `https://evil.example/?ref=bsky.app` does not match the `bsky.app` pattern).
+ * `https://evil.test/?ref=example.com` does not match the `example.com` pattern).
  * Domain-like patterns are further matched on host boundaries; see
  * {@link hostnameMatchesPattern}.
  * @param url The URL to check
