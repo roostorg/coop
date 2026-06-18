@@ -251,7 +251,7 @@ function TableRowComponent(props: {
       }
 
       // Extract matched banks if available
-      const matchedBanks = (value as any)?.matchedBanks;
+      const matchedBanks = (value as { matchedBanks?: string[] }).matchedBanks;
       const hasMatches = Array.isArray(matchedBanks) && matchedBanks.length > 0;
 
       return (
@@ -275,7 +275,7 @@ function TableRowComponent(props: {
           {label ? <div className="font-bold">{label}</div> : null}
           {hasMatches && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {matchedBanks.map((bankName: string) => (
+              {matchedBanks.map((bankName) => (
                 <span
                   key={bankName}
                   className="inline-block px-2 py-0.5 text-s font-large bg-gray-200 rounded"
