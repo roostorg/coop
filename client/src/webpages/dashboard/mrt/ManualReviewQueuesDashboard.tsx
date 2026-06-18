@@ -6,7 +6,14 @@ import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import Input from 'antd/lib/input';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -207,14 +214,23 @@ export default function ManualReviewQueuesDashboard() {
     fetchPolicy: 'no-cache',
     pollInterval: 5000,
   });
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
-    null,
-  );
+  const [deleteError, setDeleteError] = useState<{
+    message: string;
+    ruleNames: string[];
+  } | null>(null);
   const [deleteReviewQueue] = useGQLDeleteManualReviewQueueMutation({
-    onError: (error) =>
-      setDeleteErrorMessage(
-        error.graphQLErrors[0]?.message ?? 'Failed to delete queue.',
-      ),
+    onError: (error) => {
+      const gqlError = error.graphQLErrors[0];
+      const message = gqlError?.message ?? 'Failed to delete queue.';
+      const rawDetail = gqlError?.extensions?.['detail'];
+      let ruleNames: string[] = [];
+      if (typeof rawDetail === 'string') {
+        try {
+          ruleNames = JSON.parse(rawDetail);
+        } catch {}
+      }
+      setDeleteError({ message, ruleNames });
+    },
     onCompleted: async () => refetch(),
   });
   const [addFavoriteMRTQueue] = useGQLAddFavoriteMrtQueueMutation({
@@ -451,17 +467,35 @@ export default function ManualReviewQueuesDashboard() {
   const deleteErrorModal = (
     <CoopModal
       title="Could Not Delete Queue"
-      visible={deleteErrorMessage !== null}
+      visible={deleteError !== null}
       footer={[
         {
           title: 'OK',
-          onClick: () => setDeleteErrorMessage(null),
+          onClick: () => setDeleteError(null),
           type: 'primary',
         },
       ]}
-      onClose={() => setDeleteErrorMessage(null)}
+      onClose={() => setDeleteError(null)}
     >
-      {deleteErrorMessage}
+      {deleteError?.ruleNames && deleteError.ruleNames.length > 0 ? (
+        <div className="space-y-2">
+          <p>
+            This queue cannot be deleted because it is used by the following
+            routing rules:
+          </p>
+          <p className="pl-4">
+            {deleteError.ruleNames.map((name, i) => (
+              <Fragment key={name}>
+                {i > 0 && ', '}
+                <Link to="/dashboard/manual_review/routing">{name}</Link>
+              </Fragment>
+            ))}
+          </p>
+          <p>Update or delete those rules first.</p>
+        </div>
+      ) : (
+        <p>{deleteError?.message}</p>
+      )}
     </CoopModal>
   );
 
@@ -644,7 +678,7 @@ export default function ManualReviewQueuesDashboard() {
                         userHasPermissions(data.me?.permissions, [
                           GQLUserPermission.EditMrtQueues,
                         ]) &&
-                        rulesForQueue.length === 0 &&
+                        true &&
                         !isDefaultQueue
                       }
                       deleteDisabledTooltipTitle={

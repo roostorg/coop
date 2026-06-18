@@ -15,6 +15,7 @@ import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
   b64UrlDecode,
   b64UrlEncode,
+  jsonStringify,
   type B64UrlOf,
 } from '../../../utils/encoding.js';
 import {
@@ -2087,8 +2088,9 @@ export const makeQueueHasDependentRoutingRulesError = (
     type: [ErrorType.Conflict],
     title:
       ruleNames.length > 0
-        ? `This queue cannot be deleted because it is used by the following routing rules: ${ruleNames.join(', ')}. Update or delete those rules first.`
+        ? `This queue cannot be deleted because it is used by the following routing rules:\n${ruleNames.join(', ')}\nUpdate or delete those rules first.`
         : 'This queue cannot be deleted because it is still referenced by one or more routing rules. Update or delete those rules first.',
+    detail: ruleNames.length > 0 ? jsonStringify(ruleNames) : undefined,
     name: 'QueueHasDependentRoutingRulesError',
     ...data,
   });
