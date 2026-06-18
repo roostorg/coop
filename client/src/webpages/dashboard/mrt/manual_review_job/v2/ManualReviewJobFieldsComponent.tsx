@@ -250,9 +250,14 @@ function TableRowComponent(props: {
         return <NotProvidedComponent />;
       }
 
-      // Extract matched banks if available
-      const matchedBanks = (value as { matchedBanks?: string[] }).matchedBanks;
-      const hasMatches = Array.isArray(matchedBanks) && matchedBanks.length > 0;
+      // Extract matched banks if available, normalizing to a string[] so the
+      // render path below always has a concrete array to map over.
+      const rawMatchedBanks = (value as { matchedBanks?: string[] })
+        .matchedBanks;
+      const matchedBanks = Array.isArray(rawMatchedBanks)
+        ? rawMatchedBanks
+        : [];
+      const hasMatches = matchedBanks.length > 0;
 
       return (
         <div className="flex flex-col px-2 align-top text-start">
