@@ -927,10 +927,7 @@ function ManualReviewJobReviewImpl(props: {
                     })),
                     queueId: queueId!,
                     jobId: job.id,
-                    // In FIFO mode lockToken comes from the URL (set during dequeue).
-                    // In sorted mode there's no dequeue lock — send empty string so
-                    // removeJob's fallback path removes the job without a lock.
-                    lockToken: lockToken ?? '',
+                    lockToken: lockToken!,
                     reportedItemDecisionComponents: [decision],
                     relatedItemActions: [],
                   },
@@ -1935,9 +1932,7 @@ function ManualReviewJobReviewImpl(props: {
                         })),
                         queueId: queueId!,
                         jobId: job.id,
-                        // In sorted mode there's no dequeue lock — send empty string so
-                        // removeJob's fallback path removes the job without a lock.
-                        lockToken: lockToken ?? '',
+                        lockToken: lockToken!,
                         reportedItemDecisionComponents: decisionComponents,
                         relatedItemActions: selectedRelatedActions.map(
                           (action) => ({

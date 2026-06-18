@@ -332,7 +332,7 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
-      jobSortType = 'FIFO',
+      jobSortType,
     } = input;
 
     return this.transactionWithRetry(async (transaction) => {

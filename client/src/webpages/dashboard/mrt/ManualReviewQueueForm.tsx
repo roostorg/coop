@@ -16,6 +16,7 @@ import FormHeader from '../components/FormHeader';
 import NameDescriptionInput from '../components/NameDescriptionInput';
 
 import {
+  GQLJobSortType,
   namedOperations,
   useGQLCreateManualReviewQueueMutation,
   useGQLManualReviewQueueQuery,
@@ -131,7 +132,9 @@ export default function ManualReviewQueueForm() {
     [],
   );
   const [hiddenActionIds, setHiddenActionIds] = useState<string[]>([]);
-  const [jobSortType, setJobSortType] = useState<string | undefined>('FIFO');
+  const [jobSortType, setJobSortType] = useState<GQLJobSortType | undefined>(
+    'FIFO',
+  );
   const [autoCloseJobs, setAutoCloseJobs] = useState<boolean>(false);
   const [isAppealsQueue, setIsAppealsQueue] = useState<boolean>(false);
   const navigate = useNavigate();

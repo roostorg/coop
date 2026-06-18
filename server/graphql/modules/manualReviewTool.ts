@@ -42,6 +42,11 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 const { omit, sumBy } = _;
 
 const typeDefs = /* GraphQL */ `
+  enum JobSortType {
+    FIFO
+    NUM_REPORTS
+  }
+
   type ManualReviewQueue {
     id: ID!
     name: String!
@@ -55,7 +60,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
-    jobSortType: String!
+    jobSortType: JobSortType!
   }
 
   type ManualReviewJob {
@@ -402,7 +407,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
-    jobSortType: String
+    jobSortType: JobSortType
   }
 
   input UpdateManualReviewQueueInput {
@@ -413,7 +418,7 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
-    jobSortType: String
+    jobSortType: JobSortType
   }
 
   input AddAccessibleQueuesToUserInput {
@@ -2324,7 +2329,7 @@ const Mutation: GQLMutationResolvers = {
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
-      jobSortType = 'FIFO',
+      jobSortType,
     } = params.input;
     try {
       const queue =
@@ -2373,7 +2378,7 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
-      jobSortType = 'FIFO',
+      jobSortType,
     } = params.input;
     try {
       const queue =

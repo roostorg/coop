@@ -779,7 +779,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
-  readonly jobSortType?: InputMaybe<Scalars['String']['input']>;
+  readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name: Scalars['String']['input'];
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -1745,6 +1745,13 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobSortType = {
+  Fifo: 'FIFO',
+  NumReports: 'NUM_REPORTS',
+} as const;
+
+export type GQLJobSortType =
+  (typeof GQLJobSortType)[keyof typeof GQLJobSortType];
 export const GQLLanguage = {
   Abkhazian: 'ABKHAZIAN',
   Afar: 'AFAR',
@@ -2208,7 +2215,7 @@ export type GQLManualReviewQueue = {
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
   readonly isDefaultQueue: Scalars['Boolean']['output'];
-  readonly jobSortType: Scalars['String']['output'];
+  readonly jobSortType: GQLJobSortType;
   readonly jobs: ReadonlyArray<GQLManualReviewJob>;
   readonly name: Scalars['String']['output'];
   readonly oldestJobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
@@ -4665,7 +4672,7 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
-  readonly jobSortType?: InputMaybe<Scalars['String']['input']>;
+  readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -9699,7 +9706,7 @@ export type GQLManualReviewQueueQuery = {
     readonly hiddenActionIds: ReadonlyArray<string>;
     readonly isAppealsQueue: boolean;
     readonly autoCloseJobs: boolean;
-    readonly jobSortType: string;
+    readonly jobSortType: GQLJobSortType;
     readonly explicitlyAssignedReviewers: ReadonlyArray<{
       readonly __typename: 'User';
       readonly id: string;
@@ -10310,7 +10317,7 @@ export type GQLManualReviewQueuesQuery = {
       readonly oldestJobCreatedAt?: Date | string | null;
       readonly isDefaultQueue: boolean;
       readonly isAppealsQueue: boolean;
-      readonly jobSortType: string;
+      readonly jobSortType: GQLJobSortType;
     }>;
   } | null;
 };

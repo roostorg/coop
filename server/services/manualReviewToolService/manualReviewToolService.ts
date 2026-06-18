@@ -50,6 +50,7 @@ import JobEnrichment, {
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from './modules/JobEnrichment.js';
+import { getJobPriorityForItem, JobSortType } from './modules/JobPriority.js';
 import JobRendering from './modules/JobRendering.js';
 import JobRouting, {
   type CreateRoutingRuleInput,
@@ -439,23 +440,21 @@ export class ManualReviewToolService {
                 routingRuleCacheDirectives:
                   numAttemptsToEnqueue > 0 ? { maxAge: 0 } : undefined,
               }));
-
             const queue =
               await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
-                {
-                  orgId: input.orgId,
-                  queueId: targetQueueForNewJob,
-                },
+                { orgId: input.orgId, queueId: targetQueueForNewJob },
               );
-
-            let priority: number | undefined;
-            if (queue?.jobSortType === 'NUM_REPORTS') {
-              const reportCount = await this.getNumTimesReported()({
-                orgId: input.orgId,
-                itemId: input.payload.item.itemId,
-              });
-              priority = reportCount ? 2147483647 - reportCount : undefined;
-            }
+            const priority = await getJobPriorityForItem({
+              orgId: input.orgId,
+              itemId: input.payload.item.itemId,
+              sortType:
+                queue?.jobSortType === JobSortType.NUM_REPORTS
+                  ? JobSortType.NUM_REPORTS
+                  : JobSortType.FIFO,
+              deps: {
+                getNumTimesReported: this.getNumTimesReported(),
+              },
+            });
 
             const existingJobInSameQueue = await this.queueOps.getJobFromItemId(
               {
@@ -897,28 +896,7 @@ export class ManualReviewToolService {
     autoCloseJobs?: boolean;
     jobSortType?: string;
   }): Promise<ManualReviewQueue> {
-    const result = await this.queueOps.updateManualReviewQueue(input);
-
-    if (input.jobSortType) {
-      await this.queueOps.recomputePrioritiesForQueue({
-        orgId: input.orgId,
-        queueId: input.queueId,
-        getPriority: async (job) => {
-          if (input.jobSortType === 'NUM_REPORTS') {
-            const reportCount = await this.getNumTimesReported()({
-              orgId: input.orgId,
-              itemId: job.payload.item.itemId,
-            });
-            // BullMQ priority is a Redis sorted set score — lower = dequeued first.
-            // Subtract from max 32-bit int (number below) so more reports = lower score = reviewed sooner.
-            return 2147483647 - (reportCount ?? 0);
-          }
-          return 0;
-        },
-      });
-    }
-
-    return result;
+    return this.queueOps.updateManualReviewQueue(input);
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {
