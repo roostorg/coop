@@ -207,8 +207,14 @@ export default function ManualReviewQueuesDashboard() {
     fetchPolicy: 'no-cache',
     pollInterval: 5000,
   });
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
+    null,
+  );
   const [deleteReviewQueue] = useGQLDeleteManualReviewQueueMutation({
-    onError: () => {},
+    onError: (error) =>
+      setDeleteErrorMessage(
+        error.graphQLErrors[0]?.message ?? 'Failed to delete queue.',
+      ),
     onCompleted: async () => refetch(),
   });
   const [addFavoriteMRTQueue] = useGQLAddFavoriteMrtQueueMutation({
@@ -439,6 +445,23 @@ export default function ManualReviewQueuesDashboard() {
     >
       Are you sure you want to delete this queue? This will delete all jobs
       inside of this queue as well. You can't undo this action.
+    </CoopModal>
+  );
+
+  const deleteErrorModal = (
+    <CoopModal
+      title="Could Not Delete Queue"
+      visible={deleteErrorMessage !== null}
+      footer={[
+        {
+          title: 'OK',
+          onClick: () => setDeleteErrorMessage(null),
+          type: 'primary',
+        },
+      ]}
+      onClose={() => setDeleteErrorMessage(null)}
+    >
+      {deleteErrorMessage}
     </CoopModal>
   );
 
@@ -911,6 +934,7 @@ export default function ManualReviewQueuesDashboard() {
         />
       }
       {deleteModal}
+      {deleteErrorModal}
       {deleteAllJobsModal}
     </div>
   );
