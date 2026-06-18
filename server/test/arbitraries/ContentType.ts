@@ -5,7 +5,7 @@ import {
   type Field,
   type ScalarType,
   type ScalarTypeRuntimeType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import fc from 'fast-check';
 import Geohash from 'latlon-geohash';
 import _ from 'lodash';
@@ -46,8 +46,10 @@ export const GeohashArbitrary = fc
     }
   });
 
+// `noInvalidDate: true` keeps fast-check from drawing `Date(NaN)` values,
+// which would make `.toISOString()` throw `RangeError: Invalid time value`.
 export const DateStringArbitrary = fc
-  .date()
+  .date({ noInvalidDate: true })
   .map((date) => makeDateString(date.toISOString())!);
 
 // Id-like fields allow numbers and strings as inputs, but the normalized
@@ -56,11 +58,34 @@ export const IdLikeArbitrary = fc.string();
 
 export const MediaUrlArbitrary = fc.record({ url: fc.string() /* todo */ });
 
+export const MediaArbitrary = fc.record({
+  url: fc.string(),
+  mediaType: fc.constantFrom(
+    ScalarTypes.AUDIO,
+    ScalarTypes.IMAGE,
+    ScalarTypes.VIDEO,
+    null,
+  ),
+});
+
 export const RelatedItemArbitrary = fc.record({
   id: fc.string(),
   typeId: fc.string(),
   name: fc.string(),
 });
+
+// IETF reserved documentation ranges (RFC 5737 / RFC 3849) — safe to use in
+// tests, will never collide with a real host.
+export const IpAddressArbitrary = fc.oneof(
+  fc.ipV4(),
+  fc.constantFrom(
+    '203.0.113.1',
+    '198.51.100.42',
+    '192.0.2.255',
+    '2001:db8::1',
+    '2001:db8:1234:5678::1',
+  ),
+);
 
 export const ScalarValidValuesArbitraries = {
   [ScalarTypes.AUDIO]: MediaUrlArbitrary,
@@ -76,9 +101,11 @@ export const ScalarValidValuesArbitraries = {
   [ScalarTypes.URL]: fc.webUrl({ validSchemes: ['http', 'https'] }),
   [ScalarTypes.USER_ID]: IdLikeArbitrary,
   [ScalarTypes.VIDEO]: MediaUrlArbitrary,
+  [ScalarTypes.MEDIA]: MediaArbitrary,
   [ScalarTypes.DATETIME]: DateStringArbitrary,
   [ScalarTypes.RELATED_ITEM]: RelatedItemArbitrary,
   [ScalarTypes.POLICY_ID]: IdLikeArbitrary,
+  [ScalarTypes.IP_ADDRESS]: IpAddressArbitrary,
 };
 
 export const ScalarFieldArbitrary = fc
@@ -124,18 +151,18 @@ export const MapFieldArbitrary = fc
     fc.string(),
     fc.boolean(),
   )
-  .map<Field<ContainerTypes['MAP']>>(
-    ([valueScalarType, keyScalarType, name, required]) => ({
-      name,
-      required,
-      type: ContainerTypes.MAP,
-      container: {
-        containerType: ContainerTypes.MAP,
-        keyScalarType,
-        valueScalarType,
-      },
-    }),
-  );
+  .map<
+    Field<ContainerTypes['MAP']>
+  >(([valueScalarType, keyScalarType, name, required]) => ({
+    name,
+    required,
+    type: ContainerTypes.MAP,
+    container: {
+      containerType: ContainerTypes.MAP,
+      keyScalarType,
+      valueScalarType,
+    },
+  }));
 
 export const MapFieldWithValueArbitrary = MapFieldArbitrary.chain((field) =>
   fc.tuple(

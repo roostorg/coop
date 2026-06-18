@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { type Exception } from '@opentelemetry/api';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../iocContainer/index.js';
@@ -171,7 +171,23 @@ class ActionPublisher {
       actorId,
       actorEmail,
       actorNote,
+      decisionReason,
     } = executionContext;
+
+    // Resolve the action user once and reuse it for both `creator` and the
+    // strike total. Only needed when a CUSTOM_ACTION webhook will carry them.
+    const hasWebhook = triggeredActions.some(
+      (it) => it.action.actionType === ActionType.CUSTOM_ACTION,
+    );
+    const { user: actionUser, isDirect: isDirectUser } = hasWebhook
+      ? await this.resolveActionUser(orgId, targetItem)
+      : { user: undefined, isDirect: false };
+    const userStrikeCount = await this.getUserStrikeCountForWebhook(
+      orgId,
+      actionUser,
+      isDirectUser,
+      triggeredActions,
+    );
 
     // Apply user strikes from the actions that were triggered.
     // we do this without awaiting to not block the action publishing
@@ -236,6 +252,9 @@ class ActionPublisher {
                 relatedRules,
                 customMrtApiParamDecisionPayload,
                 actorNote,
+                decisionReason,
+                userStrikeCount,
+                actionUser,
               );
             },
           );
@@ -287,6 +306,80 @@ class ActionPublisher {
     ]);
   }
 
+  /**
+   * Resolves the user a webhook action concerns, once per batch. `isDirect` is
+   * true when the target resolves the way the strike service resolves it (USER
+   * target or a full submission's creator); for identifier-only CONTENT we fall
+   * back to fetching the latest submission's creator (`isDirect` false).
+   * Best-effort: a failed fetch yields no user rather than throwing.
+   */
+  private async resolveActionUser(
+    orgId: string,
+    targetItem: ActionTargetItem,
+  ): Promise<{ user: ItemIdentifier | undefined; isDirect: boolean }> {
+    const directUser = getUserFromActionTargetItem(targetItem);
+    if (directUser) {
+      return { user: directUser, isDirect: true };
+    }
+    if (targetItem.itemType.kind !== 'CONTENT') {
+      return { user: undefined, isDirect: false };
+    }
+    if (isFullSubmission(targetItem)) {
+      return { user: targetItem.creator, isDirect: false };
+    }
+    try {
+      const submission = (
+        await this.itemInvestigationService.getItemByIdentifier({
+          orgId,
+          itemIdentifier: {
+            id: targetItem.itemId,
+            typeId: targetItem.itemType.id,
+          },
+          latestSubmissionOnly: true,
+        })
+      )?.latestSubmission;
+      return { user: submission?.creator, isDirect: false };
+    } catch {
+      return { user: undefined, isDirect: false };
+    }
+  }
+
+  /**
+   * The user's cumulative strike total after this event (current total + strikes
+   * this event applies), for CUSTOM_ACTION webhooks. The applied delta is only
+   * added when the user resolved directly (`isDirect`) — i.e. when the strike
+   * service actually applies a strike. Best-effort; undefined when unresolvable.
+   */
+  private async getUserStrikeCountForWebhook<
+    T extends ActionExecutionCorrelationId,
+  >(
+    orgId: string,
+    user: ItemIdentifier | undefined,
+    isDirect: boolean,
+    triggeredActions: Omit<
+      Omit<ActionExecutionData<T>, 'action'> & { action: Action },
+      'orgId' | 'correlationId' | 'targetItem'
+    >[],
+  ): Promise<number | undefined> {
+    if (!user) {
+      return undefined;
+    }
+    try {
+      const currentTotal = await this.userStrikeService.getUserStrikeValue(
+        orgId,
+        user,
+      );
+      const appliedStrikes = isDirect
+        ? (this.userStrikeService.findMostSeverePolicyViolationFromActions(
+            triggeredActions,
+          )?.userStrikeCount ?? 0)
+        : 0;
+      return currentTotal + appliedStrikes;
+    } catch {
+      return undefined;
+    }
+  }
+
   async publishAction(
     orgId: string,
     action: Action,
@@ -303,6 +396,9 @@ class ActionPublisher {
       string | boolean | unknown
     >,
     actorNote?: string,
+    decisionReason?: string,
+    userStrikeCount?: number,
+    creator?: ItemIdentifier,
   ): Promise<boolean> {
     return this.tracer.addActiveSpan(
       { resource: 'actionPublisher', operation: 'publishAction' },
@@ -400,6 +496,13 @@ class ActionPublisher {
                 // can't collide with a user-defined parameter named
                 // `actorNote`. Omitted from the body entirely when absent.
                 ...(actorNote !== undefined ? { actorNote } : {}),
+                ...(creator !== undefined ? { creator } : {}),
+                // The moderator's decision reason, top-level for the same
+                // collision-safety reason as `actorNote`. Omitted when absent.
+                ...(decisionReason !== undefined ? { decisionReason } : {}),
+                // The user's cumulative strike total after this event. Omitted
+                // when there's no resolvable user.
+                ...(userStrikeCount !== undefined ? { userStrikeCount } : {}),
               };
 
               const response = await this.fetchHTTP({

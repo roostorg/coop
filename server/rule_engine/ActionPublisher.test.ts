@@ -21,6 +21,7 @@ type IsolatedPublisherOptions = {
   ncmecService?: Partial<Dependencies['NcmecService']>;
   itemInvestigationService?: Partial<Dependencies['ItemInvestigationService']>;
   getItemTypeEventuallyConsistent?: Dependencies['getItemTypeEventuallyConsistent'];
+  userStrikeService?: Partial<Dependencies['UserStrikeService']>;
 };
 
 function makeNoopTracer(): Dependencies['Tracer'] {
@@ -48,6 +49,11 @@ function makeIsolatedPublisher(opts: IsolatedPublisherOptions) {
   }) as Dependencies['ItemInvestigationService'];
   const userStrikeService = {
     applyUserStrikeFromPublishedActions: jest.fn().mockResolvedValue(undefined),
+    getUserStrikeValue: jest.fn().mockResolvedValue(0),
+    findMostSeverePolicyViolationFromActions: jest
+      .fn()
+      .mockReturnValue(undefined),
+    ...opts.userStrikeService,
   } as unknown as Dependencies['UserStrikeService'];
   const getItemTypeEventuallyConsistent =
     opts.getItemTypeEventuallyConsistent ??
@@ -246,6 +252,213 @@ describe('ActionPublisher', () => {
       expect(sentBody.actorEmail).toBe('mod@example.com');
     });
 
+    it('includes the resolved creator for a USER target (the target itself)', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({ fetchHTTP });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-user-target',
+              orgId: 'org-789',
+              name: 'Ban User',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:user-target' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'user-123',
+            itemType: {
+              id: 'user-type-1',
+              kind: 'USER' as const,
+              name: 'User',
+            },
+          },
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect(sentBody.creator).toEqual({
+        id: 'user-123',
+        typeId: 'user-type-1',
+      });
+    });
+
+    it('resolves and includes the creator for a CONTENT identifier-only target by fetching the submission', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getItemByIdentifier = jest.fn().mockResolvedValue({
+        latestSubmission: {
+          itemId: 'message-456',
+          submissionId: 'sub-1',
+          data: { text: 'hi' },
+          creator: { id: 'author-9', typeId: 'user-type-1' },
+        },
+      });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        itemInvestigationService: { getItemByIdentifier },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-content-target',
+              orgId: 'org-789',
+              name: 'Remove Message',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:content-target' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'message-456',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(getItemByIdentifier).toHaveBeenCalledTimes(1);
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect(sentBody.creator).toEqual({
+        id: 'author-9',
+        typeId: 'user-type-1',
+      });
+    });
+
+    it('omits the creator when a CONTENT target has no resolvable submission', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-no-creator',
+              orgId: 'org-789',
+              name: 'Action',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:no-creator' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('creator' in sentBody).toBe(false);
+    });
+
+    it('still delivers the webhook (with creator omitted) when the creator lookup rejects', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        itemInvestigationService: {
+          getItemByIdentifier: jest
+            .fn()
+            .mockRejectedValue(new Error('lookup failed')),
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-lookup-fail',
+              orgId: 'org-789',
+              name: 'Action',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:lookup-fail' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(fetchHTTP).toHaveBeenCalledTimes(1);
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('creator' in sentBody).toBe(false);
+    });
+
     it('omits actorNote from the webhook body entirely when no note is supplied', async () => {
       const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
@@ -288,6 +501,296 @@ describe('ActionPublisher', () => {
 
       const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
       expect('actorNote' in sentBody).toBe(false);
+    });
+
+    it('includes the decision reason as a top-level `decisionReason` field', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({ fetchHTTP });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-reason',
+              orgId: 'org-789',
+              name: 'Remove',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId: 'mrt-decision:reason' as CorrelationId<'mrt-decision'>,
+          targetItem: {
+            itemId: 'item-reason',
+            itemType: {
+              id: 'type-789',
+              kind: 'CONTENT' as const,
+              name: 'Social Post',
+            },
+          },
+          decisionReason: 'Violated spam policy',
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect(sentBody.decisionReason).toBe('Violated spam policy');
+      // Top-level, not nested under `custom`.
+      expect(sentBody.custom.decisionReason).toBeUndefined();
+    });
+
+    it('omits `decisionReason` from the webhook body when no decision reason is supplied', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const { publisher } = makeIsolatedPublisher({ fetchHTTP });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-no-reason',
+              orgId: 'org-789',
+              name: 'Remove',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:no-reason' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'item-no-reason',
+            itemType: {
+              id: 'type-789',
+              kind: 'CONTENT' as const,
+              name: 'Social Post',
+            },
+          },
+        },
+      );
+
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('decisionReason' in sentBody).toBe(false);
+    });
+
+    it('includes the user strike total (current total plus strikes this event applies)', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = jest.fn().mockResolvedValue(2);
+      const findMostSeverePolicyViolationFromActions = jest
+        .fn()
+        .mockReturnValue({ id: 'policy-1', userStrikeCount: 3 });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        userStrikeService: {
+          getUserStrikeValue,
+          findMostSeverePolicyViolationFromActions,
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-strikes',
+              orgId: 'org-789',
+              name: 'Strike',
+              description: null,
+              applyUserStrikes: true,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [
+              {
+                id: 'policy-1',
+                name: 'Policy 1',
+                penalty: 'NONE' as const,
+                userStrikeCount: 3,
+              },
+            ],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:strikes' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'user-123',
+            itemType: {
+              id: 'user-type-1',
+              kind: 'USER' as const,
+              name: 'User',
+            },
+          },
+        },
+      );
+
+      expect(getUserStrikeValue).toHaveBeenCalledWith('org-789', {
+        id: 'user-123',
+        typeId: 'user-type-1',
+      });
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      // 2 existing + 3 applied this event = 5
+      expect(sentBody.userStrikeCount).toBe(5);
+    });
+
+    it('omits the user strike total when there is no resolvable target user', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = jest.fn();
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        userStrikeService: { getUserStrikeValue },
+        itemInvestigationService: {
+          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-no-user',
+              orgId: 'org-789',
+              name: 'Action',
+              description: null,
+              applyUserStrikes: false,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:no-user' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            // Identifier-only CONTENT with no submission => no resolvable user.
+            itemId: 'phantom-content-id',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(getUserStrikeValue).not.toHaveBeenCalled();
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      expect('userStrikeCount' in sentBody).toBe(false);
+    });
+
+    it('reports the resolved creator strike total (no applied delta) for an identifier-only CONTENT target', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = jest.fn().mockResolvedValue(4);
+      // A strike weight exists, but for identifier-only CONTENT no strike is
+      // actually applied, so it must not be added to the reported total.
+      const findMostSeverePolicyViolationFromActions = jest
+        .fn()
+        .mockReturnValue({ id: 'policy-1', userStrikeCount: 3 });
+      const getItemByIdentifier = jest.fn().mockResolvedValue({
+        latestSubmission: {
+          itemId: 'message-77',
+          submissionId: 'sub-77',
+          data: { text: 'hi' },
+          creator: { id: 'author-77', typeId: 'user-type-1' },
+        },
+      });
+      const { publisher } = makeIsolatedPublisher({
+        fetchHTTP,
+        userStrikeService: {
+          getUserStrikeValue,
+          findMostSeverePolicyViolationFromActions,
+        },
+        itemInvestigationService: { getItemByIdentifier },
+      });
+
+      await publisher.publishActions(
+        [
+          {
+            action: {
+              id: 'action-content-strike',
+              orgId: 'org-789',
+              name: 'Strike',
+              description: null,
+              applyUserStrikes: true,
+              penalty: 'NONE' as const,
+              actionType: ActionType.CUSTOM_ACTION,
+              callbackUrl: 'https://example.com/webhook',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              customMrtApiParams: null,
+            },
+            policies: [
+              {
+                id: 'policy-1',
+                name: 'Policy 1',
+                penalty: 'NONE' as const,
+                userStrikeCount: 3,
+              },
+            ],
+            matchingRules: undefined,
+            ruleEnvironment: undefined,
+          },
+        ],
+        {
+          orgId: 'org-789',
+          correlationId:
+            'manual-action-run:content-strike' as CorrelationId<'manual-action-run'>,
+          targetItem: {
+            itemId: 'message-77',
+            itemType: {
+              id: 'content-type-1',
+              kind: 'CONTENT' as const,
+              name: 'Message',
+            },
+          },
+        },
+      );
+
+      expect(getUserStrikeValue).toHaveBeenCalledWith('org-789', {
+        id: 'author-77',
+        typeId: 'user-type-1',
+      });
+      const sentBody = jsonParse(fetchHTTP.mock.calls[0]?.[0].body);
+      // Current total (4) with no applied delta for identifier-only CONTENT.
+      expect(sentBody.userStrikeCount).toBe(4);
+      expect(sentBody.creator).toEqual({
+        id: 'author-77',
+        typeId: 'user-type-1',
+      });
     });
 
     it('forwards moderator-supplied parameter values and actor note to the logger', async () => {

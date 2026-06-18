@@ -239,7 +239,7 @@ class LocationBankAPI {
     const { id, orgId } = opts;
 
     try {
-      const result = await this.db.transaction().execute(async (trx) => {
+      const result = await this.transactionWithRetry(async (trx) => {
         const bank = await trx
           .selectFrom('public.location_banks')
           .select('id')

@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 import _ from 'lodash';
 
-import getBottle from '../iocContainer/index.js';
+import getBottle, { type Dependencies } from '../iocContainer/index.js';
 import { logErrorJson } from '../utils/logging.js';
 import { type WorkerOrJob } from '../workers_jobs/index.js';
 
 const { container } = await getBottle();
 
 const workerOrJobName = process.argv[2];
-const workerOrJob = (container as any)[workerOrJobName] as WorkerOrJob;
+const workerOrJob = container[
+  workerOrJobName as keyof Dependencies
+] as WorkerOrJob;
 const controller = new AbortController();
 
 // When the worker/job finishes naturally (which only applies to jobs, as

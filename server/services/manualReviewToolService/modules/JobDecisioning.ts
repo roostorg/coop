@@ -10,6 +10,7 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
+import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
@@ -21,6 +22,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
 
@@ -141,6 +143,7 @@ export default class JobDecisioning {
     readonly onRecordDecision: (params: OnRecordDecisionInput) => Promise<void>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly manualReviewToolSettings: ManualReviewToolSettings,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -182,11 +185,12 @@ export default class JobDecisioning {
     // (for security) before we save the data to the db. We accept that there
     // could be some legit policies/actions that are very rarely not found
     // (from eventually consistent pg lookup) as a reasonable tradeoff.
-    if (decisions.some((decision) => decision.type === 'CUSTOM_ACTION')) {
-      const allActionIds = decisions.flatMap((decision) =>
-        decision.type === 'CUSTOM_ACTION'
-          ? decision.actions.map((action) => action.id)
-          : [],
+    const customActionDecisions = decisions.flatMap((decision) =>
+      decision.type === 'CUSTOM_ACTION' ? [decision] : [],
+    );
+    if (customActionDecisions.length > 0) {
+      const allActionIds = customActionDecisions.flatMap((decision) =>
+        decision.actions.map((action) => action.id),
       );
       const validActions = await this.getCustomActionsByIds({
         ids: allActionIds,
@@ -195,6 +199,68 @@ export default class JobDecisioning {
       // We only throw if there aren't any valid actions.
       if (validActions.length === 0) {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
+      }
+
+      // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
+      // disables submit when this is on, but API/script callers can bypass that.
+      // Only check the flag when there's actually a policy-less decision to
+      // enforce against, so the common path avoids the extra DB hit. The check
+      // only fires for CUSTOM_ACTION decisions, so it applies even on NCMEC
+      // jobs that mix in a CUSTOM_ACTION (e.g. issuing a strike alongside an
+      // NCMEC ignore or report).
+      const hasEmptyPolicyCustomAction = customActionDecisions.some(
+        (decision) => decision.policies.length === 0,
+      );
+      if (hasEmptyPolicyCustomAction) {
+        const requiresPolicy =
+          await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
+            orgId,
+          );
+        if (requiresPolicy) {
+          throw makeMissingRequiredPolicyForDecisionError({
+            shouldErrorSpan: true,
+          });
+        }
+      }
+    }
+
+    // Enforce the "require decision reason" settings server-side. The MRT UI
+    // already disables submit when these are on, but API/script callers can
+    // bypass that. Skip the AUTOMATIC_CLOSE path (no moderator, no reason to
+    // require) and only read a flag when there's actually a missing reason to
+    // enforce against, so the common path does no extra DB work. Matches the
+    // client gate at ManualReviewJobReview.tsx, which uses isNonEmptyString.
+    //
+    // The requirement is split in two (see #757): ignoring a job means "no
+    // violation / no action" and is governed by its own flag, separate from
+    // the flag for violating (non-ignore) decisions. A decision composed
+    // solely of IGNORE components is an ignore; anything else (custom actions,
+    // appeals, etc.) is a violating decision.
+    //
+    // Bypass the check entirely when the decision is NCMEC-native (Submit NCMEC
+    // Report or Ignore on an NCMEC job, no CUSTOM_ACTION mixed in): those
+    // decisions don't carry a written reason and the flags are irrelevant for
+    // them. A CUSTOM_ACTION on an NCMEC job still requires a reason. See #736.
+    const isNcmecNativeDecision =
+      job.payload.kind === 'NCMEC' && customActionDecisions.length === 0;
+    const isIgnoreDecision =
+      decisions.length > 0 &&
+      decisions.every((decision) => decision.type === 'IGNORE');
+    if (
+      decisionComponents != null &&
+      !isNonEmptyString(decisionReason) &&
+      !isNcmecNativeDecision
+    ) {
+      const requiresReason = isIgnoreDecision
+        ? await this.manualReviewToolSettings.getRequiresDecisionReasonOnIgnore(
+            orgId,
+          )
+        : await this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
+      if (requiresReason) {
+        throw makeMissingRequiredDecisionReasonError({
+          detail: 'This org requires a decision reason for this decision',
+          shouldErrorSpan: true,
+        });
       }
     }
 
@@ -572,7 +638,7 @@ export default class JobDecisioning {
       .where('org_id', '=', orgId)
       .select('ignore_callback_url as ignoreCallback')
       .executeTakeFirst();
-    return settings?.ignoreCallback;
+    return settings?.ignoreCallback ?? undefined;
   }
 }
 
@@ -593,7 +659,9 @@ export type SubmitDecisionErrorType =
   | 'JobHasAlreadyBeenSubmittedError'
   | 'SubmittedJobActionNotFoundError'
   | 'NoJobWithIdInQueueError'
-  | 'RecordingJobDecisionFailedError';
+  | 'RecordingJobDecisionFailedError'
+  | 'MissingRequiredDecisionReasonError'
+  | 'MissingRequiredPolicyForDecisionError';
 
 export const makeJobHasAlreadyBeenSubmittedError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -628,5 +696,29 @@ export const makeNoJobWithIdInQueueError = (data: ErrorInstanceData) =>
     type: [ErrorType.NotFound],
     title: String(data.detail),
     name: 'NoJobWithIdInQueueError',
+    ...data,
+  });
+
+export const makeMissingRequiredDecisionReasonError = (
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title:
+      'This org requires every decision to include a reason. Add a reason and resubmit.',
+    name: 'MissingRequiredDecisionReasonError',
+    ...data,
+  });
+
+export const makeMissingRequiredPolicyForDecisionError = (
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title:
+      'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
+    name: 'MissingRequiredPolicyForDecisionError',
     ...data,
   });

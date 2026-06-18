@@ -1,4 +1,4 @@
-import { SignalSubcategory } from '@roostorg/types';
+import { SignalSubcategory } from '@roostorg/coop-types';
 import capitalize from 'lodash/capitalize';
 
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
@@ -6,17 +6,17 @@ import CoopButton from '@/webpages/dashboard/components/CoopButton';
 import {
   GQLSignalPricingStructureType,
   GQLSignalSubcategory,
-} from '../../../../../graphql/generated';
+  GQLSignal,
+} from '@/graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
-import { CoreSignal } from '../../../../../models/signal';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import { signalDisplayName } from './RuleFormSignalModalMenuItem';
 
 export default function RuleFormSignalModalSignalDetailView(props: {
-  signal: CoreSignal;
+  signal: GQLSignal;
   subcategories: SignalSubcategory[];
   onSelectSignal: (
-    signal: CoreSignal,
+    signal: GQLSignal,
     subcategory?: GQLSignalSubcategory,
   ) => void;
 }) {
@@ -48,11 +48,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
       label: 'Developer',
       value: (
         <div className="items-center justify-center font-semibold text-gray-500">
-          <img
-            alt="logo"
-            className="w-8 h-8 mr-2 rounded-full"
-            src={logoSrc}
-          />{' '}
+          <img alt="logo" className="w-8 h-8 mr-2 rounded-full" src={logoSrc} />{' '}
           {integrationTitle}
         </div>
       ),
@@ -110,7 +106,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
           },
         ]),
   ];
-  const subcategorySection = ((signal: CoreSignal) => {
+  const subcategorySection = ((signal: GQLSignal) => {
     if (!signal.eligibleSubcategories.length) {
       return null;
     }

@@ -1,4 +1,4 @@
-import { SignalSubcategory } from '@roostorg/types';
+import { SignalSubcategory } from '@roostorg/coop-types';
 
 function subcategoryOptionComponent(props: {
   id: string;

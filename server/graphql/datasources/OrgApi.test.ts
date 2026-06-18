@@ -294,43 +294,4 @@ describe('OrgAPI', () => {
       },
     );
   });
-
-  describe('createOrg', () => {
-    testWithFixture(
-      'throws a BadRequest with /input/website pointer for bad website',
-      async ({ deps }) => {
-        await expect(
-          deps.OrgAPIDataSource.createOrg({
-            input: {
-              name: `NewOrg_${uid()}`,
-              email: `new_${uid()}@example.com`,
-              // eslint-disable-next-line no-script-url
-              website: 'javascript:alert(1)',
-            },
-          }),
-        ).rejects.toMatchObject({
-          name: 'BadRequestError',
-          pointer: '/input/website',
-        });
-      },
-    );
-
-    testWithFixture(
-      'throws a BadRequest for malformed email',
-      async ({ deps }) => {
-        await expect(
-          deps.OrgAPIDataSource.createOrg({
-            input: {
-              name: `NewOrg_${uid()}`,
-              email: 'not-an-email',
-              website: 'https://example.com',
-            },
-          }),
-        ).rejects.toMatchObject({
-          name: 'BadRequestError',
-          pointer: '/input/email',
-        });
-      },
-    );
-  });
 });

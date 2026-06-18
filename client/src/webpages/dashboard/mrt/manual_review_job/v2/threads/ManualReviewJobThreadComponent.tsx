@@ -1,6 +1,6 @@
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useEffect, useRef, useState } from 'react';
@@ -234,7 +234,15 @@ export function ManualReviewJobThreadComponent(props: {
         )?.data
       : undefined;
   };
-  if (!data || data.threadHistory.length === 0) {
+  if (loading) {
+    return <ComponentLoading />;
+  }
+
+  if (error) {
+    return <div>Error loading user submissions: {error.message}</div>;
+  }
+
+  if (!data) {
     return null;
   }
   const newMessages = data.threadHistory
@@ -349,18 +357,10 @@ export function ManualReviewJobThreadComponent(props: {
     orgData?.myOrg?.id === '488cb41d501'
       ? `Script for Video ${thread.id}`
       : displayNameField
-      ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
-      : threadTypeName
-      ? `${threadTypeName} ID: ${thread.id}`
-      : `Thread ID: ${thread.id}`;
-
-  if (loading) {
-    return <ComponentLoading />;
-  }
-
-  if (error) {
-    return <div>Error loading user submissions: {error.message}</div>;
-  }
+        ? `${threadTypeName}: ${partialItemsThreadData?.data[displayNameField]}`
+        : threadTypeName
+          ? `${threadTypeName} ID: ${thread.id}`
+          : `Thread ID: ${thread.id}`;
 
   return (
     <>
@@ -441,10 +441,16 @@ export function ManualReviewJobThreadComponent(props: {
           className="flex flex-col w-full overflow-auto max-h-[600px] gap-2 p-5"
           ref={scrollViewRef}
         >
-          {threadComponent}
+          {threadComponent.length > 0 ? (
+            threadComponent
+          ) : (
+            <div className="text-left text-gray-500">
+              There is no content in this thread yet
+            </div>
+          )}
         </div>
       </div>
-      {isActionable && (
+      {isActionable && newMessages.length > 0 && (
         <>
           <div className="flex flex-row self-end mt-2">
             <Button

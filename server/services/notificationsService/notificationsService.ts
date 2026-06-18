@@ -32,13 +32,12 @@ export type NotificationData<T extends NotificationType> = {
   [NotificationType.RulePassRateIncreaseAnomalyEnd]: RuleAnomalyData;
 }[T];
 
-// NB: notifications are stored in postgres, but we intentionally don't make a
-// sequelize model, as they should only be accessed through the notification
-// service. My hunch is that these will quickly move out of (the API's)
-// postgress anyway, as notifications tend to end up warranting their own
-// microservice. We also store notifications in postgres with camel cased keys,
-// since there's very little reason not to, and it saves us from needing a
-// key conversion layer.
+// NB: notifications are stored in postgres, but should only be accessed
+// through the notifications service. My hunch is that these will quickly move
+// out of (the API's) postgres anyway, as notifications tend to end up
+// warranting their own microservice. We also store notifications in postgres
+// with camel cased keys, since there's very little reason not to, and it
+// saves us from needing a key conversion layer.
 export type Notification<T extends NotificationType = NotificationType> = {
   id: string;
   type: T;

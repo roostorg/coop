@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { RelatedItem } from '@roostorg/types';
+import { RelatedItem } from '@roostorg/coop-types';
 
 import {
   GQLContentAppealManualReviewJobPayload,

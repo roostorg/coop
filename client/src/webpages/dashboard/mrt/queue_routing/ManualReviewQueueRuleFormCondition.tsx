@@ -1,8 +1,7 @@
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Select, Tooltip } from 'antd';
 
-import { GQLConditionConjunction } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
+import { GQLConditionConjunction, GQLSignal } from '../../../../graphql/generated';
 import {
   hasNestedConditionSets,
   removeCondition,
@@ -88,7 +87,7 @@ export default function ManualReviewQueueRuleFormCondition(props: {
   parentConditionSet: RuleFormConditionSet;
   eligibleInputs: Map<string, ConditionInput[]>;
   selectedItemTypes: RoutingRuleItemType[];
-  allSignals: readonly CoreSignal[];
+  allSignals: readonly GQLSignal[];
   editing: boolean;
   onUpdateConditionSet: (conditionSet: RuleFormConditionSet) => void;
 }) {
@@ -183,7 +182,7 @@ export default function ManualReviewQueueRuleFormCondition(props: {
         condition={condition}
         location={location}
         editing={editing}
-        onUpdateSignal={(signal: CoreSignal, subcategory?: string) => {
+        onUpdateSignal={(signal: GQLSignal, subcategory?: string) => {
           // Do this manually instead of having a helper function to avoid
           // setting the state multiple times in the case of the signal having a subcategory
           let newConditionSet = updateConditionComponent(

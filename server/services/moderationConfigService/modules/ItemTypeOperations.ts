@@ -1,9 +1,9 @@
 /* eslint-disable max-lines */
-import { type ConsumerDirectives } from '../../../lib/cache/index.js';
 import { sql, type Kysely, type Selection } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
+import { type ConsumerDirectives } from '../../../lib/cache/index.js';
 import { cached, type Cached } from '../../../utils/caching.js';
 import {
   CoopError,
@@ -11,6 +11,10 @@ import {
   isCoopErrorOfType,
   makeNotFoundError,
 } from '../../../utils/errors.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
 import {
   __throw,
   assertUnreachable,
@@ -50,6 +54,7 @@ const itemTypeDbSelection = [
   'is_deleted_field as isDeletedField',
   'profile_icon_field as profileIconField',
   'background_image_field as backgroundImageField',
+  'ip_address_field as ipAddressField',
   'org_id as orgId',
   'is_default_user as isDefaultUserType',
 ] as const;
@@ -70,11 +75,13 @@ export default class ItemTypeOperations {
   private readonly latestItemTypesCache: Cached<
     (orgId: string) => Promise<ItemType[]>
   >;
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
 
   constructor(
     private readonly pgQuery: Kysely<ModerationConfigServicePg>,
     private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
   ) {
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Cache of ItemTypeIdentifier -> ItemTypeVersion (which is immutable and
     // the same version/incarnation will always be returned for the same identifier)
     this.itemTypeVersionsCache = cached({
@@ -262,6 +269,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -280,6 +288,7 @@ export default class ItemTypeOperations {
         created_at_field: input.schemaFieldRoles.createdAt,
         display_name_field: input.schemaFieldRoles.displayName,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -305,6 +314,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -333,6 +343,9 @@ export default class ItemTypeOperations {
           is_deleted_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.isDeleted,
           ),
+          ip_address_field: replaceEmptyStringWithNull(
+            input.schemaFieldRoles.ipAddress,
+          ),
         }),
       )
       .where('id', '=', input.id)
@@ -358,6 +371,7 @@ export default class ItemTypeOperations {
         displayName?: string | null;
         creatorId?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ): Promise<ThreadItemType> {
@@ -374,6 +388,7 @@ export default class ItemTypeOperations {
         display_name_field: input.schemaFieldRoles.displayName,
         creator_id_field: input.schemaFieldRoles.creatorId,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -397,6 +412,7 @@ export default class ItemTypeOperations {
         displayName?: string | null;
         creatorId?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -418,6 +434,9 @@ export default class ItemTypeOperations {
           ),
           is_deleted_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.isDeleted,
+          ),
+          ip_address_field: replaceEmptyStringWithNull(
+            input.schemaFieldRoles.ipAddress,
           ),
         }),
       )
@@ -445,6 +464,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ) {
@@ -462,6 +482,7 @@ export default class ItemTypeOperations {
         created_at_field: input.schemaFieldRoles.createdAt,
         display_name_field: input.schemaFieldRoles.displayName,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -486,6 +507,7 @@ export default class ItemTypeOperations {
         createdAt?: string | null;
         displayName?: string | null;
         isDeleted?: string | null;
+        ipAddress?: string | null;
       };
     },
   ): Promise<UserItemType> {
@@ -511,6 +533,9 @@ export default class ItemTypeOperations {
           is_deleted_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.isDeleted,
           ),
+          ip_address_field: replaceEmptyStringWithNull(
+            input.schemaFieldRoles.ipAddress,
+          ),
         }),
       )
       .where('id', '=', input.id)
@@ -532,10 +557,9 @@ export default class ItemTypeOperations {
    */
   async deleteItemType(opts: { orgId: string; itemTypeId: string }) {
     const { orgId, itemTypeId } = opts;
-    const res = await this.pgQuery
-      .transaction()
-      .setIsolationLevel('repeatable read')
-      .execute(async (trx) => {
+    const res = await this.transactionWithRetry(
+      { isolationLevel: 'repeatable read' },
+      async (trx) => {
         const isDefaultUserType = await trx
           .selectFrom('public.item_types')
           .where('id', '=', itemTypeId)
@@ -565,7 +589,8 @@ export default class ItemTypeOperations {
           .where('id', '=', itemTypeId)
           .where('org_id', '=', orgId)
           .executeTakeFirst();
-      });
+      },
+    );
 
     await this.invalidateLatestItemTypesCache(orgId);
     await this.latestItemTypesCache(orgId, { maxAge: 0 });
@@ -586,10 +611,9 @@ export default class ItemTypeOperations {
       directives?.maxAge == null ? true : directives.maxAge > 4,
     );
 
-    const results = await pgQuery
-      .transaction()
-      .setIsolationLevel('repeatable read')
-      .execute(async (trx) => {
+    const results = await makeKyselyTransactionWithRetry(pgQuery)(
+      { isolationLevel: 'repeatable read' },
+      async (trx) => {
         const action = await trx
           .selectFrom('public.actions')
           // We have to select this as a text array in order for the postgres
@@ -606,29 +630,31 @@ export default class ItemTypeOperations {
           return [];
         }
 
+        // Reads use `trx` so they share the `repeatable read` snapshot.
         return action.appliesToAllItemsOfKind.length > 0
           ? getItemTypeVersionsBaseQuery({
               orgId,
               currentVersionsOnly: true,
-              pgQuery,
+              pgQuery: trx,
             })
               .where('kind', 'in', action.appliesToAllItemsOfKind)
               .execute()
           : getItemTypeVersionsBaseQuery({
               orgId,
               currentVersionsOnly: true,
-              pgQuery,
+              pgQuery: trx,
             })
               .where(
                 'id',
                 'in',
-                pgQuery
+                trx
                   .selectFrom('public.actions_and_item_types')
                   .select('item_type_id')
                   .where('action_id', '=', actionId),
               )
               .execute();
-      });
+      },
+    );
 
     return results.map((it) => dbResultToItemType(it));
   }
@@ -717,6 +743,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             parentId: input.parentIdField ?? undefined,
             threadId: input.threadIdField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
+            ipAddress: input.ipAddressField ?? undefined,
             // We collapse the cases here because otherwise this satisfies
             // check fails, but the correlation is checked by the DB
             // constraints
@@ -727,6 +754,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             createdAt: input.createdAtField ?? undefined,
             creatorId: input.creatorIdField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
+            ipAddress: input.ipAddressField ?? undefined,
           } satisfies ThreadItemType['schemaFieldRoles'];
         case 'USER':
           return {
@@ -735,6 +763,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             createdAt: input.createdAtField ?? undefined,
             profileIcon: input.profileIconField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
+            ipAddress: input.ipAddressField ?? undefined,
           } satisfies UserItemType['schemaFieldRoles'];
         default:
           assertUnreachable(input.kind);

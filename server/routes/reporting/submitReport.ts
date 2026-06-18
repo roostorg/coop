@@ -126,9 +126,8 @@ export default function submitReport({
 
                   // Check which banks match this image
                   const matchedBankNames: string[] = [];
-                   
+
                   if (
-                    hashes &&
                     Object.keys(hashes).length > 0 &&
                     allBankNames.length > 0
                   ) {
@@ -205,9 +204,9 @@ export default function submitReport({
 
       const hasAdditionalItemsOnThreadSubmission = Boolean(
         additionalItemSubmissions &&
-          additionalItemSubmissions.length > 0 &&
-          reportedItemSubmission.error === undefined &&
-          reportedItemSubmission.itemSubmission.itemType.kind === 'THREAD',
+        additionalItemSubmissions.length > 0 &&
+        reportedItemSubmission.error === undefined &&
+        reportedItemSubmission.itemSubmission.itemType.kind === 'THREAD',
       );
 
       const isAllValidContentItems = (
@@ -221,6 +220,15 @@ export default function submitReport({
         );
       };
 
+      const isAllValidItems = (
+        maybeItemSubmissions: Awaited<ReturnType<typeof toItemSubmission>>[],
+      ): maybeItemSubmissions is {
+        itemSubmission: ItemSubmission;
+        error: undefined;
+      }[] => {
+        return maybeItemSubmissions.every((it) => !it.error);
+      };
+
       // We disable this lint rule here and below because using `??` here would
       // match the intended semantics less well/be less clear, but casting these
       // expressions to strict booleans with Boolean() confuses TS control flow
@@ -229,7 +237,7 @@ export default function submitReport({
         (reportedThreadSubmission &&
           !isAllValidContentItems(reportedThreadSubmission)) ||
         (additionalItemSubmissions &&
-          !isAllValidContentItems(additionalItemSubmissions));
+          !isAllValidItems(additionalItemSubmissions));
 
       const isInvalidReportedAtDate = !isValidDate(
         new Date(req.body.reportedAt),
@@ -260,7 +268,7 @@ export default function submitReport({
               threadOrAdditionalItemsHadInvalidOrIllegalItems
                 ? [
                     makeBadRequestError(
-                      `Invalid report containing a thread or additional items containing items that aren't entirely Content Types`,
+                      `Invalid report: thread messages must all be valid Content Types, and additional items must all be valid item submissions`,
                       { shouldErrorSpan: true },
                     ),
                   ]
@@ -431,12 +439,19 @@ export default function submitReport({
                       : {}),
                     ...(additionalItemSubmissions
                       ? {
-                          additionalContentItems: additionalItemSubmissions.map(
-                            (it) =>
+                          // MRT's `additionalContentItems` is Content-only, so
+                          // drop non-Content items (e.g. USER); they're still
+                          // indexed above.
+                          additionalContentItems: additionalItemSubmissions
+                            .filter(
+                              (it) =>
+                                it.itemSubmission.itemType.kind === 'CONTENT',
+                            )
+                            .map((it) =>
                               itemSubmissionToItemSubmissionWithTypeIdentifier(
                                 it.itemSubmission,
                               ),
-                          ),
+                            ),
                         }
                       : {}),
                     ...(req.body.reportedItemsInThread

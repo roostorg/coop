@@ -7,6 +7,7 @@ import {
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { asyncRandomBytes } from '../../utils/misc.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
@@ -17,6 +18,7 @@ import {
   type Invoker,
   type UserRole,
 } from './permissioning.js';
+import { deleteSessionsForUser } from './sessionPersistence.js';
 import { hashPassword } from './utils.js';
 
 class UserManagementService {
@@ -25,6 +27,22 @@ class UserManagementService {
     private readonly sendEmail: Dependencies['sendEmail'],
     private readonly configService: Dependencies['ConfigService'],
   ) {}
+
+  // Returns null for orgs without seeded role rows; the read path falls
+  // back to UserPermissionsForRole defaults.
+  async #lookupSystemRoleId(opts: {
+    orgId: string;
+    role: UserRole;
+  }): Promise<string | null> {
+    const row = await this.pgQuery
+      .selectFrom('public.roles')
+      .select('id')
+      .where('org_id', '=', opts.orgId)
+      .where('key', '=', opts.role)
+      .where('is_system', '=', true)
+      .executeTakeFirst();
+    return row?.id ?? null;
+  }
 
   async getUserInterfaceSettings(opts: { userId: string; orgId: string }) {
     const { userId, orgId } = opts;
@@ -98,10 +116,12 @@ class UserManagementService {
   }) {
     const { email, role, orgId } = opts;
 
+    const roleId = await this.#lookupSystemRoleId({ orgId, role });
+
     const token = (await asyncRandomBytes(32)).toString('hex');
     await this.pgQuery
       .insertInto('public.invite_user_tokens')
-      .values({ token, email, role, org_id: orgId })
+      .values({ token, email, role, role_id: roleId, org_id: orgId })
       .execute();
     return token;
   }
@@ -272,16 +292,21 @@ class UserManagementService {
       );
     }
 
-    if (!invoker.permissions.includes(UserPermission.MANAGE_ORG)) {
+    if (!invoker.permissions.includes(UserPermission.MANAGE_USERS)) {
       throw makeUnauthorizedError(
         'User does not have permission to change roles',
         { shouldErrorSpan: true },
       );
     }
 
+    const newRoleId = await this.#lookupSystemRoleId({
+      orgId: invoker.orgId,
+      role: newRole,
+    });
+
     const result = await this.pgQuery
       .updateTable('public.users')
-      .set({ role: newRole })
+      .set({ role: newRole, role_id: newRoleId })
       .where('id', '=', userId)
       .where('org_id', '=', invoker.orgId)
       .executeTakeFirst();
@@ -434,18 +459,21 @@ class UserManagementService {
       return;
     }
 
-    // Step 2: reset password for that token's user
-    await this.pgQuery
-      .updateTable('public.users')
-      .set({ password: await hashPassword(newPassword) })
-      .where('id', '=', fetchedToken.user_id)
-      .execute();
-
-    // Step 3: Delete all tokens for the user
-    await this.pgQuery
-      .deleteFrom('user_management_service.password_reset_tokens')
-      .where('user_id', '=', fetchedToken.user_id)
-      .execute();
+    const hashedPassword = await hashPassword(newPassword);
+    // Atomic: a committed password change must not leave the user's sessions
+    // or reset tokens alive.
+    await makeKyselyTransactionWithRetry(this.pgQuery)(async (trx) => {
+      await trx
+        .updateTable('public.users')
+        .set({ password: hashedPassword })
+        .where('id', '=', fetchedToken.user_id)
+        .execute();
+      await deleteSessionsForUser(trx, fetchedToken.user_id);
+      await trx
+        .deleteFrom('user_management_service.password_reset_tokens')
+        .where('user_id', '=', fetchedToken.user_id)
+        .execute();
+    });
   }
 
   async getUsersForOrg(orgId: string) {

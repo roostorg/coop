@@ -29,8 +29,8 @@ import {
   useGQLReportingRuleFormOrgDataQuery,
   useGQLReportingRuleQuery,
   useGQLUpdateReportingRuleMutation,
+  GQLSignal,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { ModalInfo } from '../../types/ModalInfo';
@@ -282,7 +282,7 @@ export default function RuleForm() {
           selectedItemTypes: rule.itemTypes,
           allActions,
           conditionSet: rule.conditionSet,
-          allSignals: allSignals satisfies readonly CoreSignal[],
+          allSignals: allSignals satisfies readonly GQLSignal[],
           policyIds: rule.policies.map((it) => it.id),
         },
       });
@@ -480,7 +480,7 @@ export default function RuleForm() {
           (id) => allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
-        allSignals: allSignals satisfies readonly CoreSignal[],
+        allSignals: allSignals satisfies readonly GQLSignal[],
         form,
       },
     });

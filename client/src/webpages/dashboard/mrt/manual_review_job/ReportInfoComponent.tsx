@@ -5,18 +5,22 @@ import {
   GQLNcmecFileAnnotation,
   GQLNcmecIndustryClassification,
   GQLSchemaFieldRoles,
+  GQLUserPermission,
   useGQLGetMoreInfoForItemsQuery,
   useGQLGetUserItemsQuery,
 } from '@/graphql/generated';
+import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { getFieldValueForRole } from '@/utils/itemUtils';
-import { ExternalLink } from 'lucide-react';
+import { selectPreferredUserItem } from '@/utils/manualReviewTool';
 import { format } from 'date-fns';
+import { ExternalLink } from 'lucide-react';
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 import CopyTextComponent from '@/components/common/CopyTextComponent';
 
+import InvalidateReportsButton from './InvalidateReportsButton';
 import { ManualReviewJobPayload } from './ManualReviewJobReview';
 import ManualReviewJobCommentSection from './v2/ManualReviewJobCommentSection';
 
@@ -43,6 +47,8 @@ export default function ReportInfoComponent(props: {
   orgId: string;
   allItemTypes: GQLItemType[];
   policies: readonly { id: string; name: string }[];
+  viewerPermissions?: readonly GQLUserPermission[];
+  onInvalidated?: () => Promise<void> | void;
 }) {
   const {
     reportPayload: payload,
@@ -56,13 +62,18 @@ export default function ReportInfoComponent(props: {
     allItemTypes,
     actionsTaken,
     policies,
+    viewerPermissions,
+    onInvalidated,
   } = props;
+  const canInvalidateReports =
+    !isAppeal &&
+    userHasPermissions(viewerPermissions, [GQLUserPermission.EditMrtQueues]);
   const reportedItem = payload.item;
   const reportedForReasons =
     payload.__typename === 'UserManualReviewJobPayload' ||
     payload.__typename === 'ContentManualReviewJobPayload' ||
     payload.__typename === 'ThreadManualReviewJobPayload'
-      ? payload.reportedForReasons ?? []
+      ? (payload.reportedForReasons ?? [])
       : [];
   // TODO: we really should add reportDate into this payload instead
   // of relying on the implicit ordering
@@ -105,19 +116,17 @@ export default function ReportInfoComponent(props: {
     },
   });
 
-  const reporterInfo =
-    reporterData?.partialItems.__typename === 'PartialItemsSuccessResponse' &&
-    reporterData.partialItems.items[0].__typename === 'UserItem'
-      ? reporterData.partialItems.items[0]
-      : reporterItemInvestigationData?.latestItemSubmissions[0]?.__typename ===
-        'UserItem'
-      ? reporterItemInvestigationData.latestItemSubmissions[0]
-      : undefined;
+  const reporterInfo = selectPreferredUserItem(
+    reporterData?.partialItems.__typename === 'PartialItemsSuccessResponse'
+      ? reporterData.partialItems.items
+      : undefined,
+    reporterItemInvestigationData?.latestItemSubmissions,
+  );
   const reporterDisplayName = reporterInfo
-    ? getFieldValueForRole<GQLSchemaFieldRoles, keyof GQLSchemaFieldRoles>(
+    ? (getFieldValueForRole<GQLSchemaFieldRoles, keyof GQLSchemaFieldRoles>(
         reporterInfo,
         'displayName',
-      ) ?? reporterInfo.id
+      ) ?? reporterInfo.id)
     : latestReporterIdentifier?.id;
 
   return (
@@ -181,10 +190,12 @@ export default function ReportInfoComponent(props: {
                               latestReporterIdentifier.typeId,
                             );
                             return (
-                              <div>
-                                {`${typeName}: `}
-                                {reporterDisplayName ??
-                                  latestReporterIdentifier.id}
+                              <div className="flex flex-wrap items-center gap-x-2">
+                                <span>
+                                  {`${typeName}: `}
+                                  {reporterDisplayName ??
+                                    latestReporterIdentifier.id}
+                                </span>
                                 <Link
                                   to={`/dashboard/manual_review/investigation/?id=${latestReporterIdentifier.id}&typeId=${latestReporterIdentifier.typeId}`}
                                   target="_blank"
@@ -198,6 +209,21 @@ export default function ReportInfoComponent(props: {
                                     aria-label="Open reporter investigation page"
                                   ></Button>
                                 </Link>
+                                {canInvalidateReports && (
+                                  <InvalidateReportsButton
+                                    reporter={{
+                                      id: latestReporterIdentifier.id,
+                                      typeId: latestReporterIdentifier.typeId,
+                                    }}
+                                    reporterDisplayName={
+                                      typeof reporterDisplayName === 'string'
+                                        ? reporterDisplayName
+                                        : undefined
+                                    }
+                                    jobId={jobId}
+                                    onInvalidated={onInvalidated}
+                                  />
+                                )}
                               </div>
                             );
                           }

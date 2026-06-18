@@ -1,4 +1,4 @@
-import { type ScalarType, type TaggedScalar } from '@roostorg/types';
+import { type ScalarType, type TaggedScalar } from '@roostorg/coop-types';
 import _Ajv, { type JSONSchemaType } from 'ajv-draft-04';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
@@ -339,7 +339,15 @@ export async function getDerivedFieldValue(
     .reduce(async (derivedResPromise, recipeOperation) => {
       // get value(s) as they've been generated so far.
       const valueOrValues = await derivedResPromise;
+      // The DerivedFieldOperationType enum has only one variant
+      // (RUN_SIGNAL) today, so the case label and the discriminant are
+      // trivially equal and trip no-unnecessary-condition. The switch is
+      // intentional: when a new variant is added, the existing case stops
+      // being exhaustive and the "default: assertUnreachable(...)" branch
+      // surfaces the gap at compile time. Disabling the condition rule
+      // (only) preserves that safety net.
       switch (recipeOperation.type) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see comment above
         case DerivedFieldOperationType.RUN_SIGNAL: {
           const transformValue = transformWithSignal.bind(
             null,

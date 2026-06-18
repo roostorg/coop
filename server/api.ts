@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import os from 'node:os';
 import path from 'path';
 import { ApolloServer } from '@apollo/server';
@@ -7,33 +6,35 @@ import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/dis
 import { expressMiddleware } from '@as-integrations/express5';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
-import { MultiSamlStrategy } from '@node-saml/passport-saml';
+import {
+  MultiSamlStrategy,
+  type Profile,
+  type VerifiedCallback,
+} from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
-  SEMATTRS_EXCEPTION_MESSAGE,
-  SEMATTRS_EXCEPTION_STACKTRACE,
-  SEMATTRS_EXCEPTION_TYPE,
+  ATTR_EXCEPTION_MESSAGE,
+  ATTR_EXCEPTION_STACKTRACE,
+  ATTR_EXCEPTION_TYPE,
 } from '@opentelemetry/semantic-conventions';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
-import express, { type ErrorRequestHandler } from 'express';
+import express, { type ErrorRequestHandler, type Request } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
-import {
-  kyselyUserFindByEmail,
-  kyselyUserFindById,
-} from './graphql/datasources/userKyselyPersistence.js';
+import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
+import { getOrgIdFromPath } from './graphql/utils/orgIdFromPath.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
+import { resolveSamlUser } from './graphql/utils/resolveSamlUser.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
-import { isEnvTrue, safeGetEnvInt } from './iocContainer/utils.js';
+import { safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
@@ -91,7 +92,7 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
-  const { KyselyPg } = deps;
+  const { KyselyPg, KyselyPgPool } = deps;
 
   app.use(cors());
 
@@ -127,29 +128,10 @@ export default async function makeApiServer(deps: Dependencies) {
   /**
    * Passport & User Session Configuration
    */
-  const {
-    DATABASE_HOST,
-    DATABASE_PORT = 5432,
-    DATABASE_NAME,
-    DATABASE_USER,
-    DATABASE_PASSWORD,
-  } = process.env;
-
-  const conObject = {
-    host: DATABASE_HOST,
-    port: Number(DATABASE_PORT),
-    user: DATABASE_USER,
-    password: DATABASE_PASSWORD,
-    database: DATABASE_NAME,
-    // NB: `rejectUnauthorized: false` keeps the connection encrypted but skips
-    // certificate validation.
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
-  };
-
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ conObject }),
+      store: new sessionStore({ pool: KyselyPgPool }),
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -165,14 +147,22 @@ export default async function makeApiServer(deps: Dependencies) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Shared signon/logout verify: bind the user lookup to the org named in the
+  // callback path so an assertion authenticating one org can never resolve a
+  // user from another (GHSA-2v93-383c-9fw2).
+  const verify = async (
+    req: Request,
+    profile: Profile | null,
+    done: VerifiedCallback,
+  ) => resolveSamlUser(KyselyPg, deps.Tracer, req, profile, done);
+
   passport.use(
     new MultiSamlStrategy(
       {
         passReqToCallback: true,
         async getSamlOptions(req, done) {
           // orgId path param should be set in the /saml/* route handlers.
-          const rawOrgId = req.params['orgId'];
-          const orgId = typeof rawOrgId === 'string' ? rawOrgId : undefined;
+          const orgId = getOrgIdFromPath(req);
 
           if (!orgId) {
             return done(
@@ -210,52 +200,8 @@ export default async function makeApiServer(deps: Dependencies) {
           });
         },
       },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
+      verify,
+      verify,
     ),
   );
 
@@ -276,7 +222,7 @@ export default async function makeApiServer(deps: Dependencies) {
     },
   );
 
-  passport.serializeUser((user: any, done) => {
+  passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
@@ -422,11 +368,11 @@ export default async function makeApiServer(deps: Dependencies) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
 
         // I don't know if these attributes are necessary, with recordException
-        span.setAttribute(SEMATTRS_EXCEPTION_MESSAGE, err.message);
+        span.setAttribute(ATTR_EXCEPTION_MESSAGE, err.message);
         if (err.stack) {
-          span.setAttribute(SEMATTRS_EXCEPTION_STACKTRACE, err.stack);
+          span.setAttribute(ATTR_EXCEPTION_STACKTRACE, err.stack);
         }
-        span.setAttribute(SEMATTRS_EXCEPTION_TYPE, err.name);
+        span.setAttribute(ATTR_EXCEPTION_TYPE, err.name);
 
         const errors = (() => {
           if (err instanceof AggregateError) {

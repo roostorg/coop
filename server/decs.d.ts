@@ -1,7 +1,13 @@
+declare namespace Express {
+  // Extend Express.User so passport callbacks (serializeUser, etc.) see the
+  // fields we actually use without per-call `as any` casts.
+  interface User {
+    id: string;
+  }
+}
+
 declare module 'homoglyph-search';
 declare module 'nilsimsa';
-
-declare module 'uuid-apikey';
 
 declare interface String {
   toUpperCase<T extends string>(this: T): Uppercase<T>;

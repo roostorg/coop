@@ -18,10 +18,10 @@ import {
   GQLSignalType,
   GQLValueComparator,
   type GQLConditionInput,
+  GQLSignal,
 } from '../../../../graphql/generated';
 import { taggedUnionToOneOfInput } from '../../../../graphql/inputHelpers';
 import { locationAreaToLocationAreaInput } from '../../../../models/locationBank';
-import { CoreSignal } from '../../../../models/signal';
 import { safePick } from '../../../../utils/misc';
 import { isValidRegexString } from '../../../../utils/regex';
 import { CoopInput } from '../../types/enums';
@@ -54,7 +54,7 @@ export type RuleFormItemType = Pick<GQLContentType, 'id'> & {
 export function getEligibleSignalsForInput(
   input: SimplifiedConditionInput,
   ruleContentTypes: readonly RuleFormItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
   isAutomatedRule = false,
 ) {
   let eligibleSignals = allSignals;
@@ -529,7 +529,7 @@ export function ruleHasValidConditions(conditionSet: RuleFormConditionSet) {
 function getTypedLeafConditionFromGQL(
   condition: GQLLeafConditionFieldsFragment,
   selectedContentTypes: readonly RuleFormItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ): RuleFormCondition {
   /** Unfortunately in the RuleFormConfig query, when we query for a
    * derived field spec and fetch different fields based on the
@@ -623,7 +623,7 @@ function getTypedLeafConditionFromGQL(
 export function getTypedConditionSetFromGQL(
   conditionSet: GQLConditionSetFieldsFragment,
   selectedContentTypes: readonly RuleFormItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ): RuleFormConditionSet {
   return {
     ...conditionSet,
@@ -635,7 +635,7 @@ export function getTypedConditionSetFromGQL(
             allSignals,
           )
         : getTypedLeafConditionFromGQL(
-            condition as GQLLeafConditionFieldsFragment,
+            condition,
             selectedContentTypes,
             allSignals,
           ),

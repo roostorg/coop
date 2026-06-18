@@ -3,7 +3,7 @@ import {
   ScalarTypes,
   type Field,
   type FieldType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { type NonEmptyArray } from '../../utils/typescript-types.js';

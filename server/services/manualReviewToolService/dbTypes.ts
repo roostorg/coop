@@ -1,11 +1,11 @@
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
-import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   type FilterableWarehouseDate,
   type WarehouseDate,
 } from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
+import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
   type ConditionSet,
@@ -203,9 +203,10 @@ export type ManualReviewToolServicePg = {
   'manual_review_tool.manual_review_tool_settings': {
     org_id: string;
     requires_policy_for_decisions: boolean;
-    mrt_requires_decision_reason: boolean;
+    mrt_requires_decision_reason_on_action: boolean;
+    mrt_requires_decision_reason_on_ignore: boolean;
     hide_skip_button_for_non_admins: boolean;
-    ignore_callback_url?: string;
+    ignore_callback_url: string | null;
     preview_jobs_view_enabled: boolean;
   };
   'manual_review_tool.job_comments': {

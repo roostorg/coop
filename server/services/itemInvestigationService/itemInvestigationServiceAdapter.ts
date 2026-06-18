@@ -1,5 +1,5 @@
 import { ReadableStream } from 'node:stream/web';
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
@@ -150,6 +150,18 @@ export class ItemInvestigationServiceAdapter {
     latestSubmissionsOnly?: boolean;
   }): AdaptedReturnType<'getItemSubmissionsByCreator'> {
     const raw = this.service.getItemSubmissionsByCreator(opts);
+    return this.#adaptInternalStreamToItemSubmissionsForItem(opts.orgId, raw);
+  }
+
+  getItemSubmissionsByIpAddress(opts: {
+    orgId: string;
+    ipAddress: string;
+    limit?: number;
+    oldestReturnedSubmissionDate?: Date;
+    earliestReturnedSubmissionDate?: Date;
+    latestSubmissionsOnly?: boolean;
+  }): AdaptedReturnType<'getItemSubmissionsByIpAddress'> {
+    const raw = this.service.getItemSubmissionsByIpAddress(opts);
     return this.#adaptInternalStreamToItemSubmissionsForItem(opts.orgId, raw);
   }
 

@@ -5,11 +5,12 @@
  * These types are used by query adapters and services to build
  * type-safe queries against the data warehouse.
  */
-import { type ItemTypeKind } from '@roostorg/types';
+import { type ItemTypeKind } from '@roostorg/coop-types';
 import { type ColumnType } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
+import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import {
   type NormalizedItemData,
   type RawItemData,
@@ -25,8 +26,6 @@ import { type ReportingServiceWarehouseSchema } from '../../services/reportingSe
 import { type JsonOf } from '../../utils/encoding.js';
 import { getUtcDateOnlyString, type DateOnlyString } from '../../utils/time.js';
 import { type NullableKeysOf } from '../../utils/typescript-types.js';
-import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
-
 import {
   type FilterableWarehouseDate,
   type WarehouseDate,
@@ -57,8 +56,12 @@ export function warehouseDateToJson(it: WarehouseDate | DateOnlyString) {
   return typeof it === 'string' ? new Date(it).toISOString() : it.toISOString();
 }
 
-export function warehouseDateToDateOnlyString(it: WarehouseDate | DateOnlyString) {
-  return typeof it === 'string' ? it : getUtcDateOnlyString(warehouseDateToDate(it));
+export function warehouseDateToDateOnlyString(
+  it: WarehouseDate | DateOnlyString,
+) {
+  return typeof it === 'string'
+    ? it
+    : getUtcDateOnlyString(warehouseDateToDate(it));
 }
 
 type UnprefixedPublicTables = {
@@ -148,6 +151,7 @@ export type ItemSubmissionsRow = {
   ITEM_TYPE_SCHEMA_FIELD_ROLES: SchemaFieldRoles;
   ITEM_TYPE_ID: string;
   ITEM_TYPE_SCHEMA: JsonOf<ItemSchema>;
+  ITEM_IP_ADDRESS: string;
   TS: ColumnType<WarehouseDate, number, never>;
   DS: ColumnType<FilterableWarehouseDate, string, never>;
 } & (

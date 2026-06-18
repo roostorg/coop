@@ -2,7 +2,7 @@ import { DownOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useState } from 'react';
 
-import { CoreSignal } from '../../../../../../models/signal';
+import { GQLSignal } from '@/graphql/generated';
 import RuleFormSignalModal from '../../../../rules/rule_form/signal_modal/RuleFormSignalModal';
 import {
   ConditionLocation,
@@ -15,13 +15,13 @@ export default function ManualReviewQueueRuleConditionSignal(props: {
   condition: RuleFormLeafCondition;
   location: ConditionLocation;
   editing: boolean;
-  onUpdateSignal: (signal: CoreSignal, subcategory?: string) => void;
+  onUpdateSignal: (signal: GQLSignal, subcategory?: string) => void;
 }) {
   const { condition, location, editing, onUpdateSignal } = props;
   const eligibleSignals = condition.eligibleSignals;
   const [modalInfo, setModalInfo] = useState<{
     visible: boolean;
-    initialSelectedSignal: CoreSignal | undefined;
+    initialSelectedSignal: GQLSignal | undefined;
   }>({
     visible: false,
     initialSelectedSignal: undefined,

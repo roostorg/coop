@@ -21,6 +21,7 @@ import { typeDefs as policyTypeDefs } from './modules/policy.js';
 import { typeDefs as reportingTypeDefs } from './modules/reporting.js';
 import { typeDefs as reportingRulesTypeDefs } from './modules/reportingRule.js';
 import { typeDefs as retroactionTypeDefs } from './modules/retroaction.js';
+import { typeDefs as rolesTypeDefs } from './modules/roles.js';
 import { typeDefs as routingRulesTypeDefs } from './modules/routingRule.js';
 import { typeDefs as ruleTypeDefs } from './modules/rule.js';
 import { typeDefs as signalTypeDefs } from './modules/signal.js';
@@ -59,11 +60,13 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     RELATED_ITEM
     URL
     POLICY_ID
+    IP_ADDRESS
   }
 
   # This is equivalent to ScalarType, but with 'FULL_ITEM' added
@@ -76,12 +79,14 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     RELATED_ITEM
     URL
     FULL_ITEM
     POLICY_ID
+    IP_ADDRESS
   }
 
   # !! IMPORTANT: when you add a value here, also add it to FieldType !!
@@ -99,6 +104,7 @@ const typeDefs = /* GraphQL */ `
     AUDIO
     IMAGE
     VIDEO
+    MEDIA
     DATETIME
     GEOHASH
     ARRAY
@@ -106,6 +112,7 @@ const typeDefs = /* GraphQL */ `
     RELATED_ITEM
     URL
     POLICY_ID
+    IP_ADDRESS
   }
 
   enum Language {
@@ -331,7 +338,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union InviteUserTokenResponse =
-      InviteUserTokenSuccessResponse
+    | InviteUserTokenSuccessResponse
     | InviteUserTokenExpiredError
     | InviteUserTokenMissingError
 
@@ -419,12 +426,6 @@ const typeDefs = /* GraphQL */ `
     actionedSubmissionsByActionByDay: [CountByActionByDay!]!
   }
 
-  input CreateOrgInput {
-    name: String!
-    email: String!
-    website: String!
-  }
-
   input SendPasswordResetInput {
     email: String!
   }
@@ -451,22 +452,6 @@ const typeDefs = /* GraphQL */ `
     createdAt: DateTime!
   }
 
-  enum RequestDemoInterest {
-    CUSTOM_AI_MODELS
-    MODERATOR_CONSOLE
-    AUTOMATED_ENFORCEMENT
-    COMPLIANCE_TOOLKIT
-  }
-
-  input RequestDemoInput {
-    email: String!
-    company: String!
-    website: String!
-    interests: [RequestDemoInterest!]!
-    ref: String!
-    isFromGoogleAds: Boolean!
-  }
-
   directive @publicResolver on FIELD_DEFINITION
 
   type Query {
@@ -489,8 +474,6 @@ const typeDefs = /* GraphQL */ `
     deleteInvite(id: ID!): Boolean
     approveUser(id: ID!): Boolean
     rejectUser(id: ID!): Boolean
-
-    requestDemo(input: RequestDemoInput!): Boolean @publicResolver
   }
 `;
 
@@ -517,6 +500,7 @@ export default mergeTypeDefs([
   reportingRulesTypeDefs,
   reportingTypeDefs,
   retroactionTypeDefs,
+  rolesTypeDefs,
   routingRulesTypeDefs,
   ruleTypeDefs,
   signalTypeDefs,

@@ -1,4 +1,4 @@
-import { makeDateString } from '@roostorg/types';
+import { makeDateString } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
@@ -104,6 +104,12 @@ export async function buildSubmitReportParamsFromDecision(
     'profileIcon',
     reportedUserData,
   );
+  const reportedUserIp = getFieldValueForRole(
+    reportedUserItemType.schema,
+    reportedUserItemType.schemaFieldRoles,
+    'ipAddress',
+    reportedUserData,
+  );
 
   // Pre-index allMediaItems by (itemId, typeId) so the per-decisionComponent
   // lookup below is O(1) instead of O(n) for every reportedMedia entry. The
@@ -133,20 +139,29 @@ export async function buildSubmitReportParamsFromDecision(
       if (mediaItemType === undefined) {
         throw new Error('Unable to find item type for reported media');
       }
-      // Fall back to "now" when the source row is missing `createdAt`.
-      // This keeps retries submittable for legacy data (predates the field)
-      // better to send the retry timestamp than to permanently block the
-      // report from being submitted to NCMEC at all.
+      const roleCreatedAt = getFieldValueForRole(
+        mediaItemType.schema,
+        mediaItemType.schemaFieldRoles,
+        'createdAt',
+        reportedItem.contentItem.data,
+      );
+      // Fall back to "now" when `createdAt` is missing or unparseable (e.g.
+      // legacy rows that predate the field, or a `createdAt` schema field
+      // role mapped to a non-date column). Better to send the retry
+      // timestamp than to permanently block the report.
       const createdAt =
-        getFieldValueForRole(
-          mediaItemType.schema,
-          mediaItemType.schemaFieldRoles,
-          'createdAt',
-          reportedItem.contentItem.data,
-        ) ?? makeDateString(new Date().toISOString());
+        roleCreatedAt !== undefined && !Number.isNaN(Date.parse(roleCreatedAt))
+          ? roleCreatedAt
+          : makeDateString(new Date().toISOString());
       if (createdAt === undefined) {
         throw new Error('No created at for reported media');
       }
+      const mediaIp = getFieldValueForRole(
+        mediaItemType.schema,
+        mediaItemType.schemaFieldRoles,
+        'ipAddress',
+        reportedItem.contentItem.data,
+      );
       return {
         id: it.id,
         typeId: it.typeId,
@@ -154,6 +169,7 @@ export async function buildSubmitReportParamsFromDecision(
         createdAt,
         industryClassification: it.industryClassification,
         fileAnnotations: it.fileAnnotations,
+        ...(mediaIp ? { ipAddress: mediaIp } : {}),
       };
     }),
   );
@@ -170,6 +186,7 @@ export async function buildSubmitReportParamsFromDecision(
       typeId: reportedItemTypeId,
       ...(displayName ? { displayName } : {}),
       ...(profilePicUrl ? { profilePicture: profilePicUrl.url } : {}),
+      ...(reportedUserIp ? { ipAddress: reportedUserIp } : {}),
     },
     orgId,
     media,

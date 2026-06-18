@@ -1,7 +1,7 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Label } from '@/coop-ui/Label';
 import { DeleteOutlined } from '@ant-design/icons';
-import { isContainerType, type ItemTypeKind } from '@roostorg/types';
+import { isContainerType, type ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select, Tooltip } from 'antd';
 
 import { selectFilterByLabelOption } from '../components/antDesignUtils';
@@ -147,8 +147,8 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                   a === SchemaFieldRoles.NONE
                     ? -1
                     : b === SchemaFieldRoles.NONE
-                    ? 1
-                    : a.localeCompare(b),
+                      ? 1
+                      : a.localeCompare(b),
                 )
                 .map((it) => (
                   <Option
@@ -233,8 +233,8 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               filterOption={selectFilterByLabelOption}
               value={
                 field.type === GQLContainerType.Map
-                  ? field.container?.keyScalarType ?? undefined
-                  : field.container?.valueScalarType ?? undefined
+                  ? (field.container?.keyScalarType ?? undefined)
+                  : (field.container?.valueScalarType ?? undefined)
               }
               onSelect={(value) =>
                 updateFieldState(field, {
@@ -247,8 +247,8 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                       field.type === 'ARRAY'
                         ? value
                         : field.container
-                        ? field.container.valueScalarType
-                        : GQLScalarType.String,
+                          ? field.container.valueScalarType
+                          : GQLScalarType.String,
                   },
                 })
               }
@@ -277,7 +277,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               filterOption={selectFilterByLabelOption}
               value={
                 field.container?.keyScalarType !== null
-                  ? field.container?.valueScalarType ?? undefined
+                  ? (field.container?.valueScalarType ?? undefined)
                   : undefined
               }
               onSelect={(value) => {

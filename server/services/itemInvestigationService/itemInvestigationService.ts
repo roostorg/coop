@@ -1,8 +1,14 @@
 /* eslint-disable max-lines */
-import type { ItemIdentifier } from '@roostorg/types';
+import type { ItemIdentifier } from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
+import {
+  type ContentApiRequestByIpRecord,
+  type ContentApiRequestRecord,
+  type IContentApiRequestsAdapter,
+} from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
 import {
   isRealItemIdentifier,
   itemIdentifierToScyllaItemIdentifier,
@@ -10,8 +16,6 @@ import {
   type Scylla,
   type ScyllaItemIdentifier,
 } from '../../scylla/index.js';
-import type { ContentApiRequestLogEntry } from '../analyticsLoggers/ContentApiLogger.js';
-import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
   fromCorrelationId,
@@ -24,12 +28,15 @@ import {
 } from '../../utils/iterables.js';
 import { DAY_MS, MONTH_MS } from '../../utils/time.js';
 import { tryParseNonEmptyString } from '../../utils/typescript-types.js';
+import type { ContentApiRequestLogEntry } from '../analyticsLoggers/ContentApiLogger.js';
+import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
   type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
+import { type SubmissionId } from '../itemProcessingService/makeItemSubmission.js';
 import { type ReportingRuleExecutionCorrelationId } from '../reportingService/index.js';
 import {
   type ScyllaItemSubmissionsRow,
@@ -45,12 +52,6 @@ import {
   getSyntheticThreadId,
   partitionLatestAndPriorSubmissions,
 } from './utils.js';
-import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
-import {
-  type ContentApiRequestRecord,
-  type IContentApiRequestsAdapter,
-} from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
-import { type SubmissionId } from '../itemProcessingService/makeItemSubmission.js';
 
 /**
  * The ItemInvestigationService API exposes `limit` parameters
@@ -207,6 +208,20 @@ export class ItemInvestigationService {
           ]
         : [];
 
+    // Denormalize the IP for the `item_submission_by_ip` MV. Trim to null for
+    // blanks: it's part of the partition key, so empty strings would hot-spot
+    // and whitespace would miss trimmed lookups.
+    const rawIpAddress = getFieldValueForRole(
+      itemType.schema,
+      itemType.schemaFieldRoles,
+      'ipAddress',
+      item.data,
+    );
+    const ipAddress =
+      typeof rawIpAddress === 'string' && rawIpAddress.trim() !== ''
+        ? rawIpAddress.trim()
+        : null;
+
     const itemIdentifier = { id: item.itemId, typeId: itemType.id };
     const syntheticThreadId = getSyntheticThreadId(itemIdentifier, threadId);
 
@@ -237,6 +252,7 @@ export class ItemInvestigationService {
         item_type_schema_field_roles: jsonStringify(itemType.schemaFieldRoles),
         item_type_schema: jsonStringify(itemType.schema),
         item_type_schema_variant: itemType.schemaVariant,
+        item_ip_address: ipAddress,
       },
     });
 
@@ -943,6 +959,155 @@ export class ItemInvestigationService {
         break;
       }
       emptyQueryResult = true;
+    }
+  }
+
+  /**
+   * Reverse lookup of items by IP, newest first. Reads the Scylla
+   * `item_submission_by_ip` MV first, then falls back to ClickHouse for older
+   * history, de-duplicating items already seen in Scylla.
+   */
+  async *getItemSubmissionsByIpAddress(opts: {
+    orgId: string;
+    ipAddress: string;
+    limit?: number;
+    oldestReturnedSubmissionDate?: Date;
+    earliestReturnedSubmissionDate?: Date;
+    latestSubmissionsOnly?: boolean;
+  }): AsyncIterable<SubmissionsForItemWithTypeIdentifier> {
+    const {
+      orgId,
+      ipAddress,
+      limit = 100,
+      // Bounds apply to `item_synthetic_created_at` (item `createdAt`, not write
+      // time), so search the full range (TTL bounds Scylla);
+      oldestReturnedSubmissionDate = new Date(0),
+      earliestReturnedSubmissionDate = new Date(Date.now() + DAY_MS),
+      latestSubmissionsOnly = true,
+    } = opts;
+
+    const seenItemKeys = new Set<string>();
+    let returnedItemCount = 0;
+
+    // Tier 1: Scylla hot storage (bounded by the table's ~30-day write TTL).
+    let emptyQueryResult = true;
+    let searchStartDate = earliestReturnedSubmissionDate;
+    const now = Date.now();
+    while (returnedItemCount < limit) {
+      const stream = this.selectStream({
+        from: 'item_submission_by_ip',
+        select: '*',
+        where: [
+          ['org_id', '=', orgId],
+          ['item_ip_address', '=', ipAddress],
+          ['item_synthetic_created_at', '<', searchStartDate],
+          ['item_synthetic_created_at', '>', oldestReturnedSubmissionDate],
+        ],
+        limit: Math.floor(
+          (limit - returnedItemCount) * ARTIFICIAL_LIMIT_MULTIPLIER,
+        ),
+        sortOrder: [['item_synthetic_created_at', 'DESC']],
+      });
+
+      const groupedStream = chunkAsyncIterableByKey(
+        stream,
+        (it: ScyllaItemSubmissionsRow) => jsonStringify(it.item_identifier),
+      );
+
+      for await (const itemGroup of groupedStream) {
+        const { latestSubmission, priorSubmissions } =
+          partitionLatestAndPriorSubmissions(itemGroup);
+        const difference = Math.abs(
+          now - latestSubmission.item_submission_time.getTime(),
+        );
+        this.meter.scyllaRecordAgeHistogram.record(
+          Math.floor(difference / DAY_MS),
+        );
+
+        seenItemKeys.add(jsonStringify(latestSubmission.item_identifier));
+        yield {
+          latestSubmission:
+            dbRowToItemSubmissionWithItemTypeIdentifier(latestSubmission),
+          priorSubmissions: latestSubmissionsOnly
+            ? undefined
+            : priorSubmissions.map(dbRowToItemSubmissionWithItemTypeIdentifier),
+        };
+        returnedItemCount++;
+        emptyQueryResult = false;
+        if (returnedItemCount >= limit) {
+          break;
+        }
+        searchStartDate = latestSubmission.item_synthetic_created_at;
+      }
+      if (emptyQueryResult) {
+        break;
+      }
+      emptyQueryResult = true;
+    }
+
+    if (returnedItemCount >= limit) {
+      return;
+    }
+
+    // Tier 2: ClickHouse analytics warehouse (history beyond Scylla's TTL).
+    const remaining = limit - returnedItemCount;
+    const records = await this.contentApiRequestsAdapter
+      .getSuccessfulRequestsByIpAddress(orgId, ipAddress, {
+        lookbackWindowMs: 6 * MONTH_MS,
+        limit: Math.floor(remaining * ARTIFICIAL_LIMIT_MULTIPLIER),
+      })
+      .catch(() => [] as ContentApiRequestByIpRecord[]);
+
+    // Rows arrive ordered most-recent first, so the first record per item is
+    // its latest submission.
+    const recordsByItem = new Map<string, ContentApiRequestByIpRecord[]>();
+    for (const record of records) {
+      const key = jsonStringify({
+        id: record.itemId,
+        type_id: record.itemTypeId,
+      });
+      if (seenItemKeys.has(key)) {
+        continue;
+      }
+      const group = recordsByItem.get(key) ?? [];
+      group.push(record);
+      recordsByItem.set(key, group);
+    }
+
+    const toSubmission = (record: ContentApiRequestByIpRecord) =>
+      dbRowToItemSubmissionWithItemTypeIdentifier({
+        submission_id: record.submissionId as SubmissionId,
+        item_identifier: {
+          id: tryParseNonEmptyString(record.itemId),
+          type_id: tryParseNonEmptyString(record.itemTypeId),
+        },
+        item_type_version: record.itemTypeVersion,
+        item_creator_identifier:
+          record.itemCreatorId && record.itemCreatorTypeId
+            ? {
+                id: tryParseNonEmptyString(record.itemCreatorId),
+                type_id: tryParseNonEmptyString(record.itemCreatorTypeId),
+              }
+            : ({ id: '', type_id: '' } as const),
+        item_data: record.itemData as JsonOf<NormalizedItemData>,
+        item_submission_time: record.occurredAt,
+        item_type_schema_variant: record.itemTypeSchemaVariant as
+          | 'original'
+          | 'partial',
+      });
+
+    for (const group of recordsByItem.values()) {
+      if (returnedItemCount >= limit) {
+        break;
+      }
+      const [latestRecord, ...priorRecords] = group;
+      yield {
+        latestSubmission: toSubmission(latestRecord),
+        priorSubmissions: latestSubmissionsOnly
+          ? undefined
+          : priorRecords.map(toSubmission),
+      };
+      returnedItemCount++;
     }
   }
 

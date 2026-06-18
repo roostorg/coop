@@ -1,7 +1,4 @@
-import {
-  hasPermission,
-  UserPermission,
-} from '../../services/userManagementService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { type GQLMutationRunRetroactionArgs } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
@@ -43,7 +40,7 @@ const resolvers = {
       if (user == null) {
         throw unauthenticatedError('Authenticated user required');
       }
-      if (!hasPermission(UserPermission.RUN_RETROACTION, user.role)) {
+      if (!user.getPermissions().includes(UserPermission.RUN_RETROACTION)) {
         throw forbiddenError('User not authorized to run retroaction.');
       }
 

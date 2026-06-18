@@ -2,7 +2,7 @@
 import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import {
   types as scyllaTypes,
   type Host as ScyllaHost,
@@ -11,7 +11,7 @@ import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
 import { DynamicPool } from 'node-worker-threads-pool';
-import pg from 'pg';
+import type pg from 'pg';
 import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
@@ -240,9 +240,15 @@ import {
   type NonEmptyArray,
   type Satisfies,
 } from '../utils/typescript-types.js';
+import { createPgPool } from './createPgPool.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
-import { isEnvTrue, register, safeGetEnvVar } from './utils.js';
+import {
+  isEnvTrue,
+  register,
+  safeGetEnvNonNegativeInt,
+  safeGetEnvVar,
+} from './utils.js';
 
 // the otel instrumentation currently intercepts require statements. support for
 // esm support is experimental so we should wait until it is stable
@@ -304,6 +310,11 @@ export interface Dependencies {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   KyselyPgReadReplica: Kysely<any>;
 
+  // The shared master `pg.Pool` that `KyselyPg` is built on. Exposed so
+  // non-Kysely Postgres consumers (e.g., the express-session store) can
+  // share the same pool instead of opening their own.
+  KyselyPgPool: pg.Pool;
+
   // Similar to our Kysely services, we register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
   // of tables it is responsible for / allowed to query.
@@ -326,6 +337,13 @@ export interface Dependencies {
   itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
   IORedis: IORedis.Redis | Cluster;
+  /**
+   * Dedicated ioredis client for the items-async enqueue path. Same Redis
+   * as `IORedis`, but built with `enableOfflineQueue: false` so a
+   * `queue.addBulk` while Redis is unreachable rejects immediately
+   * instead of buffering in-process
+   */
+  IORedisEnqueueNoBuffer: IORedis.Redis | Cluster;
 
   // Loggers
   RuleExecutionLogger: RuleExecutionLogger;
@@ -432,22 +450,59 @@ export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
 export default async function getBottle() {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
-  const getPgPoolTuning = () => ({
-    // pg's default is 10s, which churns connections during quiet periods.
-    idleTimeoutMillis: parseInt(
-      process.env.DATABASE_POOL_IDLE_TIMEOUT_MS ?? '300000',
-    ),
-    // pg's default is 0 (wait forever); fail fast if the db is unreachable.
-    connectionTimeoutMillis: parseInt(
-      process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS ?? '15000',
-    ),
-    // Bound long-running queries instead of letting them hold a pool slot.
-    query_timeout: parseInt(process.env.DATABASE_QUERY_TIMEOUT_MS ?? '1000000'),
-    // Kill sessions sitting idle inside an open transaction (holding locks).
-    idle_in_transaction_session_timeout: parseInt(
-      process.env.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS ?? '300000',
-    ),
-  });
+  const getPgPoolTuning = () => {
+    const statementTimeoutMs =
+      process.env.DATABASE_STATEMENT_TIMEOUT_MS?.trim();
+    const keepAliveInitialDelayMs =
+      process.env.DATABASE_KEEPALIVE_INITIAL_DELAY_MS?.trim();
+    return {
+      // pg's default is 10s, which churns connections during quiet periods.
+      idleTimeoutMillis: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_IDLE_TIMEOUT_MS',
+        300000,
+      ),
+      // pg's default is 0 (wait forever); fail fast if the db is unreachable.
+      connectionTimeoutMillis: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_CONNECTION_TIMEOUT_MS',
+        15000,
+      ),
+      // Client-side bound on long-running queries.
+      query_timeout: safeGetEnvNonNegativeInt(
+        'DATABASE_QUERY_TIMEOUT_MS',
+        1000000,
+      ),
+      // Optional server-side bound; defense in depth alongside `query_timeout`.
+      // Unset => Postgres' own default (no limit).
+      ...(statementTimeoutMs && {
+        statement_timeout: safeGetEnvNonNegativeInt(
+          'DATABASE_STATEMENT_TIMEOUT_MS',
+          0,
+        ),
+      }),
+      // Kill sessions sitting idle inside an open transaction (holding locks).
+      idle_in_transaction_session_timeout: safeGetEnvNonNegativeInt(
+        'DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS',
+        300000,
+      ),
+      // Recycle each client after N seconds to dodge stale connections.
+      // 0 = never expire (default).
+      maxLifetimeSeconds: safeGetEnvNonNegativeInt(
+        'DATABASE_POOL_MAX_LIFETIME_SECONDS',
+        0,
+      ),
+      // TCP keepalive surfaces NAT/LB connection drops as pool errors
+      // (handled by `createPgPool`) rather than as hung queries. Defaults on;
+      // set DATABASE_KEEPALIVE=false to disable.
+      keepAlive:
+        process.env.DATABASE_KEEPALIVE?.trim().toLowerCase() !== 'false',
+      ...(keepAliveInitialDelayMs && {
+        keepAliveInitialDelayMillis: safeGetEnvNonNegativeInt(
+          'DATABASE_KEEPALIVE_INITIAL_DELAY_MS',
+          0,
+        ),
+      }),
+    };
+  };
 
   // NB: this is a function because safeGetEnvVar can throw, so we only want to
   // try to look up the env vars (and throw if they're missing) _if someone
@@ -483,18 +538,25 @@ export default async function getBottle() {
 
   // Pg services.
   //
-  // - 'KyselyPg' is for issuing raw pg queries w/o sequelize (e.g., the queries
-  //   that some of the our "services" issue to pg, to the non-public schemas).
-  //   These queries go to our primary db, which accepts writes.
+  // - 'KyselyPgPool' is the shared `pg.Pool` for the primary (writable) db.
+  //   Non-Kysely Postgres consumers (e.g. the express-session store in
+  //   `api.ts`) inject this so every connection passes through `createPgPool`.
+  //
+  // - 'KyselyPg' is the primary Kysely instance used across services for typed
+  //   pg queries. These queries go to our primary db, which accepts writes.
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
+  bottle.factory('KyselyPgPool', () =>
+    createPgPool(getPgMasterConnectionInfo()),
+  );
+
   bottle.factory(
     'KyselyPg',
-    () =>
+    (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
-          pool: new pg.Pool(getPgMasterConnectionInfo()),
+          pool: container.KyselyPgPool,
           cursor: Cursor,
         }),
         log: kyselyLogLevels,
@@ -506,7 +568,7 @@ export default async function getBottle() {
     () =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
-          pool: new pg.Pool({
+          pool: createPgPool({
             ...getPgMasterConnectionInfo(),
             max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
             host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
@@ -517,7 +579,25 @@ export default async function getBottle() {
       }),
   );
 
-  bottle.factory('IORedis', () =>
+  // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
+  // command with NOAUTH unless credentials are sent, which leaves ioredis stuck
+  // before "ready" and parks commands in the offline queue forever. Local dev
+  // Redis has no password, so only pass credentials when REDIS_PASSWORD is set;
+  // REDIS_USER may be set-but-empty, which means the default user. Shared by the
+  // cluster and single-node paths so both authenticate identically.
+  const redisAuthOptions = (): { username?: string; password?: string } =>
+    process.env.REDIS_PASSWORD
+      ? {
+          ...(process.env.REDIS_USER
+            ? { username: process.env.REDIS_USER }
+            : {}),
+          password: process.env.REDIS_PASSWORD,
+        }
+      : {};
+
+  const makeRedis = (
+    extraOptions: { enableOfflineQueue?: boolean } = {},
+  ): IORedis.Redis | Cluster =>
     safeGetEnvVar('REDIS_USE_CLUSTER') === 'true'
       ? new IORedis.Cluster(
           [
@@ -535,8 +615,8 @@ export default async function getBottle() {
               // Required by BullMQ: its workers use blocking Redis commands
               // that would otherwise be misinterpreted as timed-out requests.
               maxRetriesPerRequest: null,
-              username: safeGetEnvVar('REDIS_USER'),
-              password: safeGetEnvVar('REDIS_PASSWORD'),
+              ...redisAuthOptions(),
+              ...extraOptions,
             },
           },
         )
@@ -546,10 +626,19 @@ export default async function getBottle() {
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
+          ...redisAuthOptions(),
           ...(isEnvTrue('REDIS_TLS')
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
-        }),
+          ...extraOptions,
+        });
+
+  bottle.factory('IORedis', () => makeRedis());
+  // With `enableOfflineQueue: false`, a `queue.addBulk` while Redis is
+  // unreachable rejects immediately instead of resolving against the
+  // in-process buffer. fails enqueue early with "couldn't enqueue".
+  bottle.factory('IORedisEnqueueNoBuffer', () =>
+    makeRedis({ enableOfflineQueue: false }),
   );
 
   // Data Warehouse abstraction layer
@@ -616,7 +705,10 @@ export default async function getBottle() {
   });
 
   bottle.factory('itemSubmissionQueueBulkWrite', (container) =>
-    makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_QUEUE_NAME),
+    makeItemSubmissionBulkWrite(
+      container.IORedisEnqueueNoBuffer,
+      ITEM_SUBMISSION_QUEUE_NAME,
+    ),
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
@@ -864,6 +956,7 @@ export default async function getBottle() {
             item,
             actorId,
             actorEmail,
+            decisionReason,
           } = params;
           const actionIds = decisionActions.map((action) => action.actionId);
           const [actions, policies] = await Promise.all([
@@ -929,6 +1022,7 @@ export default async function getBottle() {
                 targetItem: itemSubmission,
                 actorId,
                 actorEmail,
+                decisionReason,
               },
             )
             .catch((error) => {
@@ -1122,6 +1216,7 @@ export default async function getBottle() {
                   item: job.payload.item,
                   actorId: reviewerId,
                   actorEmail: reviewerEmail,
+                  decisionReason,
                 });
                 break;
               case 'SUBMIT_NCMEC_REPORT': {
@@ -1551,6 +1646,7 @@ export default async function getBottle() {
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
             'IORedis',
+            'IORedisEnqueueNoBuffer',
             // Storage abstractions
             'DataWarehouse',
             'DataWarehouseDialect',
@@ -1607,7 +1703,24 @@ export default async function getBottle() {
                   ) {
                     await it.destroy();
                   } else if ('quit' in it && typeof it.quit === 'function') {
-                    await it.quit();
+                    // ioredis `quit()` writes a QUIT command to the wire. On
+                    // a client built with `enableOfflineQueue: false`, that
+                    // throws synchronously if the stream isn't writeable
+                    // (e.g. the connection never opened, as is common in
+                    // unit tests). Fall back to a hard disconnect in that
+                    // case so shutdown doesn't fail.
+                    try {
+                      await it.quit();
+                    } catch (err) {
+                      if (
+                        'disconnect' in it &&
+                        typeof it.disconnect === 'function'
+                      ) {
+                        it.disconnect();
+                      } else {
+                        throw err;
+                      }
+                    }
                   } else if (
                     'flushPendingWrites' in it &&
                     typeof it.flushPendingWrites === 'function'

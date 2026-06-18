@@ -7,7 +7,7 @@ import {
   isMediaType,
   ScalarType,
   ScalarTypeRuntimeType,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 import isPlainObject from 'lodash/isPlainObject';
 import { useState } from 'react';
 import ReactAudioPlayer from 'react-audio-player';
@@ -16,10 +16,14 @@ import { Link } from 'react-router-dom';
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 
 import {
+  GQLContentItem,
+  GQLContentSchemaFieldRoles,
   GQLItemType,
+  GQLThreadItem,
+  GQLThreadSchemaFieldRoles,
   GQLUserItem,
   GQLUserSchemaFieldRoles,
-  useGQLGetUserItemsQuery,
+  useGQLGetRelatedItemsQuery,
   useGQLItemTypeHiddenFieldsQuery,
   useGQLPersonalSafetySettingsQuery,
 } from '../../../../../graphql/generated';
@@ -29,6 +33,52 @@ import { parseDatetimeToReadableStringInCurrentTimeZone } from '../../../../../u
 import ManualReviewJobContentBlurableImage from '../ManualReviewJobContentBlurableImage';
 import ManualReviewJobContentBlurableVideo from '../ManualReviewJobContentBlurableVideo';
 import { BlurStrength } from './ncmec/NCMECMediaViewer';
+
+// Best-effort media-kind inference from a URL's file extension. Mirrors the
+// server's `detectMediaKindFromUrl` so the review tool can still render a
+// preview when a MEDIA value's `mediaType` is absent — e.g. items submitted
+// before the field became MEDIA, or legacy data missing the resolved kind.
+const MEDIA_EXTENSION_TO_KIND: Readonly<Record<string, ScalarType>> = {
+  jpg: 'IMAGE',
+  jpeg: 'IMAGE',
+  png: 'IMAGE',
+  gif: 'IMAGE',
+  webp: 'IMAGE',
+  bmp: 'IMAGE',
+  svg: 'IMAGE',
+  avif: 'IMAGE',
+  heic: 'IMAGE',
+  heif: 'IMAGE',
+  tif: 'IMAGE',
+  tiff: 'IMAGE',
+  mp4: 'VIDEO',
+  m4v: 'VIDEO',
+  mov: 'VIDEO',
+  webm: 'VIDEO',
+  mkv: 'VIDEO',
+  avi: 'VIDEO',
+  flv: 'VIDEO',
+  mp3: 'AUDIO',
+  m4a: 'AUDIO',
+  wav: 'AUDIO',
+  aac: 'AUDIO',
+  flac: 'AUDIO',
+  opus: 'AUDIO',
+  wma: 'AUDIO',
+};
+
+function inferMediaKindFromUrl(url: string): ScalarType | null {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+  const dot = pathname.lastIndexOf('.');
+  if (dot < 0 || dot === pathname.length - 1) return null;
+  const ext = pathname.slice(dot + 1).toLowerCase();
+  return MEDIA_EXTENSION_TO_KIND[ext] ?? null;
+}
 
 type FieldsComponentOptions = {
   hideLabels?: boolean;
@@ -110,7 +160,7 @@ function TableRowComponent(props: {
     type === 'RELATED_ITEM' && value
       ? itemTypes.find((itemType) => itemType.id === value.typeId)?.__typename
       : undefined;
-  const { data: userItem } = useGQLGetUserItemsQuery({
+  const { data: relatedItemData } = useGQLGetRelatedItemsQuery({
     variables: {
       itemIdentifiers: [
         {
@@ -120,7 +170,7 @@ function TableRowComponent(props: {
         },
       ],
     },
-    skip: type !== 'RELATED_ITEM' && relatedItemKind !== 'UserItemType',
+    skip: type !== 'RELATED_ITEM' || value == null,
   });
 
   if (value == null) {
@@ -157,6 +207,29 @@ function TableRowComponent(props: {
         </div>
       );
     }
+    case 'IP_ADDRESS': {
+      // Make the IP clickable so a moderator can pivot to every other item
+      // associated with the same IP (ban evasion, coordinated abuse, etc.).
+      return (
+        <div className="flex flex-col whitespace-normal align-top text-start">
+          {label ? (
+            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+              {label}
+            </div>
+          ) : null}
+          <Link
+            className="cursor-pointer break-all"
+            to={`/dashboard/manual_review/investigation?ip=${encodeURIComponent(
+              String(value),
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {String(value)}
+          </Link>
+        </div>
+      );
+    }
     case 'USER_ID': {
       return (
         <div className="align-top text-start min-w-0">
@@ -176,10 +249,15 @@ function TableRowComponent(props: {
       if (url == null) {
         return <NotProvidedComponent />;
       }
-      
-      // Extract matched banks if available
-      const matchedBanks = (value as any)?.matchedBanks;
-      const hasMatches = Array.isArray(matchedBanks) && matchedBanks.length > 0;
+
+      // Extract matched banks if available, normalizing to a string[] so the
+      // render path below always has a concrete array to map over.
+      const rawMatchedBanks = (value as { matchedBanks?: string[] })
+        .matchedBanks;
+      const matchedBanks = Array.isArray(rawMatchedBanks)
+        ? rawMatchedBanks
+        : [];
+      const hasMatches = matchedBanks.length > 0;
 
       return (
         <div className="flex flex-col px-2 align-top text-start">
@@ -194,15 +272,15 @@ function TableRowComponent(props: {
               blurStrength: unblurAllMedia
                 ? (0 as const)
                 : safetySettings?.moderatorSafetyBlurLevel
-                ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
-                : (2 as const),
+                  ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
+                  : (2 as const),
               grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
             }}
           />
           {label ? <div className="font-bold">{label}</div> : null}
           {hasMatches && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {matchedBanks.map((bankName: string) => (
+              {matchedBanks.map((bankName) => (
                 <span
                   key={bankName}
                   className="inline-block px-2 py-0.5 text-s font-large bg-gray-200 rounded"
@@ -232,14 +310,89 @@ function TableRowComponent(props: {
               blurStrength: unblurAllMedia
                 ? (0 as const)
                 : safetySettings?.moderatorSafetyBlurLevel
-                ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
-                : (2 as const),
+                  ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
+                  : (2 as const),
               maxWidth: maxWidthVideo,
               maxHeight: maxHeightVideo,
               muted: safetySettings?.moderatorSafetyMuteVideo ?? true,
             }}
           />
           {label ? <div className="font-bold">{label}</div> : null}
+        </div>
+      );
+    }
+    case 'MEDIA': {
+      // Polymorphic field — render with the kind detected at coercion time.
+      // When that's missing (legacy data, or items submitted before the field
+      // became MEDIA), fall back to inferring the kind from the URL extension,
+      // and only render a plain link if even that doesn't resolve.
+      const url = value?.url;
+      if (url == null) {
+        return <NotProvidedComponent />;
+      }
+      const resolvedMediaType = value.mediaType ?? inferMediaKindFromUrl(url);
+      if (resolvedMediaType === 'IMAGE') {
+        return (
+          <div className="flex flex-col px-2 align-top text-start">
+            <ManualReviewJobContentBlurableImage
+              url={url}
+              options={{
+                maxWidth: maxWidthImage,
+                maxHeight: maxHeightImage,
+                shouldBlur: !(
+                  unblurAllMedia ||
+                  safetySettings?.moderatorSafetyBlurLevel === 0
+                ),
+                blurStrength: unblurAllMedia
+                  ? (0 as const)
+                  : safetySettings?.moderatorSafetyBlurLevel
+                    ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
+                    : (2 as const),
+                grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+              }}
+            />
+            {label ? <div className="font-bold">{label}</div> : null}
+          </div>
+        );
+      }
+      if (resolvedMediaType === 'VIDEO') {
+        return (
+          <div className="p-2 align-top text-start">
+            <ManualReviewJobContentBlurableVideo
+              url={url}
+              options={{
+                shouldBlur: !(
+                  unblurAllMedia ||
+                  safetySettings?.moderatorSafetyBlurLevel === 0
+                ),
+                blurStrength: unblurAllMedia
+                  ? (0 as const)
+                  : safetySettings?.moderatorSafetyBlurLevel
+                    ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
+                    : (2 as const),
+                maxWidth: maxWidthVideo,
+                maxHeight: maxHeightVideo,
+                muted: safetySettings?.moderatorSafetyMuteVideo ?? true,
+              }}
+            />
+            {label ? <div className="font-bold">{label}</div> : null}
+          </div>
+        );
+      }
+      if (resolvedMediaType === 'AUDIO') {
+        return (
+          <div className="flex flex-col px-2 align-top text-start">
+            {label ? <div className="pr-3 font-bold">{label}</div> : null}
+            <ReactAudioPlayer src={url} autoPlay controls />
+          </div>
+        );
+      }
+      return (
+        <div className="align-top text-start">
+          {label ? <div className="pr-3 font-bold">{label}</div> : null}
+          <a rel="noreferrer" href={url} target="_blank">
+            {url}
+          </a>
         </div>
       );
     }
@@ -267,28 +420,43 @@ function TableRowComponent(props: {
         __throw(new Error(`Could not find item type for ID ${value.typeId}`));
       }
 
+      // Resolve a human-readable title for every related-item kind via its
+      // `displayName` schema role (not just users). The profile icon role only
+      // exists on user types, so it stays user-only.
       let displayName: string | undefined;
       let profilePhoto: { url: string } | undefined;
-      const user = userItem?.latestItemSubmissions[0] as GQLUserItem;
-      if (relatedItemKind === 'UserItemType' && user !== undefined) {
-        displayName = userItem
-          ? getFieldValueForRole<GQLUserSchemaFieldRoles, 'displayName'>(
-              {
-                data: user.data,
-                type: user.type,
-              },
-              'displayName',
-            )
-          : undefined;
-        profilePhoto = userItem
-          ? getFieldValueForRole<GQLUserSchemaFieldRoles, 'profileIcon'>(
-              {
-                data: user.data,
-                type: user.type,
-              },
-              'profileIcon',
-            )
-          : undefined;
+      const relatedItem = relatedItemData?.latestItemSubmissions[0];
+      switch (relatedItem?.__typename) {
+        case 'UserItem': {
+          const user = relatedItem as GQLUserItem;
+          displayName = getFieldValueForRole<
+            GQLUserSchemaFieldRoles,
+            'displayName'
+          >({ data: user.data, type: user.type }, 'displayName');
+          profilePhoto = getFieldValueForRole<
+            GQLUserSchemaFieldRoles,
+            'profileIcon'
+          >({ data: user.data, type: user.type }, 'profileIcon');
+          break;
+        }
+        case 'ContentItem': {
+          const content = relatedItem as GQLContentItem;
+          displayName = getFieldValueForRole<
+            GQLContentSchemaFieldRoles,
+            'displayName'
+          >({ data: content.data, type: content.type }, 'displayName');
+          break;
+        }
+        case 'ThreadItem': {
+          const thread = relatedItem as GQLThreadItem;
+          displayName = getFieldValueForRole<
+            GQLThreadSchemaFieldRoles,
+            'displayName'
+          >({ data: thread.data, type: thread.type }, 'displayName');
+          break;
+        }
+        default:
+          break;
       }
       return (
         <div className="flex flex-row align-top text-start">
@@ -347,9 +515,11 @@ function FieldComponent(props: {
     case 'STRING':
     case 'USER_ID':
     case 'VIDEO':
+    case 'MEDIA':
     case 'RELATED_ITEM':
     case 'URL':
     case 'POLICY_ID':
+    case 'IP_ADDRESS':
     case 'DATETIME':
       return (
         <div className="py-0" key={data.name}>
@@ -405,9 +575,11 @@ function ContainerComponent(props: {
             case 'USER_ID':
             case 'DATETIME':
             case 'POLICY_ID':
+            case 'IP_ADDRESS':
               return true;
             case 'AUDIO':
             case 'IMAGE':
+            case 'MEDIA':
             case 'RELATED_ITEM':
             case 'URL':
             case 'VIDEO':
@@ -424,7 +596,7 @@ function ContainerComponent(props: {
             }));
       }
       case 'MAP': {
-        const mapValue = data.value as { [key: string]: ScalarTypeRuntimeType };
+        const mapValue = data.value;
         return isPlainObject(mapValue)
           ? Object.keys(mapValue).map((key) => ({
               value: mapValue[key],
@@ -445,6 +617,8 @@ function ContainerComponent(props: {
       case 'RELATED_ITEM':
       case 'URL':
       case 'POLICY_ID':
+      case 'IP_ADDRESS':
+      case 'MEDIA':
       case 'VIDEO': {
         throw Error('Cannot call container component with scalar field');
       }
@@ -510,7 +684,8 @@ function ContainerComponent(props: {
         className={` ${
           data.container!.valueScalarType === 'IMAGE' ||
           data.container!.valueScalarType === 'VIDEO' ||
-          data.container!.valueScalarType === 'AUDIO'
+          data.container!.valueScalarType === 'AUDIO' ||
+          data.container!.valueScalarType === 'MEDIA'
             ? ''
             : 'flex-col'
         } flex overflow-x-scroll border-slate-200 rounded p-1.5 ${

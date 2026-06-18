@@ -8,7 +8,7 @@ import {
   type ScalarType,
   type ScalarTypeRuntimeType,
   type TaggedScalar,
-} from '@roostorg/types';
+} from '@roostorg/coop-types';
 
 import { hasOwn } from '../../utils/misc.js';
 import {
@@ -40,8 +40,8 @@ export function getValuesFromFields(
     return Array.isArray(fieldValue)
       ? fieldValue
       : fieldValue !== undefined
-      ? [fieldValue]
-      : [];
+        ? [fieldValue]
+        : [];
   });
 }
 

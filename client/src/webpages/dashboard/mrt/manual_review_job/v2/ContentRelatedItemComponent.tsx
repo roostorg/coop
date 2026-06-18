@@ -1,7 +1,7 @@
 import { useGQLGetRelatedItemsQuery } from '@/graphql/generated';
 import { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 
 import FieldsComponent from './ManualReviewJobFieldsComponent';
 
@@ -52,6 +52,9 @@ gql`
               valueScalarType
             }
           }
+          schemaFieldRoles {
+            displayName
+          }
         }
       }
       ... on ThreadItem {
@@ -71,6 +74,9 @@ gql`
               keyScalarType
               valueScalarType
             }
+          }
+          schemaFieldRoles {
+            displayName
           }
         }
       }

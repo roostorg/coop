@@ -36,8 +36,8 @@ import {
   useGQLRuleQuery,
   useGQLUpdateContentRuleMutation,
   useGQLUpdateUserRuleMutation,
-} from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
+  GQLSignal,
+} from '@/graphql/generated';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { DAY, HOUR, MONTH, WEEK } from '../../../../utils/time';
@@ -172,6 +172,7 @@ export const ITEM_TYPE_FRAGMENT = gql`
         profileIcon
         backgroundImage
         isDeleted
+        ipAddress
       }
     }
     ... on ContentItemType {
@@ -182,6 +183,7 @@ export const ITEM_TYPE_FRAGMENT = gql`
         createdAt
         creatorId
         isDeleted
+        ipAddress
       }
     }
     ... on ThreadItemType {
@@ -190,6 +192,7 @@ export const ITEM_TYPE_FRAGMENT = gql`
         createdAt
         creatorId
         isDeleted
+        ipAddress
       }
     }
   }
@@ -639,7 +642,6 @@ export default function RuleForm() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const [form] = useForm();
-  
 
   const onDeleteRule = (id: string) => {
     deleteRule({
@@ -674,7 +676,7 @@ export default function RuleForm() {
             rule.__typename === 'ContentRule' ? rule.itemTypes : [],
           conditionSet: rule.conditionSet,
           allActions,
-          allSignals: allSignals satisfies readonly CoreSignal[],
+          allSignals: allSignals satisfies readonly GQLSignal[],
           policyIds: rule.policies.map((it) => it.id),
           tags: (rule.tags ?? []).filter((tag) => tag) as string[],
           maxDailyActions: rule.maxDailyActions ?? null,
@@ -915,7 +917,9 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
+          expirationTime: state.expirationTime
+            ? format(state.expirationTime, 'yyyy-MM-dd HH:mm')
+            : undefined,
         },
       },
       refetchQueries: [namedOperations.Query.Rules],
@@ -939,7 +943,9 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
+          expirationTime: state.expirationTime
+            ? format(state.expirationTime, 'yyyy-MM-dd HH:mm')
+            : undefined,
         },
       },
       refetchQueries: [
@@ -962,7 +968,9 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
+          expirationTime: state.expirationTime
+            ? format(state.expirationTime, 'yyyy-MM-dd HH:mm')
+            : undefined,
         },
       },
       refetchQueries: [namedOperations.Query.Rules],
@@ -985,7 +993,9 @@ export default function RuleForm() {
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
-          expirationTime: state.expirationTime ? format(state.expirationTime, 'yyyy-MM-dd HH:mm') : undefined,
+          expirationTime: state.expirationTime
+            ? format(state.expirationTime, 'yyyy-MM-dd HH:mm')
+            : undefined,
         },
       },
       refetchQueries: [
@@ -1011,7 +1021,7 @@ export default function RuleForm() {
           (id: string) => allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
-        allSignals: allSignals satisfies readonly CoreSignal[],
+        allSignals: allSignals satisfies readonly GQLSignal[],
         form,
       },
     });
@@ -1647,10 +1657,17 @@ export default function RuleForm() {
       />
       {!state.expirationEnabled && <div style={{ height: '12px' }} />}
       {state.expirationEnabled && (
-        <div className="flex flex-wrap items-center mt-2 gap-1" style={{ width: '80%' }}>
+        <div
+          className="flex flex-wrap items-center mt-2 gap-1"
+          style={{ width: '80%' }}
+        >
           <input
             type="datetime-local"
-            value={state.expirationTime ? format(state.expirationTime, "yyyy-MM-dd'T'HH:mm") : ''}
+            value={
+              state.expirationTime
+                ? format(state.expirationTime, "yyyy-MM-dd'T'HH:mm")
+                : ''
+            }
             className="mr-4 h-8 px-3 py-1 border border-solid border-slate-300 rounded-lg text-sm text-slate-700 focus:border-coop-blue focus:outline-none"
             onChange={(e) =>
               dispatch({
@@ -1716,14 +1733,14 @@ export default function RuleForm() {
                 !canEditLiveRules
                   ? "To edit Live rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
                   : !canEditNonLiveRules
-                  ? "To edit rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
-                  : !actionsSelected
-                  ? 'Please select at least one action.'
-                  : hasInvalidThreshold
-                  ? 'At least one threshold has an invalid input.'
-                  : !conditionsValid
-                  ? 'This rule only has user-based conditions, but rules must contain at least one content-based condition.'
-                  : undefined
+                    ? "To edit rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
+                    : !actionsSelected
+                      ? 'Please select at least one action.'
+                      : hasInvalidThreshold
+                        ? 'At least one threshold has an invalid input.'
+                        : !conditionsValid
+                          ? 'This rule only has user-based conditions, but rules must contain at least one content-based condition.'
+                          : undefined
               }
               disabledTooltipPlacement="bottomLeft"
             />
@@ -1884,8 +1901,8 @@ export default function RuleForm() {
                   ? 'Create User Rule'
                   : 'Create Rule'
                 : isUserRule
-                ? 'Update User Rule'
-                : 'Update Rule';
+                  ? 'Update User Rule'
+                  : 'Update Rule';
             })()}
             // topRightButton={ruleTypeSelector}
           />

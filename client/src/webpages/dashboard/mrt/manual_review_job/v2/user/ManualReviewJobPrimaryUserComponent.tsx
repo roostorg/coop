@@ -2,7 +2,7 @@ import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
 import { WarningFilled } from '@ant-design/icons';
-import { ItemIdentifier } from '@roostorg/types';
+import { ItemIdentifier } from '@roostorg/coop-types';
 import { useState } from 'react';
 
 import CoopModal from '../../../../components/CoopModal';
@@ -27,7 +27,6 @@ import { convertRelatedItemToFieldData } from './ManualReviewJobUserUtils';
 export default function ManualReviewJobPrimaryUserComponent(props: {
   user: GQLUserItem | ItemIdentifier;
   unblurAllMedia: boolean;
-  userScore: number | undefined;
   allItemTypes: readonly GQLItemType[];
   allActions: readonly Pick<
     ManualReviewJobAction,
@@ -46,7 +45,6 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
   const {
     user,
     unblurAllMedia,
-    userScore,
     allItemTypes,
     allActions,
     allPolicies,
@@ -181,8 +179,12 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
         <FieldsComponent
           fields={[
             ...convertRelatedItemToFieldData(
-              { id: user.id, typeId: user.type.id, name: 'User Score' },
-              userScore,
+              {
+                id: user.id,
+                typeId: user.type.id,
+                name: user.type.name,
+              },
+              fieldData.map((it) => it.name),
             ),
             ...fieldData,
           ]}

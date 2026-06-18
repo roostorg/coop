@@ -4,8 +4,7 @@ import cloneDeep from 'lodash/cloneDeep';
 
 import { selectFilterByLabelOption } from '../../components/antDesignUtils';
 
-import { GQLConditionConjunction } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
+import { GQLConditionConjunction, GQLSignal } from '../../../../graphql/generated';
 import {
   hasNestedConditionSets,
   removeConditionSet,
@@ -33,7 +32,7 @@ const { Option } = Select;
 export default function ManualReviewQueueRoutingRuleForm(props: {
   rule: EditableRoutingRule;
   itemTypes: readonly RoutingRuleItemType[];
-  signals: readonly CoreSignal[];
+  signals: readonly GQLSignal[];
   queues: readonly RoutingRuleQueue[];
   editing: boolean;
   addSelectedItemTypeId: (itemTypeId: string) => void;
@@ -152,7 +151,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
   const renderConditionSet = (opts: {
     conditionSet: RuleFormConditionSet;
     conditionSetIndex: number;
-    signals: readonly CoreSignal[];
+    signals: readonly GQLSignal[];
     parentConditionSet?: RuleFormConditionSet;
   }) => {
     const { conditionSet, conditionSetIndex, signals, parentConditionSet } = opts;

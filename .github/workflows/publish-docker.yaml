@@ -1,0 +1,220 @@
+name: Publish Docker Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'client/**'
+      - 'db/**'
+      - 'Dockerfile'
+      - 'client/Dockerfile'
+      - '.github/workflows/publish-docker.yaml'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional semver version tag to publish (e.g. 1.0.0), for backfilling a release. Leave blank for an SHA-only build; does not move :latest.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Avoid redundant concurrent builds for the same ref (expensive multi-arch).
+# Keyed per-ref so releases (tag refs) never cancel main builds.
+concurrency:
+  group: publish-docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  # Shared tag policy: release -> version tags + auto `latest` (newest
+  # non-prerelease); main -> `edge` + sha; manual dispatch -> sha (+ optional
+  # `version`). Use `github.event.inputs` since `inputs` is unset on push/release.
+  TAGS: |
+    type=sha,prefix=
+    type=edge,branch=main,enable=${{ github.event_name != 'workflow_dispatch' }}
+    type=ref,event=tag
+    type=semver,pattern={{version}}
+    type=semver,pattern={{major}}.{{minor}}
+    type=raw,value=${{ github.event.inputs.version }},enable=${{ github.event.inputs.version != '' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+      db: ${{ steps.filter.outputs.db }}
+    steps:
+      # Reject arbitrary dispatch input so it can't become an image tag like
+      # `coop-server:squirtle`. Passed via env to avoid shell injection.
+      - name: Validate version input
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid version input. Expected semver like 1.2.3 or v1.2.3."
+            exit 1
+          fi
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'push'
+        with:
+          filters: |
+            server:
+              - 'server/**'
+              - 'Dockerfile'
+            client:
+              - 'client/**'
+            db:
+              - 'db/**'
+
+      # On release/dispatch, paths-filter is skipped so outputs are empty.
+      # The downstream jobs use != 'false', so empty triggers a build.
+
+  build-server:
+    needs: changes
+    if: needs.changes.outputs.server != 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - target: build_server
+            image: coop-server
+          - target: build_worker_runner
+            image: coop-worker
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: ${{ env.TAGS }}
+
+      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          file: Dockerfile
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_ID=${{ github.sha }}
+          # server + worker share a Dockerfile/intermediate stages: read both
+          # scopes for reuse, write only our own to avoid concurrent-write races.
+          cache-from: |
+            type=gha,scope=coop-server
+            type=gha,scope=coop-worker
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+          platforms: linux/amd64,linux/arm64
+
+  build-client:
+    needs: changes
+    if: needs.changes.outputs.client != 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client
+          tags: ${{ env.TAGS }}
+
+      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: client
+          file: client/Dockerfile
+          target: serve
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_ID=${{ github.sha }}
+          cache-from: type=gha,scope=coop-client
+          cache-to: type=gha,scope=coop-client,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # Bundles the db/ migration files + configs into an image meant to be run as a
+  # one-shot task on deploy.
+  # On push to main it publishes only when something under db/ changed (e.g. a
+  # new migration script). On a release it always publishes a versioned tag.
+  build-migrations:
+    needs: changes
+    if: needs.changes.outputs.db != 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations
+          tags: ${{ env.TAGS }}
+
+      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: db
+          file: db/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=coop-migrations
+          cache-to: type=gha,scope=coop-migrations,mode=max
+          platforms: linux/amd64,linux/arm64

@@ -4,7 +4,7 @@ import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/ite
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
 import { LoadingOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, RelatedItem } from '@roostorg/types';
+import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
 import isEmpty from 'lodash/isEmpty';
 
 import {
@@ -14,6 +14,7 @@ import {
   useGQLGetUserItemsQuery,
 } from '../../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
+import { selectPreferredUserItem } from '../../../../../../utils/manualReviewTool';
 import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
@@ -59,7 +60,6 @@ gql`
               id
             }
             data
-            userScore
           }
         }
       }
@@ -181,13 +181,12 @@ export default function ManualReviewJobRelatedUserComponent(props: {
       },
     });
 
-  const moreInfo =
-    moreInfoData?.partialItems.__typename === 'PartialItemsSuccessResponse' &&
-    moreInfoData.partialItems.items[0].__typename === 'UserItem'
-      ? moreInfoData.partialItems.items[0]
-      : userItemData?.latestItemSubmissions[0]?.__typename === 'UserItem'
-      ? userItemData.latestItemSubmissions[0]
-      : undefined;
+  const moreInfo = selectPreferredUserItem(
+    moreInfoData?.partialItems.__typename === 'PartialItemsSuccessResponse'
+      ? moreInfoData.partialItems.items
+      : undefined,
+    userItemData?.latestItemSubmissions,
+  );
 
   const userItem = userItemData?.latestItemSubmissions?.find(
     (it) => it.__typename === 'UserItem',
@@ -329,7 +328,10 @@ export default function ManualReviewJobRelatedUserComponent(props: {
           <div className="flex justify-start w-full">
             <FieldsComponent
               fields={[
-                ...convertRelatedItemToFieldData(user, userItem?.userScore),
+                ...convertRelatedItemToFieldData(
+                  user,
+                  (userSubmissionItems ?? []).map((it) => it.name),
+                ),
                 ...(userSubmissionItems ?? []),
               ]}
               itemTypeId={user.typeId}
@@ -348,8 +350,8 @@ export default function ManualReviewJobRelatedUserComponent(props: {
                 moreInfoError != null
                   ? 'Error Fetching Data'
                   : moreInfo != null && isEmpty(moreInfo?.data)
-                  ? 'No info returned'
-                  : undefined
+                    ? 'No info returned'
+                    : undefined
               }
             />
           ) : undefined}

@@ -2,7 +2,7 @@ import { DownOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useState } from 'react';
 
-import { CoreSignal } from '../../../../../../models/signal';
+import { GQLSignal } from '@/graphql/generated';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
 import RuleFormSignalModal from '../../signal_modal/RuleFormSignalModal';
 import RuleFormConditionSignalSubcategory from './RuleFormConditionSignalSubcategory';
@@ -10,7 +10,7 @@ import RuleFormConditionSignalSubcategory from './RuleFormConditionSignalSubcate
 export default function RuleFormConditionSignal(props: {
   condition: RuleFormLeafCondition;
   location: ConditionLocation;
-  onUpdateSignal: (signal: CoreSignal) => void;
+  onUpdateSignal: (signal: GQLSignal) => void;
   onUpdateSignalSubcategory: (subcategory: string) => void;
   isAutomatedRule?: boolean;
 }) {
@@ -19,7 +19,7 @@ export default function RuleFormConditionSignal(props: {
   const eligibleSignals = condition.eligibleSignals;
   const [modalInfo, setModalInfo] = useState<{
     visible: boolean;
-    initialSelectedSignal: CoreSignal | undefined;
+    initialSelectedSignal: GQLSignal | undefined;
   }>({
     visible: false,
     initialSelectedSignal: undefined,
@@ -84,7 +84,7 @@ export default function RuleFormConditionSignal(props: {
         visible={modalInfo.visible}
         selectedSignal={modalInfo.initialSelectedSignal}
         allSignals={eligibleSignals}
-        onSelectSignal={(signal: CoreSignal, subcategoryOption?: string) => {
+        onSelectSignal={(signal: GQLSignal, subcategoryOption?: string) => {
           if (
             signal &&
             signal.eligibleSubcategories.length &&

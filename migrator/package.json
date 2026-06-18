@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "rm -rf ./build && npm run build && cp -r script-templates build/script-templates"
   },
@@ -24,7 +25,6 @@
   "license": "ISC",
   "dependencies": {
     "@total-typescript/ts-reset": "^0.6.1",
-    "@types/yargs": "^17.0.24",
     "cassandra-driver": "^4.8.0",
     "sequelize": "^6.37.8",
     "umzug": "^3.0.0",
@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/yargs": "^17.0.24",
     "typescript": "^6.0.3"
   },
   "overrides": {
