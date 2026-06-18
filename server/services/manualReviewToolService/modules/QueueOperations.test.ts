@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 import { uid } from 'uid';
+import { v1 as uuidv1 } from 'uuid';
 
 import getBottle from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
@@ -81,8 +82,10 @@ describe('QueueOperations', () => {
 
       return {
         org,
+        user,
         actions,
         queue,
+        kyselyPg: container.KyselyPg,
         mrtService: container.ManualReviewToolService,
         cleanup: async () => {
           await queuesCleanup();
@@ -405,6 +408,103 @@ describe('QueueOperations', () => {
         userId: attacker.user.id,
       });
       expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
+    },
+  );
+
+  // Regression: deleting a queue that a routing rule points to used to silently
+  // cascade-delete the rule, breaking routing for the org. The FK is now
+  // RESTRICT, so the service throws QueueHasDependentRoutingRulesError instead.
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue throws QueueHasDependentRoutingRulesError when a routing rule references the queue',
+    async ({ org, user, mrtService, kyselyPg }) => {
+      const secondQueue = await mrtService.createManualReviewQueue({
+        name: `delete-test-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        hiddenActionIds: [],
+        isAppealsQueue: false,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+
+      await kyselyPg
+        .insertInto('manual_review_tool.routing_rules')
+        .values({
+          id: uuidv1(),
+          org_id: org.id,
+          name: 'block-deletion-rule',
+          description: null,
+          status: 'LIVE',
+          condition_set: { conditions: [], conjunction: 'AND' },
+          destination_queue_id: secondQueue.id,
+          creator_id: user.id,
+          sequence_number: 99,
+        })
+        .execute();
+
+      await expect(
+        mrtService.deleteManualReviewQueue(org.id, secondQueue.id),
+      ).rejects.toMatchObject({ name: 'QueueHasDependentRoutingRulesError' });
+
+      // Clean up manually since the queue was not deleted.
+      await kyselyPg
+        .deleteFrom('manual_review_tool.routing_rules')
+        .where('destination_queue_id', '=', secondQueue.id)
+        .execute();
+      await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
+        org.id,
+        secondQueue.id,
+      );
+    },
+  );
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue throws QueueHasDependentRoutingRulesError when an appeals routing rule references the queue',
+    async ({ org, user, mrtService, kyselyPg }) => {
+      const secondQueue = await mrtService.createManualReviewQueue({
+        name: `delete-test-appeals-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        hiddenActionIds: [],
+        isAppealsQueue: false,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+
+      await kyselyPg
+        .insertInto('manual_review_tool.appeals_routing_rules')
+        .values({
+          id: uuidv1(),
+          org_id: org.id,
+          name: 'block-deletion-appeals-rule',
+          description: null,
+          status: 'LIVE',
+          condition_set: { conditions: [], conjunction: 'AND' },
+          destination_queue_id: secondQueue.id,
+          creator_id: user.id,
+          sequence_number: 99,
+        })
+        .execute();
+
+      await expect(
+        mrtService.deleteManualReviewQueue(org.id, secondQueue.id),
+      ).rejects.toMatchObject({ name: 'QueueHasDependentRoutingRulesError' });
+
+      // Clean up manually since the queue was not deleted.
+      await kyselyPg
+        .deleteFrom('manual_review_tool.appeals_routing_rules')
+        .where('destination_queue_id', '=', secondQueue.id)
+        .execute();
+      await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
+        org.id,
+        secondQueue.id,
+      );
     },
   );
 });
