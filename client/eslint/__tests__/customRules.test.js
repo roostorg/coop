@@ -2,23 +2,27 @@ const { Linter } = require('eslint');
 const rule = require('../no-casting-in-getFieldValueForRole');
 
 const linter = new Linter();
-linter.defineRule('no-casting-in-getFieldValueForRole', rule);
 
 const runLint = (code) => {
   const messages = linter.verify(code, {
-    rules: {
-      'no-casting-in-getFieldValueForRole': 'error',
+    plugins: {
+      custom: {
+        rules: {
+          'no-casting-in-getFieldValueForRole': rule,
+        },
+      },
     },
-    parserOptions: { ecmaVersion: 2015, sourceType: 'module' },
+    rules: {
+      'custom/no-casting-in-getFieldValueForRole': 'error',
+    },
+    languageOptions: { ecmaVersion: 2015, sourceType: 'module' },
   });
   return messages;
 };
 
 describe('no-casting-in-getFieldValueForRole rule', () => {
   it('should pass on valid cases', () => {
-    const validCodes = [
-      `getFieldValueForRole(reportedItem, 'displayName')`,
-    ];
+    const validCodes = [`getFieldValueForRole(reportedItem, 'displayName')`];
 
     validCodes.forEach((code) => {
       expect(runLint(code)).toHaveLength(0);

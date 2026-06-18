@@ -30,7 +30,7 @@ export const INTEGRATION_CONFIGS: IntegrationConfig[] = [
   },
   {
     name: 'OPEN_AI',
-    title: 'OpenAI',
+    title: 'OpenAI Moderation API',
     logo: OpenAILogo,
     logoWithBackground: OpenAILogoWithBackground,
     url: 'https://openai.com/',

@@ -2,7 +2,7 @@
 
 The Investigation tool lets you look up any item or user in Coop by their unique ID and see everything Coop knows about them, without needing to be in a review queue.
 
-![The Investigation tool in Coop with user data redacted. Shows all information Coop knows about a given entity/user.](../images/coop-investigation.png)
+![The Investigation tool in Coop with user data redacted. Shows all information Coop knows about a given entity/user.](../images/investigation.png)
 
 Enter the unique ID of an item or user to see:
 

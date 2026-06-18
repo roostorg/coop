@@ -1,9 +1,11 @@
+import { vi } from 'vitest';
+
 import {
   GQLConditionConjunction,
   GQLScalarType,
+  GQLSignal,
   GQLSignalPricingStructureType,
   GQLSignalType,
-  GQLSignal,
 } from '../../../../graphql/generated';
 import { RuleFormConditionSet, RuleFormLeafCondition } from '../types';
 import {
@@ -12,9 +14,10 @@ import {
   shouldConditionPromptForComparatorAndThreshold,
 } from './RuleFormUtils';
 
-jest.mock('./RuleFormUtils', () => {
-  const origin = jest.requireActual('./RuleFormUtils');
-  return { ...origin, getConditionInputScalarType: jest.fn() };
+vi.mock('./RuleFormUtils', async () => {
+  const origin =
+    await vi.importActual<typeof import('./RuleFormUtils')>('./RuleFormUtils');
+  return { ...origin, getConditionInputScalarType: vi.fn() };
 });
 
 // NB: See docs above shouldConditionPromptForComparatorAndThreshold
@@ -74,9 +77,9 @@ describe('Test Rule Form Utils', () => {
         eligibleSignals: [sampleSignal],
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue(
+        GQLScalarType.Boolean,
+      );
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
@@ -93,9 +96,9 @@ describe('Test Rule Form Utils', () => {
         signal: sampleSignal,
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue(
+        GQLScalarType.Boolean,
+      );
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );

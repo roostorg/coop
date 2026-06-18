@@ -1,6 +1,7 @@
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import {
+  getFieldValueForRole,
   type ItemSubmission,
   type NormalizedItemData,
   type RawItemData,
@@ -51,6 +52,23 @@ class ContentApiLogger {
     const { failureReason, itemSubmission } = data;
     const { itemType } = itemSubmission;
     const now = new Date();
+
+    // Denormalize the IP address (if the item type maps an `ipAddress` field
+    // role) into its own column so investigation can look up items by IP without
+    // parsing `item_data` JSON at query time. Only attempt this for successful
+    // requests, since failed requests may carry un-normalized item data.
+    const rawIpAddress =
+      failureReason == null
+        ? getFieldValueForRole(
+            itemType.schema,
+            itemType.schemaFieldRoles,
+            'ipAddress',
+            itemSubmission.data as NormalizedItemData,
+          )
+        : undefined;
+    const ipAddress =
+      typeof rawIpAddress === 'string' ? rawIpAddress.trim() : undefined;
+
     await this.analytics.bulkWrite(
       'CONTENT_API_REQUESTS',
       [
@@ -59,6 +77,7 @@ class ContentApiLogger {
           ts: now.valueOf(),
           item_id: itemSubmission.itemId,
           item_data: jsonStringifyUnstable(itemSubmission.data),
+          item_ip_address: ipAddress ?? '',
           ...(itemSubmission.creator !== undefined
             ? {
                 item_creator_id: itemSubmission.creator.id,

@@ -64,7 +64,7 @@
     "react-markdown": "^9.0.1",
     "react-player": "^2.10.1",
     "react-query": "^3.39.1",
-    "react-router-dom": "^6.27.0",
+    "react-router-dom": "^6.30.4",
     "react-router-hash-link": "^2.4.3",
     "react-syntax-highlighter": "^16.1.0",
     "react-table": "^7.7.0",
@@ -109,6 +109,7 @@
     "eslint-plugin-custom-rules": "file:./eslint",
     "eslint-plugin-react": "^7.30.1",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.10",
     "prop-types": "^15.8.1",
     "source-map-explorer": "^2.5.3",
@@ -119,7 +120,7 @@
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-svgr": "^4.5.0",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "overrides": {
     "tailwindcss": {

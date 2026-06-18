@@ -9,7 +9,10 @@ import { type Opaque } from 'type-fest';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { isCoopErrorOfType } from '../../utils/errors.js';
+import {
+  isCoopErrorOfType,
+  makeUnauthorizedError,
+} from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
 import {
@@ -21,8 +24,8 @@ import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
+  UserPermission,
   type Invoker,
-  type UserPermission,
 } from '../userManagementService/index.js';
 import {
   type UserScore,
@@ -58,6 +61,10 @@ import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
 import QueueOperations, {
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
+import ReporterInvalidation, {
+  type InvalidateReportsFromReporterInput,
+  type InvalidateReportsFromReporterResult,
+} from './modules/ReporterInvalidation.js';
 import SkipOperations, {
   type SkippedJobCountInput,
 } from './modules/SkipOperations.js';
@@ -283,6 +290,7 @@ export class ManualReviewToolService {
   private readonly manualReviewToolSettings: ManualReviewToolSettings;
   private readonly commentOps: CommentOperations;
   private readonly skipOps: SkipOperations;
+  private readonly reporterInvalidation: ReporterInvalidation;
 
   constructor(
     readonly redis: Dependencies['IORedis'],
@@ -325,6 +333,7 @@ export class ManualReviewToolService {
       ruleEvaluator,
       //routingRuleExecutionLogger,
     );
+    this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
       pgQuery,
@@ -332,12 +341,16 @@ export class ManualReviewToolService {
       onRecordDecision,
       moderationConfigService,
       this.tracer,
+      this.manualReviewToolSettings,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
-    this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
+    this.reporterInvalidation = new ReporterInvalidation(
+      this.queueOps,
+      this.tracer,
+    );
   }
 
   /**
@@ -477,14 +490,13 @@ export class ManualReviewToolService {
                 item_id: job.payload.item.itemId,
                 item_type_id: job.payload.item.itemTypeIdentifier.id,
                 queue_id: targetQueueForNewJob,
-                // We use the Source Info from the input argument to account
-                // for the case that we are in fact updating a job which was
-                // never inserted into this table and did not have enqueue source
-                // info, but the updated job will.
                 enqueue_source_info: input.enqueueSourceInfo,
                 policy_ids: input.policyIds,
                 created_at: new Date(),
               })
+              // Re-enqueues (merged reports) re-run this path; keep the
+              // original row.
+              .onConflict((oc) => oc.column('id').doNothing())
               .execute()
               .catch(() => {}); // don't throw if logging fails
 
@@ -602,6 +614,7 @@ export class ManualReviewToolService {
                 policy_ids: input.policyIds,
                 created_at: new Date(),
               })
+              .onConflict((oc) => oc.column('id').doNothing())
               .execute()
               .catch(() => {}); // don't throw if logging fails
 
@@ -788,10 +801,20 @@ export class ManualReviewToolService {
    * @param input - An object containing the id of the routing rule to be deleted.
    * @returns A promise that resolves to a boolean indicating the success of the operation.
    */
-  async deleteRoutingRule(input: { id: string; isAppealsRule?: boolean }) {
+  async deleteRoutingRule(input: {
+    id: string;
+    orgId: string;
+    isAppealsRule?: boolean;
+  }) {
     return input.isAppealsRule
-      ? this.appealsJobRouting.deleteAppealsRoutingRule({ id: input.id })
-      : this.jobRouting.deleteRoutingRule({ id: input.id });
+      ? this.appealsJobRouting.deleteAppealsRoutingRule({
+          id: input.id,
+          orgId: input.orgId,
+        })
+      : this.jobRouting.deleteRoutingRule({
+          id: input.id,
+          orgId: input.orgId,
+        });
   }
 
   async addAccessibleQueuesForUser(
@@ -1162,6 +1185,33 @@ export class ManualReviewToolService {
     return this.queueOps.deleteAllJobsFromQueue(opts);
   }
 
+  /**
+   * Strips every entry sent by `reporter` from the `reportHistory` and
+   * `reportedForReasons` of every pending MRT job in the org. A job whose
+   * history empties out is removed if it was enqueued purely from a user
+   * report. One-shot with no persistent blocklist. See issue #404.
+   */
+  async invalidateReportsFromReporter(
+    input: InvalidateReportsFromReporterInput,
+  ): Promise<InvalidateReportsFromReporterResult> {
+    // Also gated at the GraphQL resolver; re-checked here for in-process
+    // callers such as server bin scripts.
+    if (!input.invokedBy.permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw makeUnauthorizedError(
+        'You do not have permission to invalidate reports',
+        { shouldErrorSpan: true },
+      );
+    }
+    // Bind the sweep to the caller's own org.
+    if (input.invokedBy.orgId !== input.orgId) {
+      throw makeUnauthorizedError(
+        'You do not have permission to invalidate reports for this org',
+        { shouldErrorSpan: true },
+      );
+    }
+    return this.reporterInvalidation.invalidateReportsFromReporter(input);
+  }
+
   async submitDecision(
     opts: OmitEach<SubmitDecisionInput, 'jobId'> & { jobId: string },
   ) {
@@ -1201,8 +1251,57 @@ export class ManualReviewToolService {
     return this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
   }
 
+  async getRequiresDecisionReasonOnIgnore(orgId: string) {
+    return this.manualReviewToolSettings.getRequiresDecisionReasonOnIgnore(
+      orgId,
+    );
+  }
+
   async getPreviewJobsViewEnabled(orgId: string) {
     return this.manualReviewToolSettings.getPreviewJobsViewEnabled(orgId);
+  }
+
+  async getIgnoreCallbackUrl(orgId: string) {
+    return this.manualReviewToolSettings.getIgnoreCallbackUrl(orgId);
+  }
+
+  async updateRequiresPolicyForDecisions(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresPolicyForDecisions(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresDecisionReason(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateRequiresDecisionReasonOnIgnore(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresDecisionReasonOnIgnore(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateHideSkipButtonForNonAdmins(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateHideSkipButtonForNonAdmins(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updatePreviewJobsViewEnabled(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateIgnoreCallbackUrl(orgId: string, url: string | null) {
+    return this.manualReviewToolSettings.updateIgnoreCallbackUrl(orgId, url);
   }
 
   async getJobComments(opts: { orgId: string; jobId: string }) {

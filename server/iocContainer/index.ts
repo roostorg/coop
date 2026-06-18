@@ -542,9 +542,8 @@ export default async function getBottle() {
   //   Non-Kysely Postgres consumers (e.g. the express-session store in
   //   `api.ts`) inject this so every connection passes through `createPgPool`.
   //
-  // - 'KyselyPg' is for issuing raw pg queries w/o sequelize (e.g., the queries
-  //   that some of the our "services" issue to pg, to the non-public schemas).
-  //   These queries go to our primary db, which accepts writes.
+  // - 'KyselyPg' is the primary Kysely instance used across services for typed
+  //   pg queries. These queries go to our primary db, which accepts writes.
   //
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
@@ -580,6 +579,22 @@ export default async function getBottle() {
       }),
   );
 
+  // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
+  // command with NOAUTH unless credentials are sent, which leaves ioredis stuck
+  // before "ready" and parks commands in the offline queue forever. Local dev
+  // Redis has no password, so only pass credentials when REDIS_PASSWORD is set;
+  // REDIS_USER may be set-but-empty, which means the default user. Shared by the
+  // cluster and single-node paths so both authenticate identically.
+  const redisAuthOptions = (): { username?: string; password?: string } =>
+    process.env.REDIS_PASSWORD
+      ? {
+          ...(process.env.REDIS_USER
+            ? { username: process.env.REDIS_USER }
+            : {}),
+          password: process.env.REDIS_PASSWORD,
+        }
+      : {};
+
   const makeRedis = (
     extraOptions: { enableOfflineQueue?: boolean } = {},
   ): IORedis.Redis | Cluster =>
@@ -600,8 +615,7 @@ export default async function getBottle() {
               // Required by BullMQ: its workers use blocking Redis commands
               // that would otherwise be misinterpreted as timed-out requests.
               maxRetriesPerRequest: null,
-              username: safeGetEnvVar('REDIS_USER'),
-              password: safeGetEnvVar('REDIS_PASSWORD'),
+              ...redisAuthOptions(),
               ...extraOptions,
             },
           },
@@ -612,6 +626,7 @@ export default async function getBottle() {
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
+          ...redisAuthOptions(),
           ...(isEnvTrue('REDIS_TLS')
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
@@ -941,6 +956,7 @@ export default async function getBottle() {
             item,
             actorId,
             actorEmail,
+            decisionReason,
           } = params;
           const actionIds = decisionActions.map((action) => action.actionId);
           const [actions, policies] = await Promise.all([
@@ -1006,6 +1022,7 @@ export default async function getBottle() {
                 targetItem: itemSubmission,
                 actorId,
                 actorEmail,
+                decisionReason,
               },
             )
             .catch((error) => {
@@ -1199,6 +1216,7 @@ export default async function getBottle() {
                   item: job.payload.item,
                   actorId: reviewerId,
                   actorEmail: reviewerEmail,
+                  decisionReason,
                 });
                 break;
               case 'SUBMIT_NCMEC_REPORT': {

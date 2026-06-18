@@ -1,6 +1,6 @@
 # Getting Started
 
-Quickly get set up with Coop for the first time for local development or demoing.
+Quickly get set up with Coop for the first time for local development. For testing and demonstration, you may be interested in the [Docker images](docker.md).
 
 > [!NOTE]
 > You may also want to familiarize yourself with Coop's [Basic Concepts](../user/concepts.md) for additional context.

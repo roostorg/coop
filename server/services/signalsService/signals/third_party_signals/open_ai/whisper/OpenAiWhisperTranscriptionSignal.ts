@@ -271,8 +271,6 @@ async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
       );
     }
 
-    // NB: we intentionally use the form-data package here instead of the built-in
-    // FormData global because the latter doesn't support streaming.
     const formData = new FormData();
     const returnedContentType = response.headers.get('content-type');
 

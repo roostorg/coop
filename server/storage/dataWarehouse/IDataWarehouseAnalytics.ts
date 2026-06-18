@@ -107,6 +107,7 @@ export type AnalyticsSchema = {
     item_type_schema: string;
     item_type_schema_variant: string;
     item_type_schema_field_roles?: Record<string, unknown>;
+    item_ip_address: string;
     item_creator_id?: string;
     item_creator_type_id?: string;
     request_id: string;
