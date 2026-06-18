@@ -172,7 +172,6 @@ export default function ManualReviewSafetySettings() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="mute-videos"
-                defaultChecked
                 onCheckedChange={(value) =>
                   setSettings({
                     ...settings,
