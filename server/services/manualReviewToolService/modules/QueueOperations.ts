@@ -457,8 +457,21 @@ export default class QueueOperations {
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
+    //
+    // routing_rules and appeals_routing_rules have RESTRICT FKs to this queue,
+    // so we must delete any referencing rules before deleting the queue.
     const numDeletedRows = await this.transactionWithRetry(
       async (transaction) => {
+        await transaction
+          .deleteFrom('manual_review_tool.routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .execute();
+
+        await transaction
+          .deleteFrom('manual_review_tool.appeals_routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .execute();
+
         const queueDelete = await transaction
           .deleteFrom('manual_review_tool.manual_review_queues')
           .where('id', '=', queueId)
