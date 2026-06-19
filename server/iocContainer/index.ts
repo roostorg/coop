@@ -437,7 +437,6 @@ export interface Dependencies {
     uiUrl: string;
     mrtRecoveryLookbackDays: number;
     mrtRecoveryMaxRetries: number;
-    mrtRecoveryCron: string;
   };
 }
 
@@ -1570,7 +1569,6 @@ export default async function getBottle() {
     uiUrl: safeGetEnvVar('UI_URL'),
     mrtRecoveryLookbackDays: safeGetEnvInt('MRT_RECOVERY_LOOKBACK_DAYS', 30),
     mrtRecoveryMaxRetries: safeGetEnvInt('MRT_RECOVERY_MAX_RETRIES', 5),
-    mrtRecoveryCron: process.env.MRT_RECOVERY_CRON ?? '0 0 * * *',
   });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
   bottle.factory('sendEmail', makeSendEmail);

@@ -1,10 +1,15 @@
 import { uid } from 'uid';
+import { v1 as uuidv1 } from 'uuid';
 
 import getBottle from '../../../iocContainer/index.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
+import {
+  bullJobIdtoExternalJobId,
+  itemIdToBullJobId,
+} from './QueueOperations.js';
 
 process.env.UI_URL ??= 'http://localhost:3000';
 process.env.OTEL_SERVICE_NAME ??= 'coop-test';
@@ -59,9 +64,12 @@ describe('MrtRecoveryOperations', () => {
   testWithFixture(
     'tracks retries and reset state',
     async ({ container, org, queue }) => {
-      const jobId = `recover:${uid()}`;
       const itemId = uid();
       const itemTypeId = uid();
+      const jobId = bullJobIdtoExternalJobId(
+        itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
+        uuidv1(),
+      );
 
       const secondaryOrg = await createOrg(
         {
@@ -80,7 +88,12 @@ describe('MrtRecoveryOperations', () => {
         mrtService: container.ManualReviewToolService,
         userId: secondaryUser.user.id,
       });
-      const secondaryJobId = `recover:${uid()}`;
+      const secondaryItemId = uid();
+      const secondaryItemTypeId = uid();
+      const secondaryJobId = bullJobIdtoExternalJobId(
+        itemIdToBullJobId({ id: secondaryItemId, typeId: secondaryItemTypeId }),
+        uuidv1(),
+      );
 
       try {
         await container.KyselyPg.insertInto('manual_review_tool.job_creations')
@@ -100,8 +113,8 @@ describe('MrtRecoveryOperations', () => {
           .values({
             id: secondaryJobId,
             org_id: secondaryOrg.org.id,
-            item_id: uid(),
-            item_type_id: uid(),
+            item_id: secondaryItemId,
+            item_type_id: secondaryItemTypeId,
             queue_id: secondaryQueue.queue.id,
             created_at: new Date(),
             enqueue_source_info: { kind: 'MRT_JOB' },
