@@ -193,6 +193,9 @@ export type NcmecManualReviewJobPayload = {
   kind: 'NCMEC';
   item: ItemSubmissionWithTypeIdentifier; // the user being reviewed
   allMediaItems: NcmecContentItemSubmission[]; // all the user's media from the last 30 days
+  // Content item(s) that triggered the report (when the reported item was
+  // content, not the user). Empty for account-level reports.
+  reportedMessages?: ItemIdentifier[];
   userScore?: UserScore;
   enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
   reportHistory: ReportHistory;
@@ -481,7 +484,9 @@ export class ManualReviewToolService {
               return;
             }
 
-            // log job creation/enqueue to postgres
+            // Log job creation to Postgres. Re-enqueues for the same item in the
+            // same queue update the Bull job in place and reuse the same job id,
+            // so use ON CONFLICT DO NOTHING to avoid duplicate-key noise/errors.
             this.pgQuery
               .insertInto('manual_review_tool.job_creations')
               .values({
@@ -498,7 +503,7 @@ export class ManualReviewToolService {
               // original row.
               .onConflict((oc) => oc.column('id').doNothing())
               .execute()
-              .catch(() => {}); // don't throw if logging fails
+              .catch(() => {});
 
             return { targetQueueForNewJob, job };
           } catch (e) {
@@ -616,7 +621,7 @@ export class ManualReviewToolService {
               })
               .onConflict((oc) => oc.column('id').doNothing())
               .execute()
-              .catch(() => {}); // don't throw if logging fails
+              .catch(() => {});
 
             return { targetQueueForNewJob, job };
           } catch (e) {
@@ -1075,6 +1080,50 @@ export class ManualReviewToolService {
     return this.queueOps.getExistingJobsForItem(opts);
   }
 
+  /**
+   * When a suspect is escalated to the NCMEC queue, drop superseded pending jobs
+   * so reviewers do not see duplicate work and job_creations stays consistent.
+   */
+  async removeSupersededJobsBeforeNcmecEnqueue(opts: {
+    orgId: string;
+    /** The item that triggered escalation (often CONTENT, not the USER). */
+    reportedItem: ItemIdentifier;
+    reportedItemWasContent: boolean;
+    reportedMessages?: readonly ItemIdentifier[];
+    reenqueuedFrom?: OriginJobInfo;
+  }) {
+    const { orgId, reportedItem, reportedItemWasContent, reportedMessages } =
+      opts;
+
+    if (opts.reenqueuedFrom?.jobId) {
+      await this.queueOps.removeJobByIdFromAnyQueue({
+        orgId,
+        jobId: opts.reenqueuedFrom.jobId,
+      });
+    }
+
+    const contentItemsToRemove = new Map<string, ItemIdentifier>();
+    if (reportedItemWasContent) {
+      contentItemsToRemove.set(
+        `${reportedItem.id}\u0000${reportedItem.typeId}`,
+        reportedItem,
+      );
+    }
+    for (const message of reportedMessages ?? []) {
+      contentItemsToRemove.set(`${message.id}\u0000${message.typeId}`, message);
+    }
+
+    await Promise.all(
+      [...contentItemsToRemove.values()].map(async (item) =>
+        this.queueOps.removePendingJobsForItem({
+          orgId,
+          itemId: item.id,
+          itemTypeId: item.typeId,
+        }),
+      ),
+    );
+  }
+
   async getDecidedJob(opts: { orgId: string; id: string }) {
     return this.decisionAnalytics.getDecidedJob(opts);
   }
@@ -1255,10 +1304,6 @@ export class ManualReviewToolService {
     return this.manualReviewToolSettings.getPreviewJobsViewEnabled(orgId);
   }
 
-  async getNcmecMessagesEnabled(orgId: string) {
-    return this.manualReviewToolSettings.getNcmecMessagesEnabled(orgId);
-  }
-
   async getIgnoreCallbackUrl(orgId: string) {
     return this.manualReviewToolSettings.getIgnoreCallbackUrl(orgId);
   }
@@ -1286,13 +1331,6 @@ export class ManualReviewToolService {
 
   async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
     return this.manualReviewToolSettings.updatePreviewJobsViewEnabled(
-      orgId,
-      enabled,
-    );
-  }
-
-  async updateNcmecMessagesEnabled(orgId: string, enabled: boolean) {
-    return this.manualReviewToolSettings.updateNcmecMessagesEnabled(
       orgId,
       enabled,
     );

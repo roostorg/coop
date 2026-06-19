@@ -80,7 +80,6 @@ const deploymentSettingsMock: MockedResponse = {
         requiresDecisionReasonInMrt: false,
         hideSkipButtonForNonAdmins: false,
         previewJobsViewEnabled: false,
-        ncmecMessagesEnabled: false,
         ignoreCallbackUrl: null,
         userStrikeTTL: 90,
         partialItemsEndpoint: null,
@@ -447,7 +446,6 @@ describe('SettingsPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
-        expect(screen.getByText('NCMEC')).toBeInTheDocument();
         expect(screen.getByText('Webhooks')).toBeInTheDocument();
       });
     });
@@ -458,7 +456,6 @@ describe('SettingsPage', () => {
         requiresDecisionReasonInMrt: true,
         hideSkipButtonForNonAdmins: true,
         previewJobsViewEnabled: true,
-        ncmecMessagesEnabled: true,
       });
       renderWithProviders([mock], 'review-console');
       await waitFor(() => {

@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useRef, useState } from 'react';
 
@@ -11,16 +11,17 @@ import {
   type GQLMessageWithIpAddress,
 } from '../../../../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../../../../utils/collections';
-import {
-  getFieldValueForRole,
-  getFieldValueOrValues,
-} from '../../../../../../utils/itemUtils';
+import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
 import NCMECThreadItemComponent from './NCMECThreadItemComponent';
+import { messageToNcmecReportedContent } from './ncmecThreadReportUtils';
 
 export function NCMECThreadComponent(props: {
   threadIdentifier: ItemIdentifier;
   threadItemsWithIpAddress: readonly GQLMessageWithIpAddress[];
   reportedUserIdentifier?: RelatedItem;
+  /** Identifiers of the message(s) that triggered the report at enqueue time.
+   * Used to mark those specific messages so reviewers know what to act on. */
+  reportedMessageIds?: readonly ItemIdentifier[];
   unblurAllMedia: boolean;
   isActionable?: boolean;
   setSelectedThreadsWithMessages: (
@@ -36,37 +37,24 @@ export function NCMECThreadComponent(props: {
     isActionable = false,
   } = props;
 
+  const messageSelectionKey = (messageWithIpAddress: GQLMessageWithIpAddress) =>
+    `${messageWithIpAddress.message.id}\u0000${messageWithIpAddress.message.type.id}`;
+
   const currentSelectedMessages = selectedThreadsWithMessages.find(
     (it) =>
       it.threadId === threadIdentifier.id &&
       it.threadTypeId === threadIdentifier.typeId,
   );
-  const firstMessage = threadItemsWithIpAddress.find(
-    (it) =>
-      it.message.id === currentSelectedMessages?.reportedContent[0].contentId &&
-      it.message.type.id ===
-        currentSelectedMessages?.reportedContent[0].contentTypeId,
-  );
-  const secondMessage = threadItemsWithIpAddress.find(
-    (it) =>
-      it.message.id ===
-        currentSelectedMessages?.reportedContent[
-          currentSelectedMessages?.reportedContent.length - 1
-        ].contentId &&
-      it.message.type.id ===
-        currentSelectedMessages?.reportedContent[
-          currentSelectedMessages?.reportedContent.length - 1
-        ].contentTypeId,
-  );
 
   const scrollViewRef = useRef<HTMLDivElement>(null);
-  const [selectedMessagePair, setSelectedMessagePair] = useState<
-    | {
-        firstMessage: GQLMessageWithIpAddress;
-        secondMessage?: GQLMessageWithIpAddress;
-      }
-    | undefined
-  >(firstMessage ? { firstMessage, secondMessage } : undefined);
+  const [selectedMessageKeys, setSelectedMessageKeys] = useState<Set<string>>(
+    () =>
+      new Set(
+        (currentSelectedMessages?.reportedContent ?? []).map(
+          (content) => `${content.contentId}\u0000${content.contentTypeId}`,
+        ),
+      ),
+  );
 
   const isBeingReported =
     selectedThreadsWithMessages.find(
@@ -110,60 +98,58 @@ export function NCMECThreadComponent(props: {
     return undefined;
   }
 
-  const checkMessage = (message: GQLMessageWithIpAddress) => {
-    if (selectedMessagePair === undefined) {
-      setSelectedMessagePair({ firstMessage: message });
-    } else if (
-      selectedMessagePair.firstMessage.message.id === message.message.id
-    ) {
-      setSelectedMessagePair(undefined);
-    } else if (
-      selectedMessagePair.secondMessage?.message.id === message.message.id
-    ) {
-      setSelectedMessagePair({
-        firstMessage: selectedMessagePair.firstMessage,
-      });
-    } else if (selectedMessagePair.secondMessage === undefined) {
-      setSelectedMessagePair({
-        firstMessage: selectedMessagePair.firstMessage,
-        secondMessage: message,
-      });
-    } else {
-      setSelectedMessagePair({ firstMessage: message });
-    }
+  const toggleMessageSelection = (message: GQLMessageWithIpAddress) => {
+    const key = messageSelectionKey(message);
+    setSelectedMessageKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
+
+  const addedMessageKeys = new Set(
+    (currentSelectedMessages?.reportedContent ?? []).map(
+      (content) => `${content.contentId}\u0000${content.contentTypeId}`,
+    ),
+  );
 
   const isMessageChecked = (messageWithIpAddress: GQLMessageWithIpAddress) => {
-    const message = messageWithIpAddress.message;
-    const timestamp = getFieldValueForRole(message, 'createdAt')!;
-    if (selectedMessagePair === undefined) {
-      return false;
+    const key = messageSelectionKey(messageWithIpAddress);
+    if (isBeingReported) {
+      return addedMessageKeys.has(key);
     }
-    if (
-      selectedMessagePair.firstMessage.message.id === message.id ||
-      selectedMessagePair.secondMessage?.message.id === message.id
-    ) {
-      return true;
-    }
-    if (selectedMessagePair.secondMessage === undefined) {
-      return false;
-    }
-    const firstMessageTimestamp = getFieldValueForRole(
-      selectedMessagePair.firstMessage.message,
-      'createdAt',
-    )!;
-    const secondMessageTimestamp = getFieldValueForRole(
-      selectedMessagePair.secondMessage.message,
-      'createdAt',
-    )!;
-    return (
-      (firstMessageTimestamp < timestamp &&
-        timestamp < secondMessageTimestamp) ||
-      (secondMessageTimestamp < timestamp && timestamp < firstMessageTimestamp)
-    );
+    return selectedMessageKeys.has(key);
   };
 
-  const checkedMessages = threadItemsWithIpAddress.filter(isMessageChecked);
+  const messagesToAdd = threadItemsWithIpAddress.filter(
+    (m) =>
+      selectedMessageKeys.has(messageSelectionKey(m)) &&
+      !addedMessageKeys.has(messageSelectionKey(m)),
+  );
+
+  // Messages that can still be selected (i.e., not already added to the report).
+  const selectableMessageKeys = threadItemsWithIpAddress
+    .filter((m) => !addedMessageKeys.has(messageSelectionKey(m)))
+    .map(messageSelectionKey);
+  const allSelectableSelected =
+    selectableMessageKeys.length > 0 &&
+    selectableMessageKeys.every((key) => selectedMessageKeys.has(key));
+
+  const toggleSelectAll = () => {
+    setSelectedMessageKeys((prev) => {
+      const next = new Set(prev);
+      if (allSelectableSelected) {
+        selectableMessageKeys.forEach((key) => next.delete(key));
+      } else {
+        selectableMessageKeys.forEach((key) => next.add(key));
+      }
+      return next;
+    });
+  };
 
   const messagesComponent = [...threadItemsWithIpAddress].map(
     (messageWithIpAddress) => {
@@ -188,12 +174,15 @@ export function NCMECThreadComponent(props: {
             timestamp={timestamp}
             isActionable={isActionable}
             unblurAllMedia={unblurAllMedia}
-            isReported={
+            triggeredReport={(props.reportedMessageIds ?? []).some(
+              (it) => it.id === message.id && it.typeId === message.type.id,
+            )}
+            isChecked={isMessageChecked(messageWithIpAddress)}
+            checkMessage={toggleMessageSelection}
+            isSuspectAuthor={
               props.reportedUserIdentifier?.id === messageCreator?.id &&
               props.reportedUserIdentifier?.typeId === messageCreator?.typeId
             }
-            isChecked={isMessageChecked(messageWithIpAddress)}
-            checkMessage={checkMessage}
             disableChecks={isBeingReported}
           />
         </div>
@@ -201,18 +190,20 @@ export function NCMECThreadComponent(props: {
     },
   );
   return (
-    <div className="mr-4">
-      <div className="flex flex-col items-start w-full p-2 rounded gap-2 grow bg-coop-lightblue">
-        <div
-          className="flex flex-col w-full border border-gray-200 border-solid rounded max-h-[600px] gap-2 p-2 bg-white overflow-scroll"
-          ref={scrollViewRef}
-        >
-          {messagesComponent}
-        </div>
-        <div className="self-end pr-2">
+    <div className="flex flex-col w-full h-full">
+      <div
+        className="flex flex-col w-full px-4 py-1 overflow-y-auto divide-y divide-slate-100 max-h-[600px] grow"
+        ref={scrollViewRef}
+      >
+        {messagesComponent}
+      </div>
+      {isActionable ? (
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200">
           {isBeingReported ? (
             <Button
-              className="self-center mr-4"
+              variant="outline"
+              color="red"
+              size="sm"
               onClick={() => {
                 props.setSelectedThreadsWithMessages(
                   selectedThreadsWithMessages.filter(
@@ -221,22 +212,39 @@ export function NCMECThreadComponent(props: {
                       it.threadTypeId !== threadIdentifier.typeId,
                   ),
                 );
+                setSelectedMessageKeys(new Set());
               }}
             >
               Remove Reported Messages
             </Button>
           ) : undefined}
-          <Button
-            className="self-center mt-5"
-            disabled={
-              selectedMessagePair?.secondMessage === undefined ||
-              isBeingReported
-            }
-            onClick={() => {
-              if (
-                selectedMessagePair?.firstMessage &&
-                selectedMessagePair?.secondMessage
-              ) {
+          {isBeingReported ? undefined : (
+            <Button
+              variant="outline"
+              color="gray"
+              size="sm"
+              disabled={selectableMessageKeys.length === 0}
+              onClick={toggleSelectAll}
+            >
+              {allSelectableSelected ? 'Deselect all' : 'Select all'}
+            </Button>
+          )}
+          {isBeingReported ? undefined : (
+            <Button
+              color="indigo"
+              size="sm"
+              disabled={messagesToAdd.length === 0}
+              onClick={() => {
+                if (messagesToAdd.length === 0) {
+                  return;
+                }
+                const newReportedContent = messagesToAdd.map(
+                  (messageWithIpAddress) =>
+                    messageToNcmecReportedContent(
+                      messageWithIpAddress,
+                      threadIdentifier,
+                    ),
+                );
                 props.setSelectedThreadsWithMessages([
                   ...selectedThreadsWithMessages.filter(
                     (it) =>
@@ -246,82 +254,21 @@ export function NCMECThreadComponent(props: {
                   {
                     threadId: threadIdentifier.id,
                     threadTypeId: threadIdentifier.typeId,
-                    reportedContent: checkedMessages.map(
-                      (messageWithIpAddress) => {
-                        const message = messageWithIpAddress.message;
-                        const type = (() => {
-                          const stringField = message.type.baseFields.find(
-                            (it) => it.type === 'STRING',
-                          );
-                          if (stringField) {
-                            return 'text';
-                          }
-                          const videoField = message.type.baseFields.find(
-                            (it) => it.type === 'VIDEO',
-                          );
-                          if (videoField) {
-                            return 'video';
-                          }
-                          const imageField = message.type.baseFields.find(
-                            (it) => it.type === 'IMAGE',
-                          );
-                          if (imageField) {
-                            return 'img';
-                          }
-                          return 'unknown';
-                        })();
-                        return {
-                          content: (() => {
-                            const stringField = message.type.baseFields.find(
-                              (it) => it.type === 'STRING',
-                            );
-                            if (stringField === undefined) {
-                              // assume that in this case it's a photo or a video
-                              return undefined;
-                            }
-                            const content = getFieldValueOrValues(
-                              message.data,
-                              stringField,
-                            );
-                            if (
-                              Array.isArray(content) ||
-                              content === undefined ||
-                              content.type !== 'STRING'
-                            ) {
-                              // assume that in this case it's a photo or a video
-                              return undefined;
-                            }
-                            return content.value;
-                          })(),
-                          type,
-                          chatType: threadIdentifier.id.includes(
-                            getFieldValueForRole(message, 'creatorId')!.id,
-                          )
-                            ? 'chat'
-                            : 'groupchat',
-                          contentId: message.id,
-                          contentTypeId: message.type.id,
-                          creatorId: getFieldValueForRole(message, 'creatorId')!
-                            .id,
-                          sentAt: getFieldValueForRole(message, 'createdAt')!,
-                          targetId: getFieldValueForRole(message, 'threadId')!
-                            .id,
-                          ipAddress: {
-                            ip: messageWithIpAddress.ipAddress.ip,
-                            port: messageWithIpAddress.ipAddress.port,
-                          },
-                        };
-                      },
-                    ),
+                    reportedContent: [
+                      ...(currentSelectedMessages?.reportedContent ?? []),
+                      ...newReportedContent,
+                    ],
                   },
                 ]);
-              }
-            }}
-          >
-            Add Reported Messages
-          </Button>
+              }}
+            >
+              {messagesToAdd.length === 1
+                ? 'Add Reported Message'
+                : `Add ${messagesToAdd.length} Reported Messages`}
+            </Button>
+          )}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

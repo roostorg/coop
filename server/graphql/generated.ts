@@ -2588,7 +2588,6 @@ export type GQLMutation = {
   readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
-  readonly updateNcmecMessagesEnabled: Scalars['Boolean']['output'];
   readonly updateNcmecOrgSettings: GQLUpdateNcmecOrgSettingsResponse;
   readonly updateOrgInfo: GQLUpdateOrgInfoSuccessResponse;
   readonly updatePartialItemsSettings: Scalars['Boolean']['output'];
@@ -2911,10 +2910,6 @@ export type GQLMutationUpdateManualReviewQueueArgs = {
   input: GQLUpdateManualReviewQueueInput;
 };
 
-export type GQLMutationUpdateNcmecMessagesEnabledArgs = {
-  enabled: Scalars['Boolean']['input'];
-};
-
 export type GQLMutationUpdateNcmecOrgSettingsArgs = {
   input: GQLNcmecOrgSettingsInput;
 };
@@ -3122,6 +3117,12 @@ export type GQLNcmecManualReviewJobPayload = {
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
   readonly enqueueSourceInfo?: Maybe<GQLManualReviewJobEnqueueSourceInfo>;
   readonly item: GQLUserItem;
+  /**
+   * Identifiers of the content item(s) that triggered the report. Empty for
+   * account-level reports. Used by the review UI to highlight reported content
+   * and to seed the threads lookup for text-only (no-media) reports.
+   */
+  readonly reportedMessages: ReadonlyArray<GQLItemIdentifier>;
   readonly userScore?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -3286,7 +3287,6 @@ export type GQLOrg = {
    * NCMEC review UI can enforce the policy. Defaults to ALL when unset.
    */
   readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
-  readonly ncmecMessagesEnabled: Scalars['Boolean']['output'];
   /**
    * Minimum number of media items that must be reviewed before sending an NCMEC
    * report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
@@ -11347,12 +11347,6 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateManualReviewQueueArgs, 'input'>
   >;
-  updateNcmecMessagesEnabled?: Resolver<
-    GQLResolversTypes['Boolean'],
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationUpdateNcmecMessagesEnabledArgs, 'enabled'>
-  >;
   updateNcmecOrgSettings?: Resolver<
     GQLResolversTypes['UpdateNcmecOrgSettingsResponse'],
     ParentType,
@@ -11594,6 +11588,11 @@ export type GQLNcmecManualReviewJobPayloadResolvers<
     ContextType
   >;
   item?: Resolver<GQLResolversTypes['UserItem'], ParentType, ContextType>;
+  reportedMessages?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ItemIdentifier']>,
+    ParentType,
+    ContextType
+  >;
   userScore?: Resolver<
     Maybe<GQLResolversTypes['Int']>,
     ParentType,
@@ -11899,11 +11898,6 @@ export type GQLOrgResolvers<
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   ncmecMediaReviewRequirement?: Resolver<
     GQLResolversTypes['NcmecMediaReviewRequirement'],
-    ParentType,
-    ContextType
-  >;
-  ncmecMessagesEnabled?: Resolver<
-    GQLResolversTypes['Boolean'],
     ParentType,
     ContextType
   >;

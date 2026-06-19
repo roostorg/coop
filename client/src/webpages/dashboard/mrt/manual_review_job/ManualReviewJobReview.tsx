@@ -144,7 +144,6 @@ gql`
         isAppealsQueue
         autoCloseJobs
       }
-      ncmecMessagesEnabled
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
@@ -878,7 +877,6 @@ function ManualReviewJobReviewImpl(props: {
             orgId={org.id}
             payload={payload}
             isActionable={true}
-            showMessages={org.ncmecMessagesEnabled}
             submitDecision={async (decision) => {
               await submitDecision({
                 variables: {

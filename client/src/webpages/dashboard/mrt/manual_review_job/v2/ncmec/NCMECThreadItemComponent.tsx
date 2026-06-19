@@ -1,5 +1,5 @@
+import { Badge } from '@/coop-ui/Badge';
 import { Checkbox } from '@/coop-ui/Checkbox';
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { WarningFilled } from '@ant-design/icons';
 import { RelatedItem } from '@roostorg/coop-types';
 import { JsonObject } from 'type-fest';
@@ -8,12 +8,8 @@ import {
   GQLUserItemType,
   type GQLMessageWithIpAddress,
 } from '../../../../../../graphql/generated';
-import {
-  getFieldValueForRole,
-  getPrimaryContentFields,
-} from '../../../../../../utils/itemUtils';
+import { getPrimaryContentFields } from '../../../../../../utils/itemUtils';
 import FieldsComponent from '../ManualReviewJobFieldsComponent';
-import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImageComponent';
 
 export default function NCMECThreadItemComponent(props: {
   threadItemWithIpAddress: GQLMessageWithIpAddress;
@@ -23,7 +19,11 @@ export default function NCMECThreadItemComponent(props: {
   timestamp?: string;
   isActionable?: boolean;
   unblurAllMedia?: boolean;
-  isReported: boolean;
+  /** Message was authored by the user under NCMEC review (not the same as being
+   * included in this report). */
+  isSuspectAuthor?: boolean;
+  /** Message item that triggered enqueue into the NCMEC queue. */
+  triggeredReport?: boolean;
   checkMessage: (message: GQLMessageWithIpAddress) => void;
   isChecked: boolean;
   disableChecks: boolean;
@@ -31,103 +31,70 @@ export default function NCMECThreadItemComponent(props: {
   const {
     threadItemWithIpAddress,
     author,
-    authorType,
     timestamp,
-    authorData,
-    isReported,
+    isSuspectAuthor = false,
+    triggeredReport = false,
     isActionable = true,
     unblurAllMedia = false,
   } = props;
   const { message: threadItem } = threadItemWithIpAddress;
 
-  if (!author || !authorType) {
+  if (!author) {
     return null;
   }
-  const [profileImage, backgroundImage] = authorData
-    ? [
-        getFieldValueForRole(
-          { type: authorType, data: authorData },
-          'profileIcon',
-        ),
-        getFieldValueForRole(
-          { type: authorType, data: authorData },
-          'backgroundImage',
-        ),
-      ]
-    : [undefined, undefined];
 
   return (
-    <div className="flex flex-row w-full">
-      <div className="flex flex-col grow">
-        <div className="flex flex-row mb-1.5 items-start">
-          <span className="mr-3">
-            <ManualReviewJobMagnifyImageComponent
-              itemIdentifier={{ id: author.id, typeId: author.typeId }}
-              imageUrl={profileImage?.url}
-              magnifiedUrls={backgroundImage ? [backgroundImage.url] : []}
-              fallbackComponent={
-                <UserAlt4 className="p-3 fill-slate-500 w-11" />
-              }
-            />
-          </span>
-          <div className="flex flex-col grow">
-            <div className="flex items-center justify-between w-full mb-1 gap-2">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`self-start font-medium
-                    text-slate-500
-                  `}
-                >
-                  {author?.name
-                    ? `${author?.name} (${author?.id})`
-                    : `${author?.id}`}
-                </div>
-                {isReported ? (
-                  <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red">
-                    Reported
-                    <WarningFilled className="flex items-center justify-center" />
-                  </div>
-                ) : null}
-              </div>
-              {timestamp ? (
-                <div className="self-end pt-2 text-slate-400">
-                  {new Date(timestamp).toLocaleString()}
-                </div>
-              ) : null}
-            </div>
-            <div className="flex flex-row items-center justify-between">
-              <div className="flex flex-col w-full">
-                <div className="flex flex-row items-center justify-between rounded bg-slate-200 grow">
-                  <FieldsComponent
-                    fields={getPrimaryContentFields(
-                      threadItem.type.baseFields,
-                      threadItem.data,
-                    )}
-                    itemTypeId={threadItem.type.id}
-                    options={{
-                      hideLabels: true,
-                      maxWidthImage: 300,
-                      maxWidthVideo: 300,
-                      unblurAllMedia,
-                      transparentBackground: true,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+    <div className="flex items-start w-full gap-3 py-3">
+      <div className="flex flex-col gap-1.5 min-w-0 grow">
+        <div className="flex items-center justify-between w-full gap-2">
+          <div className="flex items-center min-w-0 gap-2">
+            <span className="font-medium truncate text-slate-700">
+              {author.name ? `${author.name} (${author.id})` : author.id}
+            </span>
+            {isSuspectAuthor ? (
+              <Badge variant="secondary" size="sm" className="shrink-0">
+                Suspect
+              </Badge>
+            ) : null}
+            {triggeredReport ? (
+              <Badge
+                size="sm"
+                className="border-transparent shrink-0 gap-1 bg-amber-500 text-white"
+              >
+                <WarningFilled />
+                Triggered report
+              </Badge>
+            ) : null}
           </div>
+          {timestamp ? (
+            <span className="text-xs shrink-0 text-slate-400">
+              {new Date(timestamp).toLocaleString()}
+            </span>
+          ) : null}
+        </div>
+        <div className="px-3 py-2 bg-white border rounded-md border-slate-200">
+          <FieldsComponent
+            fields={getPrimaryContentFields(
+              threadItem.type.baseFields,
+              threadItem.data,
+            )}
+            itemTypeId={threadItem.type.id}
+            options={{
+              hideLabels: true,
+              maxWidthImage: 300,
+              maxWidthVideo: 300,
+              unblurAllMedia,
+              transparentBackground: true,
+            }}
+          />
         </div>
       </div>
-      <div className="ml-2 mr-2">
-        <Checkbox
-          className={`self-center ml-4 grow-0 mt-6 mr-4 ${
-            !isActionable ? 'invisible' : ''
-          }`}
-          disabled={props.disableChecks}
-          checked={props.isChecked}
-          onCheckedChange={() => props.checkMessage(threadItemWithIpAddress)}
-        />
-      </div>
+      <Checkbox
+        className={`mt-1 shrink-0 ${!isActionable ? 'invisible' : ''}`}
+        disabled={props.disableChecks}
+        checked={props.isChecked}
+        onCheckedChange={() => props.checkMessage(threadItemWithIpAddress)}
+      />
     </div>
   );
 }

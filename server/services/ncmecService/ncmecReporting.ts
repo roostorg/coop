@@ -507,6 +507,42 @@ export function clampIncidentDateTimeToPast(
   };
 }
 
+/**
+ * Most recent timestamp across reported media and messages, as a UTC ISO string.
+ * Media `createdAt` is authoritative (throws if unparseable); message `sentAt`
+ * is best-effort (skipped if unparseable). Falls back to `now` when neither
+ * source yields a timestamp.
+ */
+export function resolveIncidentDateTime(
+  media: ReadonlyArray<{ createdAt: string }>,
+  threads: ReadonlyArray<{
+    reportedContent: ReadonlyArray<{ sentAt: string | Date }>;
+  }>,
+  now: Date = new Date(),
+): string {
+  const mediaTimestampsMs = media.map((m) => {
+    const ms = Date.parse(m.createdAt);
+    if (Number.isNaN(ms)) {
+      throw new Error(
+        `Invalid media createdAt timestamp for incidentDateTime: ${m.createdAt}`,
+      );
+    }
+    return ms;
+  });
+  const messageTimestampsMs = threads
+    .flatMap((thread) => thread.reportedContent)
+    .map((content) =>
+      content.sentAt instanceof Date
+        ? content.sentAt.getTime()
+        : Date.parse(content.sentAt),
+    )
+    .filter((ms) => !Number.isNaN(ms));
+  const candidateTimestampsMs = [...mediaTimestampsMs, ...messageTimestampsMs];
+  return candidateTimestampsMs.length > 0
+    ? new Date(Math.max(...candidateTimestampsMs)).toISOString()
+    : now.toISOString();
+}
+
 /** Build the `ipCaptureEvent` array for an NCMEC person or media block:
  * webhook events + caller-supplied events + role-IP-synthesised event, in
  * that order. Returns `undefined` when all sources are empty. */
@@ -997,6 +1033,12 @@ export default class NcmecReporting {
     userId: ItemIdentifier,
     reportedMedia: readonly ItemIdentifier[],
   ) {
+    const preservationEndpoint = await this.ncmecPreservationEndpoint(orgId);
+    const messagesUrl =
+      preservationEndpoint != null
+        ? `${preservationEndpoint.replace(/\/$/, '')}/get`
+        : 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get';
+
     const fetchWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -1006,7 +1048,7 @@ export default class NcmecReporting {
       },
       async () => {
         const response = await this.fetchHTTP({
-          url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get',
+          url: messagesUrl,
           method: 'post',
           body: jsonStringify({
             userId: userId.id,
@@ -1141,7 +1183,11 @@ export default class NcmecReporting {
       );
     }
 
+    // Only treat "all media missing" as fatal when media was actually
+    // requested. Text-only reports request no media, so an empty media response
+    // is expected and must not abort the submission.
     if (
+      reportedMedia.length > 0 &&
       responseBody.media?.filter(
         (it) => it.missing === false || it.missing === undefined,
       ).length === 0
@@ -1385,22 +1431,20 @@ export default class NcmecReporting {
             return 'UNSUPPORTED_ORG';
           }
 
-          if (reportParams.media.length === 0) {
-            throw new Error('No media in report');
+          // NCMEC accepts text-only incident types (e.g. Online Enticement),
+          // so a report is valid with media OR reported messages. Only an empty
+          // report (neither) is rejected.
+          if (
+            reportParams.media.length === 0 &&
+            reportParams.threads.length === 0
+          ) {
+            throw new Error('No media or messages in report');
           }
-          const latestMedia = _.maxBy(reportParams.media, (m) => {
-            const ms = Date.parse(m.createdAt);
-            if (Number.isNaN(ms)) {
-              throw new Error(
-                `Invalid media createdAt timestamp for incidentDateTime: ${m.createdAt}`,
-              );
-            }
-            return ms;
-          });
-          if (latestMedia === undefined) {
-            throw new Error('No media in report');
-          }
-          const maxCreatedAt = latestMedia.createdAt;
+
+          const maxCreatedAt = resolveIncidentDateTime(
+            reportParams.media,
+            reportParams.threads,
+          );
 
           const { value: clampedIncidentDateTime, wasClamped } =
             clampIncidentDateTimeToPast(maxCreatedAt);

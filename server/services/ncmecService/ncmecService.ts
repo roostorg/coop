@@ -17,6 +17,7 @@ import {
 } from '../manualReviewToolService/manualReviewToolService.js';
 import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
+import { getNcmecMessagesFromItemInvestigation } from './ncmecMessagesFromInvestigation.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
 import {
   retryNcmecSubmission,
@@ -102,7 +103,27 @@ export class NcmecService {
     userId: ItemIdentifier,
     reportedMedia: readonly ItemIdentifier[],
   ) {
-    return this.ncmecReporting.getNcmecMessages(orgId, userId, reportedMedia);
+    try {
+      const externalThreads = await this.ncmecReporting.getNcmecMessages(
+        orgId,
+        userId,
+        reportedMedia,
+      );
+      if (externalThreads.length > 0) {
+        return externalThreads;
+      }
+    } catch {
+      // Preservation service unreachable in local/test environments.
+    }
+
+    return getNcmecMessagesFromItemInvestigation(
+      this.itemInvestigationService,
+      {
+        orgId,
+        userId,
+        reportedMessages: reportedMedia,
+      },
+    );
   }
 
   async enqueueForHumanReviewIfApplicable(

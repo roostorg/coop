@@ -9,17 +9,6 @@ const Mutation = resolvers.Mutation as {
   ) => Promise<unknown>;
 };
 
-const Query = resolvers.Query as {
-  ncmecThreads: (
-    parent: unknown,
-    args: {
-      userId: { id: string; typeId: string };
-      reportedMessages: ReadonlyArray<{ id: string; typeId: string }>;
-    },
-    ctx: unknown,
-  ) => Promise<unknown>;
-};
-
 const VALID_INPUT = {
   username: 'cyber-user',
   password: 'cyber-pass',
@@ -149,64 +138,5 @@ describe('updateNcmecOrgSettings media review policy', () => {
       ),
     ).rejects.toThrow('mediaReviewRequirement');
     expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
-  });
-});
-
-describe('ncmecThreads org setting gate', () => {
-  function makeThreadsCtx(opts: {
-    messagesEnabled: boolean;
-    authed?: boolean;
-  }) {
-    const { messagesEnabled, authed = true } = opts;
-    const getNcmecMessagesEnabled = jest.fn(async () => messagesEnabled);
-    const getNcmecMessages = jest.fn(async () => []);
-    const ctx = {
-      getUser: () =>
-        authed
-          ? { id: 'user-1', orgId: 'org-1', getPermissions: () => [] }
-          : null,
-      services: {
-        ManualReviewToolService: { getNcmecMessagesEnabled },
-        NcmecService: { getNcmecMessages },
-      },
-    };
-    return { ctx, getNcmecMessagesEnabled, getNcmecMessages };
-  }
-
-  const ARGS = {
-    userId: { id: 'reported-user', typeId: 'user-type' },
-    reportedMessages: [],
-  };
-
-  it('throws forbidden when the org setting is disabled', async () => {
-    const { ctx, getNcmecMessages } = makeThreadsCtx({
-      messagesEnabled: false,
-    });
-    await expect(Query.ncmecThreads({}, ARGS, ctx)).rejects.toThrow(
-      'not enabled',
-    );
-    expect(getNcmecMessages).not.toHaveBeenCalled();
-  });
-
-  it('calls through to the service when the setting is enabled', async () => {
-    const { ctx, getNcmecMessages } = makeThreadsCtx({ messagesEnabled: true });
-    await Query.ncmecThreads({}, ARGS, ctx);
-    expect(getNcmecMessages).toHaveBeenCalledWith(
-      'org-1',
-      ARGS.userId,
-      ARGS.reportedMessages,
-    );
-  });
-
-  it('throws unauthenticated when there is no user', async () => {
-    const { ctx, getNcmecMessagesEnabled, getNcmecMessages } = makeThreadsCtx({
-      messagesEnabled: true,
-      authed: false,
-    });
-    await expect(Query.ncmecThreads({}, ARGS, ctx)).rejects.toThrow(
-      'User required',
-    );
-    expect(getNcmecMessagesEnabled).not.toHaveBeenCalled();
-    expect(getNcmecMessages).not.toHaveBeenCalled();
   });
 });

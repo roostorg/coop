@@ -284,19 +284,8 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    const { orgId } = user;
-
-    const isNcmecMessagesEnabled =
-      await context.services.ManualReviewToolService.getNcmecMessagesEnabled(
-        orgId,
-      );
-
-    if (!isNcmecMessagesEnabled) {
-      throw forbiddenError('NCMEC messages are not enabled for this org');
-    }
-
     const threads = await context.services.NcmecService.getNcmecMessages(
-      orgId,
+      user.orgId,
       userId,
       reportedMessages,
     );

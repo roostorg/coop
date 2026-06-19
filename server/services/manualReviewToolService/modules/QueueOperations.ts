@@ -1423,6 +1423,56 @@ export default class QueueOperations {
   }
 
   /**
+   * Removes a pending job without a reviewer lock. Used when a job is superseded
+   * (e.g. content report replaced by an NCMEC user job in another queue).
+   */
+  async removeJobWithoutLock(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+  }) {
+    const { orgId, queueId, jobId } = opts;
+    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const bullJobId = parseExternalId(jobId).bullId;
+    await queue.remove(bullJobId);
+  }
+
+  async removeJobByIdFromAnyQueue(opts: { orgId: string; jobId: JobId }) {
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.job_creations')
+      .select(['queue_id'])
+      .where('org_id', '=', opts.orgId)
+      .where('id', '=', opts.jobId)
+      .orderBy('created_at', 'desc')
+      .executeTakeFirst();
+    if (row === undefined) {
+      return;
+    }
+    await this.removeJobWithoutLock({
+      orgId: opts.orgId,
+      queueId: row.queue_id,
+      jobId: opts.jobId,
+    }).catch(() => {});
+  }
+
+  async removePendingJobsForItem(opts: {
+    orgId: string;
+    itemId: string;
+    itemTypeId: string;
+  }) {
+    const existing = await this.getExistingJobsForItem(opts);
+    await Promise.all(
+      existing.map(async ({ job, queueId }) =>
+        this.removeJobWithoutLock({
+          orgId: opts.orgId,
+          queueId,
+          jobId: job.id,
+        }).catch(() => {}),
+      ),
+    );
+  }
+
+  /**
    * If the job is not found, silently does nothing.
    */
   async #markLockedJobCompleted(opts: {
