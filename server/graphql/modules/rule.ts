@@ -661,9 +661,10 @@ async function resolveRuleActionParameters(
   ruleId: string,
 ): Promise<{ actionId: string; parameters: JsonObject }[]> {
   const withParams =
-    await context.services.ModerationConfigService.getActionsWithParametersForRuleId(
-      { orgId, ruleId },
-    );
+    await context.services.ModerationConfigService.getActionsForRuleId({
+      orgId,
+      ruleId,
+    });
   return withParams
     .filter((it) => Object.keys(it.parameters).length > 0)
     .map((it) => ({
@@ -697,10 +698,12 @@ const ContentRule: GQLContentRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.services.ModerationConfigService.getActionsForRuleId({
-      orgId: user.orgId,
-      ruleId: rule.id,
-    });
+    return (
+      await context.services.ModerationConfigService.getActionsForRuleId({
+        orgId: user.orgId,
+        ruleId: rule.id,
+      })
+    ).map((it) => it.action);
   },
   async actionParameters(rule, _, context) {
     const user = context.getUser();
@@ -757,10 +760,12 @@ const UserRule: GQLUserRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.services.ModerationConfigService.getActionsForRuleId({
-      orgId: user.orgId,
-      ruleId: rule.id,
-    });
+    return (
+      await context.services.ModerationConfigService.getActionsForRuleId({
+        orgId: user.orgId,
+        ruleId: rule.id,
+      })
+    ).map((it) => it.action);
   },
   async actionParameters(rule, _, context) {
     const user = context.getUser();

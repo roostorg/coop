@@ -40,7 +40,7 @@ import {
   jsonStringify,
   tryJsonParse,
 } from '../../utils/encoding.js';
-import { makeNotFoundError } from '../../utils/errors.js';
+import { makeBadRequestError, makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
@@ -578,8 +578,14 @@ class RuleAPI {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
 
-    // Only meaningful when actionIds is also being set — persistence rewrites
-    // the action attachments (and their parameters) together.
+    // Parameters are persisted alongside the action attachments, so updating
+    // them without also setting actionIds would silently drop them.
+    if (actionParameters != null && actionIds == null) {
+      throw makeBadRequestError(
+        'actionParameters can only be updated when actionIds is also provided',
+        { shouldErrorSpan: true },
+      );
+    }
     const actionParametersMap = await this.buildRuleActionParametersMap(
       orgId,
       actionIds ?? [],

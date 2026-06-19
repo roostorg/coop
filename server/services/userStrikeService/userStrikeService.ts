@@ -151,7 +151,12 @@ export class UserStrikeService {
         (it) => currentUserStrikes + currentStrikesToApply >= it.threshold,
       )
       // sort by threshold in descending order
-      .sort((a, b) => b.threshold - a.threshold)[0];
+      .sort((a, b) => b.threshold - a.threshold)
+      .at(0);
+
+    if (thresholdRuleToApply == null) {
+      return;
+    }
 
     // construst the actions to publish
     const actionsToPublish = await this.moderationConfigService.getActions({

@@ -418,19 +418,9 @@ export default class ActionOperations {
     return results.map((it) => this.#dbResultToAction(it));
   }
 
-  async getActionsForRuleId(opts: {
-    orgId: string;
-    ruleId: string;
-    readFromReplica?: boolean;
-  }) {
-    return (await this.getActionsWithParametersForRuleId(opts)).map(
-      (it) => it.action,
-    );
-  }
-
   // Returns each action attached to a rule paired with the parameter values
   // configured for it. Powers proactive rule execution and pre-fills the rule editor.
-  async getActionsWithParametersForRuleId(opts: {
+  async getActionsForRuleId(opts: {
     orgId: string;
     ruleId: string;
     readFromReplica?: boolean;

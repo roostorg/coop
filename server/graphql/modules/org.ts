@@ -284,15 +284,16 @@ async function validateUserStrikeThresholdActionParameters(
   );
 
   return thresholds.map((t) => {
-    const attached = new Set(t.actions);
     const raw: JsonObject = t.actionParameters ?? {};
     const validated: JsonObject = {};
-    for (const actionId of Object.keys(raw)) {
-      if (!attached.has(actionId)) {
-        continue;
-      }
+    // Iterate the attached actions (not just keys in `raw`) so required-value
+    // checks run even for actions the client omitted from `actionParameters`.
+    for (const actionId of t.actions) {
       const spec = specByActionId.get(actionId) ?? [];
-      const values = validateActionParameterValues(spec, raw[actionId]);
+      const rawValues = Object.prototype.hasOwnProperty.call(raw, actionId)
+        ? raw[actionId]
+        : undefined;
+      const values = validateActionParameterValues(spec, rawValues);
       if (Object.keys(values).length > 0) {
         // Validated values are JSON by construction (the validator only emits
         // coerced primitives/arrays).
