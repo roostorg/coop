@@ -246,6 +246,7 @@ import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import {
   isEnvTrue,
   register,
+  safeGetEnvInt,
   safeGetEnvNonNegativeInt,
   safeGetEnvVar,
 } from './utils.js';
@@ -432,7 +433,12 @@ export interface Dependencies {
   Tracer: SafeTracer;
   Meter: CoopMeter;
   KeyValueStore: StringNumberKeyValueStore;
-  ConfigService: { uiUrl: string };
+  ConfigService: {
+    uiUrl: string;
+    mrtRecoveryLookbackDays: number;
+    mrtRecoveryMaxRetries: number;
+    mrtRecoveryCron: string;
+  };
 }
 
 // Takes a class and returns a type that just contains its public methods and
@@ -1560,7 +1566,12 @@ export default async function getBottle() {
     'SigningKeyPairStorageService',
     (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
   );
-  bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
+  bottle.value('ConfigService', {
+    uiUrl: safeGetEnvVar('UI_URL'),
+    mrtRecoveryLookbackDays: safeGetEnvInt('MRT_RECOVERY_LOOKBACK_DAYS', 30),
+    mrtRecoveryMaxRetries: safeGetEnvInt('MRT_RECOVERY_MAX_RETRIES', 5),
+    mrtRecoveryCron: process.env.MRT_RECOVERY_CRON ?? '0 0 * * *',
+  });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
   bottle.factory('sendEmail', makeSendEmail);
   register(bottle, 'KeyValueStore', makeKeyValueStore);

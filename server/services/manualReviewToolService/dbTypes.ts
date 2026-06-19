@@ -195,6 +195,18 @@ export type ManualReviewToolServicePg = {
     policy_id: string;
     rule_id: string;
   };
+  'manual_review_tool.mrt_queue_recovery_state': {
+    job_id: string;
+    org_id: string;
+    queue_id: string;
+    item_id: string;
+    item_type_id: string;
+    status: 'PENDING' | 'FAILED';
+    retry_count: number;
+    last_error: string | null;
+    created_at: ColumnType<Date, Date | undefined, never>;
+    updated_at: ColumnType<Date, Date | undefined, Date>;
+  };
   'manual_review_tool.manual_review_hidden_item_fields': {
     org_id: string;
     item_type_id: string;

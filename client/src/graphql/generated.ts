@@ -2487,6 +2487,7 @@ export type GQLMutation = {
   readonly removeFavoriteRule: GQLRemoveFavoriteRuleSuccessResponse;
   readonly renameRole: GQLRole;
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
+  readonly resetMrtRecoveryJobs: GQLResetMrtRecoveryJobsResponse;
   readonly resetPassword: Scalars['Boolean']['output'];
   /**
    * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
@@ -2731,6 +2732,10 @@ export type GQLMutationRenameRoleArgs = {
 
 export type GQLMutationReorderRoutingRulesArgs = {
   input: GQLReorderRoutingRulesInput;
+};
+
+export type GQLMutationResetMrtRecoveryJobsArgs = {
+  jobIds: ReadonlyArray<Scalars['ID']['input']>;
 };
 
 export type GQLMutationResetPasswordArgs = {
@@ -3957,6 +3962,14 @@ export const GQLReportingRuleStatus = {
 
 export type GQLReportingRuleStatus =
   (typeof GQLReportingRuleStatus)[keyof typeof GQLReportingRuleStatus];
+export type GQLResetMrtRecoveryJobsResponse =
+  GQLResetMrtRecoveryJobsSuccessResponse;
+
+export type GQLResetMrtRecoveryJobsSuccessResponse = {
+  readonly __typename: 'ResetMrtRecoveryJobsSuccessResponse';
+  readonly success: Scalars['Boolean']['output'];
+};
+
 export type GQLResetPasswordInput = {
   readonly newPassword: Scalars['String']['input'];
   readonly token: Scalars['String']['input'];

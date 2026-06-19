@@ -58,6 +58,9 @@ import JobRouting, {
   type UpdateRoutingRuleInput,
 } from './modules/JobRouting.js';
 import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
+import MrtRecoveryOperations, {
+  type MrtRecoveryState,
+} from './modules/MrtRecoveryOperations.js';
 import QueueOperations, {
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
@@ -291,6 +294,7 @@ export class ManualReviewToolService {
   private readonly commentOps: CommentOperations;
   private readonly skipOps: SkipOperations;
   private readonly reporterInvalidation: ReporterInvalidation;
+  private readonly mrtRecoveryOps: MrtRecoveryOperations;
 
   constructor(
     readonly redis: Dependencies['IORedis'],
@@ -351,6 +355,7 @@ export class ManualReviewToolService {
       this.queueOps,
       this.tracer,
     );
+    this.mrtRecoveryOps = new MrtRecoveryOperations(pgQuery);
   }
 
   /**
@@ -913,6 +918,33 @@ export class ManualReviewToolService {
     queueId: string;
   }) {
     return this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(opts);
+  }
+
+  async getRecoveryStatesForJobIds(jobIds: readonly string[]) {
+    return this.mrtRecoveryOps.getRecoveryStatesForJobIds(jobIds);
+  }
+
+  async deleteRecoveryStatesForJobIds(jobIds: readonly string[]) {
+    return this.mrtRecoveryOps.deleteRecoveryStatesForJobIds(jobIds);
+  }
+
+  async resetFailedRecoveryStates(opts: {
+    orgId: string;
+    jobIds: readonly string[];
+  }) {
+    return this.mrtRecoveryOps.resetFailedRecoveryStates(opts);
+  }
+
+  async recordRecoveryFailure(opts: {
+    jobId: string;
+    orgId: string;
+    queueId: string;
+    itemId: string;
+    itemTypeId: string;
+    error: string;
+    maxRetries: number;
+  }): Promise<MrtRecoveryState> {
+    return this.mrtRecoveryOps.recordRecoveryFailure(opts);
   }
 
   async getFavoriteQueuesForUser(opts: { orgId: string; userId: string }) {

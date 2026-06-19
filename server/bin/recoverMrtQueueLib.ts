@@ -16,6 +16,14 @@ import {
 import { toCorrelationId } from '../utils/correlationIds.js';
 
 export type Container = Awaited<ReturnType<typeof getBottle>>['container'];
+export type ReportHistoryContainer = Pick<
+  Container,
+  'DataWarehouse' | 'Tracer'
+>;
+export type EnqueueContainer = Pick<
+  Container,
+  'ItemInvestigationService' | 'ManualReviewToolService' | 'NcmecService'
+>;
 
 export const RECOVERY_MODES = ['default', 'ncmec'] as const;
 export type RecoveryMode = (typeof RECOVERY_MODES)[number];
@@ -48,6 +56,49 @@ export type EnqueueStats = {
   failed: number;
 };
 
+export async function recordRecoveryFailureAndUpdateState(opts: {
+  manualReviewToolService: {
+    recordRecoveryFailure(input: {
+      jobId: string;
+      orgId: string;
+      queueId: string;
+      itemId: string;
+      itemTypeId: string;
+      error: string;
+      maxRetries: number;
+    }): Promise<{ retryCount: number; status: 'PENDING' | 'FAILED' }>;
+  };
+  recoveryStates: Map<string, { jobId: string; status: 'PENDING' | 'FAILED' }>;
+  candidate: Candidate & { orgId: string; queueId: string };
+  error: string;
+  maxRetries: number;
+}) {
+  const {
+    manualReviewToolService,
+    recoveryStates,
+    candidate,
+    error,
+    maxRetries,
+  } = opts;
+
+  const updated = await manualReviewToolService.recordRecoveryFailure({
+    jobId: candidate.latestJobId,
+    orgId: candidate.orgId,
+    queueId: candidate.queueId,
+    itemId: candidate.itemId,
+    itemTypeId: candidate.itemTypeId,
+    error,
+    maxRetries,
+  });
+
+  recoveryStates.set(candidate.latestJobId, {
+    jobId: candidate.latestJobId,
+    status: updated.status,
+  });
+
+  return updated;
+}
+
 /**
  * Shape of a row from `REPORTING_SERVICE.REPORTS`. All fields are nullable
  * because warehouse rows aren't guaranteed to be fully populated.
@@ -70,7 +121,7 @@ type ReportsWarehouseRow = {
  * Mutates `out` in place. Chunks queries to stay under CH's parameter limit.
  */
 export async function loadReportHistories(
-  container: Container,
+  container: ReportHistoryContainer,
   orgId: string,
   candidates: readonly Candidate[],
   out: Map<string, ReportHistory>,
@@ -159,7 +210,7 @@ export async function loadReportHistories(
  * always routes to the org's configured default NCMEC queue.
  */
 export async function enqueueOne(
-  container: Container,
+  container: EnqueueContainer,
   orgId: string,
   queueId: string,
   candidate: Candidate,
