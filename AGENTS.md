@@ -51,7 +51,17 @@ npm install
 (cd server && npm install)
 (cd db && npm install)
 
-# Populate .env files for /server and /db, then run migrations
+# Copy .env files for /server, /db, and /client (defaults work for local dev)
+cp server/.env.example server/.env
+cp db/.env.example db/.env
+cp client/.env.example client/.env
+
+# Create databases, then run migrations.
+
+npm run db:create -- --env staging --db api-server-pg
+npm run db:create -- --env staging --db scylla
+npm run db:create -- --env staging --db clickhouse
+
 npm run db:update -- --env staging --db api-server-pg
 npm run db:update -- --env staging --db scylla
 npm run db:update -- --env staging --db clickhouse
@@ -60,7 +70,7 @@ npm run db:update -- --env staging --db clickhouse
 npm run create-org -- \
   --name "Test Org" \
   --email "admin@example.com" \
-  --website "example.com" \
+  --website "https://example.com" \
   --firstName "Admin" \
   --lastName "User" \
   --password "your-password"
@@ -71,7 +81,7 @@ npm run server:start        # Express + GraphQL API
 npm run generate:watch      # (optional) watch GraphQL changes
 ```
 
-Client: http://localhost:3001 · Server: http://localhost:3000
+Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
