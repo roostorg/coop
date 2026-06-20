@@ -10,10 +10,14 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
+import { assertUnreachable } from '../../../utils/misc.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
+import {
+  type ClearReportsDisposition,
+  type ManualReviewToolServicePg,
+} from '../dbTypes.js';
 import { type GetActionsByIdEventuallyConsistent } from '../manualReviewToolQueries.js';
 import {
   type JobId,
@@ -54,7 +58,11 @@ export type NCMECThreadReport = {
   reportedContent: readonly NCMECReportedContentInThread[];
 };
 
-type MRTJobAutoCloseReason = 'ITEM_DELETED_BEFORE_REVIEW';
+type MRTJobAutoCloseReason =
+  | 'ITEM_DELETED_BEFORE_REVIEW'
+  // Another job for this user was actioned and the queue closes their other
+  // reports (issue #650).
+  | 'USER_ACTIONED';
 
 export type ManualReviewDecisionComponent =
   | { type: 'IGNORE' }
@@ -99,6 +107,11 @@ export type ManualReviewDecisionType =
   | ManualReviewDecisionComponent['type']
   | 'RELATED_ACTION';
 
+export type CustomActionDecisionComponent = Extract<
+  ManualReviewDecisionComponent,
+  { type: 'CUSTOM_ACTION' }
+>;
+
 export type SubmitDecisionInput = {
   queueId: string;
   reportHistory: ReportHistory;
@@ -122,6 +135,9 @@ export type SubmitDecisionInput = {
       decisionComponents: ManualReviewDecisionComponent[];
       reviewerId: string;
       reviewerEmail: string;
+      // Set by the sweep on its own disposition decisions so SAME_ACTION
+      // can't recurse.
+      suppressUserReportSweep?: boolean;
     }
 );
 
@@ -133,6 +149,7 @@ export type OnRecordDecisionInput = {
   reviewerId: string;
   reviewerEmail: string;
   decisionReason?: string;
+  suppressUserReportSweep?: boolean;
 };
 
 export default class JobDecisioning {
@@ -159,6 +176,10 @@ export default class JobDecisioning {
       decisionReason,
       automaticCloseDecision,
     } = opts;
+    const suppressUserReportSweep =
+      opts.automaticCloseDecision === undefined
+        ? opts.suppressUserReportSweep
+        : undefined;
 
     const [job] = await this.queueOps.getJobs({
       orgId,
@@ -408,6 +429,7 @@ export default class JobDecisioning {
         reviewerId,
         reviewerEmail,
         decisionReason,
+        suppressUserReportSweep,
       }).catch((error) => {
         this.tracer.addSpan(
           { resource: 'actionPublisher', operation: 'publishAction' },
@@ -428,6 +450,107 @@ export default class JobDecisioning {
 
     if (error) {
       throw error;
+    }
+  }
+
+  /**
+   * Logs the decision and runs side effects for a job the clear-other-reports
+   * sweep chose to dispose of. The caller must have already
+   * removed the job from its queue; this never touches the queue.
+   */
+  async recordSweptJobDisposition(opts: {
+    orgId: string;
+    queueId: string;
+    job: ManualReviewJob;
+    disposition: ClearReportsDisposition;
+    // Re-targeted at this job's item when the disposition is SAME_ACTION.
+    triggerCustomActions: readonly CustomActionDecisionComponent[];
+    reviewerId: string;
+    reviewerEmail: string;
+    decisionReason?: string;
+  }): Promise<void> {
+    const {
+      orgId,
+      queueId,
+      job,
+      disposition,
+      triggerCustomActions,
+      reviewerId,
+      reviewerEmail,
+      decisionReason,
+    } = opts;
+
+    const decisionComponents = this.#buildSweptDecisionComponents({
+      disposition,
+      job,
+      triggerCustomActions,
+    });
+    if (decisionComponents.length === 0) {
+      return;
+    }
+
+    try {
+      await this.#logDecision({
+        id: jobIdToGuid(job.id),
+        job,
+        queueId,
+        reviewerId,
+        orgId,
+        decisionComponents,
+        relatedActions: [],
+        enqueueSourceInfo: job.enqueueSourceInfo,
+        decisionReason,
+      });
+    } catch (error) {
+      // A concurrent reviewer already decided this job; nothing left to do.
+      if (isDecisionAlreadyLoggedError(error)) {
+        return;
+      }
+      throw error;
+    }
+
+    if (disposition === 'AUTOMATIC_CLOSE') {
+      return;
+    }
+
+    await this.onRecordDecision({
+      decisionComponents,
+      relatedActions: [],
+      job,
+      queueId,
+      reviewerId,
+      reviewerEmail,
+      decisionReason,
+      suppressUserReportSweep: true,
+    });
+  }
+
+  #buildSweptDecisionComponents(opts: {
+    disposition: ClearReportsDisposition;
+    job: ManualReviewJob;
+    triggerCustomActions: readonly CustomActionDecisionComponent[];
+  }): ManualReviewDecisionComponent[] {
+    const { disposition, job, triggerCustomActions } = opts;
+    switch (disposition) {
+      case 'AUTOMATIC_CLOSE':
+        return [{ type: 'AUTOMATIC_CLOSE', reason: 'USER_ACTIONED' }];
+      case 'IGNORE':
+        return [{ type: 'IGNORE' }];
+      case 'SAME_ACTION': {
+        // Re-target the moderator's custom action(s) at this job's own item.
+        const { item } = job.payload;
+        return triggerCustomActions.map((component) => ({
+          type: 'CUSTOM_ACTION',
+          actions: component.actions,
+          policies: component.policies,
+          itemIds: [item.itemId],
+          itemTypeId: item.itemTypeIdentifier.id,
+          actionIdsToMrtApiParamDecisionPayload:
+            component.actionIdsToMrtApiParamDecisionPayload,
+        }));
+      }
+      default:
+        return assertUnreachable(disposition);
     }
   }
 

@@ -844,6 +844,11 @@ export type GQLCreateManualReviewJobCommentInput = {
 
 export type GQLCreateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
@@ -2269,6 +2274,9 @@ export type GQLManualReviewJobWithDecisions = {
 export type GQLManualReviewQueue = {
   readonly __typename?: 'ManualReviewQueue';
   readonly autoCloseJobs: Scalars['Boolean']['output'];
+  readonly clearReportsDisposition?: Maybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope: GQLMrtClearReportsScope;
+  readonly clearReportsTriggerActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly explicitlyAssignedReviewers: ReadonlyArray<GQLUser>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['output']>;
@@ -2390,6 +2398,21 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
 };
 
+export const GQLMrtClearReportsDisposition = {
+  AutomaticClose: 'AUTOMATIC_CLOSE',
+  Ignore: 'IGNORE',
+  SameAction: 'SAME_ACTION',
+} as const;
+
+export type GQLMrtClearReportsDisposition =
+  (typeof GQLMrtClearReportsDisposition)[keyof typeof GQLMrtClearReportsDisposition];
+export const GQLMrtClearReportsScope = {
+  AllQueues: 'ALL_QUEUES',
+  CurrentQueue: 'CURRENT_QUEUE',
+} as const;
+
+export type GQLMrtClearReportsScope =
+  (typeof GQLMrtClearReportsScope)[keyof typeof GQLMrtClearReportsScope];
 export type GQLMrtJobEnqueueSourceInfo = {
   readonly __typename?: 'MrtJobEnqueueSourceInfo';
   readonly kind: GQLJobCreationSourceOptions;
@@ -4824,6 +4847,11 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly actionIdsToHide: ReadonlyArray<Scalars['ID']['input']>;
   readonly actionIdsToUnhide: ReadonlyArray<Scalars['ID']['input']>;
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name?: InputMaybe<Scalars['String']['input']>;
@@ -6121,6 +6149,8 @@ export type GQLResolversTypes = {
   ModelCardSection: ResolverTypeWrapper<GQLModelCardSection>;
   ModelCardSubsection: ResolverTypeWrapper<GQLModelCardSubsection>;
   ModeratorSafetySettingsInput: GQLModeratorSafetySettingsInput;
+  MrtClearReportsDisposition: GQLMrtClearReportsDisposition;
+  MrtClearReportsScope: GQLMrtClearReportsScope;
   MrtJobEnqueueSourceInfo: ResolverTypeWrapper<GQLMrtJobEnqueueSourceInfo>;
   MutateAccessibleQueuesForUserSuccessResponse: ResolverTypeWrapper<GQLMutateAccessibleQueuesForUserSuccessResponse>;
   MutateActionError: GQLMutateActionError;
@@ -10327,6 +10357,21 @@ export type GQLManualReviewQueueResolvers<
 > = {
   autoCloseJobs?: Resolver<
     GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  clearReportsDisposition?: Resolver<
+    Maybe<GQLResolversTypes['MrtClearReportsDisposition']>,
+    ParentType,
+    ContextType
+  >;
+  clearReportsScope?: Resolver<
+    GQLResolversTypes['MrtClearReportsScope'],
+    ParentType,
+    ContextType
+  >;
+  clearReportsTriggerActionIds?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ID']>,
     ParentType,
     ContextType
   >;

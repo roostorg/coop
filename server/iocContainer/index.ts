@@ -113,6 +113,7 @@ import {
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
 import {
+  isReportJob,
   ManualReviewToolService,
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
@@ -924,9 +925,11 @@ export default async function getBottle() {
         decisionComponents,
         relatedActions,
         job,
+        queueId,
         reviewerId,
         reviewerEmail,
         decisionReason,
+        suppressUserReportSweep,
       }) {
         const { orgId } = job;
         const { itemId, itemTypeIdentifier, data } = job.payload.item;
@@ -1397,6 +1400,39 @@ export default async function getBottle() {
             }
           }),
         );
+
+        // Clear all other reports for this user. Skipped for
+        // sweep-applied dispositions (so SAME_ACTION can't recurse) and appeals.
+        if (!suppressUserReportSweep && isReportJob(job)) {
+          const reportJob = job;
+          const customActions = decisionComponents.flatMap((decision) =>
+            decision.type === 'CUSTOM_ACTION' ? [decision] : [],
+          );
+          if (customActions.length > 0) {
+            container.ManualReviewToolService.maybeClearOtherReportsForUser({
+              orgId,
+              actionedJob: reportJob,
+              actionedQueueId: queueId,
+              customActions,
+              reviewerId,
+              reviewerEmail,
+              decisionReason,
+            }).catch((error) => {
+              container.Tracer.addSpan(
+                {
+                  resource: 'mrtService',
+                  operation: 'clearOtherReportsForUser',
+                },
+                (span) => {
+                  span.setAttribute('job.id', reportJob.id);
+                  span.setAttribute('org.id', orgId);
+                  container.Tracer.logSpanFailed(span, error);
+                  return null;
+                },
+              );
+            });
+          }
+        }
       },
       async function onEnqueue(
         _input: ManualReviewJobInput | ManualReviewAppealJobInput,
