@@ -1,15 +1,16 @@
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 
-import type SafeTracer from '../../../utils/SafeTracer.js';
 import { jsonStringify, tryJsonParse } from '../../../utils/encoding.js';
 import { logErrorJson } from '../../../utils/logging.js';
+import type SafeTracer from '../../../utils/SafeTracer.js';
+import { getClickhouseMemorySettings } from '../../warehouse/utils/clickhouseSettings.js';
+import { formatClickhouseQuery } from '../../warehouse/utils/clickhouseSql.js';
 import type { IAnalyticsAdapter } from '../IAnalyticsAdapter.js';
 import {
   type AnalyticsEventInput,
   type AnalyticsQueryResult,
   type AnalyticsWriteOptions,
 } from '../types.js';
-import { formatClickhouseQuery } from '../../warehouse/utils/clickhouseSql.js';
 import {
   isTransientNetworkError,
   withClickhouseInsertRetries,
@@ -35,18 +36,9 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
     string,
     ReadonlySet<string>
   >([
-    [
-      'content_api_requests',
-      new Set(['item_type_schema_field_roles']),
-    ],
-    [
-      'item_model_scores_log',
-      new Set(['item_type_schema_field_roles']),
-    ],
-    [
-      'appeals',
-      new Set(['actioned_item_type_schema_field_roles']),
-    ],
+    ['content_api_requests', new Set(['item_type_schema_field_roles'])],
+    ['item_model_scores_log', new Set(['item_type_schema_field_roles'])],
+    ['appeals', new Set(['actioned_item_type_schema_field_roles'])],
     [
       'reporting_rule_executions',
       new Set(['result', 'item_type_schema_field_roles']),
@@ -61,18 +53,9 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
     string,
     ReadonlySet<string>
   >([
-    [
-      'action_executions',
-      new Set(['rules', 'policies', 'rule_tags']),
-    ],
-    [
-      'reporting_rule_executions',
-      new Set([]),
-    ],
-    [
-      'reports',
-      new Set([]),
-    ],
+    ['action_executions', new Set(['rules', 'policies', 'rule_tags'])],
+    ['reporting_rule_executions', new Set([])],
+    ['reports', new Set([])],
   ]);
 
   private static readonly DATE_TIME_FIELDS = new Set([
@@ -120,10 +103,19 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       username: options.connection.username,
       ...(password ? { password } : {}),
       database: options.connection.database,
+      clickhouse_settings: {
+        ...getClickhouseMemorySettings(),
+      },
     });
 
     this.insertWithRetries = withClickhouseInsertRetries(
-      async ({ table, values }: { table: string; values: AnalyticsEventInput[] }) => {
+      async ({
+        table,
+        values,
+      }: {
+        table: string;
+        values: AnalyticsEventInput[];
+      }) => {
         await this.client.insert({ table, values, format: 'JSONEachRow' });
       },
     );
@@ -173,7 +165,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
         format: 'JSONEachRow',
       });
 
-      const rows = (await result.json());
+      const rows = await result.json();
       return rows as readonly T[];
     };
 
@@ -225,13 +217,19 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       // rules, policies, rule_tags are String columns storing JSON
       const regularArrayFields = ['policy_names', 'policy_ids', 'tags'];
       const jsonStringFields = ['rules', 'policies', 'rule_tags'];
-      
-      if (regularArrayFields.includes(key) && (value === null || value === undefined)) {
+
+      if (
+        regularArrayFields.includes(key) &&
+        (value === null || value === undefined)
+      ) {
         normalized[key] = [];
         continue;
       }
-      
-      if (jsonStringFields.includes(key) && (value === null || value === undefined)) {
+
+      if (
+        jsonStringFields.includes(key) &&
+        (value === null || value === undefined)
+      ) {
         normalized[key] = '[]';
         continue;
       }
@@ -269,7 +267,10 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
           // Already a string, keep it
           continue;
         }
-        if (value !== null && (typeof value === 'object' || Array.isArray(value))) {
+        if (
+          value !== null &&
+          (typeof value === 'object' || Array.isArray(value))
+        ) {
           normalized[fieldKey] = jsonStringify(value);
         } else {
           normalized[fieldKey] = defaultValue;
@@ -350,8 +351,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       return this.normalizeJsonArray(value);
     }
 
-    const dateKind =
-      ClickhouseAnalyticsAdapter.DATE_FIELD_KINDS.get(lowerKey);
+    const dateKind = ClickhouseAnalyticsAdapter.DATE_FIELD_KINDS.get(lowerKey);
     if (dateKind) {
       return this.normalizeDateField(value, dateKind);
     }
@@ -382,7 +382,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
     // For ClickHouse JSON columns with experimental object type enabled,
     // we should pass objects/arrays directly. The ClickHouse client will
     // handle serialization when using JSONEachRow format.
-    
+
     if (Array.isArray(value)) {
       if (stringifyFields.includes(key)) {
         return jsonStringify(value);
@@ -403,10 +403,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
     return value;
   }
 
-  private normalizeDateField(
-    value: unknown,
-    kind: DateFieldKind,
-  ): unknown {
+  private normalizeDateField(value: unknown, kind: DateFieldKind): unknown {
     if (value == null) {
       return value;
     }
@@ -451,9 +448,13 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
     return value;
   }
 
-  private parseAndFormatDate(value: string, column: string): string | undefined {
-    const kind =
-      ClickhouseAnalyticsAdapter.DATE_FIELD_KINDS.get(column.toLowerCase());
+  private parseAndFormatDate(
+    value: string,
+    column: string,
+  ): string | undefined {
+    const kind = ClickhouseAnalyticsAdapter.DATE_FIELD_KINDS.get(
+      column.toLowerCase(),
+    );
     if (!kind) {
       return undefined;
     }
