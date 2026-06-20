@@ -59,7 +59,7 @@ const testWithQueue = () =>
         data: {} as NormalizedItemData,
         itemTypeIdentifier: {
           id: itemTypes[0].id,
-          version: new Date().toISOString(),
+          version: itemTypes[0].version,
           schemaVariant: 'original',
         },
         creator: opts.creator,
@@ -96,6 +96,20 @@ const testWithQueue = () =>
         ],
       });
 
+    const pendingJobIds = async (queueId?: string) => {
+      let ids: readonly string[] = [];
+      for await (const job of queueOps.iteratePendingJobsForQueue({
+        orgId: org.id,
+        queueId: queueId ?? queue.id,
+        batchSize: 100,
+        maxJobs: 1000,
+        progress: { truncated: false },
+      })) {
+        ids = [...ids, job.id];
+      }
+      return ids;
+    };
+
     return {
       org,
       user,
@@ -103,6 +117,7 @@ const testWithQueue = () =>
       mrtService,
       addJob,
       configureQueue,
+      pendingJobIds,
       cleanup: async () => {
         await queueCleanup();
         await itemTypesCleanup();
@@ -134,13 +149,21 @@ describe('ManualReviewToolService.maybeClearOtherReportsForUser', () => {
 
   testWithQueue()(
     'disposes other jobs for the same user, excluding the actioned job and other users',
-    async ({ org, user, queue, mrtService, addJob, configureQueue }) => {
+    async ({
+      org,
+      user,
+      queue,
+      mrtService,
+      addJob,
+      configureQueue,
+      pendingJobIds,
+    }) => {
       await configureQueue({ disposition: 'AUTOMATIC_CLOSE' });
 
       const actionedJob = await addJob({ creator: reportedUser });
       await addJob({ creator: reportedUser });
       await addJob({ creator: reportedUser });
-      await addJob({ creator: otherUser });
+      const otherUserJob = await addJob({ creator: otherUser });
 
       const result = await mrtService.maybeClearOtherReportsForUser({
         orgId: org.id,
@@ -152,6 +175,12 @@ describe('ManualReviewToolService.maybeClearOtherReportsForUser', () => {
       });
 
       expect(result?.jobsDisposed).toBe(2);
+
+      // Only the two other reported-user jobs are removed; the actioned job and
+      // the other user's job remain queued.
+      expect(new Set(await pendingJobIds())).toEqual(
+        new Set([actionedJob.id, otherUserJob.id]),
+      );
     },
   );
 

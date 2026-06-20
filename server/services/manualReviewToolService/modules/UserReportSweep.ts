@@ -219,19 +219,10 @@ export default class UserReportSweep {
     const { queueId, job, input } = opts;
     const { orgId, reviewerId } = input;
 
-    // Remove first, respecting locks: a job another reviewer is working on is
-    // left untouched, so we never steal their lock or double-decide a job.
-    const removed = await this.queueOps.removeJobAllowingInvokerLock({
-      orgId,
-      queueId,
-      jobId: job.id,
-      invokerUserId: reviewerId,
-    });
-    if (!removed) {
-      return false;
-    }
-
-    await this.jobDecisioning.recordSweptJobDisposition({
+    // Record the decision before removing the job, a job must never leave
+    // the queue without its decision, so it is durably logged first, or it
+    // could be lost if the recording step fails.
+    const outcome = await this.jobDecisioning.recordSweptJobDisposition({
       orgId,
       queueId,
       job,
@@ -241,7 +232,20 @@ export default class UserReportSweep {
       reviewerEmail: input.reviewerEmail,
       decisionReason: input.decisionReason,
     });
-    return true;
+    if (outcome === 'skipped') {
+      return false;
+    }
+
+    // Best-effort removal. If it fails (e.g. another reviewer holds the lock),
+    // the job now has a decision and is dropped the next time it's dequeued.
+    await this.queueOps.removeJobAllowingInvokerLock({
+      orgId,
+      queueId,
+      jobId: job.id,
+      invokerUserId: reviewerId,
+    });
+
+    return outcome === 'logged';
   }
 
   /**

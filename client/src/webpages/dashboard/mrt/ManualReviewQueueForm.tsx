@@ -419,6 +419,13 @@ export default function ManualReviewQueueForm() {
 
   const isCreateForm = id == null;
 
+  // A disposition with no trigger actions is saved as "disabled" by the
+  // backend, so block that state to avoid a queue that looks enabled but isn't.
+  const clearReportsConfigInvalid =
+    !isAppealsQueue &&
+    clearReportsDisposition != null &&
+    clearReportsTriggerActionIds.length === 0;
+
   const divider = () => <div className="mt-5 divider mb-9" />;
   return (
     <div className="flex flex-col text-start">
@@ -626,11 +633,13 @@ export default function ManualReviewQueueForm() {
         <CoopButton
           title={id == null ? 'Create Queue' : 'Save Changes'}
           loading={createMutationLoading || updateMutationLoading}
-          disabled={queueName == null}
+          disabled={queueName == null || clearReportsConfigInvalid}
           disabledTooltipTitle={
             queueName == null
               ? 'Please provide a name for the queue.'
-              : undefined
+              : clearReportsConfigInvalid
+                ? 'Select at least one Trigger Action, or set Clear Other Reports to Disabled.'
+                : undefined
           }
           disabledTooltipPlacement="bottom"
           onClick={id == null ? onCreateQueue : onUpdateQueue}

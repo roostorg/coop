@@ -455,8 +455,15 @@ export default class JobDecisioning {
 
   /**
    * Logs the decision and runs side effects for a job the clear-other-reports
-   * sweep chose to dispose of. The caller must have already
-   * removed the job from its queue; this never touches the queue.
+   * sweep chose to dispose of. This only records the decision (in pg) and runs
+   * side effects; the caller is responsible for removing the job from its queue
+   * *after* this resolves, so the decision is durably recorded first (matching
+   * the invariant in `submitDecision`).
+   *
+   * Returns:
+   *  - `'logged'`: a new decision was recorded by this call.
+   *  - `'already-logged'`: a concurrent decider beat us to it.
+   *  - `'skipped'`: there was nothing to record.
    */
   async recordSweptJobDisposition(opts: {
     orgId: string;
@@ -468,7 +475,7 @@ export default class JobDecisioning {
     reviewerId: string;
     reviewerEmail: string;
     decisionReason?: string;
-  }): Promise<void> {
+  }): Promise<'logged' | 'already-logged' | 'skipped'> {
     const {
       orgId,
       queueId,
@@ -486,7 +493,7 @@ export default class JobDecisioning {
       triggerCustomActions,
     });
     if (decisionComponents.length === 0) {
-      return;
+      return 'skipped';
     }
 
     try {
@@ -504,13 +511,13 @@ export default class JobDecisioning {
     } catch (error) {
       // A concurrent reviewer already decided this job; nothing left to do.
       if (isDecisionAlreadyLoggedError(error)) {
-        return;
+        return 'already-logged';
       }
       throw error;
     }
 
     if (disposition === 'AUTOMATIC_CLOSE') {
-      return;
+      return 'logged';
     }
 
     await this.onRecordDecision({
@@ -523,6 +530,7 @@ export default class JobDecisioning {
       decisionReason,
       suppressUserReportSweep: true,
     });
+    return 'logged';
   }
 
   #buildSweptDecisionComponents(opts: {
