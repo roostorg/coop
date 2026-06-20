@@ -33,7 +33,8 @@
   },
   "overrides": {
     "ajv": "~8.18.0",
-    "fast-uri": "^3.1.2"
+    "fast-uri": "^3.1.2",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/pg": "^8.10.2",
