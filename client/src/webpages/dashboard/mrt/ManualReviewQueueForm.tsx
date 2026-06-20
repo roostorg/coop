@@ -419,8 +419,8 @@ export default function ManualReviewQueueForm() {
 
   const isCreateForm = id == null;
 
-  // A disposition with no trigger actions is saved as "disabled" by the
-  // backend, so block that state to avoid a queue that looks enabled but isn't.
+  // The sweep never runs without at least one trigger action, so block this
+  // state to avoid a queue that looks enabled but does nothing.
   const clearReportsConfigInvalid =
     !isAppealsQueue &&
     clearReportsDisposition != null &&

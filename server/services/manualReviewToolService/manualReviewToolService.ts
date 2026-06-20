@@ -964,10 +964,18 @@ export class ManualReviewToolService {
       return undefined;
     }
 
+    // Narrow each component to only the trigger actions, so a SAME_ACTION
+    // disposition re-applies just the configured action(s) and not other
+    // actions that happened to be part of the same decision.
     const triggerActionIdSet = new Set(triggerActionIds);
-    const matchingCustomActions = customActions.filter((component) =>
-      component.actions.some((action) => triggerActionIdSet.has(action.id)),
-    );
+    const matchingCustomActions = customActions
+      .map((component) => ({
+        ...component,
+        actions: component.actions.filter((action) =>
+          triggerActionIdSet.has(action.id),
+        ),
+      }))
+      .filter((component) => component.actions.length > 0);
     if (matchingCustomActions.length === 0) {
       return undefined;
     }
