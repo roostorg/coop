@@ -57,10 +57,11 @@ cp db/.env.example db/.env
 cp client/.env.example client/.env
 
 # Create databases, then run migrations.
-# db:create is required before db:update for Scylla and ClickHouse;
-# Postgres creates its database automatically so db:create can be skipped there.
+
+npm run db:create -- --env staging --db api-server-pg
 npm run db:create -- --env staging --db scylla
 npm run db:create -- --env staging --db clickhouse
+
 npm run db:update -- --env staging --db api-server-pg
 npm run db:update -- --env staging --db scylla
 npm run db:update -- --env staging --db clickhouse
