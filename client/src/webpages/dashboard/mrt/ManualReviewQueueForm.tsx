@@ -41,7 +41,7 @@ const CLEAR_REPORTS_DISPOSITION_LABELS: Record<
 
 const CLEAR_REPORTS_SCOPE_LABELS: Record<GQLMrtClearReportsScope, string> = {
   [GQLMrtClearReportsScope.CurrentQueue]: 'Only this queue',
-  [GQLMrtClearReportsScope.AllQueues]: 'All non-appeal queues',
+  [GQLMrtClearReportsScope.AllQueues]: 'All queues (except appeals)',
 };
 
 gql`
