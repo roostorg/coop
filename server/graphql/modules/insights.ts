@@ -313,7 +313,7 @@ const Query: GQLQueryResolvers = {
         user.orgId,
       );
     const bucketedStrikeCounts = lodash.countBy(
-      allUserStrikeCounts,
+      allUserStrikeCounts.filter((it) => it.strike_count > 0),
       (it) => it.strike_count,
     );
     return Object.entries(bucketedStrikeCounts).map((bucket) => ({
