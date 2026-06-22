@@ -128,10 +128,17 @@ export default async function makeApiServer(deps: Dependencies) {
   /**
    * Passport & User Session Configuration
    */
+  // Tracked so `shutdown()` can stop connect-pg-simple's recurring
+  // pruneSessions timer. Without this, every test that calls
+  // makeApiServer (via makeMockedServer) leaks a setInterval that keeps
+  // calling pool.query on the (already-closed, in tests) pool after the
+  // test finishes — causing "Failed to prune sessions: Client was closed
+  // and is not queryable" to loop forever and hang the test worker.
+  const sessionStoreInstance = new sessionStore({ pool: KyselyPgPool });
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ pool: KyselyPgPool }),
+      store: sessionStoreInstance,
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -419,6 +426,9 @@ export default async function makeApiServer(deps: Dependencies) {
       await Promise.all([
         apolloServer.stop(),
         deps.closeSharedResourcesForShutdown(),
+        // Stops the recurring pruneSessions timer; ownsPg is false (we
+        // pass in our own pool) so it won't end the shared pool.
+        sessionStoreInstance.close(),
       ]);
     },
   };
