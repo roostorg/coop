@@ -154,4 +154,43 @@ describe('createTransactionalTestDb', () => {
       await tdb.end();
     }
   });
+
+  it('serializes concurrent commits so they do not race the savepoint stack', async () => {
+    const tdb = createTransactionalTestDb(pgConfig);
+    await tdb.begin();
+    try {
+      const db = new Kysely<Record<string, never>>({
+        dialect: new PostgresDialect({ pool: tdb.pool }),
+      });
+      const transactionWithRetry = makeKyselyTransactionWithRetry(db);
+
+      await sql`create table concurrency_probe (id int primary key)`.execute(
+        db,
+      );
+
+      const ids = Array.from({ length: 16 }, (_, i) => i);
+
+      await Promise.all(
+        ids.map(async (id) =>
+          transactionWithRetry(async (trx) => {
+            await sql`insert into concurrency_probe (id) values (${id})`.execute(
+              trx,
+            );
+          }),
+        ),
+      );
+
+      const rows = await sql<{
+        id: number;
+      }>`select id from concurrency_probe order by id`.execute(db);
+      expect(rows.rows.map((r) => r.id)).toEqual(ids);
+
+      await tdb.rollback();
+      await db.destroy();
+    } finally {
+      // Always close the pinned connection so a mid-test throw can't leak it
+      // (and closing aborts any still-open outer transaction).
+      await tdb.end();
+    }
+  });
 });
