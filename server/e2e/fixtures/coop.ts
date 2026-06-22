@@ -46,7 +46,6 @@ async function importSeedHelpers() {
     hashPassword: ums.hashPassword,
     UserRole: ums.UserRole,
     kyselyUserInsert: userPersistence.kyselyUserInsert,
-    kyselyUserDeleteById: userPersistence.kyselyUserDeleteById,
   };
 }
 
@@ -62,13 +61,15 @@ export type SeededAdmin = {
 };
 
 /**
- * Seeds committed DB state for a test via the real DI factories
- * (`test/fixtureHelpers`) and tracks cleanups to run afterwards. Implemented as
- * a class so its internal mutation stays within the test-only eslint policy.
+ * Seeds DB state for a test via the real DI factories (`test/fixtureHelpers`).
+ *
+ * There is intentionally no cleanup: every seeded org gets a unique id, so the
+ * app's own multi-tenancy isolates tests from each other, and the CI database
+ * is disposable. This keeps tests trivially parallelizable. See the README's
+ * "Scaling to per-worker databases" note before adding cross-tenant or
+ * global-state assertions — those would break this isolation model.
  */
 class Seeder {
-  private readonly cleanups: Array<() => Promise<void>> = [];
-
   constructor(private readonly deps: Dependencies) {}
 
   /**
@@ -77,16 +78,10 @@ class Seeder {
    */
   async orgWithAdmin(opts: { password?: string } = {}): Promise<SeededAdmin> {
     const password = opts.password ?? 'e2e-password';
-    const {
-      createOrg,
-      hashPassword,
-      UserRole,
-      kyselyUserInsert,
-      kyselyUserDeleteById,
-    } = await importSeedHelpers();
+    const { createOrg, hashPassword, UserRole, kyselyUserInsert } =
+      await importSeedHelpers();
 
     const org = await createOrg(this.deps);
-    this.cleanups.push(org.cleanup);
 
     const userId = uid();
     const email = `e2e-${userId}@example.com`;
@@ -102,22 +97,8 @@ class Seeder {
       approvedByAdmin: true,
       loginMethods: ['password'],
     });
-    this.cleanups.push(async () => {
-      await kyselyUserDeleteById(this.deps.KyselyPg, user.id);
-    });
 
     return { orgId: org.org.id, userId: user.id, email, password };
-  }
-
-  /** Best-effort teardown in reverse creation order (user before org). */
-  async teardown(): Promise<void> {
-    for (const cleanup of [...this.cleanups].reverse()) {
-      try {
-        await cleanup();
-      } catch {
-        // Ignore teardown failures so one bad cleanup doesn't mask the result.
-      }
-    }
   }
 }
 
@@ -129,7 +110,7 @@ type WorkerFixtures = { deps: Dependencies };
 /**
  * Playwright test extended with server-side seeding. Each test creates the
  * state it needs via the real DI factories rather than relying on pre-seeded
- * data, and that state is cleaned up afterwards.
+ * data.
  *
  * The DI container is built once per worker (it opens real DB connections) and
  * imported dynamically so the heavy module graph only loads at run time, not
@@ -149,9 +130,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   seed: async ({ deps }, use) => {
-    const seeder = new Seeder(deps);
-    await use(seeder);
-    await seeder.teardown();
+    await use(new Seeder(deps));
   },
 });
 

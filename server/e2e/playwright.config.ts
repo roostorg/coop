@@ -19,12 +19,15 @@ export default defineConfig({
   // so these land at server/e2e/{test-results,playwright-report} — matching the
   // CI upload path and the e2e/.gitignore.
   outputDir: 'test-results',
+  // Run every test concurrently (Playwright has no random-order flag; this is
+  // the idiomatic equivalent). Combined with per-test unique-org isolation, no
+  // test can depend on another's state or on execution order. Default worker
+  // count scales to the runner's CPUs.
+  fullyParallel: true,
   // Fail the build on CI if test.only was left in the source.
   forbidOnly: Boolean(process.env.CI),
   // Retry flaky moderator flows on CI; fail fast locally.
   retries: process.env.CI ? 2 : 0,
-  // Each test seeds committed DB state, so run serially on CI for determinism.
-  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI
     ? [
         ['github'],

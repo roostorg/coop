@@ -1,19 +1,7 @@
-# DRAFT — needs human review before it can be relied on (per AGENTS.md, workflow
-# files require maintainer approval). End-to-end (Playwright) suite for the
-# moderator-critical dashboard flows (#485).
-#
-# Runs on PRs and on pushes to main. It boots the full stack
-# (Postgres/ClickHouse/Scylla/Redis + server + client), so it is slower /
-# heavier than the other per-PR checks.
-#
-# The app bring-up below mirrors the documented local setup in AGENTS.md. There
-# is no org/user seeding step: each test seeds its own state via the server's DI
-# factories (server/e2e/). Tests live in server/ so they can import those.
 name: E2E
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -26,7 +14,7 @@ concurrency:
 
 jobs:
   # Only run the (heavy) E2E job when something that can affect the running app
-  # changed. Mirrors the `changes` gate in apply_pr_checks.yaml.
+  # changed.
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -62,8 +50,27 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Configure Docker Hub mirror
+        # Route docker.io pulls through Google's pull-through cache to avoid
+        # transient Docker Hub registry/auth timeouts.
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      - name: Pre-pull images (with retry)
+        run: |
+          for attempt in 1 2 3; do
+            if docker compose pull --quiet postgres scylla clickhouse redis; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::image prep attempt $attempt failed; retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+            fi
+          done
+          echo "::error::image prep failed after 3 attempts"; exit 1
+
       - name: Start backing services
-        run: docker compose up --detach postgres clickhouse scylla redis
+        run: docker compose up --detach --quiet-pull postgres clickhouse scylla redis
 
       - name: Configure env
         run: |
@@ -90,16 +97,9 @@ jobs:
           npm run db:update -- --env staging --db scylla
           npm run db:update -- --env staging --db clickhouse
 
-      # No org/user seeding step: each Playwright test seeds the state it needs
-      # via the server's DI factories (see server/e2e/fixtures/coop.ts).
-
       - name: Start server and client
         # Redirect output to files so the backgrounded processes don't hold this
-        # step's stdout pipe open (which would hang the step). They keep running
-        # into the later steps. Wait on the server's TCP port (it only logs
-        # "Server is running" after all middleware, incl. GraphQL, is wired) plus
-        # the client's HTTP 200. The /ready endpoint is unusable here: it 500s
-        # when CPU > 75%, which is always true while tsc-watch + vite compile.
+        # step's stdout pipe open (which would hang the step).
         run: |
           npm run server:start > /tmp/server.log 2>&1 &
           (cd client && npm start) > /tmp/client.log 2>&1 &
@@ -107,8 +107,6 @@ jobs:
             || { echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"; \
                  echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"; exit 1; }
 
-      # @playwright/test is a server devDependency, so it's already installed by
-      # the "Install dependencies" step above; only the browser binary is needed.
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -127,7 +125,6 @@ jobs:
       - name: Run E2E suite
         run: cd server && npm run test:e2e
         env:
-          CI: 'true'
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 
       - name: Upload Playwright report

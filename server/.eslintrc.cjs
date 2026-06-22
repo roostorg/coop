@@ -694,9 +694,7 @@ module.exports = {
           },
         ],
         'no-console': 'off',
-        // Allow `typeof import('...')` annotations: the e2e fixture loads server
-        // runtime from `transpiled/` (computed specifier) but types it from the
-        // `.ts` source. Keep preferring top-level `import type` otherwise.
+        // Allow `typeof import('...')` annotations; needed for E2E tests.
         '@typescript-eslint/consistent-type-imports': [
           'error',
           { prefer: 'type-imports', disallowTypeAnnotations: false },
