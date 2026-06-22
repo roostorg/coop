@@ -49,6 +49,25 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
+      - name: Configure Docker Hub mirror
+        # Route docker.io pulls through Google's pull-through cache to avoid
+        # transient Docker Hub registry/auth timeouts. Fork-safe (no secrets).
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+      - name: Pre-pull images (with retry)
+        # Fetch images before the real step so a transient pull failure is
+        # retried here and never masks a genuine codegen failure below.
+        run: |
+          for attempt in 1 2 3; do
+            if docker compose build --quiet codegen-check; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::image prep attempt $attempt failed; retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+            fi
+          done
+          echo "::error::image prep failed after 3 attempts"; exit 1
       - name: Check generated GraphQL is up to date
         run: docker compose run --rm --quiet-pull codegen-check
 
@@ -151,6 +170,28 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Configure Docker Hub mirror
+        # Route docker.io pulls through Google's pull-through cache to avoid
+        # transient Docker Hub registry/auth timeouts. Fork-safe (no secrets).
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      - name: Pre-pull images (with retry)
+        # Fetch images before the real steps so a transient pull failure is
+        # retried here and never masks a genuine lint/build/test failure below.
+        run: |
+          for attempt in 1 2 3; do
+            if docker compose pull --quiet postgres scylla clickhouse redis \
+              && docker compose build --quiet backend test; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::image prep attempt $attempt failed; retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+            fi
+          done
+          echo "::error::image prep failed after 3 attempts"; exit 1
+
       - name: Lint
         run: docker compose run --rm --quiet-pull backend npm run lint
 
@@ -188,6 +229,27 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
+
+      - name: Configure Docker Hub mirror
+        # Route docker.io pulls through Google's pull-through cache to avoid
+        # transient Docker Hub registry/auth timeouts. Fork-safe (no secrets).
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      - name: Pre-pull images (with retry)
+        # Fetch images before the real steps so a transient pull failure is
+        # retried here and never masks a genuine lint/build failure below.
+        run: |
+          for attempt in 1 2 3; do
+            if docker compose build --quiet client; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::image prep attempt $attempt failed; retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+            fi
+          done
+          echo "::error::image prep failed after 3 attempts"; exit 1
 
       - name: Lint client
         run: docker compose run --rm --quiet-pull client npm run lint
