@@ -2555,6 +2555,7 @@ export type GQLMutation = {
   readonly removeFavoriteRule: GQLRemoveFavoriteRuleSuccessResponse;
   readonly renameRole: GQLRole;
   readonly reorderRoutingRules: GQLReorderRoutingRulesResponse;
+  readonly resetMrtRecoveryJobs: GQLResetMrtRecoveryJobsResponse;
   readonly resetPassword: Scalars['Boolean']['output'];
   /**
    * Retries a previously-failed NCMEC submission. Org-scoped: callers can only
@@ -2799,6 +2800,10 @@ export type GQLMutationRenameRoleArgs = {
 
 export type GQLMutationReorderRoutingRulesArgs = {
   input: GQLReorderRoutingRulesInput;
+};
+
+export type GQLMutationResetMrtRecoveryJobsArgs = {
+  jobIds: ReadonlyArray<Scalars['ID']['input']>;
 };
 
 export type GQLMutationResetPasswordArgs = {
@@ -4025,6 +4030,14 @@ export const GQLReportingRuleStatus = {
 
 export type GQLReportingRuleStatus =
   (typeof GQLReportingRuleStatus)[keyof typeof GQLReportingRuleStatus];
+export type GQLResetMrtRecoveryJobsResponse =
+  GQLResetMrtRecoveryJobsSuccessResponse;
+
+export type GQLResetMrtRecoveryJobsSuccessResponse = {
+  readonly __typename?: 'ResetMrtRecoveryJobsSuccessResponse';
+  readonly success: Scalars['Boolean']['output'];
+};
+
 export type GQLResetPasswordInput = {
   readonly newPassword: Scalars['String']['input'];
   readonly token: Scalars['String']['input'];
@@ -5558,6 +5571,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     GQLMutateRoutingRulesOrderSuccessResponse,
     'data'
   > & { data: ReadonlyArray<_RefType['RoutingRule']> };
+  ResetMrtRecoveryJobsResponse: GQLResetMrtRecoveryJobsSuccessResponse;
   RotateApiKeyResponse: GQLRotateApiKeyError | GQLRotateApiKeySuccessResponse;
   RotateWebhookSigningKeyResponse:
     | GQLRotateWebhookSigningKeyError
@@ -6323,6 +6337,10 @@ export type GQLResolversTypes = {
   ReportingRuleNameExistsError: ResolverTypeWrapper<GQLReportingRuleNameExistsError>;
   ReportingRulePassRateData: ResolverTypeWrapper<GQLReportingRulePassRateData>;
   ReportingRuleStatus: GQLReportingRuleStatus;
+  ResetMrtRecoveryJobsResponse: ResolverTypeWrapper<
+    GQLResolversUnionTypes<GQLResolversTypes>['ResetMrtRecoveryJobsResponse']
+  >;
+  ResetMrtRecoveryJobsSuccessResponse: ResolverTypeWrapper<GQLResetMrtRecoveryJobsSuccessResponse>;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: ResolverTypeWrapper<GQLResolvedJobCount>;
   RetryNcmecSubmissionResponse: ResolverTypeWrapper<GQLRetryNcmecSubmissionResponse>;
@@ -7020,6 +7038,8 @@ export type GQLResolversParentTypes = {
   ReportingRuleInsights: ReportingRuleWithoutVersion;
   ReportingRuleNameExistsError: GQLReportingRuleNameExistsError;
   ReportingRulePassRateData: GQLReportingRulePassRateData;
+  ResetMrtRecoveryJobsResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['ResetMrtRecoveryJobsResponse'];
+  ResetMrtRecoveryJobsSuccessResponse: GQLResetMrtRecoveryJobsSuccessResponse;
   ResetPasswordInput: GQLResetPasswordInput;
   ResolvedJobCount: GQLResolvedJobCount;
   RetryNcmecSubmissionResponse: GQLRetryNcmecSubmissionResponse;
@@ -11165,6 +11185,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationReorderRoutingRulesArgs, 'input'>
   >;
+  resetMrtRecoveryJobs?: Resolver<
+    GQLResolversTypes['ResetMrtRecoveryJobsResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationResetMrtRecoveryJobsArgs, 'jobIds'>
+  >;
   resetPassword?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -13108,6 +13134,28 @@ export type GQLReportingRulePassRateDataResolvers<
   date?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   totalMatches?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
   totalRequests?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
+};
+
+export type GQLResetMrtRecoveryJobsResponseResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ResetMrtRecoveryJobsResponse'] =
+    GQLResolversParentTypes['ResetMrtRecoveryJobsResponse'],
+> = {
+  __resolveType: TypeResolveFn<
+    'ResetMrtRecoveryJobsSuccessResponse',
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLResetMrtRecoveryJobsSuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['ResetMrtRecoveryJobsSuccessResponse'] =
+    GQLResolversParentTypes['ResetMrtRecoveryJobsSuccessResponse'],
+> = {
+  success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type GQLResolvedJobCountResolvers<
@@ -15180,6 +15228,8 @@ export type GQLResolvers<ContextType = Context> = {
   ReportingRuleInsights?: GQLReportingRuleInsightsResolvers<ContextType>;
   ReportingRuleNameExistsError?: GQLReportingRuleNameExistsErrorResolvers<ContextType>;
   ReportingRulePassRateData?: GQLReportingRulePassRateDataResolvers<ContextType>;
+  ResetMrtRecoveryJobsResponse?: GQLResetMrtRecoveryJobsResponseResolvers<ContextType>;
+  ResetMrtRecoveryJobsSuccessResponse?: GQLResetMrtRecoveryJobsSuccessResponseResolvers<ContextType>;
   ResolvedJobCount?: GQLResolvedJobCountResolvers<ContextType>;
   RetryNcmecSubmissionResponse?: GQLRetryNcmecSubmissionResponseResolvers<ContextType>;
   Role?: GQLRoleResolvers<ContextType>;

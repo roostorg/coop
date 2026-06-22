@@ -4,6 +4,7 @@ import { makeDetectRulePassRateAnomaliesJob } from '../../services/ruleAnomalyDe
 import { makeRefreshUserScoresCacheJob } from '../../services/userStatisticsService/index.js';
 import { type Job, type Worker } from '../../workers_jobs/index.js';
 import makeItemProcessingWorker from '../../workers_jobs/ItemProcessingWorker.js';
+import makeRecoverMrtQueueJob from '../../workers_jobs/RecoverMrtQueueJob.js';
 import makeRefreshMRTDecisionsMaterializedViewJob from '../../workers_jobs/RefreshMRTDecisionsMaterializedViewJob.js';
 import makeRetryFailedNcmecDecisionsJob from '../../workers_jobs/RetryFailedNcmecDecisionsJob.js';
 import makeRunUserRulesJob from '../../workers_jobs/RunUserRulesJob.js';
@@ -25,6 +26,7 @@ declare module '../index.js' {
     RefreshUserScoresCacheJob: Job;
     RetryFailedNcmecDecisionsJob: Job;
     RefreshMRTDecisionsMaterializedViewJob: Job;
+    RecoverMrtQueueJob: Job;
   }
 }
 
@@ -36,6 +38,9 @@ export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
     'RefreshMRTDecisionsMaterializedViewJob',
     makeRefreshMRTDecisionsMaterializedViewJob,
   );
+  if (process.env.MRT_RECOVERY_ENABLED === 'true') {
+    register(bottle, 'RecoverMrtQueueJob', makeRecoverMrtQueueJob);
+  }
   register(
     bottle,
     'DetectRulePassRateAnomaliesJob',

@@ -8,7 +8,7 @@ import {
   asyncIterableToArray,
   filterNullOrUndefined,
 } from '../../utils/collections.js';
-import { isCoopErrorOfType } from '../../utils/errors.js';
+import { isCoopErrorOfType, makeBadRequestError } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import {
   getEndOfDayInTimezone,
@@ -447,9 +447,15 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
+  type ResetMrtRecoveryJobsSuccessResponse {
+    success: Boolean!
+  }
+
   union DeleteAllJobsFromQueueResponse =
     | DeleteAllJobsFromQueueSuccessResponse
     | DeleteAllJobsUnauthorizedError
+
+  union ResetMrtRecoveryJobsResponse = ResetMrtRecoveryJobsSuccessResponse
 
   input InvalidateReportsFromReporterInput {
     reporter: ReporterIdInput!
@@ -971,6 +977,7 @@ const typeDefs = /* GraphQL */ `
       input: RemoveAccessibleQueuesToUserInput!
     ): RemoveAccessibleQueuesToUserResponse!
     deleteAllJobsFromQueue(queueId: ID!): DeleteAllJobsFromQueueResponse!
+    resetMrtRecoveryJobs(jobIds: [ID!]!): ResetMrtRecoveryJobsResponse!
     """
     Strips every entry sent by the given reporter from the report history of
     every pending MRT job in the caller's org. If a job's history becomes
@@ -991,6 +998,29 @@ const typeDefs = /* GraphQL */ `
     releaseJobLock(input: ReleaseJobLockInput!): Boolean!
   }
 `;
+
+const RESET_MRT_RECOVERY_JOB_IDS_MAX = 1000;
+const JOB_ID_PATTERN = /^[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$/;
+
+function validateResetMrtRecoveryJobIds(jobIds: readonly string[]) {
+  if (jobIds.length === 0) return;
+
+  if (jobIds.length > RESET_MRT_RECOVERY_JOB_IDS_MAX) {
+    throw makeBadRequestError('Too many jobIds provided.', {
+      detail: `At most ${RESET_MRT_RECOVERY_JOB_IDS_MAX} jobIds may be reset at once.`,
+      shouldErrorSpan: true,
+    });
+  }
+
+  for (const jobId of jobIds) {
+    if (!JOB_ID_PATTERN.test(jobId)) {
+      throw makeBadRequestError('Invalid MRT recovery job id.', {
+        detail: `Invalid jobId: ${jobId}`,
+        shouldErrorSpan: true,
+      });
+    }
+  }
+}
 
 const ManualReviewJobEnqueueSourceInfo: GQLManualReviewJobEnqueueSourceInfoResolvers =
   {
@@ -2475,6 +2505,32 @@ const Mutation: GQLMutationResolvers = {
 
       throw e;
     }
+  },
+  async resetMrtRecoveryJobs(_, { jobIds }, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('Only org admins can reset MRT recovery jobs');
+    }
+
+    validateResetMrtRecoveryJobIds(jobIds);
+    if (jobIds.length === 0) {
+      return gqlSuccessResult(
+        { success: true },
+        'ResetMrtRecoveryJobsSuccessResponse',
+      );
+    }
+
+    await context.services.ManualReviewToolService.resetFailedRecoveryStates({
+      orgId: user.orgId,
+      jobIds,
+    });
+    return gqlSuccessResult(
+      { success: true },
+      'ResetMrtRecoveryJobsSuccessResponse',
+    );
   },
   async invalidateReportsFromReporter(_, { input }, context) {
     const user = context.getUser();

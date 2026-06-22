@@ -13,6 +13,10 @@ import {
   type NcmecContentItemSubmission,
   type ReportHistory,
 } from './manualReviewToolService.js';
+import {
+  bullJobIdtoExternalJobId,
+  itemIdToBullJobId,
+} from './modules/QueueOperations.js';
 
 function makeDummyJob() {
   return {
@@ -87,6 +91,10 @@ describe('Manual Review Tool Service', () => {
     await container.closeSharedResourcesForShutdown();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   // Test that we can start the stalled jobs checker for manual job processing
   test('should be able to start stalled jobs checker', async () => {
     const worker = await mrtService['queueOps']['getBullWorker']({
@@ -95,6 +103,82 @@ describe('Manual Review Tool Service', () => {
     });
     // The startStalledCheckTimer method should be available and not throw
     expect(worker).toBeDefined();
+  });
+
+  test('persists meaningful enqueue failures for later recovery', async () => {
+    const orgId = 'e7c89ce7729';
+    const queueId = '1';
+    const jobInput = makeDummyJob();
+    const itemId = jobInput.payload.item.itemId;
+    const itemTypeId = jobInput.payload.item.itemTypeIdentifier.id;
+    const correlationId = uuidv1();
+    const jobId = bullJobIdtoExternalJobId(
+      itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
+      correlationId,
+    );
+
+    const service = mrtService as any;
+    jest
+      .spyOn(service.moderationConfigService, 'getItemType')
+      .mockResolvedValue({});
+    jest
+      .spyOn(service.jobEnrichment, 'enrichJobPayload')
+      .mockResolvedValue(structuredClone(jobInput.payload));
+    jest
+      .spyOn(service.queueOps, 'addJob')
+      .mockRejectedValue(new Error('queue unavailable'));
+
+    await container.KyselyPg.insertInto('manual_review_tool.job_creations')
+      .values({
+        id: jobId,
+        org_id: orgId,
+        queue_id: queueId,
+        item_id: itemId,
+        item_type_id: itemTypeId,
+        created_at: new Date(),
+        enqueue_source_info: { kind: 'REPORT' },
+        policy_ids: [],
+      })
+      .execute();
+
+    await expect(
+      mrtService.enqueue(
+        {
+          orgId,
+          correlationId,
+          createdAt: jobInput.createdAt,
+          enqueueSource: 'REPORT',
+          enqueueSourceInfo: { kind: 'REPORT' },
+          payload: jobInput.payload,
+          policyIds: jobInput.policyIds,
+        } as never,
+        queueId,
+      ),
+    ).rejects.toThrow('queue unavailable');
+
+    const [storedRecoveryState] =
+      await container.ManualReviewToolService.getRecoveryStatesForJobIds([
+        jobId,
+      ]);
+    expect(storedRecoveryState).toMatchObject({
+      jobId,
+      orgId,
+      queueId,
+      itemId,
+      itemTypeId,
+      status: 'PENDING',
+      retryCount: 1,
+      lastError: 'queue unavailable',
+    });
+
+    await container.KyselyPg.deleteFrom(
+      'manual_review_tool.mrt_queue_recovery_state',
+    )
+      .where('job_id', '=', jobId)
+      .execute();
+    await container.KyselyPg.deleteFrom('manual_review_tool.job_creations')
+      .where('id', '=', jobId)
+      .execute();
   });
 
   // TODO: rework when we rework the MRT error handling

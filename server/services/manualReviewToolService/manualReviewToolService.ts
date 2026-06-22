@@ -58,7 +58,12 @@ import JobRouting, {
   type UpdateRoutingRuleInput,
 } from './modules/JobRouting.js';
 import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
+import MrtRecoveryOperations, {
+  type MrtRecoveryState,
+} from './modules/MrtRecoveryOperations.js';
 import QueueOperations, {
+  bullJobIdtoExternalJobId,
+  itemIdToBullJobId,
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
 import ReporterInvalidation, {
@@ -291,6 +296,7 @@ export class ManualReviewToolService {
   private readonly commentOps: CommentOperations;
   private readonly skipOps: SkipOperations;
   private readonly reporterInvalidation: ReporterInvalidation;
+  private readonly mrtRecoveryOps: MrtRecoveryOperations;
 
   constructor(
     readonly redis: Dependencies['IORedis'],
@@ -351,6 +357,7 @@ export class ManualReviewToolService {
       this.queueOps,
       this.tracer,
     );
+    this.mrtRecoveryOps = new MrtRecoveryOperations(pgQuery);
   }
 
   /**
@@ -422,6 +429,8 @@ export class ManualReviewToolService {
         // Even if this did happen, subsequent retries would again reload the
         // rules, and users won't be _repeatedly_ deleting queues right in
         // this brief window while the rules are running.
+        let resolvedQueueId: string | undefined;
+
         const attemptEnqueue = async (): Promise<
           { job: ManualReviewJob; targetQueueForNewJob: string } | undefined
         > => {
@@ -436,6 +445,7 @@ export class ManualReviewToolService {
                 routingRuleCacheDirectives:
                   numAttemptsToEnqueue > 0 ? { maxAge: 0 } : undefined,
               }));
+            resolvedQueueId = targetQueueForNewJob;
 
             const existingJobInSameQueue = await this.queueOps.getJobFromItemId(
               {
@@ -518,6 +528,22 @@ export class ManualReviewToolService {
               span.setStatus({ code: SpanStatusCode.OK });
               return undefined;
             }
+
+            await this.recordRecoveryFailure({
+              jobId: bullJobIdtoExternalJobId(
+                itemIdToBullJobId({
+                  id: input.payload.item.itemId,
+                  typeId: input.payload.item.itemTypeIdentifier.id,
+                }),
+                input.correlationId,
+              ),
+              orgId: input.orgId,
+              queueId: resolvedQueueId ?? queueId ?? 'unknown',
+              itemId: input.payload.item.itemId,
+              itemTypeId: input.payload.item.itemTypeIdentifier.id,
+              error: e instanceof Error ? e.message : String(e),
+              maxRetries: MAX_ENQUEUE_ATTEMPTS,
+            });
 
             throw e;
           }
@@ -913,6 +939,33 @@ export class ManualReviewToolService {
     queueId: string;
   }) {
     return this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(opts);
+  }
+
+  async getRecoveryStatesForJobIds(jobIds: readonly string[]) {
+    return this.mrtRecoveryOps.getRecoveryStatesForJobIds(jobIds);
+  }
+
+  async deleteRecoveryStatesForJobIds(jobIds: readonly string[]) {
+    return this.mrtRecoveryOps.deleteRecoveryStatesForJobIds(jobIds);
+  }
+
+  async resetFailedRecoveryStates(opts: {
+    orgId: string;
+    jobIds: readonly string[];
+  }) {
+    return this.mrtRecoveryOps.resetFailedRecoveryStates(opts);
+  }
+
+  async recordRecoveryFailure(opts: {
+    jobId: string;
+    orgId: string;
+    queueId: string;
+    itemId: string;
+    itemTypeId: string;
+    error: string;
+    maxRetries: number;
+  }): Promise<MrtRecoveryState> {
+    return this.mrtRecoveryOps.recordRecoveryFailure(opts);
   }
 
   async getFavoriteQueuesForUser(opts: { orgId: string; userId: string }) {

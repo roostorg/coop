@@ -16,6 +16,34 @@ import {
 import { toCorrelationId } from '../utils/correlationIds.js';
 
 export type Container = Awaited<ReturnType<typeof getBottle>>['container'];
+export type RecoveryPg = {
+  'manual_review_tool.job_creations': {
+    id: JobId;
+    org_id: string;
+    queue_id: string;
+    item_id: string;
+    item_type_id: string;
+    created_at: Date;
+    policy_ids: string[];
+  };
+  'manual_review_tool.manual_review_decisions': {
+    id: string;
+  };
+};
+
+export type RecoveryCandidate = Candidate & {
+  orgId: string;
+  queueId: string;
+};
+
+export type ReportHistoryContainer = Pick<
+  Container,
+  'DataWarehouse' | 'Tracer'
+>;
+export type EnqueueContainer = Pick<
+  Container,
+  'ItemInvestigationService' | 'ManualReviewToolService' | 'NcmecService'
+>;
 
 export const RECOVERY_MODES = ['default', 'ncmec'] as const;
 export type RecoveryMode = (typeof RECOVERY_MODES)[number];
@@ -48,6 +76,145 @@ export type EnqueueStats = {
   failed: number;
 };
 
+const ENQUEUE_CONCURRENCY = 10;
+
+export async function recordRecoveryFailureAndUpdateState(opts: {
+  manualReviewToolService: {
+    recordRecoveryFailure(input: {
+      jobId: string;
+      orgId: string;
+      queueId: string;
+      itemId: string;
+      itemTypeId: string;
+      error: string;
+      maxRetries: number;
+    }): Promise<{ retryCount: number; status: 'PENDING' | 'FAILED' }>;
+  };
+  recoveryStates: Map<string, { jobId: string; status: 'PENDING' | 'FAILED' }>;
+  candidate: Candidate & { orgId: string; queueId: string };
+  error: string;
+  maxRetries: number;
+}) {
+  const {
+    manualReviewToolService,
+    recoveryStates,
+    candidate,
+    error,
+    maxRetries,
+  } = opts;
+
+  const updated = await manualReviewToolService.recordRecoveryFailure({
+    jobId: candidate.latestJobId,
+    orgId: candidate.orgId,
+    queueId: candidate.queueId,
+    itemId: candidate.itemId,
+    itemTypeId: candidate.itemTypeId,
+    error,
+    maxRetries,
+  });
+
+  recoveryStates.set(candidate.latestJobId, {
+    jobId: candidate.latestJobId,
+    status: updated.status,
+  });
+
+  return updated;
+}
+
+export async function processRecoveryCandidatesForGroup(opts: {
+  recoveryContainer: EnqueueContainer;
+  manualReviewToolService: {
+    getRecoveryStatesForJobIds(
+      jobIds: readonly string[],
+    ): Promise<Array<{ jobId: string; status: 'PENDING' | 'FAILED' }>>;
+    deleteRecoveryStatesForJobIds(jobIds: readonly string[]): Promise<void>;
+    recordRecoveryFailure(input: {
+      jobId: string;
+      orgId: string;
+      queueId: string;
+      itemId: string;
+      itemTypeId: string;
+      error: string;
+      maxRetries: number;
+    }): Promise<{ retryCount: number; status: 'PENDING' | 'FAILED' }>;
+  };
+  configService: {
+    mrtRecoveryMaxRetries: number;
+  };
+  candidates: readonly RecoveryCandidate[];
+  mode: RecoveryMode;
+  reportHistoryByItem: Map<string, ReportHistory>;
+}) {
+  const { manualReviewToolService, candidates, mode, reportHistoryByItem } =
+    opts;
+  const stats = { enqueued: 0, skipped: 0, failed: 0 };
+  let cursor = 0;
+  const recoveryStates = new Map(
+    (
+      await manualReviewToolService.getRecoveryStatesForJobIds(
+        candidates.map((c) => c.latestJobId),
+      )
+    ).map((state) => [state.jobId, state]),
+  );
+
+  const worker = async () => {
+    while (cursor < candidates.length) {
+      const candidate = candidates[cursor++];
+      const currentState = recoveryStates.get(candidate.latestJobId);
+      if (currentState?.status === 'FAILED') {
+        stats.skipped++;
+        continue;
+      }
+
+      try {
+        const result = await enqueueOne(
+          opts.recoveryContainer,
+          candidate.orgId,
+          candidate.queueId,
+          candidate,
+          mode,
+          reportHistoryByItem,
+        );
+
+        if (result === 'enqueued') {
+          await manualReviewToolService.deleteRecoveryStatesForJobIds([
+            candidate.latestJobId,
+          ]);
+          stats.enqueued++;
+          continue;
+        }
+
+        await recordRecoveryFailureAndUpdateState({
+          manualReviewToolService,
+          recoveryStates,
+          candidate,
+          error: 'Recovery skipped because the item could not be rebuilt',
+          maxRetries: opts.configService.mrtRecoveryMaxRetries,
+        });
+        stats.skipped++;
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : String(e);
+        const updated = await recordRecoveryFailureAndUpdateState({
+          manualReviewToolService,
+          recoveryStates,
+          candidate,
+          error,
+          maxRetries: opts.configService.mrtRecoveryMaxRetries,
+        });
+        stats.failed++;
+        if (updated.status === 'FAILED') {
+          console.warn(
+            `[${candidate.orgId} ${candidate.queueId} ${candidate.itemTypeId}/${candidate.itemId}] recovery exhausted after ${updated.retryCount} attempts`,
+          );
+        }
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: ENQUEUE_CONCURRENCY }, worker));
+  return stats;
+}
+
 /**
  * Shape of a row from `REPORTING_SERVICE.REPORTS`. All fields are nullable
  * because warehouse rows aren't guaranteed to be fully populated.
@@ -70,7 +237,7 @@ type ReportsWarehouseRow = {
  * Mutates `out` in place. Chunks queries to stay under CH's parameter limit.
  */
 export async function loadReportHistories(
-  container: Container,
+  container: ReportHistoryContainer,
   orgId: string,
   candidates: readonly Candidate[],
   out: Map<string, ReportHistory>,
@@ -159,7 +326,7 @@ export async function loadReportHistories(
  * always routes to the org's configured default NCMEC queue.
  */
 export async function enqueueOne(
-  container: Container,
+  container: EnqueueContainer,
   orgId: string,
   queueId: string,
   candidate: Candidate,

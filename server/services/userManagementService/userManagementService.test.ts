@@ -17,6 +17,8 @@ const mockSendEmail = jest.fn();
 
 const mockConfigService = {
   uiUrl: 'http://localhost:3000',
+  mrtRecoveryLookbackDays: 30,
+  mrtRecoveryMaxRetries: 5,
 };
 
 describe('UserManagementService', () => {
