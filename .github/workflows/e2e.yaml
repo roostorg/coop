@@ -109,12 +109,14 @@ jobs:
       - name: Start server and client
         # Redirect output to files so the backgrounded processes don't hold this
         # step's stdout pipe open (which would hang the step). They keep running
-        # into the later steps. Wait on the server's /ready health endpoint (a
-        # reliable 200) rather than the GraphQL endpoint, which 400s on a bare GET.
+        # into the later steps. Wait on the server's TCP port (it only logs
+        # "Server is running" after all middleware, incl. GraphQL, is wired) plus
+        # the client's HTTP 200. The /ready endpoint is unusable here: it 500s
+        # when CPU > 75%, which is always true while tsc-watch + vite compile.
         run: |
           npm run server:start > /tmp/server.log 2>&1 &
           (cd client && npm start) > /tmp/client.log 2>&1 &
-          npx --yes wait-on@8 http://localhost:8080/ready http://localhost:3000 --timeout 120000 \
+          npx --yes wait-on@8 tcp:127.0.0.1:8080 http://localhost:3000 --timeout 120000 \
             || { echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"; \
                  echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"; exit 1; }
 
