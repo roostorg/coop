@@ -8,16 +8,7 @@ import { type Dependencies } from '../../iocContainer/index.js';
 
 /**
  * Server runtime is loaded from the COMPILED output (`transpiled/`), not the TS
- * source. Playwright's esbuild loader transpiles each file in isolation and
- * can't tell a type written with value-import syntax (e.g. `import { JSON }`)
- * from a real value import, so importing the server's source graph throws
- * "does not provide an export named ...". `tsc` emits `transpiled/` with those
- * type-only imports correctly elided.
- *
- * Specifiers are built from this variable so `tsc` doesn't statically resolve
- * `transpiled/` (which only exists after a build); types come from
- * `typeof import(<source>)` casts. `transpiled/` is present whenever the server
- * is running — tsc-watch (local) and the Docker build both emit it.
+ * source, so we have to do some ugly type casting here.
  */
 const TRANSPILED = '../../transpiled';
 
@@ -64,10 +55,8 @@ export type SeededAdmin = {
  * Seeds DB state for a test via the real DI factories (`test/fixtureHelpers`).
  *
  * There is intentionally no cleanup: every seeded org gets a unique id, so the
- * app's own multi-tenancy isolates tests from each other, and the CI database
- * is disposable. This keeps tests trivially parallelizable. See the README's
- * "Scaling to per-worker databases" note before adding cross-tenant or
- * global-state assertions — those would break this isolation model.
+ * app's own multi-tenancy isolates tests from each other.
+ * This keeps tests parallelizable.
  */
 class Seeder {
   constructor(private readonly deps: Dependencies) {}
@@ -109,12 +98,7 @@ type WorkerFixtures = { deps: Dependencies };
 
 /**
  * Playwright test extended with server-side seeding. Each test creates the
- * state it needs via the real DI factories rather than relying on pre-seeded
- * data.
- *
- * The DI container is built once per worker (it opens real DB connections) and
- * imported dynamically so the heavy module graph only loads at run time, not
- * during test collection.
+ * state it needs.
  */
 export const test = base.extend<TestFixtures, WorkerFixtures>({
   deps: [
