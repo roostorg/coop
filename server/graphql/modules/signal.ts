@@ -262,7 +262,6 @@ const Signal: GQLSignalResolvers = {
     }
   },
   async eligibleSubcategories(signal, _, context) {
-    // For Zentropi signals, return org-specific labeler versions as subcategories
     if (signal.id.type === 'ZENTROPI_LABELER') {
       const user = context.getUser();
       if (user) {
@@ -271,6 +270,41 @@ const Signal: GQLSignalResolvers = {
           'ZENTROPI',
         );
         if (config?.name === 'ZENTROPI') {
+          // Self-hosted mode: offer existing org policies as selectable options
+          // plus a free-text sentinel for custom criteria.
+          if (config.apiCredential.selfHosted != null) {
+            const policies =
+              await context.services.ModerationConfigService.getPolicies({
+                orgId: user.orgId,
+                readFromReplica: true,
+              });
+            // Only surface policies that have usable text after stripping HTML —
+            // policies with empty or HTML-only text would cause a
+            // SignalPermanentError at run time.
+            const policyOptions = policies
+              .filter((p) => {
+                if (!p.policyText) return false;
+                const stripped = p.policyText
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+                return stripped.length > 0;
+              })
+              .map((p) => ({
+                id: `policy:${p.id}`,
+                label: p.name,
+                childrenIds: [],
+              }));
+            return [
+              ...policyOptions,
+              {
+                id: '__free_text__',
+                label: 'Enter custom criteria',
+                childrenIds: [],
+              },
+            ];
+          }
+          // Hosted mode: return labeler versions configured in the integration.
           const versions = (config.apiCredential.labelerVersions ??
             []) as Array<{
             id: string;

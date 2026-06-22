@@ -142,6 +142,7 @@ export class SignalsService {
       this.userStrikeService,
       this.getPoliciesByIdEventuallyConsistent,
       this.hmaService,
+      this.moderationConfigService,
     );
 
     const pluginEntries = getIntegrationRegistry().getPluginEntries();

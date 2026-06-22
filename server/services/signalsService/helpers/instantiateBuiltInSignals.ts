@@ -3,6 +3,7 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import type { AggregationsService } from '../../aggregationsService/index.js';
 import type { HmaService } from '../../hmaService/index.js';
 import type { GetPoliciesByIdEventuallyConsistent } from '../../manualReviewToolService/manualReviewToolQueries.js';
+import type { ModerationConfigService } from '../../moderationConfigService/index.js';
 import { type UserScore } from '../../userStatisticsService/userStatisticsService.js';
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
@@ -53,12 +54,14 @@ export function instantiateBuiltInSignals(
   userStrikeService: UserStrikeService,
   _getPoliciesByIdEventuallyConsistent: GetPoliciesByIdEventuallyConsistent,
   hmaService: HmaService,
+  moderationConfigService: ModerationConfigService,
 ) {
   const {
     googleContentSafetyFetcher: getGoogleContentSafetyScores,
     openAiModerationFetcher: getOpenAiScores,
     openAiWhisperTranscriptionFetcher: getOpenAiTranscription,
     zentropiFetcher: getZentropiScores,
+    openAICompatibleFetcher: getOpenAICompatibleScore,
   } = cachedFetchers;
 
   return {
@@ -149,6 +152,16 @@ export function instantiateBuiltInSignals(
     [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
       credentialGetters.ZENTROPI,
       getZentropiScores,
+      getOpenAICompatibleScore,
+      async (orgId, policyId) => {
+        const policy = (await moderationConfigService.getPolicy({
+          orgId,
+          policyId,
+        })) as
+          | Awaited<ReturnType<typeof moderationConfigService.getPolicy>>
+          | undefined;
+        return policy?.policyText ?? null;
+      },
     ),
     // Satisfies check to make sure we didn't forget any signals.
   } satisfies { [K in BuiltInSignalType]: SignalBase<SignalInputType> };

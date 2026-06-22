@@ -6,6 +6,12 @@ import { type Bind1 } from '../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
 import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
+import { type FetchOpenAICompatibleScore } from '../openai_compatible/openaiCompatibleUtils.js';
+
+export type GetPolicyText = (
+  orgId: string,
+  policyId: string,
+) => Promise<string | null>;
 
 export interface ZentropiResponse {
   label: 0 | 1 | '0' | '1';
@@ -58,27 +64,61 @@ export async function getZentropiScores(
 export async function runZentropiLabelerImpl(
   getZentropiCredentials: CachedGetCredentials<'ZENTROPI'>,
   input: SignalInput<ScalarTypes['STRING']>,
-  fetchScores: FetchZentropiScores,
+  fetchZentropiScores: FetchZentropiScores,
+  fetchOpenAICompatibleScore: FetchOpenAICompatibleScore,
+  getPolicyText: GetPolicyText,
 ) {
   const { value, orgId, subcategory } = input;
-
   const credential = await getZentropiCredentials(orgId);
+
+  if (!subcategory) {
+    throw new Error(
+      'Missing criteria in subcategory. ' +
+        'Specify a Zentropi labeler_version_id (hosted) or policy criteria text (self-hosted) ' +
+        'in the condition subcategory field.',
+    );
+  }
+
+  // Resolve policy reference to criteria text, stripping any HTML markup.
+  const resolvedCriteria = subcategory.startsWith('policy:')
+    ? await resolvePolicyCriteria(
+        getPolicyText,
+        orgId,
+        subcategory.slice('policy:'.length),
+      )
+    : subcategory;
+
+  if (credential?.selfHosted != null) {
+    const { selfHosted } = credential;
+    const base = {
+      baseUrl: selfHosted.baseUrl,
+      model: selfHosted.model,
+      apiKey: selfHosted.apiKey,
+      criteria: resolvedCriteria,
+      content: value.value,
+    };
+    const params =
+      selfHosted.format === 'openai_chat'
+        ? {
+            ...base,
+            format: 'openai_chat' as const,
+            systemPromptTemplate:
+              selfHosted.systemPromptTemplate ?? '{criteria}',
+            userMessageTemplate: selfHosted.userMessageTemplate ?? '{content}',
+          }
+        : { ...base, format: 'cope' as const };
+    const { score } = await fetchOpenAICompatibleScore(params);
+    return { score, outputType: { scalarType: ScalarTypes.NUMBER } };
+  }
 
   if (!credential?.apiKey) {
     throw new Error('Missing Zentropi API credentials');
   }
 
-  if (!subcategory) {
-    throw new Error(
-      'Missing labeler_version_id in subcategory. ' +
-        'Specify a Zentropi labeler_version_id in the condition subcategory field.',
-    );
-  }
-
-  const response = await fetchScores({
+  const response = await fetchZentropiScores({
     text: value.value,
     apiKey: credential.apiKey,
-    labelerVersionId: subcategory,
+    labelerVersionId: resolvedCriteria,
   });
 
   // Composite score mapping:
@@ -92,4 +132,30 @@ export async function runZentropiLabelerImpl(
     score,
     outputType: { scalarType: ScalarTypes.NUMBER },
   };
+}
+
+async function resolvePolicyCriteria(
+  getPolicyText: GetPolicyText,
+  orgId: string,
+  policyId: string,
+): Promise<string> {
+  const text = await getPolicyText(orgId, policyId);
+  if (!text) {
+    throw makeSignalPermanentError(
+      `Policy ${policyId} not found or has no policy text`,
+      { shouldErrorSpan: true },
+    );
+  }
+  // Strip HTML tags that may be present in rich-text policy descriptions.
+  const stripped = text
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!stripped) {
+    throw makeSignalPermanentError(
+      `Policy ${policyId} has no usable criteria text after removing HTML formatting`,
+      { shouldErrorSpan: true },
+    );
+  }
+  return stripped;
 }

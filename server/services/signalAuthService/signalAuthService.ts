@@ -25,9 +25,20 @@ export type Credentials<T extends ConfigurableIntegration> = {
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
 export type ZentropiLabelerVersion = { id: string; label: string };
+export type ZentropiSelfHostedConfig = {
+  format: 'cope' | 'openai_chat';
+  baseUrl: string;
+  model: string;
+  apiKey?: string;
+  /** Only used when format === 'openai_chat'. May contain {criteria} placeholder. */
+  systemPromptTemplate?: string;
+  /** Only used when format === 'openai_chat'. May contain {content} placeholder. */
+  userMessageTemplate?: string;
+};
 export type ZentropiCredential = {
-  apiKey: string;
+  apiKey?: string;
   labelerVersions?: ZentropiLabelerVersion[];
+  selfHosted?: ZentropiSelfHostedConfig;
 };
 export type ClarifaiApiCredential = { apiKey: NonEmptyString };
 export type ClarifaiModelType = 'IMAGE' | 'TEXT';
@@ -135,7 +146,11 @@ class SignalAuthService {
     if (integrationId === Integration.ZENTROPI) {
       const c = await this.get(Integration.ZENTROPI, orgId);
       return c != null
-        ? { apiKey: c.apiKey, labelerVersions: c.labelerVersions }
+        ? {
+            apiKey: c.apiKey ?? '',
+            labelerVersions: c.labelerVersions,
+            selfHosted: c.selfHosted,
+          }
         : undefined;
     }
     const row = await this.pg
@@ -170,12 +185,21 @@ class SignalAuthService {
       return { apiKey };
     }
     if (integrationId === Integration.ZENTROPI) {
-      const apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
+      const apiKey =
+        typeof config.apiKey === 'string' ? config.apiKey : undefined;
       const labelerVersions = Array.isArray(config.labelerVersions)
         ? (config.labelerVersions as ZentropiLabelerVersion[])
         : [];
-      await this.set(Integration.ZENTROPI, orgId, { apiKey, labelerVersions });
-      return { apiKey, labelerVersions };
+      const selfHosted =
+        config.selfHosted != null && typeof config.selfHosted === 'object'
+          ? (config.selfHosted as ZentropiSelfHostedConfig)
+          : undefined;
+      await this.set(Integration.ZENTROPI, orgId, {
+        apiKey,
+        labelerVersions,
+        selfHosted,
+      });
+      return { apiKey, labelerVersions, selfHosted };
     }
     await this.pg
       .insertInto('signal_auth_service.integration_configs')
@@ -267,49 +291,116 @@ function makeImplementations(
       get: async (orgId: string) => {
         const row = await pg
           .selectFrom('signal_auth_service.zentropi_configs')
-          .select(['api_key', 'labeler_versions'])
+          .select([
+            'api_key',
+            'labeler_versions',
+            'self_hosted_base_url',
+            'self_hosted_model',
+            'self_hosted_api_key',
+            'self_hosted_format',
+            'self_hosted_system_prompt_template',
+            'self_hosted_user_message_template',
+          ])
           .where('org_id', '=', orgId)
           .executeTakeFirst();
         if (row == null) return undefined;
         const labelerVersions = row.labeler_versions;
+        const selfHosted: ZentropiSelfHostedConfig | undefined =
+          row.self_hosted_base_url != null && row.self_hosted_model != null
+            ? {
+                format: (row.self_hosted_format ?? 'cope') as
+                  | 'cope'
+                  | 'openai_chat',
+                baseUrl: row.self_hosted_base_url,
+                model: row.self_hosted_model,
+                apiKey: row.self_hosted_api_key ?? undefined,
+                systemPromptTemplate:
+                  row.self_hosted_system_prompt_template ?? undefined,
+                userMessageTemplate:
+                  row.self_hosted_user_message_template ?? undefined,
+              }
+            : undefined;
         return {
-          apiKey: row.api_key,
+          apiKey: row.api_key ?? undefined,
           labelerVersions: Array.isArray(labelerVersions)
             ? (labelerVersions as ZentropiLabelerVersion[])
             : typeof labelerVersions === 'string'
-            ? jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>)
-            : [],
+              ? jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>)
+              : [],
+          selfHosted,
         };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
         const labelerVersionsJson = jsonStringify(
           credential.labelerVersions ?? [],
         );
+        const sh = credential.selfHosted;
         const row = await pg
           .insertInto('signal_auth_service.zentropi_configs')
           .values([
             {
               org_id: orgId,
-              api_key: credential.apiKey,
+              api_key: credential.apiKey ?? null,
               labeler_versions: labelerVersionsJson,
+              self_hosted_base_url: sh?.baseUrl ?? null,
+              self_hosted_model: sh?.model ?? null,
+              self_hosted_api_key: sh?.apiKey ?? null,
+              self_hosted_format: sh?.format ?? null,
+              self_hosted_system_prompt_template:
+                sh?.systemPromptTemplate ?? null,
+              self_hosted_user_message_template:
+                sh?.userMessageTemplate ?? null,
             },
           ])
           .onConflict((oc) =>
             oc.column('org_id').doUpdateSet({
-              api_key: credential.apiKey,
+              api_key: credential.apiKey ?? null,
               labeler_versions: labelerVersionsJson,
+              self_hosted_base_url: sh?.baseUrl ?? null,
+              self_hosted_model: sh?.model ?? null,
+              self_hosted_api_key: sh?.apiKey ?? null,
+              self_hosted_format: sh?.format ?? null,
+              self_hosted_system_prompt_template:
+                sh?.systemPromptTemplate ?? null,
+              self_hosted_user_message_template:
+                sh?.userMessageTemplate ?? null,
             }),
           )
-          .returning(['api_key', 'labeler_versions'])
+          .returning([
+            'api_key',
+            'labeler_versions',
+            'self_hosted_base_url',
+            'self_hosted_model',
+            'self_hosted_api_key',
+            'self_hosted_format',
+            'self_hosted_system_prompt_template',
+            'self_hosted_user_message_template',
+          ])
           .executeTakeFirstOrThrow();
         const returnedVersions = row.labeler_versions;
+        const returnedSelfHosted: ZentropiSelfHostedConfig | undefined =
+          row.self_hosted_base_url != null && row.self_hosted_model != null
+            ? {
+                format: (row.self_hosted_format ?? 'cope') as
+                  | 'cope'
+                  | 'openai_chat',
+                baseUrl: row.self_hosted_base_url,
+                model: row.self_hosted_model,
+                apiKey: row.self_hosted_api_key ?? undefined,
+                systemPromptTemplate:
+                  row.self_hosted_system_prompt_template ?? undefined,
+                userMessageTemplate:
+                  row.self_hosted_user_message_template ?? undefined,
+              }
+            : undefined;
         return {
-          apiKey: row.api_key,
+          apiKey: row.api_key ?? undefined,
           labelerVersions: Array.isArray(returnedVersions)
             ? (returnedVersions as ZentropiLabelerVersion[])
             : typeof returnedVersions === 'string'
-            ? jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>)
-            : [],
+              ? jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>)
+              : [],
+          selfHosted: returnedSelfHosted,
         };
       },
       delete: async (orgId: string) => {

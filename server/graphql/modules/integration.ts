@@ -35,9 +35,19 @@ const typeDefs = /* GraphQL */ `
     label: String!
   }
 
+  type ZentropiSelfHostedConfig {
+    format: String!
+    baseUrl: String!
+    model: String!
+    apiKey: String
+    systemPromptTemplate: String
+    userMessageTemplate: String
+  }
+
   type ZentropiIntegrationApiCredential {
     apiKey: String!
     labelerVersions: [ZentropiLabelerVersion!]!
+    selfHosted: ZentropiSelfHostedConfig
   }
 
   union IntegrationApiCredential =
@@ -108,9 +118,19 @@ const typeDefs = /* GraphQL */ `
     label: String!
   }
 
+  input ZentropiSelfHostedConfigInput {
+    format: String!
+    baseUrl: String!
+    model: String!
+    apiKey: String
+    systemPromptTemplate: String
+    userMessageTemplate: String
+  }
+
   input ZentropiIntegrationApiCredentialInput {
-    apiKey: String!
+    apiKey: String
     labelerVersions: [ZentropiLabelerVersionInput!]
+    selfHosted: ZentropiSelfHostedConfigInput
   }
 
   input IntegrationApiCredentialInput {

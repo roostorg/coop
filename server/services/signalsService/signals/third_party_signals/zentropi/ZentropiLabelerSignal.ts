@@ -5,9 +5,11 @@ import { Integration } from '../../../types/Integration.js';
 import { SignalPricingStructure } from '../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../SignalBase.js';
+import { type FetchOpenAICompatibleScore } from '../openai_compatible/openaiCompatibleUtils.js';
 import {
   runZentropiLabelerImpl,
   type FetchZentropiScores,
+  type GetPolicyText,
 } from './zentropiUtils.js';
 
 export default class ZentropiLabelerSignal extends SignalBase<
@@ -17,6 +19,8 @@ export default class ZentropiLabelerSignal extends SignalBase<
   constructor(
     protected readonly getZentropiCredentials: CachedGetCredentials<'ZENTROPI'>,
     protected readonly getZentropiScores: FetchZentropiScores,
+    protected readonly fetchOpenAICompatibleScore: FetchOpenAICompatibleScore,
+    protected readonly getPolicyText: GetPolicyText,
   ) {
     super();
   }
@@ -31,10 +35,11 @@ export default class ZentropiLabelerSignal extends SignalBase<
 
   override get description() {
     return (
-      'Policy-steerable content classifier powered by Zentropi. ' +
-      'Evaluates text against a custom policy defined by a published labeler. ' +
+      'Policy-steerable content classifier powered by the CoPE model. ' +
+      'Evaluates text against a custom policy. ' +
       'Returns a composite score: 0 = confidently safe, 0.5 = uncertain, 1 = confidently violating. ' +
-      'Specify the labeler_version_id in the subcategory field.'
+      'For Zentropi hosted: specify the labeler_version_id in the subcategory field. ' +
+      'For self-hosted: specify the policy criteria text in the subcategory field.'
     );
   }
 
@@ -75,11 +80,14 @@ export default class ZentropiLabelerSignal extends SignalBase<
 
   override async getDisabledInfo(orgId: string) {
     const credential = await this.getZentropiCredentials(orgId);
+    if (credential?.selfHosted != null) {
+      return { disabled: false as const };
+    }
     return !credential?.apiKey
       ? {
           disabled: true as const,
           disabledMessage:
-            'You need to input your Zentropi API key to use Zentropi signals',
+            'You need to configure either a Zentropi API key or a self-hosted model endpoint to use this signal',
         }
       : { disabled: false as const };
   }
@@ -108,6 +116,8 @@ export default class ZentropiLabelerSignal extends SignalBase<
       this.getZentropiCredentials,
       input,
       this.getZentropiScores,
+      this.fetchOpenAICompatibleScore,
+      this.getPolicyText,
     );
   }
 }

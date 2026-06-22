@@ -1,5 +1,5 @@
 import { SearchOutlined } from '@ant-design/icons';
-import { Input, Select } from 'antd';
+import { Button, Input, Radio, Select } from 'antd';
 import omit from 'lodash/omit';
 import { useState } from 'react';
 
@@ -8,21 +8,132 @@ import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/
 import RuleFormSignalModalNoSearchResults from './RuleFormSignalModalNoSearchResults';
 import { RuleFormSignalModalSubcategory } from './RuleFormSignalModalSubcategory';
 
+type Mode = 'policy' | 'free_text';
+
+function initialMode(signal: CoreSignal): Mode {
+  if (signal.subcategory?.startsWith('policy:')) return 'policy';
+  return 'free_text';
+}
+
 export function RuleFormSignalModalSubcategoryGallery(props: {
   signal: GQLSignal;
   subcategories: readonly GQLSignalSubcategory[];
   onSelectSubcategoryOption: (option: string) => void;
 }) {
-  const { subcategories, onSelectSubcategoryOption } = props;
+  const { signal, subcategories, onSelectSubcategoryOption } = props;
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [freeText, setFreeText] = useState<string>(
+    signal.subcategory && !signal.subcategory.startsWith('policy:')
+      ? signal.subcategory
+      : '',
+  );
 
   const stripped = subcategories.map((subcategory) =>
     omit(subcategory, '__typename'),
   );
 
-  // Check if subcategories are flat (no parent-child tree structure).
-  // Flat subcategories have no childrenIds, so the tree rebuild filters them all out.
   const hasTreeStructure = stripped.some((s) => s.childrenIds.length > 0);
+
+  // Sentinel for free-text criteria entry.
+  const hasFreeTextSentinel = stripped.some((s) => s.id === '__free_text__');
+  // Policy options are any subcategory whose id begins with "policy:".
+  const policyOptions = stripped.filter((s) => s.id.startsWith('policy:'));
+  const hasPolicyOptions = policyOptions.length > 0;
+
+  // Mixed mode: org has policies AND free-text entry, show a toggle.
+  const isMixed = hasFreeTextSentinel && hasPolicyOptions;
+
+  const [mode, setMode] = useState<Mode>(initialMode(signal));
+
+  if (isMixed) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="pb-1 text-2xl font-medium">Select Policy Criteria</div>
+        <Radio.Group
+          value={mode}
+          onChange={(e) => setMode(e.target.value as Mode)}
+        >
+          <Radio.Button value="policy">Existing Policy</Radio.Button>
+          <Radio.Button value="free_text">Custom Text</Radio.Button>
+        </Radio.Group>
+
+        {mode === 'policy' && (
+          <div className="flex flex-col gap-2">
+            <div className="text-sm text-gray-500">
+              Select a policy — its text will be used as the classifier
+              criteria.
+            </div>
+            <Select
+              className="max-w-xs"
+              placeholder="Select a policy"
+              defaultValue={
+                signal.subcategory?.startsWith('policy:')
+                  ? signal.subcategory
+                  : undefined
+              }
+              onChange={(value: string) => onSelectSubcategoryOption(value)}
+              options={policyOptions.map((s) => ({
+                value: s.id,
+                label: s.label,
+              }))}
+            />
+          </div>
+        )}
+
+        {mode === 'free_text' && (
+          <div className="flex flex-col gap-2">
+            <div className="text-sm text-gray-500">
+              Describe the policy the model should evaluate content against.
+            </div>
+            <Input.TextArea
+              rows={6}
+              className="max-w-lg"
+              placeholder="e.g. The content contains hate speech targeting a protected group."
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+            />
+            <div>
+              <Button
+                type="primary"
+                disabled={!freeText.trim()}
+                onClick={() => onSelectSubcategoryOption(freeText.trim())}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Only the free-text sentinel (no policies configured yet).
+  if (!hasTreeStructure && hasFreeTextSentinel) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="pb-1 text-2xl font-medium">Enter Policy Criteria</div>
+        <div className="text-sm text-gray-500">
+          Describe the policy the model should evaluate content against.
+        </div>
+        <Input.TextArea
+          rows={6}
+          className="max-w-lg"
+          placeholder="e.g. The content contains hate speech targeting a protected group."
+          value={freeText}
+          onChange={(e) => setFreeText(e.target.value)}
+        />
+        <div>
+          <Button
+            type="primary"
+            disabled={!freeText.trim()}
+            onClick={() => onSelectSubcategoryOption(freeText.trim())}
+          >
+            Confirm
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!hasTreeStructure && stripped.length > 0) {
     // Render a simple dropdown for flat subcategories (e.g. Zentropi labeler versions)

@@ -5177,13 +5177,15 @@ export type GQLZentropiIntegrationApiCredential = {
   readonly __typename: 'ZentropiIntegrationApiCredential';
   readonly apiKey: Scalars['String']['output'];
   readonly labelerVersions: ReadonlyArray<GQLZentropiLabelerVersion>;
+  readonly selfHosted?: Maybe<GQLZentropiSelfHostedConfig>;
 };
 
 export type GQLZentropiIntegrationApiCredentialInput = {
-  readonly apiKey: Scalars['String']['input'];
+  readonly apiKey?: InputMaybe<Scalars['String']['input']>;
   readonly labelerVersions?: InputMaybe<
     ReadonlyArray<GQLZentropiLabelerVersionInput>
   >;
+  readonly selfHosted?: InputMaybe<GQLZentropiSelfHostedConfigInput>;
 };
 
 export type GQLZentropiLabelerVersion = {
@@ -5195,6 +5197,25 @@ export type GQLZentropiLabelerVersion = {
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
+};
+
+export type GQLZentropiSelfHostedConfig = {
+  readonly __typename: 'ZentropiSelfHostedConfig';
+  readonly apiKey?: Maybe<Scalars['String']['output']>;
+  readonly baseUrl: Scalars['String']['output'];
+  readonly format: Scalars['String']['output'];
+  readonly model: Scalars['String']['output'];
+  readonly systemPromptTemplate?: Maybe<Scalars['String']['output']>;
+  readonly userMessageTemplate?: Maybe<Scalars['String']['output']>;
+};
+
+export type GQLZentropiSelfHostedConfigInput = {
+  readonly apiKey?: InputMaybe<Scalars['String']['input']>;
+  readonly baseUrl: Scalars['String']['input'];
+  readonly format: Scalars['String']['input'];
+  readonly model: Scalars['String']['input'];
+  readonly systemPromptTemplate?: InputMaybe<Scalars['String']['input']>;
+  readonly userMessageTemplate?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -6414,6 +6435,15 @@ export type GQLIntegrationConfigQuery = {
                   readonly id: string;
                   readonly label: string;
                 }>;
+                readonly selfHosted?: {
+                  readonly __typename: 'ZentropiSelfHostedConfig';
+                  readonly format: string;
+                  readonly baseUrl: string;
+                  readonly model: string;
+                  readonly apiKey?: string | null;
+                  readonly systemPromptTemplate?: string | null;
+                  readonly userMessageTemplate?: string | null;
+                } | null;
               };
         } | null;
       }
@@ -29891,6 +29921,14 @@ export const GQLIntegrationConfigDocument = gql`
               labelerVersions {
                 id
                 label
+              }
+              selfHosted {
+                format
+                baseUrl
+                model
+                apiKey
+                systemPromptTemplate
+                userMessageTemplate
               }
             }
             ... on PluginIntegrationApiCredential {

@@ -12,6 +12,7 @@ import { type JSON } from '../../../utils/json-schema-types.js';
 import { getGoogleContentSafetyScores } from '../signals/third_party_signals/google/content_safety/googleContentSafetyLib.js';
 import { getOpenAiModerationScores } from '../signals/third_party_signals/open_ai/moderation/openAIModerationUtils.js';
 import { getOpenAiTranscription } from '../signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.js';
+import { getOpenAICompatibleScore } from '../signals/third_party_signals/openai_compatible/openaiCompatibleUtils.js';
 import { getZentropiScores } from '../signals/third_party_signals/zentropi/zentropiUtils.js';
 
 export type CachedFetchers = ReturnType<typeof makeCachedFetchers>;
@@ -42,6 +43,9 @@ export function makeCachedFetchers(
       getOpenAiTranscription.bind(null, fetchHTTP),
     ),
     zentropiFetcher: toCachedFetcher(getZentropiScores.bind(null, fetchHTTP)),
+    openAICompatibleFetcher: toCachedFetcher(
+      getOpenAICompatibleScore.bind(null, fetchHTTP),
+    ),
   };
 }
 

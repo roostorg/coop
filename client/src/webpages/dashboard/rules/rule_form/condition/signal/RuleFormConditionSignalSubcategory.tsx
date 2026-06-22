@@ -20,6 +20,38 @@ export default function RuleFormConditionSignalSubcategory(props: {
   }
   const { conditionIndex, conditionSetIndex } = location;
 
+  const hasFreeTextSentinel = eligibleSubcategories.some(
+    (s) => s.id === '__free_text__',
+  );
+  const hasPolicyOptions = eligibleSubcategories.some((s) =>
+    s.id.startsWith('policy:'),
+  );
+  const isSelfHosted = hasFreeTextSentinel;
+
+  // Look up the label for the stored subcategory ID (e.g. policy name).
+  const matchingOption = signal.subcategory
+    ? eligibleSubcategories.find((s) => s.id === signal.subcategory)
+    : undefined;
+
+  let displayValue: string;
+  let tooltipText: string | undefined;
+
+  if (!signal.subcategory) {
+    displayValue = hasPolicyOptions
+      ? 'Select Policy or Criteria'
+      : 'Enter Criteria';
+  } else if (matchingOption) {
+    // Subcategory is a known option (e.g. a policy) — show its label.
+    displayValue = matchingOption.label;
+  } else {
+    // Subcategory is raw free text — truncate for display, full text as tooltip.
+    const text = signal.subcategory;
+    displayValue = text.length > 40 ? text.slice(0, 40) + '…' : text;
+    tooltipText = text;
+  }
+
+  const label = isSelfHosted ? 'Policy Criteria' : 'Signal Subcategory';
+
   return (
     <div
       key={
@@ -30,7 +62,7 @@ export default function RuleFormConditionSignalSubcategory(props: {
       }
       className="!mb-0 !pl-4 !align-middle flex flex-col items-start"
     >
-      <div className="pb-1 text-xs font-bold">Signal Subcategory</div>
+      <div className="pb-1 text-xs font-bold">{label}</div>
       <Button
         className={`px-3 cursor-text ${
           condition.signal
@@ -38,11 +70,12 @@ export default function RuleFormConditionSignalSubcategory(props: {
             : '!text-[#bfbfbf] !hover:text-[#bfbfbf] !focus:text-[#bfbfbf]'
         }`}
         onClick={onClick}
+        title={tooltipText}
       >
-        {signal.subcategory ?? 'Select Subcategory'}{' '}
+        {displayValue}{' '}
         <DownOutlined className="!text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
       </Button>
-      <div className="invisible pb-1 text-xs font-bold">Signal Subcategory</div>
+      <div className="invisible pb-1 text-xs font-bold">{label}</div>
     </div>
   );
 }

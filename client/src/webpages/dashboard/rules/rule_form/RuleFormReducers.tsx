@@ -568,10 +568,8 @@ export function getNewEligibleInputs(
       // Note: this filter isn't technically needed, but in the future we might
       // allow non-custom signals to run on content types, so we keep it here
       // so future devs don't need to remember to add it.
-      return eligibleSignals.filter(
-        (it) =>
-          it.type === GQLSignalType.Custom,
-      ).length;
+      return eligibleSignals.filter((it) => it.type === GQLSignalType.Custom)
+        .length;
     })
     .map((itemType) => ({
       type: 'FULL_ITEM' as const,
@@ -897,7 +895,7 @@ export function updateSignalSubcategory(
   },
 ): RuleFormState {
   const { location, subcategory } = action.payload;
-  return updateConditionComponent(
+  const next = updateConditionComponent(
     state,
     location,
     subcategory,
@@ -906,6 +904,15 @@ export function updateSignalSubcategory(
       return condition;
     },
   );
+
+  // When a policy is chosen as signal criteria and no policies are assigned yet,
+  // default the rule's policy assignment to that same policy.
+  if (subcategory.startsWith('policy:') && next.policyIds.length === 0) {
+    const policyId = subcategory.slice('policy:'.length);
+    return { ...next, policyIds: [policyId] };
+  }
+
+  return next;
 }
 
 export function updateMatchingValues(
