@@ -31,10 +31,21 @@ jobs:
         id: filter
         with:
           filters: |
+            # Changes to the dockerised CI plumbing re-run the jobs that
+            # depend on it, so this workflow, the compose file, and the
+            # Dockerfile are exercised even when no app code changed.
+            docker: &docker
+              - 'docker-compose.yaml'
+              - 'Dockerfile'
+              - '.env.githubci'
+              - '.github/workflows/apply_pr_checks.yaml'
+              - '.github/actions/prepare-docker-images/**'
             server:
               - 'server/**'
+              - *docker
             client:
               - 'client/**'
+              - *docker
             db:
               - 'db/**'
             migrator:
