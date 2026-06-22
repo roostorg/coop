@@ -107,13 +107,16 @@ jobs:
           E2E_PASSWORD: e2e-password-CHANGE-ME
 
       - name: Start server and client
+        # Redirect output to files so the backgrounded processes don't hold this
+        # step's stdout pipe open (which would hang the step). They keep running
+        # into the later steps. Wait on the server's /ready health endpoint (a
+        # reliable 200) rather than the GraphQL endpoint, which 400s on a bare GET.
         run: |
-          npm run server:start &
-          (cd client && npm start) &
-          npx --yes wait-on@8 http://localhost:8080/api/v1/graphql http://localhost:3000 --timeout 120000
-        env:
-          E2E_EMAIL: e2e@example.com
-          E2E_PASSWORD: e2e-password-CHANGE-ME
+          npm run server:start > /tmp/server.log 2>&1 &
+          (cd client && npm start) > /tmp/client.log 2>&1 &
+          npx --yes wait-on@8 http://localhost:8080/ready http://localhost:3000 --timeout 120000 \
+            || { echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"; \
+                 echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"; exit 1; }
 
       - name: Install e2e dependencies
         run: cd e2e && npm ci
