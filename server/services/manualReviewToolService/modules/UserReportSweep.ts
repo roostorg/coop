@@ -193,18 +193,35 @@ export default class UserReportSweep {
         continue;
       }
 
-      const jobUser = await this.#resolveSubjectUser(orgId, job.payload.item);
-      if (
-        jobUser == null ||
-        jobUser.id !== subjectUser.id ||
-        jobUser.typeId !== subjectUser.typeId
-      ) {
-        continue;
-      }
+      try {
+        const jobUser = await this.#resolveSubjectUser(orgId, job.payload.item);
+        if (
+          jobUser == null ||
+          jobUser.id !== subjectUser.id ||
+          jobUser.typeId !== subjectUser.typeId
+        ) {
+          continue;
+        }
 
-      const disposed = await this.#disposeJob({ queueId, job, input });
-      if (disposed) {
-        jobsDisposed++;
+        const disposed = await this.#disposeJob({ queueId, job, input });
+        if (disposed) {
+          jobsDisposed++;
+        }
+      } catch (error) {
+        // A single job failure must not abort the entire sweep. Log the error
+        // for observability but continue processing remaining jobs.
+        this.tracer.addSpan(
+          {
+            resource: 'mrtService',
+            operation: 'clearOtherReports.disposeJob',
+          },
+          (span) => {
+            span.setAttribute('job.id', job.id);
+            span.setAttribute('queue.id', queueId);
+            this.tracer.logSpanFailed(span, error);
+            return null;
+          },
+        );
       }
     }
 

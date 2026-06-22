@@ -520,16 +520,31 @@ export default class JobDecisioning {
       return 'logged';
     }
 
-    await this.onRecordDecision({
-      decisionComponents,
-      relatedActions: [],
-      job,
-      queueId,
-      reviewerId,
-      reviewerEmail,
-      decisionReason,
-      suppressUserReportSweep: true,
-    });
+    // Best-effort: the decision is already persisted above, so a failure to
+    // publish actions (e.g. a transient DB/network error) must not prevent the
+    // caller from removing the job from the queue or continuing the sweep.
+    try {
+      await this.onRecordDecision({
+        decisionComponents,
+        relatedActions: [],
+        job,
+        queueId,
+        reviewerId,
+        reviewerEmail,
+        decisionReason,
+        suppressUserReportSweep: true,
+      });
+    } catch (error) {
+      this.tracer.addSpan(
+        { resource: 'mrtService', operation: 'sweptJob.onRecordDecision' },
+        (span) => {
+          span.setAttribute('job.id', job.id);
+          span.setAttribute('org.id', orgId);
+          this.tracer.logSpanFailed(span, error);
+          return null;
+        },
+      );
+    }
     return 'logged';
   }
 

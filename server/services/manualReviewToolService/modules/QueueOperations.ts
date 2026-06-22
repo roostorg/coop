@@ -943,7 +943,10 @@ export default class QueueOperations {
         if (snapshotIds.length >= maxJobs) {
           break;
         }
-        snapshotIds.push(legacy.data.id);
+        const id = legacy?.data?.id;
+        if (id != null) {
+          snapshotIds.push(id);
+        }
       }
       if (legacyJobs.length < batchSize) {
         break;
