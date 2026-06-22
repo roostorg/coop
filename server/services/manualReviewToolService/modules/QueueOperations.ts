@@ -445,8 +445,6 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
-    await queue.obliterate({ force: true });
-
     let numDeletedRows: bigint;
     try {
       numDeletedRows = await this.transactionWithRetry(async (transaction) => {
@@ -473,7 +471,13 @@ export default class QueueOperations {
         return queueDelete.numDeletedRows;
       });
     } catch (e) {
-      if (isForeignKeyViolationError(e)) {
+      if (
+        isForeignKeyViolationError(e) &&
+        ((e as { constraint?: string }).constraint ===
+          'routing_rules_destination_queue_id_fkey' ||
+          (e as { constraint?: string }).constraint ===
+            'appeals_routing_rules_destination_queue_id_fkey')
+      ) {
         // routing_rules and appeals_routing_rules have RESTRICT FKs to this
         // queue. Query for their names so the error message is actionable.
         const [routingRules, appealsRoutingRules] = await Promise.all([
@@ -501,6 +505,10 @@ export default class QueueOperations {
       throw e;
     }
 
+    if (numDeletedRows === 1n) {
+      await queue.obliterate({ force: true });
+    }
+
     return numDeletedRows === 1n;
   }
 
@@ -522,11 +530,13 @@ export default class QueueOperations {
         await transaction
           .deleteFrom('manual_review_tool.routing_rules')
           .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
           .execute();
 
         await transaction
           .deleteFrom('manual_review_tool.appeals_routing_rules')
           .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
           .execute();
 
         const queueDelete = await transaction

@@ -226,7 +226,13 @@ export default function ManualReviewQueuesDashboard() {
       let ruleNames: string[] = [];
       if (typeof rawDetail === 'string') {
         try {
-          ruleNames = JSON.parse(rawDetail);
+          const parsed: unknown = JSON.parse(rawDetail);
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((n): n is string => typeof n === 'string')
+          ) {
+            ruleNames = parsed;
+          }
         } catch {}
       }
       setDeleteError({ message, ruleNames });
@@ -485,7 +491,7 @@ export default function ManualReviewQueuesDashboard() {
           </p>
           <p className="pl-4">
             {deleteError.ruleNames.map((name, i) => (
-              <Fragment key={name}>
+              <Fragment key={i}>
                 {i > 0 && ', '}
                 <Link to="/dashboard/manual_review/routing">{name}</Link>
               </Fragment>
