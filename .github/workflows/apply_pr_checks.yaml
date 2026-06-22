@@ -205,8 +205,7 @@ jobs:
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
-        # could be helpful for debugging in that case; otherwise, they're just
-        # noise that's costing us money in Datadog.
+        # could be helpful for debugging in that case.
         if: failure()
         name: Get Migrations Logs
         run: docker compose logs migrations
@@ -217,6 +216,45 @@ jobs:
         continue-on-error: true
         with:
           name: JEST Tests # Name of the check run which will be created
+          path: server/reports/jest-*.xml # Path to test results
+          reporter: jest-junit # Format of test results
+
+  # Integration tests (`*.integ.test.ts`) run as a separate job so they execute
+  # in parallel with the unit tests / lint / build above and report failures
+  # independently. They exercise the full database stack, so the `test` service's
+  # migration dependencies bring up Postgres, Scylla, and ClickHouse first.
+  check_api_server_integration:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: write # for dorny/test-reporter to create a check run
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Migrate CI DBs and run integration tests
+        run: |
+          docker compose run --rm --quiet-pull test npm run test:integ
+          echo "ATTENTION: If this step fails, look in the next step for the migration logs."
+
+      - # Only output the migration logs if the prior step failed, as they
+        # could be helpful for debugging in that case.
+        if: failure()
+        name: Get Migrations Logs
+        run: docker compose logs migrations
+
+      - name: Test Report
+        if: always() # run this step even if previous step failed
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        continue-on-error: true
+        with:
+          name: JEST Integration Tests # Name of the check run which will be created
           path: server/reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
 

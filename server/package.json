@@ -12,7 +12,7 @@
     "test:local": "NODE_OPTIONS=\"--no-warnings --loader ts-node/esm --require dotenv/config\" jest --watch --detectOpenHandles",
     "test:prepush": "NODE_OPTIONS=\"--no-warnings --loader ts-node/esm --require dotenv/config\" jest --detectOpenHandles --no-cache --forceExit",
     "test:ci": "NODE_OPTIONS=\"--loader ts-node/esm\" jest --ci --reporters=default --silent=false --reporters=jest-junit --no-cache --forceExit --runInBand",
-    "test:integ": "NODE_OPTIONS=\"--loader ts-node/esm\" jest --ci --reporters=default --silent=false --reporters=jest-junit --detectOpenHandles --no-cache --forceExit --config jest.integ.config.cjs",
+    "test:integ": "NODE_OPTIONS=\"--loader ts-node/esm\" jest --ci --reporters=default --silent=false --reporters=jest-junit --detectOpenHandles --no-cache --forceExit --runInBand --config jest.integ.config.cjs",
     "typecheck": "tsc --noEmit",
     "check:prepush": "npm run typecheck && npm run test:prepush",
     "lint": "eslint \"./**/*.{ts,tsx,js}\"",
