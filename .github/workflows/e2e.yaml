@@ -35,6 +35,11 @@ jobs:
               - 'client/**'
               - 'db/**'
               - '.github/workflows/e2e.yaml'
+              # Root-level files the workflow steps below depend on.
+              - '.nvmrc'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'docker-compose.yaml'
 
   e2e:
     needs: [changes]
@@ -103,9 +108,20 @@ jobs:
         run: |
           npm run server:start > /tmp/server.log 2>&1 &
           (cd client && npm start) > /tmp/client.log 2>&1 &
-          npx --yes wait-on@8 tcp:127.0.0.1:8080 http://localhost:3000 --timeout 120000 \
-            || { echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"; \
-                 echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"; exit 1; }
+          # Wait (up to 120s) for the API (tcp 8080) and client (http 3000) to be
+          # ready. A built-in shell loop avoids fetching an undeclared dependency
+          # at runtime, which would bypass the committed lockfile.
+          deadline=$((SECONDS + 120))
+          until (exec 3<>/dev/tcp/127.0.0.1/8080) 2>/dev/null \
+            && curl -sf -o /dev/null http://localhost:3000; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"
+              echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"
+              echo "::error::server (8080) / client (3000) not ready within 120s"
+              exit 1
+            fi
+            sleep 2
+          done
 
       - name: Cache Playwright browsers
         id: playwright-cache
