@@ -38,6 +38,41 @@ export type TransactionalTestDb = {
   end: () => Promise<void>;
 };
 
+// This harness doesn't yet support every single Postgres transaction control
+// statement. The following are unsupported, and should raise an exception loudly
+// rather than silently break the test harness.
+const UNSUPPORTED_TXN_CONTROL_VERBS = [
+  'end', // alias for COMMIT
+  'abort', // alias for ROLLBACK
+  'commit', // COMMIT PREPARED
+  'rollback', // ROLLBACK TO SAVEPOINT / ROLLBACK PREPARED
+  'savepoint',
+  'release', // RELEASE [SAVEPOINT]
+  'prepare transaction',
+];
+
+function rejectUnsupportedTransactionControl(
+  normalized: string,
+  raw: string,
+): void {
+  const isUnsupported = UNSUPPORTED_TXN_CONTROL_VERBS.some(
+    (verb) => normalized === verb || normalized.startsWith(`${verb} `),
+  );
+  if (!isUnsupported) return;
+
+  throw new Error(
+    [
+      `transactionalPgPool refused to run "${raw}".`,
+      '',
+      'This test harness isolates each test by wrapping it in one Postgres',
+      'transaction and rewriting BEGIN/COMMIT/ROLLBACK into savepoints. The',
+      'statement above is a different transaction-control command that would',
+      'act on the outer per-test transaction instead — committing or aborting',
+      "the whole test's writes and breaking isolation for every later test.",
+    ].join('\n'),
+  );
+}
+
 export function createTransactionalTestDb(
   config: pg.ClientConfig,
 ): TransactionalTestDb {
@@ -47,6 +82,28 @@ export function createTransactionalTestDb(
   // savepoint is fully determined by the current depth — no stack needed.
   let savepointDepth = 0;
   const savepointName = (depth: number) => `coop_test_sp_${depth}`;
+
+  const openSavepoint = async () => {
+    savepointDepth += 1;
+    return client.query(`SAVEPOINT ${savepointName(savepointDepth)}`);
+  };
+
+  const closeSavepoint = async (verb: 'commit' | 'rollback') => {
+    if (savepointDepth <= 0) {
+      throw new Error(
+        `${verb.toUpperCase()} without a matching application transaction`,
+      );
+    }
+    const name = savepointName(savepointDepth);
+    if (verb === 'rollback') {
+      await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+    }
+    const result = await client.query(`RELEASE SAVEPOINT ${name}`);
+    // Drop the depth only after the SQL succeeds, so a failed call can't leave
+    // the savepoint stack out of sync.
+    savepointDepth -= 1;
+    return result;
+  };
 
   // The single place transaction-control statements are rewritten to
   // savepoints; everything else passes straight through to the pinned client.
@@ -59,33 +116,21 @@ export function createTransactionalTestDb(
     const text =
       typeof textOrConfig === 'string' ? textOrConfig : textOrConfig.text;
     const normalized =
-      typeof text === 'string' ? text.trim().toLowerCase() : '';
+      typeof text === 'string'
+        ? text.trim().toLowerCase().replace(/;/g, '')
+        : '';
 
     if (normalized === 'begin' || normalized.startsWith('start transaction')) {
-      savepointDepth += 1;
-      return client.query(`SAVEPOINT ${savepointName(savepointDepth)}`);
+      return openSavepoint();
     }
     if (normalized === 'commit') {
-      if (savepointDepth <= 0) {
-        throw new Error('COMMIT without a matching application transaction');
-      }
-      const name = savepointName(savepointDepth);
-      const result = await client.query(`RELEASE SAVEPOINT ${name}`);
-      // Only drop the depth once the SQL succeeds, so a failed call can't
-      // leave the savepoint stack out of sync.
-      savepointDepth -= 1;
-      return result;
+      return closeSavepoint('commit');
     }
     if (normalized === 'rollback') {
-      if (savepointDepth <= 0) {
-        throw new Error('ROLLBACK without a matching application transaction');
-      }
-      const name = savepointName(savepointDepth);
-      await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
-      const result = await client.query(`RELEASE SAVEPOINT ${name}`);
-      savepointDepth -= 1;
-      return result;
+      return closeSavepoint('rollback');
     }
+
+    rejectUnsupportedTransactionControl(normalized, text);
 
     return values === undefined
       ? client.query(textOrConfig)

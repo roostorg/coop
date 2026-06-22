@@ -97,6 +97,34 @@ describe('createTransactionalTestDb', () => {
     }
   });
 
+  it('rejects unhandled transaction-control statements that would escape the outer transaction', async () => {
+    const tdb = createTransactionalTestDb(pgConfig);
+    await tdb.begin();
+    try {
+      // `END`/`ABORT` are aliases for COMMIT/ROLLBACK: forwarded unrewritten
+      // they would act on the outer per-test transaction and defeat isolation,
+      // so the facade must reject them rather than pass them through.
+      await expect(tdb.pool.query('END')).rejects.toThrow(
+        /transactionalPgPool refused to run "END"/,
+      );
+      await expect(tdb.pool.query('ABORT')).rejects.toThrow(
+        /transactionalPgPool refused to run "ABORT"/,
+      );
+
+      // A `PREPARE <name>` statement is an ordinary query (not transaction
+      // control) and must still pass straight through.
+      await tdb.pool.query('prepare harness_probe as select 1');
+      const prepared = await tdb.pool.query('execute harness_probe');
+      expect(prepared.rows).toHaveLength(1);
+
+      await tdb.rollback();
+    } finally {
+      // Always close the pinned connection so a mid-test throw can't leak it
+      // (and closing aborts any still-open outer transaction).
+      await tdb.end();
+    }
+  });
+
   it('supports direct pool.query (e.g. for the session store), routed through the same rolled-back transaction', async () => {
     const tdb = createTransactionalTestDb(pgConfig);
     await tdb.begin();
