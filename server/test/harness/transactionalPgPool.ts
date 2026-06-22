@@ -105,10 +105,43 @@ export function createTransactionalTestDb(
     return result;
   };
 
+  // ─────────────────────────────────────────────────────────────────────
+  // One test = one real Postgres connection (the `client` above). Every
+  // `pool.connect()` returns a thin facade forwarding to it. This lets a
+  // test read its own writes: everything runs in one outer transaction on
+  // one connection, rolled back at the end.
+  //
+  // The catch: pg's node driver only keeps query order if WE await each
+  // drive before starting the next. Once two awaits run concurrently on
+  // the same connection (Promise.all, background cache refreshers, …),
+  // queries can interleave on the wire and our savepoint machinery races.
+  //
+  // So, we force one-at-a-time on every query to the pinned connection —
+  // tx control AND data. Each test already has its own pg.Client (see
+  // transactionalTest.ts), so this serializes concurrent work *within*
+  // one test, not across tests.
+  // ─────────────────────────────────────────────────────────────────────
+
+  // Pending work, chained in arrival order. Each query appends onto this
+  // and awaits everything ahead of it before running, so queries execute
+  // one at a time in the order they arrive.
+  let queue: Promise<unknown> = Promise.resolve();
+
+  // Run `thunk` once everything already on the queue has settled. The
+  // catcher threaded back into `queue` is separate from what we return,
+  // so a failed query can't poison every later query; the caller still
+  // sees its own error via `await`.
+  const runOneAtATime = async <T>(thunk: () => Promise<T>): Promise<T> => {
+    const next = queue.then(thunk);
+    queue = next.catch(() => {});
+    return next;
+  };
+
   // The single place transaction-control statements are rewritten to
-  // savepoints; everything else passes straight through to the pinned client.
-  // Shared by both the per-connection facade (`connect().query`) and the
-  // pool-level `query` (used by consumers like the express-session store).
+  // savepoints; everything else passes straight through to the pinned
+  // client. Shared by both the per-connection facade (`connect().query`)
+  // and the pool-level `query` (used by consumers like the express-session
+  // store).
   const runQuery = async (
     textOrConfig: string | pg.QueryConfig,
     values?: unknown[],
@@ -121,20 +154,22 @@ export function createTransactionalTestDb(
         : '';
 
     if (normalized === 'begin' || normalized.startsWith('start transaction')) {
-      return openSavepoint();
+      return runOneAtATime(openSavepoint); // → SAVEPOINT coop_test_sp_<new depth>
     }
     if (normalized === 'commit') {
-      return closeSavepoint('commit');
+      return runOneAtATime(async () => closeSavepoint('commit')); // RELEASE SAVEPOINT
     }
     if (normalized === 'rollback') {
-      return closeSavepoint('rollback');
+      return runOneAtATime(async () => closeSavepoint('rollback')); // ROLLBACK TO SAVEPOINT
     }
 
     rejectUnsupportedTransactionControl(normalized, text);
 
-    return values === undefined
-      ? client.query(textOrConfig)
-      : client.query(textOrConfig, values);
+    return runOneAtATime(async () =>
+      values === undefined
+        ? client.query(textOrConfig)
+        : client.query(textOrConfig, values),
+    );
   };
 
   const facadeClient = {
