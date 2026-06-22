@@ -1,0 +1,24 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "description": "Coop end-to-end (Playwright) test suite",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen",
+    "install:browsers": "playwright install --with-deps chromium",
+    "lint": "tsc --noEmit"
+  },
+  "author": "Roostorg",
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
