@@ -6,9 +6,9 @@
 # (Postgres/ClickHouse/Scylla/Redis + server + client), so it is slower /
 # heavier than the other per-PR checks.
 #
-# The app bring-up below mirrors the documented local setup in AGENTS.md. It has
-# not yet been validated end-to-end in CI; expect to iterate on service
-# readiness waits and env once real specs exist.
+# The app bring-up below mirrors the documented local setup in AGENTS.md. There
+# is no org/user seeding step: each test seeds its own state via the server's DI
+# factories (server/e2e/). Tests live in server/ so they can import those.
 name: E2E
 
 on:
@@ -46,7 +46,6 @@ jobs:
               - 'server/**'
               - 'client/**'
               - 'db/**'
-              - 'e2e/**'
               - '.github/workflows/e2e.yaml'
 
   e2e:
@@ -91,20 +90,8 @@ jobs:
           npm run db:update -- --env staging --db scylla
           npm run db:update -- --env staging --db clickhouse
 
-      - name: Seed organization and admin user
-        run: |
-          npm run create-org -- \
-            --name "E2E Org" \
-            --email "${{ env.E2E_EMAIL }}" \
-            --website "https://example.com" \
-            --firstName "E2E" \
-            --lastName "Admin" \
-            --password "${{ env.E2E_PASSWORD }}"
-        env:
-          # Test-only credentials for an ephemeral CI database. Override via repo
-          # secrets if you prefer not to keep them in the workflow.
-          E2E_EMAIL: e2e@example.com
-          E2E_PASSWORD: e2e-password-CHANGE-ME
+      # No org/user seeding step: each Playwright test seeds the state it needs
+      # via the server's DI factories (see server/e2e/fixtures/coop.ts).
 
       - name: Start server and client
         # Redirect output to files so the backgrounded processes don't hold this
@@ -120,37 +107,33 @@ jobs:
             || { echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"; \
                  echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"; exit 1; }
 
-      - name: Install e2e dependencies
-        run: cd e2e && npm ci
-
+      # @playwright/test is a server devDependency, so it's already installed by
+      # the "Install dependencies" step above; only the browser binary is needed.
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
 
       - name: Install Playwright system dependencies
         # OS-level deps live outside the cached browser dir, so install them every run.
-        run: cd e2e && npx playwright install-deps chromium
+        run: cd server && npx playwright install-deps chromium
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: cd e2e && npx playwright install chromium
+        run: cd server && npx playwright install chromium
 
       - name: Run E2E suite
-        run: cd e2e && npm test
+        run: cd server && npm run test:e2e
         env:
           CI: 'true'
           PLAYWRIGHT_BASE_URL: http://localhost:3000
-          # Surface the seeded credentials to specs/fixtures that perform login.
-          E2E_EMAIL: e2e@example.com
-          E2E_PASSWORD: e2e-password-CHANGE-ME
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: playwright-report
-          path: e2e/playwright-report/
+          path: server/e2e/playwright-report/
           retention-days: 14
