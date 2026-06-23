@@ -1,4 +1,4 @@
-import { type ColumnType, type GeneratedAlways } from 'kysely';
+import { type ColumnType, type Generated, type GeneratedAlways } from 'kysely';
 
 import {
   type FilterableWarehouseDate,
@@ -76,6 +76,13 @@ export type ManualReviewToolServicePg = {
     is_appeals_queue: boolean;
     auto_close_jobs: boolean;
     job_sort_type: string;
+  };
+  'manual_review_tool.job_priority_weights': {
+    org_id: string;
+    property: string;
+    weight: string;
+    created_at: GeneratedAlways<Date>;
+    updated_at: Generated<Date>;
   };
   'manual_review_tool.manual_review_decisions': {
     id: string;
