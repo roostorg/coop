@@ -44,6 +44,7 @@ import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
 } from '../../utils/kyselyTransactionWithRetry.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
 import { DAY_MS } from '../../utils/time.js';
@@ -621,7 +622,9 @@ class RuleAPI {
     ): Promise<readonly T[]> => {
       try {
         return await fn();
-      } catch {
+      } catch (err) {
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({ message: 'rule insights query failed', error: err });
         return [];
       }
     };
