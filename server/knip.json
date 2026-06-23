@@ -1,16 +1,9 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  "entry": [
-    "bin/www.ts",
-    "ts-reset.ts"
-  ],
+  "entry": ["bin/www.ts", "ts-reset.ts"],
   "project": ["**/*.ts"],
-  "ignore": [
-    "graphql/generated.ts"
-  ],
-  "ignoreDependencies": [
-    "@roostorg/coop-integration-example"
-  ],
+  "ignore": ["graphql/generated.ts"],
+  "ignoreDependencies": ["@roostorg/coop-integration-example"],
   "jest": {
     "config": ["jest.config.cjs", "jest.integ.config.cjs"]
   }

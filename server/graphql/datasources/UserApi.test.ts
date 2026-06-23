@@ -31,7 +31,6 @@ function makeMockKyselyPg() {
     execute: (cb: (trx: any) => unknown) => cb(kyselyPg),
   });
 
-   
   const kyselyPg = {
     updateTable,
     deleteFrom,

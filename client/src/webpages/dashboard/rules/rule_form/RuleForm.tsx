@@ -1,5 +1,22 @@
 import { Label } from '@/coop-ui/Label';
 import { Switch } from '@/coop-ui/Switch';
+import {
+  GQLAction,
+  GQLConditionConjunction,
+  GQLRuleStatus,
+  GQLSignal,
+  GQLUserPermission,
+  namedOperations,
+  useGQLContentRuleFormConfigQuery,
+  useGQLCreateContentRuleMutation,
+  useGQLCreateUserRuleMutation,
+  useGQLDeleteRuleMutation,
+  useGQLMatchingBankIdsQuery,
+  useGQLRuleQuery,
+  useGQLUpdateContentRuleMutation,
+  useGQLUpdateUserRuleMutation,
+  type GQLRuleActionParameterValuesInput,
+} from '@/graphql/generated';
 import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
 import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
@@ -23,23 +40,6 @@ import PolicyDropdown from '../../components/PolicyDropdown';
 import SubmitButton from '../../components/SubmitButton';
 import { defaultValuesForParameters } from '@/components/ActionParametersModal';
 
-import {
-  GQLAction,
-  GQLConditionConjunction,
-  GQLRuleStatus,
-  GQLUserPermission,
-  namedOperations,
-  useGQLContentRuleFormConfigQuery,
-  useGQLCreateContentRuleMutation,
-  useGQLCreateUserRuleMutation,
-  useGQLDeleteRuleMutation,
-  useGQLMatchingBankIdsQuery,
-  useGQLRuleQuery,
-  useGQLUpdateContentRuleMutation,
-  useGQLUpdateUserRuleMutation,
-  type GQLRuleActionParameterValuesInput,
-} from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { DAY, HOUR, MONTH, WEEK } from '../../../../utils/time';
@@ -745,7 +745,7 @@ export default function RuleForm() {
             rule.__typename === 'ContentRule' ? rule.itemTypes : [],
           conditionSet: rule.conditionSet,
           allActions,
-          allSignals: allSignals satisfies readonly CoreSignal[],
+          allSignals: allSignals satisfies readonly GQLSignal[],
           policyIds: rule.policies.map((it) => it.id),
           tags: (rule.tags ?? []).filter((tag) => tag) as string[],
           maxDailyActions: rule.maxDailyActions ?? null,
@@ -1115,7 +1115,7 @@ export default function RuleForm() {
           (id: string) => allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
-        allSignals: allSignals satisfies readonly CoreSignal[],
+        allSignals: allSignals satisfies readonly GQLSignal[],
         form,
       },
     });

@@ -1,41 +1,11 @@
 import {
   GQLIntegration,
   GQLScalarType,
-  GQLSignal,
   GQLSignalOutputType,
   GQLSignalType,
   GQLValueComparator,
 } from '../graphql/generated';
 import { assertUnreachable } from '../utils/misc';
-
-/**
- * Legacy-ish type for the core set of keys that signal keys that much of the
- * code currently assumes will be present on fetched signals.
- * @deprecated
- */
-export type CoreSignal = Pick<
-  GQLSignal,
-  | 'id'
-  | 'type'
-  | 'name'
-  | 'description'
-  | 'disabledInfo'
-  | 'shouldPromptForMatchingValues'
-  | 'outputType'
-  | 'eligibleSubcategories'
-  | 'eligibleInputs'
-  | 'subcategory'
-  | 'integration'
-  | 'integrationTitle'
-  | 'integrationLogoUrl'
-  | 'integrationLogoWithBackgroundUrl'
-  | 'pricingStructure'
-  | 'docsUrl'
-  | 'recommendedThresholds'
-  | 'supportedLanguages'
-  | 'args'
-  | 'allowedInAutomatedRules'
->;
 
 /** Signal type is string to support plugin signal types (e.g. RANDOM_SIGNAL_SELECTION). */
 export function receivesRegexInput(type: string) {

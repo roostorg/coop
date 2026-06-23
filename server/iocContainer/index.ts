@@ -441,6 +441,17 @@ export interface Dependencies {
 // treatment that TS gives to classes with private fields; see https://stackoverflow.com/questions/55281162/can-i-force-the-typescript-compiler-to-use-nominal-typing)
 export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
 
+export function getPgConnectionParams(): pg.ClientConfig {
+  return {
+    user: process.env.DATABASE_USER ?? 'postgres',
+    database: process.env.DATABASE_NAME ?? 'development',
+    password: safeGetEnvVar('DATABASE_PASSWORD'),
+    port: parseInt(process.env.DATABASE_PORT ?? '5432'),
+    host: safeGetEnvVar('DATABASE_HOST'),
+    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+  };
+}
+
 /**
  * A function for creating our service container, configured for production.
  * Services can be rebound in other contexts (namely, tests) as needed.
@@ -514,15 +525,10 @@ export default async function getBottle() {
   // that would defeat the ability of safeGetEnvVar to alert us in prod if a
   // worker that needs these vars is run without them.
   const getPgMasterConnectionInfo = () => ({
-    user: process.env.DATABASE_USER ?? 'postgres',
-    database: process.env.DATABASE_NAME ?? 'development',
-    password: safeGetEnvVar('DATABASE_PASSWORD'),
-    port: parseInt(process.env.DATABASE_PORT ?? '5432'),
-    host: safeGetEnvVar('DATABASE_HOST'),
+    ...getPgConnectionParams(),
     max: parseInt(process.env.DATABASE_POOL_MAX ?? '30'),
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
     ...getPgPoolTuning(),
   });
 

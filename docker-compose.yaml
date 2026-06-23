@@ -176,7 +176,6 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
-    container_name: clickhouse
     ports:
       - '8123:8123' # HTTP interface
       - '9000:9000' # Native TCP interface

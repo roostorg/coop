@@ -234,7 +234,15 @@ export function ManualReviewJobThreadComponent(props: {
         )?.data
       : undefined;
   };
-  if (!data || data.threadHistory.length === 0) {
+  if (loading) {
+    return <ComponentLoading />;
+  }
+
+  if (error) {
+    return <div>Error loading user submissions: {error.message}</div>;
+  }
+
+  if (!data) {
     return null;
   }
   const newMessages = data.threadHistory
@@ -354,14 +362,6 @@ export function ManualReviewJobThreadComponent(props: {
           ? `${threadTypeName} ID: ${thread.id}`
           : `Thread ID: ${thread.id}`;
 
-  if (loading) {
-    return <ComponentLoading />;
-  }
-
-  if (error) {
-    return <div>Error loading user submissions: {error.message}</div>;
-  }
-
   return (
     <>
       <div className="flex flex-col items-start w-full bg-white border border-gray-200 border-solid rounded-lg grow">
@@ -441,10 +441,16 @@ export function ManualReviewJobThreadComponent(props: {
           className="flex flex-col w-full overflow-auto max-h-[600px] gap-2 p-5"
           ref={scrollViewRef}
         >
-          {threadComponent}
+          {threadComponent.length > 0 ? (
+            threadComponent
+          ) : (
+            <div className="text-left text-gray-500">
+              There is no content in this thread yet
+            </div>
+          )}
         </div>
       </div>
-      {isActionable && (
+      {isActionable && newMessages.length > 0 && (
         <>
           <div className="flex flex-row self-end mt-2">
             <Button

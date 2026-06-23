@@ -1,17 +1,13 @@
+import { GQLDisabledInfo, GQLSignal, GQLSignalType } from '@/graphql/generated';
 import { RightOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import startCase from 'lodash/startCase';
 
-import {
-  GQLDisabledInfo,
-  GQLSignalType,
-} from '../../../../../graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
-import { CoreSignal } from '../../../../../models/signal';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 
 /** Vendor/company name for display. Uses signal.integrationTitle (from API) when set, else static config, else formatted id. */
-export function vendorName(signal: CoreSignal) {
+export function vendorName(signal: GQLSignal) {
   if (signal.type === GQLSignalType.Custom) {
     return 'Custom';
   }
@@ -32,7 +28,7 @@ export function vendorName(signal: CoreSignal) {
     : 'Plugin';
 }
 
-export function signalDisplayName(signal: CoreSignal, _hideVendor = true) {
+export function signalDisplayName(signal: GQLSignal, _hideVendor = true) {
   const { integration, name } = signal;
   if (!integration) {
     return name;
@@ -49,9 +45,9 @@ export function signalDisplayName(signal: CoreSignal, _hideVendor = true) {
 }
 
 export default function RuleFormSignalModalMenuItem(props: {
-  signal: CoreSignal;
+  signal: GQLSignal;
   infoButtonTapped: () => void;
-  onClick: (signal: CoreSignal) => void;
+  onClick: (signal: GQLSignal) => void;
   imagePath?: string;
   disabledInfo: GQLDisabledInfo;
 }) {

@@ -1027,7 +1027,7 @@ function ManualReviewJobReviewImpl(props: {
       (a) => !('type' in a) && a.id === actionId,
     );
     if (!found || 'type' in found || !('parameters' in found)) return [];
-    return (found.parameters ?? []) as ReadonlyArray<GQLActionParameter>;
+    return found.parameters ?? [];
   };
 
   // Adds an action to `selectedPrimaryActions` while preserving the existing
@@ -1039,7 +1039,7 @@ function ManualReviewJobReviewImpl(props: {
     customMrtApiParamDecisionPayload?: Record<string, unknown>,
   ) => {
     const newAction: ManualReviewJobEnqueuedPrimaryActionData = {
-      action: action as ManualReviewJobEnqueuedPrimaryActionData['action'],
+      action,
       target: reportedItemTarget(),
       policies: selectedPrimaryPolicies,
       ...(customMrtApiParamDecisionPayload
@@ -1291,9 +1291,7 @@ function ManualReviewJobReviewImpl(props: {
                         actionName: action.name,
                         parameters,
                         initialValues:
-                          (current?.customMrtApiParamDecisionPayload as
-                            | ActionParameterValues
-                            | undefined) ?? {},
+                          current?.customMrtApiParamDecisionPayload ?? {},
                       });
                     }}
                   >
