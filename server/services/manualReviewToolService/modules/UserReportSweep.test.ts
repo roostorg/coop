@@ -75,7 +75,7 @@ const testWithQueue = () =>
           policyIds: [],
           payload:
             opts.kind === 'NCMEC'
-              ? { kind: 'NCMEC', item, allMediaItems: [] }
+              ? { kind: 'NCMEC', item, allMediaItems: [], reportHistory: [] }
               : { kind: 'DEFAULT', item, reportHistory: [] },
         },
       });
