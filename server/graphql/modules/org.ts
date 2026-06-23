@@ -65,6 +65,7 @@ const typeDefs = /* GraphQL */ `
     ssoUrl: String
     ssoCert: String
     hasPartialItemsEndpoint: Boolean!
+    jobPriorityWeights: [JobPriorityWeight!]!
   }
 
   input AppealSettingsInput {
@@ -644,6 +645,16 @@ const Org: GQLOrgResolvers = {
     const partialItemsEndpoint = partialItemsInfo?.partialItemsEndpoint;
 
     return partialItemsEndpoint != null;
+  },
+  async jobPriorityWeights(org, _, context) {
+    const weightsMap =
+      await context.services.ManualReviewToolService.getJobPriorityWeights({
+        orgId: org.id,
+      });
+    return Array.from(weightsMap, ([property, weight]) => ({
+      property,
+      weight,
+    }));
   },
 };
 

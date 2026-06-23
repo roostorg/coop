@@ -50,7 +50,12 @@ import JobEnrichment, {
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from './modules/JobEnrichment.js';
-import { getJobPriorityForItem, JobSortType } from './modules/JobPriority.js';
+import {
+  getJobPriorityForItem,
+  JobSortType,
+  type JobPropertyKey,
+} from './modules/JobPriority.js';
+import JobPriorityWeights from './modules/JobPriorityWeights.js';
 import JobRendering from './modules/JobRendering.js';
 import JobRouting, {
   type CreateRoutingRuleInput,
@@ -283,6 +288,7 @@ export type ManualReviewJobKind = ManualReviewJobPayload['kind'];
 export class ManualReviewToolService {
   private readonly queueOps: QueueOperations;
   private readonly jobRendering: JobRendering;
+  private readonly jobPriorityWeights: JobPriorityWeights;
   private readonly jobRouting: JobRouting;
   private readonly appealsJobRouting: AppealsJobRouting;
   private readonly jobEnrichment: JobEnrichment;
@@ -348,12 +354,53 @@ export class ManualReviewToolService {
       this.manualReviewToolSettings,
     );
     this.jobRendering = new JobRendering(pgQuery);
+    this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
+    );
+  }
+
+  async getJobPriorityWeights(opts: { orgId: string }) {
+    return this.jobPriorityWeights.loadForOrg(opts.orgId);
+  }
+
+  async setJobPriorityWeights(opts: {
+    orgId: string;
+    weights: ReadonlyArray<{ property: JobPropertyKey; weight: number }>;
+  }) {
+    await this.jobPriorityWeights.upsertForOrg(opts.orgId, opts.weights);
+
+    const queues =
+      await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+        opts.orgId,
+      );
+    const newWeights = await this.jobPriorityWeights.loadForOrg(opts.orgId);
+    await Promise.all(
+      queues
+        .filter((q) => !q.isAppealsQueue)
+        .map(async (q) =>
+          this.queueOps.recomputePrioritiesForQueue({
+            orgId: opts.orgId,
+            queueId: q.id,
+            getPriority: async (job) =>
+              getJobPriorityForItem({
+                orgId: opts.orgId,
+                item: job.payload.item,
+                sortType: (q.jobSortType as JobSortType) ?? JobSortType.FIFO,
+                deps: {
+                  getNumTimesReported: this.getNumTimesReported(),
+                  getUserScore: this.userStatisticsService.getUserScore.bind(
+                    this.userStatisticsService,
+                  ),
+                },
+                weights: newWeights,
+              }),
+          }),
+        ),
     );
   }
 
@@ -444,16 +491,23 @@ export class ManualReviewToolService {
               await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
                 { orgId: input.orgId, queueId: targetQueueForNewJob },
               );
+            const weights = await this.jobPriorityWeights.loadForOrg(
+              input.orgId,
+            );
             const priority = await getJobPriorityForItem({
               orgId: input.orgId,
-              itemId: input.payload.item.itemId,
+              item: input.payload.item,
               sortType:
                 queue?.jobSortType === JobSortType.NUM_REPORTS
                   ? JobSortType.NUM_REPORTS
                   : JobSortType.FIFO,
               deps: {
                 getNumTimesReported: this.getNumTimesReported(),
+                getUserScore: this.userStatisticsService.getUserScore.bind(
+                  this.userStatisticsService,
+                ),
               },
+              weights,
             });
 
             const existingJobInSameQueue = await this.queueOps.getJobFromItemId(
