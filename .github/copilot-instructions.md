@@ -19,7 +19,7 @@ Lint and formatting are enforced by ESLint and Prettier in CI (`docker compose r
 - missing JSDoc on internal helpers
 - subjective style preferences not codified in a project rule
 
-If a finding would be caught by `npm run lint` or `npm run format`, it's redundant.
+If a finding would be caught by `npm run lint` or `npm run prettier` (check) / `npm run prettier:fix` (alias `npm run format`), it's redundant.
 
 ## Security (cross-cutting)
 

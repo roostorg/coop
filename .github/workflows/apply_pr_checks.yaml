@@ -59,7 +59,7 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: npx prettier --check "./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}"
+        run: npm run prettier
 
   check_generated_graphql:
     timeout-minutes: 4

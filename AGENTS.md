@@ -102,7 +102,7 @@ Lint / format / type-check (no Docker needed):
 
 ```bash
 npm run lint           # lint all packages
-npm run format         # format all packages
+npm run prettier:fix  # format all packages (alias: npm run format)
 (cd server && npm run lint)
 (cd client && npm run lint)
 ```
@@ -120,20 +120,20 @@ docker compose run --rm backend npm run build
 docker compose run --rm client npm run lint
 docker compose run --rm client npm run build
 docker compose run --rm test
-npm ci && npx prettier --check "./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}"
+npm ci && npm run prettier
 ```
 
 Individual checks:
 
-| CI job                                   | Local command                                                                      |
-| ---------------------------------------- | ---------------------------------------------------------------------------------- |
-| `check_formatting`                       | `npm ci && npx prettier --check "./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}"` |
-| `check_generated_graphql`                | `docker compose run --rm codegen-check`                                            |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                                     |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                                    |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                                      |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                                     |
-| `check_api_server` (test)                | `docker compose run --rm test`                                                     |
+| CI job                                   | Local command                                   |
+| ---------------------------------------- | ----------------------------------------------- |
+| `check_formatting`                       | `npm ci && npm run prettier`                    |
+| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
+| `check_api_server` (test)                | `docker compose run --rm test`                  |
 
 Tear down:
 
@@ -161,7 +161,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 ## Code style
 
-- **TypeScript:** ESLint + Prettier (configs in `.eslintrc.cjs` and `.prettierrc` per package). Run `npm run lint` and `npm run format` from root.
+- **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `npm run lint` and `npm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.
