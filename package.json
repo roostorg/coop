@@ -16,7 +16,7 @@
     "db:drop": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts drop",
     "check:prepush": "cd server && npm run check:prepush && cd ../client && npm run check:prepush",
     "typecheck": "cd server && npm run typecheck && cd ../client && npx tsc --noEmit",
-    "format": "prettier --write \"./**/*.{ts,tsx,json}\"",
+    "format": "prettier --write \"./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}\"",
     "generate": "graphql-codegen",
     "generate:watch": "graphql-codegen --watch \"server/graphql/**/**.ts\"",
     "prepare": "husky",

@@ -111,7 +111,7 @@ If tests fail with database errors, check migration logs via `docker compose log
 
 ## CI
 
-CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). All PR checks are defined as `docker compose` services so you can reproduce any CI job locally. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
+CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). Most PR checks are defined as `docker compose` services so you can reproduce any CI job locally; the formatting check runs directly via `actions/setup-node`. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
 
 ```bash
 docker compose run --rm codegen-check
@@ -120,18 +120,20 @@ docker compose run --rm backend npm run build
 docker compose run --rm client npm run lint
 docker compose run --rm client npm run build
 docker compose run --rm test
+npm ci && npx prettier --check "./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}"
 ```
 
 Individual checks:
 
-| CI job                                   | Local command                                   |
-| ---------------------------------------- | ----------------------------------------------- |
-| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
-| `check_api_server` (test)                | `docker compose run --rm test`                  |
+| CI job                                   | Local command                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `check_formatting`                       | `npm ci && npx prettier --check "./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}"` |
+| `check_generated_graphql`                | `docker compose run --rm codegen-check`                                            |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                                     |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                                    |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                                      |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                                     |
+| `check_api_server` (test)                | `docker compose run --rm test`                                                     |
 
 Tear down:
 
