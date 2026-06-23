@@ -384,33 +384,31 @@ class RuleAPI {
       | null
       | undefined,
   ): Promise<ReadonlyMap<string, JsonObject> | undefined> {
-    if (actionParameters == null || actionParameters.length === 0) {
+    if (actionIds.length === 0) {
       return undefined;
     }
-    const attachedIds = new Set(actionIds);
-    const relevant = actionParameters.filter((it) =>
-      attachedIds.has(it.actionId),
+    const paramsByActionId = new Map(
+      (actionParameters ?? []).map((it) => [it.actionId, it.parameters]),
     );
-    if (relevant.length === 0) {
-      return undefined;
-    }
     const actions = await this.moderationConfigService.getActions({
       orgId,
-      ids: relevant.map((it) => it.actionId),
+      ids: [...actionIds],
     });
-    const actionsById = new Map(actions.map((a) => [a.id, a]));
     const out = new Map<string, JsonObject>();
-    for (const entry of relevant) {
-      const action = actionsById.get(entry.actionId);
+    for (const action of actions) {
       const spec = parseStoredParameters(
-        action?.actionType === 'CUSTOM_ACTION'
+        action.actionType === 'CUSTOM_ACTION'
           ? action.customMrtApiParams
           : null,
       );
-      const validated = validateActionParameterValues(spec, entry.parameters);
-      // Validated values are JSON by construction (the validator only emits
-      // coerced primitives/arrays).
-      out.set(entry.actionId, validated as JsonObject);
+      if (spec.length === 0) {
+        continue;
+      }
+      const rawValues = paramsByActionId.get(action.id) ?? null;
+      const validated = validateActionParameterValues(spec, rawValues);
+      if (Object.keys(validated).length > 0) {
+        out.set(action.id, validated as JsonObject);
+      }
     }
     return out.size > 0 ? out : undefined;
   }

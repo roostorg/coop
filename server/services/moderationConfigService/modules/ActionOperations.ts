@@ -441,6 +441,15 @@ export default class ActionOperations {
     }));
   }
 
+  private static customMrtApiParamsFromDb(
+    value: JsonValue[] | null,
+  ): JsonValue | null {
+    if (value == null || value.length === 0) {
+      return null;
+    }
+    return value;
+  }
+
   #dbResultToAction(it: ActionDbResult) {
     return {
       id: it.id,
