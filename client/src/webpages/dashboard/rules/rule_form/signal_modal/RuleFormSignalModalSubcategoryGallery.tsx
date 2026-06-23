@@ -1,9 +1,9 @@
+import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { SearchOutlined } from '@ant-design/icons';
 import { Input, Select } from 'antd';
 import omit from 'lodash/omit';
 import { useState } from 'react';
 
-import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/signalUtils';
 import RuleFormSignalModalNoSearchResults from './RuleFormSignalModalNoSearchResults';
 import { RuleFormSignalModalSubcategory } from './RuleFormSignalModalSubcategory';

@@ -1,12 +1,8 @@
+import { GQLDisabledInfo, GQLSignal, GQLSignalType } from '@/graphql/generated';
 import { RightOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import startCase from 'lodash/startCase';
 
-import {
-  GQLDisabledInfo,
-  GQLSignalType,
-  GQLSignal,
-} from '@/graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 

@@ -4,7 +4,10 @@ import { jsonParse, jsonStringify } from './encoding.js';
 describe('cached', () => {
   it('should transparently stringify + parse cache key', async () => {
     const producer = async (orgId: string) => orgId;
-    const cachedProducer = cached({ producer, directives: { freshUntilAge: 1 } });
+    const cachedProducer = cached({
+      producer,
+      directives: { freshUntilAge: 1 },
+    });
     const res = await cachedProducer('test');
     expect(res).toBe('test');
 
@@ -18,7 +21,10 @@ describe('cached', () => {
 
   it('should not cache promise rejections, and should propagate them', async () => {
     const producer = jest.fn(async (_it: string) => Promise.reject('anything'));
-    const cachedProducer = cached({ producer, directives: { freshUntilAge: 1 } });
+    const cachedProducer = cached({
+      producer,
+      directives: { freshUntilAge: 1 },
+    });
 
     await cachedProducer('').catch(() => {});
     const res = await cachedProducer('').catch((e) => e);
@@ -29,7 +35,10 @@ describe('cached', () => {
 
   it("should only call the producer once during the cache's freshUntilAge", async () => {
     const producer = jest.fn(async (it: string) => it);
-    const cachedProducer = cached({ producer, directives: { freshUntilAge: 1 } });
+    const cachedProducer = cached({
+      producer,
+      directives: { freshUntilAge: 1 },
+    });
 
     await cachedProducer('test');
     await cachedProducer('test');

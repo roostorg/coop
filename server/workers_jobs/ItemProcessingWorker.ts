@@ -1,5 +1,4 @@
-
-import { Queue, Worker as BullWorker, type Job as BullJob } from 'bullmq';
+import { Worker as BullWorker, Queue, type Job as BullJob } from 'bullmq';
 import { type Cluster } from 'ioredis';
 import type IORedis from 'ioredis';
 
@@ -151,11 +150,14 @@ export default inject(
                     performance.now() - jobStartTime,
                   );
 
-                  queue!.getJobCounts('waiting', 'active').then((counts) => {
-                    Meter.itemProcessingQueueDepth.record(
-                      counts.waiting + counts.active,
-                    );
-                  }).catch(() => {});
+                  queue!
+                    .getJobCounts('waiting', 'active')
+                    .then((counts) => {
+                      Meter.itemProcessingQueueDepth.record(
+                        counts.waiting + counts.active,
+                      );
+                    })
+                    .catch(() => {});
                 } catch (e: unknown) {
                   tracer.logActiveSpanFailedIfAny(e);
                   Meter.itemProcessingFailuresCounter.add(1, {

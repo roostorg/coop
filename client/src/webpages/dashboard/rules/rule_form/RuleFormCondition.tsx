@@ -4,16 +4,16 @@ import { Button, Form, Select, Tooltip } from 'antd';
 import {
   GQLConditionConjunction,
   GQLScalarType,
-  GQLValueComparator,
   GQLSignal,
+  GQLValueComparator,
 } from '../../../../graphql/generated';
 import { CoopInput } from '../../types/enums';
 import {
   ConditionInput,
   ConditionLocation,
+  isConditionSet,
   RuleFormConditionSet,
   RuleFormLeafCondition,
-  isConditionSet,
 } from '../types';
 import RuleFormConditionComparator from './condition/comparator/RuleFormConditionComparator';
 import { getDerivedFieldOutputType } from './condition/input/derivedField';
@@ -246,7 +246,9 @@ export default function RuleFormCondition(props: {
         location={location}
         inputScalarType={inputScalarType}
         onUpdateMatchingValues={onUpdateMatchingValues}
-        allConditions={parentConditionSet.conditions.filter((c): c is RuleFormLeafCondition => !isConditionSet(c))}
+        allConditions={parentConditionSet.conditions.filter(
+          (c): c is RuleFormLeafCondition => !isConditionSet(c),
+        )}
       />
       <RuleFormConditionComparator
         condition={condition}

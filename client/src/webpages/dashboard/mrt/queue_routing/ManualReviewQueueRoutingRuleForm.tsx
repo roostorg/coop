@@ -4,7 +4,10 @@ import cloneDeep from 'lodash/cloneDeep';
 
 import { selectFilterByLabelOption } from '../../components/antDesignUtils';
 
-import { GQLConditionConjunction, GQLSignal } from '../../../../graphql/generated';
+import {
+  GQLConditionConjunction,
+  GQLSignal,
+} from '../../../../graphql/generated';
 import {
   hasNestedConditionSets,
   removeConditionSet,
@@ -154,7 +157,8 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
     signals: readonly GQLSignal[];
     parentConditionSet?: RuleFormConditionSet;
   }) => {
-    const { conditionSet, conditionSetIndex, signals, parentConditionSet } = opts;
+    const { conditionSet, conditionSetIndex, signals, parentConditionSet } =
+      opts;
 
     if (hasNestedConditionSets(conditionSet)) {
       const conditions = conditionSet.conditions;

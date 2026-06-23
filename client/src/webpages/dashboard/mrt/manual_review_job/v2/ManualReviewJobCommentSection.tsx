@@ -99,7 +99,9 @@ function ManualReviewJobComment(props: {
               isBeingDeleted ? 'text-gray-300' : 'text-gray-500'
             }`}
           >
-            {formatDistanceToNow(new Date(comment.createdAt as string), { addSuffix: true })}
+            {formatDistanceToNow(new Date(comment.createdAt as string), {
+              addSuffix: true,
+            })}
           </div>
         </div>
         <div

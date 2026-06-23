@@ -218,12 +218,12 @@ export default function NCMECMediaViewer(props: {
                     state!.category === 'A1'
                       ? 'border-red-400'
                       : state!.category === 'A2'
-                      ? 'border-orange-400'
-                      : state!.category === 'B1'
-                      ? 'border-amber-400'
-                      : state!.category === 'B2'
-                      ? 'border-blue-400'
-                      : 'border-slate-500'
+                        ? 'border-orange-400'
+                        : state!.category === 'B1'
+                          ? 'border-amber-400'
+                          : state!.category === 'B2'
+                            ? 'border-blue-400'
+                            : 'border-slate-500'
                   }`
                 : 'border-transparent'
             }`}

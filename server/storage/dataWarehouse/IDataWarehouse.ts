@@ -5,6 +5,7 @@
  */
 
 import { type Kysely } from 'kysely';
+
 import type SafeTracer from '../../utils/SafeTracer.js';
 
 /**
@@ -95,4 +96,3 @@ export interface IDataWarehouseDialect {
    */
   destroy(): Promise<void>;
 }
-

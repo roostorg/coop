@@ -1,13 +1,13 @@
+import {
+  GQLSignal,
+  GQLSignalPricingStructureType,
+  GQLSignalSubcategory,
+} from '@/graphql/generated';
 import { SignalSubcategory } from '@roostorg/coop-types';
 import capitalize from 'lodash/capitalize';
 
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
 
-import {
-  GQLSignalPricingStructureType,
-  GQLSignalSubcategory,
-  GQLSignal,
-} from '@/graphql/generated';
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import { signalDisplayName } from './RuleFormSignalModalMenuItem';

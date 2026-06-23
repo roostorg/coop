@@ -157,9 +157,9 @@ export type IntegrationManifest = Readonly<{
    * LOGO/IMAGE SECTION:
    * ------------------------------------------------------------
    * The following logo/image sections are optional. If none provided will use a fallback Coop logo.
-   * 
+   *
    * Provide either logoUrl and logoWithBackgroundUrl or logoPath and logoWithBackgroundPath.
-   * 
+   *
    * If you provide logoPath and logoWithBackgroundPath, the server will serve the files at
    * GET /api/v1/integration-logos/:integrationId and GET /api/v1/integration-logos/:integrationId/with-background
    * and set logoUrl and logoWithBackgroundUrl accordingly.
@@ -205,7 +205,9 @@ export type PluginSignalDescriptor = Readonly<{
   getCost: () => number;
   /** Run the signal. Input shape is platform-defined; result must have outputType and score. */
   run: (input: unknown) => Promise<unknown>;
-  getDisabledInfo: (orgId: string) => Promise<
+  getDisabledInfo: (
+    orgId: string,
+  ) => Promise<
     | { disabled: false; disabledMessage?: string }
     | { disabled: true; disabledMessage: string }
   >;
@@ -249,7 +251,9 @@ export type CoopIntegrationPlugin = Readonly<{
    */
   createSignals?: (
     context: PluginSignalContext,
-  ) => ReadonlyArray<Readonly<{ signalTypeId: string; signal: PluginSignalDescriptor }>>;
+  ) => ReadonlyArray<
+    Readonly<{ signalTypeId: string; signal: PluginSignalDescriptor }>
+  >;
 }>;
 
 /**

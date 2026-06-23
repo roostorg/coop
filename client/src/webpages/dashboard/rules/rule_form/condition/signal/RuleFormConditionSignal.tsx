@@ -1,8 +1,8 @@
+import { GQLSignal } from '@/graphql/generated';
 import { DownOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { useState } from 'react';
 
-import { GQLSignal } from '@/graphql/generated';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
 import RuleFormSignalModal from '../../signal_modal/RuleFormSignalModal';
 import RuleFormConditionSignalSubcategory from './RuleFormConditionSignalSubcategory';
@@ -14,8 +14,13 @@ export default function RuleFormConditionSignal(props: {
   onUpdateSignalSubcategory: (subcategory: string) => void;
   isAutomatedRule?: boolean;
 }) {
-  const { condition, location, onUpdateSignal, onUpdateSignalSubcategory, isAutomatedRule } =
-    props;
+  const {
+    condition,
+    location,
+    onUpdateSignal,
+    onUpdateSignalSubcategory,
+    isAutomatedRule,
+  } = props;
   const eligibleSignals = condition.eligibleSignals;
   const [modalInfo, setModalInfo] = useState<{
     visible: boolean;

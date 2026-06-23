@@ -1,8 +1,8 @@
+import { GQLSignal } from '@/graphql/generated';
 import { Form, Select } from 'antd';
 
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
-import { GQLSignal } from '@/graphql/generated';
 import { safePick } from '../../../../../../utils/misc';
 import {
   jsonParse,

@@ -1,8 +1,8 @@
+import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { useEffect, useState } from 'react';
 
 import CoopModal from '../../../components/CoopModal';
 
-import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/signalUtils';
 import RuleFormSignalModalSignalDetailView from './RuleFormSignalModalSignalDetailView';
 import RuleFormSignalModalSignalGallery from './RuleFormSignalModalSignalGallery';
@@ -16,8 +16,14 @@ export default function RuleFormSignalModal(props: {
   selectedSignal?: GQLSignal;
   isAutomatedRule?: boolean;
 }) {
-  const { visible, allSignals, onSelectSignal, onClose, selectedSignal, isAutomatedRule } =
-    props;
+  const {
+    visible,
+    allSignals,
+    onSelectSignal,
+    onClose,
+    selectedSignal,
+    isAutomatedRule,
+  } = props;
 
   const onModalClose = () => {
     setDetailViewSignal(null);

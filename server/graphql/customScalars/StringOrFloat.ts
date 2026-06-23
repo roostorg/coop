@@ -30,7 +30,9 @@ export default new GraphQLScalarType<string | number, string | number>({
 
 function parseStringOrFloatValue(value: unknown) {
   if (typeof value !== 'string' && typeof value !== 'number') {
-    throw userInputError('StringOrFloat must be a string or number when passed to the server.');
+    throw userInputError(
+      'StringOrFloat must be a string or number when passed to the server.',
+    );
   }
 
   // NB: Number('') returns 0, so we have to check for the empty string

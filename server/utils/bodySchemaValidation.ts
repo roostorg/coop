@@ -1,5 +1,5 @@
-import type { RequestHandler } from 'express';
 import _Ajv, { type ErrorObject } from 'ajv-draft-04';
+import type { RequestHandler } from 'express';
 
 import { makeBadRequestError } from './errors.js';
 

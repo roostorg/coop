@@ -1,6 +1,5 @@
 import { makeBadRequestError } from '../../../utils/errors.js';
 import { assertUnreachable } from '../../../utils/misc.js';
-
 import { type ActionParameter } from './actionParametersValidation.js';
 
 function makeInvalidParameterValueError(detail: string) {
@@ -79,10 +78,7 @@ export function validateActionParameterValues(
 // whitespace-only strings as missing for STRING/SELECT, and `[]` as missing
 // for MULTISELECT — these would otherwise pass the required check while
 // being semantically empty. NUMBER 0 and BOOLEAN false remain valid.
-function isMissingForRequired(
-  param: ActionParameter,
-  value: unknown,
-): boolean {
+function isMissingForRequired(param: ActionParameter, value: unknown): boolean {
   if (value === undefined || value === null) return true;
   switch (param.type) {
     case 'STRING':

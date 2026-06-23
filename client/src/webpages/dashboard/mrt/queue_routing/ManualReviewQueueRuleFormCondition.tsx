@@ -1,7 +1,10 @@
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Select, Tooltip } from 'antd';
 
-import { GQLConditionConjunction, GQLSignal } from '../../../../graphql/generated';
+import {
+  GQLConditionConjunction,
+  GQLSignal,
+} from '../../../../graphql/generated';
 import {
   hasNestedConditionSets,
   removeCondition,
@@ -9,9 +12,9 @@ import {
 import {
   ConditionInput,
   ConditionLocation,
+  isConditionSet,
   RuleFormConditionSet,
   RuleFormLeafCondition,
-  isConditionSet,
 } from '../../rules/types';
 import ManualReviewQueueRuleConditionComparator from './condition/comparator/ManualReviewQueueRuleConditionComparator';
 import ManualReviewQueueRuleConditionInput from './condition/input/ManualReviewQueueRuleConditionInput';
@@ -226,7 +229,9 @@ export default function ManualReviewQueueRuleFormCondition(props: {
             ),
           )
         }
-        allConditions={parentConditionSet.conditions.filter((c): c is RuleFormLeafCondition => !isConditionSet(c))}
+        allConditions={parentConditionSet.conditions.filter(
+          (c): c is RuleFormLeafCondition => !isConditionSet(c),
+        )}
       />
       <ManualReviewQueueRuleConditionComparator
         condition={condition}

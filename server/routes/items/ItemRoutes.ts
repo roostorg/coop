@@ -2,8 +2,8 @@ import {
   rawItemSubmissionSchema,
   type RawItemSubmission,
 } from '../../services/itemProcessingService/index.js';
-import { route } from '../../utils/route-helpers.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
+import { route } from '../../utils/route-helpers.js';
 import { type Controller } from '../index.js';
 import submitItems from './submitItems.js';
 
@@ -32,7 +32,10 @@ export default {
           required: ['items'],
         },
       },
-      (deps) => [createApiKeyMiddleware<SubmitItemsInput, undefined>(deps), submitItems(deps)],
+      (deps) => [
+        createApiKeyMiddleware<SubmitItemsInput, undefined>(deps),
+        submitItems(deps),
+      ],
     ),
   ],
 } as Controller;

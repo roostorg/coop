@@ -1,6 +1,6 @@
-import { type IOrgCreationAdapter } from './IOrgCreationAdapter.js';
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
+import { type IOrgCreationAdapter } from './IOrgCreationAdapter.js';
 
 export class ClickhouseOrgCreationAdapter implements IOrgCreationAdapter {
   constructor(
@@ -22,4 +22,3 @@ export class ClickhouseOrgCreationAdapter implements IOrgCreationAdapter {
     );
   }
 }
-

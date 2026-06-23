@@ -26,8 +26,8 @@ import {
   type GQLUserRuleResolvers,
 } from '../generated.js';
 import { type Context, type ResolverMap } from '../resolvers.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -204,7 +204,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union DerivedFieldSource =
-      DerivedFieldFullItemSource
+    | DerivedFieldFullItemSource
     | DerivedFieldFieldSource
     | DerivedFieldCoopInputSource
 
@@ -447,21 +447,21 @@ const typeDefs = /* GraphQL */ `
   }
 
   union CreateContentRuleResponse =
-      MutateContentRuleSuccessResponse
+    | MutateContentRuleSuccessResponse
     | RuleNameExistsError
 
   union UpdateContentRuleResponse =
-      MutateContentRuleSuccessResponse
+    | MutateContentRuleSuccessResponse
     | RuleNameExistsError
     | RuleHasRunningBacktestsError
     | NotFoundError
 
   union CreateUserRuleResponse =
-      MutateUserRuleSuccessResponse
+    | MutateUserRuleSuccessResponse
     | RuleNameExistsError
 
   union UpdateUserRuleResponse =
-      MutateUserRuleSuccessResponse
+    | MutateUserRuleSuccessResponse
     | RuleNameExistsError
     | RuleHasRunningBacktestsError
     | NotFoundError

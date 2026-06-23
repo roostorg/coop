@@ -23,13 +23,13 @@ import {
   GQLAction,
   GQLConditionConjunction,
   GQLReportingRuleStatus,
+  GQLSignal,
   GQLUserPermission,
   useGQLCreateReportingRuleMutation,
   useGQLDeleteReportingRuleMutation,
   useGQLReportingRuleFormOrgDataQuery,
   useGQLReportingRuleQuery,
   useGQLUpdateReportingRuleMutation,
-  GQLSignal,
 } from '../../../../graphql/generated';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';

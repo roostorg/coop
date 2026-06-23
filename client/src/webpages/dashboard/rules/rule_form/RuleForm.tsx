@@ -1,5 +1,21 @@
 import { Label } from '@/coop-ui/Label';
 import { Switch } from '@/coop-ui/Switch';
+import {
+  GQLAction,
+  GQLConditionConjunction,
+  GQLRuleStatus,
+  GQLSignal,
+  GQLUserPermission,
+  namedOperations,
+  useGQLContentRuleFormConfigQuery,
+  useGQLCreateContentRuleMutation,
+  useGQLCreateUserRuleMutation,
+  useGQLDeleteRuleMutation,
+  useGQLMatchingBankIdsQuery,
+  useGQLRuleQuery,
+  useGQLUpdateContentRuleMutation,
+  useGQLUpdateUserRuleMutation,
+} from '@/graphql/generated';
 import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
 import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
@@ -22,22 +38,6 @@ import NameDescriptionInput from '../../components/NameDescriptionInput';
 import PolicyDropdown from '../../components/PolicyDropdown';
 import SubmitButton from '../../components/SubmitButton';
 
-import {
-  GQLAction,
-  GQLConditionConjunction,
-  GQLRuleStatus,
-  GQLUserPermission,
-  namedOperations,
-  useGQLContentRuleFormConfigQuery,
-  useGQLCreateContentRuleMutation,
-  useGQLCreateUserRuleMutation,
-  useGQLDeleteRuleMutation,
-  useGQLMatchingBankIdsQuery,
-  useGQLRuleQuery,
-  useGQLUpdateContentRuleMutation,
-  useGQLUpdateUserRuleMutation,
-  GQLSignal,
-} from '@/graphql/generated';
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
 import { DAY, HOUR, MONTH, WEEK } from '../../../../utils/time';

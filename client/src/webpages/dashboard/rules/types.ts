@@ -8,8 +8,8 @@ import {
   GQLLocationAreaInput,
   GQLMatchingValues,
   GQLScalarType,
-  GQLValueComparator,
   GQLSignal,
+  GQLValueComparator,
 } from '../../../graphql/generated';
 import { CoopInput } from '../types/enums';
 import {

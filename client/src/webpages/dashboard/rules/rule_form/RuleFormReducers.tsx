@@ -568,10 +568,8 @@ export function getNewEligibleInputs(
       // Note: this filter isn't technically needed, but in the future we might
       // allow non-custom signals to run on content types, so we keep it here
       // so future devs don't need to remember to add it.
-      return eligibleSignals.filter(
-        (it) =>
-          it.type === GQLSignalType.Custom,
-      ).length;
+      return eligibleSignals.filter((it) => it.type === GQLSignalType.Custom)
+        .length;
     })
     .map((itemType) => ({
       type: 'FULL_ITEM' as const,

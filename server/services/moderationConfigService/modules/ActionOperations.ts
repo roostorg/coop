@@ -1,4 +1,4 @@
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import { type JsonObject, type JsonValue, type Writable } from 'type-fest';
 import { uid } from 'uid';
 
@@ -18,16 +18,14 @@ import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Action, type CustomAction } from '../index.js';
 import { type ItemTypeKind } from '../types/itemTypes.js';
 import {
-  type RawActionParameterInput,
   serializeParameters,
   validateActionParameters,
+  type RawActionParameterInput,
 } from './actionParametersValidation.js';
 
 function assertCustomAction(action: Action): asserts action is CustomAction {
   if (action.actionType !== 'CUSTOM_ACTION') {
-    throw new Error(
-      `Expected CUSTOM_ACTION but received ${action.actionType}`,
-    );
+    throw new Error(`Expected CUSTOM_ACTION but received ${action.actionType}`);
   }
 }
 
@@ -463,8 +461,9 @@ export default class ActionOperations {
               callbackUrl: it.callbackUrl,
               callbackUrlBody: it.callbackUrlBody,
               callbackUrlHeaders: it.callbackUrlHeaders,
-              customMrtApiParams:
-                ActionOperations.customMrtApiParamsFromDb(it.customMrtApiParams),
+              customMrtApiParams: ActionOperations.customMrtApiParamsFromDb(
+                it.customMrtApiParams,
+              ),
             };
           case 'ENQUEUE_TO_MRT':
           case 'ENQUEUE_TO_NCMEC':

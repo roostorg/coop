@@ -18,7 +18,7 @@ Copy `.env.example` and configure your database connection settings. These match
 ## Creating New Migrations
 
 ```shell
-# Generate a new migration file 
+# Generate a new migration file
   node --loader ts-node/esm index.ts generate:migration --db api-server-pg --name "add_users_table"
 ```
 

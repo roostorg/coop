@@ -5,15 +5,15 @@ import {
   type NormalizedParams,
   type Store,
   type StoreEntryInput,
-} from "../../types/index.js";
-import { type JsonOf, jsonStringify } from "../../utils/utils.js";
+} from '../../types/index.js';
+import { jsonStringify, type JsonOf } from '../../utils/utils.js';
 import {
   requestVariantKeyForVaryKeys,
   resultVariantKey,
   type VariantKey,
   type VaryKeys,
-} from "../../utils/varyHelpers.js";
-import ExpiringEntryMap from "./ExpiringEntryMap.js";
+} from '../../utils/varyHelpers.js';
+import ExpiringEntryMap from './ExpiringEntryMap.js';
 
 // Primary cache key for stored resources.
 type ResourceId = string;
@@ -33,8 +33,7 @@ export default class MemoryStore<
   Content,
   Validators extends AnyValidators = AnyValidators,
   Params extends AnyParams = AnyParams,
-> implements Store<Content, Validators, Params>
-{
+> implements Store<Content, Validators, Params> {
   /**
    * This map stores metadata about each distinct `ResourceId` (i.e., primary
    * cache key) that's stored. Specifically...

@@ -1,8 +1,11 @@
 import { isCoopErrorOfType } from '../../../utils/errors.js';
+import type {
+  GQLMutationResolvers,
+  GQLQueryResolvers,
+} from '../../generated.js';
 import type { Context } from '../../resolvers.js';
-import type { GQLMutationResolvers, GQLQueryResolvers } from '../../generated.js';
-import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
 import { unauthenticatedError } from '../../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
 
 interface ExchangeConfigInput {
   api_name: string;
@@ -27,7 +30,10 @@ const Query: GQLQueryResolvers<Context> = {
     }
 
     try {
-      return await context.services.HMAHashBankService.getBank(user.orgId, name);
+      return await context.services.HMAHashBankService.getBank(
+        user.orgId,
+        name,
+      );
     } catch (e) {
       if (isCoopErrorOfType(e, 'NotFoundError')) {
         return null;
@@ -43,7 +49,10 @@ const Query: GQLQueryResolvers<Context> = {
     }
 
     try {
-      return await context.services.HMAHashBankService.getBankById(user.orgId, parseInt(id, 10));
+      return await context.services.HMAHashBankService.getBankById(
+        user.orgId,
+        parseInt(id, 10),
+      );
     } catch (e) {
       if (isCoopErrorOfType(e, 'NotFoundError')) {
         return null;
@@ -61,7 +70,11 @@ const Query: GQLQueryResolvers<Context> = {
     return context.services.HMAHashBankService.getExchangeApis();
   },
 
-  async exchangeApiSchema(_: unknown, { apiName }: { apiName: string }, context: Context) {
+  async exchangeApiSchema(
+    _: unknown,
+    { apiName }: { apiName: string },
+    context: Context,
+  ) {
     const user = context.getUser();
     if (!user?.orgId) {
       throw unauthenticatedError('User required.');
@@ -74,13 +87,17 @@ const Query: GQLQueryResolvers<Context> = {
 const Mutation: GQLMutationResolvers<Context> = {
   async createHashBank(
     _: unknown,
-    { input }: { input: {
-      name: string;
-      description?: string | null;
-      enabled_ratio: number;
-      exchange?: ExchangeConfigInput | null;
-    }},
-    context: Context
+    {
+      input,
+    }: {
+      input: {
+        name: string;
+        description?: string | null;
+        enabled_ratio: number;
+        exchange?: ExchangeConfigInput | null;
+      };
+    },
+    context: Context,
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
@@ -92,7 +109,10 @@ const Mutation: GQLMutationResolvers<Context> = {
         ? {
             apiName: input.exchange.api_name,
             // eslint-disable-next-line no-restricted-syntax
-            apiJson: JSON.parse(input.exchange.config_json) as Record<string, unknown>,
+            apiJson: JSON.parse(input.exchange.config_json) as Record<
+              string,
+              unknown
+            >,
           }
         : undefined;
 
@@ -101,26 +121,35 @@ const Mutation: GQLMutationResolvers<Context> = {
         input.name,
         input.description ?? '',
         input.enabled_ratio,
-        exchangeConfig
+        exchangeConfig,
       );
 
       let warning: string | undefined;
       if (input.exchange?.credentials_json) {
         try {
           // eslint-disable-next-line no-restricted-syntax
-          const credData = JSON.parse(input.exchange.credentials_json) as Record<string, unknown>;
+          const credData = JSON.parse(
+            input.exchange.credentials_json,
+          ) as Record<string, unknown>;
           await context.services.HMAHashBankService.setExchangeCredentials(
             input.exchange.api_name,
-            credData
+            credData,
           );
         } catch (credError) {
           // eslint-disable-next-line no-console
-          console.error('Failed to set exchange credentials during bank creation:', credError);
-          warning = 'Bank and exchange were created, but credentials could not be set. You can update them from the bank settings page.';
+          console.error(
+            'Failed to set exchange credentials during bank creation:',
+            credError,
+          );
+          warning =
+            'Bank and exchange were created, but credentials could not be set. You can update them from the bank settings page.';
         }
       }
 
-      return gqlSuccessResult({ data: bank, warning }, 'MutateHashBankSuccessResponse');
+      return gqlSuccessResult(
+        { data: bank, warning },
+        'MutateHashBankSuccessResponse',
+      );
     } catch (e) {
       if (isCoopErrorOfType(e, 'MatchingBankNameExistsError')) {
         return gqlErrorResult(e, '/input/name');
@@ -131,8 +160,17 @@ const Mutation: GQLMutationResolvers<Context> = {
 
   async updateHashBank(
     _: unknown,
-    { input }: { input: { id: string; name?: string | null; description?: string | null; enabled_ratio?: number | null } },
-    context: Context
+    {
+      input,
+    }: {
+      input: {
+        id: string;
+        name?: string | null;
+        description?: string | null;
+        enabled_ratio?: number | null;
+      };
+    },
+    context: Context,
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
@@ -147,7 +185,7 @@ const Mutation: GQLMutationResolvers<Context> = {
           name: input.name ?? undefined,
           description: input.description ?? undefined,
           enabled_ratio: input.enabled_ratio ?? undefined,
-        }
+        },
       );
       return gqlSuccessResult({ data: bank }, 'MutateHashBankSuccessResponse');
     } catch (e) {
@@ -158,11 +196,7 @@ const Mutation: GQLMutationResolvers<Context> = {
     }
   },
 
-  async deleteHashBank(
-    _: unknown,
-    { id }: { id: string },
-    context: Context
-  ) {
+  async deleteHashBank(_: unknown, { id }: { id: string }, context: Context) {
     const user = context.getUser();
     if (!user?.orgId) {
       throw unauthenticatedError('User required.');
@@ -175,7 +209,7 @@ const Mutation: GQLMutationResolvers<Context> = {
   async updateExchangeCredentials(
     _: unknown,
     { apiName, credentialsJson }: { apiName: string; credentialsJson: string },
-    context: Context
+    context: Context,
   ) {
     const user = context.getUser();
     if (!user?.orgId) {
@@ -184,14 +218,23 @@ const Mutation: GQLMutationResolvers<Context> = {
 
     // eslint-disable-next-line no-restricted-syntax
     const credData = JSON.parse(credentialsJson) as Record<string, unknown>;
-    await context.services.HMAHashBankService.setExchangeCredentials(apiName, credData);
+    await context.services.HMAHashBankService.setExchangeCredentials(
+      apiName,
+      credData,
+    );
     return true;
-  }
+  },
 };
 
 const HashBank = {
-  async exchange(parent: { hma_name: string }, _args: unknown, context: Context) {
-    return context.services.HMAHashBankService.getExchangeForBank(parent.hma_name);
+  async exchange(
+    parent: { hma_name: string },
+    _args: unknown,
+    context: Context,
+  ) {
+    return context.services.HMAHashBankService.getExchangeForBank(
+      parent.hma_name,
+    );
   },
 };
 
@@ -199,4 +242,4 @@ export const resolvers = {
   Query,
   Mutation,
   HashBank,
-}; 
+};

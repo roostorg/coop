@@ -35,5 +35,5 @@ export type JsonOf<T> = Opaque<string, 'JSON'> & { [meta]: T };
 export type If<Cond extends boolean, IfTrue, IfFalse> = Cond extends true
   ? IfTrue
   : Cond extends false
-  ? IfFalse
-  : IfTrue | IfFalse;
+    ? IfFalse
+    : IfTrue | IfFalse;
