@@ -64,6 +64,17 @@ type MRTJobAutoCloseReason =
   // reports (issue #650).
   | 'USER_ACTIONED';
 
+/**
+ * `reviewer_id` recorded for decisions the system makes with no human reviewer
+ * (e.g. AUTOMATIC_CLOSE). `manual_review_decisions.reviewer_id` is NOT NULL, so
+ * we can't store null; we store the empty string instead. The MRT client treats
+ * a falsy reviewer id as "Automatic" (see getReviewerName in
+ * ManualReviewRecentDecisions.tsx), and the reviewer-grouped analytics table
+ * drops ids that don't match an org user, so the empty string renders correctly
+ * everywhere without a schema migration or any client change.
+ */
+export const AUTOMATED_DECISION_REVIEWER_ID = '';
+
 export type ManualReviewDecisionComponent =
   | { type: 'IGNORE' }
   | {
@@ -623,7 +634,10 @@ export default class JobDecisioning {
         id,
         job_payload: job,
         queue_id: queueId,
-        reviewer_id: reviewerId,
+        // Automatic decisions (AUTOMATIC_CLOSE) have no human reviewer, but the
+        // column is NOT NULL; record a sentinel instead of letting undefined
+        // become a null and fail the insert (23502).
+        reviewer_id: reviewerId ?? AUTOMATED_DECISION_REVIEWER_ID,
         org_id: orgId,
         decision_components: decisionComponents,
         related_actions: relatedActions,

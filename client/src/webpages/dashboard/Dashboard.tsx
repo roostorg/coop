@@ -61,6 +61,13 @@ const lazyRoute =
     Component: (await importFn()).default,
   });
 
+// Redirects to `to` while preserving the current query string, so legacy
+// links carrying params (e.g. ?id=…&typeId=…) don't lose them on redirect.
+function RedirectPreservingSearch({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate replace to={`${to}${search}`} />;
+}
+
 export function DashboardRoutes() {
   return {
     path: 'dashboard',
@@ -336,7 +343,9 @@ export function DashboardRoutes() {
       },
       {
         path: 'investigation',
-        element: <Navigate replace to="../manual_review/investigation" />,
+        element: (
+          <RedirectPreservingSearch to="../manual_review/investigation" />
+        ),
         handle: { isUsingLegacyCSS: true },
       },
 

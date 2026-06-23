@@ -6,6 +6,7 @@ import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { safeGetEnvInt } from '../../iocContainer/utils.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
@@ -43,8 +44,10 @@ import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
 } from '../../utils/kyselyTransactionWithRetry.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
+import { DAY_MS } from '../../utils/time.js';
 import {
   type NonEmptyString,
   type RequiredWithoutNull,
@@ -603,28 +606,55 @@ class RuleAPI {
   }
 
   async getAllRuleInsights(orgId: string) {
-    const results = await Promise.allSettled([
-      this.actionStats.getActionedSubmissionCountsByDay(orgId),
-      this.actionStats.getActionedSubmissionCountsByPolicyByDay(orgId),
-      this.actionStats.getActionedSubmissionCountsByTagByDay(orgId),
-      this.actionStats.getActionedSubmissionCountsByActionByDay(orgId),
-      this.ruleInsights.getContentSubmissionCountsByDay(orgId),
-    ]);
+    // Each of these scans ACTION_EXECUTIONS over the lookback window. Run them
+    // sequentially so peak ClickHouse memory is one query's worth rather than
+    // all five at once, and bound the window (env-tunable, default 90 days) so
+    // a memory-constrained instance scans far less than a full year. The client
+    // filters further client-side and defaults to a one-week view.
+    const lookbackDays = safeGetEnvInt(
+      'CLICKHOUSE_RULE_INSIGHTS_LOOKBACK_DAYS',
+      90,
+    );
+    const startAt = new Date(Date.now() - lookbackDays * DAY_MS);
 
-    const valueOrEmpty = <T>(
-      r: PromiseSettledResult<readonly T[]>,
-    ): readonly T[] => (r.status === 'fulfilled' ? r.value : []);
+    const runSafely = async <T>(
+      fn: () => Promise<readonly T[]>,
+    ): Promise<readonly T[]> => {
+      try {
+        return await fn();
+      } catch (err) {
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({ message: 'rule insights query failed', error: err });
+        return [];
+      }
+    };
+
+    const actionedSubmissionsByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByDay(orgId, startAt),
+    );
+    const actionedSubmissionsByPolicyByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByPolicyByDay(orgId, startAt),
+    );
+    const actionedSubmissionsByTagByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByTagByDay(orgId, startAt),
+    );
+    const actionedSubmissionsByActionByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByActionByDay(orgId, startAt),
+    );
+    const totalSubmissionsByDay = await runSafely(
+      async () =>
+        this.ruleInsights.getContentSubmissionCountsByDay(
+          orgId,
+          startAt,
+        ) as Promise<readonly { date: string; count: number }[]>,
+    );
 
     return {
-      actionedSubmissionsByDay: valueOrEmpty(results[0]),
-      actionedSubmissionsByPolicyByDay: valueOrEmpty(results[1]),
-      actionedSubmissionsByTagByDay: valueOrEmpty(results[2]),
-      actionedSubmissionsByActionByDay: valueOrEmpty(results[3]),
-      totalSubmissionsByDay: valueOrEmpty(
-        results[4] as PromiseSettledResult<
-          readonly { date: string; count: number }[]
-        >,
-      ),
+      actionedSubmissionsByDay,
+      actionedSubmissionsByPolicyByDay,
+      actionedSubmissionsByTagByDay,
+      actionedSubmissionsByActionByDay,
+      totalSubmissionsByDay,
     };
   }
 
