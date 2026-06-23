@@ -45,7 +45,6 @@ describe('resolveConfiguredParametersByActionId', () => {
   });
 
   it('falls back to spec defaults when the configured value is invalid', () => {
-    // banDays=0 violates min=1, so the default (7) is used rather than throwing.
     const result = resolveConfiguredParametersByActionId([
       [{ action: customAction('a1', banDaysSpec), parameters: { banDays: 0 } }],
     ]);

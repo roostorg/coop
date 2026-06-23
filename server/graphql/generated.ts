@@ -139,6 +139,11 @@ export type GQLAction =
 
 export type GQLActionBase = {
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  /**
+   * Configured parameter values for this action in the context of a rule or
+   * strike threshold. Null when resolved outside of a rule context.
+   */
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -660,6 +665,7 @@ export type GQLContentManualReviewJobPayload = {
 
 export type GQLContentRule = GQLRule & {
   readonly __typename?: 'ContentRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
   readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
@@ -938,6 +944,7 @@ export type GQLCustomAction = GQLActionBase & {
   readonly callbackUrl: Scalars['String']['output'];
   readonly callbackUrlBody?: Maybe<Scalars['JSONObject']['output']>;
   readonly callbackUrlHeaders?: Maybe<Scalars['JSONObject']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   /**
    * Deprecated alias for `parameters` retained for back-compat with the
    * initial MRT-only parameter implementation. New consumers should read
@@ -1174,6 +1181,7 @@ export type GQLDisabledInfoInput = {
 export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
   readonly __typename?: 'EnqueueAuthorToMrtAction';
   readonly applyUserStrikes: Scalars['Boolean']['output'];
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1186,6 +1194,7 @@ export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
 export type GQLEnqueueToMrtAction = GQLActionBase & {
   readonly __typename?: 'EnqueueToMrtAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1198,6 +1207,7 @@ export type GQLEnqueueToMrtAction = GQLActionBase & {
 export type GQLEnqueueToNcmecAction = GQLActionBase & {
   readonly __typename?: 'EnqueueToNcmecAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -4144,6 +4154,7 @@ export const GQLRoutingRuleStatus = {
 export type GQLRoutingRuleStatus =
   (typeof GQLRoutingRuleStatus)[keyof typeof GQLRoutingRuleStatus];
 export type GQLRule = {
+  /** @deprecated Use configuredParameters on each Action instead. */
   readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
@@ -5178,6 +5189,7 @@ export const GQLUserRole = {
 export type GQLUserRole = (typeof GQLUserRole)[keyof typeof GQLUserRole];
 export type GQLUserRule = GQLRule & {
   readonly __typename?: 'UserRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
   readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
@@ -8444,6 +8456,11 @@ export type GQLCustomActionResolvers<
     ParentType,
     ContextType
   >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
   customMrtApiParams?: Resolver<
     ReadonlyArray<Maybe<GQLResolversTypes['CustomMrtApiParamSpec']>>,
     ParentType,
@@ -8780,6 +8797,11 @@ export type GQLEnqueueAuthorToMrtActionResolvers<
     ParentType,
     ContextType
   >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -8816,6 +8838,11 @@ export type GQLEnqueueToMrtActionResolvers<
     ParentType,
     ContextType
   >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -8849,6 +8876,11 @@ export type GQLEnqueueToNcmecActionResolvers<
 > = {
   applyUserStrikes?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
     ParentType,
     ContextType
   >;

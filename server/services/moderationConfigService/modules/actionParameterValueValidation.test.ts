@@ -41,8 +41,6 @@ describe('resolveConfiguredActionParameterValues', () => {
   });
 
   it('falls back to spec defaults when the configuration is invalid', () => {
-    // `banDays: 0` violates `min: 1`, so we fall back to the default (7) rather
-    // than throwing and aborting automated execution.
     expect(
       resolveConfiguredActionParameterValues({
         customMrtApiParams: banDaysSpec,

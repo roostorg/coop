@@ -89,7 +89,6 @@ export function validateActionParameterValues(
  * Returns `undefined` when the action declares no parameters.
  */
 export function resolveConfiguredActionParameterValues(opts: {
-  // Raw stored spec from `actions.custom_mrt_api_params`; `null` for no spec.
   customMrtApiParams: unknown;
   rawValues: unknown;
   actionId: string;
@@ -101,7 +100,6 @@ export function resolveConfiguredActionParameterValues(opts: {
   try {
     return validateActionParameterValues(spec, opts.rawValues);
   } catch (error) {
-    // This pure module has no tracer/span, so log directly rather than via one.
     // eslint-disable-next-line no-restricted-syntax
     logErrorJson({
       message: `Configured action parameter values failed validation; falling back to defaults actionId=${opts.actionId}`,

@@ -405,6 +405,7 @@ const RULE_FIELD_FRAGMENT = gql`
           maxLength
           defaultValue
         }
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -416,6 +417,7 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -427,6 +429,7 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -438,6 +441,7 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -445,10 +449,6 @@ const RULE_FIELD_FRAGMENT = gql`
           }
         }
       }
-    }
-    actionParameters {
-      actionId
-      parameters
     }
   }
 `;
@@ -683,8 +683,10 @@ export default function RuleForm() {
     Record<string, Record<string, unknown>>
   >(() => {
     const out: Record<string, Record<string, unknown>> = {};
-    for (const entry of rule?.actionParameters ?? []) {
-      out[entry.actionId] = (entry.parameters ?? {}) as Record<string, unknown>;
+    for (const action of rule?.actions ?? []) {
+      if ('configuredParameters' in action && action.configuredParameters) {
+        out[action.id] = action.configuredParameters as Record<string, unknown>;
+      }
     }
     return out;
   }, [rule]);

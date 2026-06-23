@@ -65,6 +65,7 @@ const typeDefs = /* GraphQL */ `
     conditionSet: ConditionSet!
     actions: [Action!]!
     actionParameters: [RuleActionParameterValues!]!
+      @deprecated(reason: "Use configuredParameters on each Action instead.")
     policies: [Policy!]!
     tags: [String]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -86,6 +87,7 @@ const typeDefs = /* GraphQL */ `
     conditionSet: ConditionSet!
     actions: [Action!]!
     actionParameters: [RuleActionParameterValues!]!
+      @deprecated(reason: "Use configuredParameters on each Action instead.")
     policies: [Policy!]!
     tags: [String]
     maxDailyActions: Float
@@ -108,6 +110,7 @@ const typeDefs = /* GraphQL */ `
     conditionSet: ConditionSet!
     actions: [Action!]!
     actionParameters: [RuleActionParameterValues!]!
+      @deprecated(reason: "Use configuredParameters on each Action instead.")
     policies: [Policy!]!
     tags: [String]
     maxDailyActions: Float
@@ -655,6 +658,23 @@ const Rule: GQLRuleResolvers = {
 
 // Resolver shared by ContentRule and UserRule; omits actions with no
 // configured values so they don't surface as empty entries.
+async function resolveRuleActions(
+  context: Context,
+  orgId: string,
+  ruleId: string,
+) {
+  const withParams =
+    await context.services.ModerationConfigService.getActionsForRuleId({
+      orgId,
+      ruleId,
+    });
+  return withParams.map((it) => ({
+    ...it.action,
+    configuredParameters:
+      Object.keys(it.parameters).length > 0 ? it.parameters : null,
+  }));
+}
+
 async function resolveRuleActionParameters(
   context: Context,
   orgId: string,
@@ -698,12 +718,7 @@ const ContentRule: GQLContentRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return (
-      await context.services.ModerationConfigService.getActionsForRuleId({
-        orgId: user.orgId,
-        ruleId: rule.id,
-      })
-    ).map((it) => it.action);
+    return resolveRuleActions(context, user.orgId, rule.id);
   },
   async actionParameters(rule, _, context) {
     const user = context.getUser();
@@ -760,12 +775,7 @@ const UserRule: GQLUserRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return (
-      await context.services.ModerationConfigService.getActionsForRuleId({
-        orgId: user.orgId,
-        ruleId: rule.id,
-      })
-    ).map((it) => it.action);
+    return resolveRuleActions(context, user.orgId, rule.id);
   },
   async actionParameters(rule, _, context) {
     const user = context.getUser();
