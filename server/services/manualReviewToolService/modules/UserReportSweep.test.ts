@@ -51,6 +51,7 @@ const testWithQueue = () =>
     const addJob = async (opts: {
       creator: ItemIdentifier;
       queueId?: string;
+      kind?: 'DEFAULT' | 'NCMEC';
     }) => {
       const item = instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
         submissionId: makeSubmissionId(),
@@ -72,7 +73,10 @@ const testWithQueue = () =>
         jobPayload: {
           createdAt: new Date(),
           policyIds: [],
-          payload: { kind: 'DEFAULT', item, reportHistory: [] },
+          payload:
+            opts.kind === 'NCMEC'
+              ? { kind: 'NCMEC', item, allMediaItems: [] }
+              : { kind: 'DEFAULT', item, reportHistory: [] },
         },
       });
     };
@@ -210,6 +214,40 @@ describe('ManualReviewToolService.maybeClearOtherReportsForUser', () => {
       });
 
       expect(result).toBeUndefined();
+    },
+  );
+
+  testWithQueue()(
+    'skips NCMEC jobs when sweeping other reports for the same user',
+    async ({
+      org,
+      user,
+      queue,
+      mrtService,
+      addJob,
+      configureQueue,
+      pendingJobIds,
+    }) => {
+      await configureQueue({ disposition: 'AUTOMATIC_CLOSE' });
+
+      const actionedJob = await addJob({ creator: reportedUser });
+      const ncmecJob = await addJob({ creator: reportedUser, kind: 'NCMEC' });
+      await addJob({ creator: reportedUser });
+
+      const result = await mrtService.maybeClearOtherReportsForUser({
+        orgId: org.id,
+        actionedJob,
+        actionedQueueId: queue.id,
+        customActions: [triggerAction(actionedJob.payload.item)],
+        reviewerId: user.id,
+        reviewerEmail,
+      });
+
+      // Only the DEFAULT job is swept; the NCMEC job remains.
+      expect(result?.jobsDisposed).toBe(1);
+      expect(new Set(await pendingJobIds())).toEqual(
+        new Set([actionedJob.id, ncmecJob.id]),
+      );
     },
   );
 
