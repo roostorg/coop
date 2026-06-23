@@ -1417,9 +1417,20 @@ export default async function getBottle() {
         } finally {
           if (!suppressUserReportSweep && isReportJob(job)) {
             const reportJob = job;
-            const customActions = decisionComponents.flatMap((decision) =>
-              decision.type === 'CUSTOM_ACTION' ? [decision] : [],
-            );
+            const customActions = [
+              ...decisionComponents.flatMap((decision) =>
+                decision.type === 'CUSTOM_ACTION' ? [decision] : [],
+              ),
+              ...relatedActions
+                .filter((ra) => ra.actionIds.length > 0)
+                .map((ra) => ({
+                  type: 'CUSTOM_ACTION' as const,
+                  actions: ra.actionIds.map((id) => ({ id })),
+                  policies: ra.policyIds.map((id) => ({ id })),
+                  itemIds: [...ra.itemIds],
+                  itemTypeId: ra.itemTypeId,
+                })),
+            ];
             if (customActions.length > 0) {
               container.ManualReviewToolService.maybeClearOtherReportsForUser({
                 orgId,

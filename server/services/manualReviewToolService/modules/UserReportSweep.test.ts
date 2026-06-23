@@ -252,6 +252,46 @@ describe('ManualReviewToolService.maybeClearOtherReportsForUser', () => {
   );
 
   testWithQueue()(
+    'fires sweep when trigger action comes from a related item (e.g. associated account)',
+    async ({
+      org,
+      user,
+      queue,
+      mrtService,
+      addJob,
+      configureQueue,
+      pendingJobIds,
+    }) => {
+      await configureQueue({ disposition: 'AUTOMATIC_CLOSE' });
+
+      const actionedJob = await addJob({ creator: reportedUser });
+      await addJob({ creator: reportedUser });
+
+      // Simulate a related action (e.g. "Disable Account" on the user profile)
+      // that matches the trigger but targets a different item type/id.
+      const result = await mrtService.maybeClearOtherReportsForUser({
+        orgId: org.id,
+        actionedJob,
+        actionedQueueId: queue.id,
+        customActions: [
+          {
+            type: 'CUSTOM_ACTION',
+            actions: [{ id: TRIGGER_ACTION_ID }],
+            policies: [{ id: 'policy-1' }],
+            itemIds: ['related-user-item-id'],
+            itemTypeId: 'user-profile-type',
+          },
+        ],
+        reviewerId: user.id,
+        reviewerEmail,
+      });
+
+      expect(result?.jobsDisposed).toBe(1);
+      expect(new Set(await pendingJobIds())).toEqual(new Set([actionedJob.id]));
+    },
+  );
+
+  testWithQueue()(
     'is a no-op when the feature is disabled (null disposition)',
     async ({ org, user, queue, mrtService, addJob, configureQueue }) => {
       await configureQueue({ disposition: null, triggerActionIds: [] });
