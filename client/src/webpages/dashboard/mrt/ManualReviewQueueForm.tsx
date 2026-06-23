@@ -510,11 +510,15 @@ export default function ManualReviewQueueForm() {
         >
           <Option value="FIFO">First in, first out</Option>
           <Option value="NUM_REPORTS">Most reported first</Option>
+          <Option value="WEIGHTED">Custom (weighted)</Option>
         </Select>
         <div className="mt-2 text-sm text-slate-400">
-          {jobSortType === 'FIFO'
-            ? 'Jobs are reviewed in the order they were received.'
-            : 'Jobs with more user reports are surfaced to reviewers first. Report counts are determined at enqueue time and updated when new reports arrive.'}
+          {jobSortType === 'FIFO' &&
+            'Jobs are reviewed in the order they were received.'}
+          {jobSortType === 'NUM_REPORTS' &&
+            'Jobs with more user reports are surfaced to reviewers first. Report counts are determined at enqueue time and updated when new reports arrive.'}
+          {jobSortType === 'WEIGHTED' &&
+            'Jobs are scored using the weights configured in Settings → Review Console → Job Priority Weights, and reviewed in priority order.'}
         </div>
       </div>
       {divider()}
