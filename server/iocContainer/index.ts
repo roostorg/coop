@@ -1426,7 +1426,7 @@ export default async function getBottle() {
                 .map((ra) => ({
                   type: 'CUSTOM_ACTION' as const,
                   actions: ra.actionIds.map((id) => ({ id })),
-                  policies: [] as { id: string }[],
+                  policies: ra.policyIds.map((id) => ({ id })),
                   itemIds: [...ra.itemIds],
                   itemTypeId: ra.itemTypeId,
                 })),
