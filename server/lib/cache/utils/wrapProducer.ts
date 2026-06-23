@@ -1,18 +1,18 @@
-import stableStringify from "safe-stable-stringify";
+import stableStringify from 'safe-stable-stringify';
 
-import type Cache from "../Cache.js";
-import { type NormalizedProducerResult } from "../types/06_Normalization.js";
+import type Cache from '../Cache.js';
+import { type NormalizedProducerResult } from '../types/06_Normalization.js';
 import {
-  type Vary,
   type AnyParams,
   type AnyValidators,
   type ConsumerRequest,
   type Logger,
   type RequestPairedProducer,
-} from "../types/index.js";
-import collapsedTaskCreator from "./collapsedTaskCreator.js";
-import { normalizeProducerResult, normalizeVary } from "./normalization.js";
-import { defaultLoggersByComponent } from "./utils.js";
+  type Vary,
+} from '../types/index.js';
+import collapsedTaskCreator from './collapsedTaskCreator.js';
+import { normalizeProducerResult, normalizeVary } from './normalization.js';
+import { defaultLoggersByComponent } from './utils.js';
 
 export type WrapProducerOptions<V extends AnyParams> = {
   isCacheable?(this: void, id: string, params: Partial<V>): boolean;
@@ -74,11 +74,11 @@ export default function wrapProducer<
   const {
     isCacheable = () => true,
     collapseOverlappingRequestsTime = 3,
-    logger = defaultLoggersByComponent["wrap-producer"],
+    logger = defaultLoggersByComponent['wrap-producer'],
   } = options ?? {};
 
-  const logTrace = logger.bind(null, "wrap-producer", "trace");
-  const logWarning = logger.bind(null, "wrap-producer", "warn");
+  const logTrace = logger.bind(null, 'wrap-producer', 'trace');
+  const logWarning = logger.bind(null, 'wrap-producer', 'warn');
 
   // Suppose the caller is requesting a resource, and we're already in the
   // process of requesting that resource from the producer (or storing the
@@ -137,9 +137,9 @@ export default function wrapProducer<
   //
   // Of course, we can only use this IF THE REQUEST IS CACHEABLE.
   const callProducerAndLog: typeof producer = async (req) => {
-    logTrace("contacting producer", req);
+    logTrace('contacting producer', req);
     const resp = await producer(req);
-    logTrace("got response from producer", resp);
+    logTrace('got response from producer', resp);
     return resp;
   };
 
@@ -170,8 +170,8 @@ export default function wrapProducer<
     normalizeVary(cache.normalizeParamName, cache.normalizeParamValue, vary);
 
   const wrappedProducer = async function (
-    req: Omit<ConsumerRequest<Params, Id>, "directives" | "params"> &
-      Partial<Pick<ConsumerRequest<Params, Id>, "directives" | "params">>,
+    req: Omit<ConsumerRequest<Params, Id>, 'directives' | 'params'> &
+      Partial<Pick<ConsumerRequest<Params, Id>, 'directives' | 'params'>>,
   ): Promise<NormalizedProducerResult<Content, Validators, Params>> {
     const { id, params = {}, directives = {} } = req;
     // replace undefined params + direcvites w/ empty objects
@@ -233,7 +233,7 @@ export default function wrapProducer<
       // swallow error rather than crash.
       newContentPromise.catch(() => {
         logWarning(
-          "error asynchronously requesting refreshed content from producer",
+          'error asynchronously requesting refreshed content from producer',
           { id, params, directives },
         );
       });
@@ -243,7 +243,7 @@ export default function wrapProducer<
     return usableIfError
       ? newContentPromise.catch((error) => {
           logWarning(
-            "error calling producer; falling back to a cached value, as permitted",
+            'error calling producer; falling back to a cached value, as permitted',
             { error, entry: usableIfError },
           );
 

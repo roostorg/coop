@@ -19,9 +19,12 @@ const DEFAULT_TICK_COUNT = 5;
  */
 function fallbackTicks(domain, tickCount) {
   const count =
-    Number.isInteger(tickCount) && tickCount > 0 ? tickCount : DEFAULT_TICK_COUNT;
+    Number.isInteger(tickCount) && tickCount > 0
+      ? tickCount
+      : DEFAULT_TICK_COUNT;
   const min = typeof domain[0] === 'number' ? domain[0] : 0;
-  const max = typeof domain[1] === 'number' && domain[1] > min ? domain[1] : min + 1;
+  const max =
+    typeof domain[1] === 'number' && domain[1] > min ? domain[1] : min + 1;
   if (count === 1) return [min];
   const step = (max - min) / (count - 1);
   const ticks = new Array(count);
@@ -37,7 +40,9 @@ function isDivisionByZeroError(err) {
   // for older versions that don't set `name`.
   return (
     (err && err.name === 'DecimalError') ||
-    (err && typeof err.message === 'string' && err.message.includes('Division by zero'))
+    (err &&
+      typeof err.message === 'string' &&
+      err.message.includes('Division by zero'))
   );
 }
 

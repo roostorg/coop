@@ -11,8 +11,8 @@ import {
   type GQLQueryResolvers,
   type GQLReportingRuleResolvers,
 } from '../generated.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   enum ReportingRuleStatus {
@@ -67,11 +67,11 @@ const typeDefs = /* GraphQL */ `
   }
 
   union CreateReportingRuleResponse =
-      MutateReportingRuleSuccessResponse
+    | MutateReportingRuleSuccessResponse
     | ReportingRuleNameExistsError
 
   union UpdateReportingRuleResponse =
-      MutateReportingRuleSuccessResponse
+    | MutateReportingRuleSuccessResponse
     | ReportingRuleNameExistsError
     | NotFoundError
 

@@ -6,10 +6,10 @@ This package handles database schema migrations and seed data.
 
 ### Migrations vs Seeds
 
-| Type | Purpose | When it runs |
-| :---- | :---- | :---- |
-| **Migration** | Schema changes (tables, columns, indexes) | All environments |
-| **Seed** | Test fixtures and environment-specific data | Single environment only |
+| Type          | Purpose                                     | When it runs            |
+| :------------ | :------------------------------------------ | :---------------------- |
+| **Migration** | Schema changes (tables, columns, indexes)   | All environments        |
+| **Seed**      | Test fixtures and environment-specific data | Single environment only |
 
 ### How Seeds Work
 

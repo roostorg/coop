@@ -7,7 +7,6 @@ import {
 } from 'graphql';
 
 import type { Context } from '../resolvers.js';
-
 import { unauthenticatedError } from './errors.js';
 
 export function shouldSkipAuth(

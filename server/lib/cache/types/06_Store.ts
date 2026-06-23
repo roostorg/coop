@@ -1,7 +1,7 @@
-import { variantMatchesRequest } from "../utils/varyHelpers.js";
-import { type AnyParams } from "./01_Params.js";
-import { type AnyValidators } from "./02_Validators.js";
-import { type Entry, type NormalizedParams } from "./06_Normalization.js";
+import { variantMatchesRequest } from '../utils/varyHelpers.js';
+import { type AnyParams } from './01_Params.js';
+import { type AnyValidators } from './02_Validators.js';
+import { type Entry, type NormalizedParams } from './06_Normalization.js';
 
 /**
  * NB: The store shouldn't mutate its input here at all, but we can't use

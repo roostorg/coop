@@ -24,11 +24,9 @@ type JWTCryptoKeyPairWithAlgorithm = {
   privateKeyWithAlgorithm: JWTWithAlgorithm;
 };
 
-export class SecretsManagerSigningKeyPairStorage
-  implements SigningKeyPairStorage
-{
-  private readonly client = new SecretsManagerClient({ 
-    region: process.env.AWS_REGION ?? 'us-east-2' 
+export class SecretsManagerSigningKeyPairStorage implements SigningKeyPairStorage {
+  private readonly client = new SecretsManagerClient({
+    region: process.env.AWS_REGION ?? 'us-east-2',
   });
 
   private getSecretIdForKeyId(keyId: SigningKeyId) {
@@ -59,9 +57,7 @@ export class SecretsManagerSigningKeyPairStorage
     const secretId = this.getSecretIdForKeyId(keyId);
 
     try {
-      await this.client.send(
-        new GetSecretValueCommand({ SecretId: secretId }),
-      );
+      await this.client.send(new GetSecretValueCommand({ SecretId: secretId }));
       await this.client.send(
         new PutSecretValueCommand({
           SecretId: secretId,

@@ -5,8 +5,8 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -33,7 +33,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union MutateLocationBankResponse =
-      MutateLocationBankSuccessResponse
+    | MutateLocationBankSuccessResponse
     | LocationBankNameExistsError
 
   type MutateLocationBankSuccessResponse {

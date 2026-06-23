@@ -1,0 +1,51 @@
+name: Prepare Docker images
+description: >
+  Pull (and optionally build) images from a docker-compose
+  file, with special handling to avoid flakiness (since Docker Hub
+  sometimes returns errors for no good reason).
+
+inputs:
+  pull:
+    description: Space-separated compose services whose images should be pulled.
+    required: false
+    default: ''
+  build:
+    description: Space-separated compose services that should be built.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Docker Hub mirror
+      # Route docker.io pulls through Google's pull-through cache to avoid
+      # transient Docker Hub registry/auth timeouts.
+      shell: bash
+      run: |
+        sudo mkdir -p /etc/docker
+        echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+        sudo systemctl restart docker
+
+    - name: Pre-pull images (with retry)
+      shell: bash
+      env:
+        PULL_SERVICES: ${{ inputs.pull }}
+        BUILD_SERVICES: ${{ inputs.build }}
+      run: |
+        # In addition to using the registry mirror above, we also
+        # retry Docker image pulls a few times to handle flakiness.
+        for attempt in 1 2 3; do
+          ok=true
+          if [ -n "$PULL_SERVICES" ]; then
+            docker compose pull --quiet $PULL_SERVICES || ok=false
+          fi
+          if [ "$ok" = true ] && [ -n "$BUILD_SERVICES" ]; then
+            docker compose build --quiet $BUILD_SERVICES || ok=false
+          fi
+          if [ "$ok" = true ]; then exit 0; fi
+          if [ "$attempt" -lt 3 ]; then
+            echo "::warning::image prep attempt $attempt failed; retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          fi
+        done
+        echo "::error::image prep failed after 3 attempts"; exit 1

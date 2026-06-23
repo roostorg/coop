@@ -1,8 +1,8 @@
-import type SafeTracer from '../../utils/SafeTracer.js';
 import type {
   CDCChange,
   CDCConfig,
 } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
+import type SafeTracer from '../../utils/SafeTracer.js';
 import type {
   AnalyticsEventInput,
   AnalyticsQueryResult,

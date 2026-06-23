@@ -320,7 +320,7 @@ redis-cli
 ## Code quality
 
 ```sh
-npm run lint       # ESLint
-npm run format     # Prettier
+npm run lint           # ESLint
+npm run prettier       # Prettier (check only; use `npm run prettier:fix` to write, alias `npm run format`)
 npm run check:prepush    # Run before pushing
 ```

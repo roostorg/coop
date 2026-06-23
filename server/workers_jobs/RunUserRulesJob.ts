@@ -36,38 +36,54 @@ export default inject(
 
       await userStatisticsService.handleUsersWithChangedScores(
         'user-rules-runner',
-        async (rescoredUsers: readonly { userId: string; userTypeId: string; orgId: string }[]) => {
+        async (
+          rescoredUsers: readonly {
+            userId: string;
+            userTypeId: string;
+            orgId: string;
+          }[],
+        ) => {
           await Promise.all(
-            rescoredUsers.map(async ({ userId, userTypeId, orgId }: { userId: string; userTypeId: string; orgId: string }) => {
-              const rulesForUser = userRulesByOrgId[orgId];
-
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-              if (!rulesForUser?.length) {
-                return;
-              }
-
-              const itemType = await getItemTypeEventuallyConsistent({
+            rescoredUsers.map(
+              async ({
+                userId,
+                userTypeId,
                 orgId,
-                typeSelector: { id: userTypeId },
-              });
+              }: {
+                userId: string;
+                userTypeId: string;
+                orgId: string;
+              }) => {
+                const rulesForUser = userRulesByOrgId[orgId];
 
-              await RuleEngine.runRuleSet(
-                rulesForUser,
-                RuleEngine.makeRuleExecutionContext({
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                if (!rulesForUser?.length) {
+                  return;
+                }
+
+                const itemType = await getItemTypeEventuallyConsistent({
                   orgId,
-                  input: {
-                    itemId: userId,
-                    itemType: {
-                      id: userTypeId,
-                      kind: 'USER',
-                      name: itemType?.name ?? "unknown",
+                  typeSelector: { id: userTypeId },
+                });
+
+                await RuleEngine.runRuleSet(
+                  rulesForUser,
+                  RuleEngine.makeRuleExecutionContext({
+                    orgId,
+                    input: {
+                      itemId: userId,
+                      itemType: {
+                        id: userTypeId,
+                        kind: 'USER',
+                        name: itemType?.name ?? 'unknown',
+                      },
                     },
-                  },
-                }),
-                RuleEnvironment.LIVE,
-                toCorrelationId({ type: 'user-rule-run', id: nowString }),
-              );
-            }),
+                  }),
+                  RuleEnvironment.LIVE,
+                  toCorrelationId({ type: 'user-rule-run', id: nowString }),
+                );
+              },
+            ),
           );
         },
       );

@@ -1,5 +1,5 @@
 import { sql, type Kysely } from 'kysely';
-import { type JsonObject, type Writable } from 'type-fest';
+import { type JsonObject, type JsonValue, type Writable } from 'type-fest';
 import { uid } from 'uid';
 
 import {
@@ -457,9 +457,9 @@ export default class ActionOperations {
               callbackUrl: it.callbackUrl,
               callbackUrlBody: it.callbackUrlBody,
               callbackUrlHeaders: it.callbackUrlHeaders,
-              customMrtApiParams: it.customMrtApiParams?.length
-                ? it.customMrtApiParams
-                : null,
+              customMrtApiParams: ActionOperations.customMrtApiParamsFromDb(
+                it.customMrtApiParams,
+              ),
             };
           case 'ENQUEUE_TO_MRT':
           case 'ENQUEUE_TO_NCMEC':

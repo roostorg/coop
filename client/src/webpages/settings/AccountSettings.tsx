@@ -179,7 +179,9 @@ export default function AccountSettings() {
         });
       },
       onCompleted: (data) => {
-        if (data.changePassword.__typename === 'ChangePasswordSuccessResponse') {
+        if (
+          data.changePassword.__typename === 'ChangePasswordSuccessResponse'
+        ) {
           toast.success('Password Changed', {
             description: 'Your password has been successfully updated.',
           });
@@ -496,7 +498,9 @@ export default function AccountSettings() {
             </Button>
             <Button
               onClick={handleChangePassword}
-              disabled={isChangePasswordButtonDisabled || isChangePasswordLoading}
+              disabled={
+                isChangePasswordButtonDisabled || isChangePasswordLoading
+              }
               loading={isChangePasswordLoading}
             >
               Change Password

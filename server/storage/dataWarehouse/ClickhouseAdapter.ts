@@ -14,6 +14,7 @@ import {
   type TransactionSettings,
 } from 'kysely';
 
+import { getClickhouseMemorySettings } from '../../plugins/warehouse/utils/clickhouseSettings.js';
 import { formatClickhouseQuery } from '../../plugins/warehouse/utils/clickhouseSql.js';
 import type {
   DataWarehousePoolSettings,
@@ -133,6 +134,7 @@ export class ClickhouseKyselyAdapter implements IDataWarehouseDialect {
       database: connectionSettings.database,
       clickhouse_settings: {
         allow_experimental_object_type: 1,
+        ...getClickhouseMemorySettings(),
       },
     });
 

@@ -73,8 +73,8 @@ export default function StepProgressIndicator(props: {
               index < currentStepIndex
                 ? 'text-coop-blue'
                 : index === currentStepIndex
-                ? 'text-gray-600'
-                : 'text-gray-400'
+                  ? 'text-gray-600'
+                  : 'text-gray-400'
             }`}
           >
             {step.name}

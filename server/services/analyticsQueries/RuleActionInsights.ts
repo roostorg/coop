@@ -2,28 +2,28 @@
 import { sql, type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 
-import { formatClickhouseQuery } from '../../plugins/warehouse/utils/clickhouseSql.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { formatClickhouseQuery } from '../../plugins/warehouse/utils/clickhouseSql.js';
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';
 import { type ConditionWithResult } from '../../services/moderationConfigService/index.js';
 import {
   BuiltInThirdPartySignalType,
+  integrationForSignalType,
   SignalType,
   UserCreatedExternalSignalType,
-  integrationForSignalType,
   type Integration,
 } from '../../services/signalsService/index.js';
-import { jsonParse, type JsonOf } from '../../utils/encoding.js';
-import { getUtcDateOnlyString, YEAR_MS } from '../../utils/time.js';
-import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   warehouseDateToDate,
   warehouseDateToDateOnlyString,
-  type WarehouseDate,
   type DataWarehousePublicSchema,
+  type WarehouseDate,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
+import { jsonParse, type JsonOf } from '../../utils/encoding.js';
+import { getUtcDateOnlyString, YEAR_MS } from '../../utils/time.js';
+import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 
 type RulePassSample = {
   date: Date;
@@ -411,7 +411,9 @@ class RuleActionInsights {
       ts: new Date(row.ts),
       result:
         row.result != null
-          ? jsonParse<JsonOf<ConditionSetWithResultAsLogged>>(row.result as JsonOf<ConditionSetWithResultAsLogged>)
+          ? jsonParse<JsonOf<ConditionSetWithResultAsLogged>>(
+              row.result as JsonOf<ConditionSetWithResultAsLogged>,
+            )
           : undefined,
       contentId: row.item_id,
       itemTypeName: row.item_type_name ?? '',

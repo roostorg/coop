@@ -61,15 +61,15 @@ export function toNormalizedItemDataOrErrors(
         !fieldDefinition
           ? value
           : fieldDefinition.type === 'ARRAY' || fieldDefinition.type === 'MAP'
-          ? fieldTypeHandlers[fieldDefinition.type].coerce(
-              value,
-              legalItemTypeIds,
-              fieldDefinition.container as never,
-            )
-          : fieldTypeHandlers[fieldDefinition.type].coerce(
-              value,
-              legalItemTypeIds,
-            ),
+            ? fieldTypeHandlers[fieldDefinition.type].coerce(
+                value,
+                legalItemTypeIds,
+                fieldDefinition.container as never,
+              )
+            : fieldTypeHandlers[fieldDefinition.type].coerce(
+                value,
+                legalItemTypeIds,
+              ),
       ] as const;
     })
     .filter(([key, value]) => {

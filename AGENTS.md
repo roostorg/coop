@@ -102,7 +102,7 @@ Lint / format / type-check (no Docker needed):
 
 ```bash
 npm run lint           # lint all packages
-npm run format         # format all packages
+npm run prettier:fix  # format all packages (alias: npm run format)
 (cd server && npm run lint)
 (cd client && npm run lint)
 ```
@@ -111,7 +111,7 @@ If tests fail with database errors, check migration logs via `docker compose log
 
 ## CI
 
-CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). All PR checks are defined as `docker compose` services so you can reproduce any CI job locally. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
+CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). Most PR checks are defined as `docker compose` services so you can reproduce any CI job locally; the formatting check runs directly via `actions/setup-node`. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
 
 ```bash
 docker compose run --rm codegen-check
@@ -120,12 +120,14 @@ docker compose run --rm backend npm run build
 docker compose run --rm client npm run lint
 docker compose run --rm client npm run build
 docker compose run --rm test
+npm ci && npm run prettier
 ```
 
 Individual checks:
 
 | CI job                                   | Local command                                   |
 | ---------------------------------------- | ----------------------------------------------- |
+| `check_formatting`                       | `npm ci && npm run prettier`                    |
 | `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
 | `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
 | `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
@@ -159,7 +161,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 ## Code style
 
-- **TypeScript:** ESLint + Prettier (configs in `.eslintrc.cjs` and `.prettierrc` per package). Run `npm run lint` and `npm run format` from root.
+- **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `npm run lint` and `npm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.

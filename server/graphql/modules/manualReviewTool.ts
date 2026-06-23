@@ -42,6 +42,17 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 const { omit, sumBy } = _;
 
 const typeDefs = /* GraphQL */ `
+  enum MrtClearReportsDisposition {
+    AUTOMATIC_CLOSE
+    IGNORE
+    SAME_ACTION
+  }
+
+  enum MrtClearReportsScope {
+    CURRENT_QUEUE
+    ALL_QUEUES
+  }
+
   type ManualReviewQueue {
     id: ID!
     name: String!
@@ -55,6 +66,9 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    clearReportsDisposition: MrtClearReportsDisposition
+    clearReportsScope: MrtClearReportsScope!
+    clearReportsTriggerActionIds: [ID!]!
   }
 
   type ManualReviewJob {
@@ -401,6 +415,9 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    clearReportsDisposition: MrtClearReportsDisposition
+    clearReportsScope: MrtClearReportsScope
+    clearReportsTriggerActionIds: [ID!]
   }
 
   input UpdateManualReviewQueueInput {
@@ -411,6 +428,9 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
+    clearReportsDisposition: MrtClearReportsDisposition
+    clearReportsScope: MrtClearReportsScope
+    clearReportsTriggerActionIds: [ID!]
   }
 
   input AddAccessibleQueuesToUserInput {
@@ -1756,6 +1776,18 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
       queueId,
     });
   },
+  async clearReportsTriggerActionIds(queue, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('User required.');
+    }
+    return context.services.ManualReviewToolService.getClearReportsTriggerActionsForQueue(
+      {
+        orgId: user.orgId,
+        queueId: queue.id,
+      },
+    );
+  },
 };
 
 const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
@@ -2317,6 +2349,9 @@ const Mutation: GQLMutationResolvers = {
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = params.input;
     try {
       const queue =
@@ -2327,6 +2362,10 @@ const Mutation: GQLMutationResolvers = {
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,
+          clearReportsDisposition,
+          clearReportsScope: clearReportsScope ?? undefined,
+          clearReportsTriggerActionIds:
+            clearReportsTriggerActionIds ?? undefined,
           invokedBy: {
             userId: user.id,
             permissions: user.getPermissions(),
@@ -2364,6 +2403,9 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = params.input;
     try {
       const queue =
@@ -2378,6 +2420,10 @@ const Mutation: GQLMutationResolvers = {
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
+          clearReportsDisposition,
+          clearReportsScope: clearReportsScope ?? undefined,
+          clearReportsTriggerActionIds:
+            clearReportsTriggerActionIds ?? undefined,
         });
       return gqlSuccessResult(
         { data: queue },

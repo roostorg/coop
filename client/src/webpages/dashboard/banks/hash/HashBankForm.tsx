@@ -1,32 +1,34 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Form, Input, Select, Slider, Switch, Tag } from 'antd';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import {
-  useGQLCreateHashBankMutation,
-  useGQLUpdateHashBankMutation,
-  useGQLUpdateExchangeCredentialsMutation,
-  useGQLHashBankByIdQuery,
-  useGQLExchangeApisQuery,
-  useGQLExchangeApiSchemaLazyQuery,
-  namedOperations,
-  GQLHashBankByIdDocument,
-  type GQLExchangeApiSchemaQuery,
-} from '../../../../graphql/generated';
+import { useNavigate, useParams } from 'react-router-dom';
+
+import FullScreenLoading from '../../../../components/common/FullScreenLoading';
+import CoopButton from '../../components/CoopButton';
 import CoopModal from '../../components/CoopModal';
 import FormHeader from '../../components/FormHeader';
 import FormSectionHeader from '../../components/FormSectionHeader';
 import NameDescriptionInput from '../../components/NameDescriptionInput';
-import CoopButton from '../../components/CoopButton';
-import FullScreenLoading from '../../../../components/common/FullScreenLoading';
+
+import {
+  GQLHashBankByIdDocument,
+  namedOperations,
+  useGQLCreateHashBankMutation,
+  useGQLExchangeApiSchemaLazyQuery,
+  useGQLExchangeApisQuery,
+  useGQLHashBankByIdQuery,
+  useGQLUpdateExchangeCredentialsMutation,
+  useGQLUpdateHashBankMutation,
+  type GQLExchangeApiSchemaQuery,
+} from '../../../../graphql/generated';
 
 type SchemaField = GQLExchangeApiSchemaQuery['exchangeApiSchema'] extends
   | infer S
   | null
   | undefined
   ? S extends { config_schema: { fields: ReadonlyArray<infer F> } }
-  ? F
-  : never
+    ? F
+    : never
   : never;
 
 const EXCHANGE_DISPLAY_NAMES: Record<string, string> = {
@@ -93,7 +95,7 @@ function DynamicSchemaFields({
     (fieldName: string, field: SchemaField, raw: string) => {
       onChange({ ...values, [fieldName]: coerceFieldValue(field, raw) });
     },
-    [values, onChange]
+    [values, onChange],
   );
 
   if (fields.length === 0) return null;
@@ -151,9 +153,7 @@ function DynamicSchemaFields({
               ) : (
                 <Input
                   value={
-                    values[field.name] != null
-                      ? String(values[field.name])
-                      : ''
+                    values[field.name] != null ? String(values[field.name]) : ''
                   }
                   placeholder={
                     field.type === 'number'
@@ -190,9 +190,15 @@ export default function HashBankForm() {
   const [bankDescription, setBankDescription] = useState('');
   const [enabledRatio, setEnabledRatio] = useState(1.0);
 
-  const [selectedExchangeApi, setSelectedExchangeApi] = useState<string | null>(null);
-  const [exchangeConfigValues, setExchangeConfigValues] = useState<Record<string, unknown>>({});
-  const [exchangeCredValues, setExchangeCredValues] = useState<Record<string, unknown>>({});
+  const [selectedExchangeApi, setSelectedExchangeApi] = useState<string | null>(
+    null,
+  );
+  const [exchangeConfigValues, setExchangeConfigValues] = useState<
+    Record<string, unknown>
+  >({});
+  const [exchangeCredValues, setExchangeCredValues] = useState<
+    Record<string, unknown>
+  >({});
 
   const isCreating = id == null;
 
@@ -202,7 +208,7 @@ export default function HashBankForm() {
   const exchangeApisQuery = useGQLExchangeApisQuery({ skip: !isCreating });
   const exchangeApis = useMemo(
     () => exchangeApisQuery.data?.exchangeApis ?? [],
-    [exchangeApisQuery.data?.exchangeApis]
+    [exchangeApisQuery.data?.exchangeApis],
   );
 
   const [fetchSchema, schemaQuery] = useGQLExchangeApiSchemaLazyQuery();
@@ -211,7 +217,7 @@ export default function HashBankForm() {
 
   const selectedApiInfo = useMemo(
     () => exchangeApis.find((a) => a.name === selectedExchangeApi),
-    [exchangeApis, selectedExchangeApi]
+    [exchangeApis, selectedExchangeApi],
   );
 
   useEffect(() => {
@@ -222,7 +228,9 @@ export default function HashBankForm() {
     }
   }, [selectedExchangeApi, fetchSchema]);
 
-  const [editCredValues, setEditCredValues] = useState<Record<string, unknown>>({});
+  const [editCredValues, setEditCredValues] = useState<Record<string, unknown>>(
+    {},
+  );
   const [showCredForm, setShowCredForm] = useState(false);
 
   useEffect(() => {
@@ -381,15 +389,15 @@ export default function HashBankForm() {
     const exchangeInput =
       selectedExchangeApi && schema
         ? {
-          api_name: selectedExchangeApi,
-          config_json: JSON.stringify(exchangeConfigValues),
-          credentials_json:
-            schema.credentials_schema &&
+            api_name: selectedExchangeApi,
+            config_json: JSON.stringify(exchangeConfigValues),
+            credentials_json:
+              schema.credentials_schema &&
               selectedApiInfo &&
               !selectedApiInfo.has_auth
-              ? JSON.stringify(exchangeCredValues)
-              : undefined,
-        }
+                ? JSON.stringify(exchangeCredValues)
+                : undefined,
+          }
         : undefined;
 
     createHashBank({
@@ -440,8 +448,10 @@ export default function HashBankForm() {
     hideModal();
 
     if (
-      (createMutationParams.data?.createHashBank && 'data' in createMutationParams.data.createHashBank) ||
-      (updateMutationParams.data?.updateHashBank && 'data' in updateMutationParams.data.updateHashBank)
+      (createMutationParams.data?.createHashBank &&
+        'data' in createMutationParams.data.createHashBank) ||
+      (updateMutationParams.data?.updateHashBank &&
+        'data' in updateMutationParams.data.updateHashBank)
     ) {
       navigate(-1);
     }
@@ -453,7 +463,7 @@ export default function HashBankForm() {
       (f) =>
         f.required &&
         (exchangeConfigValues[f.name] == null ||
-          exchangeConfigValues[f.name] === '')
+          exchangeConfigValues[f.name] === ''),
     );
 
   const hasRequiredCredsMissing =
@@ -465,10 +475,11 @@ export default function HashBankForm() {
       (f) =>
         f.required &&
         (exchangeCredValues[f.name] == null ||
-          exchangeCredValues[f.name] === '')
+          exchangeCredValues[f.name] === ''),
     );
 
-  const isExchangeIncomplete = Boolean(hasRequiredConfigMissing) || Boolean(hasRequiredCredsMissing);
+  const isExchangeIncomplete =
+    Boolean(hasRequiredConfigMissing) || Boolean(hasRequiredCredsMissing);
 
   const modal = (
     <CoopModal
@@ -488,7 +499,7 @@ export default function HashBankForm() {
   );
 
   const exchangeApiDisplayName = bank?.exchange
-    ? EXCHANGE_DISPLAY_NAMES[bank.exchange.api] ?? bank.exchange.api
+    ? (EXCHANGE_DISPLAY_NAMES[bank.exchange.api] ?? bank.exchange.api)
     : null;
 
   return (
@@ -526,7 +537,9 @@ export default function HashBankForm() {
                       {bank.exchange.enabled ? 'Enabled' : 'Disabled'}
                     </Tag>
                     <Tag color={bank.exchange.has_auth ? 'green' : 'orange'}>
-                      {bank.exchange.has_auth ? 'Credentials Set' : 'Credentials Missing'}
+                      {bank.exchange.has_auth
+                        ? 'Credentials Set'
+                        : 'Credentials Missing'}
                     </Tag>
                     {bank.exchange.last_fetch_succeeded === false && (
                       <Tag color="red">Fetch Failed</Tag>
@@ -540,7 +553,8 @@ export default function HashBankForm() {
                   </div>
                   {bank.exchange.last_fetch_time && (
                     <span className="text-xs text-zinc-500">
-                      Last fetch: {new Date(bank.exchange.last_fetch_time).toLocaleString()}
+                      Last fetch:{' '}
+                      {new Date(bank.exchange.last_fetch_time).toLocaleString()}
                       {bank.exchange.fetched_items != null && (
                         <> &middot; {bank.exchange.fetched_items} items</>
                       )}
@@ -548,7 +562,9 @@ export default function HashBankForm() {
                   )}
                   {bank.exchange.last_fetch_succeeded === false && (
                     <span className="text-xs text-red-600">
-                      The last fetch from this exchange failed. Check that credentials are correct and the exchange service is reachable.
+                      The last fetch from this exchange failed. Check that
+                      credentials are correct and the exchange service is
+                      reachable.
                     </span>
                   )}
                 </div>
@@ -581,15 +597,13 @@ export default function HashBankForm() {
                       <CoopButton
                         title="Save Credentials"
                         loading={updateCredsMutationParams.loading}
-                        disabled={
-                          schema.credentials_schema.fields
-                            .filter((f) => f.required)
-                            .some(
-                              (f) =>
-                                editCredValues[f.name] == null ||
-                                editCredValues[f.name] === ''
-                            )
-                        }
+                        disabled={schema.credentials_schema.fields
+                          .filter((f) => f.required)
+                          .some(
+                            (f) =>
+                              editCredValues[f.name] == null ||
+                              editCredValues[f.name] === '',
+                          )}
                         disabledTooltipTitle="Please fill in all required credential fields"
                         onClick={onUpdateCredentials}
                       />
@@ -625,15 +639,18 @@ export default function HashBankForm() {
             marks={{
               0: 'Disabled',
               0.5: '50%',
-              1: 'Enabled'
+              1: 'Enabled',
             }}
             tooltip={{
-              formatter: (value) => `${Math.round((value ?? 0) * 100)}%`
+              formatter: (value) => `${Math.round((value ?? 0) * 100)}%`,
             }}
-            style={{
-              '--ant-slider-track-background-color': getSliderColor(enabledRatio),
-              maxWidth: '100%',
-            } as React.CSSProperties}
+            style={
+              {
+                '--ant-slider-track-background-color':
+                  getSliderColor(enabledRatio),
+                maxWidth: '100%',
+              } as React.CSSProperties
+            }
             onChange={(value) => {
               setEnabledRatio(value);
             }}
@@ -661,7 +678,9 @@ export default function HashBankForm() {
               loading={exchangeApisQuery.loading}
               className="max-w-md"
               options={exchangeApis.map((api) => ({
-                label: EXCHANGE_DISPLAY_NAMES[api.name] ?? api.name.replace(/_/g, ' '),
+                label:
+                  EXCHANGE_DISPLAY_NAMES[api.name] ??
+                  api.name.replace(/_/g, ' '),
                 value: api.name,
               }))}
             />
@@ -702,12 +721,11 @@ export default function HashBankForm() {
                   </div>
                 )}
 
-              {schema.credentials_schema &&
-                selectedApiInfo?.has_auth && (
-                  <div className="mt-4 p-3 text-sm rounded-md bg-emerald-50 text-emerald-700">
-                    Credentials for this exchange API are already configured.
-                  </div>
-                )}
+              {schema.credentials_schema && selectedApiInfo?.has_auth && (
+                <div className="mt-4 p-3 text-sm rounded-md bg-emerald-50 text-emerald-700">
+                  Credentials for this exchange API are already configured.
+                </div>
+              )}
             </>
           )}
 

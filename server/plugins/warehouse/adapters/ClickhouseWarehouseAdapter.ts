@@ -37,7 +37,9 @@ export class ClickhouseWarehouseAdapter implements IWarehouseAdapter {
     const port = connection.port ?? 8123;
 
     const url = `${protocol}://${connection.host}:${port}`;
-    const password = connection.password.length ? connection.password : undefined;
+    const password = connection.password.length
+      ? connection.password
+      : undefined;
     this.client = createClient({
       url,
       username: connection.username,
@@ -59,7 +61,7 @@ export class ClickhouseWarehouseAdapter implements IWarehouseAdapter {
   ): Promise<readonly T[]> {
     const execute = async () => {
       const statement = formatClickhouseQuery(sql, params);
-      
+
       // For INSERT statements, use command() instead of query() with format
       if (statement.trim().toUpperCase().startsWith('INSERT')) {
         await this.client.command({
@@ -67,7 +69,7 @@ export class ClickhouseWarehouseAdapter implements IWarehouseAdapter {
         });
         return [] as readonly T[];
       }
-      
+
       const result = await this.client.query({
         query: statement,
         format: 'JSONEachRow',

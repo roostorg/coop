@@ -30,6 +30,15 @@ import {
 } from './modules/JobDecisioning.js';
 import { type RoutingRuleStatus } from './modules/JobRouting.js';
 
+// What to do with a user's other pending reports when a trigger action is
+// taken on one of their jobs (issue #650).
+export type ClearReportsDisposition =
+  | 'AUTOMATIC_CLOSE'
+  | 'IGNORE'
+  | 'SAME_ACTION';
+
+export type ClearReportsScope = 'CURRENT_QUEUE' | 'ALL_QUEUES';
+
 export type RoutingRuleExecutionsRow = {
   RULE: string; // rule name
   RULE_ID: string;
@@ -75,6 +84,14 @@ export type ManualReviewToolServicePg = {
     is_default_queue: boolean;
     is_appeals_queue: boolean;
     auto_close_jobs: boolean;
+    // Null disables "clear other reports for this user" for the queue.
+    clear_reports_disposition: ClearReportsDisposition | null;
+    // Has a DB default, so it's optional on insert.
+    clear_reports_scope: ColumnType<
+      ClearReportsScope,
+      ClearReportsScope | undefined,
+      ClearReportsScope
+    >;
   };
   'manual_review_tool.manual_review_decisions': {
     id: string;
@@ -225,6 +242,11 @@ export type ManualReviewToolServicePg = {
     updatedAt: GeneratedAlways<Date>;
   };
   'manual_review_tool.queues_and_hidden_actions': {
+    queue_id: string;
+    action_id: string;
+    org_id: string;
+  };
+  'manual_review_tool.queues_and_clear_reports_trigger_actions': {
     queue_id: string;
     action_id: string;
     org_id: string;

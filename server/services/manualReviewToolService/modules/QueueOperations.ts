@@ -44,7 +44,11 @@ import {
   UserPermission,
   type Invoker,
 } from '../../userManagementService/index.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
+import {
+  type ClearReportsDisposition,
+  type ClearReportsScope,
+  type ManualReviewToolServicePg,
+} from '../dbTypes.js';
 import {
   type AppealEnqueueSourceInfo,
   type JobId,
@@ -67,6 +71,9 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
+  // Null disposition disables "clear other reports for this user" (issue #650).
+  clearReportsDisposition: ClearReportsDisposition | null;
+  clearReportsScope: ClearReportsScope;
 };
 
 const PgQueueSelection = [
@@ -78,6 +85,8 @@ const PgQueueSelection = [
   'created_at as createdAt',
   'is_appeals_queue as isAppealsQueue',
   'auto_close_jobs as autoCloseJobs',
+  'clear_reports_disposition as clearReportsDisposition',
+  'clear_reports_scope as clearReportsScope',
 ] as const;
 
 // BullJobId represents the ID we give a job within Bull. It's only unique among
@@ -232,6 +241,9 @@ export default class QueueOperations {
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
+    clearReportsDisposition?: ClearReportsDisposition | null;
+    clearReportsScope?: ClearReportsScope;
+    clearReportsTriggerActionIds?: readonly string[];
   }) {
     const {
       name,
@@ -241,6 +253,9 @@ export default class QueueOperations {
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = input;
     const { orgId } = invokedBy;
 
@@ -276,6 +291,8 @@ export default class QueueOperations {
               description: replaceEmptyStringWithNull(description),
               is_appeals_queue: isAppealsQueue ?? false,
               auto_close_jobs: autoCloseJobs ?? false,
+              clear_reports_disposition: clearReportsDisposition ?? null,
+              clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
             },
           ])
           .executeTakeFirstOrThrow();
@@ -297,6 +314,12 @@ export default class QueueOperations {
           actionIdsToUnhide: [],
           orgId,
         });
+        await this.setClearReportsTriggerActionsForQueue({
+          transaction,
+          queueId: queue.id,
+          orgId,
+          actionIds: clearReportsTriggerActionIds ?? [],
+        });
         return queue;
       });
     } catch (e) {
@@ -316,6 +339,10 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    clearReportsDisposition?: ClearReportsDisposition | null;
+    clearReportsScope?: ClearReportsScope;
+    // When provided, replaces the queue's full set of trigger actions.
+    clearReportsTriggerActionIds?: readonly string[];
   }) {
     const {
       queueId,
@@ -326,6 +353,9 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = input;
 
     return this.transactionWithRetry(async (transaction) => {
@@ -337,6 +367,9 @@ export default class QueueOperations {
               name,
               description: replaceEmptyStringWithNull(description),
               auto_close_jobs: autoCloseJobs,
+              // null disables the feature and must survive removeUndefinedKeys.
+              clear_reports_disposition: clearReportsDisposition,
+              clear_reports_scope: clearReportsScope,
             }),
           )
           .where('id', '=', queueId)
@@ -367,6 +400,14 @@ export default class QueueOperations {
         actionIdsToHide,
         actionIdsToUnhide,
       });
+      if (clearReportsTriggerActionIds !== undefined) {
+        await this.setClearReportsTriggerActionsForQueue({
+          transaction,
+          queueId,
+          orgId,
+          actionIds: clearReportsTriggerActionIds,
+        });
+      }
       return updatedQueue;
     });
   }
@@ -542,6 +583,8 @@ export default class QueueOperations {
         'queues.created_at as createdAt',
         'queues.is_appeals_queue as isAppealsQueue',
         'queues.auto_close_jobs as autoCloseJobs',
+        'queues.clear_reports_disposition as clearReportsDisposition',
+        'queues.clear_reports_scope as clearReportsScope',
       ])
       .where('favorite_queues.user_id', '=', userId)
       .where('favorite_queues.org_id', '=', orgId)
@@ -900,7 +943,10 @@ export default class QueueOperations {
         if (snapshotIds.length >= maxJobs) {
           break;
         }
-        snapshotIds.push(legacy.data.id);
+        const id = legacy?.data?.id;
+        if (id != null) {
+          snapshotIds.push(id);
+        }
       }
       if (legacyJobs.length < batchSize) {
         break;
@@ -1631,6 +1677,57 @@ export default class QueueOperations {
         .where('queue_id', '=', queueId)
         .where('org_id', '=', orgId)
         .where('action_id', 'in', actionIdsToUnhide)
+        .execute();
+    }
+  }
+
+  // Action IDs whose use triggers the clear-other-reports sweep (issue #650).
+  async getClearReportsTriggerActionsForQueue(opts: {
+    queueId: string;
+    orgId: string;
+  }): Promise<string[]> {
+    const { queueId, orgId } = opts;
+    return (
+      await this.pgQuery
+        .selectFrom(
+          'manual_review_tool.queues_and_clear_reports_trigger_actions',
+        )
+        .select(['action_id'])
+        .where('queue_id', '=', queueId)
+        .where('org_id', '=', orgId)
+        .execute()
+    ).map((it) => it.action_id);
+  }
+
+  // Replaces the queue's trigger actions with `actionIds` (pass [] to clear).
+  async setClearReportsTriggerActionsForQueue(opts: {
+    queueId: string;
+    orgId: string;
+    actionIds: readonly string[];
+    transaction?: Transaction<ManualReviewToolServicePg>;
+  }) {
+    const { queueId, orgId, actionIds, transaction } = opts;
+    const queryInterface = transaction ?? this.pgQuery;
+
+    await queryInterface
+      .deleteFrom('manual_review_tool.queues_and_clear_reports_trigger_actions')
+      .where('queue_id', '=', queueId)
+      .where('org_id', '=', orgId)
+      .execute();
+
+    const uniqueActionIds = [...new Set(actionIds)];
+    if (uniqueActionIds.length > 0) {
+      await queryInterface
+        .insertInto(
+          'manual_review_tool.queues_and_clear_reports_trigger_actions',
+        )
+        .values(
+          uniqueActionIds.map((actionId) => ({
+            queue_id: queueId,
+            action_id: actionId,
+            org_id: orgId,
+          })),
+        )
         .execute();
     }
   }
