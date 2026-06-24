@@ -1,5 +1,7 @@
 /* eslint-disable max-lines */
 
+import { type JsonObject } from 'type-fest';
+
 import { isConditionSet } from '../../condition_evaluator/condition.js';
 import {
   getNameForDerivedField,
@@ -46,6 +48,11 @@ const typeDefs = /* GraphQL */ `
     deleteRule(id: ID!): Boolean
   }
 
+  type RuleActionParameterValues {
+    actionId: ID!
+    parameters: JSONObject!
+  }
+
   interface Rule {
     id: ID!
     parentId: ID
@@ -57,6 +64,8 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
+    actionParameters: [RuleActionParameterValues!]!
+      @deprecated(reason: "Use configuredParameters on each Action instead.")
     policies: [Policy!]!
     tags: [String]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -77,6 +86,8 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
+    actionParameters: [RuleActionParameterValues!]!
+      @deprecated(reason: "Use configuredParameters on each Action instead.")
     policies: [Policy!]!
     tags: [String]
     maxDailyActions: Float
@@ -98,6 +109,8 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
+    actionParameters: [RuleActionParameterValues!]!
+      @deprecated(reason: "Use configuredParameters on each Action instead.")
     policies: [Policy!]!
     tags: [String]
     maxDailyActions: Float
@@ -286,6 +299,11 @@ const typeDefs = /* GraphQL */ `
     ERRORED
   }
 
+  input RuleActionParameterValuesInput {
+    actionId: ID!
+    parameters: JSONObject!
+  }
+
   input CreateContentRuleInput {
     name: String!
     description: String
@@ -293,6 +311,7 @@ const typeDefs = /* GraphQL */ `
     contentTypeIds: [ID!]!
     conditionSet: ConditionSetInput!
     actionIds: [ID!]!
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]!
     tags: [String!]!
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -309,6 +328,7 @@ const typeDefs = /* GraphQL */ `
     contentTypeIds: [ID!]
     conditionSet: ConditionSetInput
     actionIds: [ID!]
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]
     tags: [String!]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -324,6 +344,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus!
     conditionSet: ConditionSetInput!
     actionIds: [ID!]!
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]!
     tags: [String!]!
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -339,6 +360,7 @@ const typeDefs = /* GraphQL */ `
     status: RuleStatus
     conditionSet: ConditionSetInput
     actionIds: [ID!]
+    actionParameters: [RuleActionParameterValuesInput!]
     policyIds: [ID!]
     tags: [String!]
     # GraphQL doesn't support BIGINT, so this must be a Float
@@ -634,6 +656,43 @@ const Rule: GQLRuleResolvers = {
   },
 };
 
+// Resolver shared by ContentRule and UserRule; omits actions with no
+// configured values so they don't surface as empty entries.
+async function resolveRuleActions(
+  context: Context,
+  orgId: string,
+  ruleId: string,
+) {
+  const withParams =
+    await context.services.ModerationConfigService.getActionsForRuleId({
+      orgId,
+      ruleId,
+    });
+  return withParams.map((it) => ({
+    ...it.action,
+    configuredParameters:
+      Object.keys(it.parameters).length > 0 ? it.parameters : null,
+  }));
+}
+
+async function resolveRuleActionParameters(
+  context: Context,
+  orgId: string,
+  ruleId: string,
+): Promise<{ actionId: string; parameters: JsonObject }[]> {
+  const withParams =
+    await context.services.ModerationConfigService.getActionsForRuleId({
+      orgId,
+      ruleId,
+    });
+  return withParams
+    .filter((it) => Object.keys(it.parameters).length > 0)
+    .map((it) => ({
+      actionId: it.action.id,
+      parameters: it.parameters,
+    }));
+}
+
 const ContentRule: GQLContentRuleResolvers = {
   async creator(rule, _, context) {
     const user = context.getUser();
@@ -659,10 +718,14 @@ const ContentRule: GQLContentRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.services.ModerationConfigService.getActionsForRuleId({
-      orgId: user.orgId,
-      ruleId: rule.id,
-    });
+    return resolveRuleActions(context, user.orgId, rule.id);
+  },
+  async actionParameters(rule, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    return resolveRuleActionParameters(context, user.orgId, rule.id);
   },
   async policies(rule, _, context) {
     const user = context.getUser();
@@ -712,10 +775,14 @@ const UserRule: GQLUserRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.services.ModerationConfigService.getActionsForRuleId({
-      orgId: user.orgId,
-      ruleId: rule.id,
-    });
+    return resolveRuleActions(context, user.orgId, rule.id);
+  },
+  async actionParameters(rule, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    return resolveRuleActionParameters(context, user.orgId, rule.id);
   },
   async policies(rule, _, context) {
     const user = context.getUser();

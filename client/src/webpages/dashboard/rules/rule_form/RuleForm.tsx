@@ -15,6 +15,7 @@ import {
   useGQLRuleQuery,
   useGQLUpdateContentRuleMutation,
   useGQLUpdateUserRuleMutation,
+  type GQLRuleActionParameterValuesInput,
 } from '@/graphql/generated';
 import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
@@ -37,6 +38,7 @@ import FormSectionHeader from '../../components/FormSectionHeader';
 import NameDescriptionInput from '../../components/NameDescriptionInput';
 import PolicyDropdown from '../../components/PolicyDropdown';
 import SubmitButton from '../../components/SubmitButton';
+import { defaultValuesForParameters } from '@/components/ActionParametersModal';
 
 import { userHasPermissions } from '../../../../routing/permissions';
 import useRouteQueryParams from '../../../../routing/useRouteQueryParams';
@@ -48,6 +50,9 @@ import {
   RuleFormConditionSet,
   RuleFormLeafCondition,
 } from '../types';
+import RuleActionParametersEditor, {
+  type ParameterizedActionOption,
+} from './RuleActionParametersEditor';
 import RuleFormCondition from './RuleFormCondition';
 import {
   reducer,
@@ -385,6 +390,22 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        parameters {
+          name
+          displayName
+          description
+          type
+          required
+          options {
+            value
+            label
+          }
+          min
+          max
+          maxLength
+          defaultValue
+        }
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -396,6 +417,7 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -407,6 +429,7 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -418,6 +441,7 @@ const RULE_FIELD_FRAGMENT = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -455,6 +479,21 @@ export const ACTION_FRAGMENT = gql`
       id
       name
       description
+      parameters {
+        name
+        displayName
+        description
+        type
+        required
+        options {
+          value
+          label
+        }
+        min
+        max
+        maxLength
+        defaultValue
+      }
       itemTypes {
         ... on ItemTypeBase {
           id
@@ -619,6 +658,38 @@ export default function RuleForm() {
     [contentRuleFormConfigQueryData],
   );
   const policies = contentRuleFormConfigQueryData?.myOrg?.policies;
+
+  // Only CustomActions carry a parameter spec; these drive the per-action
+  // parameter-value editor shown beneath the action selector.
+  const parameterizedActions = useMemo<ParameterizedActionOption[]>(
+    () =>
+      allActions.flatMap((action) =>
+        action.__typename === 'CustomAction' &&
+        (action.parameters?.length ?? 0) > 0
+          ? [
+              {
+                id: action.id,
+                name: action.name,
+                parameters: action.parameters ?? [],
+              },
+            ]
+          : [],
+      ),
+    [allActions],
+  );
+
+  // Seed configured values from the rule being edited (or duplicated).
+  const initialActionParameters = useMemo<
+    Record<string, Record<string, unknown>>
+  >(() => {
+    const out: Record<string, Record<string, unknown>> = {};
+    for (const action of rule?.actions ?? []) {
+      if ('configuredParameters' in action && action.configuredParameters) {
+        out[action.id] = action.configuredParameters as Record<string, unknown>;
+      }
+    }
+    return out;
+  }, [rule]);
 
   const {
     loading: matchingBanksQueryLoading,
@@ -903,6 +974,27 @@ export default function RuleForm() {
   ]);
   const isUserRule = state.ruleType === RuleType.USER;
 
+  // GraphQL input for selected parameterized actions, seeding spec defaults for
+  // any the author didn't edit so the server validates a complete payload.
+  const buildActionParametersInput = (
+    values: any,
+  ): GQLRuleActionParameterValuesInput[] => {
+    const selected: string[] = values.actions ?? [];
+    const configured: Record<
+      string,
+      Record<string, unknown>
+    > = values.actionParameters ?? {};
+    return parameterizedActions
+      .filter((action) => selected.includes(action.id))
+      .map((action) => ({
+        actionId: action.id,
+        parameters: (configured[action.id] ??
+          defaultValuesForParameters(
+            action.parameters,
+          )) as GQLRuleActionParameterValuesInput['parameters'],
+      }));
+  };
+
   const onCreateContentRule = async (values: any) => {
     dispatch({ type: RuleFormReducerActionType.DisableSubmitButton });
     createContentRule({
@@ -914,6 +1006,7 @@ export default function RuleForm() {
           contentTypeIds: values.itemTypes,
           conditionSet: serializeConditionSet(state.conditionSet),
           actionIds: values.actions,
+          actionParameters: buildActionParametersInput(values),
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
@@ -940,6 +1033,7 @@ export default function RuleForm() {
           contentTypeIds: values.itemTypes,
           conditionSet: serializeConditionSet(state.conditionSet),
           actionIds: values.actions,
+          actionParameters: buildActionParametersInput(values),
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
@@ -965,6 +1059,7 @@ export default function RuleForm() {
           status: values.status,
           conditionSet: serializeConditionSet(state.conditionSet),
           actionIds: values.actions,
+          actionParameters: buildActionParametersInput(values),
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
@@ -990,6 +1085,7 @@ export default function RuleForm() {
           status: values.status,
           conditionSet: serializeConditionSet(state.conditionSet),
           actionIds: values.actions,
+          actionParameters: buildActionParametersInput(values),
           policyIds: state.policyIds,
           tags: state.tags,
           maxDailyActions: state.maxDailyActions,
@@ -1456,6 +1552,23 @@ export default function RuleForm() {
               </Option>
             ))}
         </Select>
+      </Form.Item>
+      <Form.Item
+        noStyle
+        shouldUpdate={(prev, cur) => prev.actions !== cur.actions}
+      >
+        {() => (
+          <Form.Item
+            name="actionParameters"
+            noStyle
+            initialValue={initialActionParameters}
+          >
+            <RuleActionParametersEditor
+              actions={parameterizedActions}
+              selectedActionIds={form.getFieldValue('actions') ?? []}
+            />
+          </Form.Item>
+        )}
       </Form.Item>
     </div>
   );

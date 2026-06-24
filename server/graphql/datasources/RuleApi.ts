@@ -3,6 +3,7 @@
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
+import { type JsonObject } from 'type-fest';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
@@ -15,7 +16,9 @@ import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
+  parseStoredParameters,
   RuleType,
+  validateActionParameterValues,
   type Condition,
   type ConditionInput,
   type ConditionSet,
@@ -38,7 +41,7 @@ import {
   jsonStringify,
   tryJsonParse,
 } from '../../utils/encoding.js';
-import { makeNotFoundError } from '../../utils/errors.js';
+import { makeBadRequestError, makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
@@ -370,6 +373,46 @@ class RuleAPI {
     );
   }
 
+  // Validates configured parameter values against each action's spec and
+  // returns the `actionId -> values` map persistence expects. Throws (surfaced
+  // to the admin) on invalid values; ignores entries for unattached actions.
+  private async buildRuleActionParametersMap(
+    orgId: string,
+    actionIds: readonly string[],
+    actionParameters:
+      | readonly { actionId: string; parameters: unknown }[]
+      | null
+      | undefined,
+  ): Promise<ReadonlyMap<string, JsonObject> | undefined> {
+    if (actionIds.length === 0) {
+      return undefined;
+    }
+    const paramsByActionId = new Map(
+      (actionParameters ?? []).map((it) => [it.actionId, it.parameters]),
+    );
+    const actions = await this.moderationConfigService.getActions({
+      orgId,
+      ids: [...actionIds],
+    });
+    const out = new Map<string, JsonObject>();
+    for (const action of actions) {
+      const spec = parseStoredParameters(
+        action.actionType === 'CUSTOM_ACTION'
+          ? action.customMrtApiParams
+          : null,
+      );
+      if (spec.length === 0) {
+        continue;
+      }
+      const rawValues = paramsByActionId.get(action.id) ?? null;
+      const validated = validateActionParameterValues(spec, rawValues);
+      if (Object.keys(validated).length > 0) {
+        out.set(action.id, validated as JsonObject);
+      }
+    }
+    return out.size > 0 ? out : undefined;
+  }
+
   private async createRule(
     input:
       | (GQLCreateContentRuleInput & { ruleType: typeof RuleType.CONTENT })
@@ -383,6 +426,7 @@ class RuleAPI {
       status,
       conditionSet,
       actionIds,
+      actionParameters,
       policyIds,
       tags,
       ruleType,
@@ -390,6 +434,12 @@ class RuleAPI {
       expirationTime,
       parentId,
     } = input;
+
+    const actionParametersMap = await this.buildRuleActionParametersMap(
+      orgId,
+      actionIds,
+      actionParameters,
+    );
 
     const contentTypeIds: readonly string[] =
       input.ruleType === RuleType.CONTENT ? input.contentTypeIds : [];
@@ -421,6 +471,7 @@ class RuleAPI {
           ruleType,
           parentId,
           actionIds,
+          actionParameters: actionParametersMap,
           policyIds,
           contentTypeIds,
         });
@@ -475,6 +526,7 @@ class RuleAPI {
       status,
       conditionSet,
       actionIds,
+      actionParameters,
       policyIds,
       tags,
       ruleType,
@@ -527,6 +579,20 @@ class RuleAPI {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
 
+    // Parameters are persisted alongside the action attachments, so updating
+    // them without also setting actionIds would silently drop them.
+    if (actionParameters != null && actionIds == null) {
+      throw makeBadRequestError(
+        'actionParameters can only be updated when actionIds is also provided',
+        { shouldErrorSpan: true },
+      );
+    }
+    const actionParametersMap = await this.buildRuleActionParametersMap(
+      orgId,
+      actionIds ?? [],
+      actionParameters,
+    );
+
     // Before we actually send any updates (which will happen as soon as we call
     // setXXX to set the associations), we need to make sure that there are no
     // active backtests for this rule because, if there are, we should fail the
@@ -562,6 +628,7 @@ class RuleAPI {
             expirationTime: normalizeExpirationInput(expirationTime),
             parentId,
             actionIds: actionIds ?? undefined,
+            actionParameters: actionParametersMap,
             policyIds: policyIds ?? undefined,
             contentTypeIds: contentTypeIds ?? undefined,
           });

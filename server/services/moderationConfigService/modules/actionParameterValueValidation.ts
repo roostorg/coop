@@ -1,6 +1,10 @@
 import { makeBadRequestError } from '../../../utils/errors.js';
+import { logErrorJson } from '../../../utils/logging.js';
 import { assertUnreachable } from '../../../utils/misc.js';
-import { type ActionParameter } from './actionParametersValidation.js';
+import {
+  parseStoredParameters,
+  type ActionParameter,
+} from './actionParametersValidation.js';
 
 function makeInvalidParameterValueError(detail: string) {
   return makeBadRequestError('Invalid action parameter value', {
@@ -72,6 +76,41 @@ export function validateActionParameterValues(
     out[param.name] = coerceValueOrThrow(param, effective);
   }
   return out;
+}
+
+/**
+ * Resolve parameter values for an automated (moderator-less) path — proactive
+ * rules and user-strike thresholds — where values were configured up front.
+ *
+ * Unlike {@link validateActionParameterValues}, this never throws: a rule
+ * firing on incoming content can't surface an error to a human, and throwing
+ * would abort the item's whole action-publishing. On a validation failure it
+ * logs and falls back to the spec's `defaultValue`s (`{}` if those fail too).
+ * Returns `undefined` when the action declares no parameters.
+ */
+export function resolveConfiguredActionParameterValues(opts: {
+  customMrtApiParams: unknown;
+  rawValues: unknown;
+  actionId: string;
+}): Record<string, unknown> | undefined {
+  const spec = parseStoredParameters(opts.customMrtApiParams);
+  if (spec.length === 0) {
+    return undefined;
+  }
+  try {
+    return validateActionParameterValues(spec, opts.rawValues);
+  } catch (error) {
+    // eslint-disable-next-line no-restricted-syntax
+    logErrorJson({
+      message: `Configured action parameter values failed validation; falling back to defaults actionId=${opts.actionId}`,
+      error,
+    });
+    try {
+      return validateActionParameterValues(spec, null);
+    } catch {
+      return {};
+    }
+  }
 }
 
 // Treats null/undefined as missing for any type. Additionally treats

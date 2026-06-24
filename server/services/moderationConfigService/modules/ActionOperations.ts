@@ -418,22 +418,27 @@ export default class ActionOperations {
     return results.map((it) => this.#dbResultToAction(it));
   }
 
+  // Returns each action attached to a rule paired with the parameter values
+  // configured for it. Powers proactive rule execution and pre-fills the rule editor.
   async getActionsForRuleId(opts: {
     orgId: string;
     ruleId: string;
     readFromReplica?: boolean;
-  }) {
+  }): Promise<readonly { action: Action; parameters: JsonObject }[]> {
     const { orgId, ruleId, readFromReplica } = opts;
-    const pgQuery = this.#getPgQuery(readFromReplica);
-    const results = (await pgQuery
+    const results = (await this.#getPgQuery(readFromReplica)
       .selectFrom('public.rules_and_actions as raa')
       .innerJoin('public.actions as a', 'a.id', 'raa.action_id')
-      .select(actionJoinDbSelection)
+      .select([...actionJoinDbSelection, 'raa.action_parameters'])
       .where('raa.rule_id', '=', ruleId)
       .where('a.org_id', '=', orgId)
-      .execute()) as ActionDbResult[];
-
-    return results.map((it) => this.#dbResultToAction(it));
+      .execute()) as (ActionDbResult & {
+      action_parameters: JsonObject | null;
+    })[];
+    return results.map((it) => ({
+      action: this.#dbResultToAction(it),
+      parameters: it.action_parameters ?? {},
+    }));
   }
 
   private static customMrtApiParamsFromDb(
