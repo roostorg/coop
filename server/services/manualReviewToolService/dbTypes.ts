@@ -1,11 +1,11 @@
 import { type ColumnType, type GeneratedAlways } from 'kysely';
 
-import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import {
   type FilterableWarehouseDate,
   type WarehouseDate,
 } from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
+import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
   type ConditionSet,
@@ -29,6 +29,15 @@ import {
   type ManualReviewDecisionType,
 } from './modules/JobDecisioning.js';
 import { type RoutingRuleStatus } from './modules/JobRouting.js';
+
+// What to do with a user's other pending reports when a trigger action is
+// taken on one of their jobs (issue #650).
+export type ClearReportsDisposition =
+  | 'AUTOMATIC_CLOSE'
+  | 'IGNORE'
+  | 'SAME_ACTION';
+
+export type ClearReportsScope = 'CURRENT_QUEUE' | 'ALL_QUEUES';
 
 export type RoutingRuleExecutionsRow = {
   RULE: string; // rule name
@@ -75,6 +84,14 @@ export type ManualReviewToolServicePg = {
     is_default_queue: boolean;
     is_appeals_queue: boolean;
     auto_close_jobs: boolean;
+    // Null disables "clear other reports for this user" for the queue.
+    clear_reports_disposition: ClearReportsDisposition | null;
+    // Has a DB default, so it's optional on insert.
+    clear_reports_scope: ColumnType<
+      ClearReportsScope,
+      ClearReportsScope | undefined,
+      ClearReportsScope
+    >;
   };
   'manual_review_tool.manual_review_decisions': {
     id: string;
@@ -203,9 +220,10 @@ export type ManualReviewToolServicePg = {
   'manual_review_tool.manual_review_tool_settings': {
     org_id: string;
     requires_policy_for_decisions: boolean;
-    mrt_requires_decision_reason: boolean;
+    mrt_requires_decision_reason_on_action: boolean;
+    mrt_requires_decision_reason_on_ignore: boolean;
     hide_skip_button_for_non_admins: boolean;
-    ignore_callback_url?: string;
+    ignore_callback_url: string | null;
     preview_jobs_view_enabled: boolean;
   };
   'manual_review_tool.job_comments': {
@@ -224,6 +242,11 @@ export type ManualReviewToolServicePg = {
     updatedAt: GeneratedAlways<Date>;
   };
   'manual_review_tool.queues_and_hidden_actions': {
+    queue_id: string;
+    action_id: string;
+    org_id: string;
+  };
+  'manual_review_tool.queues_and_clear_reports_trigger_actions': {
     queue_id: string;
     action_id: string;
     org_id: string;

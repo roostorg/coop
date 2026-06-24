@@ -6,8 +6,7 @@ import createActions from '../../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../../test/fixtureHelpers/createUser.js';
-import { makeMockedServer } from '../../../../test/setupMockedServer.js';
-import { makeTestWithFixture } from '../../../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../../../test/harness/transactionalTest.js';
 import { toCorrelationId } from '../../../../utils/correlationIds.js';
 import SafeTracer from '../../../../utils/SafeTracer.js';
 import {
@@ -17,9 +16,7 @@ import {
 } from '../../../itemProcessingService/index.js';
 
 describe('AggregationSignal', () => {
-  const testWithFixture = makeTestWithFixture(async () => {
-    const { server, deps, shutdown } = await makeMockedServer();
-
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const {
       ModerationConfigService,
       AggregationsService,
@@ -29,22 +26,21 @@ describe('AggregationSignal', () => {
       KyselyPg,
     } = deps;
 
-    const { org, cleanup: orgCleanup } = await createOrg(
+    const { org } = await createOrg(
       { KyselyPg, ModerationConfigService, ApiKeyService },
       uid(),
     );
 
-    const { user, cleanup: userCleanup } = await createUser(KyselyPg, org.id);
+    const { user } = await createUser(KyselyPg, org.id);
 
-    const { itemTypes, cleanup: itemTypesCleanup } =
-      await createContentItemTypes({
-        moderationConfigService: ModerationConfigService,
-        orgId: org.id,
-        includeCreator: true,
-        extra: {},
-      });
+    const { itemTypes } = await createContentItemTypes({
+      moderationConfigService: ModerationConfigService,
+      orgId: org.id,
+      includeCreator: true,
+      extra: {},
+    });
 
-    const { actions, cleanup: actionsCleanup } = await createActions({
+    const { actions } = await createActions({
       actionAPI: ActionAPIDataSource,
       itemTypeIds: [itemTypes[0].id],
       orgId: org.id,
@@ -133,20 +129,10 @@ describe('AggregationSignal', () => {
     );
 
     return {
-      server,
-      deps,
       rule,
       itemType: itemTypes[0],
       org,
       dateProvider,
-      async cleanup() {
-        await RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
-        await actionsCleanup();
-        await itemTypesCleanup();
-        await userCleanup();
-        await orgCleanup();
-        await shutdown();
-      },
     };
   });
 

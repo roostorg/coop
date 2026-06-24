@@ -2,11 +2,10 @@
 /* eslint-disable no-console */
 /**
  * Script to get invite token for a user
- * 
+ *
  * Usage:
  *   npm run get-invite -- --email "user@example.com"
  */
-
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -28,8 +27,9 @@ async function getInviteToken() {
   const container = bottle.container;
 
   try {
-    const result = await container.KyselyPg
-      .selectFrom('public.invite_user_tokens')
+    const result = await container.KyselyPg.selectFrom(
+      'public.invite_user_tokens',
+    )
       .selectAll()
       .where('email', '=', argv.email)
       .orderBy('created_at', 'desc')
@@ -65,13 +65,13 @@ async function getInviteToken() {
   } catch (error: unknown) {
     console.error('\n❌ Error retrieving invite token:\n');
     console.error(error);
-    
+
     try {
       await container.closeSharedResourcesForShutdown();
     } catch (shutdownError) {
       console.error('Error during shutdown:', shutdownError);
     }
-    
+
     process.exit(1);
   }
 }
@@ -80,4 +80,3 @@ getInviteToken().catch((error) => {
   console.error('Unhandled error:', error);
   process.exit(1);
 });
-

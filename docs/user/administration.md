@@ -1,6 +1,48 @@
-# Administration
+# Administration & Settings
 
-Admins manage organization-wide configuration including items, actions, policies, user access, authentication, and integrations settings. All of these settings are accessible under **Settings** in Coop.
+Admins manage the organization's configuration including settings as well as specific configuration for [items](#item-types), [actions](#actions), [policies](#policies), [user access](#user-management), and integrations from the **Settings** menu.
+
+## Settings
+
+Configure the organization profile and org-wide behavior including single sign-on, appeals, review console, wellness, and more under **Settings**. Many of the toggleable features are off by default, so opt in to the ones applicable to your platform and team.
+
+### Organization
+
+Identity and contact information for your Coop organization.
+
+![Settings dashboard showing the Organization tab with fields for organization name, email, website URL, and on-call alert email](../images/settings-org.png)
+
+The On-Call Alert Email requires an email service to be integrated with your Coop deployment. Coop supports email service integration but does not ship with one configured.
+
+### Single Sign-on
+
+Enable SAML-based SSO so users authenticate through your identity provider instead of email and password. Coop supports any SAML 2.0 identity provider. See [single sign-on](../development/deployment.md#single-sign-on) in the deployment guide for an example of setup using Okta.
+
+![SSO tab in Settings, showing the SAML/SSO enable toggle and fields for SSO URL and SAML Certificate](../images/settings-sso.png)
+
+### Appeals
+
+Enable user user appeals of decisions made in Coop, and configure your platform's appeals callback URL, headers, and body.
+
+![Appeals tab in Settings showing toggle to enable appeals, callback URL, headers, and body fields](../images/settings-appeals.png)
+
+### Review Console
+
+Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, queue management behavior, and webhooks.
+
+![Review Console tab in Settings with toggles for Require Policy, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
+
+### Wellness
+
+Reviewer wellness controls for media displayed in the Review Console including blur, grayscale, and mute. These help reduce exposure to harmful media during review.
+
+![Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle](../images/settings-wellness.png)
+
+### Other
+
+Settings that don't fit cleanly into the other tabs including configuration for the [Partial Items](../api/partial-items.md) endpoint and the ability for job decisions to reference multiple policies.
+
+![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers, plus toggles for Reporting Rules, Multiple Policies Per Action, and a User Strike TTL number input](../images/settings-other.png)
 
 ## Item Types
 
@@ -32,68 +74,35 @@ Policies added in Coop's UI are visible to reviewers directly in the [Job view](
 
 Coop uses role-based access controls to ensure the right people can access the right data.
 
-![User management page in Coop showing different users with different emails and roles assigned to them. There is an Approval Status column and a column showing when they were created](../images/manage-users.png)
+![User management page showing different users with different emails, roles assigned, approval status, and date created](../images/manage-users.png)
 
-You can invite users from **Settings → Users**, either copying the invite link to share directly or configuring an email service to send it automatically.
+You can invite users from **Settings** → **Users**, either copying the invite link to share directly or configuring an email service to send it automatically.
 
-![Coop's user invitation flow](../images/invite.png)
+![User invitation flow](../images/invite.png)
 
 ### Roles
 
-Coop comes with seven predefined roles:
+Coop ships with seven default roles that cover most team structures out of the box:
 
-| User Role              | Access Review Console | View all Queues | Create, Delete and Edit Queues | Create, Delete and Edit Rules | Access NCMEC data | Access Insights |
-| :--------------------- | :-------------------- | :-------------- | :----------------------------- | :---------------------------- | :---------------- | :-------------- |
-| Admin                  | Yes                   | Yes             | Yes                            | Yes                           | Yes               | Yes             |
-| Rules Manager          | No                    | No              | No                             | Yes                           | No                | Yes             |
-| Moderator Manager      | Yes                   | Yes             | Yes                            | No                            | Yes               | No              |
-| Child Safety Moderator | Yes                   | No              | No                             | No                            | Yes               | No              |
-| Moderator              | Yes                   | No              | No                             | No                            | No                | No              |
-| Analyst                | No                    | No              | No                             | No                            | No                | Yes             |
-| External Moderator     | Yes                   | No              | No                             | No                            | No                | No              |
+- **Admin**: manages the entire organization. They have full control over all resources and settings within Coop.
 
-**Admin**: manage the entire organization. They have full control over all resources and settings within Coop.
+- **Rules Manager**: can create, edit, and deploy Live Rules, run retroaction and backtests, view rule insights, manage policies, use the Investigation tool, and bulk-action content. They cannot manage users, queues, or other organization-level settings.
 
-**Rules Manager**: can create, edit, and deploy Live Rules, run retroaction and backtests, view rule insights, manage policies, use the Investigation tool, and bulk-action content. They cannot manage users, queues, or other organization-level settings.
+- **Moderator Manager**: can view and edit all queues within the Review Console, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.
 
-**Moderator Manager**: can view and edit all queues within the Review Console, manage moderator permissions, use the Investigation tool, and bulk-action content. They can also view child safety data.
+- **Child Safety Moderator**: the same permissions as Moderators, but can also review Child Safety jobs and see previous Child Safety decisions.
 
-**Child Safety Moderator**: the same permissions as Moderators, but can also review Child Safety jobs and see previous Child Safety decisions.
+- **Moderator**: can access the Review Console, but can only review jobs from queues they've been given permission to see. They cannot see any Child Safety-related jobs or decisions.
 
-**Moderator**: can access the Review Console, but can only review jobs from queues they've been given permission to see. They cannot see any Child Safety-related jobs or decisions.
+- **Analyst**: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Review Console.
 
-**Analyst**: can modify and test Draft and Background Rules, run backtests, and view rule insights and the Investigation tool. They cannot create or edit Live Rules, run Retroaction, or access the Review Console.
+- **External Moderator**: can only review jobs in the Review Console. They cannot see any decisions or use any other tooling.
 
-**External Moderator**: can only review jobs in the Review Console. They cannot see any decisions or use any other tooling.
+Admins can customize any role under **Settings** → **Users** → **Roles**. Open the menu on any role card to edit its display name, description, and permissions; individual permissions are grouped by area (organization management, rules, manual review, and investigation) and can be toggled on or off. **View Permissions** opens a matrix comparing all roles at a glance.
 
-## SSO
+![Roles Management tab showing role cards for each of the seven default roles, with name, description, user count, and permission count](../images/role-management.png)
 
-Coop supports single sign-on via SAML, e.g. with Okta.
-
-### Example: Okta
-
-Configuring Okta SAML for Coop requires:
-
-- Admin mode in Okta
-- Group names that match exactly between Okta and SAML
-- Admin permissions in Coop
-- Ability to create a custom SAML application
-
-To set it up:
-
-1. Create a [custom SAML application](https://help.okta.com/oag/en-us/content/topics/access-gateway/add-app-saml-pass-thru-add-okta.htm) in Okta with the following settings:
-
-   | Setting                                         | Value                                                                                                                                           |
-   | :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
-   | Single sign-on URL                              | Your organization's callback URL (e.g. `https://your-coop-instance.com/login/saml/12345/callback`). Find this in Coop under **Settings → SSO**. |
-   | Audience URI (SP Entity ID)                     | Your Coop instance base URL (e.g. `https://your-coop-instance.com`).                                                                            |
-   | `email` attribute (in **Attribute Statements**) | `email`. This depends on your identity provider's attribute mappings (e.g. Google SSO may use "Primary Email").                                 |
-
-2. In the **Feedback** tab, check **I'm a software vendor. I'd like to integrate my app with Okta**.
-3. In your app's settings, go to the **Sign On** tab. Under **SAML Signing Certificates → SHA-2**, click **Actions → View IdP metadata**.
-4. Copy the contents of the XML file. In Coop, go to **Settings → SSO** and paste the XML into the **Identity Provider Metadata** field.
-5. On the same page, enter `email` in the **Attributes** section.
-6. In your Okta app under **Assignments**, assign users or groups to your app.
+Changes apply immediately to every user assigned that role. Access to the role editor requires the **Manage Roles** permission, which Admins have by default.
 
 ## API Keys
 
@@ -108,4 +117,4 @@ X-API-KEY: <<apiKey>>
 Content-Type: application/json
 ```
 
-To verify that incoming requests to your Action endpoints were sent by Coop, use the webhook signature verification key shown in **Settings → API Keys**. See [API Keys and Authentication](../development/api-auth.md) in the Development Guide for implementation details.
+To verify that incoming requests to your Action endpoints were sent by Coop, use the webhook signature verification key shown in **Settings** → **API Keys**. See [API Keys and Authentication](../development/api-auth.md) in the Development Guide for implementation details.

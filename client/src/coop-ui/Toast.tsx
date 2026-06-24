@@ -16,11 +16,13 @@ const Toast = ({ ...props }: ToastProps) => {
   return (
     <Toaster
       theme={theme as ToastProps['theme']}
+      position="bottom-right"
       className="toaster"
       toastOptions={{
         unstyled: true,
         classNames: {
-          toast: 'p-4 border rounded-lg shadow-sm flex items-center space-x-3',
+          toast:
+            'w-[var(--width)] p-4 border rounded-lg shadow-sm flex items-center space-x-3',
           default: 'bg-white',
           icon: 'w-5 h-5',
           description: 'text-sm',

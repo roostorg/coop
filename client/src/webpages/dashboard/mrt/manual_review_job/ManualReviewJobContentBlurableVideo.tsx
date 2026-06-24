@@ -72,8 +72,8 @@ export default function ManualReviewJobContentBlurableVideo(props: {
             ? blurStrength
               ? BLUR_LEVELS[blurStrength]
               : !playing
-              ? 'blur-sm'
-              : 'blur-0'
+                ? 'blur-sm'
+                : 'blur-0'
             : 'blur-0'
         }`}
       >

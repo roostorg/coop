@@ -248,7 +248,7 @@ export function multilevelListFromFlatList<
 
   // Initialize map with all nodes
   nodeList.forEach((node) => {
-    map.set(node.id, { ...node } as T & { children?: T[] });
+    map.set(node.id, { ...node });
   });
 
   // Build the tree

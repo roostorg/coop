@@ -101,9 +101,9 @@ export default function submitAppeal({
 
       const hasAdditionalItemsOnThreadSubmission = Boolean(
         additionalItemSubmissions &&
-          additionalItemSubmissions.length > 0 &&
-          reportedItemSubmission.error === undefined &&
-          reportedItemSubmission.itemSubmission.itemType.kind === 'THREAD',
+        additionalItemSubmissions.length > 0 &&
+        reportedItemSubmission.error === undefined &&
+        reportedItemSubmission.itemSubmission.itemType.kind === 'THREAD',
       );
 
       const isAllValidContentItems = (

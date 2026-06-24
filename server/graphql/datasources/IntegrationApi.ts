@@ -1,18 +1,19 @@
-
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+
 import '../../services/signalAuthService/index.js';
+
+import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
-import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
+import { type GQLSetIntegrationConfigInput } from '../generated.js';
 import type {
   IntegrationManifestEntry,
   ModelCard,
 } from './integrationManifests.js';
-import { type GQLSetIntegrationConfigInput } from '../generated.js';
 
 export type TIntegrationConfigWithMetadata = Readonly<{
   name: string;
@@ -64,8 +65,7 @@ function mergeManifest(
 class IntegrationAPI {
   constructor(
     private readonly signalAuthService: Dependencies['SignalAuthService'],
-  ) {
-  }
+  ) {}
 
   async setConfig(
     params: GQLSetIntegrationConfigInput,

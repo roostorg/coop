@@ -49,7 +49,9 @@ gql`
     }
   }
 
-  mutation SetPluginIntegrationConfig($input: SetPluginIntegrationConfigInput!) {
+  mutation SetPluginIntegrationConfig(
+    $input: SetPluginIntegrationConfigInput!
+  ) {
     setPluginIntegrationConfig(input: $input) {
       ... on SetIntegrationConfigSuccessResponse {
         config {
@@ -136,9 +138,7 @@ gql`
  * This function returns an empty API credential config (type is
  * IntegrationConfigApiCredential), so the UI can display the proper empty inputs.
  */
-export function getNewEmptyApiKey(
-  name: string,
-): GQLIntegrationApiCredential {
+export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
   switch (name) {
     case 'GOOGLE_CONTENT_SAFETY_API': {
       return {
@@ -258,8 +258,7 @@ export default function IntegrationConfigForm() {
     response?.__typename === 'IntegrationConfigSuccessResult'
       ? response.config
       : undefined;
-  const formattedName =
-    apiConfig?.title ?? integrationName.replace(/_/g, ' ');
+  const formattedName = apiConfig?.title ?? integrationName.replace(/_/g, ' ');
   const logo = apiConfig
     ? (apiConfig.logoUrl ??
       INTEGRATION_LOGO_FALLBACKS[apiConfig.name]?.logo ??
@@ -290,7 +289,7 @@ export default function IntegrationConfigForm() {
       'googleContentSafetyApi' in mappedApiCredential &&
       !(
         mappedApiCredential[
-        'googleContentSafetyApi'
+          'googleContentSafetyApi'
         ] as GQLGoogleContentSafetyApiIntegrationApiCredential
       ).apiKey
     ) {
@@ -307,11 +306,8 @@ export default function IntegrationConfigForm() {
 
     if (
       'zentropi' in mappedApiCredential &&
-      !(
-        mappedApiCredential[
-          'zentropi'
-        ] as GQLZentropiIntegrationApiCredential
-      ).apiKey
+      !(mappedApiCredential['zentropi'] as GQLZentropiIntegrationApiCredential)
+        .apiKey
     ) {
       return 'Please input the Zentropi API key';
     }
@@ -334,7 +330,7 @@ export default function IntegrationConfigForm() {
         if (isPluginIntegration) {
           const cred =
             apiCredential.__typename === 'PluginIntegrationApiCredential'
-              ? apiCredential.credential ?? {}
+              ? (apiCredential.credential ?? {})
               : {};
           await setPluginConfig({
             variables: {
@@ -361,15 +357,15 @@ export default function IntegrationConfigForm() {
   const [modalTitle, modalBody, modalButtonText] =
     mutationError == null
       ? [
-        `${formattedName} Config Saved`,
-        `Your ${formattedName} Config was successfully saved!`,
-        'Done',
-      ]
+          `${formattedName} Config Saved`,
+          `Your ${formattedName} Config was successfully saved!`,
+          'Done',
+        ]
       : [
-        `Error Saving ${formattedName} Config`,
-        `We encountered an error trying to save your ${formattedName} Config. Please try again.`,
-        'OK',
-      ];
+          `Error Saving ${formattedName} Config`,
+          `We encountered an error trying to save your ${formattedName} Config. Please try again.`,
+          'OK',
+        ];
 
   const onHideModal = () => {
     hideModal();
@@ -403,11 +399,11 @@ export default function IntegrationConfigForm() {
       case 'GOOGLE_CONTENT_SAFETY_API':
         return (
           <>
-            The Content Safety API is an AI classifier which issues a Child 
-            Safety prioritization recommendation on content sent to it. Content Safety API users
-            must conduct their own manual review in order to determine whether to take
-            action on the content, and comply with applicable local reporting
-            laws. Apply for API keys{' '}
+            The Content Safety API is an AI classifier which issues a Child
+            Safety prioritization recommendation on content sent to it. Content
+            Safety API users must conduct their own manual review in order to
+            determine whether to take action on the content, and comply with
+            applicable local reporting laws. Apply for API keys{' '}
             <a
               href="https://protectingchildren.google/tools-for-partners/"
               target="_blank"
@@ -415,11 +411,11 @@ export default function IntegrationConfigForm() {
               className="text-blue-600 hover:underline"
             >
               here
-            </a>
-            {' '}
+            </a>{' '}
             and mention in your application that you are using the Coop
             moderation tool. Upon reviewing your application, Google will be
-            back in touch shortly to take the application forward if you qualify.
+            back in touch shortly to take the application forward if you
+            qualify.
           </>
         );
       case 'OPEN_AI':
@@ -441,11 +437,7 @@ export default function IntegrationConfigForm() {
       <div className="flex flex-col justify-between w-4/5 mb-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
-            <img
-              src={logo}
-              alt=""
-              className="w-full h-full object-contain"
-            />
+            <img src={logo} alt="" className="w-full h-full object-contain" />
           </div>
           <div className="text-2xl font-bold">{`${formattedName} Integration`}</div>
         </div>
@@ -473,7 +465,9 @@ export default function IntegrationConfigForm() {
                 <span>Learn more about how to read model cards</span>
               </a>
             )}
-            <div className="font-semibold text-zinc-800 mb-2">Configuration</div>
+            <div className="font-semibold text-zinc-800 mb-2">
+              Configuration
+            </div>
             <div className="text-sm text-zinc-600 mb-3">
               Configure your integration settings below.
             </div>

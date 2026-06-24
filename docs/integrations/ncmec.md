@@ -32,7 +32,7 @@ See the [Hasher-Matcher-Actioner (HMA) integration](hma.md) for details.
 
 Configure NCMEC reporting under **Settings** → **NCMEC Settings**.
 
-![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](../images/ncmec-settings.png)
+![Setting up NCMEC reporting on Coop: add the required information for the reports submitted to NCMEC for content violating your company policies](../images/settings-ncmec.png)
 
 | Setting                                  | Description                                                                                                                                                                                                                                         |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

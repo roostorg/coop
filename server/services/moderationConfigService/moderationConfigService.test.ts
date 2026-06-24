@@ -1396,7 +1396,7 @@ describe('ModerationConfigService', () => {
             ruleId: rule.id,
             readFromReplica: false,
           });
-          expect(result.map((it) => it.id)).toEqual([action.id]);
+          expect(result.map((it) => it.action.id)).toEqual([action.id]);
         },
       );
 

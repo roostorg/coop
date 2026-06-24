@@ -71,6 +71,11 @@ export type GQLAction =
 
 export type GQLActionBase = {
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  /**
+   * Configured parameter values for this action in the context of a rule or
+   * strike threshold. Null when resolved outside of a rule context.
+   */
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -592,6 +597,8 @@ export type GQLContentManualReviewJobPayload = {
 
 export type GQLContentRule = GQLRule & {
   readonly __typename: 'ContentRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -740,6 +747,9 @@ export type GQLCreateContentItemTypeInput = {
 
 export type GQLCreateContentRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly contentTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -776,6 +786,11 @@ export type GQLCreateManualReviewJobCommentInput = {
 
 export type GQLCreateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
@@ -842,6 +857,9 @@ export type GQLCreateUserItemTypeInput = {
 
 export type GQLCreateUserRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly expirationTime?: InputMaybe<Scalars['DateTime']['input']>;
@@ -863,6 +881,7 @@ export type GQLCustomAction = GQLActionBase & {
   readonly callbackUrl: Scalars['String']['output'];
   readonly callbackUrlBody?: Maybe<Scalars['JSONObject']['output']>;
   readonly callbackUrlHeaders?: Maybe<Scalars['JSONObject']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   /**
    * Deprecated alias for `parameters` retained for back-compat with the
    * initial MRT-only parameter implementation. New consumers should read
@@ -1099,6 +1118,7 @@ export type GQLDisabledInfoInput = {
 export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
   readonly __typename: 'EnqueueAuthorToMrtAction';
   readonly applyUserStrikes: Scalars['Boolean']['output'];
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1111,6 +1131,7 @@ export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
 export type GQLEnqueueToMrtAction = GQLActionBase & {
   readonly __typename: 'EnqueueToMrtAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1123,6 +1144,7 @@ export type GQLEnqueueToMrtAction = GQLActionBase & {
 export type GQLEnqueueToNcmecAction = GQLActionBase & {
   readonly __typename: 'EnqueueToNcmecAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1467,6 +1489,27 @@ export type GQLIntegrationNoInputCredentialsError = GQLError & {
   readonly status: Scalars['Int']['output'];
   readonly title: Scalars['String']['output'];
   readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+export type GQLInvalidateReportsFromReporterInput = {
+  /**
+   * Scopes the sweep to a single MRT job. When omitted, every pending job
+   * in the caller's org is scanned.
+   */
+  readonly jobId?: InputMaybe<Scalars['ID']['input']>;
+  readonly reason?: InputMaybe<Scalars['String']['input']>;
+  readonly reporter: GQLReporterIdInput;
+};
+
+export type GQLInvalidateReportsFromReporterSuccessResponse = {
+  readonly __typename: 'InvalidateReportsFromReporterSuccessResponse';
+  readonly jobsDeleted: Scalars['Int']['output'];
+  readonly jobsScanned: Scalars['Int']['output'];
+  readonly jobsScrubbed: Scalars['Int']['output'];
+  readonly queuesScanned: Scalars['Int']['output'];
+  readonly reportsRemoved: Scalars['Int']['output'];
+  /** True when a queue exceeded the per-queue scan cap, so the sweep was partial. */
+  readonly truncated: Scalars['Boolean']['output'];
 };
 
 export type GQLInviteUserInput = {
@@ -2180,6 +2223,9 @@ export type GQLManualReviewJobWithDecisions = {
 export type GQLManualReviewQueue = {
   readonly __typename: 'ManualReviewQueue';
   readonly autoCloseJobs: Scalars['Boolean']['output'];
+  readonly clearReportsDisposition?: Maybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope: GQLMrtClearReportsScope;
+  readonly clearReportsTriggerActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly explicitlyAssignedReviewers: ReadonlyArray<GQLUser>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['output']>;
@@ -2247,6 +2293,16 @@ export const GQLMetricsTimeDivisionOptions = {
 
 export type GQLMetricsTimeDivisionOptions =
   (typeof GQLMetricsTimeDivisionOptions)[keyof typeof GQLMetricsTimeDivisionOptions];
+export type GQLMissingRequiredDecisionReasonError = GQLError & {
+  readonly __typename: 'MissingRequiredDecisionReasonError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLMissingRequiredPolicyForDecisionError = GQLError & {
   readonly __typename: 'MissingRequiredPolicyForDecisionError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -2291,6 +2347,21 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
 };
 
+export const GQLMrtClearReportsDisposition = {
+  AutomaticClose: 'AUTOMATIC_CLOSE',
+  Ignore: 'IGNORE',
+  SameAction: 'SAME_ACTION',
+} as const;
+
+export type GQLMrtClearReportsDisposition =
+  (typeof GQLMrtClearReportsDisposition)[keyof typeof GQLMrtClearReportsDisposition];
+export const GQLMrtClearReportsScope = {
+  AllQueues: 'ALL_QUEUES',
+  CurrentQueue: 'CURRENT_QUEUE',
+} as const;
+
+export type GQLMrtClearReportsScope =
+  (typeof GQLMrtClearReportsScope)[keyof typeof GQLMrtClearReportsScope];
 export type GQLMrtJobEnqueueSourceInfo = {
   readonly __typename: 'MrtJobEnqueueSourceInfo';
   readonly kind: GQLJobCreationSourceOptions;
@@ -2437,6 +2508,14 @@ export type GQLMutation = {
   readonly deleteUser?: Maybe<Scalars['Boolean']['output']>;
   readonly dequeueManualReviewJob?: Maybe<GQLDequeueManualReviewJobResponse>;
   readonly generatePasswordResetToken?: Maybe<Scalars['String']['output']>;
+  /**
+   * Strips every entry sent by the given reporter from the report history of
+   * every pending MRT job in the caller's org. If a job's history becomes
+   * empty and it was originally enqueued from a user report, the job itself
+   * is removed. Intentionally non-persistent: future reports from the same
+   * reporter are NOT blocked. See issue #404.
+   */
+  readonly invalidateReportsFromReporter: GQLInvalidateReportsFromReporterSuccessResponse;
   readonly inviteUser?: Maybe<Scalars['String']['output']>;
   readonly logSkip: Scalars['Boolean']['output'];
   readonly login: GQLLoginResponse;
@@ -2469,21 +2548,32 @@ export type GQLMutation = {
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
+  readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
+  readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
+  readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
+  readonly updateHideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
+  readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
   readonly updateManualReviewQueue: GQLUpdateManualReviewQueueQueueResponse;
   readonly updateNcmecOrgSettings: GQLUpdateNcmecOrgSettingsResponse;
   readonly updateOrgInfo: GQLUpdateOrgInfoSuccessResponse;
+  readonly updatePartialItemsSettings: Scalars['Boolean']['output'];
   readonly updatePolicy: GQLUpdatePolicyResponse;
+  readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
+  readonly updateRequiresDecisionReason: Scalars['Boolean']['output'];
+  readonly updateRequiresDecisionReasonOnIgnore: Scalars['Boolean']['output'];
+  readonly updateRequiresPolicyForDecisions: Scalars['Boolean']['output'];
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
   readonly updateRoutingRule: GQLUpdateRoutingRuleResponse;
   readonly updateSSOCredentials: Scalars['Boolean']['output'];
+  readonly updateSamlEnabled: Scalars['Boolean']['output'];
   readonly updateTextBank: GQLMutateBankResponse;
   readonly updateThreadItemType: GQLMutateThreadItemTypeResponse;
   readonly updateUserItemType: GQLMutateUserItemTypeResponse;
@@ -2639,6 +2729,10 @@ export type GQLMutationGeneratePasswordResetTokenArgs = {
   userId: Scalars['ID']['input'];
 };
 
+export type GQLMutationInvalidateReportsFromReporterArgs = {
+  input: GQLInvalidateReportsFromReporterInput;
+};
+
 export type GQLMutationInviteUserArgs = {
   input: GQLInviteUserInput;
 };
@@ -2740,6 +2834,10 @@ export type GQLMutationUpdateActionArgs = {
   input: GQLUpdateActionInput;
 };
 
+export type GQLMutationUpdateAllowMultiplePoliciesPerActionArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
 export type GQLMutationUpdateAppealSettingsArgs = {
   input: GQLAppealSettingsInput;
 };
@@ -2757,8 +2855,24 @@ export type GQLMutationUpdateExchangeCredentialsArgs = {
   credentialsJson: Scalars['String']['input'];
 };
 
+export type GQLMutationUpdateHasAppealsEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateHasReportingRulesEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
 export type GQLMutationUpdateHashBankArgs = {
   input: GQLUpdateHashBankInput;
+};
+
+export type GQLMutationUpdateHideSkipButtonForNonAdminsArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateIgnoreCallbackUrlArgs = {
+  url?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLMutationUpdateLocationBankArgs = {
@@ -2777,12 +2891,32 @@ export type GQLMutationUpdateOrgInfoArgs = {
   input: GQLUpdateOrgInfoInput;
 };
 
+export type GQLMutationUpdatePartialItemsSettingsArgs = {
+  input: GQLUpdatePartialItemsSettingsInput;
+};
+
 export type GQLMutationUpdatePolicyArgs = {
   input: GQLUpdatePolicyInput;
 };
 
+export type GQLMutationUpdatePreviewJobsViewEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
 export type GQLMutationUpdateReportingRuleArgs = {
   input: GQLUpdateReportingRuleInput;
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresPolicyForDecisionsArgs = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type GQLMutationUpdateRoleArgs = {
@@ -2799,6 +2933,10 @@ export type GQLMutationUpdateRoutingRuleArgs = {
 
 export type GQLMutationUpdateSsoCredentialsArgs = {
   input: GQLUpdateSsoCredentialsInput;
+};
+
+export type GQLMutationUpdateSamlEnabledArgs = {
+  enabled: Scalars['Boolean']['input'];
 };
 
 export type GQLMutationUpdateTextBankArgs = {
@@ -2967,6 +3105,19 @@ export type GQLNcmecMediaInput = {
   readonly url: Scalars['String']['input'];
 };
 
+/**
+ * How much media a reviewer must classify before an NCMEC report can be sent.
+ * ALL requires every piece of media on the account to be reviewed (the original
+ * behaviour); MINIMUM only requires `minMediaToReview` items, so reviewers
+ * don't have to classify hundreds of items to submit a report.
+ */
+export const GQLNcmecMediaReviewRequirement = {
+  All: 'ALL',
+  Minimum: 'MINIMUM',
+} as const;
+
+export type GQLNcmecMediaReviewRequirement =
+  (typeof GQLNcmecMediaReviewRequirement)[keyof typeof GQLNcmecMediaReviewRequirement];
 export type GQLNcmecOrgSettings = {
   readonly __typename: 'NcmecOrgSettings';
   readonly companyTemplate?: Maybe<Scalars['String']['output']>;
@@ -2978,6 +3129,8 @@ export type GQLNcmecOrgSettings = {
   readonly defaultInternetDetailType?: Maybe<GQLNcmecInternetDetailType>;
   readonly defaultNcmecQueueId?: Maybe<Scalars['String']['output']>;
   readonly legalUrl?: Maybe<Scalars['String']['output']>;
+  readonly mediaReviewRequirement?: Maybe<GQLNcmecMediaReviewRequirement>;
+  readonly minMediaToReview?: Maybe<Scalars['Int']['output']>;
   readonly moreInfoUrl?: Maybe<Scalars['String']['output']>;
   readonly ncmecAdditionalInfoEndpoint?: Maybe<Scalars['String']['output']>;
   readonly ncmecPreservationEndpoint?: Maybe<Scalars['String']['output']>;
@@ -2996,6 +3149,8 @@ export type GQLNcmecOrgSettingsInput = {
   readonly defaultInternetDetailType?: InputMaybe<GQLNcmecInternetDetailType>;
   readonly defaultNcmecQueueId?: InputMaybe<Scalars['String']['input']>;
   readonly legalUrl?: InputMaybe<Scalars['String']['input']>;
+  readonly mediaReviewRequirement?: InputMaybe<GQLNcmecMediaReviewRequirement>;
+  readonly minMediaToReview?: InputMaybe<Scalars['Int']['input']>;
   readonly moreInfoUrl?: InputMaybe<Scalars['String']['input']>;
   readonly ncmecAdditionalInfoEndpoint?: InputMaybe<Scalars['String']['input']>;
   readonly ncmecPreservationEndpoint?: InputMaybe<Scalars['String']['input']>;
@@ -3091,22 +3246,38 @@ export type GQLOrg = {
   readonly hasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly hideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
   readonly id: Scalars['ID']['output'];
+  readonly ignoreCallbackUrl?: Maybe<Scalars['String']['output']>;
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
+  /**
+   * How much media a reviewer must classify before they can send an NCMEC
+   * report for this org. Readable by any org member (not just MANAGE_ORG) so the
+   * NCMEC review UI can enforce the policy. Defaults to ALL when unset.
+   */
+  readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+  /**
+   * Minimum number of media items that must be reviewed before sending an NCMEC
+   * report when ncmecMediaReviewRequirement is MINIMUM. Defaults to 1.
+   */
+  readonly ncmecMinMediaToReview: Scalars['Int']['output'];
   readonly ncmecReports: ReadonlyArray<GQLNcmecReport>;
   readonly onCallAlertEmail?: Maybe<Scalars['String']['output']>;
+  readonly partialItemsEndpoint?: Maybe<Scalars['String']['output']>;
+  readonly partialItemsRequestHeaders?: Maybe<Scalars['JSONObject']['output']>;
   readonly pendingInvites: ReadonlyArray<GQLPendingInvite>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly previewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly publicSigningKey: Scalars['String']['output'];
   readonly reportingRules: ReadonlyArray<GQLReportingRule>;
   readonly requiresDecisionReasonInMrt: Scalars['Boolean']['output'];
+  readonly requiresDecisionReasonOnIgnoreInMrt: Scalars['Boolean']['output'];
   readonly requiresPolicyForDecisionsInMrt: Scalars['Boolean']['output'];
   readonly routingRules: ReadonlyArray<GQLRoutingRule>;
   readonly rules: ReadonlyArray<GQLRule>;
+  readonly samlEnabled: Scalars['Boolean']['output'];
   readonly signals: ReadonlyArray<GQLSignal>;
   readonly ssoCert?: Maybe<Scalars['String']['output']>;
   readonly ssoUrl?: Maybe<Scalars['String']['output']>;
@@ -3318,6 +3489,7 @@ export type GQLQuery = {
   readonly itemWithHistory: GQLItemHistoryResponse;
   readonly itemsWithId: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemSubmissions: ReadonlyArray<GQLItem>;
+  readonly latestItemsByIpAddress: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedBy: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedByWithThread: ReadonlyArray<GQLThreadWithMessages>;
   readonly locationBank?: Maybe<GQLLocationBank>;
@@ -3475,6 +3647,13 @@ export type GQLQueryItemsWithIdArgs = {
 
 export type GQLQueryLatestItemSubmissionsArgs = {
   itemIdentifiers: ReadonlyArray<GQLItemIdentifierInput>;
+};
+
+export type GQLQueryLatestItemsByIpAddressArgs = {
+  earliestReturnedSubmissionDate?: InputMaybe<Scalars['DateTime']['input']>;
+  ipAddress: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  oldestReturnedSubmissionDate?: InputMaybe<Scalars['DateTime']['input']>;
 };
 
 export type GQLQueryLatestItemsCreatedByArgs = {
@@ -3930,6 +4109,8 @@ export const GQLRoutingRuleStatus = {
 export type GQLRoutingRuleStatus =
   (typeof GQLRoutingRuleStatus)[keyof typeof GQLRoutingRuleStatus];
 export type GQLRule = {
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -3950,6 +4131,17 @@ export type GQLRule = {
 
 export type GQLRuleBacktestsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+};
+
+export type GQLRuleActionParameterValues = {
+  readonly __typename: 'RuleActionParameterValues';
+  readonly actionId: Scalars['ID']['output'];
+  readonly parameters: Scalars['JSONObject']['output'];
+};
+
+export type GQLRuleActionParameterValuesInput = {
+  readonly actionId: Scalars['ID']['input'];
+  readonly parameters: Scalars['JSONObject']['input'];
 };
 
 export const GQLRuleEnvironment = {
@@ -4134,6 +4326,7 @@ export type GQLSetPluginIntegrationConfigInput = {
 };
 
 export type GQLSetUserStrikeThresholdInput = {
+  readonly actionParameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly actions: ReadonlyArray<Scalars['String']['input']>;
   readonly threshold: Scalars['Int']['input'];
 };
@@ -4366,6 +4559,7 @@ export type GQLSubmitDecisionInput = {
 
 export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
+  | GQLMissingRequiredDecisionReasonError
   | GQLMissingRequiredPolicyForDecisionError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
@@ -4575,6 +4769,9 @@ export type GQLUpdateContentItemTypeInput = {
 
 export type GQLUpdateContentRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly contentTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -4616,6 +4813,11 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly actionIdsToHide: ReadonlyArray<Scalars['ID']['input']>;
   readonly actionIdsToUnhide: ReadonlyArray<Scalars['ID']['input']>;
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name?: InputMaybe<Scalars['String']['input']>;
@@ -4642,6 +4844,13 @@ export type GQLUpdateOrgInfoInput = {
 export type GQLUpdateOrgInfoSuccessResponse = {
   readonly __typename: 'UpdateOrgInfoSuccessResponse';
   readonly _?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type GQLUpdatePartialItemsSettingsInput = {
+  readonly partialItemsEndpoint?: InputMaybe<Scalars['String']['input']>;
+  readonly partialItemsRequestHeaders?: InputMaybe<
+    Scalars['JSONObject']['input']
+  >;
 };
 
 export type GQLUpdatePolicyInput = {
@@ -4736,6 +4945,9 @@ export type GQLUpdateUserItemTypeInput = {
 
 export type GQLUpdateUserRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -4937,6 +5149,8 @@ export const GQLUserRole = {
 export type GQLUserRole = (typeof GQLUserRole)[keyof typeof GQLUserRole];
 export type GQLUserRule = GQLRule & {
   readonly __typename: 'UserRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -4986,6 +5200,7 @@ export type GQLUserStrikeBucket = {
 
 export type GQLUserStrikeThreshold = {
   readonly __typename: 'UserStrikeThreshold';
+  readonly actionParameters: Scalars['JSONObject']['output'];
   readonly actions: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['String']['output'];
   readonly threshold: Scalars['Int']['output'];
@@ -5698,6 +5913,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes?: boolean | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
         }
       | {
           readonly __typename: 'EnqueueAuthorToMrtAction';
@@ -6925,7 +7157,6 @@ export type GQLGetItemsWithIdQuery = {
           readonly data: JsonObject;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
-          readonly userScore: number;
           readonly type: {
             readonly __typename: 'UserItemType';
             readonly id: string;
@@ -7176,6 +7407,55 @@ export type GQLInvestigationItemsQuery = {
         }>;
       }
     | { readonly __typename: 'NotFoundError'; readonly title: string };
+};
+
+export type GQLGetItemsByIpAddressQueryVariables = Exact<{
+  ipAddress: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+export type GQLGetItemsByIpAddressQuery = {
+  readonly __typename: 'Query';
+  readonly latestItemsByIpAddress: ReadonlyArray<{
+    readonly __typename: 'ItemSubmissions';
+    readonly latest:
+      | {
+          readonly __typename: 'ContentItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly type: {
+            readonly __typename: 'ContentItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly version: string;
+          };
+        }
+      | {
+          readonly __typename: 'ThreadItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly type: {
+            readonly __typename: 'ThreadItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly version: string;
+          };
+        }
+      | {
+          readonly __typename: 'UserItem';
+          readonly id: string;
+          readonly submissionId: string;
+          readonly submissionTime?: Date | string | null;
+          readonly type: {
+            readonly __typename: 'UserItemType';
+            readonly id: string;
+            readonly name: string;
+            readonly version: string;
+          };
+        };
+  }>;
 };
 
 export type GQLGetAuthorInfoQueryVariables = Exact<{
@@ -8055,7 +8335,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
       readonly payload:
         | {
             readonly __typename: 'ContentAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -8205,7 +8484,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
           }
         | {
             readonly __typename: 'ContentManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly policyId?: string | null;
@@ -8966,7 +9244,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
           }
         | {
             readonly __typename: 'UserAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -9115,7 +9392,6 @@ export type GQLGetDecidedJobFromJobIdQuery = {
           }
         | {
             readonly __typename: 'UserManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly reportId: string;
@@ -9511,36 +9787,6 @@ export type GQLGetAverageTimeToReviewQuery = {
   }> | null;
 };
 
-export type GQLAppealSettingsQueryVariables = Exact<{ [key: string]: never }>;
-
-export type GQLAppealSettingsQuery = {
-  readonly __typename: 'Query';
-  readonly appealSettings?: {
-    readonly __typename: 'AppealSettings';
-    readonly appealsCallbackUrl?: string | null;
-    readonly appealsCallbackHeaders?: JsonObject | null;
-    readonly appealsCallbackBody?: JsonObject | null;
-  } | null;
-  readonly me?: {
-    readonly __typename: 'User';
-    readonly permissions: ReadonlyArray<GQLUserPermission>;
-  } | null;
-};
-
-export type GQLUpdateAppealSettingsMutationVariables = Exact<{
-  input: GQLAppealSettingsInput;
-}>;
-
-export type GQLUpdateAppealSettingsMutation = {
-  readonly __typename: 'Mutation';
-  readonly updateAppealSettings: {
-    readonly __typename: 'AppealSettings';
-    readonly appealsCallbackUrl?: string | null;
-    readonly appealsCallbackHeaders?: JsonObject | null;
-    readonly appealsCallbackBody?: JsonObject | null;
-  };
-};
-
 export type GQLGetDecisionsTableQueryVariables = Exact<{
   input: GQLGetDecisionCountsTableInput;
 }>;
@@ -9651,6 +9897,9 @@ export type GQLManualReviewQueueQuery = {
     readonly hiddenActionIds: ReadonlyArray<string>;
     readonly isAppealsQueue: boolean;
     readonly autoCloseJobs: boolean;
+    readonly clearReportsDisposition?: GQLMrtClearReportsDisposition | null;
+    readonly clearReportsScope: GQLMrtClearReportsScope;
+    readonly clearReportsTriggerActionIds: ReadonlyArray<string>;
     readonly explicitlyAssignedReviewers: ReadonlyArray<{
       readonly __typename: 'User';
       readonly id: string;
@@ -10672,7 +10921,6 @@ export type GQLGetDecidedJobQuery = {
     readonly payload:
       | {
           readonly __typename: 'ContentAppealManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly appealReason?: string | null;
           readonly appealId: string;
           readonly actionsTaken: ReadonlyArray<string>;
@@ -10822,7 +11070,6 @@ export type GQLGetDecidedJobQuery = {
         }
       | {
           readonly __typename: 'ContentManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly reportHistory: ReadonlyArray<{
             readonly __typename: 'ReportHistoryEntry';
             readonly policyId?: string | null;
@@ -11583,7 +11830,6 @@ export type GQLGetDecidedJobQuery = {
         }
       | {
           readonly __typename: 'UserAppealManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly appealReason?: string | null;
           readonly appealId: string;
           readonly actionsTaken: ReadonlyArray<string>;
@@ -11732,7 +11978,6 @@ export type GQLGetDecidedJobQuery = {
         }
       | {
           readonly __typename: 'UserManualReviewJobPayload';
-          readonly userScore?: number | null;
           readonly reportHistory: ReadonlyArray<{
             readonly __typename: 'ReportHistoryEntry';
             readonly reportId: string;
@@ -12023,6 +12268,23 @@ export type GQLSetModeratorSafetySettingsMutation = {
   } | null;
 };
 
+export type GQLInvalidateReportsFromReporterMutationVariables = Exact<{
+  input: GQLInvalidateReportsFromReporterInput;
+}>;
+
+export type GQLInvalidateReportsFromReporterMutation = {
+  readonly __typename: 'Mutation';
+  readonly invalidateReportsFromReporter: {
+    readonly __typename: 'InvalidateReportsFromReporterSuccessResponse';
+    readonly queuesScanned: number;
+    readonly jobsScanned: number;
+    readonly jobsScrubbed: number;
+    readonly jobsDeleted: number;
+    readonly reportsRemoved: number;
+    readonly truncated: boolean;
+  };
+};
+
 export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
@@ -12037,6 +12299,7 @@ export type GQLManualReviewJobInfoQuery = {
     readonly hasNCMECReportingEnabled: boolean;
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
+    readonly requiresDecisionReasonOnIgnoreInMrt: boolean;
     readonly allowMultiplePoliciesPerAction: boolean;
     readonly hideSkipButtonForNonAdmins: boolean;
     readonly policies: ReadonlyArray<{
@@ -12364,7 +12627,6 @@ export type GQLManualReviewJobInfoQuery = {
         readonly payload:
           | {
               readonly __typename: 'ContentAppealManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly appealReason?: string | null;
               readonly appealId: string;
               readonly actionsTaken: ReadonlyArray<string>;
@@ -12514,7 +12776,6 @@ export type GQLManualReviewJobInfoQuery = {
             }
           | {
               readonly __typename: 'ContentManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly reportHistory: ReadonlyArray<{
                 readonly __typename: 'ReportHistoryEntry';
                 readonly policyId?: string | null;
@@ -13275,7 +13536,6 @@ export type GQLManualReviewJobInfoQuery = {
             }
           | {
               readonly __typename: 'UserAppealManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly appealReason?: string | null;
               readonly appealId: string;
               readonly actionsTaken: ReadonlyArray<string>;
@@ -13424,7 +13684,6 @@ export type GQLManualReviewJobInfoQuery = {
             }
           | {
               readonly __typename: 'UserManualReviewJobPayload';
-              readonly userScore?: number | null;
               readonly reportHistory: ReadonlyArray<{
                 readonly __typename: 'ReportHistoryEntry';
                 readonly reportId: string;
@@ -13707,7 +13966,6 @@ export type GQLDequeueManualReviewJobMutation = {
       readonly payload:
         | {
             readonly __typename: 'ContentAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -13857,7 +14115,6 @@ export type GQLDequeueManualReviewJobMutation = {
           }
         | {
             readonly __typename: 'ContentManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly policyId?: string | null;
@@ -14618,7 +14875,6 @@ export type GQLDequeueManualReviewJobMutation = {
           }
         | {
             readonly __typename: 'UserAppealManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly appealReason?: string | null;
             readonly appealId: string;
             readonly actionsTaken: ReadonlyArray<string>;
@@ -14767,7 +15023,6 @@ export type GQLDequeueManualReviewJobMutation = {
           }
         | {
             readonly __typename: 'UserManualReviewJobPayload';
-            readonly userScore?: number | null;
             readonly reportHistory: ReadonlyArray<{
               readonly __typename: 'ReportHistoryEntry';
               readonly reportId: string;
@@ -15044,6 +15299,12 @@ export type GQLSubmitManualReviewDecisionMutation = {
         readonly type: ReadonlyArray<string>;
       }
     | {
+        readonly __typename: 'MissingRequiredDecisionReasonError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+      }
+    | {
         readonly __typename: 'MissingRequiredPolicyForDecisionError';
         readonly title: string;
         readonly status: number;
@@ -15101,7 +15362,6 @@ export type GQLJobFieldsFragment = {
   readonly payload:
     | {
         readonly __typename: 'ContentAppealManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly appealReason?: string | null;
         readonly appealId: string;
         readonly actionsTaken: ReadonlyArray<string>;
@@ -15251,7 +15511,6 @@ export type GQLJobFieldsFragment = {
       }
     | {
         readonly __typename: 'ContentManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly reportHistory: ReadonlyArray<{
           readonly __typename: 'ReportHistoryEntry';
           readonly policyId?: string | null;
@@ -16012,7 +16271,6 @@ export type GQLJobFieldsFragment = {
       }
     | {
         readonly __typename: 'UserAppealManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly appealReason?: string | null;
         readonly appealId: string;
         readonly actionsTaken: ReadonlyArray<string>;
@@ -16161,7 +16419,6 @@ export type GQLJobFieldsFragment = {
       }
     | {
         readonly __typename: 'UserManualReviewJobPayload';
-        readonly userScore?: number | null;
         readonly reportHistory: ReadonlyArray<{
           readonly __typename: 'ReportHistoryEntry';
           readonly reportId: string;
@@ -16453,6 +16710,10 @@ export type GQLGetRelatedItemsQuery = {
               readonly valueScalarType: GQLScalarType;
             } | null;
           }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'ContentSchemaFieldRoles';
+            readonly displayName?: string | null;
+          };
         };
       }
     | {
@@ -16477,6 +16738,10 @@ export type GQLGetRelatedItemsQuery = {
               readonly valueScalarType: GQLScalarType;
             } | null;
           }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'ThreadSchemaFieldRoles';
+            readonly displayName?: string | null;
+          };
         };
       }
     | {
@@ -16723,6 +16988,19 @@ export type GQLGetLatestUserSubmittedItemsWithThreadsQuery = {
       };
     }>;
   }>;
+};
+
+export type GQLNcmecMediaReviewPolicyQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLNcmecMediaReviewPolicyQuery = {
+  readonly __typename: 'Query';
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly ncmecMediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+    readonly ncmecMinMediaToReview: number;
+  } | null;
 };
 
 export type GQLGetMoreInfoForThreadItemsQueryVariables = Exact<{
@@ -17158,7 +17436,6 @@ export type GQLGetMoreInfoForItemsQuery = {
               readonly id: string;
               readonly submissionId: string;
               readonly data: JsonObject;
-              readonly userScore: number;
               readonly type: {
                 readonly __typename: 'UserItemType';
                 readonly id: string;
@@ -21856,6 +22133,23 @@ export type GQLReportingRuleFormOrgDataQuery = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -22635,6 +22929,24 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22658,6 +22970,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22681,6 +22994,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22704,6 +23018,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22905,6 +23220,24 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22928,6 +23261,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22951,6 +23285,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22974,6 +23309,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23365,6 +23701,24 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
+              readonly parameters: ReadonlyArray<{
+                readonly __typename: 'ActionParameter';
+                readonly name: string;
+                readonly displayName: string;
+                readonly description?: string | null;
+                readonly type: GQLActionParameterType;
+                readonly required: boolean;
+                readonly min?: number | null;
+                readonly max?: number | null;
+                readonly maxLength?: number | null;
+                readonly defaultValue?: JsonValue | null;
+                readonly options?: ReadonlyArray<{
+                  readonly __typename: 'ActionParameterOption';
+                  readonly value: string;
+                  readonly label: string;
+                }> | null;
+              }>;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23388,6 +23742,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23411,6 +23766,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23434,6 +23790,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23634,6 +23991,24 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
+              readonly parameters: ReadonlyArray<{
+                readonly __typename: 'ActionParameter';
+                readonly name: string;
+                readonly displayName: string;
+                readonly description?: string | null;
+                readonly type: GQLActionParameterType;
+                readonly required: boolean;
+                readonly min?: number | null;
+                readonly max?: number | null;
+                readonly maxLength?: number | null;
+                readonly defaultValue?: JsonValue | null;
+                readonly options?: ReadonlyArray<{
+                  readonly __typename: 'ActionParameterOption';
+                  readonly value: string;
+                  readonly label: string;
+                }> | null;
+              }>;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23657,6 +24032,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23680,6 +24056,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23703,6 +24080,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23731,6 +24109,23 @@ type GQLActionFragmentCustomActionFragment = {
   readonly id: string;
   readonly name: string;
   readonly description?: string | null;
+  readonly parameters: ReadonlyArray<{
+    readonly __typename: 'ActionParameter';
+    readonly name: string;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly type: GQLActionParameterType;
+    readonly required: boolean;
+    readonly min?: number | null;
+    readonly max?: number | null;
+    readonly maxLength?: number | null;
+    readonly defaultValue?: JsonValue | null;
+    readonly options?: ReadonlyArray<{
+      readonly __typename: 'ActionParameterOption';
+      readonly value: string;
+      readonly label: string;
+    }> | null;
+  }>;
   readonly itemTypes: ReadonlyArray<
     | {
         readonly __typename: 'ContentItemType';
@@ -24027,6 +24422,23 @@ export type GQLContentRuleFormConfigQuery = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -24290,6 +24702,7 @@ export type GQLUserStrikeThresholdsQuery = {
       readonly id: string;
       readonly threshold: number;
       readonly actions: ReadonlyArray<string>;
+      readonly actionParameters: JsonObject;
     }>;
   } | null;
 };
@@ -24532,6 +24945,8 @@ export type GQLNcmecOrgSettingsQuery = {
     readonly contactPersonFirstName?: string | null;
     readonly contactPersonLastName?: string | null;
     readonly contactPersonPhone?: string | null;
+    readonly mediaReviewRequirement?: GQLNcmecMediaReviewRequirement | null;
+    readonly minMediaToReview?: number | null;
   } | null;
   readonly myOrg?: {
     readonly __typename: 'Org';
@@ -24553,70 +24968,6 @@ export type GQLUpdateNcmecOrgSettingsMutation = {
   readonly updateNcmecOrgSettings: {
     readonly __typename: 'UpdateNcmecOrgSettingsResponse';
     readonly success: boolean;
-  };
-};
-
-export type GQLOrgDefaultSafetySettingsQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GQLOrgDefaultSafetySettingsQuery = {
-  readonly __typename: 'Query';
-  readonly me?: {
-    readonly __typename: 'User';
-    readonly permissions: ReadonlyArray<GQLUserPermission>;
-  } | null;
-  readonly myOrg?: {
-    readonly __typename: 'Org';
-    readonly defaultInterfacePreferences: {
-      readonly __typename: 'UserInterfacePreferences';
-      readonly moderatorSafetyMuteVideo: boolean;
-      readonly moderatorSafetyGrayscale: boolean;
-      readonly moderatorSafetyBlurLevel: number;
-    };
-  } | null;
-};
-
-export type GQLSetOrgDefaultSafetySettingsMutationVariables = Exact<{
-  orgDefaultSafetySettings: GQLModeratorSafetySettingsInput;
-}>;
-
-export type GQLSetOrgDefaultSafetySettingsMutation = {
-  readonly __typename: 'Mutation';
-  readonly setOrgDefaultSafetySettings?: {
-    readonly __typename: 'SetModeratorSafetySettingsSuccessResponse';
-    readonly _?: boolean | null;
-  } | null;
-};
-
-export type GQLOrgSettingsQueryVariables = Exact<{ [key: string]: never }>;
-
-export type GQLOrgSettingsQuery = {
-  readonly __typename: 'Query';
-  readonly myOrg?: {
-    readonly __typename: 'Org';
-    readonly id: string;
-    readonly name: string;
-    readonly email: string;
-    readonly websiteUrl: string;
-    readonly onCallAlertEmail?: string | null;
-  } | null;
-  readonly me?: {
-    readonly __typename: 'User';
-    readonly id: string;
-    readonly permissions: ReadonlyArray<GQLUserPermission>;
-  } | null;
-};
-
-export type GQLUpdateOrgInfoMutationVariables = Exact<{
-  input: GQLUpdateOrgInfoInput;
-}>;
-
-export type GQLUpdateOrgInfoMutation = {
-  readonly __typename: 'Mutation';
-  readonly updateOrgInfo: {
-    readonly __typename: 'UpdateOrgInfoSuccessResponse';
-    readonly _?: boolean | null;
   };
 };
 
@@ -24676,22 +25027,186 @@ export type GQLRenameRoleMutation = {
   };
 };
 
-export type GQLGetSsoCredentialsQueryVariables = Exact<{
+export type GQLDeploymentSettingsQueryVariables = Exact<{
   [key: string]: never;
 }>;
 
-export type GQLGetSsoCredentialsQuery = {
+export type GQLDeploymentSettingsQuery = {
   readonly __typename: 'Query';
   readonly me?: {
     readonly __typename: 'User';
+    readonly id: string;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
   } | null;
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly id: string;
+    readonly hasAppealsEnabled: boolean;
+    readonly hasReportingRulesEnabled: boolean;
+    readonly allowMultiplePoliciesPerAction: boolean;
+    readonly requiresPolicyForDecisionsInMrt: boolean;
+    readonly requiresDecisionReasonInMrt: boolean;
+    readonly requiresDecisionReasonOnIgnoreInMrt: boolean;
+    readonly previewJobsViewEnabled: boolean;
+    readonly hideSkipButtonForNonAdmins: boolean;
+    readonly userStrikeTTL: number;
+    readonly samlEnabled: boolean;
     readonly ssoUrl?: string | null;
     readonly ssoCert?: string | null;
+    readonly ignoreCallbackUrl?: string | null;
+    readonly partialItemsEndpoint?: string | null;
+    readonly partialItemsRequestHeaders?: JsonObject | null;
   } | null;
+  readonly appealSettings?: {
+    readonly __typename: 'AppealSettings';
+    readonly appealsCallbackUrl?: string | null;
+    readonly appealsCallbackHeaders?: JsonObject | null;
+    readonly appealsCallbackBody?: JsonObject | null;
+  } | null;
+};
+
+export type GQLUpdateHasAppealsEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateHasAppealsEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateHasAppealsEnabled: boolean;
+};
+
+export type GQLUpdateHasReportingRulesEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateHasReportingRulesEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateHasReportingRulesEnabled: boolean;
+};
+
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateAllowMultiplePoliciesPerActionMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateAllowMultiplePoliciesPerAction: boolean;
+};
+
+export type GQLUpdateSamlEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateSamlEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateSamlEnabled: boolean;
+};
+
+export type GQLUpdateRequiresPolicyForDecisionsMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresPolicyForDecisionsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresPolicyForDecisions: boolean;
+};
+
+export type GQLUpdateRequiresDecisionReasonMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresDecisionReasonMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresDecisionReason: boolean;
+};
+
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresDecisionReasonOnIgnore: boolean;
+};
+
+export type GQLUpdateHideSkipButtonForNonAdminsMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateHideSkipButtonForNonAdminsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateHideSkipButtonForNonAdmins: boolean;
+};
+
+export type GQLUpdatePreviewJobsViewEnabledMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdatePreviewJobsViewEnabledMutation = {
+  readonly __typename: 'Mutation';
+  readonly updatePreviewJobsViewEnabled: boolean;
+};
+
+export type GQLUpdateIgnoreCallbackUrlMutationVariables = Exact<{
+  url?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+export type GQLUpdateIgnoreCallbackUrlMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateIgnoreCallbackUrl: boolean;
+};
+
+export type GQLUpdateAppealSettingsMutationVariables = Exact<{
+  input: GQLAppealSettingsInput;
+}>;
+
+export type GQLUpdateAppealSettingsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateAppealSettings: {
+    readonly __typename: 'AppealSettings';
+    readonly appealsCallbackUrl?: string | null;
+    readonly appealsCallbackHeaders?: JsonObject | null;
+    readonly appealsCallbackBody?: JsonObject | null;
+  };
+};
+
+export type GQLOrgSettingsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLOrgSettingsQuery = {
+  readonly __typename: 'Query';
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly id: string;
+    readonly name: string;
+    readonly email: string;
+    readonly websiteUrl: string;
+    readonly onCallAlertEmail?: string | null;
+  } | null;
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly id: string;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
+};
+
+export type GQLUpdateOrgInfoMutationVariables = Exact<{
+  input: GQLUpdateOrgInfoInput;
+}>;
+
+export type GQLUpdateOrgInfoMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateOrgInfo: {
+    readonly __typename: 'UpdateOrgInfoSuccessResponse';
+    readonly _?: boolean | null;
+  };
+};
+
+export type GQLUpdatePartialItemsSettingsMutationVariables = Exact<{
+  input: GQLUpdatePartialItemsSettingsInput;
+}>;
+
+export type GQLUpdatePartialItemsSettingsMutation = {
+  readonly __typename: 'Mutation';
+  readonly updatePartialItemsSettings: boolean;
 };
 
 export type GQLUpdateSsoCredentialsMutationVariables = Exact<{
@@ -24701,6 +25216,39 @@ export type GQLUpdateSsoCredentialsMutationVariables = Exact<{
 export type GQLUpdateSsoCredentialsMutation = {
   readonly __typename: 'Mutation';
   readonly updateSSOCredentials: boolean;
+};
+
+export type GQLOrgDefaultSafetySettingsQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLOrgDefaultSafetySettingsQuery = {
+  readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly defaultInterfacePreferences: {
+      readonly __typename: 'UserInterfacePreferences';
+      readonly moderatorSafetyMuteVideo: boolean;
+      readonly moderatorSafetyGrayscale: boolean;
+      readonly moderatorSafetyBlurLevel: number;
+    };
+  } | null;
+};
+
+export type GQLSetOrgDefaultSafetySettingsMutationVariables = Exact<{
+  orgDefaultSafetySettings: GQLModeratorSafetySettingsInput;
+}>;
+
+export type GQLSetOrgDefaultSafetySettingsMutation = {
+  readonly __typename: 'Mutation';
+  readonly setOrgDefaultSafetySettings?: {
+    readonly __typename: 'SetModeratorSafetySettingsSuccessResponse';
+    readonly _?: boolean | null;
+  } | null;
 };
 
 export const GQLCustomActionFragmentFragmentDoc = gql`
@@ -24894,7 +25442,6 @@ export const GQLJobFieldsFragmentDoc = gql`
     numTimesReported
     payload {
       ... on ContentManualReviewJobPayload {
-        userScore
         reportHistory {
           reporterId {
             id
@@ -24955,7 +25502,6 @@ export const GQLJobFieldsFragmentDoc = gql`
         }
       }
       ... on UserManualReviewJobPayload {
-        userScore
         reportHistory {
           reportId
           reporterId {
@@ -25070,7 +25616,6 @@ export const GQLJobFieldsFragmentDoc = gql`
         }
       }
       ... on ContentAppealManualReviewJobPayload {
-        userScore
         item {
           ... on ItemBase {
             ...ItemFields
@@ -25095,7 +25640,6 @@ export const GQLJobFieldsFragmentDoc = gql`
         }
       }
       ... on UserAppealManualReviewJobPayload {
-        userScore
         item {
           ... on ItemBase {
             ...ItemFields
@@ -25606,6 +26150,22 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        parameters {
+          name
+          displayName
+          description
+          type
+          required
+          options {
+            value
+            label
+          }
+          min
+          max
+          maxLength
+          defaultValue
+        }
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25617,6 +26177,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25628,6 +26189,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25639,6 +26201,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25656,6 +26219,21 @@ export const GQLActionFragmentFragmentDoc = gql`
       id
       name
       description
+      parameters {
+        name
+        displayName
+        description
+        type
+        required
+        options {
+          value
+          label
+        }
+        min
+        max
+        maxLength
+        defaultValue
+      }
       itemTypes {
         ... on ItemTypeBase {
           id
@@ -27977,6 +28555,23 @@ export const GQLActionsDocument = gql`
           penalty
           applyUserStrikes
         }
+        ... on CustomAction {
+          parameters {
+            name
+            displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
+          }
+        }
       }
     }
     me {
@@ -30173,9 +30768,6 @@ export const GQLGetItemsWithIdDocument = gql`
             }
           }
         }
-        ... on UserItem {
-          userScore
-        }
       }
     }
   }
@@ -30444,6 +31036,123 @@ export type GQLInvestigationItemsSuspenseQueryHookResult = ReturnType<
 export type GQLInvestigationItemsQueryResult = Apollo.QueryResult<
   GQLInvestigationItemsQuery,
   GQLInvestigationItemsQueryVariables
+>;
+export const GQLGetItemsByIpAddressDocument = gql`
+  query GetItemsByIpAddress($ipAddress: String!, $limit: Int) {
+    latestItemsByIpAddress(ipAddress: $ipAddress, limit: $limit) {
+      latest {
+        ... on ItemBase {
+          id
+          submissionId
+          submissionTime
+          type {
+            ... on ItemTypeBase {
+              id
+              name
+              version
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLGetItemsByIpAddressQuery__
+ *
+ * To run a query within a React component, call `useGQLGetItemsByIpAddressQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetItemsByIpAddressQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetItemsByIpAddressQuery({
+ *   variables: {
+ *      ipAddress: // value for 'ipAddress'
+ *      limit: // value for 'limit'
+ *   },
+ * });
+ */
+export function useGQLGetItemsByIpAddressQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  > &
+    (
+      | { variables: GQLGetItemsByIpAddressQueryVariables; skip?: boolean }
+      | { skip: boolean }
+    ),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >(GQLGetItemsByIpAddressDocument, options);
+}
+export function useGQLGetItemsByIpAddressLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >(GQLGetItemsByIpAddressDocument, options);
+}
+// @ts-ignore
+export function useGQLGetItemsByIpAddressSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetItemsByIpAddressQuery,
+  GQLGetItemsByIpAddressQueryVariables
+>;
+export function useGQLGetItemsByIpAddressSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetItemsByIpAddressQuery,
+        GQLGetItemsByIpAddressQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetItemsByIpAddressQuery | undefined,
+  GQLGetItemsByIpAddressQueryVariables
+>;
+export function useGQLGetItemsByIpAddressSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetItemsByIpAddressQuery,
+        GQLGetItemsByIpAddressQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetItemsByIpAddressQuery,
+    GQLGetItemsByIpAddressQueryVariables
+  >(GQLGetItemsByIpAddressDocument, options);
+}
+export type GQLGetItemsByIpAddressQueryHookResult = ReturnType<
+  typeof useGQLGetItemsByIpAddressQuery
+>;
+export type GQLGetItemsByIpAddressLazyQueryHookResult = ReturnType<
+  typeof useGQLGetItemsByIpAddressLazyQuery
+>;
+export type GQLGetItemsByIpAddressSuspenseQueryHookResult = ReturnType<
+  typeof useGQLGetItemsByIpAddressSuspenseQuery
+>;
+export type GQLGetItemsByIpAddressQueryResult = Apollo.QueryResult<
+  GQLGetItemsByIpAddressQuery,
+  GQLGetItemsByIpAddressQueryVariables
 >;
 export const GQLGetAuthorInfoDocument = gql`
   query GetAuthorInfo($userIdentifiers: [ItemIdentifierInput!]!) {
@@ -31760,161 +32469,6 @@ export type GQLGetAverageTimeToReviewQueryResult = Apollo.QueryResult<
   GQLGetAverageTimeToReviewQuery,
   GQLGetAverageTimeToReviewQueryVariables
 >;
-export const GQLAppealSettingsDocument = gql`
-  query AppealSettings {
-    appealSettings {
-      appealsCallbackUrl
-      appealsCallbackHeaders
-      appealsCallbackBody
-    }
-    me {
-      permissions
-    }
-  }
-`;
-
-/**
- * __useGQLAppealSettingsQuery__
- *
- * To run a query within a React component, call `useGQLAppealSettingsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLAppealSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLAppealSettingsQuery({
- *   variables: {
- *   },
- * });
- */
-export function useGQLAppealSettingsQuery(
-  baseOptions?: Apollo.QueryHookOptions<
-    GQLAppealSettingsQuery,
-    GQLAppealSettingsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<
-    GQLAppealSettingsQuery,
-    GQLAppealSettingsQueryVariables
-  >(GQLAppealSettingsDocument, options);
-}
-export function useGQLAppealSettingsLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLAppealSettingsQuery,
-    GQLAppealSettingsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<
-    GQLAppealSettingsQuery,
-    GQLAppealSettingsQueryVariables
-  >(GQLAppealSettingsDocument, options);
-}
-// @ts-ignore
-export function useGQLAppealSettingsSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLAppealSettingsQuery,
-    GQLAppealSettingsQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<
-  GQLAppealSettingsQuery,
-  GQLAppealSettingsQueryVariables
->;
-export function useGQLAppealSettingsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLAppealSettingsQuery,
-        GQLAppealSettingsQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLAppealSettingsQuery | undefined,
-  GQLAppealSettingsQueryVariables
->;
-export function useGQLAppealSettingsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLAppealSettingsQuery,
-        GQLAppealSettingsQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<
-    GQLAppealSettingsQuery,
-    GQLAppealSettingsQueryVariables
-  >(GQLAppealSettingsDocument, options);
-}
-export type GQLAppealSettingsQueryHookResult = ReturnType<
-  typeof useGQLAppealSettingsQuery
->;
-export type GQLAppealSettingsLazyQueryHookResult = ReturnType<
-  typeof useGQLAppealSettingsLazyQuery
->;
-export type GQLAppealSettingsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLAppealSettingsSuspenseQuery
->;
-export type GQLAppealSettingsQueryResult = Apollo.QueryResult<
-  GQLAppealSettingsQuery,
-  GQLAppealSettingsQueryVariables
->;
-export const GQLUpdateAppealSettingsDocument = gql`
-  mutation UpdateAppealSettings($input: AppealSettingsInput!) {
-    updateAppealSettings(input: $input) {
-      appealsCallbackUrl
-      appealsCallbackHeaders
-      appealsCallbackBody
-    }
-  }
-`;
-export type GQLUpdateAppealSettingsMutationFn = Apollo.MutationFunction<
-  GQLUpdateAppealSettingsMutation,
-  GQLUpdateAppealSettingsMutationVariables
->;
-
-/**
- * __useGQLUpdateAppealSettingsMutation__
- *
- * To run a mutation, you first call `useGQLUpdateAppealSettingsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateAppealSettingsMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlUpdateAppealSettingsMutation, { data, loading, error }] = useGQLUpdateAppealSettingsMutation({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLUpdateAppealSettingsMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateAppealSettingsMutation,
-    GQLUpdateAppealSettingsMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLUpdateAppealSettingsMutation,
-    GQLUpdateAppealSettingsMutationVariables
-  >(GQLUpdateAppealSettingsDocument, options);
-}
-export type GQLUpdateAppealSettingsMutationHookResult = ReturnType<
-  typeof useGQLUpdateAppealSettingsMutation
->;
-export type GQLUpdateAppealSettingsMutationResult =
-  Apollo.MutationResult<GQLUpdateAppealSettingsMutation>;
-export type GQLUpdateAppealSettingsMutationOptions = Apollo.BaseMutationOptions<
-  GQLUpdateAppealSettingsMutation,
-  GQLUpdateAppealSettingsMutationVariables
->;
 export const GQLGetDecisionsTableDocument = gql`
   query getDecisionsTable($input: GetDecisionCountsTableInput!) {
     getDecisionsTable(input: $input) {
@@ -32166,6 +32720,9 @@ export const GQLManualReviewQueueDocument = gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        clearReportsDisposition
+        clearReportsScope
+        clearReportsTriggerActionIds
       }
     }
   }
@@ -33930,6 +34487,65 @@ export type GQLSetModeratorSafetySettingsMutationOptions =
     GQLSetModeratorSafetySettingsMutation,
     GQLSetModeratorSafetySettingsMutationVariables
   >;
+export const GQLInvalidateReportsFromReporterDocument = gql`
+  mutation InvalidateReportsFromReporter(
+    $input: InvalidateReportsFromReporterInput!
+  ) {
+    invalidateReportsFromReporter(input: $input) {
+      queuesScanned
+      jobsScanned
+      jobsScrubbed
+      jobsDeleted
+      reportsRemoved
+      truncated
+    }
+  }
+`;
+export type GQLInvalidateReportsFromReporterMutationFn =
+  Apollo.MutationFunction<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >;
+
+/**
+ * __useGQLInvalidateReportsFromReporterMutation__
+ *
+ * To run a mutation, you first call `useGQLInvalidateReportsFromReporterMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLInvalidateReportsFromReporterMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlInvalidateReportsFromReporterMutation, { data, loading, error }] = useGQLInvalidateReportsFromReporterMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLInvalidateReportsFromReporterMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >(GQLInvalidateReportsFromReporterDocument, options);
+}
+export type GQLInvalidateReportsFromReporterMutationHookResult = ReturnType<
+  typeof useGQLInvalidateReportsFromReporterMutation
+>;
+export type GQLInvalidateReportsFromReporterMutationResult =
+  Apollo.MutationResult<GQLInvalidateReportsFromReporterMutation>;
+export type GQLInvalidateReportsFromReporterMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLInvalidateReportsFromReporterMutation,
+    GQLInvalidateReportsFromReporterMutationVariables
+  >;
 export const GQLManualReviewJobInfoDocument = gql`
   query ManualReviewJobInfo($jobIds: [ID!]) {
     myOrg {
@@ -33992,11 +34608,13 @@ export const GQLManualReviewJobInfoDocument = gql`
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       allowMultiplePoliciesPerAction
       hideSkipButtonForNonAdmins
     }
     me {
       id
+      permissions
       reviewableQueues {
         id
         name
@@ -34188,6 +34806,11 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
         status
         type
         detail
+      }
+      ... on MissingRequiredDecisionReasonError {
+        title
+        status
+        type
       }
       ... on MissingRequiredPolicyForDecisionError {
         title
@@ -34384,6 +35007,9 @@ export const GQLGetRelatedItemsDocument = gql`
               valueScalarType
             }
           }
+          schemaFieldRoles {
+            displayName
+          }
         }
       }
       ... on ThreadItem {
@@ -34403,6 +35029,9 @@ export const GQLGetRelatedItemsDocument = gql`
               keyScalarType
               valueScalarType
             }
+          }
+          schemaFieldRoles {
+            displayName
           }
         }
       }
@@ -35200,6 +35829,105 @@ export type GQLGetLatestUserSubmittedItemsWithThreadsQueryResult =
     GQLGetLatestUserSubmittedItemsWithThreadsQuery,
     GQLGetLatestUserSubmittedItemsWithThreadsQueryVariables
   >;
+export const GQLNcmecMediaReviewPolicyDocument = gql`
+  query NcmecMediaReviewPolicy {
+    myOrg {
+      ncmecMediaReviewRequirement
+      ncmecMinMediaToReview
+    }
+  }
+`;
+
+/**
+ * __useGQLNcmecMediaReviewPolicyQuery__
+ *
+ * To run a query within a React component, call `useGQLNcmecMediaReviewPolicyQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLNcmecMediaReviewPolicyQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLNcmecMediaReviewPolicyQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLNcmecMediaReviewPolicyQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >(GQLNcmecMediaReviewPolicyDocument, options);
+}
+export function useGQLNcmecMediaReviewPolicyLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >(GQLNcmecMediaReviewPolicyDocument, options);
+}
+// @ts-ignore
+export function useGQLNcmecMediaReviewPolicySuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLNcmecMediaReviewPolicyQuery,
+  GQLNcmecMediaReviewPolicyQueryVariables
+>;
+export function useGQLNcmecMediaReviewPolicySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLNcmecMediaReviewPolicyQuery,
+        GQLNcmecMediaReviewPolicyQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLNcmecMediaReviewPolicyQuery | undefined,
+  GQLNcmecMediaReviewPolicyQueryVariables
+>;
+export function useGQLNcmecMediaReviewPolicySuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLNcmecMediaReviewPolicyQuery,
+        GQLNcmecMediaReviewPolicyQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLNcmecMediaReviewPolicyQuery,
+    GQLNcmecMediaReviewPolicyQueryVariables
+  >(GQLNcmecMediaReviewPolicyDocument, options);
+}
+export type GQLNcmecMediaReviewPolicyQueryHookResult = ReturnType<
+  typeof useGQLNcmecMediaReviewPolicyQuery
+>;
+export type GQLNcmecMediaReviewPolicyLazyQueryHookResult = ReturnType<
+  typeof useGQLNcmecMediaReviewPolicyLazyQuery
+>;
+export type GQLNcmecMediaReviewPolicySuspenseQueryHookResult = ReturnType<
+  typeof useGQLNcmecMediaReviewPolicySuspenseQuery
+>;
+export type GQLNcmecMediaReviewPolicyQueryResult = Apollo.QueryResult<
+  GQLNcmecMediaReviewPolicyQuery,
+  GQLNcmecMediaReviewPolicyQueryVariables
+>;
 export const GQLGetMoreInfoForThreadItemsDocument = gql`
   query getMoreInfoForThreadItems($ids: [ItemIdentifierInput!]!) {
     partialItems(input: $ids) {
@@ -35871,7 +36599,6 @@ export const GQLGetMoreInfoForItemsDocument = gql`
               id
             }
             data
-            userScore
           }
         }
       }
@@ -41942,6 +42669,7 @@ export const GQLUserStrikeThresholdsDocument = gql`
         id
         threshold
         actions
+        actionParameters
       }
       userStrikeTTL
     }
@@ -43137,6 +43865,8 @@ export const GQLNcmecOrgSettingsDocument = gql`
       contactPersonFirstName
       contactPersonLastName
       contactPersonPhone
+      mediaReviewRequirement
+      minMediaToReview
     }
     myOrg {
       hasNCMECReportingEnabled
@@ -43289,322 +44019,6 @@ export type GQLUpdateNcmecOrgSettingsMutationOptions =
     GQLUpdateNcmecOrgSettingsMutation,
     GQLUpdateNcmecOrgSettingsMutationVariables
   >;
-export const GQLOrgDefaultSafetySettingsDocument = gql`
-  query OrgDefaultSafetySettings {
-    me {
-      permissions
-    }
-    myOrg {
-      defaultInterfacePreferences {
-        moderatorSafetyMuteVideo
-        moderatorSafetyGrayscale
-        moderatorSafetyBlurLevel
-      }
-    }
-  }
-`;
-
-/**
- * __useGQLOrgDefaultSafetySettingsQuery__
- *
- * To run a query within a React component, call `useGQLOrgDefaultSafetySettingsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLOrgDefaultSafetySettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLOrgDefaultSafetySettingsQuery({
- *   variables: {
- *   },
- * });
- */
-export function useGQLOrgDefaultSafetySettingsQuery(
-  baseOptions?: Apollo.QueryHookOptions<
-    GQLOrgDefaultSafetySettingsQuery,
-    GQLOrgDefaultSafetySettingsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<
-    GQLOrgDefaultSafetySettingsQuery,
-    GQLOrgDefaultSafetySettingsQueryVariables
-  >(GQLOrgDefaultSafetySettingsDocument, options);
-}
-export function useGQLOrgDefaultSafetySettingsLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLOrgDefaultSafetySettingsQuery,
-    GQLOrgDefaultSafetySettingsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<
-    GQLOrgDefaultSafetySettingsQuery,
-    GQLOrgDefaultSafetySettingsQueryVariables
-  >(GQLOrgDefaultSafetySettingsDocument, options);
-}
-// @ts-ignore
-export function useGQLOrgDefaultSafetySettingsSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLOrgDefaultSafetySettingsQuery,
-    GQLOrgDefaultSafetySettingsQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<
-  GQLOrgDefaultSafetySettingsQuery,
-  GQLOrgDefaultSafetySettingsQueryVariables
->;
-export function useGQLOrgDefaultSafetySettingsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLOrgDefaultSafetySettingsQuery,
-        GQLOrgDefaultSafetySettingsQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLOrgDefaultSafetySettingsQuery | undefined,
-  GQLOrgDefaultSafetySettingsQueryVariables
->;
-export function useGQLOrgDefaultSafetySettingsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLOrgDefaultSafetySettingsQuery,
-        GQLOrgDefaultSafetySettingsQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<
-    GQLOrgDefaultSafetySettingsQuery,
-    GQLOrgDefaultSafetySettingsQueryVariables
-  >(GQLOrgDefaultSafetySettingsDocument, options);
-}
-export type GQLOrgDefaultSafetySettingsQueryHookResult = ReturnType<
-  typeof useGQLOrgDefaultSafetySettingsQuery
->;
-export type GQLOrgDefaultSafetySettingsLazyQueryHookResult = ReturnType<
-  typeof useGQLOrgDefaultSafetySettingsLazyQuery
->;
-export type GQLOrgDefaultSafetySettingsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLOrgDefaultSafetySettingsSuspenseQuery
->;
-export type GQLOrgDefaultSafetySettingsQueryResult = Apollo.QueryResult<
-  GQLOrgDefaultSafetySettingsQuery,
-  GQLOrgDefaultSafetySettingsQueryVariables
->;
-export const GQLSetOrgDefaultSafetySettingsDocument = gql`
-  mutation SetOrgDefaultSafetySettings(
-    $orgDefaultSafetySettings: ModeratorSafetySettingsInput!
-  ) {
-    setOrgDefaultSafetySettings(
-      orgDefaultSafetySettings: $orgDefaultSafetySettings
-    ) {
-      _
-    }
-  }
-`;
-export type GQLSetOrgDefaultSafetySettingsMutationFn = Apollo.MutationFunction<
-  GQLSetOrgDefaultSafetySettingsMutation,
-  GQLSetOrgDefaultSafetySettingsMutationVariables
->;
-
-/**
- * __useGQLSetOrgDefaultSafetySettingsMutation__
- *
- * To run a mutation, you first call `useGQLSetOrgDefaultSafetySettingsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLSetOrgDefaultSafetySettingsMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlSetOrgDefaultSafetySettingsMutation, { data, loading, error }] = useGQLSetOrgDefaultSafetySettingsMutation({
- *   variables: {
- *      orgDefaultSafetySettings: // value for 'orgDefaultSafetySettings'
- *   },
- * });
- */
-export function useGQLSetOrgDefaultSafetySettingsMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLSetOrgDefaultSafetySettingsMutation,
-    GQLSetOrgDefaultSafetySettingsMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLSetOrgDefaultSafetySettingsMutation,
-    GQLSetOrgDefaultSafetySettingsMutationVariables
-  >(GQLSetOrgDefaultSafetySettingsDocument, options);
-}
-export type GQLSetOrgDefaultSafetySettingsMutationHookResult = ReturnType<
-  typeof useGQLSetOrgDefaultSafetySettingsMutation
->;
-export type GQLSetOrgDefaultSafetySettingsMutationResult =
-  Apollo.MutationResult<GQLSetOrgDefaultSafetySettingsMutation>;
-export type GQLSetOrgDefaultSafetySettingsMutationOptions =
-  Apollo.BaseMutationOptions<
-    GQLSetOrgDefaultSafetySettingsMutation,
-    GQLSetOrgDefaultSafetySettingsMutationVariables
-  >;
-export const GQLOrgSettingsDocument = gql`
-  query OrgSettings {
-    myOrg {
-      id
-      name
-      email
-      websiteUrl
-      onCallAlertEmail
-    }
-    me {
-      id
-      permissions
-    }
-  }
-`;
-
-/**
- * __useGQLOrgSettingsQuery__
- *
- * To run a query within a React component, call `useGQLOrgSettingsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLOrgSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLOrgSettingsQuery({
- *   variables: {
- *   },
- * });
- */
-export function useGQLOrgSettingsQuery(
-  baseOptions?: Apollo.QueryHookOptions<
-    GQLOrgSettingsQuery,
-    GQLOrgSettingsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<GQLOrgSettingsQuery, GQLOrgSettingsQueryVariables>(
-    GQLOrgSettingsDocument,
-    options,
-  );
-}
-export function useGQLOrgSettingsLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLOrgSettingsQuery,
-    GQLOrgSettingsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<GQLOrgSettingsQuery, GQLOrgSettingsQueryVariables>(
-    GQLOrgSettingsDocument,
-    options,
-  );
-}
-// @ts-ignore
-export function useGQLOrgSettingsSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLOrgSettingsQuery,
-    GQLOrgSettingsQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<
-  GQLOrgSettingsQuery,
-  GQLOrgSettingsQueryVariables
->;
-export function useGQLOrgSettingsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLOrgSettingsQuery,
-        GQLOrgSettingsQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLOrgSettingsQuery | undefined,
-  GQLOrgSettingsQueryVariables
->;
-export function useGQLOrgSettingsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLOrgSettingsQuery,
-        GQLOrgSettingsQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<
-    GQLOrgSettingsQuery,
-    GQLOrgSettingsQueryVariables
-  >(GQLOrgSettingsDocument, options);
-}
-export type GQLOrgSettingsQueryHookResult = ReturnType<
-  typeof useGQLOrgSettingsQuery
->;
-export type GQLOrgSettingsLazyQueryHookResult = ReturnType<
-  typeof useGQLOrgSettingsLazyQuery
->;
-export type GQLOrgSettingsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLOrgSettingsSuspenseQuery
->;
-export type GQLOrgSettingsQueryResult = Apollo.QueryResult<
-  GQLOrgSettingsQuery,
-  GQLOrgSettingsQueryVariables
->;
-export const GQLUpdateOrgInfoDocument = gql`
-  mutation UpdateOrgInfo($input: UpdateOrgInfoInput!) {
-    updateOrgInfo(input: $input) {
-      _
-    }
-  }
-`;
-export type GQLUpdateOrgInfoMutationFn = Apollo.MutationFunction<
-  GQLUpdateOrgInfoMutation,
-  GQLUpdateOrgInfoMutationVariables
->;
-
-/**
- * __useGQLUpdateOrgInfoMutation__
- *
- * To run a mutation, you first call `useGQLUpdateOrgInfoMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateOrgInfoMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlUpdateOrgInfoMutation, { data, loading, error }] = useGQLUpdateOrgInfoMutation({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLUpdateOrgInfoMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateOrgInfoMutation,
-    GQLUpdateOrgInfoMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLUpdateOrgInfoMutation,
-    GQLUpdateOrgInfoMutationVariables
-  >(GQLUpdateOrgInfoDocument, options);
-}
-export type GQLUpdateOrgInfoMutationHookResult = ReturnType<
-  typeof useGQLUpdateOrgInfoMutation
->;
-export type GQLUpdateOrgInfoMutationResult =
-  Apollo.MutationResult<GQLUpdateOrgInfoMutation>;
-export type GQLUpdateOrgInfoMutationOptions = Apollo.BaseMutationOptions<
-  GQLUpdateOrgInfoMutation,
-  GQLUpdateOrgInfoMutationVariables
->;
 export const GQLPermissionGroupsDocument = gql`
   query PermissionGroups {
     permissionGroups {
@@ -43825,85 +44239,104 @@ export type GQLRenameRoleMutationOptions = Apollo.BaseMutationOptions<
   GQLRenameRoleMutation,
   GQLRenameRoleMutationVariables
 >;
-export const GQLGetSsoCredentialsDocument = gql`
-  query GetSSOCredentials {
+export const GQLDeploymentSettingsDocument = gql`
+  query DeploymentSettings {
     me {
+      id
       permissions
     }
     myOrg {
       id
+      hasAppealsEnabled
+      hasReportingRulesEnabled
+      allowMultiplePoliciesPerAction
+      requiresPolicyForDecisionsInMrt
+      requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
+      previewJobsViewEnabled
+      hideSkipButtonForNonAdmins
+      userStrikeTTL
+      samlEnabled
       ssoUrl
       ssoCert
+      ignoreCallbackUrl
+      partialItemsEndpoint
+      partialItemsRequestHeaders
+    }
+    appealSettings {
+      appealsCallbackUrl
+      appealsCallbackHeaders
+      appealsCallbackBody
     }
   }
 `;
 
 /**
- * __useGQLGetSsoCredentialsQuery__
+ * __useGQLDeploymentSettingsQuery__
  *
- * To run a query within a React component, call `useGQLGetSsoCredentialsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLGetSsoCredentialsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * To run a query within a React component, call `useGQLDeploymentSettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLDeploymentSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
  * you can use to render your UI.
  *
  * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
  *
  * @example
- * const { data, loading, error } = useGQLGetSsoCredentialsQuery({
+ * const { data, loading, error } = useGQLDeploymentSettingsQuery({
  *   variables: {
  *   },
  * });
  */
-export function useGQLGetSsoCredentialsQuery(
+export function useGQLDeploymentSettingsQuery(
   baseOptions?: Apollo.QueryHookOptions<
-    GQLGetSsoCredentialsQuery,
-    GQLGetSsoCredentialsQueryVariables
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useQuery<
-    GQLGetSsoCredentialsQuery,
-    GQLGetSsoCredentialsQueryVariables
-  >(GQLGetSsoCredentialsDocument, options);
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >(GQLDeploymentSettingsDocument, options);
 }
-export function useGQLGetSsoCredentialsLazyQuery(
+export function useGQLDeploymentSettingsLazyQuery(
   baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLGetSsoCredentialsQuery,
-    GQLGetSsoCredentialsQueryVariables
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useLazyQuery<
-    GQLGetSsoCredentialsQuery,
-    GQLGetSsoCredentialsQueryVariables
-  >(GQLGetSsoCredentialsDocument, options);
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >(GQLDeploymentSettingsDocument, options);
 }
 // @ts-ignore
-export function useGQLGetSsoCredentialsSuspenseQuery(
+export function useGQLDeploymentSettingsSuspenseQuery(
   baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLGetSsoCredentialsQuery,
-    GQLGetSsoCredentialsQueryVariables
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
   >,
 ): Apollo.UseSuspenseQueryResult<
-  GQLGetSsoCredentialsQuery,
-  GQLGetSsoCredentialsQueryVariables
+  GQLDeploymentSettingsQuery,
+  GQLDeploymentSettingsQueryVariables
 >;
-export function useGQLGetSsoCredentialsSuspenseQuery(
+export function useGQLDeploymentSettingsSuspenseQuery(
   baseOptions?:
     | Apollo.SkipToken
     | Apollo.SuspenseQueryHookOptions<
-        GQLGetSsoCredentialsQuery,
-        GQLGetSsoCredentialsQueryVariables
+        GQLDeploymentSettingsQuery,
+        GQLDeploymentSettingsQueryVariables
       >,
 ): Apollo.UseSuspenseQueryResult<
-  GQLGetSsoCredentialsQuery | undefined,
-  GQLGetSsoCredentialsQueryVariables
+  GQLDeploymentSettingsQuery | undefined,
+  GQLDeploymentSettingsQueryVariables
 >;
-export function useGQLGetSsoCredentialsSuspenseQuery(
+export function useGQLDeploymentSettingsSuspenseQuery(
   baseOptions?:
     | Apollo.SkipToken
     | Apollo.SuspenseQueryHookOptions<
-        GQLGetSsoCredentialsQuery,
-        GQLGetSsoCredentialsQueryVariables
+        GQLDeploymentSettingsQuery,
+        GQLDeploymentSettingsQueryVariables
       >,
 ) {
   const options =
@@ -43911,23 +44344,774 @@ export function useGQLGetSsoCredentialsSuspenseQuery(
       ? baseOptions
       : { ...defaultOptions, ...baseOptions };
   return Apollo.useSuspenseQuery<
-    GQLGetSsoCredentialsQuery,
-    GQLGetSsoCredentialsQueryVariables
-  >(GQLGetSsoCredentialsDocument, options);
+    GQLDeploymentSettingsQuery,
+    GQLDeploymentSettingsQueryVariables
+  >(GQLDeploymentSettingsDocument, options);
 }
-export type GQLGetSsoCredentialsQueryHookResult = ReturnType<
-  typeof useGQLGetSsoCredentialsQuery
+export type GQLDeploymentSettingsQueryHookResult = ReturnType<
+  typeof useGQLDeploymentSettingsQuery
 >;
-export type GQLGetSsoCredentialsLazyQueryHookResult = ReturnType<
-  typeof useGQLGetSsoCredentialsLazyQuery
+export type GQLDeploymentSettingsLazyQueryHookResult = ReturnType<
+  typeof useGQLDeploymentSettingsLazyQuery
 >;
-export type GQLGetSsoCredentialsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLGetSsoCredentialsSuspenseQuery
+export type GQLDeploymentSettingsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLDeploymentSettingsSuspenseQuery
 >;
-export type GQLGetSsoCredentialsQueryResult = Apollo.QueryResult<
-  GQLGetSsoCredentialsQuery,
-  GQLGetSsoCredentialsQueryVariables
+export type GQLDeploymentSettingsQueryResult = Apollo.QueryResult<
+  GQLDeploymentSettingsQuery,
+  GQLDeploymentSettingsQueryVariables
 >;
+export const GQLUpdateHasAppealsEnabledDocument = gql`
+  mutation UpdateHasAppealsEnabled($enabled: Boolean!) {
+    updateHasAppealsEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateHasAppealsEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdateHasAppealsEnabledMutation,
+  GQLUpdateHasAppealsEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdateHasAppealsEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateHasAppealsEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHasAppealsEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateHasAppealsEnabledMutation, { data, loading, error }] = useGQLUpdateHasAppealsEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateHasAppealsEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateHasAppealsEnabledMutation,
+    GQLUpdateHasAppealsEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateHasAppealsEnabledMutation,
+    GQLUpdateHasAppealsEnabledMutationVariables
+  >(GQLUpdateHasAppealsEnabledDocument, options);
+}
+export type GQLUpdateHasAppealsEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateHasAppealsEnabledMutation
+>;
+export type GQLUpdateHasAppealsEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateHasAppealsEnabledMutation>;
+export type GQLUpdateHasAppealsEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateHasAppealsEnabledMutation,
+    GQLUpdateHasAppealsEnabledMutationVariables
+  >;
+export const GQLUpdateHasReportingRulesEnabledDocument = gql`
+  mutation UpdateHasReportingRulesEnabled($enabled: Boolean!) {
+    updateHasReportingRulesEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateHasReportingRulesEnabledMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateHasReportingRulesEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateHasReportingRulesEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHasReportingRulesEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateHasReportingRulesEnabledMutation, { data, loading, error }] = useGQLUpdateHasReportingRulesEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateHasReportingRulesEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >(GQLUpdateHasReportingRulesEnabledDocument, options);
+}
+export type GQLUpdateHasReportingRulesEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateHasReportingRulesEnabledMutation
+>;
+export type GQLUpdateHasReportingRulesEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateHasReportingRulesEnabledMutation>;
+export type GQLUpdateHasReportingRulesEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateHasReportingRulesEnabledMutation,
+    GQLUpdateHasReportingRulesEnabledMutationVariables
+  >;
+export const GQLUpdateAllowMultiplePoliciesPerActionDocument = gql`
+  mutation UpdateAllowMultiplePoliciesPerAction($enabled: Boolean!) {
+    updateAllowMultiplePoliciesPerAction(enabled: $enabled)
+  }
+`;
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateAllowMultiplePoliciesPerActionMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateAllowMultiplePoliciesPerActionMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateAllowMultiplePoliciesPerActionMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateAllowMultiplePoliciesPerActionMutation, { data, loading, error }] = useGQLUpdateAllowMultiplePoliciesPerActionMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateAllowMultiplePoliciesPerActionMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >(GQLUpdateAllowMultiplePoliciesPerActionDocument, options);
+}
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationHookResult =
+  ReturnType<typeof useGQLUpdateAllowMultiplePoliciesPerActionMutation>;
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationResult =
+  Apollo.MutationResult<GQLUpdateAllowMultiplePoliciesPerActionMutation>;
+export type GQLUpdateAllowMultiplePoliciesPerActionMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateAllowMultiplePoliciesPerActionMutation,
+    GQLUpdateAllowMultiplePoliciesPerActionMutationVariables
+  >;
+export const GQLUpdateSamlEnabledDocument = gql`
+  mutation UpdateSamlEnabled($enabled: Boolean!) {
+    updateSamlEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdateSamlEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdateSamlEnabledMutation,
+  GQLUpdateSamlEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdateSamlEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateSamlEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateSamlEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateSamlEnabledMutation, { data, loading, error }] = useGQLUpdateSamlEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateSamlEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateSamlEnabledMutation,
+    GQLUpdateSamlEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateSamlEnabledMutation,
+    GQLUpdateSamlEnabledMutationVariables
+  >(GQLUpdateSamlEnabledDocument, options);
+}
+export type GQLUpdateSamlEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdateSamlEnabledMutation
+>;
+export type GQLUpdateSamlEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdateSamlEnabledMutation>;
+export type GQLUpdateSamlEnabledMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateSamlEnabledMutation,
+  GQLUpdateSamlEnabledMutationVariables
+>;
+export const GQLUpdateRequiresPolicyForDecisionsDocument = gql`
+  mutation UpdateRequiresPolicyForDecisions($enabled: Boolean!) {
+    updateRequiresPolicyForDecisions(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresPolicyForDecisionsMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateRequiresPolicyForDecisionsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresPolicyForDecisionsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresPolicyForDecisionsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresPolicyForDecisionsMutation, { data, loading, error }] = useGQLUpdateRequiresPolicyForDecisionsMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresPolicyForDecisionsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >(GQLUpdateRequiresPolicyForDecisionsDocument, options);
+}
+export type GQLUpdateRequiresPolicyForDecisionsMutationHookResult = ReturnType<
+  typeof useGQLUpdateRequiresPolicyForDecisionsMutation
+>;
+export type GQLUpdateRequiresPolicyForDecisionsMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresPolicyForDecisionsMutation>;
+export type GQLUpdateRequiresPolicyForDecisionsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresPolicyForDecisionsMutation,
+    GQLUpdateRequiresPolicyForDecisionsMutationVariables
+  >;
+export const GQLUpdateRequiresDecisionReasonDocument = gql`
+  mutation UpdateRequiresDecisionReason($enabled: Boolean!) {
+    updateRequiresDecisionReason(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresDecisionReasonMutationFn = Apollo.MutationFunction<
+  GQLUpdateRequiresDecisionReasonMutation,
+  GQLUpdateRequiresDecisionReasonMutationVariables
+>;
+
+/**
+ * __useGQLUpdateRequiresDecisionReasonMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresDecisionReasonMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresDecisionReasonMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresDecisionReasonMutation, { data, loading, error }] = useGQLUpdateRequiresDecisionReasonMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresDecisionReasonMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresDecisionReasonMutation,
+    GQLUpdateRequiresDecisionReasonMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresDecisionReasonMutation,
+    GQLUpdateRequiresDecisionReasonMutationVariables
+  >(GQLUpdateRequiresDecisionReasonDocument, options);
+}
+export type GQLUpdateRequiresDecisionReasonMutationHookResult = ReturnType<
+  typeof useGQLUpdateRequiresDecisionReasonMutation
+>;
+export type GQLUpdateRequiresDecisionReasonMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresDecisionReasonMutation>;
+export type GQLUpdateRequiresDecisionReasonMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresDecisionReasonMutation,
+    GQLUpdateRequiresDecisionReasonMutationVariables
+  >;
+export const GQLUpdateRequiresDecisionReasonOnIgnoreDocument = gql`
+  mutation UpdateRequiresDecisionReasonOnIgnore($enabled: Boolean!) {
+    updateRequiresDecisionReasonOnIgnore(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateRequiresDecisionReasonOnIgnoreMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresDecisionReasonOnIgnoreMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresDecisionReasonOnIgnoreMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresDecisionReasonOnIgnoreMutation, { data, loading, error }] = useGQLUpdateRequiresDecisionReasonOnIgnoreMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresDecisionReasonOnIgnoreMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >(GQLUpdateRequiresDecisionReasonOnIgnoreDocument, options);
+}
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationHookResult =
+  ReturnType<typeof useGQLUpdateRequiresDecisionReasonOnIgnoreMutation>;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresDecisionReasonOnIgnoreMutation>;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >;
+export const GQLUpdateHideSkipButtonForNonAdminsDocument = gql`
+  mutation UpdateHideSkipButtonForNonAdmins($enabled: Boolean!) {
+    updateHideSkipButtonForNonAdmins(enabled: $enabled)
+  }
+`;
+export type GQLUpdateHideSkipButtonForNonAdminsMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateHideSkipButtonForNonAdminsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateHideSkipButtonForNonAdminsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHideSkipButtonForNonAdminsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateHideSkipButtonForNonAdminsMutation, { data, loading, error }] = useGQLUpdateHideSkipButtonForNonAdminsMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateHideSkipButtonForNonAdminsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >(GQLUpdateHideSkipButtonForNonAdminsDocument, options);
+}
+export type GQLUpdateHideSkipButtonForNonAdminsMutationHookResult = ReturnType<
+  typeof useGQLUpdateHideSkipButtonForNonAdminsMutation
+>;
+export type GQLUpdateHideSkipButtonForNonAdminsMutationResult =
+  Apollo.MutationResult<GQLUpdateHideSkipButtonForNonAdminsMutation>;
+export type GQLUpdateHideSkipButtonForNonAdminsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateHideSkipButtonForNonAdminsMutation,
+    GQLUpdateHideSkipButtonForNonAdminsMutationVariables
+  >;
+export const GQLUpdatePreviewJobsViewEnabledDocument = gql`
+  mutation UpdatePreviewJobsViewEnabled($enabled: Boolean!) {
+    updatePreviewJobsViewEnabled(enabled: $enabled)
+  }
+`;
+export type GQLUpdatePreviewJobsViewEnabledMutationFn = Apollo.MutationFunction<
+  GQLUpdatePreviewJobsViewEnabledMutation,
+  GQLUpdatePreviewJobsViewEnabledMutationVariables
+>;
+
+/**
+ * __useGQLUpdatePreviewJobsViewEnabledMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdatePreviewJobsViewEnabledMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdatePreviewJobsViewEnabledMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdatePreviewJobsViewEnabledMutation, { data, loading, error }] = useGQLUpdatePreviewJobsViewEnabledMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdatePreviewJobsViewEnabledMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdatePreviewJobsViewEnabledMutation,
+    GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdatePreviewJobsViewEnabledMutation,
+    GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >(GQLUpdatePreviewJobsViewEnabledDocument, options);
+}
+export type GQLUpdatePreviewJobsViewEnabledMutationHookResult = ReturnType<
+  typeof useGQLUpdatePreviewJobsViewEnabledMutation
+>;
+export type GQLUpdatePreviewJobsViewEnabledMutationResult =
+  Apollo.MutationResult<GQLUpdatePreviewJobsViewEnabledMutation>;
+export type GQLUpdatePreviewJobsViewEnabledMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdatePreviewJobsViewEnabledMutation,
+    GQLUpdatePreviewJobsViewEnabledMutationVariables
+  >;
+export const GQLUpdateIgnoreCallbackUrlDocument = gql`
+  mutation UpdateIgnoreCallbackUrl($url: String) {
+    updateIgnoreCallbackUrl(url: $url)
+  }
+`;
+export type GQLUpdateIgnoreCallbackUrlMutationFn = Apollo.MutationFunction<
+  GQLUpdateIgnoreCallbackUrlMutation,
+  GQLUpdateIgnoreCallbackUrlMutationVariables
+>;
+
+/**
+ * __useGQLUpdateIgnoreCallbackUrlMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateIgnoreCallbackUrlMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateIgnoreCallbackUrlMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateIgnoreCallbackUrlMutation, { data, loading, error }] = useGQLUpdateIgnoreCallbackUrlMutation({
+ *   variables: {
+ *      url: // value for 'url'
+ *   },
+ * });
+ */
+export function useGQLUpdateIgnoreCallbackUrlMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateIgnoreCallbackUrlMutation,
+    GQLUpdateIgnoreCallbackUrlMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateIgnoreCallbackUrlMutation,
+    GQLUpdateIgnoreCallbackUrlMutationVariables
+  >(GQLUpdateIgnoreCallbackUrlDocument, options);
+}
+export type GQLUpdateIgnoreCallbackUrlMutationHookResult = ReturnType<
+  typeof useGQLUpdateIgnoreCallbackUrlMutation
+>;
+export type GQLUpdateIgnoreCallbackUrlMutationResult =
+  Apollo.MutationResult<GQLUpdateIgnoreCallbackUrlMutation>;
+export type GQLUpdateIgnoreCallbackUrlMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateIgnoreCallbackUrlMutation,
+    GQLUpdateIgnoreCallbackUrlMutationVariables
+  >;
+export const GQLUpdateAppealSettingsDocument = gql`
+  mutation UpdateAppealSettings($input: AppealSettingsInput!) {
+    updateAppealSettings(input: $input) {
+      appealsCallbackUrl
+      appealsCallbackHeaders
+      appealsCallbackBody
+    }
+  }
+`;
+export type GQLUpdateAppealSettingsMutationFn = Apollo.MutationFunction<
+  GQLUpdateAppealSettingsMutation,
+  GQLUpdateAppealSettingsMutationVariables
+>;
+
+/**
+ * __useGQLUpdateAppealSettingsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateAppealSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateAppealSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateAppealSettingsMutation, { data, loading, error }] = useGQLUpdateAppealSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateAppealSettingsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateAppealSettingsMutation,
+    GQLUpdateAppealSettingsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateAppealSettingsMutation,
+    GQLUpdateAppealSettingsMutationVariables
+  >(GQLUpdateAppealSettingsDocument, options);
+}
+export type GQLUpdateAppealSettingsMutationHookResult = ReturnType<
+  typeof useGQLUpdateAppealSettingsMutation
+>;
+export type GQLUpdateAppealSettingsMutationResult =
+  Apollo.MutationResult<GQLUpdateAppealSettingsMutation>;
+export type GQLUpdateAppealSettingsMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateAppealSettingsMutation,
+  GQLUpdateAppealSettingsMutationVariables
+>;
+export const GQLOrgSettingsDocument = gql`
+  query OrgSettings {
+    myOrg {
+      id
+      name
+      email
+      websiteUrl
+      onCallAlertEmail
+    }
+    me {
+      id
+      permissions
+    }
+  }
+`;
+
+/**
+ * __useGQLOrgSettingsQuery__
+ *
+ * To run a query within a React component, call `useGQLOrgSettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLOrgSettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLOrgSettingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLOrgSettingsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLOrgSettingsQuery,
+    GQLOrgSettingsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLOrgSettingsQuery, GQLOrgSettingsQueryVariables>(
+    GQLOrgSettingsDocument,
+    options,
+  );
+}
+export function useGQLOrgSettingsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLOrgSettingsQuery,
+    GQLOrgSettingsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<GQLOrgSettingsQuery, GQLOrgSettingsQueryVariables>(
+    GQLOrgSettingsDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useGQLOrgSettingsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLOrgSettingsQuery,
+    GQLOrgSettingsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLOrgSettingsQuery,
+  GQLOrgSettingsQueryVariables
+>;
+export function useGQLOrgSettingsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLOrgSettingsQuery,
+        GQLOrgSettingsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLOrgSettingsQuery | undefined,
+  GQLOrgSettingsQueryVariables
+>;
+export function useGQLOrgSettingsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLOrgSettingsQuery,
+        GQLOrgSettingsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLOrgSettingsQuery,
+    GQLOrgSettingsQueryVariables
+  >(GQLOrgSettingsDocument, options);
+}
+export type GQLOrgSettingsQueryHookResult = ReturnType<
+  typeof useGQLOrgSettingsQuery
+>;
+export type GQLOrgSettingsLazyQueryHookResult = ReturnType<
+  typeof useGQLOrgSettingsLazyQuery
+>;
+export type GQLOrgSettingsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLOrgSettingsSuspenseQuery
+>;
+export type GQLOrgSettingsQueryResult = Apollo.QueryResult<
+  GQLOrgSettingsQuery,
+  GQLOrgSettingsQueryVariables
+>;
+export const GQLUpdateOrgInfoDocument = gql`
+  mutation UpdateOrgInfo($input: UpdateOrgInfoInput!) {
+    updateOrgInfo(input: $input) {
+      _
+    }
+  }
+`;
+export type GQLUpdateOrgInfoMutationFn = Apollo.MutationFunction<
+  GQLUpdateOrgInfoMutation,
+  GQLUpdateOrgInfoMutationVariables
+>;
+
+/**
+ * __useGQLUpdateOrgInfoMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateOrgInfoMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateOrgInfoMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateOrgInfoMutation, { data, loading, error }] = useGQLUpdateOrgInfoMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateOrgInfoMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateOrgInfoMutation,
+    GQLUpdateOrgInfoMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateOrgInfoMutation,
+    GQLUpdateOrgInfoMutationVariables
+  >(GQLUpdateOrgInfoDocument, options);
+}
+export type GQLUpdateOrgInfoMutationHookResult = ReturnType<
+  typeof useGQLUpdateOrgInfoMutation
+>;
+export type GQLUpdateOrgInfoMutationResult =
+  Apollo.MutationResult<GQLUpdateOrgInfoMutation>;
+export type GQLUpdateOrgInfoMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateOrgInfoMutation,
+  GQLUpdateOrgInfoMutationVariables
+>;
+export const GQLUpdatePartialItemsSettingsDocument = gql`
+  mutation UpdatePartialItemsSettings(
+    $input: UpdatePartialItemsSettingsInput!
+  ) {
+    updatePartialItemsSettings(input: $input)
+  }
+`;
+export type GQLUpdatePartialItemsSettingsMutationFn = Apollo.MutationFunction<
+  GQLUpdatePartialItemsSettingsMutation,
+  GQLUpdatePartialItemsSettingsMutationVariables
+>;
+
+/**
+ * __useGQLUpdatePartialItemsSettingsMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdatePartialItemsSettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdatePartialItemsSettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdatePartialItemsSettingsMutation, { data, loading, error }] = useGQLUpdatePartialItemsSettingsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdatePartialItemsSettingsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdatePartialItemsSettingsMutation,
+    GQLUpdatePartialItemsSettingsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdatePartialItemsSettingsMutation,
+    GQLUpdatePartialItemsSettingsMutationVariables
+  >(GQLUpdatePartialItemsSettingsDocument, options);
+}
+export type GQLUpdatePartialItemsSettingsMutationHookResult = ReturnType<
+  typeof useGQLUpdatePartialItemsSettingsMutation
+>;
+export type GQLUpdatePartialItemsSettingsMutationResult =
+  Apollo.MutationResult<GQLUpdatePartialItemsSettingsMutation>;
+export type GQLUpdatePartialItemsSettingsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdatePartialItemsSettingsMutation,
+    GQLUpdatePartialItemsSettingsMutationVariables
+  >;
 export const GQLUpdateSsoCredentialsDocument = gql`
   mutation UpdateSSOCredentials($input: UpdateSSOCredentialsInput!) {
     updateSSOCredentials(input: $input)
@@ -43976,6 +45160,166 @@ export type GQLUpdateSsoCredentialsMutationOptions = Apollo.BaseMutationOptions<
   GQLUpdateSsoCredentialsMutation,
   GQLUpdateSsoCredentialsMutationVariables
 >;
+export const GQLOrgDefaultSafetySettingsDocument = gql`
+  query OrgDefaultSafetySettings {
+    me {
+      permissions
+    }
+    myOrg {
+      defaultInterfacePreferences {
+        moderatorSafetyMuteVideo
+        moderatorSafetyGrayscale
+        moderatorSafetyBlurLevel
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLOrgDefaultSafetySettingsQuery__
+ *
+ * To run a query within a React component, call `useGQLOrgDefaultSafetySettingsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLOrgDefaultSafetySettingsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLOrgDefaultSafetySettingsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLOrgDefaultSafetySettingsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLOrgDefaultSafetySettingsQuery,
+    GQLOrgDefaultSafetySettingsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLOrgDefaultSafetySettingsQuery,
+    GQLOrgDefaultSafetySettingsQueryVariables
+  >(GQLOrgDefaultSafetySettingsDocument, options);
+}
+export function useGQLOrgDefaultSafetySettingsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLOrgDefaultSafetySettingsQuery,
+    GQLOrgDefaultSafetySettingsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLOrgDefaultSafetySettingsQuery,
+    GQLOrgDefaultSafetySettingsQueryVariables
+  >(GQLOrgDefaultSafetySettingsDocument, options);
+}
+// @ts-ignore
+export function useGQLOrgDefaultSafetySettingsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLOrgDefaultSafetySettingsQuery,
+    GQLOrgDefaultSafetySettingsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLOrgDefaultSafetySettingsQuery,
+  GQLOrgDefaultSafetySettingsQueryVariables
+>;
+export function useGQLOrgDefaultSafetySettingsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLOrgDefaultSafetySettingsQuery,
+        GQLOrgDefaultSafetySettingsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLOrgDefaultSafetySettingsQuery | undefined,
+  GQLOrgDefaultSafetySettingsQueryVariables
+>;
+export function useGQLOrgDefaultSafetySettingsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLOrgDefaultSafetySettingsQuery,
+        GQLOrgDefaultSafetySettingsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLOrgDefaultSafetySettingsQuery,
+    GQLOrgDefaultSafetySettingsQueryVariables
+  >(GQLOrgDefaultSafetySettingsDocument, options);
+}
+export type GQLOrgDefaultSafetySettingsQueryHookResult = ReturnType<
+  typeof useGQLOrgDefaultSafetySettingsQuery
+>;
+export type GQLOrgDefaultSafetySettingsLazyQueryHookResult = ReturnType<
+  typeof useGQLOrgDefaultSafetySettingsLazyQuery
+>;
+export type GQLOrgDefaultSafetySettingsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLOrgDefaultSafetySettingsSuspenseQuery
+>;
+export type GQLOrgDefaultSafetySettingsQueryResult = Apollo.QueryResult<
+  GQLOrgDefaultSafetySettingsQuery,
+  GQLOrgDefaultSafetySettingsQueryVariables
+>;
+export const GQLSetOrgDefaultSafetySettingsDocument = gql`
+  mutation SetOrgDefaultSafetySettings(
+    $orgDefaultSafetySettings: ModeratorSafetySettingsInput!
+  ) {
+    setOrgDefaultSafetySettings(
+      orgDefaultSafetySettings: $orgDefaultSafetySettings
+    ) {
+      _
+    }
+  }
+`;
+export type GQLSetOrgDefaultSafetySettingsMutationFn = Apollo.MutationFunction<
+  GQLSetOrgDefaultSafetySettingsMutation,
+  GQLSetOrgDefaultSafetySettingsMutationVariables
+>;
+
+/**
+ * __useGQLSetOrgDefaultSafetySettingsMutation__
+ *
+ * To run a mutation, you first call `useGQLSetOrgDefaultSafetySettingsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLSetOrgDefaultSafetySettingsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlSetOrgDefaultSafetySettingsMutation, { data, loading, error }] = useGQLSetOrgDefaultSafetySettingsMutation({
+ *   variables: {
+ *      orgDefaultSafetySettings: // value for 'orgDefaultSafetySettings'
+ *   },
+ * });
+ */
+export function useGQLSetOrgDefaultSafetySettingsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLSetOrgDefaultSafetySettingsMutation,
+    GQLSetOrgDefaultSafetySettingsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLSetOrgDefaultSafetySettingsMutation,
+    GQLSetOrgDefaultSafetySettingsMutationVariables
+  >(GQLSetOrgDefaultSafetySettingsDocument, options);
+}
+export type GQLSetOrgDefaultSafetySettingsMutationHookResult = ReturnType<
+  typeof useGQLSetOrgDefaultSafetySettingsMutation
+>;
+export type GQLSetOrgDefaultSafetySettingsMutationResult =
+  Apollo.MutationResult<GQLSetOrgDefaultSafetySettingsMutation>;
+export type GQLSetOrgDefaultSafetySettingsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLSetOrgDefaultSafetySettingsMutation,
+    GQLSetOrgDefaultSafetySettingsMutationVariables
+  >;
 export const namedOperations = {
   Query: {
     ApiAuth: 'ApiAuth',
@@ -44008,6 +45352,7 @@ export const namedOperations = {
     GetOrgData: 'GetOrgData',
     GetItemsWithId: 'GetItemsWithId',
     InvestigationItems: 'InvestigationItems',
+    GetItemsByIpAddress: 'GetItemsByIpAddress',
     GetAuthorInfo: 'GetAuthorInfo',
     ItemType: 'ItemType',
     ItemTypeFormOrg: 'ItemTypeFormOrg',
@@ -44016,7 +45361,6 @@ export const namedOperations = {
     getDecidedJobFromJobId: 'getDecidedJobFromJobId',
     ManualReviewMetrics: 'ManualReviewMetrics',
     getAverageTimeToReview: 'getAverageTimeToReview',
-    AppealSettings: 'AppealSettings',
     getDecisionsTable: 'getDecisionsTable',
     QueueFormData: 'QueueFormData',
     ManualReviewQueue: 'ManualReviewQueue',
@@ -44039,6 +45383,7 @@ export const namedOperations = {
     AllManualReviewQueues: 'AllManualReviewQueues',
     getLatestUserSubmittedItemsWithThreads:
       'getLatestUserSubmittedItemsWithThreads',
+    NcmecMediaReviewPolicy: 'NcmecMediaReviewPolicy',
     getMoreInfoForThreadItems: 'getMoreInfoForThreadItems',
     getMoreInfoForPartialItems: 'getMoreInfoForPartialItems',
     getExistingJobsForItem: 'getExistingJobsForItem',
@@ -44100,10 +45445,10 @@ export const namedOperations = {
     ManageUsers: 'ManageUsers',
     HasNcmecReportingEnabled: 'HasNcmecReportingEnabled',
     NcmecOrgSettings: 'NcmecOrgSettings',
-    OrgDefaultSafetySettings: 'OrgDefaultSafetySettings',
-    OrgSettings: 'OrgSettings',
     PermissionGroups: 'PermissionGroups',
-    GetSSOCredentials: 'GetSSOCredentials',
+    DeploymentSettings: 'DeploymentSettings',
+    OrgSettings: 'OrgSettings',
+    OrgDefaultSafetySettings: 'OrgDefaultSafetySettings',
   },
   Mutation: {
     RotateApiKey: 'RotateApiKey',
@@ -44137,7 +45482,6 @@ export const namedOperations = {
     UpdateUserType: 'UpdateUserType',
     CreateThreadType: 'CreateThreadType',
     UpdateThreadType: 'UpdateThreadType',
-    UpdateAppealSettings: 'UpdateAppealSettings',
     CreateManualReviewQueue: 'CreateManualReviewQueue',
     UpdateManualReviewQueue: 'UpdateManualReviewQueue',
     DeleteManualReviewQueue: 'DeleteManualReviewQueue',
@@ -44145,6 +45489,7 @@ export const namedOperations = {
     AddFavoriteMRTQueue: 'AddFavoriteMRTQueue',
     RemoveFavoriteMRTQueue: 'RemoveFavoriteMRTQueue',
     SetModeratorSafetySettings: 'SetModeratorSafetySettings',
+    InvalidateReportsFromReporter: 'InvalidateReportsFromReporter',
     DequeueManualReviewJob: 'DequeueManualReviewJob',
     SubmitManualReviewDecision: 'SubmitManualReviewDecision',
     LogSkip: 'LogSkip',
@@ -44182,11 +45527,25 @@ export const namedOperations = {
     GeneratePasswordResetToken: 'GeneratePasswordResetToken',
     InviteUser: 'InviteUser',
     UpdateNcmecOrgSettings: 'UpdateNcmecOrgSettings',
-    SetOrgDefaultSafetySettings: 'SetOrgDefaultSafetySettings',
-    UpdateOrgInfo: 'UpdateOrgInfo',
     UpdateRolePermissions: 'UpdateRolePermissions',
     RenameRole: 'RenameRole',
+    UpdateHasAppealsEnabled: 'UpdateHasAppealsEnabled',
+    UpdateHasReportingRulesEnabled: 'UpdateHasReportingRulesEnabled',
+    UpdateAllowMultiplePoliciesPerAction:
+      'UpdateAllowMultiplePoliciesPerAction',
+    UpdateSamlEnabled: 'UpdateSamlEnabled',
+    UpdateRequiresPolicyForDecisions: 'UpdateRequiresPolicyForDecisions',
+    UpdateRequiresDecisionReason: 'UpdateRequiresDecisionReason',
+    UpdateRequiresDecisionReasonOnIgnore:
+      'UpdateRequiresDecisionReasonOnIgnore',
+    UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
+    UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
+    UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',
+    UpdateAppealSettings: 'UpdateAppealSettings',
+    UpdateOrgInfo: 'UpdateOrgInfo',
+    UpdatePartialItemsSettings: 'UpdatePartialItemsSettings',
     UpdateSSOCredentials: 'UpdateSSOCredentials',
+    SetOrgDefaultSafetySettings: 'SetOrgDefaultSafetySettings',
   },
   Fragment: {
     CustomActionFragment: 'CustomActionFragment',

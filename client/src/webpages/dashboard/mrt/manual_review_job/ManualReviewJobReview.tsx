@@ -147,11 +147,13 @@ gql`
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       allowMultiplePoliciesPerAction
       hideSkipButtonForNonAdmins
     }
     me {
       id
+      permissions
       reviewableQueues {
         id
         name
@@ -202,6 +204,11 @@ gql`
         status
         type
         detail
+      }
+      ... on MissingRequiredDecisionReasonError {
+        title
+        status
+        type
       }
       ... on MissingRequiredPolicyForDecisionError {
         title
@@ -364,7 +371,11 @@ function ManualReviewJobReviewImpl(props: {
     setDecisionReason(undefined);
   };
 
-  const { data, loading } = useGQLManualReviewJobInfoQuery({
+  const {
+    data,
+    loading,
+    refetch: refetchJobInfo,
+  } = useGQLManualReviewJobInfoQuery({
     variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
     fetchPolicy: 'no-cache',
   });
@@ -404,23 +415,54 @@ function ManualReviewJobReviewImpl(props: {
     }
   }, [getNextJob, jobId, closedJob, loading, jobDataLoading, jobData]);
 
+  const [isAdvancingToNextJob, setIsAdvancingToNextJob] = useState(false);
+  // The jobId we deleted by invalidating its last report. Matching it by
+  // identity lets the redirect effect below skip its bounce-to-recent
+  // until we navigate onto the next job, with no timing window.
+  const invalidationDeletedJobIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    // If we were looking for a specific job and it no longer exists in this
-    // queue, redirect to the recent decisions page for it
+    // If the job we're viewing no longer exists in this queue, send the
+    // reviewer to recent decisions, unless we deleted it ourselves via
+    // invalidation (handleInvalidated advances to the next job instead).
     if (
-      jobId != null &&
-      data?.me?.reviewableQueues
-        .find((queue) => queue.id === queueId)
-        ?.jobs.find((job) => job.id === jobId) === undefined &&
-      !loading
+      jobId == null ||
+      closedJob ||
+      loading ||
+      isAdvancingToNextJob ||
+      invalidationDeletedJobIdRef.current === jobId
     ) {
-      if (!closedJob) {
-        navigate(`/dashboard/manual_review/recent/?jobId=${jobId}`, {
-          replace: true,
-        });
-      }
+      return;
     }
-  }, [jobId, data, loading, navigate, queueId, closedJob]);
+    const stillExists = data?.me?.reviewableQueues
+      .find((queue) => queue.id === queueId)
+      ?.jobs.find((job) => job.id === jobId);
+    if (stillExists) {
+      return;
+    }
+    navigate(`/dashboard/manual_review/recent/?jobId=${jobId}`, {
+      replace: true,
+    });
+  }, [
+    jobId,
+    data,
+    loading,
+    navigate,
+    queueId,
+    closedJob,
+    isAdvancingToNextJob,
+  ]);
+
+  // Drop a stale claim once we've moved to a different job so returning
+  // to the deleted job (e.g. browser back) still routes to recent.
+  useEffect(() => {
+    if (
+      invalidationDeletedJobIdRef.current != null &&
+      invalidationDeletedJobIdRef.current !== jobId
+    ) {
+      invalidationDeletedJobIdRef.current = null;
+    }
+  }, [jobId]);
   // Modal-driven entry of action parameters. Opening the modal in `create`
   // mode happens *before* the action is added to `selectedPrimaryActions`,
   // so cancelling leaves the picker exactly as it was. `edit` mode opens
@@ -542,6 +584,26 @@ function ManualReviewJobReviewImpl(props: {
             });
             break;
           }
+          case 'MissingRequiredDecisionReasonError': {
+            // Server-side backstop for `requiresDecisionReasonInMrt`.
+            // Normally the canBeSubmitted gate prevents reaching this state,
+            // but the org setting could have flipped between page load and
+            // submit, or the reviewer typed only whitespace (which the gate
+            // also rejects, but a scripted client could still get here).
+            setModalInfo({
+              visible: true,
+              modalBody:
+                'This org requires every decision to include a reason. Add a reason and resubmit.',
+              footer: [
+                {
+                  title: 'Ok',
+                  type: 'primary',
+                  onClick: hideModal,
+                },
+              ],
+            });
+            break;
+          }
           case 'MissingRequiredPolicyForDecisionError': {
             // Server-side backstop for `requiresPolicyForDecisionsInMrt`.
             // Normally the canBeSubmitted gate prevents reaching this state,
@@ -619,11 +681,16 @@ function ManualReviewJobReviewImpl(props: {
     }
 
     // If the org requires a decision reason, and no decision reason has been
-    // provided, return false
-    if (
-      data?.myOrg?.requiresDecisionReasonInMrt &&
-      !isNonEmptyString(decisionReason)
-    ) {
+    // provided, return false. The requirement is split (see #757): ignoring a
+    // job (a decision made up solely of the built-in IGNORE action) is governed
+    // by its own setting, separate from acting on a violating job.
+    const isIgnoreDecision = selectedPrimaryActions.every(
+      (it) => 'type' in it.action && it.action.type === 'IGNORE',
+    );
+    const reasonRequired = isIgnoreDecision
+      ? data?.myOrg?.requiresDecisionReasonOnIgnoreInMrt
+      : data?.myOrg?.requiresDecisionReasonInMrt;
+    if (reasonRequired && !isNonEmptyString(decisionReason)) {
       return false;
     }
 
@@ -675,6 +742,45 @@ function ManualReviewJobReviewImpl(props: {
   const [releaseJobLock] = useGQLReleaseJobLockMutation({
     fetchPolicy: 'no-cache',
   });
+
+  const advanceToNextJobAfterInvalidation = useCallback(async () => {
+    setIsAdvancingToNextJob(true);
+    try {
+      resetState();
+      const result = await getNextJob();
+      if (result.data?.dequeueManualReviewJob == null) {
+        navigate('/dashboard/manual_review/queues');
+      }
+    } finally {
+      setIsAdvancingToNextJob(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getNextJob, navigate]);
+
+  // Runs after the invalidate mutation resolves. Refreshes the job view,
+  // and if invalidation deleted the current job, advances to the next one.
+  const handleInvalidated = useCallback(async () => {
+    if (jobId == null) return;
+    // Claim the job before refetching: the refetch may momentarily report
+    // it gone, and the redirect effect must not fire during that window.
+    invalidationDeletedJobIdRef.current = jobId;
+    try {
+      const refetched = await refetchJobInfo();
+      const stillExists = refetched.data?.me?.reviewableQueues
+        .find((queue) => queue.id === queueId)
+        ?.jobs.find((j) => j.id === jobId);
+      if (stillExists) {
+        // Job survived (other reporters remain); release the claim and stay.
+        invalidationDeletedJobIdRef.current = null;
+        return;
+      }
+      await advanceToNextJobAfterInvalidation();
+    } catch (e) {
+      // Release the claim so the redirect effect isn't suppressed forever.
+      invalidationDeletedJobIdRef.current = null;
+      throw e;
+    }
+  }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
     // First, release the lock on the current job and log the skip
@@ -839,6 +945,11 @@ function ManualReviewJobReviewImpl(props: {
     isAppeal && 'actionsTaken' in payload
       ? payload.actionsTaken.map(getActionName)
       : undefined;
+  const canInvalidateReports =
+    !isAppeal &&
+    userHasPermissions(data.me?.permissions ?? undefined, [
+      GQLUserPermission.EditMrtQueues,
+    ]);
 
   const reportInfo = (
     <ReportInfoComponent
@@ -854,6 +965,8 @@ function ManualReviewJobReviewImpl(props: {
       orgId={org.id}
       allItemTypes={org.itemTypes as GQLItemType[]}
       policies={org.policies}
+      viewerPermissions={data.me?.permissions ?? undefined}
+      onInvalidated={handleInvalidated}
     />
   );
   const otherReports =
@@ -861,6 +974,9 @@ function ManualReviewJobReviewImpl(props: {
       <MergedReportsComponent
         primaryReportId={reportHistory[0]?.reportId}
         reportHistory={reportHistory}
+        canInvalidateReports={canInvalidateReports}
+        jobId={job.id}
+        onInvalidated={handleInvalidated}
       />
     ) : null;
   const decisionActions = [
@@ -911,7 +1027,7 @@ function ManualReviewJobReviewImpl(props: {
       (a) => !('type' in a) && a.id === actionId,
     );
     if (!found || 'type' in found || !('parameters' in found)) return [];
-    return (found.parameters ?? []) as ReadonlyArray<GQLActionParameter>;
+    return found.parameters ?? [];
   };
 
   // Adds an action to `selectedPrimaryActions` while preserving the existing
@@ -923,7 +1039,7 @@ function ManualReviewJobReviewImpl(props: {
     customMrtApiParamDecisionPayload?: Record<string, unknown>,
   ) => {
     const newAction: ManualReviewJobEnqueuedPrimaryActionData = {
-      action: action as ManualReviewJobEnqueuedPrimaryActionData['action'],
+      action,
       target: reportedItemTarget(),
       policies: selectedPrimaryPolicies,
       ...(customMrtApiParamDecisionPayload
@@ -1175,9 +1291,7 @@ function ManualReviewJobReviewImpl(props: {
                         actionName: action.name,
                         parameters,
                         initialValues:
-                          (current?.customMrtApiParamDecisionPayload as
-                            | ActionParameterValues
-                            | undefined) ?? {},
+                          current?.customMrtApiParamDecisionPayload ?? {},
                       });
                     }}
                   >
@@ -1446,7 +1560,6 @@ function ManualReviewJobReviewImpl(props: {
         return (
           <ManualReviewJobPrimaryUserComponent
             user={payload.item as GQLUserItem}
-            userScore={payload.userScore ?? undefined}
             unblurAllMedia={unblurAllMedia}
             allItemTypes={org.itemTypes as GQLItemType[]}
             allActions={filteredActions}
@@ -1530,299 +1643,310 @@ function ManualReviewJobReviewImpl(props: {
         </div>
         {!closedJob ? <div className="w-px h-full bg-gray-200" /> : null}
         {!closedJob ? (
-          <div className="sticky top-0 flex-none w-[300px] h-screen overflow-y-auto">
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-row gap-2">
-                {viewPoliciesButton}
-                {skipToNextJobButton}
-                {drawer}
-              </div>
-              {pendingJobCount != null && pendingJobCount > 0 ? (
-                <div className="text-slate-400">
-                  {pendingJobCount} {pendingJobCount === 1 ? 'job' : 'jobs'}{' '}
-                  remaining
+          // Height subtracts the dashboard's py-8 (4rem) so the panel fits the
+          // viewport; content scrolls while the Submit footer stays pinned.
+          <div className="sticky top-0 flex-none w-[300px] h-[calc(100vh-4rem)] flex flex-col">
+            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1">
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-row gap-2">
+                  {viewPoliciesButton}
+                  {skipToNextJobButton}
+                  {drawer}
                 </div>
-              ) : pendingJobCount === 0 ? (
-                <div className="text-slate-400">No jobs remaining</div>
-              ) : null}
-            </div>
-            <div className="my-4 divider" />
-            <div className="flex flex-col mb-4">
-              <div className="self-start my-2 text-lg font-bold">Decision</div>
-              {actionList}
-            </div>
-            <div className="flex flex-col mb-4">
-              <div className="self-start my-2 text-lg font-bold">Policy</div>
-              {policiesSection}
-            </div>
-            {org.requiresDecisionReasonInMrt ? (
+                {pendingJobCount != null && pendingJobCount > 0 ? (
+                  <div className="text-slate-400">
+                    {pendingJobCount} {pendingJobCount === 1 ? 'job' : 'jobs'}{' '}
+                    remaining
+                  </div>
+                ) : pendingJobCount === 0 ? (
+                  <div className="text-slate-400">No jobs remaining</div>
+                ) : null}
+              </div>
+              <div className="my-4 divider" />
+              <div className="flex flex-col mb-4">
+                <div className="self-start my-2 text-lg font-bold">
+                  Decision
+                </div>
+                {actionList}
+              </div>
+              <div className="flex flex-col mb-4">
+                <div className="self-start my-2 text-lg font-bold">Policy</div>
+                {policiesSection}
+              </div>
+              {/* The reason field is always shown; whether it's required
+                  depends on the org's require-decision-reason settings and the
+                  decision type (see canBeSubmitted). */}
               <div className="flex flex-col mb-4">
                 <div className="self-start my-2 text-lg font-bold">Reason</div>
                 {decisionReasonSection}
               </div>
-            ) : null}
-            <ManualReviewJobEnqueuedRelatedActions
-              actionsData={selectedRelatedActions.map((action) => ({
-                // NB: We don't include any iconUrl or otherImageUrls here yet, since we're still
-                // figuring out exactly what we're going to be getting from the
-                // users. However, it is a valid field inside the target
-                // entry, and we'll want to support this in the near future.
-                id: action.action.id,
-                name: action.action.name,
-                penalty: action.action.penalty,
-                target: {
-                  itemId: action.target.identifier.itemId,
-                  itemTypeId: action.target.identifier.itemTypeId,
-                  itemTypeName: org.actions
-                    .flatMap((action) => action.itemTypes)
-                    .find(
-                      (itemType) =>
-                        itemType.id === action.target.identifier.itemTypeId,
-                    )?.name,
-                  displayName:
-                    action.target.displayName ??
-                    action.target.identifier.itemId,
-                },
-                policyNames: action.policies.map((policy) => policy.name),
-                hasParameters: actionHasParameters(
-                  org.actions.find((a) => a.id === action.action.id),
-                ),
-              }))}
-              onRemoveAction={(action) =>
-                setSelectedRelatedActions([
-                  ...selectedRelatedActions.filter(
-                    (a) =>
-                      !(
-                        a.target.identifier.itemId === action.target.itemId &&
-                        a.target.identifier.itemTypeId ===
-                          action.target.itemTypeId &&
-                        a.action.id === action.id
-                      ),
+              <ManualReviewJobEnqueuedRelatedActions
+                actionsData={selectedRelatedActions.map((action) => ({
+                  // NB: We don't include any iconUrl or otherImageUrls here yet, since we're still
+                  // figuring out exactly what we're going to be getting from the
+                  // users. However, it is a valid field inside the target
+                  // entry, and we'll want to support this in the near future.
+                  id: action.action.id,
+                  name: action.action.name,
+                  penalty: action.action.penalty,
+                  target: {
+                    itemId: action.target.identifier.itemId,
+                    itemTypeId: action.target.identifier.itemTypeId,
+                    itemTypeName: org.actions
+                      .flatMap((action) => action.itemTypes)
+                      .find(
+                        (itemType) =>
+                          itemType.id === action.target.identifier.itemTypeId,
+                      )?.name,
+                    displayName:
+                      action.target.displayName ??
+                      action.target.identifier.itemId,
+                  },
+                  policyNames: action.policies.map((policy) => policy.name),
+                  hasParameters: actionHasParameters(
+                    org.actions.find((a) => a.id === action.action.id),
                   ),
-                ])
-              }
-              onEditAction={(action) => {
-                const entry = selectedRelatedActions.find(
-                  (a) =>
-                    a.target.identifier.itemId === action.target.itemId &&
-                    a.target.identifier.itemTypeId ===
-                      action.target.itemTypeId &&
-                    a.action.id === action.id,
-                );
-                if (entry) {
-                  enqueueGate.editParameters(
-                    entry,
-                    selectedRelatedActions,
-                    setSelectedRelatedActions,
-                  );
+                }))}
+                onRemoveAction={(action) =>
+                  setSelectedRelatedActions([
+                    ...selectedRelatedActions.filter(
+                      (a) =>
+                        !(
+                          a.target.identifier.itemId === action.target.itemId &&
+                          a.target.identifier.itemTypeId ===
+                            action.target.itemTypeId &&
+                          a.action.id === action.id
+                        ),
+                    ),
+                  ])
                 }
-              }}
-            />
-            {paramsModal.open && (
-              <ActionParametersModal
-                open={paramsModal.open}
-                actionName={paramsModal.actionName}
-                parameters={paramsModal.parameters}
-                initialValues={paramsModal.initialValues}
-                mode={paramsModal.mode}
-                onCancel={() => setParamsModal({ open: false })}
-                onSave={(values) => {
-                  if (paramsModal.mode === 'create') {
-                    const action = decisionActions.find(
-                      (a) => !('type' in a) && a.id === paramsModal.actionId,
+                onEditAction={(action) => {
+                  const entry = selectedRelatedActions.find(
+                    (a) =>
+                      a.target.identifier.itemId === action.target.itemId &&
+                      a.target.identifier.itemTypeId ===
+                        action.target.itemTypeId &&
+                      a.action.id === action.id,
+                  );
+                  if (entry) {
+                    enqueueGate.editParameters(
+                      entry,
+                      selectedRelatedActions,
+                      setSelectedRelatedActions,
                     );
-                    if (action) {
-                      addPrimaryAction(action, { ...values });
-                    }
-                  } else {
-                    updateSelectedActionParams(paramsModal.actionId, {
-                      ...values,
-                    });
                   }
-                  setParamsModal({ open: false });
                 }}
               />
-            )}
-            {enqueueGate.modalElement}
-            <div
-              className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
-                canBeSubmitted
-                  ? 'border-none text-white cursor-pointer bg-coop-blue hover:bg-coop-blue-hover focus:bg-coop-blue active:bg-coop-blue'
-                  : 'border border-solid border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed'
-              }`}
-              onClick={() => {
-                if (canBeSubmitted) {
-                  const decisionComponents = (() => {
-                    if (
-                      selectedPrimaryActions.some(
-                        (it) =>
-                          'type' in it.action && it.action.type === 'IGNORE',
-                      )
-                    ) {
-                      return [{ ignore: {} }];
-                    } else if (
-                      // if we are processing a user appeal, there should only ever be one decision
-                      // and it should be either accept or reject. this is enforced by `canBeSubmitted`
-                      selectedPrimaryActions.some(
-                        (it) =>
-                          'type' in it.action &&
-                          it.action.type === 'REJECT_APPEAL',
-                      )
-                    ) {
-                      return [
-                        {
-                          rejectAppeal: {
-                            appealId:
-                              'appealId' in job.payload
-                                ? job.payload.appealId
-                                : __throw(new Error('Appeal ID not found')),
-                          },
-                        },
-                      ];
-                    } else if (
-                      selectedPrimaryActions.some(
-                        (it) =>
-                          'type' in it.action &&
-                          it.action.type === 'ACCEPT_APPEAL',
-                      )
-                    ) {
-                      return [
-                        {
-                          acceptAppeal: {
-                            appealId:
-                              'appealId' in job.payload
-                                ? job.payload.appealId
-                                : __throw(new Error('Appeal ID not found')),
-                          },
-                        },
-                      ];
-                    }
-
-                    const moveToQueue = (() => {
-                      const moveAction = selectedPrimaryActions.find(
-                        (it) =>
-                          'type' in it.action && it.action.type === 'MOVE',
-                      )?.action;
-                      if (
-                        moveAction === undefined ||
-                        !('type' in moveAction) ||
-                        moveAction.type !== 'MOVE' ||
-                        !('newQueueId' in moveAction)
-                      ) {
-                        return undefined;
+              {paramsModal.open && (
+                <ActionParametersModal
+                  open={paramsModal.open}
+                  actionName={paramsModal.actionName}
+                  parameters={paramsModal.parameters}
+                  initialValues={paramsModal.initialValues}
+                  mode={paramsModal.mode}
+                  onCancel={() => setParamsModal({ open: false })}
+                  onSave={(values) => {
+                    if (paramsModal.mode === 'create') {
+                      const action = decisionActions.find(
+                        (a) => !('type' in a) && a.id === paramsModal.actionId,
+                      );
+                      if (action) {
+                        addPrimaryAction(action, { ...values });
                       }
-                      return {
-                        transformJobAndRecreateInQueue: {
-                          newJobKind: 'DEFAULT' as const,
-                          originalQueueId: queueId,
-                          newQueueId: moveAction.newQueueId,
-                          policyIds: selectedPrimaryPolicies.map(
-                            (policy) => policy.id,
-                          ),
-                        },
-                      };
-                    })();
+                    } else {
+                      updateSelectedActionParams(paramsModal.actionId, {
+                        ...values,
+                      });
+                    }
+                    setParamsModal({ open: false });
+                  }}
+                />
+              )}
+              {enqueueGate.modalElement}
+            </div>
+            <div className="shrink-0 pt-3">
+              <button
+                type="button"
+                disabled={!canBeSubmitted}
+                className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
+                  canBeSubmitted
+                    ? 'border-none text-white cursor-pointer bg-coop-blue hover:bg-coop-blue-hover focus:bg-coop-blue active:bg-coop-blue'
+                    : 'border border-solid border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed'
+                }`}
+                onClick={() => {
+                  if (canBeSubmitted) {
+                    const decisionComponents = (() => {
+                      if (
+                        selectedPrimaryActions.some(
+                          (it) =>
+                            'type' in it.action && it.action.type === 'IGNORE',
+                        )
+                      ) {
+                        return [{ ignore: {} }];
+                      } else if (
+                        // if we are processing a user appeal, there should only ever be one decision
+                        // and it should be either accept or reject. this is enforced by `canBeSubmitted`
+                        selectedPrimaryActions.some(
+                          (it) =>
+                            'type' in it.action &&
+                            it.action.type === 'REJECT_APPEAL',
+                        )
+                      ) {
+                        return [
+                          {
+                            rejectAppeal: {
+                              appealId:
+                                'appealId' in job.payload
+                                  ? job.payload.appealId
+                                  : __throw(new Error('Appeal ID not found')),
+                            },
+                          },
+                        ];
+                      } else if (
+                        selectedPrimaryActions.some(
+                          (it) =>
+                            'type' in it.action &&
+                            it.action.type === 'ACCEPT_APPEAL',
+                        )
+                      ) {
+                        return [
+                          {
+                            acceptAppeal: {
+                              appealId:
+                                'appealId' in job.payload
+                                  ? job.payload.appealId
+                                  : __throw(new Error('Appeal ID not found')),
+                            },
+                          },
+                        ];
+                      }
 
-                    return filterNullOrUndefined([
-                      selectedPrimaryActions.some(
-                        (it) => !('type' in it.action),
-                      )
-                        ? {
-                            userAction: {
-                              actionIds: filterNullOrUndefined(
-                                selectedPrimaryActions.map((action) =>
-                                  !('type' in action.action)
-                                    ? action.action.id
-                                    : undefined,
-                                ),
-                              ),
-                              itemIds: [payload.item.id],
-                              itemTypeId: payload.item.type.id,
-                              policyIds: selectedPrimaryPolicies.map(
-                                (policy) => policy.id,
-                              ),
-                              actionIdsToMrtApiParamDecisionPayload: {
-                                ...selectedPrimaryActions
-                                  .filter(
-                                    (it) =>
-                                      !(
-                                        'type' in it.action &&
-                                        it.action.type !== 'MOVE'
-                                      ),
-                                  )
-                                  .reduce(
-                                    (acc, action) => ({
-                                      ...acc,
-                                      // This cast is safe because of the filter
-                                      // step above, but typescript doesn't
-                                      // narrow the type based on that
-                                      [(action.action as CustomAction).id]:
-                                        action.customMrtApiParamDecisionPayload,
-                                    }),
-                                    {},
-                                  ),
-                              },
-                            },
-                          }
-                        : undefined,
-                      selectedPrimaryActions.some(
-                        (it) =>
-                          'type' in it.action &&
-                          it.action.type === 'ENQUEUE_TO_NCMEC',
-                      )
-                        ? {
-                            transformJobAndRecreateInQueue: {
-                              newJobKind: 'NCMEC' as const,
-                              policyIds: selectedPrimaryPolicies.map(
-                                (policy) => policy.id,
-                              ),
-                            },
-                          }
-                        : undefined,
-                      moveToQueue,
-                    ]);
-                  })();
-                  submitDecision({
-                    variables: {
-                      input: {
-                        reportHistory: reportHistory.map((it) => ({
-                          policyId: it.policyId,
-                          reason: it.reason,
-                          reportId: it.reportId,
-                          reportedAt: it.reportedAt,
-                          reporterId: it.reporterId
-                            ? {
-                                id: it.reporterId.id,
-                                typeId: it.reporterId.typeId,
-                              }
-                            : undefined,
-                        })),
-                        queueId: queueId!,
-                        jobId: job.id,
-                        lockToken: lockToken!,
-                        reportedItemDecisionComponents: decisionComponents,
-                        relatedItemActions: selectedRelatedActions.map(
-                          (action) => ({
-                            actionIds: [action.action.id],
-                            itemIds: [action.target.identifier.itemId],
-                            itemTypeId: action.target.identifier.itemTypeId,
-                            policyIds: action.policies.map(
+                      const moveToQueue = (() => {
+                        const moveAction = selectedPrimaryActions.find(
+                          (it) =>
+                            'type' in it.action && it.action.type === 'MOVE',
+                        )?.action;
+                        if (
+                          moveAction === undefined ||
+                          !('type' in moveAction) ||
+                          moveAction.type !== 'MOVE' ||
+                          !('newQueueId' in moveAction)
+                        ) {
+                          return undefined;
+                        }
+                        return {
+                          transformJobAndRecreateInQueue: {
+                            newJobKind: 'DEFAULT' as const,
+                            originalQueueId: queueId,
+                            newQueueId: moveAction.newQueueId,
+                            policyIds: selectedPrimaryPolicies.map(
                               (policy) => policy.id,
                             ),
-                          }),
-                        ),
-                        decisionReason,
+                          },
+                        };
+                      })();
+
+                      return filterNullOrUndefined([
+                        selectedPrimaryActions.some(
+                          (it) => !('type' in it.action),
+                        )
+                          ? {
+                              userAction: {
+                                actionIds: filterNullOrUndefined(
+                                  selectedPrimaryActions.map((action) =>
+                                    !('type' in action.action)
+                                      ? action.action.id
+                                      : undefined,
+                                  ),
+                                ),
+                                itemIds: [payload.item.id],
+                                itemTypeId: payload.item.type.id,
+                                policyIds: selectedPrimaryPolicies.map(
+                                  (policy) => policy.id,
+                                ),
+                                actionIdsToMrtApiParamDecisionPayload: {
+                                  // Only CustomActions have an `id`; including
+                                  // built-ins or MOVE would add an `"undefined"`
+                                  // key.
+                                  ...selectedPrimaryActions
+                                    .filter(
+                                      (
+                                        it,
+                                      ): it is ManualReviewJobEnqueuedPrimaryActionData & {
+                                        action: CustomAction;
+                                      } => !('type' in it.action),
+                                    )
+                                    .reduce(
+                                      (acc, action) => ({
+                                        ...acc,
+                                        [action.action.id]:
+                                          action.customMrtApiParamDecisionPayload,
+                                      }),
+                                      {},
+                                    ),
+                                },
+                              },
+                            }
+                          : undefined,
+                        selectedPrimaryActions.some(
+                          (it) =>
+                            'type' in it.action &&
+                            it.action.type === 'ENQUEUE_TO_NCMEC',
+                        )
+                          ? {
+                              transformJobAndRecreateInQueue: {
+                                newJobKind: 'NCMEC' as const,
+                                policyIds: selectedPrimaryPolicies.map(
+                                  (policy) => policy.id,
+                                ),
+                              },
+                            }
+                          : undefined,
+                        moveToQueue,
+                      ]);
+                    })();
+                    submitDecision({
+                      variables: {
+                        input: {
+                          reportHistory: reportHistory.map((it) => ({
+                            policyId: it.policyId,
+                            reason: it.reason,
+                            reportId: it.reportId,
+                            reportedAt: it.reportedAt,
+                            reporterId: it.reporterId
+                              ? {
+                                  id: it.reporterId.id,
+                                  typeId: it.reporterId.typeId,
+                                }
+                              : undefined,
+                          })),
+                          queueId: queueId!,
+                          jobId: job.id,
+                          lockToken: lockToken!,
+                          reportedItemDecisionComponents: decisionComponents,
+                          relatedItemActions: selectedRelatedActions.map(
+                            (action) => ({
+                              actionIds: [action.action.id],
+                              itemIds: [action.target.identifier.itemId],
+                              itemTypeId: action.target.identifier.itemTypeId,
+                              policyIds: action.policies.map(
+                                (policy) => policy.id,
+                              ),
+                            }),
+                          ),
+                          decisionReason,
+                        },
                       },
-                    },
-                  });
-                }
-              }}
-            >
-              {submissionLoading ? (
-                <LoadingOutlined spin className="self-start" />
-              ) : (
-                <div className="text-base">Submit</div>
-              )}
+                    });
+                  }
+                }}
+              >
+                {submissionLoading ? (
+                  <LoadingOutlined spin className="self-start" />
+                ) : (
+                  <div className="text-base">Submit</div>
+                )}
+              </button>
             </div>
           </div>
         ) : null}

@@ -7,6 +7,7 @@ import {
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { asyncRandomBytes } from '../../utils/misc.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
@@ -17,6 +18,7 @@ import {
   type Invoker,
   type UserRole,
 } from './permissioning.js';
+import { deleteSessionsForUser } from './sessionPersistence.js';
 import { hashPassword } from './utils.js';
 
 class UserManagementService {
@@ -457,18 +459,21 @@ class UserManagementService {
       return;
     }
 
-    // Step 2: reset password for that token's user
-    await this.pgQuery
-      .updateTable('public.users')
-      .set({ password: await hashPassword(newPassword) })
-      .where('id', '=', fetchedToken.user_id)
-      .execute();
-
-    // Step 3: Delete all tokens for the user
-    await this.pgQuery
-      .deleteFrom('user_management_service.password_reset_tokens')
-      .where('user_id', '=', fetchedToken.user_id)
-      .execute();
+    const hashedPassword = await hashPassword(newPassword);
+    // Atomic: a committed password change must not leave the user's sessions
+    // or reset tokens alive.
+    await makeKyselyTransactionWithRetry(this.pgQuery)(async (trx) => {
+      await trx
+        .updateTable('public.users')
+        .set({ password: hashedPassword })
+        .where('id', '=', fetchedToken.user_id)
+        .execute();
+      await deleteSessionsForUser(trx, fetchedToken.user_id);
+      await trx
+        .deleteFrom('user_management_service.password_reset_tokens')
+        .where('user_id', '=', fetchedToken.user_id)
+        .execute();
+    });
   }
 
   async getUsersForOrg(orgId: string) {

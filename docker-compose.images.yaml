@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ankane/pgvector:v0.5.1
+    image: postgres:15.18
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,10 +29,16 @@ services:
     volumes:
       - scylla_data:/var/lib/scylla
     healthcheck:
-      test: ['CMD-SHELL', 'nodetool status || exit 1']
+      # Real CQL query, not `nodetool status`, so 9042 accepts connections
+      # before migrations start.
+      test:
+        [
+          'CMD-SHELL',
+          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+        ]
       interval: 5s
-      timeout: 5s
-      retries: 28
+      timeout: 10s
+      retries: 30
       start_period: 35s
 
   clickhouse:
@@ -51,14 +57,10 @@ services:
       retries: 5
 
   migrations:
-    image: node:24.14.1-bullseye-slim
-    command: bash -c 'set -e
-      && npm i
+    image: ghcr.io/roostorg/coop-migrations:latest
+    command: sh -c 'set -e
       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
-    working_dir: /src
     env_file: ./.env.docker
-    volumes:
-      - .:/src
     depends_on:
       postgres:
         condition: service_healthy

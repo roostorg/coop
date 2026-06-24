@@ -1,11 +1,11 @@
-import {
-  type ActionCountsInput,
-  type IActionStatisticsAdapter,
-  type ActionStatisticsTimeDivisionOptions,
-} from './IActionStatisticsAdapter.js';
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
 import { YEAR_MS } from '../../../utils/time.js';
+import {
+  type ActionCountsInput,
+  type ActionStatisticsTimeDivisionOptions,
+  type IActionStatisticsAdapter,
+} from './IActionStatisticsAdapter.js';
 
 type ActionedSubmissionCountRow = {
   ds: string;
@@ -48,9 +48,7 @@ type ActionCountRow = {
   date: string;
 };
 
-export class ClickhouseActionStatisticsAdapter
-  implements IActionStatisticsAdapter
-{
+export class ClickhouseActionStatisticsAdapter implements IActionStatisticsAdapter {
   constructor(
     private readonly dataWarehouse: IDataWarehouse,
     private readonly tracer: SafeTracer,
@@ -86,7 +84,7 @@ export class ClickhouseActionStatisticsAdapter
       `
         SELECT 
           ds,
-          uniqExact(item_submission_id) AS num_submissions
+          uniq(item_submission_id) AS num_submissions
         FROM analytics.ACTION_EXECUTIONS
         WHERE org_id = ?
           AND ds > ?
@@ -112,7 +110,7 @@ export class ClickhouseActionStatisticsAdapter
         SELECT 
           ds,
           arrayJoin(JSONExtractArrayRaw(rule_tags)) AS tag,
-          uniqExact(item_submission_id) AS count
+          uniq(item_submission_id) AS count
         FROM analytics.ACTION_EXECUTIONS
         WHERE org_id = ?
           AND ds > ?
@@ -141,7 +139,7 @@ export class ClickhouseActionStatisticsAdapter
           ds,
           JSONExtractString(policy_json, 'id') AS policy_id,
           JSONExtractString(policy_json, 'name') AS policy_name,
-          uniqExact(item_submission_id) AS num_submissions
+          uniq(item_submission_id) AS num_submissions
         FROM analytics.ACTION_EXECUTIONS
         ARRAY JOIN JSONExtractArrayRaw(policies) AS policy_json
         WHERE org_id = ?
@@ -444,12 +442,16 @@ export class ClickhouseActionStatisticsAdapter
     ];
 
     if (filterBy.actionIds.length > 0) {
-      filters.push(`action_id IN (${filterBy.actionIds.map(() => '?').join(', ')})`);
+      filters.push(
+        `action_id IN (${filterBy.actionIds.map(() => '?').join(', ')})`,
+      );
       params.push(...filterBy.actionIds);
     }
 
     if (filterBy.itemTypeIds.length > 0) {
-      filters.push(`item_type_id IN (${filterBy.itemTypeIds.map(() => '?').join(', ')})`);
+      filters.push(
+        `item_type_id IN (${filterBy.itemTypeIds.map(() => '?').join(', ')})`,
+      );
       params.push(...filterBy.itemTypeIds);
     }
 
@@ -466,7 +468,8 @@ export class ClickhouseActionStatisticsAdapter
         ? `multiIf(action_source IN ('post-items','post-content'), 'automated-rule', action_source) AS action_source`
         : `${groupBy} AS ${groupBy.toLowerCase()}`;
 
-    const groupByColumn = groupBy === 'ACTION_SOURCE' ? 'action_source' : groupBy;
+    const groupByColumn =
+      groupBy === 'ACTION_SOURCE' ? 'action_source' : groupBy;
 
     const rows = await this.query<GroupByResultRow>(
       `
@@ -479,11 +482,7 @@ export class ClickhouseActionStatisticsAdapter
         GROUP BY ${groupByColumn}, time
         ORDER BY time
       `,
-      [
-        this.toTimeDivisionValue(timeDivision),
-        timeZone,
-        ...params,
-      ],
+      [this.toTimeDivisionValue(timeDivision), timeZone, ...params],
     );
 
     return rows.map((row) => ({
@@ -495,4 +494,3 @@ export class ClickhouseActionStatisticsAdapter
     }));
   }
 }
-

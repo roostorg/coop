@@ -2,7 +2,6 @@ import './recharts.css';
 
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { InvestmentFilled, PieChartAltFilled } from '@/icons';
-import { TriangleAlert } from 'lucide-react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import {
   BarChartOutlined,
@@ -11,6 +10,7 @@ import {
   PieChartOutlined,
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
+import { format } from 'date-fns';
 import capitalize from 'lodash/capitalize';
 import flatten from 'lodash/flatten';
 import groupBy from 'lodash/groupBy';
@@ -26,7 +26,7 @@ import sum from 'lodash/sum';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import { format } from 'date-fns';
+import { TriangleAlert } from 'lucide-react';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Area,

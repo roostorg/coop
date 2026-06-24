@@ -42,6 +42,17 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 const { omit, sumBy } = _;
 
 const typeDefs = /* GraphQL */ `
+  enum MrtClearReportsDisposition {
+    AUTOMATIC_CLOSE
+    IGNORE
+    SAME_ACTION
+  }
+
+  enum MrtClearReportsScope {
+    CURRENT_QUEUE
+    ALL_QUEUES
+  }
+
   type ManualReviewQueue {
     id: ID!
     name: String!
@@ -55,6 +66,9 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    clearReportsDisposition: MrtClearReportsDisposition
+    clearReportsScope: MrtClearReportsScope!
+    clearReportsTriggerActionIds: [ID!]!
   }
 
   type ManualReviewJob {
@@ -337,6 +351,15 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
+  type MissingRequiredDecisionReasonError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
   type MissingRequiredPolicyForDecisionError implements Error {
     title: String!
     status: Int!
@@ -352,6 +375,7 @@ const typeDefs = /* GraphQL */ `
     | SubmittedJobActionNotFoundError
     | NoJobWithIdInQueueError
     | RecordingJobDecisionFailedError
+    | MissingRequiredDecisionReasonError
     | MissingRequiredPolicyForDecisionError
 
   union DequeueManualReviewJobResponse = DequeueManualReviewJobSuccessResponse
@@ -391,6 +415,9 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    clearReportsDisposition: MrtClearReportsDisposition
+    clearReportsScope: MrtClearReportsScope
+    clearReportsTriggerActionIds: [ID!]
   }
 
   input UpdateManualReviewQueueInput {
@@ -401,6 +428,9 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
+    clearReportsDisposition: MrtClearReportsDisposition
+    clearReportsScope: MrtClearReportsScope
+    clearReportsTriggerActionIds: [ID!]
   }
 
   input AddAccessibleQueuesToUserInput {
@@ -440,6 +470,28 @@ const typeDefs = /* GraphQL */ `
   union DeleteAllJobsFromQueueResponse =
     | DeleteAllJobsFromQueueSuccessResponse
     | DeleteAllJobsUnauthorizedError
+
+  input InvalidateReportsFromReporterInput {
+    reporter: ReporterIdInput!
+    reason: String
+    """
+    Scopes the sweep to a single MRT job. When omitted, every pending job
+    in the caller's org is scanned.
+    """
+    jobId: ID
+  }
+
+  type InvalidateReportsFromReporterSuccessResponse {
+    queuesScanned: Int!
+    jobsScanned: Int!
+    jobsScrubbed: Int!
+    jobsDeleted: Int!
+    reportsRemoved: Int!
+    """
+    True when a queue exceeded the per-queue scan cap, so the sweep was partial.
+    """
+    truncated: Boolean!
+  }
 
   enum MetricsTimeDivisionOptions {
     DAY
@@ -939,6 +991,16 @@ const typeDefs = /* GraphQL */ `
       input: RemoveAccessibleQueuesToUserInput!
     ): RemoveAccessibleQueuesToUserResponse!
     deleteAllJobsFromQueue(queueId: ID!): DeleteAllJobsFromQueueResponse!
+    """
+    Strips every entry sent by the given reporter from the report history of
+    every pending MRT job in the caller's org. If a job's history becomes
+    empty and it was originally enqueued from a user report, the job itself
+    is removed. Intentionally non-persistent: future reports from the same
+    reporter are NOT blocked. See issue #404.
+    """
+    invalidateReportsFromReporter(
+      input: InvalidateReportsFromReporterInput!
+    ): InvalidateReportsFromReporterSuccessResponse!
     createManualReviewJobComment(
       input: CreateManualReviewJobCommentInput!
     ): AddManualReviewJobCommentResponse!
@@ -1714,6 +1776,18 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
       queueId,
     });
   },
+  async clearReportsTriggerActionIds(queue, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('User required.');
+    }
+    return context.services.ManualReviewToolService.getClearReportsTriggerActionsForQueue(
+      {
+        orgId: user.orgId,
+        queueId: queue.id,
+      },
+    );
+  },
 };
 
 const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
@@ -2253,6 +2327,7 @@ const Mutation: GQLMutationResolvers = {
         isCoopErrorOfType(e, 'SubmittedJobActionNotFoundError') ||
         isCoopErrorOfType(e, 'NoJobWithIdInQueueError') ||
         isCoopErrorOfType(e, 'RecordingJobDecisionFailedError') ||
+        isCoopErrorOfType(e, 'MissingRequiredDecisionReasonError') ||
         isCoopErrorOfType(e, 'MissingRequiredPolicyForDecisionError')
       ) {
         return gqlErrorResult(e);
@@ -2274,6 +2349,9 @@ const Mutation: GQLMutationResolvers = {
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = params.input;
     try {
       const queue =
@@ -2284,6 +2362,10 @@ const Mutation: GQLMutationResolvers = {
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,
+          clearReportsDisposition,
+          clearReportsScope: clearReportsScope ?? undefined,
+          clearReportsTriggerActionIds:
+            clearReportsTriggerActionIds ?? undefined,
           invokedBy: {
             userId: user.id,
             permissions: user.getPermissions(),
@@ -2321,6 +2403,9 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = params.input;
     try {
       const queue =
@@ -2335,6 +2420,10 @@ const Mutation: GQLMutationResolvers = {
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
+          clearReportsDisposition,
+          clearReportsScope: clearReportsScope ?? undefined,
+          clearReportsTriggerActionIds:
+            clearReportsTriggerActionIds ?? undefined,
         });
       return gqlSuccessResult(
         { data: queue },
@@ -2432,6 +2521,32 @@ const Mutation: GQLMutationResolvers = {
 
       throw e;
     }
+  },
+  async invalidateReportsFromReporter(_, { input }, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    const permissions = user.getPermissions();
+    if (!permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw forbiddenError(
+        'User does not have permission to invalidate reports',
+      );
+    }
+
+    return context.services.ManualReviewToolService.invalidateReportsFromReporter(
+      {
+        orgId: user.orgId,
+        reporter: { typeId: input.reporter.typeId, id: input.reporter.id },
+        reason: input.reason ?? undefined,
+        jobId: input.jobId ?? undefined,
+        invokedBy: {
+          userId: user.id,
+          permissions,
+          orgId: user.orgId,
+        },
+      },
+    );
   },
   async createManualReviewJobComment(_, params, context) {
     const user = context.getUser();

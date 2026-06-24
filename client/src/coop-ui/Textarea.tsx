@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils';
 import * as React from 'react';
 
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   startSlot?: React.ReactNode;
   endSlot?: React.ReactNode;
 }
@@ -17,10 +16,10 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       startSlot && endSlot
         ? 'rounded-none'
         : startSlot
-        ? 'rounded-r-lg rounded-l-none'
-        : endSlot
-        ? 'rounded-l-lg rounded-r-none'
-        : 'rounded-lg',
+          ? 'rounded-r-lg rounded-l-none'
+          : endSlot
+            ? 'rounded-l-lg rounded-r-none'
+            : 'rounded-lg',
       className,
     );
 

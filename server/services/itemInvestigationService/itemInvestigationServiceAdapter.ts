@@ -153,6 +153,18 @@ export class ItemInvestigationServiceAdapter {
     return this.#adaptInternalStreamToItemSubmissionsForItem(opts.orgId, raw);
   }
 
+  getItemSubmissionsByIpAddress(opts: {
+    orgId: string;
+    ipAddress: string;
+    limit?: number;
+    oldestReturnedSubmissionDate?: Date;
+    earliestReturnedSubmissionDate?: Date;
+    latestSubmissionsOnly?: boolean;
+  }): AdaptedReturnType<'getItemSubmissionsByIpAddress'> {
+    const raw = this.service.getItemSubmissionsByIpAddress(opts);
+    return this.#adaptInternalStreamToItemSubmissionsForItem(opts.orgId, raw);
+  }
+
   getThreadSubmissionsByTime(opts: {
     orgId: string;
     threadId: ItemIdentifier;

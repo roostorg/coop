@@ -9,7 +9,10 @@ import { type Opaque } from 'type-fest';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { isCoopErrorOfType } from '../../utils/errors.js';
+import {
+  isCoopErrorOfType,
+  makeUnauthorizedError,
+} from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
 import {
@@ -21,14 +24,18 @@ import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
+  UserPermission,
   type Invoker,
-  type UserPermission,
 } from '../userManagementService/index.js';
 import {
   type UserScore,
   type UserStatisticsService,
 } from '../userStatisticsService/userStatisticsService.js';
-import { type ManualReviewToolServicePg } from './dbTypes.js';
+import {
+  type ClearReportsDisposition,
+  type ClearReportsScope,
+  type ManualReviewToolServicePg,
+} from './dbTypes.js';
 import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import CommentOperations from './modules/CommentOperations.js';
 import DecisionAnalytics, {
@@ -40,6 +47,7 @@ import DecisionAnalytics, {
   type TimeToActionInput,
 } from './modules/DecisionAnalytics.js';
 import JobDecisioning, {
+  type CustomActionDecisionComponent,
   type OnRecordDecisionInput,
   type SubmitDecisionInput,
 } from './modules/JobDecisioning.js';
@@ -58,9 +66,16 @@ import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
 import QueueOperations, {
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
+import ReporterInvalidation, {
+  type InvalidateReportsFromReporterInput,
+  type InvalidateReportsFromReporterResult,
+} from './modules/ReporterInvalidation.js';
 import SkipOperations, {
   type SkippedJobCountInput,
 } from './modules/SkipOperations.js';
+import UserReportSweep, {
+  type ClearOtherReportsResult,
+} from './modules/UserReportSweep.js';
 
 // An id that's unique across all jobs ever added to any queue (pending or not).
 // This is the id that's passed into the MRT Service by callers to identify a
@@ -95,6 +110,12 @@ export type ManualReviewAppealJob = {
 };
 
 export type ManualReviewJobOrAppeal = ManualReviewJob | ManualReviewAppealJob;
+
+export function isReportJob(
+  job: ManualReviewJobOrAppeal,
+): job is ManualReviewJob {
+  return job.payload.kind !== 'APPEAL';
+}
 
 // Old MRT jobs (created before roughly Sept 2023) included this
 // "LegacyItemWithTypeIdentifier" type in their payloads, rather than including
@@ -283,6 +304,8 @@ export class ManualReviewToolService {
   private readonly manualReviewToolSettings: ManualReviewToolSettings;
   private readonly commentOps: CommentOperations;
   private readonly skipOps: SkipOperations;
+  private readonly reporterInvalidation: ReporterInvalidation;
+  private readonly userReportSweep: UserReportSweep;
 
   constructor(
     readonly redis: Dependencies['IORedis'],
@@ -339,6 +362,16 @@ export class ManualReviewToolService {
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
+    this.reporterInvalidation = new ReporterInvalidation(
+      this.queueOps,
+      this.tracer,
+    );
+    this.userReportSweep = new UserReportSweep(
+      this.queueOps,
+      this.jobDecisioning,
+      moderationConfigService,
+      this.tracer,
+    );
   }
 
   /**
@@ -478,14 +511,13 @@ export class ManualReviewToolService {
                 item_id: job.payload.item.itemId,
                 item_type_id: job.payload.item.itemTypeIdentifier.id,
                 queue_id: targetQueueForNewJob,
-                // We use the Source Info from the input argument to account
-                // for the case that we are in fact updating a job which was
-                // never inserted into this table and did not have enqueue source
-                // info, but the updated job will.
                 enqueue_source_info: input.enqueueSourceInfo,
                 policy_ids: input.policyIds,
                 created_at: new Date(),
               })
+              // Re-enqueues (merged reports) re-run this path; keep the
+              // original row.
+              .onConflict((oc) => oc.column('id').doNothing())
               .execute()
               .catch(() => {}); // don't throw if logging fails
 
@@ -603,6 +635,7 @@ export class ManualReviewToolService {
                 policy_ids: input.policyIds,
                 created_at: new Date(),
               })
+              .onConflict((oc) => oc.column('id').doNothing())
               .execute()
               .catch(() => {}); // don't throw if logging fails
 
@@ -848,6 +881,9 @@ export class ManualReviewToolService {
     invokedBy: Invoker;
     isAppealsQueue: boolean;
     autoCloseJobs?: boolean;
+    clearReportsDisposition?: ClearReportsDisposition | null;
+    clearReportsScope?: ClearReportsScope;
+    clearReportsTriggerActionIds?: readonly string[];
   }): Promise<ManualReviewQueue> {
     return this.queueOps.createManualReviewQueue(input);
   }
@@ -861,8 +897,100 @@ export class ManualReviewToolService {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    clearReportsDisposition?: ClearReportsDisposition | null;
+    clearReportsScope?: ClearReportsScope;
+    clearReportsTriggerActionIds?: readonly string[];
   }): Promise<ManualReviewQueue> {
     return this.queueOps.updateManualReviewQueue(input);
+  }
+
+  async getClearReportsTriggerActionsForQueue(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<string[]> {
+    return this.queueOps.getClearReportsTriggerActionsForQueue(opts);
+  }
+
+  /**
+   * Post-decision hook for "clear all other reports for a user".
+   * Runs the sweep only if the queue's trigger actions intersect the decision's
+   * custom actions.
+   */
+  async maybeClearOtherReportsForUser(opts: {
+    orgId: string;
+    actionedJob: ManualReviewJob;
+    actionedQueueId: string;
+    customActions: readonly CustomActionDecisionComponent[];
+    reviewerId: string;
+    reviewerEmail: string;
+    decisionReason?: string;
+  }): Promise<ClearOtherReportsResult | undefined> {
+    const {
+      orgId,
+      actionedJob,
+      actionedQueueId,
+      customActions,
+      reviewerId,
+      reviewerEmail,
+      decisionReason,
+    } = opts;
+
+    if (customActions.length === 0) {
+      return undefined;
+    }
+
+    const queue =
+      await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+        orgId,
+        queueId: actionedQueueId,
+      });
+    const disposition = queue?.clearReportsDisposition;
+    const scope = queue?.clearReportsScope;
+    if (
+      queue == null ||
+      queue.isAppealsQueue ||
+      disposition == null ||
+      scope == null
+    ) {
+      return undefined;
+    }
+
+    const triggerActionIds =
+      await this.queueOps.getClearReportsTriggerActionsForQueue({
+        queueId: actionedQueueId,
+        orgId,
+      });
+    if (triggerActionIds.length === 0) {
+      return undefined;
+    }
+
+    // Narrow each component to only the trigger actions, so a SAME_ACTION
+    // disposition re-applies just the configured action(s) and not other
+    // actions that happened to be part of the same decision.
+    const triggerActionIdSet = new Set(triggerActionIds);
+    const matchingCustomActions = customActions
+      .map((component) => ({
+        ...component,
+        actions: component.actions.filter((action) =>
+          triggerActionIdSet.has(action.id),
+        ),
+      }))
+      .filter((component) => component.actions.length > 0);
+    if (matchingCustomActions.length === 0) {
+      return undefined;
+    }
+
+    return this.userReportSweep.clearOtherReportsForUser({
+      orgId,
+      actionedJob,
+      actionedQueueId,
+      disposition,
+      scope,
+      triggerCustomActions: matchingCustomActions,
+      reviewerId,
+      reviewerEmail,
+      decisionReason,
+    });
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {
@@ -1173,6 +1301,33 @@ export class ManualReviewToolService {
     return this.queueOps.deleteAllJobsFromQueue(opts);
   }
 
+  /**
+   * Strips every entry sent by `reporter` from the `reportHistory` and
+   * `reportedForReasons` of every pending MRT job in the org. A job whose
+   * history empties out is removed if it was enqueued purely from a user
+   * report. One-shot with no persistent blocklist. See issue #404.
+   */
+  async invalidateReportsFromReporter(
+    input: InvalidateReportsFromReporterInput,
+  ): Promise<InvalidateReportsFromReporterResult> {
+    // Also gated at the GraphQL resolver; re-checked here for in-process
+    // callers such as server bin scripts.
+    if (!input.invokedBy.permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
+      throw makeUnauthorizedError(
+        'You do not have permission to invalidate reports',
+        { shouldErrorSpan: true },
+      );
+    }
+    // Bind the sweep to the caller's own org.
+    if (input.invokedBy.orgId !== input.orgId) {
+      throw makeUnauthorizedError(
+        'You do not have permission to invalidate reports for this org',
+        { shouldErrorSpan: true },
+      );
+    }
+    return this.reporterInvalidation.invalidateReportsFromReporter(input);
+  }
+
   async submitDecision(
     opts: OmitEach<SubmitDecisionInput, 'jobId'> & { jobId: string },
   ) {
@@ -1212,8 +1367,57 @@ export class ManualReviewToolService {
     return this.manualReviewToolSettings.getRequiresDecisionReason(orgId);
   }
 
+  async getRequiresDecisionReasonOnIgnore(orgId: string) {
+    return this.manualReviewToolSettings.getRequiresDecisionReasonOnIgnore(
+      orgId,
+    );
+  }
+
   async getPreviewJobsViewEnabled(orgId: string) {
     return this.manualReviewToolSettings.getPreviewJobsViewEnabled(orgId);
+  }
+
+  async getIgnoreCallbackUrl(orgId: string) {
+    return this.manualReviewToolSettings.getIgnoreCallbackUrl(orgId);
+  }
+
+  async updateRequiresPolicyForDecisions(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresPolicyForDecisions(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresDecisionReason(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateRequiresDecisionReasonOnIgnore(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateRequiresDecisionReasonOnIgnore(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateHideSkipButtonForNonAdmins(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updateHideSkipButtonForNonAdmins(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
+    return this.manualReviewToolSettings.updatePreviewJobsViewEnabled(
+      orgId,
+      enabled,
+    );
+  }
+
+  async updateIgnoreCallbackUrl(orgId: string, url: string | null) {
+    return this.manualReviewToolSettings.updateIgnoreCallbackUrl(orgId, url);
   }
 
   async getJobComments(opts: { orgId: string; jobId: string }) {

@@ -88,10 +88,14 @@ class WarehouseDialectForTests implements Dialect {
       supportsTransactionalDdl: false,
       supportsReturning: false,
       async acquireMigrationLock(): Promise<void> {
-        throw new Error('Migrations with kysely not supported in test dialect.');
+        throw new Error(
+          'Migrations with kysely not supported in test dialect.',
+        );
       },
       async releaseMigrationLock(): Promise<void> {
-        throw new Error('Migrations with kysely not supported in test dialect.');
+        throw new Error(
+          'Migrations with kysely not supported in test dialect.',
+        );
       },
     };
   }
@@ -110,9 +114,7 @@ class WarehouseDialectForTests implements Dialect {
 }
 
 export function makeMockWarehouseDialect(
-  executeMockFn: MockedFn<
-    (it: CompiledQuery) => Promise<QueryResult<unknown>>
-  >,
+  executeMockFn: MockedFn<(it: CompiledQuery) => Promise<QueryResult<unknown>>>,
 ) {
   async function* emptyStream(): AsyncIterableIterator<never> {
     throw new Error('not supported');

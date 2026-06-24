@@ -1,6 +1,3 @@
-import { ChevronsUpDown, Plus, Trash2 } from 'lucide-react';
-import { useId, useMemo } from 'react';
-
 import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Input } from '@/coop-ui/Input';
@@ -15,11 +12,13 @@ import {
 } from '@/coop-ui/Select';
 import { Switch } from '@/coop-ui/Switch';
 import { cn } from '@/lib/utils';
+import { ChevronsUpDown, Plus, Trash2 } from 'lucide-react';
+import { useId, useMemo } from 'react';
 
 import {
+  GQLActionParameterType,
   type GQLActionParameterInput,
   type GQLActionParameterOptionInput,
-  GQLActionParameterType,
 } from '../../../graphql/generated';
 
 // Mirror of the server-side pattern in `actionParametersValidation.ts`. Allows
@@ -134,7 +133,11 @@ function ParameterRow({
   return (
     <div className="rounded-xl border border-gray-200 p-4">
       <div className="grid grid-cols-1 gap-x-3 gap-y-3 md:grid-cols-12">
-        <Field label="Name (key)" htmlFor={`${id}-name`} className="md:col-span-4">
+        <Field
+          label="Name (key)"
+          htmlFor={`${id}-name`}
+          className="md:col-span-4"
+        >
           <Input
             id={`${id}-name`}
             value={param.name}
@@ -306,7 +309,11 @@ function ConstraintsRow({
   if (isNumber) {
     return (
       <>
-        <Field label="Min (optional)" htmlFor={`${id}-min`} className="md:col-span-3">
+        <Field
+          label="Min (optional)"
+          htmlFor={`${id}-min`}
+          className="md:col-span-3"
+        >
           <NumberInput
             id={`${id}-min`}
             value={param.min}
@@ -314,7 +321,11 @@ function ConstraintsRow({
             onChange={(min) => onChange({ min })}
           />
         </Field>
-        <Field label="Max (optional)" htmlFor={`${id}-max`} className="md:col-span-3">
+        <Field
+          label="Max (optional)"
+          htmlFor={`${id}-max`}
+          className="md:col-span-3"
+        >
           <NumberInput
             id={`${id}-max`}
             value={param.max}
@@ -341,7 +352,8 @@ function DefaultValueInput({
 }) {
   switch (param.type) {
     case GQLActionParameterType.String: {
-      const value = typeof param.defaultValue === 'string' ? param.defaultValue : '';
+      const value =
+        typeof param.defaultValue === 'string' ? param.defaultValue : '';
       return (
         <Input
           id={id}
@@ -654,7 +666,9 @@ function OptionsEditor({
             size="icon"
             disabled={disabled}
             onClick={() =>
-              onChange(options.filter((_, optionIndex) => optionIndex !== index))
+              onChange(
+                options.filter((_, optionIndex) => optionIndex !== index),
+              )
             }
             aria-label="Remove option"
           >
@@ -756,7 +770,10 @@ export function validateDrafts(
     // widgets in `DefaultValueInput`, so only range/membership can drift.
     const dv = draft.defaultValue;
     if (dv !== undefined) {
-      if (draft.type === GQLActionParameterType.Number && typeof dv === 'number') {
+      if (
+        draft.type === GQLActionParameterType.Number &&
+        typeof dv === 'number'
+      ) {
         if (draft.min !== undefined && dv < draft.min) {
           return `${at}: default below min.`;
         }
@@ -788,7 +805,10 @@ export function fromGraphQLParameters(
     readonly description?: string | null;
     readonly type: GQLActionParameterType;
     readonly required: boolean;
-    readonly options?: ReadonlyArray<{ readonly value: string; readonly label: string }> | null;
+    readonly options?: ReadonlyArray<{
+      readonly value: string;
+      readonly label: string;
+    }> | null;
     readonly min?: number | null;
     readonly max?: number | null;
     readonly maxLength?: number | null;
@@ -819,7 +839,8 @@ export function useParameterDraftsFromAction<
   T extends Parameters<typeof fromGraphQLParameters>[0],
 >(parameters: T | undefined): ActionParameterDraft[] | undefined {
   return useMemo(
-    () => (parameters === undefined ? undefined : fromGraphQLParameters(parameters)),
+    () =>
+      parameters === undefined ? undefined : fromGraphQLParameters(parameters),
     [parameters],
   );
 }

@@ -113,6 +113,7 @@ import {
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
 import {
+  isReportJob,
   ManualReviewToolService,
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
@@ -441,6 +442,17 @@ export interface Dependencies {
 // treatment that TS gives to classes with private fields; see https://stackoverflow.com/questions/55281162/can-i-force-the-typescript-compiler-to-use-nominal-typing)
 export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
 
+export function getPgConnectionParams(): pg.ClientConfig {
+  return {
+    user: process.env.DATABASE_USER ?? 'postgres',
+    database: process.env.DATABASE_NAME ?? 'development',
+    password: safeGetEnvVar('DATABASE_PASSWORD'),
+    port: parseInt(process.env.DATABASE_PORT ?? '5432'),
+    host: safeGetEnvVar('DATABASE_HOST'),
+    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+  };
+}
+
 /**
  * A function for creating our service container, configured for production.
  * Services can be rebound in other contexts (namely, tests) as needed.
@@ -514,15 +526,10 @@ export default async function getBottle() {
   // that would defeat the ability of safeGetEnvVar to alert us in prod if a
   // worker that needs these vars is run without them.
   const getPgMasterConnectionInfo = () => ({
-    user: process.env.DATABASE_USER ?? 'postgres',
-    database: process.env.DATABASE_NAME ?? 'development',
-    password: safeGetEnvVar('DATABASE_PASSWORD'),
-    port: parseInt(process.env.DATABASE_PORT ?? '5432'),
-    host: safeGetEnvVar('DATABASE_HOST'),
+    ...getPgConnectionParams(),
     max: parseInt(process.env.DATABASE_POOL_MAX ?? '30'),
     application_name:
       getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
     ...getPgPoolTuning(),
   });
 
@@ -579,6 +586,22 @@ export default async function getBottle() {
       }),
   );
 
+  // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
+  // command with NOAUTH unless credentials are sent, which leaves ioredis stuck
+  // before "ready" and parks commands in the offline queue forever. Local dev
+  // Redis has no password, so only pass credentials when REDIS_PASSWORD is set;
+  // REDIS_USER may be set-but-empty, which means the default user. Shared by the
+  // cluster and single-node paths so both authenticate identically.
+  const redisAuthOptions = (): { username?: string; password?: string } =>
+    process.env.REDIS_PASSWORD
+      ? {
+          ...(process.env.REDIS_USER
+            ? { username: process.env.REDIS_USER }
+            : {}),
+          password: process.env.REDIS_PASSWORD,
+        }
+      : {};
+
   const makeRedis = (
     extraOptions: { enableOfflineQueue?: boolean } = {},
   ): IORedis.Redis | Cluster =>
@@ -599,8 +622,7 @@ export default async function getBottle() {
               // Required by BullMQ: its workers use blocking Redis commands
               // that would otherwise be misinterpreted as timed-out requests.
               maxRetriesPerRequest: null,
-              username: safeGetEnvVar('REDIS_USER'),
-              password: safeGetEnvVar('REDIS_PASSWORD'),
+              ...redisAuthOptions(),
               ...extraOptions,
             },
           },
@@ -611,6 +633,7 @@ export default async function getBottle() {
           maxRetriesPerRequest: null,
           port: parseInt(process.env.REDIS_PORT ?? '6379'),
           host: safeGetEnvVar('REDIS_HOST'),
+          ...redisAuthOptions(),
           ...(isEnvTrue('REDIS_TLS')
             ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
             : {}),
@@ -908,9 +931,11 @@ export default async function getBottle() {
         decisionComponents,
         relatedActions,
         job,
+        queueId,
         reviewerId,
         reviewerEmail,
         decisionReason,
+        suppressUserReportSweep,
       }) {
         const { orgId } = job;
         const { itemId, itemTypeIdentifier, data } = job.payload.item;
@@ -940,6 +965,7 @@ export default async function getBottle() {
             item,
             actorId,
             actorEmail,
+            decisionReason,
           } = params;
           const actionIds = decisionActions.map((action) => action.actionId);
           const [actions, policies] = await Promise.all([
@@ -1005,6 +1031,7 @@ export default async function getBottle() {
                 targetItem: itemSubmission,
                 actorId,
                 actorEmail,
+                decisionReason,
               },
             )
             .catch((error) => {
@@ -1025,359 +1052,411 @@ export default async function getBottle() {
           id: uuidv1(),
         });
 
-        await Promise.all(
-          // eslint-disable-next-line complexity
-          decisionComponents.map(async (decision) => {
-            switch (decision.type) {
-              // Don't need to do anything if the job is automatically closed
-              case 'AUTOMATIC_CLOSE':
-                break;
-              case 'IGNORE':
-                const ignoreCallback =
-                  await container.getIgnoreCallbackEventuallyConsistent(orgId);
-                if (ignoreCallback === undefined) {
+        try {
+          await Promise.all(
+            // eslint-disable-next-line complexity
+            decisionComponents.map(async (decision) => {
+              switch (decision.type) {
+                // Don't need to do anything if the job is automatically closed
+                case 'AUTOMATIC_CLOSE':
                   break;
-                }
-                const ignoreCallbackBody = {
-                  id: job.payload.item.itemId,
-                  typeId: job.payload.item.itemTypeIdentifier.id,
-                  data: job.payload.item.data,
-                  ...(job.payload.kind === 'NCMEC'
-                    ? {
-                        ncmecMedia: job.payload.allMediaItems.map((it) => ({
-                          id: it.contentItem.itemId,
-                          typeId: it.contentItem.itemTypeIdentifier,
-                        })),
-                      }
-                    : {}),
-                };
-
-                await container.fetchHTTP({
-                  url: ignoreCallback,
-                  method: 'post',
-                  body: jsonStringify(ignoreCallbackBody),
-                  logRequestAndResponseBody: 'ON_FAILURE',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  handleResponseBody: 'discard',
-                  signWith: container.SigningKeyPairService.sign.bind(
-                    container.SigningKeyPairService,
-                    orgId,
-                  ),
-                });
-                break;
-              // The difference in payload between reject/accept appeal
-              // is handled in the action publisher, so these cases have
-              // the same logic
-              case 'REJECT_APPEAL':
-              case 'ACCEPT_APPEAL':
-                const appealedItemType =
-                  await container.getItemTypeEventuallyConsistent({
-                    orgId,
-                    typeSelector: job.payload.item.itemTypeIdentifier,
-                  });
-                if (!appealedItemType) {
-                  throw new Error('Item Type does not exist');
-                }
-
-                const orgAppealSettings =
-                  await container.OrgSettingsService.getAppealSettings(orgId);
-
-                if (!orgAppealSettings.appealCallbackUrl) {
-                  throw Error(`No Appeal Callback URL set for org ${orgId}`);
-                }
-                const appealCustomBodyParams =
-                  orgAppealSettings.appealCallbackBody;
-                const appealHeaders = orgAppealSettings.appealCallbackHeaders;
-
-                const appealCallbackBody = {
-                  appealId: decision.appealId,
-                  appealedBy: {
-                    id:
-                      'appealerIdentifier' in job.payload
-                        ? job.payload.appealerIdentifier?.id
-                        : undefined,
-
-                    typeId:
-                      'appealerIdentifier' in job.payload
-                        ? job.payload.appealerIdentifier?.typeId
-                        : undefined,
-                  },
-                  appealDecision:
-                    decision.type === 'ACCEPT_APPEAL' ? 'ACCEPT' : 'REJECT',
-                  item: {
+                case 'IGNORE':
+                  const ignoreCallback =
+                    await container.getIgnoreCallbackEventuallyConsistent(
+                      orgId,
+                    );
+                  if (ignoreCallback === undefined) {
+                    break;
+                  }
+                  const ignoreCallbackBody = {
                     id: job.payload.item.itemId,
                     typeId: job.payload.item.itemTypeIdentifier.id,
-                  },
-                  ...(appealCustomBodyParams
-                    ? { custom: appealCustomBodyParams }
-                    : {}),
-                };
-
-                const appealResponse = await container.fetchHTTP({
-                  url: orgAppealSettings.appealCallbackUrl,
-                  method: 'post',
-                  body: jsonStringify(appealCallbackBody),
-                  logRequestAndResponseBody: 'ON_FAILURE',
-                  headers: {
-                    // TODO: We should make sure that there's no value a user
-                    // could provide that would have security implications when blindly fed
-                    // in here -- like something that would somehow lead fetch to do something
-                    // unexpected.
-
-                    ...((appealHeaders as JsonObject | undefined) ?? undefined),
-                    // Put this header last so customHeaders can't override it, which I
-                    // think makes sense, since there's no way for users to effect the
-                    // body in a way that would change the content type.
-                    'Content-Type': 'application/json',
-                  },
-                  handleResponseBody: 'discard',
-                  signWith: container.SigningKeyPairService.sign.bind(
-                    container.SigningKeyPairService,
-                    orgId,
-                  ),
-                });
-
-                if (!appealResponse.ok) {
-                  throw Error(`User's server returned non-success status`);
-                }
-                break;
-
-              case 'CUSTOM_ACTION':
-                const actions = decision.actions.map((action) => {
-                  const actionPayload = {
-                    actionId: action.id,
-                    ...(decision.actionIdsToMrtApiParamDecisionPayload !==
-                    undefined
+                    data: job.payload.item.data,
+                    ...(job.payload.kind === 'NCMEC'
                       ? {
-                          customMrtApiParamDecisionPayload: decision
-                            .actionIdsToMrtApiParamDecisionPayload[
-                            action.id
-                          ] as Record<string, string | boolean | unknown>,
+                          ncmecMedia: job.payload.allMediaItems.map((it) => ({
+                            id: it.contentItem.itemId,
+                            typeId: it.contentItem.itemTypeIdentifier,
+                          })),
                         }
                       : {}),
                   };
-                  // By default reportedForReasons as well as decision reason to the
-                  // custom action callback payload whether or not there is an
-                  // existing custom payload
-                  if (job.payload.kind === 'DEFAULT') {
-                    // TODO: this is unholy we have got to remove this as soon
-                    // as possible, specifically when the new report decision
-                    // API is in place
-                    const additionalPayload = job.payload.reportedForReasons
-                      ? {
-                          reportHistory: job.payload.reportedForReasons.map(
-                            (it) => ({
-                              reason: it.reason,
-                              reporter: it.reporterId,
-                            }),
-                          ),
-                          reason: decisionReason,
-                        }
-                      : { reason: decisionReason };
-                    actionPayload.customMrtApiParamDecisionPayload = {
-                      ...actionPayload.customMrtApiParamDecisionPayload,
-                      ...(additionalPayload.reportHistory
-                        ? additionalPayload
+
+                  await container.fetchHTTP({
+                    url: ignoreCallback,
+                    method: 'post',
+                    body: jsonStringify(ignoreCallbackBody),
+                    logRequestAndResponseBody: 'ON_FAILURE',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    handleResponseBody: 'discard',
+                    signWith: container.SigningKeyPairService.sign.bind(
+                      container.SigningKeyPairService,
+                      orgId,
+                    ),
+                  });
+                  break;
+                // The difference in payload between reject/accept appeal
+                // is handled in the action publisher, so these cases have
+                // the same logic
+                case 'REJECT_APPEAL':
+                case 'ACCEPT_APPEAL':
+                  const appealedItemType =
+                    await container.getItemTypeEventuallyConsistent({
+                      orgId,
+                      typeSelector: job.payload.item.itemTypeIdentifier,
+                    });
+                  if (!appealedItemType) {
+                    throw new Error('Item Type does not exist');
+                  }
+
+                  const orgAppealSettings =
+                    await container.OrgSettingsService.getAppealSettings(orgId);
+
+                  if (!orgAppealSettings.appealCallbackUrl) {
+                    throw Error(`No Appeal Callback URL set for org ${orgId}`);
+                  }
+                  const appealCustomBodyParams =
+                    orgAppealSettings.appealCallbackBody;
+                  const appealHeaders = orgAppealSettings.appealCallbackHeaders;
+
+                  const appealCallbackBody = {
+                    appealId: decision.appealId,
+                    appealedBy: {
+                      id:
+                        'appealerIdentifier' in job.payload
+                          ? job.payload.appealerIdentifier?.id
+                          : undefined,
+
+                      typeId:
+                        'appealerIdentifier' in job.payload
+                          ? job.payload.appealerIdentifier?.typeId
+                          : undefined,
+                    },
+                    appealDecision:
+                      decision.type === 'ACCEPT_APPEAL' ? 'ACCEPT' : 'REJECT',
+                    item: {
+                      id: job.payload.item.itemId,
+                      typeId: job.payload.item.itemTypeIdentifier.id,
+                    },
+                    ...(appealCustomBodyParams
+                      ? { custom: appealCustomBodyParams }
+                      : {}),
+                  };
+
+                  const appealResponse = await container.fetchHTTP({
+                    url: orgAppealSettings.appealCallbackUrl,
+                    method: 'post',
+                    body: jsonStringify(appealCallbackBody),
+                    logRequestAndResponseBody: 'ON_FAILURE',
+                    headers: {
+                      // TODO: We should make sure that there's no value a user
+                      // could provide that would have security implications when blindly fed
+                      // in here -- like something that would somehow lead fetch to do something
+                      // unexpected.
+
+                      ...((appealHeaders as JsonObject | undefined) ??
+                        undefined),
+                      // Put this header last so customHeaders can't override it, which I
+                      // think makes sense, since there's no way for users to effect the
+                      // body in a way that would change the content type.
+                      'Content-Type': 'application/json',
+                    },
+                    handleResponseBody: 'discard',
+                    signWith: container.SigningKeyPairService.sign.bind(
+                      container.SigningKeyPairService,
+                      orgId,
+                    ),
+                  });
+
+                  if (!appealResponse.ok) {
+                    throw Error(`User's server returned non-success status`);
+                  }
+                  break;
+
+                case 'CUSTOM_ACTION':
+                  const actions = decision.actions.map((action) => {
+                    const actionPayload = {
+                      actionId: action.id,
+                      ...(decision.actionIdsToMrtApiParamDecisionPayload !==
+                      undefined
+                        ? {
+                            customMrtApiParamDecisionPayload: decision
+                              .actionIdsToMrtApiParamDecisionPayload[
+                              action.id
+                            ] as Record<string, string | boolean | unknown>,
+                          }
                         : {}),
                     };
-                  }
-                  return actionPayload;
-                });
-                // TODO: make this illegal at the time the decision is submitted.
-                if (!isNonEmptyArray(actions)) {
-                  throw new Error(
-                    'Attempting to take a user action without any actions',
-                  );
-                }
-                await publishActions({
-                  decisionActions: actions,
-                  policyIds: decision.policies.map((policy) => policy.id),
-                  orgId,
-                  item: job.payload.item,
-                  actorId: reviewerId,
-                  actorEmail: reviewerEmail,
-                });
-                break;
-              case 'SUBMIT_NCMEC_REPORT': {
-                if (job.payload.kind !== 'NCMEC') {
-                  throw new Error(
-                    'Attempting to submit a NCMEC report for a non-NCMEC job',
-                  );
-                }
-                const itemType =
-                  await container.getItemTypeEventuallyConsistent({
-                    orgId,
-                    typeSelector: itemTypeIdentifier,
+                    // By default reportedForReasons as well as decision reason to the
+                    // custom action callback payload whether or not there is an
+                    // existing custom payload
+                    if (job.payload.kind === 'DEFAULT') {
+                      // TODO: this is unholy we have got to remove this as soon
+                      // as possible, specifically when the new report decision
+                      // API is in place
+                      const additionalPayload = job.payload.reportedForReasons
+                        ? {
+                            reportHistory: job.payload.reportedForReasons.map(
+                              (it) => ({
+                                reason: it.reason,
+                                reporter: it.reporterId,
+                              }),
+                            ),
+                            reason: decisionReason,
+                          }
+                        : { reason: decisionReason };
+                      actionPayload.customMrtApiParamDecisionPayload = {
+                        ...actionPayload.customMrtApiParamDecisionPayload,
+                        ...(additionalPayload.reportHistory
+                          ? additionalPayload
+                          : {}),
+                      };
+                    }
+                    return actionPayload;
                   });
-                if (itemType === undefined || itemType.kind !== 'USER') {
-                  throw new Error('Item Type for User does not exist');
-                }
-                const reportParams = await buildSubmitReportParamsFromDecision({
-                  orgId,
-                  reviewerId,
-                  reportedItemId: itemId,
-                  reportedItemTypeId: itemTypeIdentifier.id,
-                  reportedUserItemType: itemType,
-                  reportedUserData: data,
-                  allMediaItems: job.payload.allMediaItems,
-                  decisionComponent: decision,
-                  jobId: job.id,
-                  getItemTypeEventuallyConsistent:
-                    container.getItemTypeEventuallyConsistent,
-                });
-                // Submissions go to the NCMEC test endpoint
-                // (exttest.cybertip.org) unless the deployment is explicitly
-                // configured for production via NCMEC_ENV=production. Operators
-                // are responsible for matching this to whether the credentials
-                // configured in Settings → NCMEC are production or test
-                // credentials issued by NCMEC.
-                const isTest = process.env.NCMEC_ENV !== 'production';
-                await container.NcmecService.submitReport(reportParams, isTest);
-                const actionAndPolicy =
-                  await container.NcmecService.getNCMECActionsToRunAndPolicies(
-                    orgId,
-                  );
-                const decisionActions = actionAndPolicy?.actionsToRunIds
-                  ? actionAndPolicy.actionsToRunIds.map((a) => ({
-                      actionId: a,
-                    }))
-                  : [];
-                if (
-                  actionAndPolicy != null &&
-                  actionAndPolicy.actionsToRunIds != null &&
-                  isNonEmptyArray(decisionActions) &&
-                  !isTest
-                ) {
+                  // TODO: make this illegal at the time the decision is submitted.
+                  if (!isNonEmptyArray(actions)) {
+                    throw new Error(
+                      'Attempting to take a user action without any actions',
+                    );
+                  }
                   await publishActions({
-                    decisionActions,
-                    policyIds: actionAndPolicy.policyIds,
+                    decisionActions: actions,
+                    policyIds: decision.policies.map((policy) => policy.id),
                     orgId,
                     item: job.payload.item,
                     actorId: reviewerId,
                     actorEmail: reviewerEmail,
+                    decisionReason,
                   });
-                }
-                break;
-              }
-              case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE': {
-                const reportHistory =
-                  'reportHistory' in job.payload
-                    ? job.payload.reportHistory
+                  break;
+                case 'SUBMIT_NCMEC_REPORT': {
+                  if (job.payload.kind !== 'NCMEC') {
+                    throw new Error(
+                      'Attempting to submit a NCMEC report for a non-NCMEC job',
+                    );
+                  }
+                  const itemType =
+                    await container.getItemTypeEventuallyConsistent({
+                      orgId,
+                      typeSelector: itemTypeIdentifier,
+                    });
+                  if (itemType === undefined || itemType.kind !== 'USER') {
+                    throw new Error('Item Type for User does not exist');
+                  }
+                  const reportParams =
+                    await buildSubmitReportParamsFromDecision({
+                      orgId,
+                      reviewerId,
+                      reportedItemId: itemId,
+                      reportedItemTypeId: itemTypeIdentifier.id,
+                      reportedUserItemType: itemType,
+                      reportedUserData: data,
+                      allMediaItems: job.payload.allMediaItems,
+                      decisionComponent: decision,
+                      jobId: job.id,
+                      getItemTypeEventuallyConsistent:
+                        container.getItemTypeEventuallyConsistent,
+                    });
+                  // Submissions go to the NCMEC test endpoint
+                  // (exttest.cybertip.org) unless the deployment is explicitly
+                  // configured for production via NCMEC_ENV=production. Operators
+                  // are responsible for matching this to whether the credentials
+                  // configured in Settings → NCMEC are production or test
+                  // credentials issued by NCMEC.
+                  const isTest = process.env.NCMEC_ENV !== 'production';
+                  await container.NcmecService.submitReport(
+                    reportParams,
+                    isTest,
+                  );
+                  const actionAndPolicy =
+                    await container.NcmecService.getNCMECActionsToRunAndPolicies(
+                      orgId,
+                    );
+                  const decisionActions = actionAndPolicy?.actionsToRunIds
+                    ? actionAndPolicy.actionsToRunIds.map((a) => ({
+                        actionId: a,
+                      }))
                     : [];
-                const reportedForReasons =
-                  'reportedForReasons' in job.payload &&
-                  job.payload.reportedForReasons != null &&
-                  job.payload.reportedForReasons.length > 0
-                    ? job.payload.reportedForReasons
-                    : reportHistory.map((entry) => ({
-                        reporterId: entry.reporterId,
-                        reason: entry.reason,
-                      }));
-                const defaultJobInput = {
-                  enqueueSource: 'MRT_JOB',
-                  enqueueSourceInfo: { kind: 'MRT_JOB' },
-                  reenqueuedFrom: { jobId: job.id },
-                  payload: {
-                    kind: 'DEFAULT' as const,
-                    item: job.payload.item,
-                    ...{
-                      reportIds:
-                        'reportIds' in job.payload
-                          ? (job.payload.reportIds ?? [])
-                          : [],
-                    },
-                    ...('reportedForReason' in job.payload
-                      ? { reportedForReason: job.payload.reportedForReason }
-                      : {}),
-                    ...('reporterIdentifier' in job.payload
-                      ? {
-                          reporterIdentifier: job.payload.reporterIdentifier,
-                        }
-                      : {}),
-                    reportedForReasons,
-                    reportHistory,
-                  },
-                  createdAt: new Date(),
-                  orgId,
-                  correlationId,
-                  policyIds: job.policyIds,
-                } as const;
-                switch (decision.newJobKind) {
-                  case 'DEFAULT':
-                    await container.ManualReviewToolService.enqueue(
-                      defaultJobInput,
-
-                      decision.newQueueId ?? undefined,
-                    );
-                    break;
-                  case 'NCMEC':
-                    // TODO: the NCMEC service is currently in charge of NCMEC job
-                    // enrichment, but once we replace the NCMEC warehouse job with
-                    // Scylla we should move it back into the MRT service
-                    await container.NcmecService.enqueueForHumanReviewIfApplicable(
-                      {
-                        orgId,
-                        createdAt: new Date(),
-                        enqueueSource: 'MRT_JOB',
-                        enqueueSourceInfo: { kind: 'MRT_JOB' },
-                        correlationId,
-                        item: job.payload.item,
-                        reenqueuedFrom: { jobId: job.id },
-                      },
-                    );
-                    break;
-                  default:
-                    assertUnreachable(decision.newJobKind);
+                  if (
+                    actionAndPolicy != null &&
+                    actionAndPolicy.actionsToRunIds != null &&
+                    isNonEmptyArray(decisionActions) &&
+                    !isTest
+                  ) {
+                    await publishActions({
+                      decisionActions,
+                      policyIds: actionAndPolicy.policyIds,
+                      orgId,
+                      item: job.payload.item,
+                      actorId: reviewerId,
+                      actorEmail: reviewerEmail,
+                    });
+                  }
+                  break;
                 }
-                break;
+                case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE': {
+                  const reportHistory =
+                    'reportHistory' in job.payload
+                      ? job.payload.reportHistory
+                      : [];
+                  const reportedForReasons =
+                    'reportedForReasons' in job.payload &&
+                    job.payload.reportedForReasons != null &&
+                    job.payload.reportedForReasons.length > 0
+                      ? job.payload.reportedForReasons
+                      : reportHistory.map((entry) => ({
+                          reporterId: entry.reporterId,
+                          reason: entry.reason,
+                        }));
+                  const defaultJobInput = {
+                    enqueueSource: 'MRT_JOB',
+                    enqueueSourceInfo: { kind: 'MRT_JOB' },
+                    reenqueuedFrom: { jobId: job.id },
+                    payload: {
+                      kind: 'DEFAULT' as const,
+                      item: job.payload.item,
+                      ...{
+                        reportIds:
+                          'reportIds' in job.payload
+                            ? (job.payload.reportIds ?? [])
+                            : [],
+                      },
+                      ...('reportedForReason' in job.payload
+                        ? { reportedForReason: job.payload.reportedForReason }
+                        : {}),
+                      ...('reporterIdentifier' in job.payload
+                        ? {
+                            reporterIdentifier: job.payload.reporterIdentifier,
+                          }
+                        : {}),
+                      reportedForReasons,
+                      reportHistory,
+                    },
+                    createdAt: new Date(),
+                    orgId,
+                    correlationId,
+                    policyIds: job.policyIds,
+                  } as const;
+                  switch (decision.newJobKind) {
+                    case 'DEFAULT':
+                      await container.ManualReviewToolService.enqueue(
+                        defaultJobInput,
+
+                        decision.newQueueId ?? undefined,
+                      );
+                      break;
+                    case 'NCMEC':
+                      // TODO: the NCMEC service is currently in charge of NCMEC job
+                      // enrichment, but once we replace the NCMEC warehouse job with
+                      // Scylla we should move it back into the MRT service
+                      await container.NcmecService.enqueueForHumanReviewIfApplicable(
+                        {
+                          orgId,
+                          createdAt: new Date(),
+                          enqueueSource: 'MRT_JOB',
+                          enqueueSourceInfo: { kind: 'MRT_JOB' },
+                          correlationId,
+                          item: job.payload.item,
+                          reenqueuedFrom: { jobId: job.id },
+                        },
+                      );
+                      break;
+                    default:
+                      assertUnreachable(decision.newJobKind);
+                  }
+                  break;
+                }
+
+                default:
+                  assertUnreachable(decision);
+              }
+            }),
+          );
+
+          // Publish any related actions
+          const flattenedRelatedActions = relatedActions.flatMap((it) => {
+            return it.itemIds.map((itemId) => ({
+              ..._.omit(it, 'itemIds'),
+              itemId,
+            }));
+          });
+          await Promise.all(
+            flattenedRelatedActions.map(async (it) => {
+              const { actionIds, policyIds, itemId, itemTypeId } = it;
+              if (!isNonEmptyArray(actionIds)) {
+                return;
               }
 
-              default:
-                assertUnreachable(decision);
-            }
-          }),
-        );
-
-        // Publish any related actions
-        const flattenedRelatedActions = relatedActions.flatMap((it) => {
-          return it.itemIds.map((itemId) => ({
-            ..._.omit(it, 'itemIds'),
-            itemId,
-          }));
-        });
-        await Promise.all(
-          flattenedRelatedActions.map(async (it) => {
-            const { actionIds, policyIds, itemId, itemTypeId } = it;
-            if (!isNonEmptyArray(actionIds)) {
-              return;
-            }
-
-            const itemType = await container.getItemTypeEventuallyConsistent({
-              orgId,
-              typeSelector: { id: itemTypeId },
-            });
-
-            if (!itemType) {
-              return;
-            }
-            const decisionActions = actionIds.map((actionId) => ({
-              actionId,
-            }));
-
-            if (isNonEmptyArray(decisionActions)) {
-              await publishActions({
-                decisionActions,
-                policyIds,
+              const itemType = await container.getItemTypeEventuallyConsistent({
                 orgId,
-                item: { itemId, itemType },
-                actorId: reviewerId,
-                actorEmail: reviewerEmail,
+                typeSelector: { id: itemTypeId },
+              });
+
+              if (!itemType) {
+                return;
+              }
+              const decisionActions = actionIds.map((actionId) => ({
+                actionId,
+              }));
+
+              if (isNonEmptyArray(decisionActions)) {
+                await publishActions({
+                  decisionActions,
+                  policyIds,
+                  orgId,
+                  item: { itemId, itemType },
+                  actorId: reviewerId,
+                  actorEmail: reviewerEmail,
+                });
+              }
+            }),
+          );
+        } finally {
+          if (!suppressUserReportSweep && isReportJob(job)) {
+            const reportJob = job;
+            const customActions = [
+              ...decisionComponents.flatMap((decision) =>
+                decision.type === 'CUSTOM_ACTION' ? [decision] : [],
+              ),
+              ...relatedActions
+                .filter((ra) => ra.actionIds.length > 0)
+                .map((ra) => ({
+                  type: 'CUSTOM_ACTION' as const,
+                  actions: ra.actionIds.map((id) => ({ id })),
+                  policies: ra.policyIds.map((id) => ({ id })),
+                  itemIds: [...ra.itemIds],
+                  itemTypeId: ra.itemTypeId,
+                })),
+            ];
+            if (customActions.length > 0) {
+              container.ManualReviewToolService.maybeClearOtherReportsForUser({
+                orgId,
+                actionedJob: reportJob,
+                actionedQueueId: queueId,
+                customActions,
+                reviewerId,
+                reviewerEmail,
+                decisionReason,
+              }).catch((error) => {
+                container.Tracer.addSpan(
+                  {
+                    resource: 'mrtService',
+                    operation: 'clearOtherReportsForUser',
+                  },
+                  (span) => {
+                    span.setAttribute('job.id', reportJob.id);
+                    span.setAttribute('org.id', orgId);
+                    container.Tracer.logSpanFailed(span, error);
+                    return null;
+                  },
+                );
               });
             }
-          }),
-        );
+          }
+        }
       },
       async function onEnqueue(
         _input: ManualReviewJobInput | ManualReviewAppealJobInput,

@@ -60,7 +60,6 @@ gql`
               id
             }
             data
-            userScore
           }
         }
       }
@@ -329,7 +328,10 @@ export default function ManualReviewJobRelatedUserComponent(props: {
           <div className="flex justify-start w-full">
             <FieldsComponent
               fields={[
-                ...convertRelatedItemToFieldData(user, userItem?.userScore),
+                ...convertRelatedItemToFieldData(
+                  user,
+                  (userSubmissionItems ?? []).map((it) => it.name),
+                ),
                 ...(userSubmissionItems ?? []),
               ]}
               itemTypeId={user.typeId}

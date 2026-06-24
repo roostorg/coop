@@ -4,16 +4,16 @@ import { Button, Form, Select, Tooltip } from 'antd';
 import {
   GQLConditionConjunction,
   GQLScalarType,
+  GQLSignal,
   GQLValueComparator,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { CoopInput } from '../../types/enums';
 import {
   ConditionInput,
   ConditionLocation,
+  isConditionSet,
   RuleFormConditionSet,
   RuleFormLeafCondition,
-  isConditionSet,
 } from '../types';
 import RuleFormConditionComparator from './condition/comparator/RuleFormConditionComparator';
 import { getDerivedFieldOutputType } from './condition/input/derivedField';
@@ -120,11 +120,11 @@ export default function RuleFormCondition(props: {
   isAutomatedRule?: boolean;
   onUpdateInput: (
     input: SimplifiedConditionInput,
-    allSignals: readonly CoreSignal[],
+    allSignals: readonly GQLSignal[],
   ) => void;
-  onUpdateSignal: (signal: CoreSignal) => void;
+  onUpdateSignal: (signal: GQLSignal) => void;
   onUpdateSignalSubcategory: (subcategory: string) => void;
-  onUpdateSignalArgs: (args: CoreSignal['args']) => void;
+  onUpdateSignalArgs: (args: GQLSignal['args']) => void;
   onUpdateMatchingValues: (
     matchingValues: RuleFormLeafCondition['matchingValues'],
   ) => void;
@@ -246,7 +246,9 @@ export default function RuleFormCondition(props: {
         location={location}
         inputScalarType={inputScalarType}
         onUpdateMatchingValues={onUpdateMatchingValues}
-        allConditions={parentConditionSet.conditions.filter((c): c is RuleFormLeafCondition => !isConditionSet(c))}
+        allConditions={parentConditionSet.conditions.filter(
+          (c): c is RuleFormLeafCondition => !isConditionSet(c),
+        )}
       />
       <RuleFormConditionComparator
         condition={condition}

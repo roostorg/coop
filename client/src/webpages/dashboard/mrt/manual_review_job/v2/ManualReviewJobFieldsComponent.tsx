@@ -16,10 +16,14 @@ import { Link } from 'react-router-dom';
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 
 import {
+  GQLContentItem,
+  GQLContentSchemaFieldRoles,
   GQLItemType,
+  GQLThreadItem,
+  GQLThreadSchemaFieldRoles,
   GQLUserItem,
   GQLUserSchemaFieldRoles,
-  useGQLGetUserItemsQuery,
+  useGQLGetRelatedItemsQuery,
   useGQLItemTypeHiddenFieldsQuery,
   useGQLPersonalSafetySettingsQuery,
 } from '../../../../../graphql/generated';
@@ -156,7 +160,7 @@ function TableRowComponent(props: {
     type === 'RELATED_ITEM' && value
       ? itemTypes.find((itemType) => itemType.id === value.typeId)?.__typename
       : undefined;
-  const { data: userItem } = useGQLGetUserItemsQuery({
+  const { data: relatedItemData } = useGQLGetRelatedItemsQuery({
     variables: {
       itemIdentifiers: [
         {
@@ -166,7 +170,7 @@ function TableRowComponent(props: {
         },
       ],
     },
-    skip: type !== 'RELATED_ITEM' && relatedItemKind !== 'UserItemType',
+    skip: type !== 'RELATED_ITEM' || value == null,
   });
 
   if (value == null) {
@@ -191,7 +195,6 @@ function TableRowComponent(props: {
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'IP_ADDRESS':
     case 'STRING': {
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
@@ -201,6 +204,29 @@ function TableRowComponent(props: {
             </div>
           ) : null}
           <div className="text-start">{String(value)}</div>
+        </div>
+      );
+    }
+    case 'IP_ADDRESS': {
+      // Make the IP clickable so a moderator can pivot to every other item
+      // associated with the same IP (ban evasion, coordinated abuse, etc.).
+      return (
+        <div className="flex flex-col whitespace-normal align-top text-start">
+          {label ? (
+            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+              {label}
+            </div>
+          ) : null}
+          <Link
+            className="cursor-pointer break-all"
+            to={`/dashboard/manual_review/investigation?ip=${encodeURIComponent(
+              String(value),
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {String(value)}
+          </Link>
         </div>
       );
     }
@@ -224,9 +250,14 @@ function TableRowComponent(props: {
         return <NotProvidedComponent />;
       }
 
-      // Extract matched banks if available
-      const matchedBanks = (value as any)?.matchedBanks;
-      const hasMatches = Array.isArray(matchedBanks) && matchedBanks.length > 0;
+      // Extract matched banks if available, normalizing to a string[] so the
+      // render path below always has a concrete array to map over.
+      const rawMatchedBanks = (value as { matchedBanks?: string[] })
+        .matchedBanks;
+      const matchedBanks = Array.isArray(rawMatchedBanks)
+        ? rawMatchedBanks
+        : [];
+      const hasMatches = matchedBanks.length > 0;
 
       return (
         <div className="flex flex-col px-2 align-top text-start">
@@ -249,7 +280,7 @@ function TableRowComponent(props: {
           {label ? <div className="font-bold">{label}</div> : null}
           {hasMatches && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {matchedBanks.map((bankName: string) => (
+              {matchedBanks.map((bankName) => (
                 <span
                   key={bankName}
                   className="inline-block px-2 py-0.5 text-s font-large bg-gray-200 rounded"
@@ -389,28 +420,43 @@ function TableRowComponent(props: {
         __throw(new Error(`Could not find item type for ID ${value.typeId}`));
       }
 
+      // Resolve a human-readable title for every related-item kind via its
+      // `displayName` schema role (not just users). The profile icon role only
+      // exists on user types, so it stays user-only.
       let displayName: string | undefined;
       let profilePhoto: { url: string } | undefined;
-      const user = userItem?.latestItemSubmissions[0] as GQLUserItem;
-      if (relatedItemKind === 'UserItemType' && user !== undefined) {
-        displayName = userItem
-          ? getFieldValueForRole<GQLUserSchemaFieldRoles, 'displayName'>(
-              {
-                data: user.data,
-                type: user.type,
-              },
-              'displayName',
-            )
-          : undefined;
-        profilePhoto = userItem
-          ? getFieldValueForRole<GQLUserSchemaFieldRoles, 'profileIcon'>(
-              {
-                data: user.data,
-                type: user.type,
-              },
-              'profileIcon',
-            )
-          : undefined;
+      const relatedItem = relatedItemData?.latestItemSubmissions[0];
+      switch (relatedItem?.__typename) {
+        case 'UserItem': {
+          const user = relatedItem as GQLUserItem;
+          displayName = getFieldValueForRole<
+            GQLUserSchemaFieldRoles,
+            'displayName'
+          >({ data: user.data, type: user.type }, 'displayName');
+          profilePhoto = getFieldValueForRole<
+            GQLUserSchemaFieldRoles,
+            'profileIcon'
+          >({ data: user.data, type: user.type }, 'profileIcon');
+          break;
+        }
+        case 'ContentItem': {
+          const content = relatedItem as GQLContentItem;
+          displayName = getFieldValueForRole<
+            GQLContentSchemaFieldRoles,
+            'displayName'
+          >({ data: content.data, type: content.type }, 'displayName');
+          break;
+        }
+        case 'ThreadItem': {
+          const thread = relatedItem as GQLThreadItem;
+          displayName = getFieldValueForRole<
+            GQLThreadSchemaFieldRoles,
+            'displayName'
+          >({ data: thread.data, type: thread.type }, 'displayName');
+          break;
+        }
+        default:
+          break;
       }
       return (
         <div className="flex flex-row align-top text-start">
@@ -550,7 +596,7 @@ function ContainerComponent(props: {
             }));
       }
       case 'MAP': {
-        const mapValue = data.value as { [key: string]: ScalarTypeRuntimeType };
+        const mapValue = data.value;
         return isPlainObject(mapValue)
           ? Object.keys(mapValue).map((key) => ({
               value: mapValue[key],

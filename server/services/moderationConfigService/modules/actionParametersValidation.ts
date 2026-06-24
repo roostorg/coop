@@ -147,8 +147,7 @@ function validatePerTypeRules(param: ActionParameter, index: number): void {
   }
 }
 
-const at = (index: number, suffix: string) =>
-  `parameters[${index}].${suffix}`;
+const at = (index: number, suffix: string) => `parameters[${index}].${suffix}`;
 
 function validateStringRules(param: ActionParameter, index: number): void {
   if (param.options !== undefined) {
@@ -307,10 +306,14 @@ function validateSelectRules(param: ActionParameter, index: number): void {
   }
 }
 
-function formatAjvErrors(errors: readonly ErrorObject[] | null | undefined): string {
+function formatAjvErrors(
+  errors: readonly ErrorObject[] | null | undefined,
+): string {
   if (!errors || errors.length === 0) return 'invalid action parameters';
   return errors
-    .map((err) => `${err.instancePath || '/'}: ${err.message ?? 'invalid value'}`)
+    .map(
+      (err) => `${err.instancePath || '/'}: ${err.message ?? 'invalid value'}`,
+    )
     .join('; ');
 }
 
@@ -332,7 +335,8 @@ export function parseStoredParameters(value: unknown): ActionParameter[] {
     if (typeof raw !== 'object' || raw === null) continue;
     const obj = raw as Record<string, unknown>;
     const name = typeof obj.name === 'string' ? obj.name : null;
-    const displayName = typeof obj.displayName === 'string' ? obj.displayName : null;
+    const displayName =
+      typeof obj.displayName === 'string' ? obj.displayName : null;
     const typeRaw = typeof obj.type === 'string' ? obj.type : null;
     if (name === null || displayName === null || typeRaw === null) continue;
     if (!allowedTypes.includes(typeRaw)) continue;
@@ -342,7 +346,8 @@ export function parseStoredParameters(value: unknown): ActionParameter[] {
       type: typeRaw as ActionParameterType,
       required: obj.required === true,
     };
-    if (typeof obj.description === 'string') parsed.description = obj.description;
+    if (typeof obj.description === 'string')
+      parsed.description = obj.description;
     if (Array.isArray(obj.options)) {
       const options: ActionParameterOption[] = [];
       for (const opt of obj.options) {
@@ -387,12 +392,16 @@ export function serializeParameters(
     };
     if (param.description !== undefined) out.description = param.description;
     if (param.options !== undefined) {
-      out.options = param.options.map((o) => ({ value: o.value, label: o.label }));
+      out.options = param.options.map((o) => ({
+        value: o.value,
+        label: o.label,
+      }));
     }
     if (param.min !== undefined) out.min = param.min;
     if (param.max !== undefined) out.max = param.max;
     if (param.maxLength !== undefined) out.maxLength = param.maxLength;
-    if (param.defaultValue !== undefined) out.defaultValue = param.defaultValue as JsonValue;
+    if (param.defaultValue !== undefined)
+      out.defaultValue = param.defaultValue as JsonValue;
     return out;
   });
 }

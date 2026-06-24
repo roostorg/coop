@@ -1,4 +1,4 @@
-import { type Kysely, sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import { type JsonObject, type JsonValue, type Writable } from 'type-fest';
 import { uid } from 'uid';
 
@@ -18,16 +18,14 @@ import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Action, type CustomAction } from '../index.js';
 import { type ItemTypeKind } from '../types/itemTypes.js';
 import {
-  type RawActionParameterInput,
   serializeParameters,
   validateActionParameters,
+  type RawActionParameterInput,
 } from './actionParametersValidation.js';
 
 function assertCustomAction(action: Action): asserts action is CustomAction {
   if (action.actionType !== 'CUSTOM_ACTION') {
-    throw new Error(
-      `Expected CUSTOM_ACTION but received ${action.actionType}`,
-    );
+    throw new Error(`Expected CUSTOM_ACTION but received ${action.actionType}`);
   }
 }
 
@@ -420,22 +418,27 @@ export default class ActionOperations {
     return results.map((it) => this.#dbResultToAction(it));
   }
 
+  // Returns each action attached to a rule paired with the parameter values
+  // configured for it. Powers proactive rule execution and pre-fills the rule editor.
   async getActionsForRuleId(opts: {
     orgId: string;
     ruleId: string;
     readFromReplica?: boolean;
-  }) {
+  }): Promise<readonly { action: Action; parameters: JsonObject }[]> {
     const { orgId, ruleId, readFromReplica } = opts;
-    const pgQuery = this.#getPgQuery(readFromReplica);
-    const results = (await pgQuery
+    const results = (await this.#getPgQuery(readFromReplica)
       .selectFrom('public.rules_and_actions as raa')
       .innerJoin('public.actions as a', 'a.id', 'raa.action_id')
-      .select(actionJoinDbSelection)
+      .select([...actionJoinDbSelection, 'raa.action_parameters'])
       .where('raa.rule_id', '=', ruleId)
       .where('a.org_id', '=', orgId)
-      .execute()) as ActionDbResult[];
-
-    return results.map((it) => this.#dbResultToAction(it));
+      .execute()) as (ActionDbResult & {
+      action_parameters: JsonObject | null;
+    })[];
+    return results.map((it) => ({
+      action: this.#dbResultToAction(it),
+      parameters: it.action_parameters ?? {},
+    }));
   }
 
   private static customMrtApiParamsFromDb(
@@ -463,8 +466,9 @@ export default class ActionOperations {
               callbackUrl: it.callbackUrl,
               callbackUrlBody: it.callbackUrlBody,
               callbackUrlHeaders: it.callbackUrlHeaders,
-              customMrtApiParams:
-                ActionOperations.customMrtApiParamsFromDb(it.customMrtApiParams),
+              customMrtApiParams: ActionOperations.customMrtApiParamsFromDb(
+                it.customMrtApiParams,
+              ),
             };
           case 'ENQUEUE_TO_MRT':
           case 'ENQUEUE_TO_NCMEC':

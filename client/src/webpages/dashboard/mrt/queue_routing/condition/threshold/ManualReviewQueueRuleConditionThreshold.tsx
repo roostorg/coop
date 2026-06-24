@@ -212,10 +212,10 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
           {renderBooleanThreshold
             ? 'Value'
             : renderPolicyThreshold
-            ? 'Policy'
-            : renderStringThreshold
-            ? 'Creation Source'
-            : 'Threshold'}
+              ? 'Policy'
+              : renderStringThreshold
+                ? 'Creation Source'
+                : 'Threshold'}
         </div>
         {!editing ? (
           <ManualReviewQueueRoutingStaticTextField
@@ -242,10 +242,10 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
           {renderBooleanThreshold
             ? 'Value'
             : renderPolicyThreshold
-            ? 'Policy'
-            : renderStringThreshold
-            ? 'Creation Source'
-            : 'Threshold'}
+              ? 'Policy'
+              : renderStringThreshold
+                ? 'Creation Source'
+                : 'Threshold'}
         </div>
       </div>
     </div>

@@ -94,7 +94,10 @@ export {
   parseStoredParameters,
   validateActionParameters,
 } from './modules/actionParametersValidation.js';
-export { validateActionParameterValues } from './modules/actionParameterValueValidation.js';
+export {
+  resolveConfiguredActionParameterValues,
+  validateActionParameterValues,
+} from './modules/actionParameterValueValidation.js';
 export {
   MAX_ACTOR_NOTE_LENGTH,
   validateActorNote,
