@@ -25,7 +25,7 @@ import {
   GQLUpdateOrgInfoDocument,
   GQLUpdatePartialItemsSettingsDocument,
   GQLUpdateRequiresPolicyForDecisionsDocument,
-  GQLUpdateSsoCredentialsDocument,
+  GQLUpdateSsoSamlSettingsDocument,
   GQLUpdateUserStrikeTtlDocument,
 } from '@/graphql/generated';
 
@@ -304,15 +304,25 @@ describe('SettingsPage', () => {
 
     it('calls save credentials mutation', async () => {
       const mutationFn = vi.fn(() => ({
-        data: { updateSSOCredentials: true },
+        data: {
+          updateSSOSettings: {
+            __typename: 'Org',
+            id: 'org-1',
+            samlEnabled: false,
+            ssoUrl: 'https://idp.example.com/saml',
+            ssoCert: 'CERT_DATA',
+          },
+        },
       }));
       const mutationMock: MockedResponse = {
         request: {
-          query: GQLUpdateSsoCredentialsDocument,
+          query: GQLUpdateSsoSamlSettingsDocument,
           variables: {
             input: {
-              ssoUrl: 'https://idp.example.com/saml',
-              ssoCert: 'CERT_DATA',
+              saml: {
+                ssoUrl: 'https://idp.example.com/saml',
+                ssoCert: 'CERT_DATA',
+              },
             },
           },
         },
