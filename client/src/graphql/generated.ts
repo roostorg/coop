@@ -3094,6 +3094,12 @@ export type GQLNcmecManualReviewJobPayload = {
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
   readonly enqueueSourceInfo?: Maybe<GQLManualReviewJobEnqueueSourceInfo>;
   readonly item: GQLUserItem;
+  /**
+   * Identifiers of the content item(s) that triggered the report. Empty for
+   * account-level reports. Used by the review UI to highlight reported content
+   * and to seed the threads lookup for text-only (no-media) reports.
+   */
+  readonly reportedMessages: ReadonlyArray<GQLItemIdentifier>;
   readonly userScore?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -9012,6 +9018,11 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                     };
                   };
             }>;
+            readonly reportedMessages: ReadonlyArray<{
+              readonly __typename: 'ItemIdentifier';
+              readonly id: string;
+              readonly typeId: string;
+            }>;
             readonly enqueueSourceInfo?:
               | { readonly __typename: 'AppealEnqueueSourceInfo' }
               | {
@@ -11600,6 +11611,11 @@ export type GQLGetDecidedJobQuery = {
                   };
                 };
           }>;
+          readonly reportedMessages: ReadonlyArray<{
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          }>;
           readonly enqueueSourceInfo?:
             | { readonly __typename: 'AppealEnqueueSourceInfo' }
             | {
@@ -13308,6 +13324,11 @@ export type GQLManualReviewJobInfoQuery = {
                       };
                     };
               }>;
+              readonly reportedMessages: ReadonlyArray<{
+                readonly __typename: 'ItemIdentifier';
+                readonly id: string;
+                readonly typeId: string;
+              }>;
               readonly enqueueSourceInfo?:
                 | { readonly __typename: 'AppealEnqueueSourceInfo' }
                 | {
@@ -14648,6 +14669,11 @@ export type GQLDequeueManualReviewJobMutation = {
                       }>;
                     };
                   };
+            }>;
+            readonly reportedMessages: ReadonlyArray<{
+              readonly __typename: 'ItemIdentifier';
+              readonly id: string;
+              readonly typeId: string;
             }>;
             readonly enqueueSourceInfo?:
               | { readonly __typename: 'AppealEnqueueSourceInfo' }
@@ -16046,6 +16072,11 @@ export type GQLJobFieldsFragment = {
                   }>;
                 };
               };
+        }>;
+        readonly reportedMessages: ReadonlyArray<{
+          readonly __typename: 'ItemIdentifier';
+          readonly id: string;
+          readonly typeId: string;
         }>;
         readonly enqueueSourceInfo?:
           | { readonly __typename: 'AppealEnqueueSourceInfo' }
@@ -25713,6 +25744,10 @@ export const GQLJobFieldsFragmentDoc = gql`
           }
           isConfirmedCSAM
           isReported
+        }
+        reportedMessages {
+          id
+          typeId
         }
         enqueueSourceInfo {
           ... on ReportEnqueueSourceInfo {

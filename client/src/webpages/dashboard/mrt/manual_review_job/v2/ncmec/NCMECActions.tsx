@@ -73,8 +73,8 @@ export default function NCMECActions(props: {
   const { data: permissionsData, loading: permissionsLoading } =
     useGQLPermissionsQuery();
 
-  // If all media has been categorized, then pressing Enter should have the
-  // same effect as clicking Send
+  // When the report is ready to send, pressing Enter should have the same
+  // effect as clicking Send.
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (disableKeyboardShortcuts) {
@@ -175,6 +175,7 @@ export default function NCMECActions(props: {
       const isDisabled = decision === 'Send' && !canSendReport;
       const button = (
         <div
+          key={decision}
           className={`block relative cursor-pointer p-2 rounded-md font-medium justify-center items-center px-4 h-fit border-none ${
             isDisabled
               ? 'text-slate-300 bg-slate-100'
@@ -229,6 +230,7 @@ export default function NCMECActions(props: {
       );
       return isDisabled ? (
         <Tooltip
+          key={decision}
           title={sendDisabledReason}
           className="relative items-center justify-center block p-2 px-4 font-medium cursor-pointer rounded-md text-slate-300 bg-slate-100 h-fit"
         >

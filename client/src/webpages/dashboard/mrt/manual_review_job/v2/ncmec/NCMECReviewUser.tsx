@@ -236,7 +236,6 @@ export default function NCMECReviewUser(
   props: {
     orgId: string;
     payload: NCMECJobPayloadQueryResult;
-    showMessages?: boolean;
   } & (
     | {
         isActionable: false;
@@ -256,7 +255,7 @@ export default function NCMECReviewUser(
       }
   ),
 ) {
-  const { orgId, payload, isActionable, ncmecDecisions, showMessages } = props;
+  const { orgId, payload, isActionable, ncmecDecisions } = props;
   const { item, allMediaItems } = payload;
 
   const uniqueMediaItems = uniqBy(allMediaItems, (it) =>
@@ -428,10 +427,239 @@ export default function NCMECReviewUser(
     </div>
   );
 
-  // If allMediaItemsWithUrls is empty, assume that there's nothing left to
-  // review and set an error that submits an ignore.
-  if (allMediaItemsWithUrls.length === 0) {
-    return noValidMedia;
+  // A report is sendable once the reviewer has acted on the job's content. For
+  // text-only jobs (online enticement, grooming, etc.) that means at least one
+  // reported message has been selected; for media jobs the requirement is
+  // computed further below from the org's media-review settings. The incident
+  // type always has a default, so it never blocks on its own.
+  const reportedMessageCount = selectedThreadsWithMessages.reduce(
+    (sum, thread) => sum + thread.reportedContent.length,
+    0,
+  );
+  const isTextOnlyJob = allMediaItemsWithUrls.length === 0;
+
+  // Text-only jobs have no media gallery to review. Instead of dead-ending
+  // (which previously made grooming/enticement cases unreportable), drive the
+  // review off the user's conversations so the reviewer can select the offending
+  // messages, pick an incident type, and submit.
+  if (isTextOnlyJob) {
+    const canSendReport = reportedMessageCount > 0;
+    const sendDisabledReason =
+      'Select at least one reported message before sending a report to NCMEC.';
+    const suspectDisplayName = getFieldValueForRole(item, 'displayName');
+    const suspectProfilePicUrl = getFieldValueForRole(item, 'profileIcon');
+    const textOnlySendModal = isActionable ? (
+      <CoopModal
+        className="!w-[64rem] !max-w-[90vw]"
+        visible={sendReportModalVisible}
+        onClose={() => setSendReportModalVisible(false)}
+        title="Confirm & Send NCMEC Report"
+        footer={[
+          {
+            title: 'Submit Report',
+            disabled: escalateMissingReason || !canSendReport,
+            onClick: async () => {
+              await props.submitDecision({
+                submitNcmecReport: {
+                  reportedMedia: [],
+                  reportedMessages: selectedThreadsWithMessages,
+                  incidentType,
+                  ...(escalateChecked && trimmedEscalate !== ''
+                    ? { escalateToHighPriority: trimmedEscalate }
+                    : {}),
+                  ...(trimmedAdditionalInfo !== ''
+                    ? { additionalInfo: trimmedAdditionalInfo }
+                    : {}),
+                },
+              });
+            },
+            type: 'primary',
+          },
+        ]}
+      >
+        <div className="flex flex-col w-full min-w-0">
+          <div className="!my-4 divider" />
+          <div className="flex items-start gap-4 text-start min-w-0">
+            <div className="text-base font-bold shrink-0 pt-1">Suspect</div>
+            <div className="flex flex-row items-start min-w-0 flex-1">
+              {suspectProfilePicUrl ? (
+                <img
+                  alt="profile pic"
+                  className="w-10 h-10 border-2 border-solid rounded-full border-slate-400 shrink-0"
+                  src={suspectProfilePicUrl.url}
+                />
+              ) : null}
+              <div className="ml-3 font-bold text-slate-700 break-all min-w-0 flex-1">
+                {suspectDisplayName
+                  ? `${suspectDisplayName} (${item.id})`
+                  : item.id}
+              </div>
+            </div>
+          </div>
+          <div className="!my-4 divider" />
+          <div className="text-base font-bold">Reported Messages</div>
+          {selectedThreadsWithMessages.length > 0 ? (
+            selectedThreadsWithMessages.map((thread) => (
+              <div key={thread.threadId} className="text-slate-700">
+                {thread.threadId}: {thread.reportedContent.length} reported
+              </div>
+            ))
+          ) : (
+            <div className="text-slate-500">No messages selected yet.</div>
+          )}
+          <div className="!my-4 divider" />
+          <div className="flex flex-col gap-2">
+            <div className="text-base font-bold">Incident Type Category</div>
+            <select
+              value={incidentType}
+              onChange={(e) =>
+                setIncidentType(e.target.value as GQLNcmecIncidentType)
+              }
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-2 mt-4">
+            <label className="flex items-center gap-2 text-base font-bold">
+              <input
+                type="checkbox"
+                checked={escalateChecked}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setEscalateChecked(next);
+                  if (!next) {
+                    setEscalateToHighPriority('');
+                  }
+                }}
+              />
+              Escalate as High Priority
+            </label>
+            {escalateChecked ? (
+              <>
+                <label
+                  htmlFor="textOnlyEscalateReason"
+                  className="text-sm font-medium"
+                >
+                  Reason for escalation (required)
+                </label>
+                <textarea
+                  id="textOnlyEscalateReason"
+                  maxLength={3000}
+                  value={escalateToHighPriority}
+                  onChange={(e) => setEscalateToHighPriority(e.target.value)}
+                  className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  rows={3}
+                />
+              </>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-2 mt-4">
+            <label
+              htmlFor="textOnlyAdditionalInfo"
+              className="text-base font-bold"
+            >
+              Additional Info
+            </label>
+            <textarea
+              id="textOnlyAdditionalInfo"
+              maxLength={3000}
+              value={additionalInfo}
+              onChange={(e) => setAdditionalInfo(e.target.value)}
+              placeholder="Any other context/notes to be added to the report."
+              className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              rows={3}
+            />
+            <span className="text-xs text-slate-500">
+              {additionalInfo.length}/3000 characters
+            </span>
+          </div>
+        </div>
+      </CoopModal>
+    ) : null;
+
+    return (
+      <div
+        className="flex flex-col items-start w-full outline-none"
+        ref={reviewRef}
+      >
+        <FormHeader
+          title="NCMEC Reporting"
+          subtitle="Review users suspected of online enticement, grooming, or other child exploitation, and report them to NCMEC if necessary."
+          topRightComponent={
+            isActionable ? (
+              <Button
+                className="rounded-md"
+                danger
+                onClick={() => navigate('/dashboard/manual_review/queues')}
+              >
+                End Session
+              </Button>
+            ) : undefined
+          }
+        />
+        <div className="w-full p-3 mb-4 text-sm rounded-md text-slate-600 bg-slate-100">
+          This account has no reviewable media. Check each message to include in
+          the NCMEC report, click &quot;Add Reported Message(s)&quot;, then
+          choose an incident type (e.g. Online Enticement for text-only abuse)
+          and Send. &quot;Suspect&quot; marks the user under review;
+          &quot;Triggered report&quot; marks the post that opened this job.
+        </div>
+        {isActionable ? (
+          <div className="flex flex-col w-full gap-4 mb-4">
+            <NCMECActions
+              setSendReportModalVisible={setSendReportModalVisible}
+              setDeselectAndIgnoreModalVisible={
+                setDeselectAndIgnoreModalVisible
+              }
+              isAnyMediaSelected={false}
+              canSendReport={canSendReport}
+              sendDisabledReason={sendDisabledReason}
+              submitDecision={props.submitDecision}
+              moveToQueueMenuVisible={moveToQueueMenuVisible}
+              setMoveToQueueMenuVisible={setMoveToQueueMenuVisible}
+              skipToNextJob={props.skipToNextJob}
+              disableKeyboardShortcuts={
+                moveToQueueMenuVisible || sendReportModalVisible
+              }
+            />
+            <div className="flex flex-col gap-2 px-4 py-3 border rounded-lg bg-slate-50 border-slate-200 max-w-md">
+              <label className="text-sm font-semibold text-slate-700">
+                Incident Type Category
+              </label>
+              <select
+                value={incidentType}
+                onChange={(e) =>
+                  setIncidentType(e.target.value as GQLNcmecIncidentType)
+                }
+                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Select the primary incident type for this NCMEC report
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <NCMECPreviousMessages
+          userIdentifier={{ id: item.id, typeId: item.type.id }}
+          isActionable={isActionable}
+          reportedMessages={payload.reportedMessages}
+          setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
+          selectedThreadsWithMessages={selectedThreadsWithMessages}
+        />
+        {textOnlySendModal}
+      </div>
+    );
   }
 
   if (mediaInDetailView === undefined) {
@@ -1034,16 +1262,14 @@ export default function NCMECReviewUser(
           </div>
         ) : null}
       </div>
-      {showMessages ? (
-        <TabBar
-          tabs={[
-            { label: 'Media', value: 'MEDIA' },
-            { label: 'Messages', value: 'MESSAGES' },
-          ]}
-          initialSelectedTab={'MEDIA'}
-          onTabClick={setSelectedTab}
-        />
-      ) : undefined}
+      <TabBar
+        tabs={[
+          { label: 'Media', value: 'MEDIA' },
+          { label: 'Messages', value: 'MESSAGES' },
+        ]}
+        initialSelectedTab={'MEDIA'}
+        onTabClick={setSelectedTab}
+      />
       {selectedTab === 'MEDIA' ? (
         <div ref={inspectedMediaRef} className="flex flex-col w-full">
           <NCMECInspectedMedia
@@ -1143,6 +1369,7 @@ export default function NCMECReviewUser(
         <NCMECPreviousMessages
           userIdentifier={{ id: item.id, typeId: item.type.id }}
           isActionable={isActionable}
+          reportedMessages={payload.reportedMessages}
           setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
           selectedThreadsWithMessages={selectedThreadsWithMessages}
         />

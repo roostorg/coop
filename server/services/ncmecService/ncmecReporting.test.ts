@@ -3,6 +3,7 @@ import {
   clampIncidentDateTimeToPast,
   mergeFieldRoleIpIntoEvents,
   NCMECEvent,
+  resolveIncidentDateTime,
   summarizeCyberTipFailure,
 } from './ncmecReporting.js';
 
@@ -144,6 +145,66 @@ describe('NCMEC reporting', () => {
       expect(() => clampIncidentDateTimeToPast('not-a-date', NOW_MS)).toThrow(
         /Invalid media createdAt timestamp/,
       );
+    });
+  });
+
+  describe('resolveIncidentDateTime', () => {
+    const NOW = new Date(Date.UTC(2026, 0, 15, 12, 0, 0));
+
+    it('uses the most recent media createdAt when only media is present', () => {
+      const result = resolveIncidentDateTime(
+        [
+          { createdAt: '2026-01-10T00:00:00.000Z' },
+          { createdAt: '2026-01-12T00:00:00.000Z' },
+        ],
+        [],
+        NOW,
+      );
+      expect(result).toBe('2026-01-12T00:00:00.000Z');
+    });
+
+    it('derives the timestamp from reported messages for text-only reports', () => {
+      const result = resolveIncidentDateTime(
+        [],
+        [
+          {
+            reportedContent: [
+              { sentAt: '2026-01-09T00:00:00.000Z' },
+              { sentAt: new Date('2026-01-11T00:00:00.000Z') },
+            ],
+          },
+        ],
+        NOW,
+      );
+      expect(result).toBe('2026-01-11T00:00:00.000Z');
+    });
+
+    it('takes the max across both media and messages', () => {
+      const result = resolveIncidentDateTime(
+        [{ createdAt: '2026-01-10T00:00:00.000Z' }],
+        [{ reportedContent: [{ sentAt: '2026-01-13T00:00:00.000Z' }] }],
+        NOW,
+      );
+      expect(result).toBe('2026-01-13T00:00:00.000Z');
+    });
+
+    it('falls back to now when no timestamp is resolvable', () => {
+      const result = resolveIncidentDateTime(
+        [],
+        [{ reportedContent: [{ sentAt: 'not-a-date' }] }],
+        NOW,
+      );
+      expect(result).toBe(NOW.toISOString());
+    });
+
+    it('falls back to now for an empty text-only report with no message timestamps', () => {
+      expect(resolveIncidentDateTime([], [], NOW)).toBe(NOW.toISOString());
+    });
+
+    it('throws on an unparseable media createdAt (media timestamps are authoritative)', () => {
+      expect(() =>
+        resolveIncidentDateTime([{ createdAt: 'not-a-date' }], [], NOW),
+      ).toThrow(/Invalid media createdAt timestamp/);
     });
   });
 

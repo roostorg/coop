@@ -214,6 +214,12 @@ const typeDefs = /* GraphQL */ `
     item: UserItem!
     userScore: Int
     allMediaItems: [NcmecContentItem!]!
+    """
+    Identifiers of the content item(s) that triggered the report. Empty for
+    account-level reports. Used by the review UI to highlight reported content
+    and to seed the threads lookup for text-only (no-media) reports.
+    """
+    reportedMessages: [ItemIdentifier!]!
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo
   }
 
@@ -1622,6 +1628,12 @@ const ThreadAppealManualReviewJobPayload: GQLThreadAppealManualReviewJobPayloadR
   };
 
 const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
+  reportedMessages(it) {
+    return (it.reportedMessages ?? []).map((id) => ({
+      id: id.id,
+      typeId: id.typeId,
+    }));
+  },
   async item(it, _, context) {
     const user = context.getUser();
     if (user == null) {

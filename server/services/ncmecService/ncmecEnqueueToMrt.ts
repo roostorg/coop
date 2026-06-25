@@ -105,7 +105,10 @@ export default class NcmecEnqueueToMrt {
         userItemTypeId: input.item.itemTypeIdentifier.id,
       });
     if (hasExistingReport) {
-      return { status: 'SKIPPED' };
+      return {
+        status: 'SKIPPED' as const,
+        reason: 'This user already has an NCMEC report.',
+      };
     }
 
     const userSubmissionResult = await this.#getFullUserFromItem({
@@ -177,9 +180,18 @@ export default class NcmecEnqueueToMrt {
       reportedItemType,
     );
 
-    if (allMediaItems.length === 0) {
-      return { status: 'SKIPPED' };
-    }
+    // Text-only incident types are valid, so we no longer skip media-less
+    // accounts. When the reported item is content (not the user), capture its
+    // identifier so the review UI can highlight what triggered the report.
+    const reportedMessages: ItemIdentifier[] =
+      reportedItemType.kind !== 'USER'
+        ? [
+            {
+              id: input.item.itemId,
+              typeId: input.item.itemTypeIdentifier.id,
+            },
+          ]
+        : [];
 
     // TODO: Write this to a data warehouse table and enqueue based off of a job instead
     await this.manualReviewToolService.enqueue(
@@ -199,6 +211,7 @@ export default class NcmecEnqueueToMrt {
             userSubmission,
           ),
           allMediaItems,
+          reportedMessages,
           reportHistory: [],
         },
         correlationId: input.correlationId,
@@ -211,7 +224,19 @@ export default class NcmecEnqueueToMrt {
       },
       input.targetQueueId,
     );
-    return { status: 'ENQUEUED' };
+
+    await this.manualReviewToolService.removeSupersededJobsBeforeNcmecEnqueue({
+      orgId,
+      reportedItem: {
+        id: input.item.itemId,
+        typeId: input.item.itemTypeIdentifier.id,
+      },
+      reportedItemWasContent: reportedItemType.kind === 'CONTENT',
+      reportedMessages,
+      reenqueuedFrom: input.reenqueuedFrom,
+    });
+
+    return { status: 'ENQUEUED' as const };
   }
 
   async #getMediaFromReportedItem(

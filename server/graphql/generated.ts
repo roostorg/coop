@@ -3162,6 +3162,12 @@ export type GQLNcmecManualReviewJobPayload = {
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
   readonly enqueueSourceInfo?: Maybe<GQLManualReviewJobEnqueueSourceInfo>;
   readonly item: GQLUserItem;
+  /**
+   * Identifiers of the content item(s) that triggered the report. Empty for
+   * account-level reports. Used by the review UI to highlight reported content
+   * and to seed the threads lookup for text-only (no-media) reports.
+   */
+  readonly reportedMessages: ReadonlyArray<GQLItemIdentifier>;
   readonly userScore?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -11712,6 +11718,11 @@ export type GQLNcmecManualReviewJobPayloadResolvers<
     ContextType
   >;
   item?: Resolver<GQLResolversTypes['UserItem'], ParentType, ContextType>;
+  reportedMessages?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ItemIdentifier']>,
+    ParentType,
+    ContextType
+  >;
   userScore?: Resolver<
     Maybe<GQLResolversTypes['Int']>,
     ParentType,

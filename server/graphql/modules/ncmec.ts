@@ -283,6 +283,7 @@ const Query: GQLQueryResolvers = {
     if (!user) {
       throw unauthenticatedError('User required.');
     }
+
     const threads = await context.services.NcmecService.getNcmecMessages(
       user.orgId,
       userId,
