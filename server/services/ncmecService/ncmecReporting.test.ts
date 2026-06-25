@@ -334,6 +334,20 @@ describe('NCMEC reporting', () => {
       expect(resolveReportedPersonEmail(undefined, undefined)).toBeUndefined();
       expect(resolveReportedPersonEmail([], undefined)).toBeUndefined();
     });
+
+    it('treats whitespace-only field-role email as absent', () => {
+      // NCMEC validates the email shape on receipt; a `{ _text: "  " }`
+      // submission would fail the same way the original incomplete-report
+      // bug did. Trim and drop rather than ship whitespace.
+      expect(resolveReportedPersonEmail(undefined, '   ')).toBeUndefined();
+      expect(resolveReportedPersonEmail([], '\t\n')).toBeUndefined();
+    });
+
+    it('trims surrounding whitespace from a valid field-role email', () => {
+      expect(
+        resolveReportedPersonEmail(undefined, '  role@example.com  '),
+      ).toEqual([{ _text: 'role@example.com' }]);
+    });
   });
 
   describe('summarizeCyberTipFailure', () => {

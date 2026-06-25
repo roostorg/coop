@@ -556,7 +556,8 @@ export function resolveReportedPersonEmail(
   fieldRoleEmail: string | undefined,
 ): Email[] | undefined {
   if (webhookEmails && webhookEmails.length > 0) return webhookEmails;
-  if (fieldRoleEmail) return [{ _text: fieldRoleEmail }];
+  const trimmed = fieldRoleEmail?.trim();
+  if (trimmed) return [{ _text: trimmed }];
   return undefined;
 }
 
