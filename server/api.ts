@@ -128,10 +128,11 @@ export default async function makeApiServer(deps: Dependencies) {
   /**
    * Passport & User Session Configuration
    */
+  const sessionStoreInstance = new sessionStore({ pool: KyselyPgPool });
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ pool: KyselyPgPool }),
+      store: sessionStoreInstance,
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -419,6 +420,7 @@ export default async function makeApiServer(deps: Dependencies) {
       await Promise.all([
         apolloServer.stop(),
         deps.closeSharedResourcesForShutdown(),
+        sessionStoreInstance.close(),
       ]);
     },
   };
