@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
@@ -7,6 +8,7 @@ import createRule from '../../test/fixtureHelpers/createRule.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
   kyselyUserAddFavoriteRule,
+  kyselyUserDeleteById,
   kyselyUserFindByEmail,
   kyselyUserFindById,
   kyselyUserFindByIdAndOrg,
@@ -16,6 +18,7 @@ import {
   kyselyUserListFavoriteRuleIds,
   kyselyUserRemoveFavoriteRule,
   kyselyUserUpdate,
+  kyselyUserUpdateLoginMethods,
 } from './userKyselyPersistence.js';
 
 /** SAML-only `kyselyUserInsert` input — no password keeps bcrypt out of happy paths. */
@@ -383,6 +386,30 @@ describe('userKyselyPersistence', () => {
         expect(afterRow.updated_at.getTime()).toBeGreaterThan(
           beforeRow.updated_at.getTime(),
         );
+      },
+    );
+  });
+
+  describe('kyselyUserUpdateLoginMethods', () => {
+    testWithFixture(
+      'adds oidc to a user and round-trips login_methods as an array',
+      async ({ deps, org }) => {
+        const input = samlUserInput(org.id);
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        try {
+          const updated = await kyselyUserUpdateLoginMethods(
+            deps.KyselyPg,
+            input.id,
+            ['saml', 'oidc'],
+          );
+
+          expect(updated).toMatchObject({
+            id: input.id,
+            loginMethods: ['saml', 'oidc'],
+          });
+        } finally {
+          await kyselyUserDeleteById(deps.KyselyPg, input.id);
+        }
       },
     );
   });

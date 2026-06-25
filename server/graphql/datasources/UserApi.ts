@@ -130,28 +130,13 @@ class UserAPI {
     _: unknown,
   ): Promise<GraphQLUserParent> {
     const { role } = params.input;
-    const {
-      email,
-      password,
-      firstName,
-      lastName,
-      orgId,
-      inviteUserToken,
-      loginMethod,
-    } = params.input;
-
-    if (password == null && loginMethod === 'PASSWORD')
-      throw makeBadRequestError(
-        'Password is required for password login method',
-        { shouldErrorSpan: true },
-      );
+    const { email, password, firstName, lastName, orgId, inviteUserToken } =
+      params.input;
 
     const existingUser = await kyselyUserFindByEmail(this.kyselyPg, email);
     if (existingUser != null) {
       throw makeSignUpUserExistsError({ shouldErrorSpan: true });
     }
-    const passwordToSave =
-      password == null ? null : await hashPassword(password);
 
     let token;
     if (inviteUserToken != null) {
@@ -173,9 +158,26 @@ class UserAPI {
       });
     }
 
-    const loginMethodNormalized = String(
-      loginMethod,
-    ).toLowerCase() as LoginMethod;
+    // Derive loginMethod from org settings — never trust the client to declare this.
+    const [samlSettings, oidcSettings] = await Promise.all([
+      this.orgSettingsService.getSamlSettings(token.orgId),
+      this.orgSettingsService.getOidcSettings(token.orgId),
+    ]);
+    const loginMethodNormalized: LoginMethod = oidcSettings?.oidc_enabled
+      ? 'oidc'
+      : samlSettings?.saml_enabled
+        ? 'saml'
+        : 'password';
+
+    if (password == null && loginMethodNormalized === 'password')
+      throw makeBadRequestError(
+        'Password is required for password login method',
+        { shouldErrorSpan: true },
+      );
+
+    const passwordToSave =
+      password == null ? null : await hashPassword(password);
+
     const createInput = {
       email,
       firstName,
