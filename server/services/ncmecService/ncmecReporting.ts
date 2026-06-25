@@ -186,6 +186,10 @@ type NCMECUserParams = {
   /** Bare IP from the `ipAddress` field role; appended as a synthesised
    * `Unknown` event. */
   ipAddress?: string;
+  /** Bare email from the `email` field role. Used as the
+   * `personOrUserReportedPerson.email` when no external additional-info
+   * endpoint provided one. */
+  email?: string;
 };
 
 export type NCMECReportParams = {
@@ -541,6 +545,19 @@ export function mergeFieldRoleIpIntoEvents(
       : []),
   ];
   return events.length > 0 ? events : undefined;
+}
+
+/** Resolve the email(s) for `personOrUserReportedPerson`. Prefers the
+ * webhook's enriched response (carries NCMEC `type` / `verified` attributes);
+ * falls back to a bare field-role email otherwise. Returns undefined when
+ * neither source has data. */
+export function resolveReportedPersonEmail(
+  webhookEmails: Email[] | undefined,
+  fieldRoleEmail: string | undefined,
+): Email[] | undefined {
+  if (webhookEmails && webhookEmails.length > 0) return webhookEmails;
+  if (fieldRoleEmail) return [{ _text: fieldRoleEmail }];
+  return undefined;
 }
 
 export function buildInternetDetailsFromOrgSetting(
@@ -1576,10 +1593,10 @@ export default class NcmecReporting {
               ? queryResponse.termsOfService.trim()
               : undefined;
 
-          const reportedPersonEmail =
-            userAdditionalInfo.email && userAdditionalInfo.email.length > 0
-              ? userAdditionalInfo.email
-              : undefined;
+          const reportedPersonEmail = resolveReportedPersonEmail(
+            userAdditionalInfo.email,
+            reportParams.reportedUser.email,
+          );
           const personOrUserReportedPerson = reportedPersonEmail
             ? { email: reportedPersonEmail }
             : undefined;

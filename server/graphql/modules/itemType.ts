@@ -221,6 +221,7 @@ const typeDefs = /* GraphQL */ `
     backgroundImage: String
     isDeleted: String
     ipAddress: String
+    email: String
   }
 
   type ThreadSchemaFieldRoles {
@@ -284,6 +285,7 @@ const typeDefs = /* GraphQL */ `
     backgroundImage: String
     isDeleted: String
     ipAddress: String
+    email: String
   }
 
   input ThreadSchemaFieldRolesInput {

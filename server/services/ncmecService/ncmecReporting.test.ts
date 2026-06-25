@@ -3,6 +3,7 @@ import {
   clampIncidentDateTimeToPast,
   mergeFieldRoleIpIntoEvents,
   NCMECEvent,
+  resolveReportedPersonEmail,
   summarizeCyberTipFailure,
 } from './ncmecReporting.js';
 
@@ -304,6 +305,34 @@ describe('NCMEC reporting', () => {
       expect(result).not.toBe(params);
       expect(webhook).toHaveLength(1);
       expect(params).toHaveLength(1);
+    });
+  });
+
+  describe('resolveReportedPersonEmail', () => {
+    it('returns the webhook emails when present', () => {
+      const webhook = [
+        { _text: 'verified@example.com', _attributes: { verified: true } },
+      ];
+      expect(resolveReportedPersonEmail(webhook, 'role@example.com')).toEqual(
+        webhook,
+      );
+    });
+
+    it('falls back to the field-role email when the webhook returned an empty array', () => {
+      expect(resolveReportedPersonEmail([], 'role@example.com')).toEqual([
+        { _text: 'role@example.com' },
+      ]);
+    });
+
+    it('falls back to the field-role email when the webhook returned undefined', () => {
+      expect(resolveReportedPersonEmail(undefined, 'role@example.com')).toEqual(
+        [{ _text: 'role@example.com' }],
+      );
+    });
+
+    it('returns undefined when neither source has data', () => {
+      expect(resolveReportedPersonEmail(undefined, undefined)).toBeUndefined();
+      expect(resolveReportedPersonEmail([], undefined)).toBeUndefined();
     });
   });
 

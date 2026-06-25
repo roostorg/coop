@@ -110,6 +110,12 @@ export async function buildSubmitReportParamsFromDecision(
     'ipAddress',
     reportedUserData,
   );
+  const reportedUserEmail = getFieldValueForRole(
+    reportedUserItemType.schema,
+    reportedUserItemType.schemaFieldRoles,
+    'email',
+    reportedUserData,
+  );
 
   // Pre-index allMediaItems by (itemId, typeId) so the per-decisionComponent
   // lookup below is O(1) instead of O(n) for every reportedMedia entry. The
@@ -187,6 +193,7 @@ export async function buildSubmitReportParamsFromDecision(
       ...(displayName ? { displayName } : {}),
       ...(profilePicUrl ? { profilePicture: profilePicUrl.url } : {}),
       ...(reportedUserIp ? { ipAddress: reportedUserIp } : {}),
+      ...(reportedUserEmail ? { email: reportedUserEmail } : {}),
     },
     orgId,
     media,

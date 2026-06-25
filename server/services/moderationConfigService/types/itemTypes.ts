@@ -53,6 +53,7 @@ export type UserSchemaFieldRoles = {
   createdAt?: string;
   isDeleted?: string;
   ipAddress?: string;
+  email?: string;
 };
 
 export type ThreadSchemaFieldRoles = {
@@ -127,6 +128,7 @@ export type FieldRoleToScalarType = {
   backgroundImage: ScalarTypes['IMAGE'];
   isDeleted: ScalarTypes['BOOLEAN'];
   ipAddress: ScalarTypes['IP_ADDRESS'];
+  email: ScalarTypes['STRING'];
 };
 
 export function getPartialSchemaFromOriginal(schema: ItemSchema) {

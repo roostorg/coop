@@ -33,6 +33,7 @@ export type ModerationConfigServicePg = {
     background_image_field: string | null;
     is_deleted_field: string | null;
     ip_address_field: string | null;
+    email_field: string | null;
   };
   // TODO: redefine as a union to capture the correlation of the nulls,
   // then leverage FixKyselyRowCorrelation in the ItemTypesDbResult type.
@@ -55,6 +56,7 @@ export type ModerationConfigServicePg = {
     background_image_field: GeneratedAlways<string | null>;
     is_deleted_field: GeneratedAlways<string | null>;
     ip_address_field: GeneratedAlways<string | null>;
+    email_field: GeneratedAlways<string | null>;
     version: GeneratedAlways<string>;
     is_current: GeneratedAlways<boolean>;
   };

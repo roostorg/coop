@@ -786,6 +786,7 @@ function availableRolesForItemKind(kind: ItemTypeKind): SchemaFieldRoles[] {
         SchemaFieldRoles.BACKGROUND_IMAGE,
         SchemaFieldRoles.IS_DELETED,
         SchemaFieldRoles.IP_ADDRESS,
+        SchemaFieldRoles.EMAIL,
         SchemaFieldRoles.NONE,
       ];
   }
