@@ -195,7 +195,10 @@ function TableRowComponent(props: {
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'STRING': {
+    case 'STRING':
+    case 'EMAIL_ADDRESS': {
+      // EMAIL_ADDRESS renders as plain text for now; a follow-up could make
+      // it a mailto/pivot link the way IP_ADDRESS pivots on the IP.
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
           {label ? (
@@ -520,6 +523,7 @@ function FieldComponent(props: {
     case 'URL':
     case 'POLICY_ID':
     case 'IP_ADDRESS':
+    case 'EMAIL_ADDRESS':
     case 'DATETIME':
       return (
         <div className="py-0" key={data.name}>
@@ -576,6 +580,7 @@ function ContainerComponent(props: {
             case 'DATETIME':
             case 'POLICY_ID':
             case 'IP_ADDRESS':
+            case 'EMAIL_ADDRESS':
               return true;
             case 'AUDIO':
             case 'IMAGE':
@@ -618,6 +623,7 @@ function ContainerComponent(props: {
       case 'URL':
       case 'POLICY_ID':
       case 'IP_ADDRESS':
+      case 'EMAIL_ADDRESS':
       case 'MEDIA':
       case 'VIDEO': {
         throw Error('Cannot call container component with scalar field');

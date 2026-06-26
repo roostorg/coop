@@ -50,7 +50,7 @@ export const schemaFieldRolesFieldTypes = {
   [SchemaFieldRoles.BACKGROUND_IMAGE]: GQLScalarType.Image,
   [SchemaFieldRoles.IS_DELETED]: GQLScalarType.Boolean,
   [SchemaFieldRoles.IP_ADDRESS]: GQLScalarType.IpAddress,
-  [SchemaFieldRoles.EMAIL]: GQLScalarType.String,
+  [SchemaFieldRoles.EMAIL]: GQLScalarType.EmailAddress,
 } satisfies Omit<
   { [key in SchemaFieldRoles]: GQLScalarType },
   SchemaFieldRoles.NONE

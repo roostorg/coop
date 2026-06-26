@@ -128,7 +128,7 @@ export type FieldRoleToScalarType = {
   backgroundImage: ScalarTypes['IMAGE'];
   isDeleted: ScalarTypes['BOOLEAN'];
   ipAddress: ScalarTypes['IP_ADDRESS'];
-  email: ScalarTypes['STRING'];
+  email: ScalarTypes['EMAIL_ADDRESS'];
 };
 
 export function getPartialSchemaFromOriginal(schema: ItemSchema) {
