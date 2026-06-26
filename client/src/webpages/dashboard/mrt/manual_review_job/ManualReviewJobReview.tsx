@@ -165,8 +165,8 @@ gql`
     }
   }
 
-  mutation DequeueManualReviewJob($queueId: ID!, $skipJobIds: [ID!]) {
-    dequeueManualReviewJob(queueId: $queueId, skipJobIds: $skipJobIds) {
+  mutation DequeueManualReviewJob($queueId: ID!) {
+    dequeueManualReviewJob(queueId: $queueId) {
       ... on DequeueManualReviewJobSuccessResponse {
         job {
           ...JobFields
@@ -361,8 +361,6 @@ function ManualReviewJobReviewImpl(props: {
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
 
-  const [skippedJobIds, setSkippedJobIds] = useState<string[]>([]);
-
   const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
     setSelectedPrimaryPolicies([]);
@@ -389,9 +387,12 @@ function ManualReviewJobReviewImpl(props: {
     onCompleted: (data) => {
       // Here, we update the URL to include the queue ID, job ID, and lock
       // token. That way, users are able to send around the URL to others.
-      // In case we can't find the required job, we can just fail silently.
       const { dequeueManualReviewJob } = data;
       if (dequeueManualReviewJob == null) {
+        // No reviewable job (queue drained, or everything left is skipped by
+        // this reviewer). Send them back to the queue list instead of leaving
+        // them on a perpetual loading spinner.
+        navigate('/dashboard/manual_review/queues', { replace: true });
         return;
       }
 
@@ -413,17 +414,8 @@ function ManualReviewJobReviewImpl(props: {
     ) {
       return;
     }
-    getNextJob({ variables: { queueId: queueId!, skipJobIds: skippedJobIds } });
-  }, [
-    getNextJob,
-    jobId,
-    closedJob,
-    queueId,
-    skippedJobIds,
-    loading,
-    jobDataLoading,
-    jobData,
-  ]);
+    getNextJob({ variables: { queueId: queueId! } });
+  }, [getNextJob, jobId, closedJob, queueId, loading, jobDataLoading, jobData]);
 
   const [isAdvancingToNextJob, setIsAdvancingToNextJob] = useState(false);
   // The jobId we deleted by invalidating its last report. Matching it by
@@ -527,7 +519,7 @@ function ManualReviewJobReviewImpl(props: {
           case 'SubmitDecisionSuccessResponse': {
             resetState();
             await getNextJob({
-              variables: { queueId: queueId!, skipJobIds: skippedJobIds },
+              variables: { queueId: queueId! },
             });
             break;
           }
@@ -544,7 +536,6 @@ function ManualReviewJobReviewImpl(props: {
                     await getNextJob({
                       variables: {
                         queueId: queueId!,
-                        skipJobIds: skippedJobIds,
                       },
                     });
                     hideModal();
@@ -760,7 +751,7 @@ function ManualReviewJobReviewImpl(props: {
     try {
       resetState();
       const result = await getNextJob({
-        variables: { queueId: queueId!, skipJobIds: skippedJobIds },
+        variables: { queueId: queueId! },
       });
       if (result.data?.dequeueManualReviewJob == null) {
         navigate('/dashboard/manual_review/queues');
@@ -797,7 +788,10 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
-    // First, release the lock on the current job and log the skip
+    // Release the lock so the job returns to the shared pool immediately, and
+    // log the skip. logSkip also records a per-reviewer skip server-side, so
+    // the next dequeue won't hand this job back to THIS reviewer (for the skip
+    // window) while it stays available to everyone else.
     if (queueId && job?.id && lockToken) {
       await Promise.all([
         logSkip(),
@@ -813,12 +807,10 @@ function ManualReviewJobReviewImpl(props: {
       ]);
     }
 
-    const newSkippedIds = job?.id ? [...skippedJobIds, job.id] : skippedJobIds;
-    setSkippedJobIds(newSkippedIds);
     // Reset state and try to get the next job
     resetState();
     const result = await getNextJob({
-      variables: { queueId: queueId!, skipJobIds: newSkippedIds },
+      variables: { queueId: queueId! },
     });
 
     // If there's no next job, redirect to the queues page

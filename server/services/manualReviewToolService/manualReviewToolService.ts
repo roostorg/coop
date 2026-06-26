@@ -11,6 +11,7 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
+  makeBadRequestError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
@@ -372,6 +373,29 @@ export class ManualReviewToolService {
     orgId: string;
     weights: ReadonlyArray<{ property: JobPropertyKey; weight: number }>;
   }) {
+    // Validate at the service boundary: these weights are multiplied directly
+    // in getJobPriorityForItem, so a negative or non-finite value would invert
+    // ordering or produce an invalid BullMQ priority. Client sliders already
+    // clamp to 0-10, but GraphQL / internal callers can bypass that. Duplicate
+    // properties are also rejected: upsertForOrg's ON CONFLICT (org_id,
+    // property) would otherwise error ("cannot affect row a second time").
+    const seenProperties = new Set<JobPropertyKey>();
+    for (const { property, weight } of opts.weights) {
+      if (!Number.isFinite(weight) || weight < 0) {
+        throw makeBadRequestError(
+          `Invalid job priority weight for "${property}": must be a non-negative, finite number.`,
+          { shouldErrorSpan: true },
+        );
+      }
+      if (seenProperties.has(property)) {
+        throw makeBadRequestError(
+          `Duplicate job priority weight for "${property}".`,
+          { shouldErrorSpan: true },
+        );
+      }
+      seenProperties.add(property);
+    }
+
     await this.jobPriorityWeights.upsertForOrg(opts.orgId, opts.weights);
 
     const queues =
@@ -1203,9 +1227,8 @@ export class ManualReviewToolService {
     orgId: string;
     queueId: string;
     userId: string;
-    skipJobIds?: string[];
   }) {
-    const { orgId, queueId, userId, skipJobIds } = opts;
+    const { orgId, queueId, userId } = opts;
     const queue =
       await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
         orgId,
@@ -1213,11 +1236,12 @@ export class ManualReviewToolService {
       });
 
     let shouldBeAutoActioned = queue?.autoCloseJobs ?? false;
+    // The reviewer's per-reviewer skips (recorded via logSkip) are consulted
+    // inside dequeueNextJobWithLock, keyed on this userId/lockToken.
     let job = await this.queueOps.dequeueNextJobWithLock({
       orgId,
       queueId,
       lockToken: userId,
-      skipJobIds,
     });
     if (!shouldBeAutoActioned || !job) {
       return job;
@@ -1281,7 +1305,6 @@ export class ManualReviewToolService {
           orgId,
           queueId,
           lockToken: userId,
-          skipJobIds,
         });
 
         if (!job) {
@@ -1416,6 +1439,16 @@ export class ManualReviewToolService {
     userId: string;
   }) {
     await this.skipOps.logSkip(opts);
+    // Per-reviewer skip: hide this job from THIS reviewer for the skip window
+    // (the dequeue path reads this back), while it stays available to everyone
+    // else. The reviewer separately releases their lock so it returns to the
+    // shared pool immediately.
+    await this.queueOps.recordReviewerSkip({
+      orgId: opts.orgId,
+      queueId: opts.queueId,
+      reviewerId: opts.userId,
+      jobId: opts.jobId,
+    });
   }
 
   async releaseJobLock(opts: {

@@ -2701,7 +2701,6 @@ export type GQLMutationDeleteUserArgs = {
 
 export type GQLMutationDequeueManualReviewJobArgs = {
   queueId: Scalars['ID']['input'];
-  skipJobIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
 };
 
 export type GQLMutationGeneratePasswordResetTokenArgs = {
@@ -13802,9 +13801,6 @@ export type GQLManualReviewJobInfoQuery = {
 
 export type GQLDequeueManualReviewJobMutationVariables = Exact<{
   queueId: Scalars['ID']['input'];
-  skipJobIds?: InputMaybe<
-    ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
-  >;
 }>;
 
 export type GQLDequeueManualReviewJobMutation = {
@@ -34321,8 +34317,8 @@ export type GQLManualReviewJobInfoQueryResult = Apollo.QueryResult<
   GQLManualReviewJobInfoQueryVariables
 >;
 export const GQLDequeueManualReviewJobDocument = gql`
-  mutation DequeueManualReviewJob($queueId: ID!, $skipJobIds: [ID!]) {
-    dequeueManualReviewJob(queueId: $queueId, skipJobIds: $skipJobIds) {
+  mutation DequeueManualReviewJob($queueId: ID!) {
+    dequeueManualReviewJob(queueId: $queueId) {
       ... on DequeueManualReviewJobSuccessResponse {
         job {
           ...JobFields
@@ -34353,7 +34349,6 @@ export type GQLDequeueManualReviewJobMutationFn = Apollo.MutationFunction<
  * const [gqlDequeueManualReviewJobMutation, { data, loading, error }] = useGQLDequeueManualReviewJobMutation({
  *   variables: {
  *      queueId: // value for 'queueId'
- *      skipJobIds: // value for 'skipJobIds'
  *   },
  * });
  */

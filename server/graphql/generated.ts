@@ -2769,7 +2769,6 @@ export type GQLMutationDeleteUserArgs = {
 
 export type GQLMutationDequeueManualReviewJobArgs = {
   queueId: Scalars['ID']['input'];
-  skipJobIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
 };
 
 export type GQLMutationGeneratePasswordResetTokenArgs = {

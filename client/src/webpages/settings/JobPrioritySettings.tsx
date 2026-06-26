@@ -102,16 +102,19 @@ export default function JobPrioritySettings() {
     return <FullScreenLoading />;
   }
 
+  // Surface query errors before the permission check: a failed query leaves
+  // `data` undefined, which would otherwise silently redirect instead of
+  // showing the error.
+  if (error) {
+    throw error;
+  }
+
   const permissions = data?.me?.permissions;
   if (
     !permissions ||
     !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])
   ) {
     return <Navigate to="/dashboard/settings" replace />;
-  }
-
-  if (error) {
-    throw error;
   }
 
   const handleSave = () => {

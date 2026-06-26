@@ -392,4 +392,83 @@ describe('QueueOperations', () => {
       expect(priorities).toEqual([2_097_152, 2_097_152, 2_097_152]);
     },
   );
+
+  // A skip hides a job from the reviewer who skipped it, while leaving it
+  // available to every other reviewer (per-reviewer skip, not a global delay).
+  testWithQueueAndActions()(
+    'a skipped job is hidden from that reviewer but still available to others',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+
+      const payloadFor = (itemId: string): ManualReviewJobPayload => ({
+        kind: 'DEFAULT',
+        reportHistory: [],
+        reportedForReasons: [],
+        item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
+          submissionId: makeSubmissionId(),
+          submissionTime: new Date(),
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          data: {} as NormalizedItemData,
+          itemTypeIdentifier: {
+            id: uid(),
+            version: new Date().toISOString(),
+            schemaVariant: 'original',
+          },
+          creator: { id: uid(), typeId: uid() },
+          itemId,
+        }),
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      // item-X is the top job (lowest priority number), item-Y is next.
+      const xJob = await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: { policyIds: [], payload: payloadFor('item-X') },
+      });
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 2000,
+        jobPayload: { policyIds: [], payload: payloadFor('item-Y') },
+      });
+
+      const reviewerA = 'reviewer-a';
+      const reviewerB = 'reviewer-b';
+
+      // Reviewer A skips item-X.
+      await queueOps.recordReviewerSkip({
+        orgId: org.id,
+        queueId: queue.id,
+        reviewerId: reviewerA,
+        jobId: xJob.id,
+      });
+
+      // A's next dequeue steps past item-X and gets item-Y.
+      const aJob = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: reviewerA,
+      });
+      expect(aJob?.job.payload.item.itemId).toBe('item-Y');
+
+      // item-X was released back to the pool (delayed-to-now); promote it so
+      // it's immediately available, then a DIFFERENT reviewer still gets it.
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      await bullQueue.promoteJobs();
+
+      const bJob = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: reviewerB,
+      });
+      expect(bJob?.job.payload.item.itemId).toBe('item-X');
+    },
+  );
 });

@@ -987,10 +987,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    dequeueManualReviewJob(
-      queueId: ID!
-      skipJobIds: [ID!]
-    ): DequeueManualReviewJobResponse
+    dequeueManualReviewJob(queueId: ID!): DequeueManualReviewJobResponse
     submitManualReviewDecision(
       input: SubmitDecisionInput!
     ): SubmitDecisionResponse!
@@ -2211,7 +2208,7 @@ const Query: GQLQueryResolvers = {
 };
 
 const Mutation: GQLMutationResolvers = {
-  async dequeueManualReviewJob(_, { queueId, skipJobIds }, context) {
+  async dequeueManualReviewJob(_, { queueId }, context) {
     const user = context.getUser();
     if (user == null) {
       throw unauthenticatedError('User required.');
@@ -2223,7 +2220,6 @@ const Mutation: GQLMutationResolvers = {
         orgId,
         queueId,
         userId,
-        skipJobIds: skipJobIds ? [...skipJobIds] : undefined,
       });
     if (!nextJob) {
       return null;
