@@ -7,11 +7,14 @@ import {
   type JobPropertyKey,
 } from './JobPriority.js';
 
-// BullMQ caps priorities at 2^21; the inversion in toBullPriority subtracts
-// the score from this ceiling. Hard-coded here so the tests fail loudly if
+// The usable ceiling is 2^21 - 1, NOT BullMQ's PRIORITY_LIMIT of 2^21:
+// a priority of exactly 2^21 makes the float64 sort key (priority * 2^32 +
+// insertionCounter) hit 2^53, where precision loss rounds away the counter's
+// low bit and collapses FIFO ties. Hard-coded here so the tests fail loudly if
 // the constant is ever changed without intent (the original PR shipped with
-// 2^31 - 1, which BullMQ rejected at runtime).
-const MAX_BULL_PRIORITY = 2_097_152;
+// 2^31 - 1, which BullMQ rejected at runtime; then 2^21, which silently broke
+// FIFO tie-breaking via float64 rounding at 2^53).
+const MAX_BULL_PRIORITY = 2_097_151;
 
 const orgId = 'org-1';
 

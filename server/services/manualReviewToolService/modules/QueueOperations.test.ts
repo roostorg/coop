@@ -16,6 +16,7 @@ import {
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
+import { toBullPriority } from './JobPriority.js';
 import {
   bullJobIdtoExternalJobId,
   itemIdToBullJobId,
@@ -101,6 +102,29 @@ describe('QueueOperations', () => {
           await container.KyselyPgReadReplica.destroy();
         },
       };
+    });
+
+  // Shared DEFAULT-kind job payload, parameterized only by item type and id.
+  const makePayloadFor =
+    (itemTypeId: string) =>
+    (itemId: string): ManualReviewJobPayload => ({
+      kind: 'DEFAULT',
+      reportHistory: [],
+      reportedForReasons: [],
+      item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
+        submissionId: makeSubmissionId(),
+        submissionTime: new Date(),
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        data: {} as NormalizedItemData,
+        itemTypeIdentifier: {
+          id: itemTypeId,
+          version: new Date().toISOString(),
+          schemaVariant: 'original',
+        },
+        creator: { id: uid(), typeId: uid() },
+        itemId,
+      }),
+      enqueueSourceInfo: { kind: 'REPORT' },
     });
 
   testWithQueueAndActions()(
@@ -211,9 +235,8 @@ describe('QueueOperations', () => {
     },
   );
 
-  // Regression: `deleteAllJobsFromQueue` is irreversible and used to accept
-  // EDIT_MRT_QUEUES (held by moderator managers) -- that gap accidentally
-  // cleared a production queue. It now requires MANAGE_ORG.
+  // Regression: deleteAllJobsFromQueue now requires MANAGE_ORG (was the weaker
+  // EDIT_MRT_QUEUES, which accidentally let a manager clear a production queue).
   testWithQueueAndActions()(
     'deleteAllJobsFromQueue rejects EDIT_MRT_QUEUES without MANAGE_ORG',
     async ({ org, queue, mrtService }) => {
@@ -240,37 +263,16 @@ describe('QueueOperations', () => {
     },
   );
 
-  // Regression: recomputePrioritiesForQueue used to fetch jobs only from the
-  // 'waiting'/'delayed'/'active' states. Priority-enqueued jobs live in
-  // BullMQ's 'prioritized' state, so the recompute was a no-op for them and
-  // changing job-priority weights never re-sorted an already-populated queue.
+  // Regression: recompute used to skip BullMQ's 'prioritized' state, so weight
+  // changes never re-sorted already-enqueued (priority) jobs.
   testWithQueueAndActions()(
     'recomputePrioritiesForQueue re-sorts jobs in the prioritized state',
     async ({ org, queue, user, mrtService }) => {
       const queueOps = mrtService['queueOps'];
 
-      const payloadFor = (itemId: string): ManualReviewJobPayload => ({
-        kind: 'DEFAULT',
-        reportHistory: [],
-        reportedForReasons: [],
-        item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
-          submissionId: makeSubmissionId(),
-          submissionTime: new Date(),
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          data: {} as NormalizedItemData,
-          itemTypeIdentifier: {
-            id: uid(),
-            version: new Date().toISOString(),
-            schemaVariant: 'original',
-          },
-          creator: { id: uid(), typeId: uid() },
-          itemId,
-        }),
-        enqueueSourceInfo: { kind: 'REPORT' },
-      });
+      const payloadFor = makePayloadFor(uid());
 
-      // Two jobs added with explicit priorities => both land in the
-      // 'prioritized' set. Lower number dequeues first, so initially A < B.
+      // Both land in 'prioritized'; lower number dequeues first, so initially A < B.
       await queueOps.addJob({
         orgId: org.id,
         queueId: queue.id,
@@ -286,8 +288,7 @@ describe('QueueOperations', () => {
         jobPayload: { policyIds: [], payload: payloadFor('item-B') },
       });
 
-      // Swap their priorities. Before the fix this fetched no jobs (they were
-      // 'prioritized', not 'waiting') and the order below would still be A.
+      // Swap priorities; before the fix this fetched no jobs and order stayed A.
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
@@ -304,40 +305,17 @@ describe('QueueOperations', () => {
     },
   );
 
-  // Changing a queue's sort type must re-sort the jobs already in it, not just
-  // affect future enqueues. Uses a WEIGHTED -> FIFO switch (FIFO needs no
-  // report-count / user-score lookups) and asserts on the resulting BullMQ
-  // priority VALUES rather than dequeue order, so the test never depends on how
-  // equal-priority ties happen to break.
+  // Changing sort type must re-sort jobs already queued, not just future ones.
+  // Asserts on priority VALUES (not dequeue order) so it never depends on ties.
   testWithQueueAndActions()(
     'updateManualReviewQueue recomputes job priorities when the sort type changes',
     async ({ org, queue, user, mrtService }) => {
       const queueOps = mrtService['queueOps'];
       const itemTypeId = uid();
 
-      const payloadFor = (itemId: string): ManualReviewJobPayload => ({
-        kind: 'DEFAULT',
-        reportHistory: [],
-        reportedForReasons: [],
-        item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
-          submissionId: makeSubmissionId(),
-          submissionTime: new Date(),
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          data: {} as NormalizedItemData,
-          itemTypeIdentifier: {
-            id: itemTypeId,
-            version: new Date().toISOString(),
-            schemaVariant: 'original',
-          },
-          creator: { id: uid(), typeId: uid() },
-          itemId,
-        }),
-        enqueueSourceInfo: { kind: 'REPORT' },
-      });
+      const payloadFor = makePayloadFor(itemTypeId);
 
-      // Move the (empty) queue to WEIGHTED first so switching to FIFO below is
-      // a real change. Recompute on an empty queue is a no-op, so this needs
-      // no external lookups.
+      // Move the empty queue to WEIGHTED first so the FIFO switch below is a real change.
       await mrtService.updateManualReviewQueue({
         orgId: org.id,
         queueId: queue.id,
@@ -363,8 +341,7 @@ describe('QueueOperations', () => {
         });
       }
 
-      // Switch to FIFO -> the recompute should reset every queued job to the
-      // FIFO priority. Without the recompute they'd keep 1000/2000/3000.
+      // Switch to FIFO: recompute resets every queued job (else they keep 1000/2000/3000).
       await mrtService.updateManualReviewQueue({
         orgId: org.id,
         queueId: queue.id,
@@ -386,39 +363,91 @@ describe('QueueOperations', () => {
           return job?.priority;
         }),
       );
-      // FIFO assigns the max BullMQ priority (2_097_152) to every job; equal
-      // values prove the sort-type change recomputed the already-queued jobs
-      // (they were enqueued with 1000 / 2000 / 3000).
-      expect(priorities).toEqual([2_097_152, 2_097_152, 2_097_152]);
+      // Equal max priority on all three proves the switch recomputed queued jobs.
+      expect(priorities).toEqual([2_097_151, 2_097_151, 2_097_151]);
     },
   );
 
-  // A skip hides a job from the reviewer who skipped it, while leaving it
-  // available to every other reviewer (per-reviewer skip, not a global delay).
+  // FIFO ties every job on priority, so order is the recompute's tiebreak
+  // counter, which must re-stamp oldest-createdAt first to preserve arrival
+  // order on a mode switch. Reads the ZSET directly (no worker) for determinism.
+  testWithQueueAndActions()(
+    'recomputePrioritiesForQueue breaks priority ties by createdAt (oldest first)',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+
+      const payloadFor = makePayloadFor(itemTypeId);
+
+      const base = new Date('2026-01-01T00:00:00.000Z').getTime();
+      // Arrival order is the REVERSE of lexicographic id order, so a fallback to
+      // Redis's member order (not the createdAt re-stamp) yields A..E.
+      const arrival = ['item-E', 'item-D', 'item-C', 'item-B', 'item-A'];
+      const createdAtByItem = Object.fromEntries(
+        arrival.map((itemId, i): [string, number] => [itemId, base + i * 1000]),
+      );
+      // Enqueue in scrambled order with scrambled priorities.
+      const inserts: Array<[string, number]> = [
+        ['item-C', 1000],
+        ['item-A', 5000],
+        ['item-E', 2000],
+        ['item-B', 4000],
+        ['item-D', 3000],
+      ];
+      for (const [itemId, priority] of inserts) {
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority,
+          jobPayload: {
+            createdAt: new Date(createdAtByItem[itemId]),
+            policyIds: [],
+            payload: payloadFor(itemId),
+          },
+        });
+      }
+
+      // Re-stamp through FIFO's real ceiling (toBullPriority(0)) so a regression
+      // to 2^21 — which collapses counters at the float64 2^53 boundary, see
+      // JobPriority.ts — fails here. Constant priority => pure createdAt tiebreak.
+      await queueOps.recomputePrioritiesForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        getPriority: async () => toBullPriority(0),
+      });
+
+      // Read the prioritized ZSET directly: ascending score == dequeue order.
+      const redis = queueOps['redis'];
+      const withScores = await redis.zrange(
+        `{${org.id}}:${queue.id}:prioritized`,
+        0,
+        -1,
+        'WITHSCORES',
+      );
+      const members = withScores.filter((_, i) => i % 2 === 0);
+      const scores = withScores.filter((_, i) => i % 2 === 1).map(Number);
+      const ordered = members.map(
+        (member) =>
+          arrival.find(
+            (itemId) =>
+              itemIdToBullJobId({ typeId: itemTypeId, id: itemId }) === member,
+          ) ?? member,
+      );
+      // Dequeue order must equal arrival order (NOT id order), and every score
+      // must be distinct (a 2^53 float64 collapse would tie adjacent counters).
+      expect(ordered).toEqual(arrival);
+      expect(new Set(scores).size).toBe(scores.length);
+    },
+  );
+
+  // A skip hides a job from the skipping reviewer but leaves it for others.
   testWithQueueAndActions()(
     'a skipped job is hidden from that reviewer but still available to others',
     async ({ org, queue, mrtService }) => {
       const queueOps = mrtService['queueOps'];
 
-      const payloadFor = (itemId: string): ManualReviewJobPayload => ({
-        kind: 'DEFAULT',
-        reportHistory: [],
-        reportedForReasons: [],
-        item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
-          submissionId: makeSubmissionId(),
-          submissionTime: new Date(),
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          data: {} as NormalizedItemData,
-          itemTypeIdentifier: {
-            id: uid(),
-            version: new Date().toISOString(),
-            schemaVariant: 'original',
-          },
-          creator: { id: uid(), typeId: uid() },
-          itemId,
-        }),
-        enqueueSourceInfo: { kind: 'REPORT' },
-      });
+      const payloadFor = makePayloadFor(uid());
 
       // item-X is the top job (lowest priority number), item-Y is next.
       const xJob = await queueOps.addJob({
@@ -455,9 +484,8 @@ describe('QueueOperations', () => {
       });
       expect(aJob?.job.payload.item.itemId).toBe('item-Y');
 
-      // A DIFFERENT reviewer immediately gets item-X: skipping released it back
-      // to the shared pool (delayed-to-now), and reviewer B's own getNextJob
-      // promotes the due job and serves it — no manual promotion needed.
+      // A different reviewer immediately gets item-X: the skip released it back
+      // to the shared pool, and B's getNextJob promotes and serves it.
       const bJob = await queueOps.dequeueNextJobWithLock({
         orgId: org.id,
         queueId: queue.id,

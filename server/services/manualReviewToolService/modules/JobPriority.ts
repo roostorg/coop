@@ -1,9 +1,19 @@
 import type { ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { initialUserScore } from '../../userStatisticsService/computeUserScore.js';
 
-// BullMQ's maximum priority is 2,097,152 (2^21); lower = dequeued first. This
-// is the ceiling we invert a score against (priority = MAX - score).
-const MAX_BULL_PRIORITY = 2_097_152;
+// BullMQ encodes a prioritized job's sort key as a float64:
+//   score = priority * 2^32 + insertionCounter
+// and breaks ties between equal priorities by that insertion counter. BullMQ's
+// PRIORITY_LIMIT is 2^21 and it *allows* a priority of exactly 2^21 — but that
+// value pushes the score to 2^53 + counter, and 2^53 is exactly where float64
+// loses integer precision (only even integers exist above it). The low bit of
+// the insertion counter then rounds away, collapsing adjacent jobs into ties
+// and destroying FIFO/equal-score arrival ordering. So the usable ceiling is
+// 2^21 - 1: that keeps every score strictly below 2^53 (priority * 2^32 stays
+// under 2^53 for any counter < 2^32), preserving the counter tiebreak. Lower =
+// dequeued first; this is the ceiling we invert a score against (priority =
+// MAX - score). Ordering is unaffected by the -1 — it's a relative scale.
+const MAX_BULL_PRIORITY = 2_097_151;
 
 // Each WEIGHTED signal is normalized to [0, 1] before applying its weight, so a
 // weight means the same thing across properties ("relative importance") instead

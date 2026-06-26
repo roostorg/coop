@@ -931,6 +931,8 @@ export default class QueueOperations {
     const batchSize = 200;
     let start = 0;
 
+    // Collect every pending job first, then re-stamp them oldest-first below.
+    const allJobs: Job<StoredManualReviewJob>[] = [];
     while (true) {
       // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
       // 'waiting'. Omitting it meant weight changes never re-sorted queued
@@ -941,14 +943,25 @@ export default class QueueOperations {
         start + batchSize - 1,
       );
       if (jobs.length === 0) break;
-
-      for (const bullJob of jobs) {
-        const priority = await getPriority(bullJob.data as ManualReviewJob);
-        await bullJob.changePriority({ priority });
-      }
-
+      allJobs.push(...jobs);
       if (jobs.length < batchSize) break;
       start += batchSize;
+    }
+
+    // BullMQ breaks ties between equal priorities by the order `changePriority`
+    // re-stamps them (its internal insertion counter), NOT by arrival time. So
+    // re-stamp oldest-createdAt first: that makes ties — FIFO (every job gets
+    // the same max priority), or any equal weighted score — resolve to true
+    // arrival order instead of the order `getJobs` happened to return them.
+    allJobs.sort(
+      (a, b) =>
+        new Date(a.data.createdAt).getTime() -
+        new Date(b.data.createdAt).getTime(),
+    );
+
+    for (const bullJob of allJobs) {
+      const priority = await getPriority(bullJob.data as ManualReviewJob);
+      await bullJob.changePriority({ priority });
     }
   }
 
