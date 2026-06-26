@@ -52,7 +52,7 @@ import JobEnrichment, {
 } from './modules/JobEnrichment.js';
 import {
   getJobPriorityForItem,
-  JobSortType,
+  normalizeJobSortType,
   type JobPropertyKey,
 } from './modules/JobPriority.js';
 import JobPriorityWeights from './modules/JobPriorityWeights.js';
@@ -390,7 +390,7 @@ export class ManualReviewToolService {
               getJobPriorityForItem({
                 orgId: opts.orgId,
                 item: job.payload.item,
-                sortType: (q.jobSortType as JobSortType) ?? JobSortType.FIFO,
+                sortType: normalizeJobSortType(q.jobSortType),
                 deps: {
                   getNumTimesReported: this.getNumTimesReported(),
                   getUserScore: this.userStatisticsService.getUserScore.bind(
@@ -497,10 +497,10 @@ export class ManualReviewToolService {
             const priority = await getJobPriorityForItem({
               orgId: input.orgId,
               item: input.payload.item,
-              sortType:
-                queue?.jobSortType === JobSortType.NUM_REPORTS
-                  ? JobSortType.NUM_REPORTS
-                  : JobSortType.FIFO,
+              // Honour the queue's actual sort type at enqueue, including
+              // WEIGHTED. Previously WEIGHTED collapsed to FIFO here, so a
+              // weighted queue ignored its weights until a later recompute.
+              sortType: normalizeJobSortType(queue?.jobSortType),
               deps: {
                 getNumTimesReported: this.getNumTimesReported(),
                 getUserScore: this.userStatisticsService.getUserScore.bind(
@@ -950,7 +950,43 @@ export class ManualReviewToolService {
     autoCloseJobs?: boolean;
     jobSortType?: string;
   }): Promise<ManualReviewQueue> {
-    return this.queueOps.updateManualReviewQueue(input);
+    const previous =
+      await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+        orgId: input.orgId,
+        queueId: input.queueId,
+      });
+    const updated = await this.queueOps.updateManualReviewQueue(input);
+
+    // Changing the sort type has to re-sort the jobs already sitting in the
+    // queue, not just affect future enqueues — otherwise the queue keeps its
+    // old ordering until every job churns out. setJobPriorityWeights does this
+    // for weight changes; mirror it here when the sort type actually changed.
+    if (
+      previous !== undefined &&
+      !updated.isAppealsQueue &&
+      previous.jobSortType !== updated.jobSortType
+    ) {
+      const weights = await this.jobPriorityWeights.loadForOrg(input.orgId);
+      await this.queueOps.recomputePrioritiesForQueue({
+        orgId: input.orgId,
+        queueId: input.queueId,
+        getPriority: async (job) =>
+          getJobPriorityForItem({
+            orgId: input.orgId,
+            item: job.payload.item,
+            sortType: normalizeJobSortType(updated.jobSortType),
+            deps: {
+              getNumTimesReported: this.getNumTimesReported(),
+              getUserScore: this.userStatisticsService.getUserScore.bind(
+                this.userStatisticsService,
+              ),
+            },
+            weights,
+          }),
+      });
+    }
+
+    return updated;
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {

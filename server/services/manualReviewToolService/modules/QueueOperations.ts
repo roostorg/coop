@@ -889,8 +889,11 @@ export default class QueueOperations {
     let start = 0;
 
     while (true) {
+      // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
+      // 'waiting'. Omitting it meant weight changes never re-sorted queued
+      // jobs (the recompute fetched nothing for a prioritized queue).
       const jobs = await queue.getJobs(
-        ['waiting', 'delayed', 'active'],
+        ['waiting', 'prioritized', 'delayed', 'active'],
         start,
         start + batchSize - 1,
       );
