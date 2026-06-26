@@ -409,6 +409,7 @@ describe('ModerationConfigService', () => {
                 "backgroundImage": undefined,
                 "createdAt": undefined,
                 "displayName": "fakeField",
+                "email": undefined,
                 "ipAddress": undefined,
                 "isDeleted": undefined,
                 "profileIcon": undefined,
