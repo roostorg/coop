@@ -10,6 +10,7 @@ import {
   useGQLSetJobPriorityWeightsMutation,
 } from '@/graphql/generated';
 import { userHasPermissions } from '@/routing/permissions';
+import { summarizeWeighting } from '@/webpages/settings/jobPriorityWeightSummary';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -39,8 +40,8 @@ gql`
   }
 `;
 
-// Human-readable labels + per-property help text + a live preview
-// sentence that updates with the current slider value.
+// Human-readable labels + per-property help text, plus a note shown only when a
+// weight is set to 0 (i.e. the property is disabled).
 const PROPERTY_LABELS: ReadonlyArray<{
   property: GQLJobPriorityProperty;
   label: string;
@@ -50,11 +51,11 @@ const PROPERTY_LABELS: ReadonlyArray<{
   {
     property: GQLJobPriorityProperty.NumReports,
     label: '# of User Reports',
-    help: 'Items with more user reports are reviewed sooner. Higher weight = bigger boost per report. Set to 0 to ignore.',
+    help: "Items with more user reports are reviewed sooner, with diminishing returns so a single viral item can't completely crowd out everything else. Set to 0 to ignore.",
     example: (w) =>
       w === 0
         ? "Currently disabled: report counts won't affect queue order."
-        : `Example: an item with 5 reports gets a boost of ${w * 5}.`,
+        : '',
   },
   {
     property: GQLJobPriorityProperty.UserScore,
@@ -63,7 +64,7 @@ const PROPERTY_LABELS: ReadonlyArray<{
     example: (w) =>
       w === 0
         ? "Currently disabled: user history won't affect queue order."
-        : `Example: an item from a user with the lowest score (1) gets a boost of ${w * 4}; from a clean user (5), no boost.`,
+        : '',
   },
 ];
 
@@ -146,9 +147,9 @@ export default function JobPrioritySettings() {
       <Heading size="LG">Job Priority Weights</Heading>
       <Text className="mt-2 mb-6 text-slate-500">
         Tune how Coop ranks jobs in queues set to{' '}
-        <strong>Custom (weighted)</strong> sort mode. Each property's value is
-        multiplied by its weight; the sum determines the job's review order. Set
-        a weight to <strong>0</strong> to disable a property for your org.
+        <strong>Custom (weighted)</strong> sort mode. Give more weight to the
+        signals you want to prioritize when ordering the queue. Set a weight to{' '}
+        <strong>0</strong> to disable a property for your org.
       </Text>
 
       <div className="flex flex-col gap-6">
@@ -165,7 +166,7 @@ export default function JobPrioritySettings() {
               <Slider
                 id={`weight-${property}`}
                 min={0}
-                max={100}
+                max={10}
                 step={1}
                 value={[weight]}
                 onValueChange={(values) =>
@@ -173,12 +174,25 @@ export default function JobPrioritySettings() {
                 }
               />
               <Text className="text-sm text-slate-400">{help}</Text>
-              <Text className="text-sm italic text-slate-500">
-                {example(weight)}
-              </Text>
+              {example(weight) ? (
+                <Text className="text-sm italic text-slate-500">
+                  {example(weight)}
+                </Text>
+              ) : null}
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 p-4">
+        <Text className="text-sm text-slate-600">
+          {summarizeWeighting(
+            PROPERTY_LABELS.map(({ property, label }) => ({
+              label,
+              weight: weights.get(property) ?? 0,
+            })),
+          )}
+        </Text>
       </div>
 
       <div className="mt-8">
