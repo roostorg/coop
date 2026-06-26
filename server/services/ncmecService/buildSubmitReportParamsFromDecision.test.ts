@@ -376,4 +376,88 @@ describe('buildSubmitReportParamsFromDecision', () => {
       expect(result.reportedUser).not.toHaveProperty('email');
     });
   });
+
+  describe('HMA hash extraction on media', () => {
+    it('attaches hashes from the matching image in item data', async () => {
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: makeUserItemType({}),
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({
+            created_at: FIXED_NOW,
+            image: {
+              url: 'https://example.com/m1.png',
+              hashes: { md5: 'abc123', pdq: 'def456' },
+            },
+          }),
+        }),
+      );
+
+      expect(result.media[0]).toMatchObject({
+        url: 'https://example.com/m1.png',
+        hashes: { md5: 'abc123', pdq: 'def456' },
+      });
+    });
+
+    it('finds the matching image inside an ARRAY-of-IMAGE container', async () => {
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: makeUserItemType({}),
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({
+            created_at: FIXED_NOW,
+            images: [
+              {
+                url: 'https://example.com/other.png',
+                hashes: { md5: 'wrong' },
+              },
+              {
+                url: 'https://example.com/m1.png',
+                hashes: { md5: 'right' },
+              },
+            ],
+          }),
+        }),
+      );
+
+      expect(result.media[0].hashes).toEqual({ md5: 'right' });
+    });
+
+    it('omits `hashes` when no image in the data matches the reported URL', async () => {
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: makeUserItemType({}),
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({
+            created_at: FIXED_NOW,
+            image: {
+              url: 'https://example.com/different.png',
+              hashes: { md5: 'abc' },
+            },
+          }),
+        }),
+      );
+
+      expect(result.media[0]).not.toHaveProperty('hashes');
+    });
+
+    it('omits `hashes` when the matching image has no hashes attached', async () => {
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: makeUserItemType({}),
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({
+            created_at: FIXED_NOW,
+            image: { url: 'https://example.com/m1.png' },
+          }),
+        }),
+      );
+
+      expect(result.media[0]).not.toHaveProperty('hashes');
+    });
+  });
 });
