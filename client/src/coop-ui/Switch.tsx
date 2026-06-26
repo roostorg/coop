@@ -3,8 +3,9 @@ import * as SwitchPrimitives from '@radix-ui/react-switch';
 import { Check, X } from 'lucide-react';
 import * as React from 'react';
 
-interface SwitchProps
-  extends React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root> {
+interface SwitchProps extends React.ComponentPropsWithoutRef<
+  typeof SwitchPrimitives.Root
+> {
   size?: 'small'; //| 'medium' | 'large';
 }
 

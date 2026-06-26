@@ -45,8 +45,7 @@ const textVariants = cva('font-manrope text-gray-800', {
 });
 
 interface TextProps
-  extends React.HTMLAttributes<HTMLElement>,
-    VariantProps<typeof textVariants> {
+  extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof textVariants> {
   as?: 'span' | 'div' | 'label' | 'p';
   size?: TextSize;
   weight?: TextWeight;
@@ -66,8 +65,7 @@ const Text: React.FC<TextProps> = ({
 );
 
 interface HeadingProps
-  extends React.HTMLAttributes<HTMLElement>,
-    VariantProps<typeof textVariants> {
+  extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof textVariants> {
   as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   size?: TextSize;
   weight?: TextWeight;

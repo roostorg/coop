@@ -26,20 +26,24 @@ export type SnakeCasedPropertiesDeepWithArrays<T> = T extends
   | readonly [...never[]]
   ? readonly []
   : T extends readonly [infer U, ...infer V]
-  ? readonly [
-      SnakeCasedPropertiesDeepWithArrays<U>,
-      ...SnakeCasedPropertiesDeepWithArrays<V>,
-    ]
-  : T extends readonly [...infer U, infer V]
-  ? readonly [
-      ...SnakeCasedPropertiesDeepWithArrays<U>,
-      SnakeCasedPropertiesDeepWithArrays<V>,
-    ]
-  : T extends ReadonlyArray<infer ItemType>
-  ? ReadonlyArray<SnakeCasedPropertiesDeepWithArrays<ItemType>>
-  : T extends object
-  ? { [K in keyof T as SnakeCase<K>]: SnakeCasedPropertiesDeepWithArrays<T[K]> }
-  : T;
+    ? readonly [
+        SnakeCasedPropertiesDeepWithArrays<U>,
+        ...SnakeCasedPropertiesDeepWithArrays<V>,
+      ]
+    : T extends readonly [...infer U, infer V]
+      ? readonly [
+          ...SnakeCasedPropertiesDeepWithArrays<U>,
+          SnakeCasedPropertiesDeepWithArrays<V>,
+        ]
+      : T extends ReadonlyArray<infer ItemType>
+        ? ReadonlyArray<SnakeCasedPropertiesDeepWithArrays<ItemType>>
+        : T extends object
+          ? {
+              [K in keyof T as SnakeCase<K>]: SnakeCasedPropertiesDeepWithArrays<
+                T[K]
+              >;
+            }
+          : T;
 
 export type StringKeys<T extends object> = keyof T & string;
 
@@ -98,8 +102,8 @@ export function unwrapOpaqueValue<OpaqueType extends Opaque<unknown>>(
 export type If<Cond extends boolean, IfTrue, IfFalse> = Cond extends true
   ? IfTrue
   : Cond extends false
-  ? IfFalse
-  : IfTrue | IfFalse;
+    ? IfFalse
+    : IfTrue | IfFalse;
 
 export type NullableKeysOf<T> = {
   [K in keyof T]-?: null extends T[K] ? K : never;
@@ -158,8 +162,8 @@ export type Bind4<
 export type DropN<T extends readonly unknown[], N extends number> = N extends 0
   ? T
   : T extends readonly [unknown, ...infer U] // @ts-ignore
-  ? DropN<U, Nat2Number<Dec<Number2Nat<N>>>>
-  : never;
+    ? DropN<U, Nat2Number<Dec<Number2Nat<N>>>>
+    : never;
 
 // Types for doing math in TS, by representing each natural number as a tuple
 // type with n elements, and exploiting its ability to track a tuple's length
@@ -171,10 +175,8 @@ type Dec<N extends SomeNat> = N extends readonly [unknown, ...infer T]
   ? T
   : never;
 type Nat2Number<N extends SomeNat> = N['length'];
-type Number2Nat<
-  I extends number,
-  N extends SomeNat = Zero,
-> = I extends Nat2Number<N> ? N : Number2Nat<I, Succ<N>>;
+type Number2Nat<I extends number, N extends SomeNat = Zero> =
+  I extends Nat2Number<N> ? N : Number2Nat<I, Succ<N>>;
 // type NumericToNat<I extends string> = I extends `${infer T extends number}`
 //   ? Number2Nat<T>
 //   : never;
@@ -441,9 +443,8 @@ export type TaggedUnionFromCases<
   TagWithValues extends object,
   Map extends { [K in TagValues]: unknown },
   TagKey extends keyof TagWithValues = keyof TagWithValues,
-  TagValues extends TagWithValues[TagKey] &
-    (string | number | symbol) = TagWithValues[TagKey] &
-    (string | number | symbol),
+  TagValues extends TagWithValues[TagKey] & (string | number | symbol) =
+    TagWithValues[TagKey] & (string | number | symbol),
 > = { [K in TagValues]: Simplify<{ [K2 in TagKey]: K } & Map[K]> }[TagValues];
 
 /**
@@ -512,27 +513,34 @@ export type ReplaceDeep<
 > = Type extends Search
   ? Replacement
   : Type extends Opaque<unknown, infer Tag>
-  ? Opaque<ReplaceDeep<UnwrapOpaque<Type>, Search, Replacement>, Tag>
-  : Type extends Primitive | Date | RegExp
-  ? Type
-  : // Treat Promises and AsyncIterables specially because, while it's possible
-  // to do replacement totally structurally, that's likely undesirable and might
-  // push up against TS limits deep in the replacement
-  Type extends Promise<infer T>
-  ? Promise<ReplaceDeep<T, Search, Replacement, IncludeFunctions>>
-  : Type extends AsyncIterable<infer T>
-  ? Simplify<
-      AsyncIterable<ReplaceDeep<T, Search, Replacement, IncludeFunctions>> &
-        Omit<Type, typeof Symbol.asyncIterator>
-    >
-  : IncludeFunctions extends true
-  ? Type extends (...args: infer Args) => infer R
-    ? (
-        ...args: ReplaceDeep<Args, Search, Replacement, IncludeFunctions> &
-          unknown[]
-      ) => ReplaceDeep<R, Search, Replacement, IncludeFunctions>
-    : ReplaceObjectDeep<Type, Search, Replacement, IncludeFunctions>
-  : ReplaceObjectDeep<Type, Search, Replacement, IncludeFunctions>;
+    ? Opaque<ReplaceDeep<UnwrapOpaque<Type>, Search, Replacement>, Tag>
+    : Type extends Primitive | Date | RegExp
+      ? Type
+      : // Treat Promises and AsyncIterables specially because, while it's possible
+        // to do replacement totally structurally, that's likely undesirable and might
+        // push up against TS limits deep in the replacement
+        Type extends Promise<infer T>
+        ? Promise<ReplaceDeep<T, Search, Replacement, IncludeFunctions>>
+        : Type extends AsyncIterable<infer T>
+          ? Simplify<
+              AsyncIterable<
+                ReplaceDeep<T, Search, Replacement, IncludeFunctions>
+              > &
+                Omit<Type, typeof Symbol.asyncIterator>
+            >
+          : IncludeFunctions extends true
+            ? Type extends (...args: infer Args) => infer R
+              ? (
+                  ...args: ReplaceDeep<
+                    Args,
+                    Search,
+                    Replacement,
+                    IncludeFunctions
+                  > &
+                    unknown[]
+                ) => ReplaceDeep<R, Search, Replacement, IncludeFunctions>
+              : ReplaceObjectDeep<Type, Search, Replacement, IncludeFunctions>
+            : ReplaceObjectDeep<Type, Search, Replacement, IncludeFunctions>;
 
 type ReplaceObjectDeep<
   Type,

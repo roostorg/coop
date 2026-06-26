@@ -6,6 +6,10 @@ import { getConditionSetResults } from '../condition_evaluator/conditionSet.js';
 import makeGetDerivedFieldValueWithCache from '../condition_evaluator/getDerivedFieldValue.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { inject } from '../iocContainer/utils.js';
+import type {
+  ActionExecutionSourceType,
+  RuleExecutionSourceType,
+} from '../services/analyticsLoggers/index.js';
 import {
   type DerivedFieldSpec,
   type DerivedFieldValue,
@@ -18,10 +22,6 @@ import {
 } from '../services/moderationConfigService/index.js';
 import { type TransientRunSignalWithCache } from '../services/orgAwareSignalExecutionService/index.js';
 import { type SignalId } from '../services/signalsService/index.js';
-import type {
-  ActionExecutionSourceType,
-  RuleExecutionSourceType,
-} from '../services/analyticsLoggers/index.js';
 import { instantiateOpaqueType } from '../utils/typescript-types.js';
 
 // A rule can be run on either a full submission, or on just the identifier of
@@ -33,7 +33,10 @@ export type RuleInput =
       policyIds?: string[];
       sourceType?: RuleExecutionSourceType | ActionExecutionSourceType;
     })
-  | ReadonlyDeep<{ itemId: string; itemType: Pick<ItemType, 'id' | 'kind' | 'name'> }>;
+  | ReadonlyDeep<{
+      itemId: string;
+      itemType: Pick<ItemType, 'id' | 'kind' | 'name'>;
+    }>;
 
 export function isFullSubmission(input: RuleInput): input is ItemSubmission {
   return 'data' in input && 'submissionId' in input && Boolean(input.data);
@@ -43,8 +46,8 @@ export function getUserFromRuleInput(it: RuleInput) {
   return isFullSubmission(it)
     ? it.creator
     : it.itemType.kind === 'USER'
-    ? { id: it.itemId, typeId: it.itemType.id }
-    : undefined;
+      ? { id: it.itemId, typeId: it.itemType.id }
+      : undefined;
 }
 
 type RuleEvaluationContextImpl = Readonly<{

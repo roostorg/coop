@@ -1,6 +1,4 @@
-import type {
-  IAnalyticsAdapter,
-} from '../IAnalyticsAdapter.js';
+import type { IAnalyticsAdapter } from '../IAnalyticsAdapter.js';
 import type {
   AnalyticsEventInput,
   AnalyticsQueryResult,

@@ -4,6 +4,7 @@ export {
   type UserManagementService,
 } from './userManagementService.js';
 export { hashPassword, passwordMatchesHash } from './utils.js';
+export { deleteSessionsForUser } from './sessionPersistence.js';
 export {
   Invoker,
   UserPermission,

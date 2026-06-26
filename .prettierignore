@@ -2,3 +2,4 @@
 client/build/
 server/signals/text_matching/fuzzy_matching/homoglyphReplacements.*
 .dockerignore
+.github/pull_request_template.md

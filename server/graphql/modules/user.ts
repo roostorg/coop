@@ -213,7 +213,11 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
-    return context.dataSources.userAPI.changePassword(user, params.input);
+    return context.dataSources.userAPI.changePassword(
+      user,
+      params.input,
+      context.req.sessionID,
+    );
   },
   async deleteUser(_, params, context) {
     const user = context.getUser();

@@ -326,7 +326,7 @@ export default function ItemAction(props: {
           </label>
           <Input.TextArea
             id="item-action-moderator-note"
-            placeholder="Why are you taking this action? Sent to the action's webhook as `actorNote`."
+            placeholder="Why are you taking this action? This note will be recorded in the audit log and included in any configured webhook payload."
             rows={2}
             maxLength={5000}
             value={moderatorNote}

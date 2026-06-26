@@ -217,7 +217,7 @@ function RecentUserStrikeActionsTable() {
           user: (
             <Link
               className="cursor-pointer shrink-0"
-              to={`/dashboard/investigation?id=${values.itemId}&typeId=${values.itemTypeId}`}
+              to={`/dashboard/manual_review/investigation?id=${values.itemId}&typeId=${values.itemTypeId}`}
               target="_blank"
             >
               {values.itemId}

@@ -7,5 +7,4 @@ export {
   type SignalAuthService,
   type ConfigurableIntegration,
   type CredentialTypes,
-
 } from './signalAuthService.js';

@@ -3,9 +3,11 @@
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
+import { type JsonObject } from 'type-fest';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { safeGetEnvInt } from '../../iocContainer/utils.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
@@ -14,7 +16,9 @@ import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
   makeRuleNameExistsError,
+  parseStoredParameters,
   RuleType,
+  validateActionParameterValues,
   type Condition,
   type ConditionInput,
   type ConditionSet,
@@ -37,14 +41,16 @@ import {
   jsonStringify,
   tryJsonParse,
 } from '../../utils/encoding.js';
-import { makeNotFoundError } from '../../utils/errors.js';
+import { makeBadRequestError, makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
 } from '../../utils/kyselyTransactionWithRetry.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
+import { DAY_MS } from '../../utils/time.js';
 import {
   type NonEmptyString,
   type RequiredWithoutNull,
@@ -367,6 +373,46 @@ class RuleAPI {
     );
   }
 
+  // Validates configured parameter values against each action's spec and
+  // returns the `actionId -> values` map persistence expects. Throws (surfaced
+  // to the admin) on invalid values; ignores entries for unattached actions.
+  private async buildRuleActionParametersMap(
+    orgId: string,
+    actionIds: readonly string[],
+    actionParameters:
+      | readonly { actionId: string; parameters: unknown }[]
+      | null
+      | undefined,
+  ): Promise<ReadonlyMap<string, JsonObject> | undefined> {
+    if (actionIds.length === 0) {
+      return undefined;
+    }
+    const paramsByActionId = new Map(
+      (actionParameters ?? []).map((it) => [it.actionId, it.parameters]),
+    );
+    const actions = await this.moderationConfigService.getActions({
+      orgId,
+      ids: [...actionIds],
+    });
+    const out = new Map<string, JsonObject>();
+    for (const action of actions) {
+      const spec = parseStoredParameters(
+        action.actionType === 'CUSTOM_ACTION'
+          ? action.customMrtApiParams
+          : null,
+      );
+      if (spec.length === 0) {
+        continue;
+      }
+      const rawValues = paramsByActionId.get(action.id) ?? null;
+      const validated = validateActionParameterValues(spec, rawValues);
+      if (Object.keys(validated).length > 0) {
+        out.set(action.id, validated as JsonObject);
+      }
+    }
+    return out.size > 0 ? out : undefined;
+  }
+
   private async createRule(
     input:
       | (GQLCreateContentRuleInput & { ruleType: typeof RuleType.CONTENT })
@@ -380,6 +426,7 @@ class RuleAPI {
       status,
       conditionSet,
       actionIds,
+      actionParameters,
       policyIds,
       tags,
       ruleType,
@@ -387,6 +434,12 @@ class RuleAPI {
       expirationTime,
       parentId,
     } = input;
+
+    const actionParametersMap = await this.buildRuleActionParametersMap(
+      orgId,
+      actionIds,
+      actionParameters,
+    );
 
     const contentTypeIds: readonly string[] =
       input.ruleType === RuleType.CONTENT ? input.contentTypeIds : [];
@@ -418,6 +471,7 @@ class RuleAPI {
           ruleType,
           parentId,
           actionIds,
+          actionParameters: actionParametersMap,
           policyIds,
           contentTypeIds,
         });
@@ -472,6 +526,7 @@ class RuleAPI {
       status,
       conditionSet,
       actionIds,
+      actionParameters,
       policyIds,
       tags,
       ruleType,
@@ -524,6 +579,20 @@ class RuleAPI {
       await this.validateSignalsAllowedInAutomatedRules(conditionSet, orgId);
     }
 
+    // Parameters are persisted alongside the action attachments, so updating
+    // them without also setting actionIds would silently drop them.
+    if (actionParameters != null && actionIds == null) {
+      throw makeBadRequestError(
+        'actionParameters can only be updated when actionIds is also provided',
+        { shouldErrorSpan: true },
+      );
+    }
+    const actionParametersMap = await this.buildRuleActionParametersMap(
+      orgId,
+      actionIds ?? [],
+      actionParameters,
+    );
+
     // Before we actually send any updates (which will happen as soon as we call
     // setXXX to set the associations), we need to make sure that there are no
     // active backtests for this rule because, if there are, we should fail the
@@ -559,6 +628,7 @@ class RuleAPI {
             expirationTime: normalizeExpirationInput(expirationTime),
             parentId,
             actionIds: actionIds ?? undefined,
+            actionParameters: actionParametersMap,
             policyIds: policyIds ?? undefined,
             contentTypeIds: contentTypeIds ?? undefined,
           });
@@ -603,28 +673,55 @@ class RuleAPI {
   }
 
   async getAllRuleInsights(orgId: string) {
-    const results = await Promise.allSettled([
-      this.actionStats.getActionedSubmissionCountsByDay(orgId),
-      this.actionStats.getActionedSubmissionCountsByPolicyByDay(orgId),
-      this.actionStats.getActionedSubmissionCountsByTagByDay(orgId),
-      this.actionStats.getActionedSubmissionCountsByActionByDay(orgId),
-      this.ruleInsights.getContentSubmissionCountsByDay(orgId),
-    ]);
+    // Each of these scans ACTION_EXECUTIONS over the lookback window. Run them
+    // sequentially so peak ClickHouse memory is one query's worth rather than
+    // all five at once, and bound the window (env-tunable, default 90 days) so
+    // a memory-constrained instance scans far less than a full year. The client
+    // filters further client-side and defaults to a one-week view.
+    const lookbackDays = safeGetEnvInt(
+      'CLICKHOUSE_RULE_INSIGHTS_LOOKBACK_DAYS',
+      90,
+    );
+    const startAt = new Date(Date.now() - lookbackDays * DAY_MS);
 
-    const valueOrEmpty = <T>(
-      r: PromiseSettledResult<readonly T[]>,
-    ): readonly T[] => (r.status === 'fulfilled' ? r.value : []);
+    const runSafely = async <T>(
+      fn: () => Promise<readonly T[]>,
+    ): Promise<readonly T[]> => {
+      try {
+        return await fn();
+      } catch (err) {
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({ message: 'rule insights query failed', error: err });
+        return [];
+      }
+    };
+
+    const actionedSubmissionsByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByDay(orgId, startAt),
+    );
+    const actionedSubmissionsByPolicyByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByPolicyByDay(orgId, startAt),
+    );
+    const actionedSubmissionsByTagByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByTagByDay(orgId, startAt),
+    );
+    const actionedSubmissionsByActionByDay = await runSafely(async () =>
+      this.actionStats.getActionedSubmissionCountsByActionByDay(orgId, startAt),
+    );
+    const totalSubmissionsByDay = await runSafely(
+      async () =>
+        this.ruleInsights.getContentSubmissionCountsByDay(
+          orgId,
+          startAt,
+        ) as Promise<readonly { date: string; count: number }[]>,
+    );
 
     return {
-      actionedSubmissionsByDay: valueOrEmpty(results[0]),
-      actionedSubmissionsByPolicyByDay: valueOrEmpty(results[1]),
-      actionedSubmissionsByTagByDay: valueOrEmpty(results[2]),
-      actionedSubmissionsByActionByDay: valueOrEmpty(results[3]),
-      totalSubmissionsByDay: valueOrEmpty(
-        results[4] as PromiseSettledResult<
-          readonly { date: string; count: number }[]
-        >,
-      ),
+      actionedSubmissionsByDay,
+      actionedSubmissionsByPolicyByDay,
+      actionedSubmissionsByTagByDay,
+      actionedSubmissionsByActionByDay,
+      totalSubmissionsByDay,
     };
   }
 

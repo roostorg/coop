@@ -208,6 +208,9 @@ export function dateSort(dateKey: string) {
     if (!b) return -1;
 
     // Sort by timestamp (oldest first = smaller timestamp first)
-    return new Date(a as string | Date).getTime() - new Date(b as string | Date).getTime();
+    return (
+      new Date(a as string | Date).getTime() -
+      new Date(b as string | Date).getTime()
+    );
   };
 }

@@ -29,7 +29,7 @@ export function formatDate(date = new Date()): string {
 }
 
 function toDate(date: string | DateString | Date): Date {
-  return date instanceof Date ? date : new Date(date as string);
+  return date instanceof Date ? date : new Date(date);
 }
 
 export function parseDatetimeToReadableStringInUTC(
@@ -100,7 +100,7 @@ export function getDateRange(start: Date, end: Date, interval: 'HOUR' | 'DAY') {
   while (isBefore(currentDate, end)) {
     datesArray.push({
       ds: format(currentDate, formatStr),
-    } as { [key: string]: any });
+    });
     currentDate = advanceFn(currentDate, 1);
   }
 

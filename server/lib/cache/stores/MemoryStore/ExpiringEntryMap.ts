@@ -1,4 +1,4 @@
-import lruMap from "lru_map";
+import lruMap from 'lru_map';
 
 const { LRUMap } = lruMap;
 
@@ -33,7 +33,7 @@ export default class ExpiringEntryMap<K, V> {
     this.store = numItemsLimit ? new LRUMap(numItemsLimit) : new Map();
     this.onItemEviction = onItemEviction;
 
-    if (this.store instanceof LRUMap && typeof onItemEviction === "function") {
+    if (this.store instanceof LRUMap && typeof onItemEviction === 'function') {
       this.store.shift = function () {
         const entry = LRUMap.prototype.shift.call(this);
         if (entry !== undefined) {
@@ -145,7 +145,7 @@ export default class ExpiringEntryMap<K, V> {
       this.onItemEviction?.(value.value, key).catch((_e) => {});
     }
 
-    return typeof existedBoolOrPriorVal === "boolean"
+    return typeof existedBoolOrPriorVal === 'boolean'
       ? existedBoolOrPriorVal
       : existedBoolOrPriorVal !== undefined;
   }

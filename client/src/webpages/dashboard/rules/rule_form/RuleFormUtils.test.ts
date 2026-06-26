@@ -1,10 +1,12 @@
+import { vi } from 'vitest';
+
 import {
   GQLConditionConjunction,
   GQLScalarType,
+  GQLSignal,
   GQLSignalPricingStructureType,
   GQLSignalType,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { RuleFormConditionSet, RuleFormLeafCondition } from '../types';
 import {
   getConditionInputScalarType,
@@ -12,15 +14,17 @@ import {
   shouldConditionPromptForComparatorAndThreshold,
 } from './RuleFormUtils';
 
-jest.mock('./RuleFormUtils', () => {
-  const origin = jest.requireActual('./RuleFormUtils');
-  return { ...origin, getConditionInputScalarType: jest.fn() };
+vi.mock('./RuleFormUtils', async () => {
+  const origin =
+    await vi.importActual<typeof import('./RuleFormUtils')>('./RuleFormUtils');
+  return { ...origin, getConditionInputScalarType: vi.fn() };
 });
 
 // NB: See docs above shouldConditionPromptForComparatorAndThreshold
 // above the caveats for this particular implementation
 describe('Test Rule Form Utils', () => {
-  const sampleSignal: CoreSignal = {
+  const sampleSignal: GQLSignal = {
+    __typename: 'Signal',
     id: '1234',
     type: GQLSignalType.TextMatchingContainsRegex,
     shouldPromptForMatchingValues: false,
@@ -73,9 +77,9 @@ describe('Test Rule Form Utils', () => {
         eligibleSignals: [sampleSignal],
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue(
+        GQLScalarType.Boolean,
+      );
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
@@ -92,38 +96,35 @@ describe('Test Rule Form Utils', () => {
         signal: sampleSignal,
       };
 
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        sampleSignal,
-      ]);
+      vi.mocked(getConditionInputScalarType).mockReturnValue(
+        GQLScalarType.Boolean,
+      );
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
         false,
       );
     });
 
     it('Condition with input and selected signal with non-boolean output should show comparator/threshold', () => {
+      const nonBooleanSignal = {
+        ...sampleSignal,
+        outputType: {
+          __typename: 'ScalarSignalOutputType' as const,
+          scalarType: GQLScalarType.Number,
+        },
+      };
+
       const condition: RuleFormLeafCondition = {
         input: {
           type: 'CONTENT_FIELD',
           name: 'num_likes',
           contentTypeId: '12345',
         },
-        eligibleSignals: [sampleSignal],
-        signal: sampleSignal,
+        eligibleSignals: [nonBooleanSignal],
+        signal: nonBooleanSignal,
       };
 
-      const nonBooleanSignal = {
-        ...sampleSignal,
-        outputType: {
-          __typename: 'ScalarSignalOutputType',
-          scalarType: GQLScalarType.Number,
-        },
-      };
-
-      (getConditionInputScalarType as jest.Mock).mockReturnValue([
-        nonBooleanSignal,
-      ]);
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
-        false,
+        true,
       );
     });
   });

@@ -283,6 +283,7 @@ const correctnessRules = {
     {
       devDependencies: [
         '**/test/**',
+        '**/e2e/**',
         '**/*.{spec,test}.{ts,tsx,js}',
         '.storybook/**',
         '**/*.stories.tsx',
@@ -674,7 +675,7 @@ module.exports = {
       },
     },
     {
-      files: ['test/**/*.ts', './**/*.{spec,test}.ts'],
+      files: ['test/**/*.ts', 'e2e/**/*.ts', './**/*.{spec,test}.ts'],
       rules: {
         // Match prior test-only mutation policy: allow `this`, class internals,
         // and `process.env.*`; production code is not in this override.
@@ -693,6 +694,11 @@ module.exports = {
           },
         ],
         'no-console': 'off',
+        // Allow `typeof import('...')` annotations; needed for E2E tests.
+        '@typescript-eslint/consistent-type-imports': [
+          'error',
+          { prefer: 'type-imports', disallowTypeAnnotations: false },
+        ],
       },
     },
   ],

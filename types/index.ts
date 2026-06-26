@@ -34,6 +34,11 @@ export const ScalarTypes = makeEnumLike([
   // schema field as an IP address so it can be surfaced as an identifier in
   // moderation flows (e.g., via schema-field role metadata).
   'IP_ADDRESS',
+  // Stored as a string at runtime. The dedicated scalar lets Coop tag a
+  // schema field as an email address so integrations (e.g., NCMEC) can
+  // pull it via schema-field role metadata. Format validation happens at
+  // the field-value level, not here.
+  'EMAIL_ADDRESS',
   // Polymorphic media: holds a URL plus the resolved kind (AUDIO/IMAGE/VIDEO),
   // detected from the URL extension at ingestion time. Lets an adopter declare
   // a single field (or container of fields) that mixes media kinds without
@@ -65,6 +70,7 @@ type ScalarTypeRuntimeTypeMapping = Satisfies<
     [ScalarTypes.RELATED_ITEM]: RelatedItem;
     [ScalarTypes.POLICY_ID]: string;
     [ScalarTypes.IP_ADDRESS]: string;
+    [ScalarTypes.EMAIL_ADDRESS]: string;
     [ScalarTypes.MEDIA]: {
       url: string;
       // The resolved kind, derived from the URL extension. `null` when the

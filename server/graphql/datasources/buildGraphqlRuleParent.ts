@@ -23,6 +23,19 @@ export function buildGraphqlRuleParent(
     findUserByIdAndOrg: FindUserByIdAndOrg;
   },
 ): GraphQLRuleParent {
+  // getActions and getActionParameters resolve from the same joined read, so
+  // share one lazy promise to avoid querying the rule's actions twice.
+  let actionsWithParameters:
+    | ReturnType<ModerationConfigService['getActionsForRuleId']>
+    | undefined;
+  const getActionsWithParameters = async () => {
+    actionsWithParameters ??= deps.moderationConfigService.getActionsForRuleId({
+      orgId: plain.orgId,
+      ruleId: plain.id,
+    });
+    return actionsWithParameters;
+  };
+
   return {
     ...plain,
     async getCreator() {
@@ -36,10 +49,14 @@ export function buildGraphqlRuleParent(
       return user;
     },
     async getActions() {
-      return deps.moderationConfigService.getActionsForRuleId({
-        orgId: plain.orgId,
-        ruleId: plain.id,
-      });
+      return (await getActionsWithParameters()).map((it) => it.action);
+    },
+    async getActionParameters() {
+      const withParams = await getActionsWithParameters();
+      return withParams.map((it) => ({
+        actionId: it.action.id,
+        parameters: it.parameters,
+      }));
     },
     async getPolicies() {
       const byRule = await deps.moderationConfigService.getPoliciesByRuleIds([

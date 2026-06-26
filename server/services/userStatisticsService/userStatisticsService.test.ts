@@ -1,10 +1,10 @@
 import { Kysely, type DatabaseConnection } from 'kysely';
 
-import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import {
   makeMockPgDialect,
   type MockPgExecute,
 } from '../../test/stubs/KyselyPg.js';
+import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { type UserStatisticsServiceWarehouse } from './dbTypes.js';
 import { type makeFetchUserActionStatistics } from './fetchUserActionStatistics.js';
 import { type makeFetchUserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';

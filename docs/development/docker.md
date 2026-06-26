@@ -29,7 +29,7 @@ This starts:
 
 - **Coop server** on port 8080
 - **Coop client** (nginx) on port 3000
-- **Postgres** (pgvector), **Redis**, **ScyllaDB**, **ClickHouse**
+- **Postgres**, **Redis**, **ScyllaDB**, **ClickHouse**
 - Database migrations (run automatically)
 - A seed service that creates an admin user with a randomly generated password
 

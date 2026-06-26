@@ -1,6 +1,6 @@
-import { HmaService, type ExchangeInfo } from './index.js';
-import type { HashBank } from './dbTypes.js';
 import { jsonParse } from '../../utils/encoding.js';
+import type { HashBank } from './dbTypes.js';
+import { HmaService, type ExchangeInfo } from './index.js';
 
 const MOCK_BANK: HashBank = {
   id: 1,
@@ -52,7 +52,11 @@ function fail(status: number, body?: unknown) {
 describe('HmaService', () => {
   describe('createBank', () => {
     it('creates a standalone bank via POST /c/banks when no exchange is provided', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(ok({ name: 'COOP_ORG1_MY_BANK', matching_enabled_ratio: 1.0 }));
+      const fetchHTTP = jest
+        .fn()
+        .mockResolvedValue(
+          ok({ name: 'COOP_ORG1_MY_BANK', matching_enabled_ratio: 1.0 }),
+        );
       const svc = makeService(fetchHTTP);
 
       const result = await svc.createBank('org1', 'My Bank', 'desc', 1.0);
@@ -106,7 +110,7 @@ describe('HmaService', () => {
         svc.createBank('org1', 'My Bank', 'desc', 1.0, {
           apiName: 'fb_threatexchange',
           apiJson: { privacy_group: 123 },
-        })
+        }),
       ).rejects.toThrow('Failed to create exchange in HMA');
     });
 
@@ -115,7 +119,7 @@ describe('HmaService', () => {
       const svc = makeService(fetchHTTP);
 
       await expect(
-        svc.createBank('org1', 'My Bank', 'desc', 1.0)
+        svc.createBank('org1', 'My Bank', 'desc', 1.0),
       ).rejects.toThrow('Failed to create HMA bank');
     });
   });
@@ -140,7 +144,7 @@ describe('HmaService', () => {
       const svc = makeService(fetchHTTP);
 
       await expect(
-        svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' })
+        svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' }),
       ).rejects.toThrow("Failed to set exchange credentials for 'ncmec'");
     });
   });
@@ -176,24 +180,31 @@ describe('HmaService', () => {
     });
 
     it('returns full exchange info with fetch status on success', async () => {
-      const fetchHTTP = jest.fn()
-        .mockResolvedValueOnce(ok({
-          api: 'fb_threatexchange',
-          enabled: true,
-          name: 'COOP_ORG1_BANK',
-        }))
-        .mockResolvedValueOnce(ok({
-          supports_authentification: true,
-          has_set_authentification: true,
-        }))
-        .mockResolvedValueOnce(ok({
-          last_fetch_succeeded: true,
-          last_fetch_complete_ts: 1700000000,
-          up_to_date: true,
-          fetched_items: 42,
-          running_fetch_start_ts: null,
-          checkpoint_ts: 1700000000,
-        }));
+      const fetchHTTP = jest
+        .fn()
+        .mockResolvedValueOnce(
+          ok({
+            api: 'fb_threatexchange',
+            enabled: true,
+            name: 'COOP_ORG1_BANK',
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            supports_authentification: true,
+            has_set_authentification: true,
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            last_fetch_succeeded: true,
+            last_fetch_complete_ts: 1700000000,
+            up_to_date: true,
+            fetched_items: 42,
+            running_fetch_start_ts: null,
+            checkpoint_ts: 1700000000,
+          }),
+        );
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
@@ -211,24 +222,31 @@ describe('HmaService', () => {
     });
 
     it('returns fetch failed status', async () => {
-      const fetchHTTP = jest.fn()
-        .mockResolvedValueOnce(ok({
-          api: 'ncmec',
-          enabled: true,
-          name: 'COOP_ORG1_BANK',
-        }))
-        .mockResolvedValueOnce(ok({
-          supports_authentification: true,
-          has_set_authentification: false,
-        }))
-        .mockResolvedValueOnce(ok({
-          last_fetch_succeeded: false,
-          last_fetch_complete_ts: 1700000000,
-          up_to_date: false,
-          fetched_items: 0,
-          running_fetch_start_ts: null,
-          checkpoint_ts: null,
-        }));
+      const fetchHTTP = jest
+        .fn()
+        .mockResolvedValueOnce(
+          ok({
+            api: 'ncmec',
+            enabled: true,
+            name: 'COOP_ORG1_BANK',
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            supports_authentification: true,
+            has_set_authentification: false,
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            last_fetch_succeeded: false,
+            last_fetch_complete_ts: 1700000000,
+            up_to_date: false,
+            fetched_items: 0,
+            running_fetch_start_ts: null,
+            checkpoint_ts: null,
+          }),
+        );
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
@@ -239,24 +257,31 @@ describe('HmaService', () => {
     });
 
     it('detects active fetch in progress', async () => {
-      const fetchHTTP = jest.fn()
-        .mockResolvedValueOnce(ok({
-          api: 'fb_threatexchange',
-          enabled: true,
-          name: 'COOP_ORG1_BANK',
-        }))
-        .mockResolvedValueOnce(ok({
-          supports_authentification: true,
-          has_set_authentification: true,
-        }))
-        .mockResolvedValueOnce(ok({
-          last_fetch_succeeded: true,
-          last_fetch_complete_ts: 1700000000,
-          up_to_date: false,
-          fetched_items: 10,
-          running_fetch_start_ts: 1700001000,
-          checkpoint_ts: 1700000000,
-        }));
+      const fetchHTTP = jest
+        .fn()
+        .mockResolvedValueOnce(
+          ok({
+            api: 'fb_threatexchange',
+            enabled: true,
+            name: 'COOP_ORG1_BANK',
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            supports_authentification: true,
+            has_set_authentification: true,
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            last_fetch_succeeded: true,
+            last_fetch_complete_ts: 1700000000,
+            up_to_date: false,
+            fetched_items: 10,
+            running_fetch_start_ts: 1700001000,
+            checkpoint_ts: 1700000000,
+          }),
+        );
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
@@ -265,16 +290,21 @@ describe('HmaService', () => {
     });
 
     it('gracefully handles status endpoint failure', async () => {
-      const fetchHTTP = jest.fn()
-        .mockResolvedValueOnce(ok({
-          api: 'fb_threatexchange',
-          enabled: true,
-          name: 'COOP_ORG1_BANK',
-        }))
-        .mockResolvedValueOnce(ok({
-          supports_authentification: true,
-          has_set_authentification: true,
-        }))
+      const fetchHTTP = jest
+        .fn()
+        .mockResolvedValueOnce(
+          ok({
+            api: 'fb_threatexchange',
+            enabled: true,
+            name: 'COOP_ORG1_BANK',
+          }),
+        )
+        .mockResolvedValueOnce(
+          ok({
+            supports_authentification: true,
+            has_set_authentification: true,
+          }),
+        )
         .mockRejectedValueOnce(new Error('timeout'));
       const svc = makeService(fetchHTTP);
 
@@ -290,10 +320,28 @@ describe('HmaService', () => {
     it('returns schema from HMA when endpoint is available', async () => {
       const hmaSchema = {
         config_schema: {
-          fields: [{ name: 'privacy_group', type: 'number', required: true, default: null, help: 'PG ID', choices: null }],
+          fields: [
+            {
+              name: 'privacy_group',
+              type: 'number',
+              required: true,
+              default: null,
+              help: 'PG ID',
+              choices: null,
+            },
+          ],
         },
         credentials_schema: {
-          fields: [{ name: 'api_token', type: 'string', required: true, default: null, help: 'Token', choices: null }],
+          fields: [
+            {
+              name: 'api_token',
+              type: 'string',
+              required: true,
+              default: null,
+              help: 'Token',
+              choices: null,
+            },
+          ],
         },
       };
       const fetchHTTP = jest.fn().mockResolvedValue(ok(hmaSchema));

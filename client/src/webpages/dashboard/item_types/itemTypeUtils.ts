@@ -37,6 +37,7 @@ export enum SchemaFieldRoles {
   BACKGROUND_IMAGE = 'backgroundImage',
   IS_DELETED = 'isDeleted',
   IP_ADDRESS = 'ipAddress',
+  EMAIL = 'email',
 }
 
 export const schemaFieldRolesFieldTypes = {
@@ -49,6 +50,7 @@ export const schemaFieldRolesFieldTypes = {
   [SchemaFieldRoles.BACKGROUND_IMAGE]: GQLScalarType.Image,
   [SchemaFieldRoles.IS_DELETED]: GQLScalarType.Boolean,
   [SchemaFieldRoles.IP_ADDRESS]: GQLScalarType.IpAddress,
+  [SchemaFieldRoles.EMAIL]: GQLScalarType.String,
 } satisfies Omit<
   { [key in SchemaFieldRoles]: GQLScalarType },
   SchemaFieldRoles.NONE
@@ -77,6 +79,8 @@ export function getDisplayStringForRole(
       return 'Is Deleted';
     case SchemaFieldRoles.IP_ADDRESS:
       return 'IP Address';
+    case SchemaFieldRoles.EMAIL:
+      return 'Email';
     case SchemaFieldRoles.NONE:
       return 'None';
   }

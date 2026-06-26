@@ -21,9 +21,11 @@ import {
   GQLNcmecFileAnnotation,
   GQLNcmecIncidentType,
   GQLNcmecIndustryClassification,
+  GQLNcmecMediaReviewRequirement,
   GQLNcmecThreadInput,
   GQLThreadItem,
   useGQLGetMoreInfoForThreadItemsQuery,
+  useGQLNcmecMediaReviewPolicyQuery,
   useGQLPersonalSafetySettingsQuery,
 } from '../../../../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../../../../utils/collections';
@@ -69,6 +71,15 @@ type NCMECJobPayloadQueryResult = Extract<
 
 export type NCMECMediaQueryResult =
   NCMECJobPayloadQueryResult['allMediaItems'][0];
+
+gql`
+  query NcmecMediaReviewPolicy {
+    myOrg {
+      ncmecMediaReviewRequirement
+      ncmecMinMediaToReview
+    }
+  }
+`;
 
 gql`
   query getMoreInfoForThreadItems($ids: [ItemIdentifierInput!]!) {
@@ -378,6 +389,12 @@ export default function NCMECReviewUser(
   const navigate = useNavigate();
 
   const { loading, data } = useGQLPersonalSafetySettingsQuery();
+  const { data: mediaReviewPolicyData } = useGQLNcmecMediaReviewPolicyQuery();
+  const mediaReviewRequirement =
+    mediaReviewPolicyData?.myOrg?.ncmecMediaReviewRequirement ??
+    GQLNcmecMediaReviewRequirement.All;
+  const mediaReviewMinToReview =
+    mediaReviewPolicyData?.myOrg?.ncmecMinMediaToReview ?? 1;
   const noValidMedia = (
     <div className="flex items-start justify-center w-full h-full">
       <div className="flex flex-col items-center justify-center p-12 mt-20 shadow rounded-xl bg-slate-50 text-slate-500">
@@ -873,6 +890,33 @@ export default function NCMECReviewUser(
     mediaInDetailViewItem?.__typename === 'ContentItem'
       ? getFieldValueForRole(mediaInDetailViewItem, 'threadId')
       : undefined;
+
+  // "None" counts as reviewed but not reported.
+  const reviewedCount = selectedMedia.length;
+  const reportedCount = selectedMedia.filter(
+    (media) => media.category !== 'None',
+  ).length;
+  // Cap the minimum at the job's media count so it's always achievable.
+  const effectiveMinToReview = Math.min(
+    Math.max(mediaReviewMinToReview, 1),
+    allMediaItemsWithUrls.length,
+  );
+  const reviewThresholdMet =
+    mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
+      ? reviewedCount >= effectiveMinToReview
+      : reviewedCount === allMediaItemsWithUrls.length;
+  // A report can't be empty: require at least one reported item.
+  const canSendReport = reviewThresholdMet && reportedCount > 0;
+  const sendDisabledReason = !reviewThresholdMet
+    ? mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
+      ? `Please review at least ${effectiveMinToReview} ${
+          effectiveMinToReview === 1 ? 'piece' : 'pieces'
+        } of media before sending a report to NCMEC.`
+      : 'Please make a decision on every piece of media in this job before sending a report to NCMEC.'
+    : reportedCount === 0
+      ? 'Select a category for at least one piece of media to include it in the report before sending to NCMEC.'
+      : '';
+
   return (
     <div
       className="flex flex-col items-start outline-none"
@@ -953,9 +997,8 @@ export default function NCMECReviewUser(
                 setDeselectAndIgnoreModalVisible
               }
               isAnyMediaSelected={selectedMedia.length > 0}
-              isAllMediaSelected={
-                selectedMedia.length === allMediaItemsWithUrls.length
-              }
+              canSendReport={canSendReport}
+              sendDisabledReason={sendDisabledReason}
               submitDecision={props.submitDecision}
               moveToQueueMenuVisible={moveToQueueMenuVisible}
               setMoveToQueueMenuVisible={setMoveToQueueMenuVisible}

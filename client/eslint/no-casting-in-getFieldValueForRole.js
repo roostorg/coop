@@ -22,7 +22,7 @@ module.exports = {
           getFieldValueForRole<
             GQLSchemaFieldRoles,
             keyof GQLSchemaFieldRoles
-          >(reportedItem, 'displayName')`
+          >(reportedItem, 'displayName')`,
         });
       }
 

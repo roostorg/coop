@@ -1,7 +1,7 @@
-import { type AnyParams } from "./01_Params.js";
-import { type AnyValidators } from "./02_Validators.js";
-import { type ConsumerRequest } from "./03_ConsumerRequest.js";
-import { type ProducerResult } from "./04_ProducerResult.js";
+import { type AnyParams } from './01_Params.js';
+import { type AnyValidators } from './02_Validators.js';
+import { type ConsumerRequest } from './03_ConsumerRequest.js';
+import { type ProducerResult } from './04_ProducerResult.js';
 
 /**
  * Helper type combining ConsumerRequest and RequestPairedProducerResult.
@@ -25,6 +25,6 @@ export type RequestPairedProducerResult<
   T,
   U extends AnyValidators,
   V extends AnyParams,
-> = Omit<ProducerResult<T, U, V>, "id"> & {
-  id?: ProducerResult<T, U, V>["id"];
+> = Omit<ProducerResult<T, U, V>, 'id'> & {
+  id?: ProducerResult<T, U, V>['id'];
 };

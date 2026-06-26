@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "knip": "knip",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "rm -rf ./build && npm run build && cp -r script-templates build/script-templates"
   },
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/yargs": "^17.0.24",
+    "knip": "^6.16.1",
     "typescript": "^6.0.3"
   },
   "overrides": {

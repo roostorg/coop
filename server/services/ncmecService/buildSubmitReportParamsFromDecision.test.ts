@@ -46,16 +46,22 @@ const datetimeField = (name: string): Field => ({
 function makeUserItemType(overrides: {
   ipAddressField?: string;
   ipAddressFieldName?: string;
+  emailField?: string;
   data?: NormalizedItemData;
 }): UserItemType {
   const ipFieldName = overrides.ipAddressFieldName ?? 'client_ip';
   // The schema is built immutably (no .push) to satisfy
   // functional/immutable-data; we then cast to the non-empty `ItemSchema`
   // brand because the constructor is internal.
-  const fields: readonly Field[] =
-    overrides.ipAddressField !== undefined
-      ? [stringField('display_name'), ipAddressField(ipFieldName)]
-      : [stringField('display_name')];
+  const fields: readonly Field[] = [
+    stringField('display_name'),
+    ...(overrides.ipAddressField !== undefined
+      ? [ipAddressField(ipFieldName)]
+      : []),
+    ...(overrides.emailField !== undefined
+      ? [stringField(overrides.emailField)]
+      : []),
+  ];
   return {
     id: 'user-type-1',
     kind: 'USER',
@@ -70,6 +76,9 @@ function makeUserItemType(overrides: {
       displayName: 'display_name',
       ...(overrides.ipAddressField !== undefined
         ? { ipAddress: overrides.ipAddressField }
+        : {}),
+      ...(overrides.emailField !== undefined
+        ? { email: overrides.emailField }
         : {}),
     },
   };
@@ -304,6 +313,67 @@ describe('buildSubmitReportParamsFromDecision', () => {
       );
 
       expect(result.reportedUser.ipAddress).toBe('2001:db8::1');
+    });
+  });
+
+  // Regression: without this, adopters who don't run an external
+  // additional-info endpoint submit NCMEC reports with empty email, which
+  // NCMEC rejects as "incomplete."
+  describe('email field-role propagation', () => {
+    it('reads the user email from the schema field role and surfaces it on `reportedUser.email`', async () => {
+      const userItemType = makeUserItemType({
+        emailField: 'user_email',
+      });
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: userItemType,
+          reportedUserData: asNormalizedData({
+            display_name: 'Alice',
+            user_email: 'alice@example.com',
+          }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({ created_at: FIXED_NOW }),
+        }),
+      );
+
+      expect(result.reportedUser).toMatchObject({
+        id: 'user-1',
+        typeId: 'user-type-1',
+        displayName: 'Alice',
+        email: 'alice@example.com',
+      });
+    });
+
+    it('omits `reportedUser.email` when the role is not mapped', async () => {
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: makeUserItemType({}),
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({ created_at: FIXED_NOW }),
+        }),
+      );
+
+      // NCMEC validates email shape on receipt; an empty string here would
+      // produce the same "incomplete" rejection the bug repros. Missing key
+      // is the only safe encoding.
+      expect(result.reportedUser).not.toHaveProperty('email');
+    });
+
+    it('omits `reportedUser.email` when the field is mapped but absent in the data', async () => {
+      const userItemType = makeUserItemType({
+        emailField: 'user_email',
+      });
+      const result = await buildSubmitReportParamsFromDecision(
+        makeInput({
+          reportedUserItemType: userItemType,
+          reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+          contentItemType: makeContentItemType({}),
+          contentData: asNormalizedData({ created_at: FIXED_NOW }),
+        }),
+      );
+
+      expect(result.reportedUser).not.toHaveProperty('email');
     });
   });
 });

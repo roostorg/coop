@@ -2,7 +2,7 @@ import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { AWSXRayPropagator } from '@opentelemetry/propagator-aws-xray';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
@@ -11,18 +11,17 @@ const FrontendTracer = async () => {
   const { ZoneContextManager } = await import('@opentelemetry/context-zone');
 
   const provider = new WebTracerProvider({
-    resource: new Resource({
+    resource: resourceFromAttributes({
       [ATTR_SERVICE_NAME]: 'coop-ui',
     }),
+    spanProcessors: [
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({
+          url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+        }),
+      ),
+    ],
   });
-
-  provider.addSpanProcessor(
-    new BatchSpanProcessor(
-      new OTLPTraceExporter({
-        url: import.meta.env.VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
-      }),
-    ),
-  );
 
   const contextManager = new ZoneContextManager();
 

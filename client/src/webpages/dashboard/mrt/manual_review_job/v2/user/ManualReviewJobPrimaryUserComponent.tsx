@@ -22,12 +22,14 @@ import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImage
 import ManualReviewJobCurrentJobsComponent from './ManualReviewJobCurrentJobsComponent';
 import ManualReviewJobLatestSubmissionsWithThreadComponent from './ManualReviewJobLatestSubmissionsWithThreadComponent';
 import ManualReviewJobRelatedUserComponent from './ManualReviewJobRelatedUserComponent';
-import { convertRelatedItemToFieldData } from './ManualReviewJobUserUtils';
+import {
+  convertRelatedItemToFieldData,
+  userStrikeCountField,
+} from './ManualReviewJobUserUtils';
 
 export default function ManualReviewJobPrimaryUserComponent(props: {
   user: GQLUserItem | ItemIdentifier;
   unblurAllMedia: boolean;
-  userScore: number | undefined;
   allItemTypes: readonly GQLItemType[];
   allActions: readonly Pick<
     ManualReviewJobAction,
@@ -46,7 +48,6 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
   const {
     user,
     unblurAllMedia,
-    userScore,
     allItemTypes,
     allActions,
     allPolicies,
@@ -181,9 +182,14 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
         <FieldsComponent
           fields={[
             ...convertRelatedItemToFieldData(
-              { id: user.id, typeId: user.type.id, name: 'User Score' },
-              userScore,
+              {
+                id: user.id,
+                typeId: user.type.id,
+                name: user.type.name,
+              },
+              fieldData.map((it) => it.name),
             ),
+            userStrikeCountField(user.userStrikeCount),
             ...fieldData,
           ]}
           itemTypeId={user.type.id}

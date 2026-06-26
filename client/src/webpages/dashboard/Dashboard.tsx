@@ -61,6 +61,13 @@ const lazyRoute =
     Component: (await importFn()).default,
   });
 
+// Redirects to `to` while preserving the current query string, so legacy
+// links carrying params (e.g. ?id=…&typeId=…) don't lose them on redirect.
+function RedirectPreservingSearch({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate replace to={`${to}${search}`} />;
+}
+
 export function DashboardRoutes() {
   return {
     path: 'dashboard',
@@ -325,13 +332,7 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/appeal_settings',
-        handle: {
-          isUsingLegacyCSS: true,
-          error: {
-            buttonTitle: 'Back to Manual Review Queues',
-          },
-        },
-        lazy: lazyRoute(async () => import('./mrt/ManualReviewAppealSettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=appeals" />,
       },
 
       // Redirect old Bulk Actioning Tool and Investigation paths
@@ -342,7 +343,9 @@ export function DashboardRoutes() {
       },
       {
         path: 'investigation',
-        element: <Navigate replace to="../manual_review/investigation" />,
+        element: (
+          <RedirectPreservingSearch to="../manual_review/investigation" />
+        ),
         handle: { isUsingLegacyCSS: true },
       },
 
@@ -375,8 +378,8 @@ export function DashboardRoutes() {
       // Settings
       {
         path: 'settings',
-        element: <Navigate replace to="item_types" />,
-        handle: { isUsingLegacyCSS: true },
+        handle: { isUsingLegacyCSS: false },
+        lazy: lazyRoute(async () => import('../settings/SettingsPage')),
       },
       {
         path: 'settings/item_types',
@@ -442,8 +445,7 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/org_safety_settings',
-        handle: { isUsingLegacyCSS: false },
-        lazy: lazyRoute(async () => import('../settings/OrgSafetySettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=wellness" />,
       },
       {
         path: 'settings/ncmec',
@@ -457,13 +459,15 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/sso',
-        handle: { isUsingLegacyCSS: true },
-        lazy: lazyRoute(async () => import('../settings/SSOSettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=sso" />,
       },
       {
         path: 'settings/organization',
-        handle: { isUsingLegacyCSS: false },
-        lazy: lazyRoute(async () => import('../settings/OrgSettings')),
+        element: <Navigate replace to="/dashboard/settings?tab=organization" />,
+      },
+      {
+        path: 'settings/deployment',
+        element: <Navigate replace to="/dashboard/settings?tab=other" />,
       },
       {
         path: 'settings/job_priorities',
@@ -645,21 +649,9 @@ export default function Dashboard() {
           urlPath: 'users',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
-        data?.myOrg?.hasAppealsEnabled
-          ? {
-              title: 'Appeal Settings' as const,
-              urlPath: 'appeal_settings',
-              requiredPermissions: [],
-            }
-          : null,
         {
-          title: 'Wellness' as const,
-          urlPath: 'org_safety_settings',
-          requiredPermissions: [GQLUserPermission.ManageOrg],
-        },
-        {
-          title: 'Organization' as const,
-          urlPath: 'organization',
+          title: 'Settings' as const,
+          urlPath: '',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
         {
@@ -700,10 +692,12 @@ export default function Dashboard() {
         return;
       }
       if (item.subItems) {
-        // If the item has subItems, we should continue searching down that path
-        items = item.subItems;
+        if (i === pathParts.length - 1) {
+          setSelectedMenuItem(item.title);
+        } else {
+          items = item.subItems;
+        }
       } else {
-        // If the item has no subItems, just return the item's title
         setSelectedMenuItem(item.title);
       }
     }

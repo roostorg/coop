@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type Bottle from '@ethanresnick/bottlejs';
 
-import { __throw } from '../utils/misc.js';
 import { jsonStringify } from '../utils/encoding.js';
+import { __throw } from '../utils/misc.js';
 import { type Dependencies as Deps } from './index.js';
 
 const DEPENDENCIES = Symbol();

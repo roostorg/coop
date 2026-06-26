@@ -1,13 +1,13 @@
+import { type GQLActionParameter } from '@/graphql/generated';
 import { Tooltip } from 'antd';
 import { useEffect, useState } from 'react';
 
 import CoopModal from '@/webpages/dashboard/components/CoopModal';
 import { type CoopModalFooterButtonProps } from '@/webpages/dashboard/components/CoopModalFooter';
-import { type GQLActionParameter } from '@/graphql/generated';
 
 import ActionParameterInputs, {
-  type ActionParameterValues,
   findMissingRequiredParameters,
+  type ActionParameterValues,
 } from './ActionParameterInputs';
 
 type Props = {
@@ -88,7 +88,11 @@ export default function ActionParametersModal({
         {!canSave && (
           <Tooltip title={`Missing: ${missing.join(', ')}`}>
             <div className="mt-3 text-xs text-coop-alert-red">
-              Fill in {missing.length === 1 ? 'the required field' : 'all required fields'} to continue.
+              Fill in{' '}
+              {missing.length === 1
+                ? 'the required field'
+                : 'all required fields'}{' '}
+              to continue.
             </div>
           </Tooltip>
         )}

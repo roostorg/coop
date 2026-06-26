@@ -166,7 +166,9 @@ export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col space-y-4">
       <div className="flex items-center space-x-4">
-        <Text size="XS" className="w-20">Small:</Text>
+        <Text size="XS" className="w-20">
+          Small:
+        </Text>
         <Select>
           <SelectTrigger className="w-[180px]" size="small">
             <SelectValue placeholder="Small select" />
@@ -182,7 +184,9 @@ export const Sizes: Story = {
       </div>
 
       <div className="flex items-center space-x-4">
-        <Text size="XS" className="w-20">Medium (default):</Text>
+        <Text size="XS" className="w-20">
+          Medium (default):
+        </Text>
         <Select>
           <SelectTrigger className="w-[180px]" size="medium">
             <SelectValue placeholder="Medium select" />
@@ -198,7 +202,9 @@ export const Sizes: Story = {
       </div>
 
       <div className="flex items-center space-x-4">
-        <Text size="XS" className="w-20">Large:</Text>
+        <Text size="XS" className="w-20">
+          Large:
+        </Text>
         <Select>
           <SelectTrigger className="w-[180px]" size="large">
             <SelectValue placeholder="Large select" />

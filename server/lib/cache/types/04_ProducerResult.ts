@@ -1,6 +1,6 @@
-import type { AnyParams } from "./01_Params.js";
-import { type AnyValidators } from "./02_Validators.js";
-import { type NormalizedProducerResultResource } from "./index.js";
+import type { AnyParams } from './01_Params.js';
+import { type AnyValidators } from './02_Validators.js';
+import { type NormalizedProducerResultResource } from './index.js';
 
 /**
  * ProducerResult represents the shape of messages returned by a service

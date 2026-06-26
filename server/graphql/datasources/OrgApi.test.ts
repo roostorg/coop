@@ -4,18 +4,13 @@ import { uid } from 'uid';
 import { UserRole } from '../../services/userManagementService/index.js';
 import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
-import { makeMockedServer } from '../../test/setupMockedServer.js';
-import { makeTestWithFixture } from '../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { CoopError } from '../../utils/errors.js';
-import {
-  kyselyUserDeleteById,
-  kyselyUserInsert,
-} from './userKyselyPersistence.js';
+import { kyselyUserInsert } from './userKyselyPersistence.js';
 
 describe('OrgAPI', () => {
-  const testWithFixture = makeTestWithFixture(async () => {
-    const { deps, shutdown } = await makeMockedServer();
-    const { org, cleanup: orgCleanup } = await createOrg(
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
       {
         KyselyPg: deps.KyselyPg,
         ModerationConfigService: deps.ModerationConfigService,
@@ -23,14 +18,7 @@ describe('OrgAPI', () => {
       },
       uid(),
     );
-    return {
-      deps,
-      org,
-      async cleanup() {
-        await orgCleanup();
-        await shutdown();
-      },
-    };
+    return { org };
   });
 
   describe('getGraphQLOrgFromId', () => {
@@ -138,29 +126,25 @@ describe('OrgAPI', () => {
     testWithFixture(
       'returns every item type for the org with the fields read by the ContentType resolver',
       async ({ deps, org }) => {
-        const { itemTypes, cleanup } = await createContentItemTypes({
+        const { itemTypes } = await createContentItemTypes({
           moderationConfigService: deps.ModerationConfigService,
           orgId: org.id,
           numItemTypes: 1,
           extra: {},
         });
-        try {
-          const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
-            org.id,
-          );
-          const actualIds = new Set(result.map((it) => it.id));
-          for (const created of itemTypes) {
-            expect(actualIds.has(created.id)).toBe(true);
-          }
-          for (const it of result) {
-            expect(it.orgId).toBe(org.id);
-            expect(typeof it.id).toBe('string');
-            expect(typeof it.name).toBe('string');
-            expect(['CONTENT', 'USER', 'THREAD']).toContain(it.kind);
-            expect(Array.isArray(it.schema)).toBe(true);
-          }
-        } finally {
-          await cleanup();
+        const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
+          org.id,
+        );
+        const actualIds = new Set(result.map((it) => it.id));
+        for (const created of itemTypes) {
+          expect(actualIds.has(created.id)).toBe(true);
+        }
+        for (const it of result) {
+          expect(it.orgId).toBe(org.id);
+          expect(typeof it.id).toBe('string');
+          expect(typeof it.name).toBe('string');
+          expect(['CONTENT', 'USER', 'THREAD']).toContain(it.kind);
+          expect(Array.isArray(it.schema)).toBe(true);
         }
       },
     );
@@ -179,7 +163,7 @@ describe('OrgAPI', () => {
     testWithFixture(
       'does not leak item types across orgs',
       async ({ deps, org }) => {
-        const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
+        const { org: otherOrg } = await createOrg(
           {
             KyselyPg: deps.KyselyPg,
             ModerationConfigService: deps.ModerationConfigService,
@@ -187,16 +171,12 @@ describe('OrgAPI', () => {
           },
           uid(),
         );
-        try {
-          const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
-            org.id,
-          );
-          for (const it of result) {
-            expect(it.orgId).toBe(org.id);
-            expect(it.orgId).not.toBe(otherOrg.id);
-          }
-        } finally {
-          await otherOrgCleanup();
+        const result = await deps.OrgAPIDataSource.getContentTypesForOrg(
+          org.id,
+        );
+        for (const it of result) {
+          expect(it.orgId).toBe(org.id);
+          expect(it.orgId).not.toBe(otherOrg.id);
         }
       },
     );
@@ -230,22 +210,15 @@ describe('OrgAPI', () => {
           loginMethods: ['saml'],
           password: null,
         });
-        try {
-          const users = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(
-            org.id,
-          );
-          const ids = users.map((u) => u.id).sort();
-          expect(ids).toEqual([adminId, analystId].sort());
-          const admin = users.find((u) => u.id === adminId)!;
-          const analyst = users.find((u) => u.id === analystId)!;
-          expect(admin.getPermissions()).toEqual(
-            expect.arrayContaining(['EDIT_MRT_QUEUES']),
-          );
-          expect(analyst.getPermissions()).not.toContain('EDIT_MRT_QUEUES');
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, adminId);
-          await kyselyUserDeleteById(deps.KyselyPg, analystId);
-        }
+        const users = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(org.id);
+        const ids = users.map((u) => u.id).sort();
+        expect(ids).toEqual([adminId, analystId].sort());
+        const admin = users.find((u) => u.id === adminId)!;
+        const analyst = users.find((u) => u.id === analystId)!;
+        expect(admin.getPermissions()).toEqual(
+          expect.arrayContaining(['EDIT_MRT_QUEUES']),
+        );
+        expect(analyst.getPermissions()).not.toContain('EDIT_MRT_QUEUES');
       },
     );
 
@@ -262,7 +235,7 @@ describe('OrgAPI', () => {
     testWithFixture(
       'does not leak users across orgs',
       async ({ deps, org }) => {
-        const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
+        const { org: otherOrg } = await createOrg(
           {
             KyselyPg: deps.KyselyPg,
             ModerationConfigService: deps.ModerationConfigService,
@@ -282,15 +255,10 @@ describe('OrgAPI', () => {
           loginMethods: ['saml'],
           password: null,
         });
-        try {
-          const result = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(
-            org.id,
-          );
-          expect(result.find((u) => u.id === otherUserId)).toBeUndefined();
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, otherUserId);
-          await otherOrgCleanup();
-        }
+        const result = await deps.OrgAPIDataSource.getOrgUsersForGraphQL(
+          org.id,
+        );
+        expect(result.find((u) => u.id === otherUserId)).toBeUndefined();
       },
     );
   });

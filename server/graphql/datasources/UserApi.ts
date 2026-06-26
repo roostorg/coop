@@ -2,8 +2,10 @@ import { type Exception } from '@opentelemetry/api';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
+  deleteSessionsForUser,
   hashPassword,
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
@@ -12,6 +14,7 @@ import {
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
 import {
@@ -233,6 +236,9 @@ class UserAPI {
   async changePassword(
     user: GraphQLUserParent,
     params: { currentPassword: string; newPassword: string },
+    // The caller's current session id, preserved so the user isn't logged out
+    // of the session they're changing their password from.
+    currentSid?: string,
   ) {
     const { currentPassword, newPassword } = params;
 
@@ -262,15 +268,24 @@ class UserAPI {
     }
 
     const hashedNewPassword = await hashPassword(newPassword);
-    const updated = await kyselyUserUpdate(this.kyselyPg, user.id, {
-      password: hashedNewPassword,
-    });
-    if (updated == null) {
-      // Row went missing between load and update (e.g. concurrent delete).
-      throw makeNotFoundError(`User ${user.id} not found`, {
-        shouldErrorSpan: true,
-      });
-    }
+    // Update the password and invalidate the user's other sessions atomically:
+    // if the session purge failed independently, a phished/attacker session
+    // could outlive the password change. Keep the caller's own session.
+    await makeKyselyTransactionWithRetry<CombinedPg>(this.kyselyPg)(
+      async (trx) => {
+        const updated = await kyselyUserUpdate(trx, user.id, {
+          password: hashedNewPassword,
+        });
+        if (updated == null) {
+          // Row went missing between load and update (e.g. concurrent delete).
+          throw makeNotFoundError(`User ${user.id} not found`, {
+            shouldErrorSpan: true,
+          });
+        }
+
+        await deleteSessionsForUser(trx, user.id, { exceptSid: currentSid });
+      },
+    );
 
     return {
       __typename: 'ChangePasswordSuccessResponse' as const,
