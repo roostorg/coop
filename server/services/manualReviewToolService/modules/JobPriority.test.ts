@@ -2,6 +2,7 @@ import type { ItemSubmissionWithTypeIdentifier } from '../../itemProcessingServi
 import {
   getJobPriorityForItem,
   JobSortType,
+  normalizeJobSortType,
   toBullPriority,
   type JobPropertyKey,
 } from './JobPriority.js';
@@ -345,6 +346,59 @@ describe('JobPriority', () => {
       });
     });
 
+    test('report count saturates: +10 reports matters far more at low counts than high', async () => {
+      // Normalized as reports / (reports + K), so equal increments have
+      // diminishing returns — a viral item can't infinitely outrank everything.
+      const w = new Map<JobPropertyKey, number>([['numReports', 10]]);
+      const at0 = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 0,
+        weights: w,
+      });
+      const at10 = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 10,
+        weights: w,
+      });
+      const at100 = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 100,
+        weights: w,
+      });
+      const at110 = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 110,
+        weights: w,
+      });
+      // Priority is MAX - score; more reports => lower number. The 0->10 jump
+      // should dwarf the 100->110 jump.
+      expect(at0 - at10).toBeGreaterThan(at100 - at110);
+    });
+
+    test('with comparable weights, a worse user outranks an item with more reports', async () => {
+      // The whole point of normalizing both signals to [0, 1]: equal weights
+      // now mean equal importance, so a repeat offender with few reports can
+      // beat a clean user with many. (reports 30 -> 0.75*10 = 7.5; worst user
+      // -> 1.0*10 = 10, plus a little from 3 reports.)
+      const weights = new Map<JobPropertyKey, number>([
+        ['numReports', 10],
+        ['userScore', 10],
+      ]);
+      const manyReportsCleanUser = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 30,
+        userScore: 5,
+        weights,
+      });
+      const fewReportsWorstUser = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 3,
+        userScore: 1,
+        weights,
+      });
+      expect(fewReportsWorstUser).toBeLessThan(manyReportsCleanUser);
+    });
+
     test('output always fits in BullMQ priority range across realistic inputs', async () => {
       for (const reports of [
         0,
@@ -372,6 +426,23 @@ describe('JobPriority', () => {
           }
         }
       }
+    });
+  });
+
+  describe('normalizeJobSortType', () => {
+    test('passes known sort types through unchanged', () => {
+      expect(normalizeJobSortType('FIFO')).toBe(JobSortType.FIFO);
+      expect(normalizeJobSortType('NUM_REPORTS')).toBe(JobSortType.NUM_REPORTS);
+      // Regression: WEIGHTED used to be collapsed to FIFO at enqueue time, so
+      // a weighted queue ignored its weights for newly enqueued jobs.
+      expect(normalizeJobSortType('WEIGHTED')).toBe(JobSortType.WEIGHTED);
+    });
+
+    test('defaults missing / unrecognized values to FIFO', () => {
+      expect(normalizeJobSortType(undefined)).toBe(JobSortType.FIFO);
+      expect(normalizeJobSortType(null)).toBe(JobSortType.FIFO);
+      expect(normalizeJobSortType('')).toBe(JobSortType.FIFO);
+      expect(normalizeJobSortType('SOMETHING_ELSE')).toBe(JobSortType.FIFO);
     });
   });
 });
