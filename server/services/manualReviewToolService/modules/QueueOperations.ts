@@ -1216,8 +1216,7 @@ export default class QueueOperations {
     const heldAside: Job<StoredManualReviewJob>[] = [];
 
     try {
-      let hasDecision = true;
-      while (hasDecision) {
+      while (true) {
         // block: false so a drained / all-delayed queue returns null
         // immediately instead of blocking the request. BullMQ's getNextJob
         // defaults to block: true, which made entering an empty queue hang.
@@ -1252,9 +1251,7 @@ export default class QueueOperations {
           .where('id', '=', jobIdToGuid(convertedJob.data.id))
           .executeTakeFirst();
 
-        hasDecision = decision !== undefined;
-
-        if (hasDecision) {
+        if (decision !== undefined) {
           await this.removeJob({
             orgId,
             queueId,
