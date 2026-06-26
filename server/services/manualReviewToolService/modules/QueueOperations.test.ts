@@ -455,14 +455,9 @@ describe('QueueOperations', () => {
       });
       expect(aJob?.job.payload.item.itemId).toBe('item-Y');
 
-      // item-X was released back to the pool (delayed-to-now); promote it so
-      // it's immediately available, then a DIFFERENT reviewer still gets it.
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
-        orgId: org.id,
-        queueId: queue.id,
-      });
-      await bullQueue.promoteJobs();
-
+      // A DIFFERENT reviewer immediately gets item-X: skipping released it back
+      // to the shared pool (delayed-to-now), and reviewer B's own getNextJob
+      // promotes the due job and serves it — no manual promotion needed.
       const bJob = await queueOps.dequeueNextJobWithLock({
         orgId: org.id,
         queueId: queue.id,
