@@ -43,7 +43,6 @@ export type ModerationConfigServicePg = {
     name: GeneratedAlways<string>;
     description: GeneratedAlways<string | null>;
     org_id: GeneratedAlways<string>;
-    created_at: GeneratedAlways<Date>;
     kind: GeneratedAlways<ItemTypeKind>;
     fields: GeneratedAlways<ItemSchema>;
     is_default_user: GeneratedAlways<boolean>;

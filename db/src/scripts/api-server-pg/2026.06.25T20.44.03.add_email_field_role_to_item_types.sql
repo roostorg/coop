@@ -35,11 +35,6 @@ ALTER TABLE public.item_types
 -- item_type_latest_versions view; both are recreated below.
 DROP MATERIALIZED VIEW public.item_type_versions CASCADE;
 
--- `created_at` is included in the recreated view to match the
--- `public.item_type_versions.created_at` column declared in
--- `server/services/moderationConfigService/dbTypes.ts`. The previous
--- `add_ip_address_field_role_to_item_types` migration omitted it; this
--- migration recovers parity with the declared row type.
 CREATE MATERIALIZED VIEW public.item_type_versions AS
 WITH item_type_versions AS (
   SELECT
@@ -48,7 +43,6 @@ WITH item_type_versions AS (
     item_types.description,
     item_types.fields,
     item_types.org_id,
-    item_types.created_at,
     item_types.sys_period,
     item_types.kind,
     item_types.display_name_field,
@@ -70,7 +64,6 @@ WITH item_type_versions AS (
     item_types_history.description,
     item_types_history.fields,
     item_types_history.org_id,
-    item_types_history.created_at,
     item_types_history.sys_period,
     item_types_history.kind,
     item_types_history.display_name_field,
@@ -98,7 +91,6 @@ SELECT
   item_type_versions.description,
   item_type_versions.fields,
   item_type_versions.org_id,
-  item_type_versions.created_at,
   item_type_versions.kind,
   item_type_versions.display_name_field,
   item_type_versions.creator_id_field,
