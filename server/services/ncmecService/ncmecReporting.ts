@@ -681,6 +681,8 @@ export type BuildSubmitReportObjectInput = {
   };
   /** Latest media `createdAt`, already clamped to the past. */
   clampedIncidentDateTime: string;
+  /** Prior accepted NCMEC report IDs for the reported user; renders as `<priorCTReports>`. */
+  priorCTReports?: readonly number[];
 };
 
 /** Build the `Report` envelope NCMEC's `/submit` endpoint expects. Pure: no
@@ -698,6 +700,7 @@ export function buildSubmitReportObject(
     userAdditionalInfo,
     orgSettings,
     clampedIncidentDateTime,
+    priorCTReports,
   } = input;
   const emailStringToNCMECEmail = (email: string) => ({ _text: email });
 
@@ -814,6 +817,9 @@ export function buildSubmitReportObject(
         reportedUserIpCaptureEvents.length > 0
           ? { ipCaptureEvent: reportedUserIpCaptureEvents }
           : {}),
+        ...(priorCTReports && priorCTReports.length > 0
+          ? { priorCTReports: [...priorCTReports] }
+          : {}),
       },
       ...(reportAdditionalInfo !== undefined
         ? { additionalInfo: reportAdditionalInfo }
@@ -825,6 +831,10 @@ export function buildSubmitReportObject(
 export type BuildFileDetailsObjectInput = {
   reportId: number;
   fileId: string;
+  /** Optional `<originalFileName>`. Usually derived via `deriveOriginalFileNameFromUrl`. */
+  originalFileName?: string;
+  /** `<fileRelevance>`. Defaults to `'Reported'`. */
+  fileRelevance?: 'Reported' | 'Supplemental Reported';
   media: Pick<Media, 'industryClassification'> & {
     fileAnnotations?: readonly NCMECFileAnnotationType[];
   };
@@ -838,6 +848,28 @@ export type BuildFileDetailsObjectInput = {
   originalFileHash?: readonly OriginalFileHash[];
 };
 
+/** Decoded last path segment of `url`, or `undefined` if unavailable. */
+export function deriveOriginalFileNameFromUrl(url: string): string | undefined {
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return undefined;
+  }
+  const last = pathname
+    .split('/')
+    .filter((s) => s !== '')
+    .pop();
+  if (!last) return undefined;
+  try {
+    const decoded = decodeURIComponent(last);
+    return decoded.length > 0 ? decoded : undefined;
+  } catch {
+    // Malformed percent-encoding: keep the raw segment.
+    return last;
+  }
+}
+
 /** Pure builder for the `FileDetails` envelope NCMEC's `/fileinfo`
  * endpoint expects. Used by `submitReport`'s `#upload` step and by
  * dry-run tooling that needs to serialize per-media XML without
@@ -845,7 +877,15 @@ export type BuildFileDetailsObjectInput = {
 export function buildFileDetailsObject(
   input: BuildFileDetailsObjectInput,
 ): FileDetails {
-  const { reportId, fileId, media, additionalInfo, originalFileHash } = input;
+  const {
+    reportId,
+    fileId,
+    media,
+    additionalInfo,
+    originalFileHash,
+    originalFileName,
+  } = input;
+  const fileRelevance = input.fileRelevance ?? 'Reported';
   const fileAnnotations = fileAnnotationArrayToNCMECFileAnnotation(
     media.fileAnnotations,
   );
@@ -853,11 +893,13 @@ export function buildFileDetailsObject(
     fileDetails: {
       reportId,
       fileId,
+      ...(originalFileName ? { originalFileName } : {}),
       fileViewedByEsp: true,
       exifViewedByEsp: true,
       ...(additionalInfo.publiclyAvailable !== undefined
         ? { publiclyAvailable: additionalInfo.publiclyAvailable }
         : {}),
+      fileRelevance,
       ...(fileAnnotations ? { fileAnnotations } : {}),
       industryClassification: media.industryClassification,
       ...(originalFileHash && originalFileHash.length > 0
@@ -1669,6 +1711,28 @@ export default class NcmecReporting {
     return firstReport != null;
   }
 
+  /** Prior accepted NCMEC report IDs for the user, most recent first.
+   * Non-numeric `report_id`s are skipped (XSD requires `xs:integer`). */
+  async getPriorCTReportIds(params: {
+    orgId: string;
+    userId: string;
+    userItemTypeId: string;
+  }): Promise<number[]> {
+    const { orgId, userId, userItemTypeId } = params;
+    const rows = await this.pgQuery
+      .selectFrom('ncmec_reporting.ncmec_reports')
+      .select(['report_id'])
+      .where('org_id', '=', orgId)
+      .where('user_id', '=', userId)
+      .where('user_item_type_id', '=', userItemTypeId)
+      .where('is_test', '=', false)
+      .orderBy('created_at', 'desc')
+      .execute();
+    return rows
+      .map((r) => parseInt(r.report_id, 10))
+      .filter((n) => Number.isFinite(n));
+  }
+
   async submitReport(
     reportParams: NCMECReportParams,
     isTest: boolean,
@@ -1850,6 +1914,16 @@ export default class NcmecReporting {
             );
           }
 
+          // Skip for test submissions: prod and exttest report IDs don't
+          // cross-reference.
+          const priorCTReports = isTest
+            ? []
+            : await this.getPriorCTReportIds({
+                orgId: reportParams.orgId,
+                userId: reportParams.reportedUser.id,
+                userItemTypeId: reportParams.reportedUser.typeId,
+              });
+
           const report = buildSubmitReportObject({
             reportParams,
             userAdditionalInfo,
@@ -1867,6 +1941,7 @@ export default class NcmecReporting {
               moreInfoUrl: ncmecConfig?.more_info_url,
             },
             clampedIncidentDateTime,
+            priorCTReports,
           });
 
           // For the five actions here
@@ -2174,9 +2249,12 @@ export default class NcmecReporting {
       hmaHashes: media.hashes,
       webhookFileDetails: additionalInfo.fileDetails,
     });
+    const originalFileName =
+      additionalInfo.fileName ?? deriveOriginalFileNameFromUrl(media.url);
     const fileDetailsObject = buildFileDetailsObject({
       reportId: parseInt(reportId),
       fileId,
+      ...(originalFileName ? { originalFileName } : {}),
       media,
       additionalInfo,
       ...(originalFileHash ? { originalFileHash } : {}),

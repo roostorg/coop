@@ -1,11 +1,49 @@
 import {
   buildFileDetailsObject,
+  deriveOriginalFileNameFromUrl,
   fileAnnotationArrayToNCMECFileAnnotation,
   NCMECEvent,
   NCMECFileAnnotation,
 } from './ncmecReporting.js';
 
 const INCIDENT_DATE_TIME = '2026-05-27T18:00:00.000Z';
+
+describe('deriveOriginalFileNameFromUrl', () => {
+  it('returns the decoded last path segment', () => {
+    expect(
+      deriveOriginalFileNameFromUrl('https://cdn.example/a/b/cat.jpg'),
+    ).toBe('cat.jpg');
+    expect(
+      deriveOriginalFileNameFromUrl('https://cdn.example/a/my%20file.png'),
+    ).toBe('my file.png');
+  });
+
+  it('ignores query strings and fragments', () => {
+    expect(
+      deriveOriginalFileNameFromUrl('https://cdn.example/img.jpg?token=abc#x'),
+    ).toBe('img.jpg');
+  });
+
+  it('returns undefined for paths without a usable last segment', () => {
+    expect(
+      deriveOriginalFileNameFromUrl('https://cdn.example/'),
+    ).toBeUndefined();
+    expect(
+      deriveOriginalFileNameFromUrl('https://cdn.example'),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined for unparseable URLs', () => {
+    expect(deriveOriginalFileNameFromUrl('not a url')).toBeUndefined();
+    expect(deriveOriginalFileNameFromUrl('')).toBeUndefined();
+  });
+
+  it('falls back to the raw segment on malformed percent-encoding', () => {
+    expect(
+      deriveOriginalFileNameFromUrl('https://cdn.example/a/%E0%A4.jpg'),
+    ).toBe('%E0%A4.jpg');
+  });
+});
 
 describe('fileAnnotationArrayToNCMECFileAnnotation', () => {
   it('returns undefined for empty or missing input', () => {
@@ -59,6 +97,7 @@ describe('buildFileDetailsObject', () => {
         fileId: 'ncmec-file-1',
         fileViewedByEsp: true,
         exifViewedByEsp: true,
+        fileRelevance: 'Reported',
         industryClassification: 'A1',
       },
     });
@@ -71,6 +110,7 @@ describe('buildFileDetailsObject', () => {
     // exttest rejects the report.
     const result = buildFileDetailsObject({
       ...baseInput,
+      originalFileName: 'photo.jpg',
       media: {
         industryClassification: 'A1' as const,
         fileAnnotations: [NCMECFileAnnotation.GENERATIVE_AI],
@@ -91,9 +131,11 @@ describe('buildFileDetailsObject', () => {
     expect(Object.keys(result.fileDetails)).toEqual([
       'reportId',
       'fileId',
+      'originalFileName',
       'fileViewedByEsp',
       'exifViewedByEsp',
       'publiclyAvailable',
+      'fileRelevance',
       'fileAnnotations',
       'industryClassification',
       'originalFileHash',
@@ -121,6 +163,28 @@ describe('buildFileDetailsObject', () => {
     expect(empty.fileDetails).not.toHaveProperty('originalFileHash');
     expect(buildFileDetailsObject(baseInput).fileDetails).not.toHaveProperty(
       'originalFileHash',
+    );
+  });
+
+  it('defaults fileRelevance to "Reported" and accepts an override', () => {
+    expect(buildFileDetailsObject(baseInput).fileDetails.fileRelevance).toBe(
+      'Reported',
+    );
+    expect(
+      buildFileDetailsObject({
+        ...baseInput,
+        fileRelevance: 'Supplemental Reported',
+      }).fileDetails.fileRelevance,
+    ).toBe('Supplemental Reported');
+  });
+
+  it('emits originalFileName when supplied, omits when not', () => {
+    expect(
+      buildFileDetailsObject({ ...baseInput, originalFileName: 'cat.jpg' })
+        .fileDetails.originalFileName,
+    ).toBe('cat.jpg');
+    expect(buildFileDetailsObject(baseInput).fileDetails).not.toHaveProperty(
+      'originalFileName',
     );
   });
 

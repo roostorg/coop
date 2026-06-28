@@ -18,6 +18,7 @@ function makeBuildReportInput(
     userAdditionalInfo?: BuildSubmitReportObjectInput['userAdditionalInfo'];
     orgSettings?: Partial<BuildSubmitReportObjectInput['orgSettings']>;
     clampedIncidentDateTime?: string;
+    priorCTReports?: readonly number[];
   } = {},
 ): BuildSubmitReportObjectInput {
   const { reportParams: paramOverrides, ...rest } = overrides;
@@ -46,6 +47,9 @@ function makeBuildReportInput(
       ...rest.orgSettings,
     },
     clampedIncidentDateTime: rest.clampedIncidentDateTime ?? INCIDENT_DATE_TIME,
+    ...(rest.priorCTReports !== undefined
+      ? { priorCTReports: rest.priorCTReports }
+      : {}),
   };
 }
 
@@ -357,6 +361,46 @@ describe('buildSubmitReportObject', () => {
         }),
       );
       expect(result.report.reporter.termsOfService).toBe('Acme ToS');
+    });
+  });
+
+  describe('priorCTReports', () => {
+    it('populates inside personOrUserReported after ipCaptureEvent', () => {
+      const result = buildSubmitReportObject(
+        makeBuildReportInput({
+          reportParams: {
+            reportedUser: {
+              id: 'user-1',
+              typeId: 'user-type-1',
+              ipAddress: '203.0.113.7',
+            },
+          },
+          priorCTReports: [99, 102, 110],
+        }),
+      );
+      expect(result.report.personOrUserReported?.priorCTReports).toEqual([
+        99, 102, 110,
+      ]);
+      expect(Object.keys(result.report.personOrUserReported!)).toEqual([
+        'espIdentifier',
+        'espService',
+        'screenName',
+        'ipCaptureEvent',
+        'priorCTReports',
+      ]);
+    });
+
+    it('omits the element when empty or unset', () => {
+      const unset = buildSubmitReportObject(makeBuildReportInput());
+      expect(unset.report.personOrUserReported).not.toHaveProperty(
+        'priorCTReports',
+      );
+      const empty = buildSubmitReportObject(
+        makeBuildReportInput({ priorCTReports: [] }),
+      );
+      expect(empty.report.personOrUserReported).not.toHaveProperty(
+        'priorCTReports',
+      );
     });
   });
 });
