@@ -611,6 +611,277 @@ export function resolveReportedPersonEmail(
   return undefined;
 }
 
+/** Maps a list of `NCMECFileAnnotationType` enum values to the
+ * `FileAnnotations` element shape expected by the NCMEC `<fileDetails>` XSD
+ * (each annotation becomes an empty self-closing child element).
+ *
+ * Lives at module scope so the `buildFileDetailsObject` helper and the
+ * dry-run dump script can both build file-details XML without instantiating
+ * `NcmecReportingService`. */
+export function fileAnnotationArrayToNCMECFileAnnotation(
+  fileAnnotations?: readonly NCMECFileAnnotationType[],
+): FileAnnotations | undefined {
+  if (!fileAnnotations || fileAnnotations.length === 0) {
+    return undefined;
+  }
+  // Iterating through a table avoids one branch per annotation, which
+  // previously pushed cyclomatic complexity over the configured ESLint limit
+  // and made the function hard to extend when new annotation types are added.
+  const annotationFieldByType: Record<
+    NCMECFileAnnotationType,
+    keyof FileAnnotations
+  > = {
+    [NCMECFileAnnotation.ANIME_DRAWING_VIRTUAL_HENTAI]:
+      'animeDrawingVirtualHentai',
+    [NCMECFileAnnotation.POTENTIAL_MEME]: 'potentialMeme',
+    [NCMECFileAnnotation.VIRAL]: 'viral',
+    [NCMECFileAnnotation.POSSIBLE_SELF_PRODUCTION]: 'possibleSelfProduction',
+    [NCMECFileAnnotation.PHYSICAL_HARM]: 'physicalHarm',
+    [NCMECFileAnnotation.VIOLENCE_GORE]: 'violenceGore',
+    [NCMECFileAnnotation.BESTIALITY]: 'bestiality',
+    [NCMECFileAnnotation.LIVE_STREAMING]: 'liveStreaming',
+    [NCMECFileAnnotation.INFANT]: 'infant',
+    [NCMECFileAnnotation.GENERATIVE_AI]: 'generativeAi',
+  };
+  const result: FileAnnotations = {};
+  for (const annotation of fileAnnotations) {
+    const field = annotationFieldByType[annotation];
+    result[field] = undefined;
+  }
+  return result;
+}
+
+export type BuildSubmitReportObjectInput = {
+  reportParams: NCMECReportParams;
+  /** Reported user's webhook-derived additional info, from the
+   * `ncmec_additional_info_endpoint` webhook (or defaulted to empty when no
+   * endpoint is configured). */
+  userAdditionalInfo: {
+    email?: Email[];
+    screenName?: string;
+    ipCaptureEvent?: IPNCMECEvent[];
+  };
+  /** Slice of `ncmec_reporting.ncmec_org_settings` needed to build the
+   * report envelope. `companyTemplate`, `legalURL` and `reportingPersonEmail`
+   * are required (the caller validated them). */
+  orgSettings: {
+    companyTemplate: string;
+    legalURL: string;
+    defaultInternetDetailType?: string | null;
+    termsOfService?: string | null;
+    contactPersonEmail?: string | null;
+    contactPersonFirstName?: string | null;
+    contactPersonLastName?: string | null;
+    contactPersonPhone?: string | null;
+    /** From `ncmec_org_settings.contact_email`. */
+    reportingPersonEmail: string;
+    /** Optional URL used to populate `webPageIncident.url` when the org's
+     * `defaultInternetDetailType` is WEB_PAGE. */
+    moreInfoUrl?: string | null;
+  };
+  /** Latest media `createdAt`, already clamped to the past. */
+  clampedIncidentDateTime: string;
+};
+
+/** Build the `Report` envelope NCMEC's `/submit` endpoint expects. Pure: no
+ * DB or HTTP. The caller is responsible for resolving org settings and
+ * webhook-sourced additional info; this function only assembles them in the
+ * XSD-mandated order. Used by `submitReport` and by audit/dump tooling. */
+ 
+// further decomposition would obscure the XSD-mandated insertion order (see
+// the `Report` type comment) that NCMEC validates against.
+export function buildSubmitReportObject(
+  input: BuildSubmitReportObjectInput,
+): Report {
+  const {
+    reportParams,
+    userAdditionalInfo,
+    orgSettings,
+    clampedIncidentDateTime,
+  } = input;
+  const emailStringToNCMECEmail = (email: string) => ({ _text: email });
+
+  const incidentType =
+    NCMECIncidentType[reportParams.incidentType as NCMECIncidentType];
+
+  const escalateToHighPriority =
+    reportParams.escalateToHighPriority != null
+      ? reportParams.escalateToHighPriority.trim()
+      : undefined;
+  if (
+    escalateToHighPriority !== undefined &&
+    (escalateToHighPriority === '' || escalateToHighPriority.length > 3000)
+  ) {
+    throw new Error(
+      'escalateToHighPriority must be non-blank when supplied and at most 3000 characters',
+    );
+  }
+
+  const reportAdditionalInfo =
+    reportParams.additionalInfo != null
+      ? reportParams.additionalInfo.trim()
+      : undefined;
+  if (
+    reportAdditionalInfo !== undefined &&
+    (reportAdditionalInfo === '' || reportAdditionalInfo.length > 3000)
+  ) {
+    throw new Error(
+      'additionalInfo must be non-blank when supplied and at most 3000 characters',
+    );
+  }
+
+  const internetDetails = buildInternetDetailsFromOrgSetting(
+    orgSettings.defaultInternetDetailType,
+    orgSettings.moreInfoUrl,
+  );
+
+  const contactPersonEmail = orgSettings.contactPersonEmail?.trim();
+  const contactPersonFirstName = orgSettings.contactPersonFirstName?.trim();
+  const contactPersonLastName = orgSettings.contactPersonLastName?.trim();
+  const contactPersonPhone = orgSettings.contactPersonPhone?.trim();
+  const contactPerson =
+    contactPersonEmail ||
+    contactPersonFirstName ||
+    contactPersonLastName ||
+    contactPersonPhone
+      ? {
+          ...(contactPersonFirstName
+            ? { firstName: contactPersonFirstName }
+            : {}),
+          ...(contactPersonLastName ? { lastName: contactPersonLastName } : {}),
+          ...(contactPersonPhone
+            ? { phone: { _text: contactPersonPhone } }
+            : {}),
+          ...(contactPersonEmail
+            ? { email: [emailStringToNCMECEmail(contactPersonEmail)] }
+            : {}),
+        }
+      : undefined;
+
+  const termsOfService =
+    orgSettings.termsOfService != null &&
+    orgSettings.termsOfService.trim() !== '' &&
+    orgSettings.termsOfService.length <= 3000
+      ? orgSettings.termsOfService.trim()
+      : undefined;
+
+  const reportedPersonEmail = resolveReportedPersonEmail(
+    userAdditionalInfo.email,
+    reportParams.reportedUser.email,
+  );
+  const personOrUserReportedPerson = reportedPersonEmail
+    ? { email: reportedPersonEmail }
+    : undefined;
+
+  // The role IP is a bare string, not a login/upload signal, so `Unknown` is
+  // the safest event-name claim.
+  const reportedUserIpCaptureEvents = mergeFieldRoleIpIntoEvents(
+    userAdditionalInfo.ipCaptureEvent,
+    reportParams.reportedUser.ipCaptureEvent,
+    reportParams.reportedUser.ipAddress,
+    {
+      eventName: NCMECEvent.Unknown,
+      dateTime: clampedIncidentDateTime,
+    },
+  );
+
+  return {
+    report: {
+      incidentSummary: {
+        incidentType,
+        ...(escalateToHighPriority ? { escalateToHighPriority } : {}),
+        incidentDateTime: clampedIncidentDateTime,
+      },
+      ...(internetDetails ? { internetDetails } : {}),
+      reporter: {
+        reportingPerson: {
+          email: [emailStringToNCMECEmail(orgSettings.reportingPersonEmail)],
+        },
+        ...(contactPerson ? { contactPerson } : {}),
+        companyTemplate: orgSettings.companyTemplate,
+        ...(termsOfService ? { termsOfService } : {}),
+        legalURL: orgSettings.legalURL,
+      },
+      personOrUserReported: {
+        ...(personOrUserReportedPerson ? { personOrUserReportedPerson } : {}),
+        espIdentifier: reportParams.reportedUser.id,
+        espService: orgSettings.companyTemplate,
+        screenName: userAdditionalInfo.screenName,
+        ...(reportParams.reportedUser.displayName
+          ? { displayName: [reportParams.reportedUser.displayName] }
+          : {}),
+        ...(reportedUserIpCaptureEvents &&
+        reportedUserIpCaptureEvents.length > 0
+          ? { ipCaptureEvent: reportedUserIpCaptureEvents }
+          : {}),
+      },
+      ...(reportAdditionalInfo !== undefined
+        ? { additionalInfo: reportAdditionalInfo }
+        : {}),
+    },
+  };
+}
+
+export type BuildFileDetailsObjectInput = {
+  reportId: number;
+  fileId: string;
+  media: Pick<Media, 'industryClassification'> & {
+    fileAnnotations?: readonly NCMECFileAnnotationType[];
+  };
+  additionalInfo: Pick<
+    MediaAdditionalInfo,
+    'publiclyAvailable' | 'ipCaptureEvent' | 'additionalInfo'
+  >;
+  /** Combined HMA + webhook hashes as built by `toOriginalFileHashes`.
+   * Rendered in the `<originalFileHash>` element(s) between
+   * `industryClassification` and `ipCaptureEvent` per the XSD. */
+  originalFileHash?: readonly OriginalFileHash[];
+};
+
+/** Pure builder for the `FileDetails` envelope NCMEC's `/fileinfo`
+ * endpoint expects. Used by `submitReport`'s `#upload` step and by
+ * dry-run tooling that needs to serialize per-media XML without
+ * performing the upload. No DB or HTTP calls. */
+export function buildFileDetailsObject(
+  input: BuildFileDetailsObjectInput,
+): FileDetails {
+  const { reportId, fileId, media, additionalInfo, originalFileHash } = input;
+  const fileAnnotations = fileAnnotationArrayToNCMECFileAnnotation(
+    media.fileAnnotations,
+  );
+  return {
+    fileDetails: {
+      reportId,
+      fileId,
+      fileViewedByEsp: true,
+      exifViewedByEsp: true,
+      ...(additionalInfo.publiclyAvailable !== undefined
+        ? { publiclyAvailable: additionalInfo.publiclyAvailable }
+        : {}),
+      ...(fileAnnotations ? { fileAnnotations } : {}),
+      industryClassification: media.industryClassification,
+      ...(originalFileHash && originalFileHash.length > 0
+        ? { originalFileHash: [...originalFileHash] }
+        : {}),
+      ...(additionalInfo.ipCaptureEvent &&
+      additionalInfo.ipCaptureEvent.length > 0
+        ? {
+            ipCaptureEvent: additionalInfo.ipCaptureEvent.map((it) => ({
+              ipAddress: it.ipAddress,
+              eventName: it.eventName,
+              dateTime: it.dateTime,
+              ...(it.possibleProxy ? { possibleProxy: it.possibleProxy } : {}),
+              ...(it.port ? { port: it.port } : {}),
+            })),
+          }
+        : {}),
+      ...(additionalInfo.additionalInfo
+        ? { additionalInfo: additionalInfo.additionalInfo }
+        : {}),
+    },
+  };
+}
+
 export function buildInternetDetailsFromOrgSetting(
   defaultInternetDetailType: string | null | undefined,
   moreInfoUrl: string | null | undefined,
@@ -1570,44 +1841,7 @@ export default class NcmecReporting {
               it.id === reportParams.reportedUser.id &&
               it.typeId === reportParams.reportedUser.typeId,
           )!;
-          const emailStringToNCMECEmail = (email: string) => ({ _text: email });
           const ncmecConfig = await this.getNCMECConfig(reportParams.orgId);
-
-          // Use the incident type from the report params
-          const incidentType =
-            NCMECIncidentType[reportParams.incidentType as NCMECIncidentType];
-
-          const escalateToHighPriority =
-            reportParams.escalateToHighPriority != null
-              ? reportParams.escalateToHighPriority.trim()
-              : undefined;
-          if (
-            escalateToHighPriority !== undefined &&
-            (escalateToHighPriority === '' ||
-              escalateToHighPriority.length > 3000)
-          ) {
-            throw new Error(
-              'escalateToHighPriority must be non-blank when supplied and at most 3000 characters',
-            );
-          }
-
-          const reportAdditionalInfo =
-            reportParams.additionalInfo != null
-              ? reportParams.additionalInfo.trim()
-              : undefined;
-          if (
-            reportAdditionalInfo !== undefined &&
-            (reportAdditionalInfo === '' || reportAdditionalInfo.length > 3000)
-          ) {
-            throw new Error(
-              'additionalInfo must be non-blank when supplied and at most 3000 characters',
-            );
-          }
-
-          const internetDetails = buildInternetDetailsFromOrgSetting(
-            queryResponse.defaultInternetDetailType,
-            ncmecConfig?.more_info_url,
-          );
 
           const reportingPersonEmail = ncmecConfig?.contact_email?.trim();
           if (!reportingPersonEmail) {
@@ -1616,99 +1850,24 @@ export default class NcmecReporting {
             );
           }
 
-          const contactPersonEmail = queryResponse.contactPersonEmail?.trim();
-          const contactPersonFirstName =
-            queryResponse.contactPersonFirstName?.trim();
-          const contactPersonLastName =
-            queryResponse.contactPersonLastName?.trim();
-          const contactPersonPhone = queryResponse.contactPersonPhone?.trim();
-          const contactPerson =
-            contactPersonEmail ||
-            contactPersonFirstName ||
-            contactPersonLastName ||
-            contactPersonPhone
-              ? {
-                  ...(contactPersonFirstName
-                    ? { firstName: contactPersonFirstName }
-                    : {}),
-                  ...(contactPersonLastName
-                    ? { lastName: contactPersonLastName }
-                    : {}),
-                  ...(contactPersonPhone
-                    ? { phone: { _text: contactPersonPhone } }
-                    : {}),
-                  ...(contactPersonEmail
-                    ? { email: [emailStringToNCMECEmail(contactPersonEmail)] }
-                    : {}),
-                }
-              : undefined;
-
-          const termsOfService =
-            queryResponse.termsOfService != null &&
-            queryResponse.termsOfService.trim() !== '' &&
-            queryResponse.termsOfService.length <= 3000
-              ? queryResponse.termsOfService.trim()
-              : undefined;
-
-          const reportedPersonEmail = resolveReportedPersonEmail(
-            userAdditionalInfo.email,
-            reportParams.reportedUser.email,
-          );
-          const personOrUserReportedPerson = reportedPersonEmail
-            ? { email: reportedPersonEmail }
-            : undefined;
-
-          // The role IP is a bare string, not a login/upload signal, so
-          // `Unknown` is the safest event-name claim.
-          const reportedUserIpCaptureEvents = mergeFieldRoleIpIntoEvents(
-            userAdditionalInfo.ipCaptureEvent,
-            reportParams.reportedUser.ipCaptureEvent,
-            reportParams.reportedUser.ipAddress,
-            {
-              eventName: NCMECEvent.Unknown,
-              dateTime: clampedIncidentDateTime,
+          const report = buildSubmitReportObject({
+            reportParams,
+            userAdditionalInfo,
+            orgSettings: {
+              companyTemplate: queryResponse.companyTemplate,
+              legalURL: queryResponse.legalURL,
+              defaultInternetDetailType:
+                queryResponse.defaultInternetDetailType,
+              termsOfService: queryResponse.termsOfService,
+              contactPersonEmail: queryResponse.contactPersonEmail,
+              contactPersonFirstName: queryResponse.contactPersonFirstName,
+              contactPersonLastName: queryResponse.contactPersonLastName,
+              contactPersonPhone: queryResponse.contactPersonPhone,
+              reportingPersonEmail,
+              moreInfoUrl: ncmecConfig?.more_info_url,
             },
-          );
-
-          const report: Report = {
-            report: {
-              incidentSummary: {
-                incidentType,
-                ...(escalateToHighPriority ? { escalateToHighPriority } : {}),
-                incidentDateTime: clampedIncidentDateTime,
-              },
-              ...(internetDetails ? { internetDetails } : {}),
-              reporter: {
-                reportingPerson: {
-                  email: [emailStringToNCMECEmail(reportingPersonEmail)],
-                },
-                ...(contactPerson ? { contactPerson } : {}),
-                companyTemplate: queryResponse.companyTemplate,
-                ...(termsOfService ? { termsOfService } : {}),
-                legalURL: queryResponse.legalURL,
-              },
-              personOrUserReported: {
-                ...(personOrUserReportedPerson
-                  ? { personOrUserReportedPerson }
-                  : {}),
-                espIdentifier: reportParams.reportedUser.id,
-                espService: queryResponse.companyTemplate,
-                screenName: userAdditionalInfo.screenName,
-                ...(reportParams.reportedUser.displayName
-                  ? {
-                      displayName: [reportParams.reportedUser.displayName],
-                    }
-                  : {}),
-                ...(reportedUserIpCaptureEvents &&
-                reportedUserIpCaptureEvents.length > 0
-                  ? { ipCaptureEvent: reportedUserIpCaptureEvents }
-                  : {}),
-              },
-              ...(reportAdditionalInfo !== undefined
-                ? { additionalInfo: reportAdditionalInfo }
-                : {}),
-            },
-          };
+            clampedIncidentDateTime,
+          });
 
           // For the five actions here
           // 1. #submit
@@ -2011,47 +2170,19 @@ export default class NcmecReporting {
       throw new Error('NCMEC file upload failed.');
     }
     const fileId = responseJson.reportResponse.fileId._text;
-    const fileAnnotations = this.#fileAnnotationArrayToNCMECFileAnnotation(
-      media.fileAnnotations,
-    );
     const originalFileHash = toOriginalFileHashes({
       hmaHashes: media.hashes,
       webhookFileDetails: additionalInfo.fileDetails,
     });
+    const fileDetailsObject = buildFileDetailsObject({
+      reportId: parseInt(reportId),
+      fileId,
+      media,
+      additionalInfo,
+      ...(originalFileHash ? { originalFileHash } : {}),
+    });
     const xml = await this.#uploadFileDetails(
-      {
-        fileDetails: {
-          reportId: parseInt(reportId),
-          fileId,
-          fileViewedByEsp: true,
-          exifViewedByEsp: true,
-          ...(additionalInfo.publiclyAvailable !== undefined
-            ? { publiclyAvailable: additionalInfo.publiclyAvailable }
-            : {}),
-          ...(fileAnnotations ? { fileAnnotations } : {}),
-          industryClassification: media.industryClassification,
-          ...(originalFileHash && originalFileHash.length > 0
-            ? { originalFileHash }
-            : {}),
-          ...(additionalInfo.ipCaptureEvent &&
-          additionalInfo.ipCaptureEvent.length > 0
-            ? {
-                ipCaptureEvent: additionalInfo.ipCaptureEvent.map((it) => ({
-                  ipAddress: it.ipAddress,
-                  eventName: it.eventName,
-                  dateTime: it.dateTime,
-                  ...(it.possibleProxy
-                    ? { possibleProxy: it.possibleProxy }
-                    : {}),
-                  ...(it.port ? { port: it.port } : {}),
-                })),
-              }
-            : {}),
-          ...(additionalInfo.additionalInfo
-            ? { additionalInfo: additionalInfo.additionalInfo }
-            : {}),
-        },
-      },
+      fileDetailsObject,
       cybertipAuthenticationCredentials,
       isTest,
     );
@@ -2061,42 +2192,6 @@ export default class NcmecReporting {
       typeId: media.typeId,
       xml,
     };
-  }
-
-  #fileAnnotationArrayToNCMECFileAnnotation(
-    fileAnnotations?: readonly NCMECFileAnnotationType[],
-  ): FileAnnotations | undefined {
-    if (!fileAnnotations || fileAnnotations.length === 0) {
-      return undefined;
-    }
-    // Map each NCMEC annotation enum value to the corresponding XML field
-    // name. Iterating through the table avoids one logical branch per
-    // annotation, which previously pushed cyclomatic complexity over the
-    // configured ESLint limit and made the function hard to extend when new
-    // annotation types are added.
-    const annotationFieldByType: Record<
-      NCMECFileAnnotationType,
-      keyof FileAnnotations
-    > = {
-      [NCMECFileAnnotation.ANIME_DRAWING_VIRTUAL_HENTAI]:
-        'animeDrawingVirtualHentai',
-      [NCMECFileAnnotation.POTENTIAL_MEME]: 'potentialMeme',
-      [NCMECFileAnnotation.VIRAL]: 'viral',
-      [NCMECFileAnnotation.POSSIBLE_SELF_PRODUCTION]: 'possibleSelfProduction',
-      [NCMECFileAnnotation.PHYSICAL_HARM]: 'physicalHarm',
-      [NCMECFileAnnotation.VIOLENCE_GORE]: 'violenceGore',
-      [NCMECFileAnnotation.BESTIALITY]: 'bestiality',
-      [NCMECFileAnnotation.LIVE_STREAMING]: 'liveStreaming',
-      [NCMECFileAnnotation.INFANT]: 'infant',
-      [NCMECFileAnnotation.GENERATIVE_AI]: 'generativeAi',
-    };
-
-    const result: FileAnnotations = {};
-    for (const annotation of fileAnnotations) {
-      const field = annotationFieldByType[annotation];
-      result[field] = undefined;
-    }
-    return result;
   }
 
   async #uploadFileDetails(
