@@ -107,41 +107,41 @@ export function createTransactionalTestDb(
 
   // ─────────────────────────────────────────────────────────────────────
   // One test = one real Postgres connection (the `client` above). Every
-  // `pool.connect()` returns a thin facade forwarding to it. This lets a
-  // test read its own writes: everything runs in one outer transaction on
-  // one connection, rolled back at the end.
+  // `pool.connect()` returns a thin facade forwarding to it, so a test reads
+  // its own writes: everything runs in one outer transaction, rolled back at
+  // the end. Each test has its own pg.Client (see transactionalTest.ts), so
+  // this serializes concurrent work *within* one test, not across tests.
   //
-  // The catch: pg's node driver only keeps query order if WE await each
-  // drive before starting the next. Once two awaits run concurrently on
-  // the same connection (Promise.all, background cache refreshers, …),
-  // queries can interleave on the wire and our savepoint machinery races.
-  //
-  // So, we force one-at-a-time on every query to the pinned connection —
-  // tx control AND data. Each test already has its own pg.Client (see
-  // transactionalTest.ts), so this serializes concurrent work *within*
-  // one test, not across tests.
+  // A single connection can't safely serve overlapping work: pg's node driver
+  // only preserves query order if we await each drive before starting the next,
+  // AND the savepoint stack is strictly nested (LIFO) — if transaction A's
+  // COMMIT/ROLLBACK runs while transaction B is also open, A releases/rolls
+  // back B's savepoint, corrupting the stack and discarding B's committed
+  // work. So the mutex must be held for the whole logical transaction (BEGIN →
+  // COMMIT/ROLLBACK), not per statement. Overlapping application transactions
+  // then run strictly one-after-another and savepoints stay properly nested.
   // ─────────────────────────────────────────────────────────────────────
 
-  // Pending work, chained in arrival order. Each query appends onto this
-  // and awaits everything ahead of it before running, so queries execute
-  // one at a time in the order they arrive.
+  // FIFO chain used outside application transactions (ad-hoc queries, and a
+  // new transaction's BEGIN waiting for the previous transaction to finish).
+  // The catch threaded back into `queue` is separate from what callers await,
+  // so a failed operation can't poison every later one.
   let queue: Promise<unknown> = Promise.resolve();
-
-  // Run `thunk` once everything already on the queue has settled. The
-  // catcher threaded back into `queue` is separate from what we return,
-  // so a failed query can't poison every later query; the caller still
-  // sees its own error via `await`.
-  const runOneAtATime = async <T>(thunk: () => Promise<T>): Promise<T> => {
+  const runAfterPending = async <T>(thunk: () => Promise<T>): Promise<T> => {
     const next = queue.then(thunk);
     queue = next.catch(() => {});
     return next;
   };
 
+  // Held for the lifetime of one application transaction (BEGIN →
+  // COMMIT/ROLLBACK). `null` outside any application transaction.
+  let txMutex: Promise<void> | null = null;
+  let endTx: (() => void) | null = null;
+
   // The single place transaction-control statements are rewritten to
-  // savepoints; everything else passes straight through to the pinned
-  // client. Shared by both the per-connection facade (`connect().query`)
-  // and the pool-level `query` (used by consumers like the express-session
-  // store).
+  // savepoints; everything else passes straight through to the pinned client.
+  // Shared by both the per-connection facade (`connect().query`) and the
+  // pool-level `query` (used by consumers like the express-session store).
   const runQuery = async (
     textOrConfig: string | pg.QueryConfig,
     values?: unknown[],
@@ -152,20 +152,67 @@ export function createTransactionalTestDb(
       typeof text === 'string'
         ? text.trim().toLowerCase().replace(/;/g, '')
         : '';
-
     if (normalized === 'begin' || normalized.startsWith('start transaction')) {
-      return runOneAtATime(openSavepoint); // → SAVEPOINT coop_test_sp_<new depth>
+      // A BEGIN that arrives while a transaction already holds the connection
+      // is a *nested* transaction (Kysely issues a plain `begin` for nesting,
+      // not a savepoint). It runs directly — no queueing, no re-acquiring —
+      // because a concurrent (non-nested) BEGIN is still blocked inside
+      // `runAfterPending` waiting for the mutex. We just open another
+      // savepoint (LIFO), which is exactly what the old per-statement code did.
+      if (txMutex !== null) {
+        return openSavepoint(); // → SAVEPOINT coop_test_sp_<new depth>
+      }
+      // Top-level BEGIN: queue behind any in-flight work, wait for a prior
+      // transaction to finish, then acquire the connection for ours.
+      return runAfterPending(async () => {
+        while (txMutex !== null) {
+          await txMutex;
+        }
+        txMutex = new Promise<void>((resolve) => {
+          endTx = resolve;
+        });
+        try {
+          return await openSavepoint(); // → SAVEPOINT coop_test_sp_<new depth>
+        } catch (e) {
+          // BEGIN failed: release the mutex so we don't deadlock the queue.
+          endTx?.();
+          txMutex = null;
+          endTx = null;
+          throw e;
+        }
+      });
     }
-    if (normalized === 'commit') {
-      return runOneAtATime(async () => closeSavepoint('commit')); // RELEASE SAVEPOINT
-    }
-    if (normalized === 'rollback') {
-      return runOneAtATime(async () => closeSavepoint('rollback')); // ROLLBACK TO SAVEPOINT
+    if (normalized === 'commit' || normalized === 'rollback') {
+      const verb = normalized === 'commit' ? 'commit' : 'rollback';
+      // Runs while our own transaction holds the mutex (no queueing — that
+      // would wait on ourselves). Only release the mutex when the outermost
+      // savepoint closes (depth → 0), so a nested COMMIT/ROLLBACK doesn't
+      // hand the connection to a waiting transaction while an outer
+      // transaction is still open.
+      if (txMutex === null) {
+        throw new Error(
+          `${verb.toUpperCase()} without a matching application transaction`,
+        );
+      }
+      const result = await closeSavepoint(verb);
+      if (savepointDepth === 0) {
+        endTx?.();
+        txMutex = null;
+        endTx = null;
+      }
+      return result;
     }
 
     rejectUnsupportedTransactionControl(normalized, text);
 
-    return runOneAtATime(async () =>
+    // Inside a transaction it already owns the connection; outside, queue to
+    // preserve wire order against other ad-hoc queries.
+    if (txMutex !== null) {
+      return values === undefined
+        ? client.query(textOrConfig)
+        : client.query(textOrConfig, values);
+    }
+    return runAfterPending(async () =>
       values === undefined
         ? client.query(textOrConfig)
         : client.query(textOrConfig, values),

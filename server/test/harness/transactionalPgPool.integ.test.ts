@@ -193,4 +193,96 @@ describe('createTransactionalTestDb', () => {
       await tdb.end();
     }
   });
+  it('isolates a concurrent rollback from sibling committed transactions', async () => {
+    const tdb = createTransactionalTestDb(pgConfig);
+    await tdb.begin();
+    try {
+      const db = new Kysely<Record<string, never>>({
+        dialect: new PostgresDialect({ pool: tdb.pool }),
+      });
+      const transactionWithRetry = makeKyselyTransactionWithRetry(db);
+
+      await sql`create table concurrency_probe (id int primary key)`.execute(
+        db,
+      );
+
+      // Run several transactions concurrently; one throws after its insert.
+      // Its row must be the only one missing — a concurrent rollback must
+      // never discard a sibling transaction's committed work.
+      const ids = [0, 1, 2, 3, 4];
+      const throwingId = 2;
+
+      await Promise.all(
+        ids.map(async (id) => {
+          if (id === throwingId) {
+            await expect(
+              transactionWithRetry(async (trx) => {
+                await sql`insert into concurrency_probe (id) values (${id})`.execute(
+                  trx,
+                );
+                throw new Error('boom');
+              }),
+            ).rejects.toThrow('boom');
+          } else {
+            await transactionWithRetry(async (trx) => {
+              await sql`insert into concurrency_probe (id) values (${id})`.execute(
+                trx,
+              );
+            });
+          }
+        }),
+      );
+
+      const rows = await sql<{
+        id: number;
+      }>`select id from concurrency_probe order by id`.execute(db);
+      expect(rows.rows.map((r) => r.id)).toEqual(
+        ids.filter((id) => id !== throwingId),
+      );
+
+      await tdb.rollback();
+      await db.destroy();
+    } finally {
+      // Always close the pinned connection so a mid-test throw can't leak it
+      // (and closing aborts any still-open outer transaction).
+      await tdb.end();
+    }
+  });
+  it('supports nested application transactions without deadlocking', async () => {
+    const tdb = createTransactionalTestDb(pgConfig);
+    await tdb.begin();
+    try {
+      const db = new Kysely<Record<string, never>>({
+        dialect: new PostgresDialect({ pool: tdb.pool }),
+      });
+      const transactionWithRetry = makeKyselyTransactionWithRetry(db);
+
+      await sql`create table nested_probe (id int)`.execute(db);
+
+      // An outer transaction that opens an inner transaction. Kysely issues a
+      // plain `begin` for the inner one (it does NOT auto-nest via savepoints),
+      // so the harness must treat a BEGIN that arrives while a transaction
+      // already holds the connection as a nested savepoint, not a concurrent
+      // transaction to wait on — otherwise this deadlocks.
+      const result = await transactionWithRetry(async (trx) => {
+        await sql`insert into nested_probe (id) values (1)`.execute(trx);
+        const inner = await transactionWithRetry(async (innerTrx) => {
+          await sql`insert into nested_probe (id) values (2)`.execute(innerTrx);
+          return 'inner-ok';
+        });
+        return `outer-${inner}`;
+      });
+      expect(result).toBe('outer-inner-ok');
+
+      const rows = await sql<{
+        id: number;
+      }>`select id from nested_probe order by id`.execute(db);
+      expect(rows.rows.map((r) => r.id)).toEqual([1, 2]);
+
+      await tdb.rollback();
+      await db.destroy();
+    } finally {
+      await tdb.end();
+    }
+  });
 });
