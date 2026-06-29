@@ -1,24 +1,26 @@
+import { useGQLManualReviewQueueJobsPreviewQuery } from '@/graphql/generated';
+import { filterNullOrUndefined } from '@/utils/collections';
+import { getPrimaryContentFields } from '@/utils/itemUtils';
+import { ITEM_FRAGMENT } from '@/webpages/dashboard/item_types/ItemTypesDashboard';
+import FieldsComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent';
 import { gql } from '@apollo/client';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Row } from 'react-table';
 
-import ComponentLoading from '../../../components/common/ComponentLoading';
-import DashboardHeader from '../components/DashboardHeader';
+import ComponentLoading from '@/components/common/ComponentLoading';
+import DashboardHeader from '@/webpages/dashboard/components/DashboardHeader';
 import {
   ColumnProps,
   DateRangeColumnFilter,
   SelectColumnFilter,
-} from '../components/table/filters';
-import { stringSort } from '../components/table/sort';
-import Table from '../components/table/Table';
-
-import { useGQLManualReviewQueueJobsPreviewQuery } from '../../../graphql/generated';
-import { filterNullOrUndefined } from '../../../utils/collections';
-import { getPrimaryContentFields } from '../../../utils/itemUtils';
-import { ITEM_FRAGMENT } from '../item_types/ItemTypesDashboard';
-import FieldsComponent from './manual_review_job/v2/ManualReviewJobFieldsComponent';
+} from '@/webpages/dashboard/components/table/filters';
+import {
+  integerSort,
+  stringSort,
+} from '@/webpages/dashboard/components/table/sort';
+import Table from '@/webpages/dashboard/components/table/Table';
 
 gql`
   ${ITEM_FRAGMENT}
@@ -41,6 +43,7 @@ gql`
           id
           createdAt
           policyIds
+          numTimesReported
           payload {
             ... on ContentManualReviewJobPayload {
               item {
@@ -132,6 +135,12 @@ export default function ManualReviewQueueJobsPreview() {
         canSort: false,
       },
       {
+        Header: '# Reports',
+        accessor: 'numReports',
+        sortDescFirst: true,
+        sortType: integerSort,
+      },
+      {
         Header: 'Created At',
         accessor: 'createdAt',
         Filter: (props: ColumnProps) =>
@@ -154,6 +163,7 @@ export default function ManualReviewQueueJobsPreview() {
             return {
               jobId: jobData.id,
               createdAt: jobData.createdAt,
+              numReports: (jobData.numTimesReported ?? 0).toLocaleString('en'),
               itemId: jobData.payload.item.id,
               itemData: jobData.payload.item.data,
               itemType: jobData.payload.item.type,
@@ -197,6 +207,7 @@ export default function ManualReviewQueueJobsPreview() {
               ))}
             </div>
           ),
+          numReports: <div>{values.numReports}</div>,
           createdAt: (
             <div>{format(new Date(values.createdAt), 'MM/dd/yy hh:mm a')}</div>
           ),
@@ -227,7 +238,12 @@ export default function ManualReviewQueueJobsPreview() {
   return (
     <div>
       <DashboardHeader title={`Jobs in ${queue.name}`} />
-      <Table rowLinkTo={rowLinkTo} columns={columns} data={tableData} />
+      <Table
+        rowLinkTo={rowLinkTo}
+        columns={columns}
+        data={tableData}
+        initialSortBy={[{ id: 'numReports', desc: true }]}
+      />
     </div>
   );
 }

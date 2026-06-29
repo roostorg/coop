@@ -1,26 +1,3 @@
-import { StarFilled, TapFilled } from '@/icons';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import Star from '@/icons/lni/Web and Technology/star.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
-import { gql } from '@apollo/client';
-import Button from 'antd/lib/button';
-import Checkbox from 'antd/lib/checkbox';
-import Input from 'antd/lib/input';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate } from 'react-router-dom';
-
-import FullScreenLoading from '../../../components/common/FullScreenLoading';
-import CoopButton from '../components/CoopButton';
-import CoopModal from '../components/CoopModal';
-import DashboardHeader from '../components/DashboardHeader';
-import RowMutations, { DeleteRowModalInfo } from '../components/RowMutations';
-import TabBar from '../components/TabBar';
-import { ColumnProps, DefaultColumnFilter } from '../components/table/filters';
-import { dateSort, integerSort, stringSort } from '../components/table/sort';
-import Table from '../components/table/Table';
-import CopyTextComponent from '@/components/common/CopyTextComponent';
-
 import {
   GQLUserPermission,
   namedOperations,
@@ -32,9 +9,40 @@ import {
   useGQLManualReviewQueuesQuery,
   useGQLRemoveFavoriteMrtQueueMutation,
   useGQLRoutingRulesQuery,
-} from '../../../graphql/generated';
-import { userHasPermissions } from '../../../routing/permissions';
-import { filterNullOrUndefined } from '../../../utils/collections';
+} from '@/graphql/generated';
+import { StarFilled, TapFilled } from '@/icons';
+import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import Star from '@/icons/lni/Web and Technology/star.svg?react';
+import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
+import { gql } from '@apollo/client';
+import Button from 'antd/lib/button';
+import Checkbox from 'antd/lib/checkbox';
+import Input from 'antd/lib/input';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { Link, useNavigate } from 'react-router-dom';
+
+import CopyTextComponent from '@/components/common/CopyTextComponent';
+import FullScreenLoading from '@/components/common/FullScreenLoading';
+import CoopButton from '@/webpages/dashboard/components/CoopButton';
+import CoopModal from '@/webpages/dashboard/components/CoopModal';
+import DashboardHeader from '@/webpages/dashboard/components/DashboardHeader';
+import RowMutations, {
+  DeleteRowModalInfo,
+} from '@/webpages/dashboard/components/RowMutations';
+import TabBar from '@/webpages/dashboard/components/TabBar';
+import {
+  ColumnProps,
+  DefaultColumnFilter,
+} from '@/webpages/dashboard/components/table/filters';
+import {
+  dateSort,
+  integerSort,
+  stringSort,
+} from '@/webpages/dashboard/components/table/sort';
+import Table from '@/webpages/dashboard/components/table/Table';
 
 gql`
   query ManualReviewQueues {
@@ -56,6 +64,7 @@ gql`
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue
+        jobSortType
       }
     }
   }
@@ -535,6 +544,11 @@ export default function ManualReviewQueuesDashboard() {
               sortType: integerSort,
             }
           : undefined,
+        {
+          Header: 'Sort Order',
+          accessor: 'jobSortType',
+          canSort: false,
+        },
         columnVisibility.startReviewing
           ? {
               Header: '',
@@ -585,6 +599,7 @@ export default function ManualReviewQueuesDashboard() {
                 pendingJobCount,
                 isDefaultQueue,
                 oldestJobCreatedAt,
+                jobSortType,
               }) => {
                 const rulesForQueue =
                   routingRules?.filter((it) => it.destinationQueue.id === id) ??
@@ -597,6 +612,12 @@ export default function ManualReviewQueuesDashboard() {
                   startReviewing: startReviewing(id, pendingJobCount),
                   pendingJobCount: pendingJobCount.toLocaleString('en'),
                   oldestJobCreatedAt,
+                  jobSortType:
+                    jobSortType === 'NUM_REPORTS'
+                      ? 'Most reported first'
+                      : jobSortType === 'WEIGHTED'
+                        ? 'Custom (weighted)'
+                        : 'FIFO',
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [
@@ -712,9 +733,8 @@ export default function ManualReviewQueuesDashboard() {
         ?.sort((a, b) => {
           if (a.isFavorited !== b.isFavorited) {
             return a.isFavorited ? -1 : 1;
-          } else {
-            return a.name.localeCompare(b.name);
           }
+          return a.name.localeCompare(b.name);
         })
         .map((values) => {
           return {
@@ -912,6 +932,7 @@ export default function ManualReviewQueuesDashboard() {
           columns={columns}
           data={tableData}
           topLeftComponent={columnsButton}
+          topRightComponent={undefined}
           containerClassName="w-full"
         />
       }

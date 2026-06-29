@@ -372,6 +372,7 @@ describe('Manual Review Tool Service', () => {
           is_default_queue: false,
           is_appeals_queue: false,
           auto_close_jobs: false,
+          job_sort_type: 'FIFO',
         })
         .onConflict((oc) => oc.doNothing())
         .execute();
@@ -741,6 +742,7 @@ describe('Manual Review Tool Service', () => {
           is_default_queue: false,
           is_appeals_queue: false,
           auto_close_jobs: false,
+          job_sort_type: 'FIFO',
         })
         .onConflict((oc) => oc.doNothing())
         .execute();

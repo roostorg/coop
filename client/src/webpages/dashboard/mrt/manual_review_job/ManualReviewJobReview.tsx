@@ -1,27 +1,3 @@
-import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import { userHasPermissions } from '@/routing/permissions';
-import { __throw } from '@/utils/misc';
-import { isNonEmptyString } from '@/utils/string';
-import { multilevelListFromFlatList } from '@/utils/tree';
-import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
-import { gql } from '@apollo/client';
-import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
-
-import ComponentLoading from '../../../../components/common/ComponentLoading';
-import CopyTextComponent from '../../../../components/common/CopyTextComponent';
-import CoopModal from '../../components/CoopModal';
-import { CoopModalFooterButtonProps } from '../../components/CoopModalFooter';
-import PolicyDropdown from '../../components/PolicyDropdown';
-import { type ActionParameterValues } from '@/components/ActionParameterInputs';
-import ActionParametersModal, {
-  defaultValuesForParameters,
-} from '@/components/ActionParametersModal';
-import Drawer from '@/components/common/Drawer';
-
 import {
   GQLContentAppealManualReviewJobPayload,
   GQLContentItem,
@@ -44,29 +20,52 @@ import {
   type GQLActionParameter,
   type GQLThreadManualReviewJobPayload,
   type GQLUserItem,
-} from '../../../../graphql/generated';
-import { filterNullOrUndefined } from '../../../../utils/collections';
-import { getFieldValueForRole } from '../../../../utils/itemUtils';
-import { recomputeSelectedRelatedActions } from '../../../../utils/manualReviewTool';
-import HTMLRenderer from '../../policies/HTMLRenderer';
-import { ITEM_TYPE_FRAGMENT } from '../../rules/rule_form/RuleForm';
-import { JOB_FRAGMENT } from './jobFragment';
-import ManualReviewJobDequeueErrorComponent from './ManualReviewJobDequeueErrorComponent';
-import MergedReportsComponent from './MergedReportsComponent';
-import ReportInfoComponent from './ReportInfoComponent';
-import ManualReviewJobContentView from './v2/ManualReviewJobContentView';
-import ManualReviewJobEmptyQueue from './v2/ManualReviewJobEmptyQueue';
-import { ManualReviewJobOtherItemsComponent } from './v2/ManualReviewJobOtherItemsComponent';
+} from '@/graphql/generated';
+import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
+import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { userHasPermissions } from '@/routing/permissions';
+import { filterNullOrUndefined } from '@/utils/collections';
+import { getFieldValueForRole } from '@/utils/itemUtils';
+import { recomputeSelectedRelatedActions } from '@/utils/manualReviewTool';
+import { __throw } from '@/utils/misc';
+import { isNonEmptyString } from '@/utils/string';
+import { multilevelListFromFlatList } from '@/utils/tree';
+import { JOB_FRAGMENT } from '@/webpages/dashboard/mrt/manual_review_job/jobFragment';
+import ManualReviewJobDequeueErrorComponent from '@/webpages/dashboard/mrt/manual_review_job/ManualReviewJobDequeueErrorComponent';
+import MergedReportsComponent from '@/webpages/dashboard/mrt/manual_review_job/MergedReportsComponent';
+import ReportInfoComponent from '@/webpages/dashboard/mrt/manual_review_job/ReportInfoComponent';
+import ManualReviewJobContentView from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobContentView';
+import ManualReviewJobEmptyQueue from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobEmptyQueue';
+import { ManualReviewJobOtherItemsComponent } from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobOtherItemsComponent';
 import {
   CustomAction,
   ManualReviewActionStore,
   ManualReviewActionStoreProvider,
-} from './v2/ManualReviewJobRelatedActionsStore';
-import NCMECReviewUser from './v2/ncmec/NCMECReviewUser';
-import ManualReviewJobEnqueuedRelatedActions from './v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
-import ManualReviewJobListOfThreadsComponent from './v2/threads/ManualReviewJobListOfThreadsComponent';
-import { useEnqueueActionGate } from './v2/useEnqueueActionGate';
-import ManualReviewJobPrimaryUserComponent from './v2/user/ManualReviewJobPrimaryUserComponent';
+} from '@/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobRelatedActionsStore';
+import NCMECReviewUser from '@/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser';
+import ManualReviewJobEnqueuedRelatedActions from '@/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActions';
+import ManualReviewJobListOfThreadsComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobListOfThreadsComponent';
+import { useEnqueueActionGate } from '@/webpages/dashboard/mrt/manual_review_job/v2/useEnqueueActionGate';
+import ManualReviewJobPrimaryUserComponent from '@/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent';
+import HTMLRenderer from '@/webpages/dashboard/policies/HTMLRenderer';
+import { ITEM_TYPE_FRAGMENT } from '@/webpages/dashboard/rules/rule_form/RuleForm';
+import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
+import { gql } from '@apollo/client';
+import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useNavigate, useParams } from 'react-router-dom';
+
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
+import ComponentLoading from '@/components/common/ComponentLoading';
+import CopyTextComponent from '@/components/common/CopyTextComponent';
+import Drawer from '@/components/common/Drawer';
+import CoopModal from '@/webpages/dashboard/components/CoopModal';
+import { CoopModalFooterButtonProps } from '@/webpages/dashboard/components/CoopModalFooter';
+import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -360,23 +359,24 @@ function ManualReviewJobReviewImpl(props: {
     lockToken?: string;
   }>();
   const navigate = useNavigate();
-
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
     setSelectedPrimaryPolicies([]);
     setSelectedRelatedActions([]);
     setDecisionReason(undefined);
-  };
+  }, []);
 
   const {
     data,
     loading,
     refetch: refetchJobInfo,
   } = useGQLManualReviewJobInfoQuery({
-    variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
+    variables: {
+      jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [],
+    },
     fetchPolicy: 'no-cache',
   });
 
@@ -384,14 +384,16 @@ function ManualReviewJobReviewImpl(props: {
     getNextJob,
     { data: jobData, loading: jobDataLoading, error: jobDataError },
   ] = useGQLDequeueManualReviewJobMutation({
-    variables: { queueId: queueId! },
     fetchPolicy: 'no-cache',
     onCompleted: (data) => {
       // Here, we update the URL to include the queue ID, job ID, and lock
       // token. That way, users are able to send around the URL to others.
-      // In case we can't find the required job, we can just fail silently.
       const { dequeueManualReviewJob } = data;
       if (dequeueManualReviewJob == null) {
+        // No reviewable job (queue drained, or everything left is skipped by
+        // this reviewer). Send them back to the queue list instead of leaving
+        // them on a perpetual loading spinner.
+        navigate('/dashboard/manual_review/queues', { replace: true });
         return;
       }
 
@@ -405,15 +407,16 @@ function ManualReviewJobReviewImpl(props: {
 
   useEffect(() => {
     if (
-      jobId == null &&
-      closedJob == null &&
-      !loading &&
-      !jobDataLoading &&
-      !jobData
+      jobId != null ||
+      closedJob != null ||
+      loading ||
+      jobDataLoading ||
+      jobData
     ) {
-      getNextJob();
+      return;
     }
-  }, [getNextJob, jobId, closedJob, loading, jobDataLoading, jobData]);
+    getNextJob({ variables: { queueId: queueId! } });
+  }, [getNextJob, jobId, closedJob, queueId, loading, jobDataLoading, jobData]);
 
   const [isAdvancingToNextJob, setIsAdvancingToNextJob] = useState(false);
   // The jobId we deleted by invalidating its last report. Matching it by
@@ -516,7 +519,9 @@ function ManualReviewJobReviewImpl(props: {
         switch (response.submitManualReviewDecision.__typename) {
           case 'SubmitDecisionSuccessResponse': {
             resetState();
-            await getNextJob();
+            await getNextJob({
+              variables: { queueId: queueId! },
+            });
             break;
           }
           case 'JobHasAlreadyBeenSubmittedError': {
@@ -529,7 +534,11 @@ function ManualReviewJobReviewImpl(props: {
                   title: 'Yes',
                   type: 'primary',
                   onClick: async () => {
-                    await getNextJob();
+                    await getNextJob({
+                      variables: {
+                        queueId: queueId!,
+                      },
+                    });
                     hideModal();
                   },
                 },
@@ -747,7 +756,9 @@ function ManualReviewJobReviewImpl(props: {
     setIsAdvancingToNextJob(true);
     try {
       resetState();
-      const result = await getNextJob();
+      const result = await getNextJob({
+        variables: { queueId: queueId! },
+      });
       if (result.data?.dequeueManualReviewJob == null) {
         navigate('/dashboard/manual_review/queues');
       }
@@ -783,7 +794,10 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
-    // First, release the lock on the current job and log the skip
+    // Release the lock so the job returns to the shared pool immediately, and
+    // log the skip. logSkip also records a per-reviewer skip server-side, so
+    // the next dequeue won't hand this job back to THIS reviewer (for the skip
+    // window) while it stays available to everyone else.
     if (queueId && job?.id && lockToken) {
       await Promise.all([
         logSkip(),
@@ -801,7 +815,9 @@ function ManualReviewJobReviewImpl(props: {
 
     // Reset state and try to get the next job
     resetState();
-    const result = await getNextJob();
+    const result = await getNextJob({
+      variables: { queueId: queueId! },
+    });
 
     // If there's no next job, redirect to the queues page
     if (result.data?.dequeueManualReviewJob == null) {
@@ -809,7 +825,7 @@ function ManualReviewJobReviewImpl(props: {
     }
   };
 
-  if (loading || jobDataLoading || (!closedJob && !lockToken)) {
+  if ((loading && !data) || jobDataLoading || (!closedJob && !lockToken)) {
     return (
       <div className="flex items-center justify-center w-full h-screen">
         <ComponentLoading />
@@ -909,7 +925,6 @@ function ManualReviewJobReviewImpl(props: {
                     })),
                     queueId: queueId!,
                     jobId: job.id,
-                    // This is safe because we prevent both closedJob and lockToken from being null
                     lockToken: lockToken!,
                     reportedItemDecisionComponents: [decision],
                     relatedItemActions: [],

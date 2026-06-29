@@ -30,6 +30,14 @@ export {
   jobIdToGuid,
 } from './modules/QueueOperations.js';
 
+export {
+  getJobPriorityForItem,
+  JobSortType,
+  type JobPropertyKey,
+} from './modules/JobPriority.js';
+
+export { default as JobPriorityWeights } from './modules/JobPriorityWeights.js';
+
 export { type RoutingRule } from './modules/JobRouting.js';
 
 export {

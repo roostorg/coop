@@ -89,6 +89,7 @@ const typeDefs = /* GraphQL */ `
     ssoCert: String
     ignoreCallbackUrl: String
     hasPartialItemsEndpoint: Boolean!
+    jobPriorityWeights: [JobPriorityWeight!]!
     partialItemsEndpoint: String
     partialItemsRequestHeaders: JSONObject
   }
@@ -805,6 +806,28 @@ const Org: GQLOrgResolvers = {
     const partialItemsEndpoint = partialItemsInfo?.partialItemsEndpoint;
 
     return partialItemsEndpoint != null;
+  },
+  async jobPriorityWeights(org, _, context) {
+    // Moderation-priority config: gate reads behind the same MANAGE_ORG
+    // permission as the settings page and the setJobPriorityWeights mutation,
+    // so it isn't exposed by querying the Org type directly.
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view org settings',
+      );
+    }
+    const weightsMap =
+      await context.services.ManualReviewToolService.getJobPriorityWeights({
+        orgId: org.id,
+      });
+    return Array.from(weightsMap, ([property, weight]) => ({
+      property,
+      weight,
+    }));
   },
   async partialItemsEndpoint(org, _, context) {
     const user = context.getUser();

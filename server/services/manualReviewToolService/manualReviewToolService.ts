@@ -11,6 +11,7 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
+  makeBadRequestError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
@@ -55,6 +56,12 @@ import JobEnrichment, {
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from './modules/JobEnrichment.js';
+import {
+  getJobPriorityForItem,
+  normalizeJobSortType,
+  type JobPropertyKey,
+} from './modules/JobPriority.js';
+import JobPriorityWeights from './modules/JobPriorityWeights.js';
 import JobRendering from './modules/JobRendering.js';
 import JobRouting, {
   type CreateRoutingRuleInput,
@@ -296,6 +303,7 @@ export type ManualReviewJobKind = ManualReviewJobPayload['kind'];
 export class ManualReviewToolService {
   private readonly queueOps: QueueOperations;
   private readonly jobRendering: JobRendering;
+  private readonly jobPriorityWeights: JobPriorityWeights;
   private readonly jobRouting: JobRouting;
   private readonly appealsJobRouting: AppealsJobRouting;
   private readonly jobEnrichment: JobEnrichment;
@@ -308,6 +316,9 @@ export class ManualReviewToolService {
   private readonly userReportSweep: UserReportSweep;
 
   constructor(
+    // Lazy getter: breaks circular dep (MRT -> ReportingService -> ActionPublisher -> MRT).
+    // Call the outer function first to resolve, then call the result: this.getNumTimesReported()({orgId, itemId})
+    readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
@@ -359,6 +370,7 @@ export class ManualReviewToolService {
       this.manualReviewToolSettings,
     );
     this.jobRendering = new JobRendering(pgQuery);
+    this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
@@ -371,6 +383,69 @@ export class ManualReviewToolService {
       this.jobDecisioning,
       moderationConfigService,
       this.tracer,
+    );
+  }
+
+  async getJobPriorityWeights(opts: { orgId: string }) {
+    return this.jobPriorityWeights.loadForOrg(opts.orgId);
+  }
+
+  async setJobPriorityWeights(opts: {
+    orgId: string;
+    weights: ReadonlyArray<{ property: JobPropertyKey; weight: number }>;
+  }) {
+    // Validate at the service boundary: these weights are multiplied directly
+    // in getJobPriorityForItem, so a negative or non-finite value would invert
+    // ordering or produce an invalid BullMQ priority. Client sliders already
+    // clamp to 0-10, but GraphQL / internal callers can bypass that. Duplicate
+    // properties are also rejected: upsertForOrg's ON CONFLICT (org_id,
+    // property) would otherwise error ("cannot affect row a second time").
+    const seenProperties = new Set<JobPropertyKey>();
+    for (const { property, weight } of opts.weights) {
+      if (!Number.isFinite(weight) || weight < 0) {
+        throw makeBadRequestError(
+          `Invalid job priority weight for "${property}": must be a non-negative, finite number.`,
+          { shouldErrorSpan: true },
+        );
+      }
+      if (seenProperties.has(property)) {
+        throw makeBadRequestError(
+          `Duplicate job priority weight for "${property}".`,
+          { shouldErrorSpan: true },
+        );
+      }
+      seenProperties.add(property);
+    }
+
+    await this.jobPriorityWeights.upsertForOrg(opts.orgId, opts.weights);
+
+    const queues =
+      await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+        opts.orgId,
+      );
+    const newWeights = await this.jobPriorityWeights.loadForOrg(opts.orgId);
+    await Promise.all(
+      queues
+        .filter((q) => !q.isAppealsQueue)
+        .map(async (q) =>
+          this.queueOps.recomputePrioritiesForQueue({
+            orgId: opts.orgId,
+            queueId: q.id,
+            getPriority: async (job) =>
+              getJobPriorityForItem({
+                orgId: opts.orgId,
+                item: job.payload.item,
+                sortType: normalizeJobSortType(q.jobSortType),
+                deps: {
+                  getNumTimesReported: this.getNumTimesReported(),
+                  getUserScore: this.userStatisticsService.getUserScore.bind(
+                    this.userStatisticsService,
+                  ),
+                },
+                weights: newWeights,
+              }),
+          }),
+        ),
     );
   }
 
@@ -457,6 +532,28 @@ export class ManualReviewToolService {
                 routingRuleCacheDirectives:
                   numAttemptsToEnqueue > 0 ? { maxAge: 0 } : undefined,
               }));
+            const queue =
+              await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+                { orgId: input.orgId, queueId: targetQueueForNewJob },
+              );
+            const weights = await this.jobPriorityWeights.loadForOrg(
+              input.orgId,
+            );
+            const priority = await getJobPriorityForItem({
+              orgId: input.orgId,
+              item: input.payload.item,
+              // Honour the queue's actual sort type at enqueue, including
+              // WEIGHTED. Previously WEIGHTED collapsed to FIFO here, so a
+              // weighted queue ignored its weights until a later recompute.
+              sortType: normalizeJobSortType(queue?.jobSortType),
+              deps: {
+                getNumTimesReported: this.getNumTimesReported(),
+                getUserScore: this.userStatisticsService.getUserScore.bind(
+                  this.userStatisticsService,
+                ),
+              },
+              weights,
+            });
 
             const existingJobInSameQueue = await this.queueOps.getJobFromItemId(
               {
@@ -484,6 +581,7 @@ export class ManualReviewToolService {
                     ...existingJobInSameQueue,
                     payload: finalJobPayload,
                   },
+                  priority,
                 })
               : await this.queueOps.addJob({
                   orgId: input.orgId,
@@ -493,8 +591,8 @@ export class ManualReviewToolService {
                     ...input,
                     payload: finalJobPayload,
                   },
+                  priority,
                 });
-
             if (!job) {
               // this means that we tried to update a job that was deleted
               // between when we looked up the existing job and did the update.
@@ -881,6 +979,7 @@ export class ManualReviewToolService {
     invokedBy: Invoker;
     isAppealsQueue: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: string;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -897,11 +996,48 @@ export class ManualReviewToolService {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: string;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
   }): Promise<ManualReviewQueue> {
-    return this.queueOps.updateManualReviewQueue(input);
+    const previous =
+      await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+        orgId: input.orgId,
+        queueId: input.queueId,
+      });
+    const updated = await this.queueOps.updateManualReviewQueue(input);
+
+    // Changing the sort type has to re-sort the jobs already sitting in the
+    // queue, not just affect future enqueues — otherwise the queue keeps its
+    // old ordering until every job churns out. setJobPriorityWeights does this
+    // for weight changes; mirror it here when the sort type actually changed.
+    if (
+      previous !== undefined &&
+      !updated.isAppealsQueue &&
+      previous.jobSortType !== updated.jobSortType
+    ) {
+      const weights = await this.jobPriorityWeights.loadForOrg(input.orgId);
+      await this.queueOps.recomputePrioritiesForQueue({
+        orgId: input.orgId,
+        queueId: input.queueId,
+        getPriority: async (job) =>
+          getJobPriorityForItem({
+            orgId: input.orgId,
+            item: job.payload.item,
+            sortType: normalizeJobSortType(updated.jobSortType),
+            deps: {
+              getNumTimesReported: this.getNumTimesReported(),
+              getUserScore: this.userStatisticsService.getUserScore.bind(
+                this.userStatisticsService,
+              ),
+            },
+            weights,
+          }),
+      });
+    }
+
+    return updated;
   }
 
   async getClearReportsTriggerActionsForQueue(opts: {
@@ -1216,6 +1352,8 @@ export class ManualReviewToolService {
       });
 
     let shouldBeAutoActioned = queue?.autoCloseJobs ?? false;
+    // The reviewer's per-reviewer skips (recorded via logSkip) are consulted
+    // inside dequeueNextJobWithLock, keyed on this userId/lockToken.
     let job = await this.queueOps.dequeueNextJobWithLock({
       orgId,
       queueId,
@@ -1466,6 +1604,16 @@ export class ManualReviewToolService {
     userId: string;
   }) {
     await this.skipOps.logSkip(opts);
+    // Per-reviewer skip: hide this job from THIS reviewer for the skip window
+    // (the dequeue path reads this back), while it stays available to everyone
+    // else. The reviewer separately releases their lock so it returns to the
+    // shared pool immediately.
+    await this.queueOps.recordReviewerSkip({
+      orgId: opts.orgId,
+      queueId: opts.queueId,
+      reviewerId: opts.userId,
+      jobId: opts.jobId,
+    });
   }
 
   async releaseJobLock(opts: {
