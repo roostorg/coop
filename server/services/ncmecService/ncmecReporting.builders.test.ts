@@ -86,9 +86,7 @@ describe('buildFileDetailsObject', () => {
         ],
         additionalInfo: ['from webhook'],
       },
-      originalFileHash: [
-        { _text: 'abc123', _attributes: { hashType: 'MD5' } },
-      ],
+      originalFileHash: [{ _text: 'abc123', _attributes: { hashType: 'MD5' } }],
     });
     expect(Object.keys(result.fileDetails)).toEqual([
       'reportId',

@@ -687,7 +687,7 @@ export type BuildSubmitReportObjectInput = {
  * DB or HTTP. The caller is responsible for resolving org settings and
  * webhook-sourced additional info; this function only assembles them in the
  * XSD-mandated order. Used by `submitReport` and by audit/dump tooling. */
- 
+
 // further decomposition would obscure the XSD-mandated insertion order (see
 // the `Report` type comment) that NCMEC validates against.
 export function buildSubmitReportObject(
