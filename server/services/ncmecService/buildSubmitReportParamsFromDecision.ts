@@ -168,6 +168,7 @@ export async function buildSubmitReportParamsFromDecision(
         'ipAddress',
         reportedItem.contentItem.data,
       );
+      const hashes = extractHashesForUrl(reportedItem.contentItem.data, it.url);
       return {
         id: it.id,
         typeId: it.typeId,
@@ -176,6 +177,7 @@ export async function buildSubmitReportParamsFromDecision(
         industryClassification: it.industryClassification,
         fileAnnotations: it.fileAnnotations,
         ...(mediaIp ? { ipAddress: mediaIp } : {}),
+        ...(hashes ? { hashes } : {}),
       };
     }),
   );
@@ -213,4 +215,49 @@ export async function buildSubmitReportParamsFromDecision(
       : {}),
     ...(jobId !== undefined ? { jobId } : {}),
   };
+}
+
+/** Walk an item's data looking for an image-shaped value (`{ url, hashes }`)
+ * whose `url` matches the target. Returns the `hashes` map (typically
+ * populated by HMA at item-submission time, e.g. `{ md5: '...', pdq: '...' }`)
+ * or undefined when no match is found.
+ *
+ * Recurses into arrays and plain objects so ARRAY-of-IMAGE and MAP-of-IMAGE
+ * containers are covered, not just scalar IMAGE fields. Returns on the first
+ * match — duplicate URLs across fields would only ever yield the same hashes
+ * since HMA is deterministic per URL. */
+export function extractHashesForUrl(
+  data: NormalizedItemData,
+  url: string,
+): Record<string, string> | undefined {
+  const visit = (value: unknown): Record<string, string> | undefined => {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = visit(item);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    if (typeof value !== 'object' || value === null) return undefined;
+    const obj = value as Record<string, unknown>;
+    if (
+      typeof obj.url === 'string' &&
+      obj.url === url &&
+      typeof obj.hashes === 'object' &&
+      obj.hashes !== null
+    ) {
+      const hashes = obj.hashes as Record<string, unknown>;
+      const stringHashes: Record<string, string> = {};
+      for (const [k, v] of Object.entries(hashes)) {
+        if (typeof v === 'string') stringHashes[k] = v;
+      }
+      return Object.keys(stringHashes).length > 0 ? stringHashes : undefined;
+    }
+    for (const inner of Object.values(obj)) {
+      const found = visit(inner);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return visit(data);
 }

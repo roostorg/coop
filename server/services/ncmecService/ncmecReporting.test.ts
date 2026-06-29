@@ -5,6 +5,7 @@ import {
   NCMECEvent,
   resolveReportedPersonEmail,
   summarizeCyberTipFailure,
+  toOriginalFileHashes,
 } from './ncmecReporting.js';
 
 describe('NCMEC reporting', () => {
@@ -347,6 +348,37 @@ describe('NCMEC reporting', () => {
       expect(
         resolveReportedPersonEmail(undefined, '  role@example.com  '),
       ).toEqual([{ _text: 'role@example.com' }]);
+    });
+  });
+
+  describe('toOriginalFileHashes', () => {
+    it('uppercases the algorithm into the `hashType` attribute', () => {
+      expect(toOriginalFileHashes({ md5: 'abc', pdq: 'def' })).toEqual([
+        { _text: 'abc', _attributes: { hashType: 'MD5' } },
+        { _text: 'def', _attributes: { hashType: 'PDQ' } },
+      ]);
+    });
+
+    it('trims surrounding whitespace from hash values', () => {
+      expect(toOriginalFileHashes({ md5: '  abc  ' })).toEqual([
+        { _text: 'abc', _attributes: { hashType: 'MD5' } },
+      ]);
+    });
+
+    it('drops entries with empty or whitespace-only hash values', () => {
+      // NCMEC requires non-empty `hash` text and `hashType` attribute;
+      // an entry with whitespace would fail XSD validation on receipt.
+      expect(
+        toOriginalFileHashes({ md5: '', sha1: '   ', sha256: 'kept' }),
+      ).toEqual([{ _text: 'kept', _attributes: { hashType: 'SHA256' } }]);
+    });
+
+    it('returns undefined when no entries survive filtering', () => {
+      // Caller branches on undefined to omit the `originalFileHash` key
+      // entirely rather than serialise an empty array.
+      expect(toOriginalFileHashes(undefined)).toBeUndefined();
+      expect(toOriginalFileHashes({})).toBeUndefined();
+      expect(toOriginalFileHashes({ md5: '', sha1: '  ' })).toBeUndefined();
     });
   });
 

@@ -133,10 +133,18 @@ type FileDetails = {
     fileRelevance?: 'Reported' | 'Supplemental Reported';
     fileAnnotations?: FileAnnotations;
     industryClassification?: NCMECIndustryClassificationType;
+    originalFileHash?: OriginalFileHash[];
     ipCaptureEvent?: IPNCMECEvent[];
     deviceId?: DeviceId[];
     details?: Detail[];
     additionalInfo?: string[];
+  };
+};
+
+type OriginalFileHash = {
+  _text: string;
+  _attributes: {
+    hashType: string;
   };
 };
 
@@ -174,6 +182,12 @@ type Media = {
    * `Upload` event. */
   ipAddress?: string;
   deviceId?: DeviceNCMECEvent[];
+  /** Hashes computed for this URL (typically by HMA at item submission
+   * time). Keyed by hash algorithm name (e.g. `md5`, `pdq`); the value is
+   * the hex-encoded hash. Forwarded to NCMEC as `originalFileHash`
+   * entries with the algorithm name uppercased into the `hashType`
+   * attribute. */
+  hashes?: Record<string, string>;
 };
 
 type NCMECUserParams = {
@@ -545,6 +559,28 @@ export function mergeFieldRoleIpIntoEvents(
       : []),
   ];
   return events.length > 0 ? events : undefined;
+}
+
+/** Convert a map of HMA-style hashes (`{ md5: '...', pdq: '...' }`) into the
+ * NCMEC `originalFileHash[]` shape. Trims blanks, uppercases the algorithm
+ * name into the `hashType` attribute, drops empty entries. Returns undefined
+ * when there are no usable hashes; callers should branch on that to omit the
+ * key entirely rather than serialise an empty array. */
+export function toOriginalFileHashes(
+  hashes: Record<string, string> | undefined,
+): OriginalFileHash[] | undefined {
+  if (!hashes) return undefined;
+  const result: OriginalFileHash[] = [];
+  for (const [algorithm, hash] of Object.entries(hashes)) {
+    const trimmedHash = typeof hash === 'string' ? hash.trim() : '';
+    const trimmedAlgorithm = algorithm.trim();
+    if (trimmedHash === '' || trimmedAlgorithm === '') continue;
+    result.push({
+      _text: trimmedHash,
+      _attributes: { hashType: trimmedAlgorithm.toUpperCase() },
+    });
+  }
+  return result.length > 0 ? result : undefined;
 }
 
 /** Resolve the email(s) for `personOrUserReportedPerson`. Prefers the
@@ -1958,6 +1994,7 @@ export default class NcmecReporting {
     const fileAnnotations = this.#fileAnnotationArrayToNCMECFileAnnotation(
       media.fileAnnotations,
     );
+    const originalFileHash = toOriginalFileHashes(media.hashes);
     const xml = await this.#uploadFileDetails(
       {
         fileDetails: {
@@ -1970,6 +2007,9 @@ export default class NcmecReporting {
             : {}),
           ...(fileAnnotations ? { fileAnnotations } : {}),
           industryClassification: media.industryClassification,
+          ...(originalFileHash && originalFileHash.length > 0
+            ? { originalFileHash }
+            : {}),
           ...(additionalInfo.ipCaptureEvent &&
           additionalInfo.ipCaptureEvent.length > 0
             ? {
