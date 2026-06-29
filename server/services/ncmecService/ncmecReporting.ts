@@ -848,24 +848,35 @@ export type BuildFileDetailsObjectInput = {
   originalFileHash?: readonly OriginalFileHash[];
 };
 
-/** Decoded last path segment of `url`, or `undefined` if unavailable. */
+/** Decoded last path segment of `url`, or `undefined` if unavailable.
+ * Logs each fallback path via `ncmecDebugLog` so operators can triage
+ * unexpected URL shapes when `NCMEC_DEBUG=1` is enabled. */
 export function deriveOriginalFileNameFromUrl(url: string): string | undefined {
   let pathname: string;
   try {
     pathname = new URL(url).pathname;
   } catch {
+    ncmecDebugLog('deriveOriginalFileName.urlParseFailed', { url });
     return undefined;
   }
   const last = pathname
     .split('/')
     .filter((s) => s !== '')
     .pop();
-  if (!last) return undefined;
+  if (!last) {
+    ncmecDebugLog('deriveOriginalFileName.emptyPath', { url });
+    return undefined;
+  }
   try {
     const decoded = decodeURIComponent(last);
-    return decoded.length > 0 ? decoded : undefined;
+    if (decoded.length === 0) {
+      ncmecDebugLog('deriveOriginalFileName.emptySegment', { url });
+      return undefined;
+    }
+    return decoded;
   } catch {
     // Malformed percent-encoding: keep the raw segment.
+    ncmecDebugLog('deriveOriginalFileName.decodeFailed', { url, raw: last });
     return last;
   }
 }
