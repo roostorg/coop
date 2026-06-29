@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- shared fixture helpers (`makeUserItemType`,
+   `makeContentItemType`, `makeInput`) used by every describe block. */
 import { ScalarTypes, type DateString, type Field } from '@roostorg/coop-types';
 
 import { type NormalizedItemData } from '../itemProcessingService/index.js';
@@ -458,6 +460,48 @@ describe('buildSubmitReportParamsFromDecision', () => {
       );
 
       expect(result.media[0]).not.toHaveProperty('hashes');
+    });
+  });
+
+  describe('incidentDateTimeDescription propagation', () => {
+    it('forwards a non-blank value from the decision component, trimmed', async () => {
+      const input = makeInput({
+        reportedUserItemType: makeUserItemType({}),
+        reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+        contentItemType: makeContentItemType({}),
+        contentData: asNormalizedData({ created_at: FIXED_NOW }),
+      });
+      const result = await buildSubmitReportParamsFromDecision({
+        ...input,
+        decisionComponent: {
+          ...input.decisionComponent,
+          incidentDateTimeDescription: '  user uploaded this image  ',
+        },
+      });
+      expect(result.incidentDateTimeDescription).toBe(
+        'user uploaded this image',
+      );
+    });
+
+    it('omits the field when the decision component left it unset or blank', async () => {
+      const input = makeInput({
+        reportedUserItemType: makeUserItemType({}),
+        reportedUserData: asNormalizedData({ display_name: 'Alice' }),
+        contentItemType: makeContentItemType({}),
+        contentData: asNormalizedData({ created_at: FIXED_NOW }),
+      });
+
+      const unset = await buildSubmitReportParamsFromDecision(input);
+      expect(unset).not.toHaveProperty('incidentDateTimeDescription');
+
+      const blank = await buildSubmitReportParamsFromDecision({
+        ...input,
+        decisionComponent: {
+          ...input.decisionComponent,
+          incidentDateTimeDescription: '   ',
+        },
+      });
+      expect(blank).not.toHaveProperty('incidentDateTimeDescription');
     });
   });
 });

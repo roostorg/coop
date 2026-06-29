@@ -255,6 +255,12 @@ const typeDefs = /* GraphQL */ `
     incidentType: NCMECIncidentType!
     escalateToHighPriority: String
     additionalInfo: String
+    """
+    Free-text description of what the \`<incidentDateTime>\` value represents
+    (e.g. "user uploaded this image"). Surfaced on NCMEC analyst views next
+    to the timestamp itself. Optional; max 3000 characters.
+    """
+    incidentDateTimeDescription: String
   }
 
   enum AppealDecision {
@@ -2287,6 +2293,8 @@ const Mutation: GQLMutationResolvers = {
                 escalateToHighPriority:
                   decision.escalateToHighPriority ?? undefined,
                 additionalInfo: decision.additionalInfo ?? undefined,
+                incidentDateTimeDescription:
+                  decision.incidentDateTimeDescription ?? undefined,
               };
 
             default:

@@ -368,8 +368,11 @@ export default function NCMECReviewUser(
   const [escalateToHighPriority, setEscalateToHighPriority] = useState('');
   const [escalateChecked, setEscalateChecked] = useState(false);
   const [additionalInfo, setAdditionalInfo] = useState('');
+  const [incidentDateTimeDescription, setIncidentDateTimeDescription] =
+    useState('');
   const trimmedEscalate = escalateToHighPriority.trim();
   const trimmedAdditionalInfo = additionalInfo.trim();
+  const trimmedIncidentDateTimeDescription = incidentDateTimeDescription.trim();
   const escalateMissingReason = escalateChecked && trimmedEscalate === '';
   const [sendReportModalVisible, setSendReportModalVisible] = useState(false);
   const [deselectAndIgnoreModalVisible, setDeselectAndIgnoreModalVisible] =
@@ -721,6 +724,12 @@ export default function NCMECReviewUser(
                 ...(trimmedAdditionalInfo !== ''
                   ? { additionalInfo: trimmedAdditionalInfo }
                   : {}),
+                ...(trimmedIncidentDateTimeDescription !== ''
+                  ? {
+                      incidentDateTimeDescription:
+                        trimmedIncidentDateTimeDescription,
+                    }
+                  : {}),
               },
             });
           },
@@ -847,6 +856,26 @@ export default function NCMECReviewUser(
           />
           <span className="text-xs text-slate-500">
             {additionalInfo.length}/3000 characters
+          </span>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="ncmecIncidentDateTimeDescription"
+            className="text-base font-bold"
+          >
+            Incident date/time description (optional)
+          </label>
+          <textarea
+            id="ncmecIncidentDateTimeDescription"
+            maxLength={3000}
+            value={incidentDateTimeDescription}
+            onChange={(e) => setIncidentDateTimeDescription(e.target.value)}
+            placeholder="Describe what kind of date/time this is, like 'user uploaded this image' or 'message sent by user'."
+            className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            rows={3}
+          />
+          <span className="text-xs text-slate-500">
+            {incidentDateTimeDescription.length}/3000 characters
           </span>
         </div>
       </div>
