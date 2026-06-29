@@ -28,7 +28,37 @@ export function makePostgresDatabaseConfig(opts: {
   driverOpts: Options & { schema: string };
   maintenanceDatabase?: string;
 }): DatabaseConfig<PostgresSupportedScriptFormats, PostgresContext> {
-  const { driverOpts, scriptsDirectory, defaultScriptFormat } = opts;
+  const { scriptsDirectory, defaultScriptFormat } = opts;
+  // Forward server-side `RAISE NOTICE` / `RAISE WARNING` from migrations
+  // (e.g. PL/pgSQL DO blocks that report rows they modified) to stderr.
+  // Without this, the messages are emitted by pg but Sequelize swallows
+  // them and operators can't tell whether a migration cleared adopter
+  // configuration as a side effect.
+  const driverOpts: Options & { schema: string } = {
+    ...opts.driverOpts,
+    hooks: {
+      ...opts.driverOpts.hooks,
+      afterConnect(connection: unknown) {
+        if (
+          connection !== null &&
+          typeof connection === 'object' &&
+          'on' in connection &&
+          typeof (connection as { on: unknown }).on === 'function'
+        ) {
+          (
+            connection as {
+              on: (event: string, cb: (msg: unknown) => void) => void;
+            }
+          ).on('notice', (msg) => {
+            const m = msg as { message?: string; severity?: string };
+            const severity = m.severity ?? 'NOTICE';
+            // eslint-disable-next-line no-console
+            console.warn(`[postgres ${severity}] ${m.message ?? ''}`);
+          });
+        }
+      },
+    },
+  };
   // DB used for CREATE/DROP DATABASE (can't be the target DB itself).
   // Defaults to `postgres`; some managed providers use a different name
   // (e.g. `defaultdb`).

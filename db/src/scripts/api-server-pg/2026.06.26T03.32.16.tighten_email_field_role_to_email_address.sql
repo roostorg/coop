@@ -11,6 +11,14 @@
 -- dropped and reconfigure via the admin UI if needed. The actual data in
 -- the underlying STRING field is untouched; only the role pointer is
 -- cleared.
+--
+-- Operators: after applying this migration, scan the `db:update` output
+-- for lines beginning with `[postgres NOTICE]`. Each one names the item
+-- type (id, name, org_id) whose `email_field` mapping was cleared.
+-- Reconfigure those item types in the admin UI if NCMEC reporting was
+-- relying on them. The forwarding of pg NOTICE events to the migration
+-- runner output is provided by the `afterConnect` hook in
+-- `db/src/configs/pg-base.ts` (added in this same PR).
 
 BEGIN;
 
