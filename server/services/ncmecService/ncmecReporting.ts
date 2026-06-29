@@ -217,6 +217,10 @@ export type NCMECReportParams = {
   escalateToHighPriority?: string;
   /** Optional free-text notes; if present must be non-blank and max 3000 chars. */
   additionalInfo?: string;
+  /** Optional free-text describing what `incidentDateTime` represents (e.g.
+   * "user uploaded this image"). If present, must be non-blank and max 3000
+   * chars. Surfaced on NCMEC analyst views next to the timestamp. */
+  incidentDateTimeDescription?: string;
   /** MRT decision id; when set, failures are recorded to `ncmec_reports_errors`. */
   jobId?: string;
 };
@@ -730,6 +734,20 @@ export function buildSubmitReportObject(
     );
   }
 
+  const incidentDateTimeDescription =
+    reportParams.incidentDateTimeDescription != null
+      ? reportParams.incidentDateTimeDescription.trim()
+      : undefined;
+  if (
+    incidentDateTimeDescription !== undefined &&
+    (incidentDateTimeDescription === '' ||
+      incidentDateTimeDescription.length > 3000)
+  ) {
+    throw new Error(
+      'incidentDateTimeDescription must be non-blank when supplied and at most 3000 characters',
+    );
+  }
+
   const internetDetails = buildInternetDetailsFromOrgSetting(
     orgSettings.defaultInternetDetailType,
     orgSettings.moreInfoUrl,
@@ -791,6 +809,7 @@ export function buildSubmitReportObject(
         incidentType,
         ...(escalateToHighPriority ? { escalateToHighPriority } : {}),
         incidentDateTime: clampedIncidentDateTime,
+        ...(incidentDateTimeDescription ? { incidentDateTimeDescription } : {}),
       },
       ...(internetDetails ? { internetDetails } : {}),
       reporter: {

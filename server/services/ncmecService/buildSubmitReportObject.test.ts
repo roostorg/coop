@@ -180,6 +180,70 @@ describe('buildSubmitReportObject', () => {
         ),
       ).toThrow(/at most 3000 characters/);
     });
+
+    it('throws when incidentDateTimeDescription is empty after trim', () => {
+      expect(() =>
+        buildSubmitReportObject(
+          makeBuildReportInput({
+            reportParams: { incidentDateTimeDescription: '   ' },
+          }),
+        ),
+      ).toThrow(/incidentDateTimeDescription must be non-blank/);
+    });
+
+    it('throws when incidentDateTimeDescription exceeds 3000 characters', () => {
+      expect(() =>
+        buildSubmitReportObject(
+          makeBuildReportInput({
+            reportParams: {
+              incidentDateTimeDescription: 'x'.repeat(3001),
+            },
+          }),
+        ),
+      ).toThrow(/at most 3000 characters/);
+    });
+  });
+
+  describe('incidentDateTimeDescription', () => {
+    it('populates the element inside incidentSummary, after incidentDateTime', () => {
+      const result = buildSubmitReportObject(
+        makeBuildReportInput({
+          reportParams: {
+            incidentDateTimeDescription: 'user uploaded this image',
+          },
+        }),
+      );
+      expect(result.report.incidentSummary).toMatchObject({
+        incidentDateTimeDescription: 'user uploaded this image',
+      });
+      // XSD requires the description to follow incidentDateTime; anchoring
+      // key order here matches the comment on the `Report` type.
+      expect(Object.keys(result.report.incidentSummary)).toEqual([
+        'incidentType',
+        'incidentDateTime',
+        'incidentDateTimeDescription',
+      ]);
+    });
+
+    it('trims surrounding whitespace before emitting', () => {
+      const result = buildSubmitReportObject(
+        makeBuildReportInput({
+          reportParams: {
+            incidentDateTimeDescription: '  message sent by user  ',
+          },
+        }),
+      );
+      expect(result.report.incidentSummary.incidentDateTimeDescription).toBe(
+        'message sent by user',
+      );
+    });
+
+    it('omits the element when not supplied', () => {
+      const result = buildSubmitReportObject(makeBuildReportInput());
+      expect(result.report.incidentSummary).not.toHaveProperty(
+        'incidentDateTimeDescription',
+      );
+    });
   });
 
   describe('reportedPersonEmail resolution', () => {

@@ -63,6 +63,7 @@ export interface BuildSubmitReportParamsInput {
     incidentType?: string;
     escalateToHighPriority?: string;
     additionalInfo?: string;
+    incidentDateTimeDescription?: string;
   };
   /** Optional fallback used when `decisionComponent.incidentType` is empty
    * (legacy DB rows). Callers that don't want a fallback should omit this. */
@@ -212,6 +213,13 @@ export async function buildSubmitReportParamsFromDecision(
     ...(decisionComponent.additionalInfo != null &&
     decisionComponent.additionalInfo.trim() !== ''
       ? { additionalInfo: decisionComponent.additionalInfo.trim() }
+      : {}),
+    ...(decisionComponent.incidentDateTimeDescription != null &&
+    decisionComponent.incidentDateTimeDescription.trim() !== ''
+      ? {
+          incidentDateTimeDescription:
+            decisionComponent.incidentDateTimeDescription.trim(),
+        }
       : {}),
     ...(jobId !== undefined ? { jobId } : {}),
   };

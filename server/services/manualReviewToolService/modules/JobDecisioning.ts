@@ -102,6 +102,9 @@ export type ManualReviewDecisionComponent =
       incidentType: string;
       escalateToHighPriority?: string;
       additionalInfo?: string;
+      /** Free-text description of `<incidentDateTime>` (NCMEC XSD field).
+       * Reviewer-entered at decision time; max 3000 chars when supplied. */
+      incidentDateTimeDescription?: string;
     }
   | {
       type: 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE';

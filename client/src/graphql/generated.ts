@@ -4584,6 +4584,12 @@ export type GQLSubmitNcmecReportDecisionComponent =
 export type GQLSubmitNcmecReportInput = {
   readonly additionalInfo?: InputMaybe<Scalars['String']['input']>;
   readonly escalateToHighPriority?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Free-text description of what the `<incidentDateTime>` value represents
+   * (e.g. "user uploaded this image"). Surfaced on NCMEC analyst views next
+   * to the timestamp itself. Optional; max 3000 characters.
+   */
+  readonly incidentDateTimeDescription?: InputMaybe<Scalars['String']['input']>;
   readonly incidentType: GQLNcmecIncidentType;
   readonly reportedMedia: ReadonlyArray<GQLNcmecMediaInput>;
   readonly reportedMessages: ReadonlyArray<GQLNcmecThreadInput>;
