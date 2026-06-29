@@ -17,7 +17,10 @@ be done on staging; etc.)? If so, please note them here.
 
 ## Checklist
 
-_Only check items that apply to this PR — leave the rest unchecked._
+_Only check items that apply to this PR; leave the rest unchecked._
+
+- [ ] **If you changed anything user-facing** (i.e. user interface or APIs):
+  Did you update the CHANGELOG.md and related docs?
 
 - [ ] **If you changed `server/models/**/{ContentTypeModel,ActionModel,RuleModel,PolicyModel}.ts`:**
   Did you update the corresponding history tables and their triggers?
