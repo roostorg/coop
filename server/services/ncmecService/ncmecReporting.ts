@@ -512,9 +512,7 @@ export function clampIncidentDateTimeToPast(
 ): { value: string; wasClamped: boolean } {
   const maxCreatedAtMs = new Date(maxCreatedAt).getTime();
   if (Number.isNaN(maxCreatedAtMs)) {
-    throw new Error(
-      `Invalid media createdAt timestamp for incidentDateTime: ${maxCreatedAt}`,
-    );
+    throw new Error(`Invalid timestamp for incidentDateTime: ${maxCreatedAt}`);
   }
   const ceilingMs = nowMs - 1000;
   const wasClamped = maxCreatedAtMs > ceilingMs;
@@ -523,6 +521,31 @@ export function clampIncidentDateTimeToPast(
     value: new Date(finalMs).toISOString(),
     wasClamped,
   };
+}
+
+// consolidate timestamp fetching and verification in one function for media and
+// threads
+export function latestEvidenceTimestamp(
+  media: readonly { createdAt: string }[],
+  threads: readonly {
+    reportedContent: readonly { sentAt: string | Date }[];
+  }[],
+): string {
+  const rawTimestamps: (string | Date)[] = [
+    ...media.map((m) => m.createdAt),
+    ...threads.flatMap((t) => t.reportedContent.map((c) => c.sentAt)),
+  ];
+  if (rawTimestamps.length === 0) {
+    throw new Error('Report has neither media nor messages');
+  }
+  const evidenceTimestampsMs = rawTimestamps.map((raw) => {
+    const ms = raw instanceof Date ? raw.getTime() : Date.parse(raw);
+    if (Number.isNaN(ms)) {
+      throw new Error(`Invalid timestamp for incidentDateTime: ${String(raw)}`);
+    }
+    return ms;
+  });
+  return new Date(Math.max(...evidenceTimestampsMs)).toISOString();
 }
 
 /** Build the `ipCaptureEvent` array for an NCMEC person or media block:
@@ -1459,22 +1482,10 @@ export default class NcmecReporting {
             return 'UNSUPPORTED_ORG';
           }
 
-          if (reportParams.media.length === 0) {
-            throw new Error('No media in report');
-          }
-          const latestMedia = _.maxBy(reportParams.media, (m) => {
-            const ms = Date.parse(m.createdAt);
-            if (Number.isNaN(ms)) {
-              throw new Error(
-                `Invalid media createdAt timestamp for incidentDateTime: ${m.createdAt}`,
-              );
-            }
-            return ms;
-          });
-          if (latestMedia === undefined) {
-            throw new Error('No media in report');
-          }
-          const maxCreatedAt = latestMedia.createdAt;
+          const maxCreatedAt = latestEvidenceTimestamp(
+            reportParams.media,
+            reportParams.threads,
+          );
 
           const { value: clampedIncidentDateTime, wasClamped } =
             clampIncidentDateTimeToPast(maxCreatedAt);
