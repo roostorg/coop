@@ -51,6 +51,12 @@
 - Knip added across all packages to remove unused dependencies (#734, #760, #761, #762)
 - Redis user/password now correctly set in no-cluster mode (#747)
 
+## New contributors
+
+- @reitblatt made their first contribution in https://github.com/roostorg/coop/pull/785
+- @jess-upscrolled made their first contribution in https://github.com/roostorg/coop/pull/804
+- @ltianyi992 made their first contribution in https://github.com/roostorg/coop/pull/711
+
 **Full Changelog**: https://github.com/roostorg/coop/compare/1.0.1...main
 
 # Coop 1.0.1
