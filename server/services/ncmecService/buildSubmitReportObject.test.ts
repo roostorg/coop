@@ -130,7 +130,9 @@ describe('buildSubmitReportObject', () => {
       'termsOfService',
       'legalURL',
     ]);
-    expect(Object.keys(result.report.personOrUserReported!)).toEqual([
+    const personOrUserReported = result.report.personOrUserReported;
+    expect(personOrUserReported).toBeDefined();
+    expect(Object.keys(personOrUserReported ?? {})).toEqual([
       'personOrUserReportedPerson',
       'espIdentifier',
       'espService',
