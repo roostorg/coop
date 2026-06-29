@@ -2,15 +2,17 @@
 
 ## Security
 
-- Routine dependency package upgrades to address vulnerabilities
-- See [Security and quality](https://github.com/roostorg/community/security) for published security advisories.
+> [!NOTE]
+> For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
 
-For future security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
+- Routine dependency package upgrades to address vulnerabilities
+- See [Security and quality](https://github.com/roostorg/community/security) for published security advisories
 
 ## NCMEC
 
 - Added `email` as a supported schema field role for user items, ensuring inclusion and validation for NCMEC reports (#840, #842)
 - `EMAIL_ADDRESS` added as a first-class scalar in `@roostorg/coop-types` (v2.4.0) (#841)
+- Auto-populate user report history, original filename, and file relevance for NCMEC reports (#855)
 
 ## Review Console
 
