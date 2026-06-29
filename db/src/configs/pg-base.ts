@@ -31,31 +31,41 @@ export function makePostgresDatabaseConfig(opts: {
   const { scriptsDirectory, defaultScriptFormat } = opts;
   // Forward server-side `RAISE NOTICE` / `RAISE WARNING` from migrations
   // (e.g. PL/pgSQL DO blocks that report rows they modified) to stderr.
-  // Without this, the messages are emitted by pg but Sequelize swallows
-  // them and operators can't tell whether a migration cleared adopter
-  // configuration as a side effect.
+  // Sequelize sets `client_min_messages` to WARNING by default, which makes
+  // postgres filter NOTICE-severity messages server-side before they reach
+  // the client; we lower it to NOTICE on each connection so RAISE NOTICE
+  // actually surfaces, then attach a listener that prints each one.
+  type PgClientLike = {
+    on: (event: string, cb: (msg: unknown) => void) => void;
+    query: (sql: string, cb: (err: unknown) => void) => void;
+  };
+  const isPgClientLike = (c: unknown): c is PgClientLike =>
+    c !== null &&
+    typeof c === 'object' &&
+    'on' in c &&
+    typeof (c as { on: unknown }).on === 'function' &&
+    'query' in c &&
+    typeof (c as { query: unknown }).query === 'function';
   const driverOpts: Options & { schema: string } = {
     ...opts.driverOpts,
     hooks: {
       ...opts.driverOpts.hooks,
       afterConnect(connection: unknown) {
-        if (
-          connection !== null &&
-          typeof connection === 'object' &&
-          'on' in connection &&
-          typeof (connection as { on: unknown }).on === 'function'
-        ) {
-          (
-            connection as {
-              on: (event: string, cb: (msg: unknown) => void) => void;
-            }
-          ).on('notice', (msg) => {
-            const m = msg as { message?: string; severity?: string };
-            const severity = m.severity ?? 'NOTICE';
+        if (!isPgClientLike(connection)) return;
+        connection.on('notice', (msg) => {
+          const m = msg as { message?: string; severity?: string };
+          const severity = m.severity ?? 'NOTICE';
+          // eslint-disable-next-line no-console
+          console.warn(`[postgres ${severity}] ${m.message ?? ''}`);
+        });
+        connection.query(`SET client_min_messages = 'notice'`, (err) => {
+          if (err) {
             // eslint-disable-next-line no-console
-            console.warn(`[postgres ${severity}] ${m.message ?? ''}`);
-          });
-        }
+            console.warn(
+              `[postgres] failed to lower client_min_messages: ${String(err)}`,
+            );
+          }
+        });
       },
     },
   };
