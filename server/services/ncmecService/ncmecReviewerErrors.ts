@@ -17,7 +17,7 @@ const REVIEWER_ERROR_MESSAGES = {
 // Allowlist of thrown messages that are already operator-friendly. New
 // throw sites stay opaque until classified explicitly.
 const ALREADY_REVIEWER_FRIENDLY: ReadonlySet<string> = new Set([
-  'No media in report',
+  'Report has neither media nor messages',
   'Organization does not have a NCMEC preservation endpoint',
   'NCMEC report requires a non-empty reporter contact email; configure it in Settings → NCMEC.',
   'escalateToHighPriority must be non-blank when supplied and at most 3000 characters',
@@ -34,7 +34,7 @@ const REVIEWER_PREFIX_RULES: readonly {
   { prefix: 'org id not found', category: 'CONFIG' },
   { prefix: 'Unable to find reported media in job payload', category: 'MEDIA' },
   { prefix: 'Unable to find item type for reported media', category: 'MEDIA' },
-  { prefix: 'Invalid media createdAt timestamp', category: 'MEDIA' },
+  { prefix: 'Invalid timestamp for incidentDateTime', category: 'VALIDATION' },
   { prefix: 'Cannot download media from', category: 'MEDIA' },
   { prefix: 'NCMEC file upload failed', category: 'MEDIA' },
   { prefix: 'NCMEC thread CSV upload failed', category: 'MEDIA' },

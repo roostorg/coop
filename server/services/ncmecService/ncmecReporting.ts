@@ -13,10 +13,7 @@ import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
-import {
-  type CollapseCases,
-  type NonEmptyArray,
-} from '../../utils/typescript-types.js';
+import { type CollapseCases } from '../../utils/typescript-types.js';
 import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
@@ -538,14 +535,14 @@ export function latestEvidenceTimestamp(
   if (rawTimestamps.length === 0) {
     throw new Error('Report has neither media nor messages');
   }
-  const evidenceTimestampsMs = rawTimestamps.map((raw) => {
-    const ms = raw instanceof Date ? raw.getTime() : Date.parse(raw);
-    if (Number.isNaN(ms)) {
-      throw new Error(`Invalid timestamp for incidentDateTime: ${String(raw)}`);
-    }
-    return ms;
-  });
-  return new Date(Math.max(...evidenceTimestampsMs)).toISOString();
+  // updated to allow a lenient approach to timestamps. If one fails, it doesn't
+  // fail the report and fallsback to "now"
+  const evidenceTimestampsMs = rawTimestamps
+    .map((raw) => (raw instanceof Date ? raw.getTime() : Date.parse(raw)))
+    .filter((ms) => !Number.isNaN(ms));
+  return evidenceTimestampsMs.length > 0
+    ? new Date(Math.max(...evidenceTimestampsMs)).toISOString()
+    : new Date().toISOString();
 }
 
 /** Build the `ipCaptureEvent` array for an NCMEC person or media block:
@@ -1239,6 +1236,7 @@ export default class NcmecReporting {
     }
 
     if (
+      reportedMedia.length > 0 &&
       responseBody.media?.filter(
         (it) => it.missing === false || it.missing === undefined,
       ).length === 0
@@ -1809,8 +1807,7 @@ export default class NcmecReporting {
 
               user_item_type_id: reportParams.reportedUser.typeId,
               reviewer_id: reportParams.reviewerId,
-              // Safe to cast as a non empty array because of the createdAt check above
-              reported_media: reportedMedia as NonEmptyArray<NcmecMediaReport>,
+              reported_media: reportedMedia,
               report_xml: xml,
               additional_files: additionalFiles,
               reported_messages: threadCsvs,
