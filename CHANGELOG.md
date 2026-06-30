@@ -1,5 +1,11 @@
 # main (unreleased)
 
+**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.2...main
+
+# Coop 1.0.2
+
+This release addresses reported security advisories, improves NCMEC CyberTipline reporting, and includes front-end quality-of-life improvements.
+
 ## Security
 
 > [!NOTE]
@@ -12,8 +18,8 @@
 
 - Added `email` as a supported schema field role for user items, ensuring inclusion and validation for NCMEC reports (#840, #842)
 - `EMAIL_ADDRESS` added as a first-class scalar in `@roostorg/coop-types` (v2.4.0) (#841)
-- Auto-populate `originalFileName` (from the media URL) and `fileRelevance` (defaults to `Reported`) for NCMEC reports (#855). The same PR also wires `priorCTReports` end-to-end, but the field does not populate in production yet because an earlier duplicate-submission check stops the report before the lookup runs; resolving that check is tracked as a follow-up.
-- Fixed `fileDetails.ipCaptureEvent` XSD element ordering: `ipCaptureEvent` was emitted after `industryClassification`, which NCMEC's validator rejected (`cvc-complex-type.2.4.a`). Affected any adopter who had the IP-address schema field role configured on a Content item type. Latent since the `/fileinfo` submission path was first written; activated by #641 (#856).
+- Auto-populate `originalFileName` (from the media URL) and `fileRelevance` (defaults to `Reported`) for NCMEC reports (#855)
+- Fixed `fileDetails.ipCaptureEvent` XSD element ordering (#856)
 
 ## Review Console
 
@@ -58,7 +64,7 @@
 - @jess-upscrolled made their first contribution in https://github.com/roostorg/coop/pull/804
 - @ltianyi992 made their first contribution in https://github.com/roostorg/coop/pull/711
 
-**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.1...main
+**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
 
 # Coop 1.0.1
 
