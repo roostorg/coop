@@ -42,6 +42,9 @@ build/
 
 .claude/
 
+# git worktrees (local isolated checkouts)
+.worktrees/
+
 # NCMEC report XML files (contain sensitive data)
 ncmec-reports/
 .devops/backups/
