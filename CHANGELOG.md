@@ -12,7 +12,8 @@
 
 - Added `email` as a supported schema field role for user items, ensuring inclusion and validation for NCMEC reports (#840, #842)
 - `EMAIL_ADDRESS` added as a first-class scalar in `@roostorg/coop-types` (v2.4.0) (#841)
-- Auto-populate user report history, original filename, and file relevance for NCMEC reports (#855)
+- Auto-populate `originalFileName` (from the media URL) and `fileRelevance` (defaults to `Reported`) for NCMEC reports (#855). The same PR also wires `priorCTReports` end-to-end, but the field does not populate in production yet because an earlier duplicate-submission check stops the report before the lookup runs; resolving that check is tracked as a follow-up.
+- Fixed `fileDetails.ipCaptureEvent` XSD element ordering: `ipCaptureEvent` was emitted after `industryClassification`, which NCMEC's validator rejected (`cvc-complex-type.2.4.a`). Affected any adopter who had the IP-address schema field role configured on a Content item type. Latent since the `/fileinfo` submission path was first written; activated by #641 (#856).
 
 ## Review Console
 

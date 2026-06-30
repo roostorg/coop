@@ -132,9 +132,9 @@ type FileDetails = {
     publiclyAvailable?: boolean;
     fileRelevance?: 'Reported' | 'Supplemental Reported';
     fileAnnotations?: FileAnnotations;
+    ipCaptureEvent?: IPNCMECEvent[];
     industryClassification?: NCMECIndustryClassificationType;
     originalFileHash?: OriginalFileHash[];
-    ipCaptureEvent?: IPNCMECEvent[];
     deviceId?: DeviceId[];
     details?: Detail[];
     additionalInfo?: string[];
@@ -843,8 +843,8 @@ export type BuildFileDetailsObjectInput = {
     'publiclyAvailable' | 'ipCaptureEvent' | 'additionalInfo'
   >;
   /** Combined HMA + webhook hashes as built by `toOriginalFileHashes`.
-   * Rendered in the `<originalFileHash>` element(s) between
-   * `industryClassification` and `ipCaptureEvent` per the XSD. */
+   * Rendered in the `<originalFileHash>` element(s) after
+   * `industryClassification` per the XSD. */
   originalFileHash?: readonly OriginalFileHash[];
 };
 
@@ -912,10 +912,6 @@ export function buildFileDetailsObject(
         : {}),
       fileRelevance,
       ...(fileAnnotations ? { fileAnnotations } : {}),
-      industryClassification: media.industryClassification,
-      ...(originalFileHash && originalFileHash.length > 0
-        ? { originalFileHash: [...originalFileHash] }
-        : {}),
       ...(additionalInfo.ipCaptureEvent &&
       additionalInfo.ipCaptureEvent.length > 0
         ? {
@@ -927,6 +923,10 @@ export function buildFileDetailsObject(
               ...(it.port ? { port: it.port } : {}),
             })),
           }
+        : {}),
+      industryClassification: media.industryClassification,
+      ...(originalFileHash && originalFileHash.length > 0
+        ? { originalFileHash: [...originalFileHash] }
         : {}),
       ...(additionalInfo.additionalInfo
         ? { additionalInfo: additionalInfo.additionalInfo }

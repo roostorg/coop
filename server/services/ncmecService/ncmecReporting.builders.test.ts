@@ -137,9 +137,9 @@ describe('buildFileDetailsObject', () => {
       'publiclyAvailable',
       'fileRelevance',
       'fileAnnotations',
+      'ipCaptureEvent',
       'industryClassification',
       'originalFileHash',
-      'ipCaptureEvent',
       'additionalInfo',
     ]);
   });
