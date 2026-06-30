@@ -2,9 +2,11 @@
 import 'dotenv/config';
 
 import { test as base } from '@playwright/test';
+import { type Field } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { jsonStringify } from '../../utils/encoding.js';
 
 /**
  * Server runtime is loaded from the COMPILED output (`transpiled/`), not the TS
@@ -19,24 +21,33 @@ async function importIocContainer() {
 }
 
 async function importSeedHelpers() {
-  const [createOrg, ums, userPersistence] = await Promise.all([
-    import(`${TRANSPILED}/test/fixtureHelpers/createOrg.js`) as Promise<
-      typeof import('../../test/fixtureHelpers/createOrg.js')
-    >,
-    import(`${TRANSPILED}/services/userManagementService/index.js`) as Promise<
-      typeof import('../../services/userManagementService/index.js')
-    >,
-    import(
-      `${TRANSPILED}/graphql/datasources/userKyselyPersistence.js`
-    ) as Promise<
-      typeof import('../../graphql/datasources/userKyselyPersistence.js')
-    >,
-  ]);
+  const [createOrg, ums, userPersistence, createContentItemTypes] =
+    await Promise.all([
+      import(`${TRANSPILED}/test/fixtureHelpers/createOrg.js`) as Promise<
+        typeof import('../../test/fixtureHelpers/createOrg.js')
+      >,
+      import(
+        `${TRANSPILED}/services/userManagementService/index.js`
+      ) as Promise<
+        typeof import('../../services/userManagementService/index.js')
+      >,
+      import(
+        `${TRANSPILED}/graphql/datasources/userKyselyPersistence.js`
+      ) as Promise<
+        typeof import('../../graphql/datasources/userKyselyPersistence.js')
+      >,
+      import(
+        `${TRANSPILED}/test/fixtureHelpers/createContentItemTypes.js`
+      ) as Promise<
+        typeof import('../../test/fixtureHelpers/createContentItemTypes.js')
+      >,
+    ]);
   return {
     createOrg: createOrg.default,
     hashPassword: ums.hashPassword,
     UserRole: ums.UserRole,
     kyselyUserInsert: userPersistence.kyselyUserInsert,
+    createContentItemTypes: createContentItemTypes.default,
   };
 }
 
@@ -49,6 +60,8 @@ export type SeededAdmin = {
   email: string;
   /** Plaintext password to log in with. */
   password: string;
+  /** API key for the org's ingest endpoint (POST /api/v1/items/async). */
+  apiKey: string;
 };
 
 /**
@@ -87,7 +100,63 @@ class Seeder {
       loginMethods: ['password'],
     });
 
-    return { orgId: org.org.id, userId: user.id, email, password };
+    return {
+      orgId: org.org.id,
+      userId: user.id,
+      email,
+      password,
+      apiKey: org.apiKey,
+    };
+  }
+
+  /**
+   * Create a content item type with the given fields. Wraps `createContentItemTypes`.
+   * Returns the created item type; cleanup is left to multi-tenancy isolation
+   * (unique org id), matching the rest of the seeder.
+   */
+  async createItemType(
+    admin: SeededAdmin,
+    fields: readonly Field[],
+  ): Promise<{ id: string; name: string }> {
+    const { createContentItemTypes } = await importSeedHelpers();
+    const { itemTypes } = await createContentItemTypes({
+      moderationConfigService: this.deps.ModerationConfigService,
+      orgId: admin.orgId,
+      extra: { fields: fields as [Field, ...Field[]] },
+    });
+    const itemType = itemTypes[0];
+    return { id: itemType.id, name: itemType.name };
+  }
+
+  /**
+   * Submit a content item via the real ingest endpoint (POST /api/v1/items/async).
+   * Returns the submitted item id. The endpoint is async (202), so the item
+   * may not be queryable immediately — callers should retry/poll on read.
+   */
+  async submitContentItem(
+    admin: SeededAdmin,
+    itemTypeId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ itemId: string }> {
+    const itemId = uid();
+    // ponytail: hitting the route via fetchHTTP keeps the test on the production
+    // ingest path rather than reimplementing the pipeline at the service layer.
+    const res = await this.deps.fetchHTTP({
+      url: 'http://localhost:8080/api/v1/items/async',
+      method: 'post',
+      body: jsonStringify({
+        items: [{ id: itemId, typeId: itemTypeId, data }],
+      }),
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': admin.apiKey,
+      },
+      handleResponseBody: 'discard',
+    });
+    if (res.status !== 202) {
+      throw new Error(`submitContentItem expected 202, got ${res.status}`);
+    }
+    return { itemId };
   }
 }
 
