@@ -231,4 +231,170 @@ describe('QueueOperations', () => {
       ).resolves.toBeUndefined();
     },
   );
+
+  // Regression for GHSA-mf74-gf5j-hxr9: addAccessibleQueuesForUser /
+  // removeAccessibleQueuesForUser used to accept an arbitrary queueId /
+  // userId with no org-scoping, so an authenticated user in Org A could
+  // grant (or revoke) access to queues and users belonging to Org B.
+  //
+  // These fixtures build two independent orgs, each with a user and a
+  // queue, then assert that the caller's orgId gates both the queue and
+  // the user.
+  const testWithTwoOrgs = () =>
+    makeTestWithFixture(async () => {
+      const container = (await getBottle()).container;
+
+      const buildOrg = async () => {
+        const { org, cleanup: orgCleanup } = await createOrg(
+          {
+            KyselyPg: container.KyselyPg,
+            ModerationConfigService: container.ModerationConfigService,
+            ApiKeyService: container.ApiKeyService,
+          },
+          uid(),
+        );
+        const { user, cleanup: userCleanup } = await createUser(
+          container.KyselyPg,
+          org.id,
+        );
+        const { queue, cleanup: queueCleanup } = await createMrtQueue({
+          orgId: org.id,
+          mrtService: container.ManualReviewToolService,
+          userId: user.id,
+        });
+        return { org, user, queue, orgCleanup, userCleanup, queueCleanup };
+      };
+
+      const attacker = await buildOrg();
+      const victim = await buildOrg();
+
+      return {
+        attacker,
+        victim,
+        mrtService: container.ManualReviewToolService,
+        kyselyPg: container.KyselyPg,
+        cleanup: async () => {
+          await attacker.queueCleanup();
+          await victim.queueCleanup();
+          await attacker.userCleanup();
+          await victim.userCleanup();
+          await attacker.orgCleanup();
+          await victim.orgCleanup();
+          await container.KyselyPg.destroy();
+          await container.KyselyPgReadReplica.destroy();
+        },
+      };
+    });
+
+  testWithTwoOrgs()(
+    'addAccessibleQueuesForUser must not grant access to a queue in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      // Attacker (Org A) passes the victim's queueId (Org B) to grant their
+      // own user access. This is a cross-org IDOR: the service must reject it
+      // and no access row should be written.
+      await expect(
+        mrtService.addAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [victim.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: victim.org.id,
+        queueId: victim.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).not.toContain(attacker.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'addAccessibleQueuesForUser must not grant access for a user in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      // Attacker (Org A) passes a userId belonging to Org B against their own
+      // queue. The service must reject cross-user cross-org mutation.
+      await expect(
+        mrtService.addAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: victim.user.id,
+          queueIds: [attacker.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: victim.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'removeAccessibleQueuesForUser must not revoke access for a queue in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      // Seed legitimate access for the victim's user on the victim's queue,
+      // then have the attacker (Org A) pass the victim's queueId to revoke
+      // it. Must be rejected; the seeded access must survive.
+      await mrtService.addAccessibleQueuesForUser({
+        orgId: victim.org.id,
+        userId: victim.user.id,
+        queueIds: [victim.queue.id],
+      });
+
+      await expect(
+        mrtService.removeAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [victim.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: victim.org.id,
+        queueId: victim.queue.id,
+        userId: victim.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).toContain(victim.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'removeAccessibleQueuesForUser must not revoke access for a user in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      // Attacker (Org A) passes a userId belonging to Org B against their
+      // own queue. The service must reject the cross-user mutation -- this
+      // is the path that would otherwise delete a victim reviewer's access.
+      await expect(
+        mrtService.removeAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: victim.user.id,
+          queueIds: [attacker.queue.id],
+        }),
+      ).rejects.toBeDefined();
+    },
+  );
+
+  testWithTwoOrgs()(
+    'addAccessibleQueuesForUser grants access within the same org',
+    async ({ attacker, mrtService }) => {
+      // Same-org happy path: the caller's own user gets access to the
+      // caller's own queue. Guards against over-rejecting.
+      await expect(
+        mrtService.addAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [attacker.queue.id],
+        }),
+      ).resolves.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).toContain(attacker.user.id);
+    },
+  );
 });

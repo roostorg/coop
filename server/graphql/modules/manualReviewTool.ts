@@ -2460,10 +2460,11 @@ const Mutation: GQLMutationResolvers = {
       throw forbiddenError('User does not have permission to edit MRT queues');
     }
 
-    await context.services.ManualReviewToolService.addAccessibleQueuesForUser(
-      params.input.userId,
-      params.input.queueIds,
-    );
+    await context.services.ManualReviewToolService.addAccessibleQueuesForUser({
+      orgId: user.orgId,
+      userId: params.input.userId,
+      queueIds: params.input.queueIds,
+    });
 
     // TODO: try/catch and return failure cases
     return gqlSuccessResult(
@@ -2481,8 +2482,11 @@ const Mutation: GQLMutationResolvers = {
     }
 
     await context.services.ManualReviewToolService.removeAccessibleQueuesForUser(
-      params.input.userId,
-      params.input.queueIds,
+      {
+        orgId: user.orgId,
+        userId: params.input.userId,
+        queueIds: params.input.queueIds,
+      },
     );
 
     // TODO: try/catch and return failure cases

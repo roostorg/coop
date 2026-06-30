@@ -838,18 +838,28 @@ export class ManualReviewToolService {
         });
   }
 
-  async addAccessibleQueuesForUser(
-    userId: string,
-    queueIds: readonly string[],
-  ) {
-    return this.queueOps.addAccessibleQueuesForUser([userId], queueIds);
+  async addAccessibleQueuesForUser(opts: {
+    orgId: string;
+    userId: string;
+    queueIds: readonly string[];
+  }) {
+    return this.queueOps.addAccessibleQueuesForUser({
+      orgId: opts.orgId,
+      userIds: [opts.userId],
+      queueIds: opts.queueIds,
+    });
   }
 
-  async removeAccessibleQueuesForUser(
-    userId: string,
-    queueIds: readonly string[],
-  ) {
-    return this.queueOps.removeAccessibleQueuesForUser(userId, queueIds);
+  async removeAccessibleQueuesForUser(opts: {
+    orgId: string;
+    userId: string;
+    queueIds: readonly string[];
+  }) {
+    return this.queueOps.removeAccessibleQueuesForUser({
+      orgId: opts.orgId,
+      userId: opts.userId,
+      queueIds: opts.queueIds,
+    });
   }
 
   /**

@@ -104,7 +104,8 @@ export type ManualReviewQueueErrorType = 'ManualReviewQueueNameExistsError';
 export type QueueOperationsErrorType =
   | 'DeleteAllJobsUnauthorizedError'
   | 'QueueDoesNotExistError'
-  | 'UnableToDeleteDefaultQueueError';
+  | 'UnableToDeleteDefaultQueueError'
+  | 'AccessibleQueueNotInOrgError';
 
 // Compound identifier for a queue. orgId is needed for security, but also
 // because queues are/will be actually sharded across redis instances for
@@ -655,10 +656,18 @@ export default class QueueOperations {
       .execute();
   }
 
-  async addAccessibleQueuesForUser(
-    userIds: string[],
-    queueIds: readonly string[],
-  ) {
+  async addAccessibleQueuesForUser(opts: {
+    orgId: string;
+    userIds: readonly string[];
+    queueIds: readonly string[];
+  }) {
+    const { orgId, userIds, queueIds } = opts;
+    await assertUsersAndQueuesInOrg(this.pgQuery, {
+      orgId,
+      userIds,
+      queueIds,
+    });
+
     return this.pgQuery
       .insertInto('manual_review_tool.users_and_accessible_queues')
       .values(
@@ -670,10 +679,18 @@ export default class QueueOperations {
       .execute();
   }
 
-  async removeAccessibleQueuesForUser(
-    userId: string,
-    queueIds: readonly string[],
-  ) {
+  async removeAccessibleQueuesForUser(opts: {
+    orgId: string;
+    userId: string;
+    queueIds: readonly string[];
+  }) {
+    const { orgId, userId, queueIds } = opts;
+    await assertUsersAndQueuesInOrg(this.pgQuery, {
+      orgId,
+      userIds: [userId],
+      queueIds,
+    });
+
     return this.pgQuery
       .deleteFrom('manual_review_tool.users_and_accessible_queues')
       .where('user_id', '=', userId)
@@ -1882,6 +1899,58 @@ const makeQueueDoesNotExistError = (data: ErrorInstanceData) => {
     ...data,
   });
 };
+
+/**
+ * Thrown when a caller tries to mutate another org's accessible-queue rows.
+ * Guards the cross-org IDOR fixed in GHSA-mf74-gf5j-hxr9: both the target
+ * queues and the target user must belong to the caller's org.
+ */
+const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 403,
+    type: [ErrorType.Unauthorized],
+    title: "Queue or user does not belong to the caller's organization",
+    name: 'AccessibleQueueNotInOrgError',
+    ...data,
+  });
+
+/**
+ * Defense-in-depth org-scoping for accessible-queue mutations
+ * (GHSA-mf74-gf5j-hxr9). Rejects before any write if a target queue or
+ * target user does not belong to the caller's org.
+ */
+async function assertUsersAndQueuesInOrg(
+  db: Kysely<ManualReviewToolServicePg>,
+  opts: {
+    orgId: string;
+    userIds: readonly string[];
+    queueIds: readonly string[];
+  },
+) {
+  const { orgId, userIds, queueIds } = opts;
+
+  // Every target queue must belong to the caller's org.
+  const inOrgQueues = await db
+    .selectFrom('manual_review_tool.manual_review_queues')
+    .select('id')
+    .where('org_id', '=', orgId)
+    .where('id', 'in', queueIds)
+    .execute();
+  if (inOrgQueues.length !== new Set(queueIds).size) {
+    throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
+  }
+
+  // Every target user must belong to the caller's org.
+  const inOrgUsers = await db
+    .selectFrom('public.users')
+    .select('id')
+    .where('org_id', '=', orgId)
+    .where('id', 'in', userIds)
+    .execute();
+  if (inOrgUsers.length !== new Set(userIds).size) {
+    throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
+  }
+}
 
 export const makeUnableToDeleteDefaultQueueError = (
   data: ErrorInstanceData,
