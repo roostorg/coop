@@ -1,12 +1,11 @@
 // Load .env before anything reads process.env (the DI container does, heavily).
 import 'dotenv/config';
 
-import { test as base } from '@playwright/test';
+import { test as base, type APIRequestContext } from '@playwright/test';
 import { type Field } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { jsonStringify } from '../../utils/encoding.js';
 
 /**
  * Server runtime is loaded from the COMPILED output (`transpiled/`), not the TS
@@ -129,32 +128,30 @@ class Seeder {
   }
 
   /**
-   * Submit a content item via the real ingest endpoint (POST /api/v1/items/async).
-   * Returns the submitted item id. The endpoint is async (202), so the item
-   * may not be queryable immediately — callers should retry/poll on read.
+   * Submit a content item via the real ingest endpoint (POST /api/v1/items/async),
+   * routed through the same origin the browser uses (the vite dev proxy in dev,
+   * or the served build in prod-like setups). Uses Playwright's request context
+   * rather than the server's fetchHTTP: fetchHTTP is an app-code helper (undici +
+   * tracing agent) that is fragile from the test process, whereas `request`
+   * shares the browser's proven network path. The endpoint is async (202), so
+   * the item may not be queryable immediately — callers should retry/poll on
+   * read.
    */
   async submitContentItem(
+    request: APIRequestContext,
     admin: SeededAdmin,
     itemTypeId: string,
     data: Record<string, unknown>,
   ): Promise<{ itemId: string }> {
     const itemId = uid();
-    // ponytail: hitting the route via fetchHTTP keeps the test on the production
-    // ingest path rather than reimplementing the pipeline at the service layer.
-    const res = await this.deps.fetchHTTP({
-      url: 'http://localhost:8080/api/v1/items/async',
-      method: 'post',
-      body: jsonStringify({
-        items: [{ id: itemId, typeId: itemTypeId, data }],
-      }),
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': admin.apiKey,
-      },
-      handleResponseBody: 'discard',
+    const res = await request.post('/api/v1/items/async', {
+      headers: { 'x-api-key': admin.apiKey },
+      data: { items: [{ id: itemId, typeId: itemTypeId, data }] },
     });
-    if (res.status !== 202) {
-      throw new Error(`submitContentItem expected 202, got ${res.status}`);
+    if (res.status() !== 202) {
+      throw new Error(
+        `submitContentItem expected 202, got ${res.status()}: ${await res.text()}`,
+      );
     }
     return { itemId };
   }

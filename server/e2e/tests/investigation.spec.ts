@@ -13,11 +13,12 @@ const STRING_FIELD: Field = {
 
 test('a submitted item can be found in the investigation tool', async ({
   page,
+  request,
   seed,
 }) => {
   const admin = await seed.orgWithAdmin();
   const itemType = await seed.createItemType(admin, [STRING_FIELD]);
-  const { itemId } = await seed.submitContentItem(admin, itemType.id, {
+  const { itemId } = await seed.submitContentItem(request, admin, itemType.id, {
     text: 'hello from e2e',
   });
 
