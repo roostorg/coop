@@ -164,10 +164,6 @@ describe('createTransactionalTestDb', () => {
       });
       const transactionWithRetry = makeKyselyTransactionWithRetry(db);
 
-      // `seq` captures real write order (auto-assigned at INSERT). Ordering the
-      // final read by `seq` — not by `id`, which is the dispatch index and so
-      // would make the assertion trivially circular — proves the harness ran
-      // the concurrent transactions in FIFO dispatch order.
       await sql`create table concurrency_probe (id int primary key, seq serial)`.execute(
         db,
       );
@@ -197,6 +193,7 @@ describe('createTransactionalTestDb', () => {
       await tdb.end();
     }
   });
+
   it('isolates a concurrent rollback from sibling committed transactions', async () => {
     const tdb = createTransactionalTestDb(pgConfig);
     await tdb.begin();
@@ -252,6 +249,7 @@ describe('createTransactionalTestDb', () => {
       await tdb.end();
     }
   });
+
   it('supports nested application transactions without deadlocking', async () => {
     const tdb = createTransactionalTestDb(pgConfig);
     await tdb.begin();
@@ -264,10 +262,10 @@ describe('createTransactionalTestDb', () => {
       await sql`create table nested_probe (id int)`.execute(db);
 
       // An outer transaction that opens an inner transaction. Kysely issues a
-      // plain `begin` for the inner one (it does NOT auto-nest via savepoints),
+      // plain `begin` for the inner one,
       // so the harness must treat a BEGIN that arrives while a transaction
       // already holds the connection as a nested savepoint, not a concurrent
-      // transaction to wait on — otherwise this deadlocks.
+      // transaction to wait on.
       const result = await transactionWithRetry(async (trx) => {
         await sql`insert into nested_probe (id) values (1)`.execute(trx);
         const inner = await transactionWithRetry(async (innerTrx) => {

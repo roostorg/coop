@@ -105,27 +105,6 @@ export function createTransactionalTestDb(
     return result;
   };
 
-  // ─────────────────────────────────────────────────────────────────────
-  // One test = one real Postgres connection (the `client` above). Every
-  // `pool.connect()` returns a thin facade forwarding to it, so a test reads
-  // its own writes: everything runs in one outer transaction, rolled back at
-  // the end. Each test has its own pg.Client (see transactionalTest.ts), so
-  // this serializes concurrent work *within* one test, not across tests.
-  //
-  // A single connection can't safely serve overlapping work: pg's node driver
-  // only preserves query order if we await each drive before starting the next,
-  // AND the savepoint stack is strictly nested (LIFO) — if transaction A's
-  // COMMIT/ROLLBACK runs while transaction B is also open, A releases/rolls
-  // back B's savepoint, corrupting the stack and discarding B's committed
-  // work. So the mutex must be held for the whole logical transaction (BEGIN →
-  // COMMIT/ROLLBACK), not per statement. Overlapping application transactions
-  // then run strictly one-after-another and savepoints stay properly nested.
-  // ─────────────────────────────────────────────────────────────────────
-
-  // FIFO chain used outside application transactions (ad-hoc queries, and a
-  // new transaction's BEGIN waiting for the previous transaction to finish).
-  // The catch threaded back into `queue` is separate from what callers await,
-  // so a failed operation can't poison every later one.
   let queue: Promise<unknown> = Promise.resolve();
   const runAfterPending = async <T>(thunk: () => Promise<T>): Promise<T> => {
     const next = queue.then(thunk);
@@ -138,10 +117,6 @@ export function createTransactionalTestDb(
   let txMutex: Promise<void> | null = null;
   let endTx: (() => void) | null = null;
 
-  // The single place transaction-control statements are rewritten to
-  // savepoints; everything else passes straight through to the pinned client.
-  // Shared by both the per-connection facade (`connect().query`) and the
-  // pool-level `query` (used by consumers like the express-session store).
   const runQuery = async (
     textOrConfig: string | pg.QueryConfig,
     values?: unknown[],
@@ -155,10 +130,7 @@ export function createTransactionalTestDb(
     if (normalized === 'begin' || normalized.startsWith('start transaction')) {
       // A BEGIN that arrives while a transaction already holds the connection
       // is a *nested* transaction (Kysely issues a plain `begin` for nesting,
-      // not a savepoint). It runs directly — no queueing, no re-acquiring —
-      // because a concurrent (non-nested) BEGIN is still blocked inside
-      // `runAfterPending` waiting for the mutex. We just open another
-      // savepoint (LIFO), which is exactly what the old per-statement code did.
+      // not a savepoint).
       if (txMutex !== null) {
         return openSavepoint(); // → SAVEPOINT coop_test_sp_<new depth>
       }
@@ -184,11 +156,8 @@ export function createTransactionalTestDb(
     }
     if (normalized === 'commit' || normalized === 'rollback') {
       const verb = normalized === 'commit' ? 'commit' : 'rollback';
-      // Runs while our own transaction holds the mutex (no queueing — that
-      // would wait on ourselves). Only release the mutex when the outermost
-      // savepoint closes (depth → 0), so a nested COMMIT/ROLLBACK doesn't
-      // hand the connection to a waiting transaction while an outer
-      // transaction is still open.
+      // Only release the mutex when the outermost
+      // savepoint closes (i.e. depth is 0).
       if (txMutex === null) {
         throw new Error(
           `${verb.toUpperCase()} without a matching application transaction`,
@@ -205,7 +174,7 @@ export function createTransactionalTestDb(
 
     rejectUnsupportedTransactionControl(normalized, text);
 
-    // Inside a transaction it already owns the connection; outside, queue to
+    // Outside a transaction, queue to
     // preserve wire order against other ad-hoc queries.
     if (txMutex !== null) {
       return values === undefined
