@@ -51,9 +51,12 @@ proves the submission flow produces the XML we think it does.
     approval-required dep + build friction for a check that can't run in CI.
     The derived assertion table covers the #843 field-gap class without it;
     revisit only if the table measurably falls short.
-- **Not** hitting real `exttest.cybertip.org` in CI. Network-dependent,
-  rate-limited, and its "incomplete" quality heuristics are not a stable
-  contract to assert against.
+- **Not** hitting real NCMEC endpoints (exttest _or_ prod). Both
+  `exttest.cybertip.org` and `report.cybertip.org` are real network; the test
+  stubs whichever the service targets and never opens a real socket. Notably,
+  because the stub neutralizes the URL, the **production** `isTest=false` path
+  (`report.cybertip.org` + dedup + prior-CT-reports + preservation) is
+  exercisable at the same cost as the test path — see Layer 2.
 - **Not** a Playwright E2E through the reviewer UI. The UI→resolver→service
   hop is already covered by `ncmec.resolver.test.ts`; the cost/benefit for the
   #843 field-gap class is poor.
@@ -126,15 +129,25 @@ returns a canned `CoopResponse`:
 
 | Intercepted call                                                       | Stub behavior                                                                                                                                                                                          |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `POST https://exttest.cybertip.org/ispws/submit`                       | Assert body is valid XML; assert Authorization is `Basic …`; assert the field-role-resolved fields (e.g. `email`) are present. Return `reportResponse.responseCode._text='0'`, `reportId._text='999'`. |
+| `POST https://report.cybertip.org/ispws/submit`                        | Assert body is valid XML; assert Authorization is `Basic …`; assert the field-role-resolved fields (e.g. `email`) are present. Return `reportResponse.responseCode._text='0'`, `reportId._text='999'`. |
 | `POST .../ispws/upload`                                                | Return `responseCode._text='0'`, `fileId._text='f1'`.                                                                                                                                                  |
 | `POST .../ispws/finish`                                                | Return `responseCode._text='0'`.                                                                                                                                                                       |
 | `POST https://tas-infra-ml.net/...` (`getNCMECAdditionalInfo` webhook) | Return canned additional-info (empty IP events, no additional files) so the flow proceeds.                                                                                                             |
+| `POST <ncmec_preservation_endpoint>` (`#sendUserPreservationRequest`)  | Return success. Only fired when the org setting configures the endpoint _and_ `isTest=false` — both true in this test.                                                                                 |
 | `GET <media url>` (media download for `#upload`)                       | Return a `Readable` stream of fake media bytes.                                                                                                                                                        |
 
-`isTest=true` is passed so the service targets `exttest.cybertip.org` (the URL
-the stub matches) and skips the real-report dedup/prior-CT-reports branches
-that would otherwise need more fixtures.
+**`isTest=false` (production path) is exercised, not the test path.** The
+harness sets `NCMEC_ENV=production` (per-test `process.env` or a jest
+setupFile), so the real derivation `process.env.NCMEC_ENV !== 'production'`
+yields `isTest=false` at the call sites (`iocContainer/index.ts:1269`,
+`retryNcmecSubmission.ts:107`). The service therefore targets
+`report.cybertip.org` (the URL the stub matches) and runs the prod-only
+branches: dedup (`getUserHasExistingNcmeReport` — real PG, no existing row for
+a fresh org ⇒ proceeds), `getPriorCTReportIds` (real PG, fresh ⇒ `[]`), and
+`#sendUserPreservationRequest` (stubbed). This covers the branches that
+matter in production and that no other test touches, at no extra fixture
+cost — the stub makes the URL a string match, so "production" no longer means
+"real network."
 
 **Real everything else.** Uses `makeIntegrationServer()`-style real IoC +
 real Postgres (the repo's integration bar — see `report-flow.integ.test.ts` +
@@ -188,9 +201,11 @@ items/types created for the scenario.
   Drift detection only — but the drift assertions are derived from the real
   XSD at implementation time, so they are schema-true, not paraphrased.
 - The reviewer UI → resolver hop (already covered).
-- Production `report.cybertip.org` routing (the `isTest=false` branch); the
-  test exercises `isTest=true`. The only `isTest`-gated logic is dedup and
-  prior-CT-reports, both intentionally out of scope.
+- The _test_ (`isTest=true` / `exttest.cybertip.org`) branch. Layer 2
+  deliberately exercises the production `isTest=false` path, which is the
+  one that matters and that the stub makes safe. The exttest branch differs
+  only by URL string and by skipping dedup/priorCT/preservation — lower
+  value, intentionally not covered.
 
 ## Open questions for review
 
