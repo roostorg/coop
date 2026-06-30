@@ -164,7 +164,11 @@ describe('createTransactionalTestDb', () => {
       });
       const transactionWithRetry = makeKyselyTransactionWithRetry(db);
 
-      await sql`create table concurrency_probe (id int primary key)`.execute(
+      // `seq` captures real write order (auto-assigned at INSERT). Ordering the
+      // final read by `seq` — not by `id`, which is the dispatch index and so
+      // would make the assertion trivially circular — proves the harness ran
+      // the concurrent transactions in FIFO dispatch order.
+      await sql`create table concurrency_probe (id int primary key, seq serial)`.execute(
         db,
       );
 
@@ -182,7 +186,7 @@ describe('createTransactionalTestDb', () => {
 
       const rows = await sql<{
         id: number;
-      }>`select id from concurrency_probe order by id`.execute(db);
+      }>`select id from concurrency_probe order by seq`.execute(db);
       expect(rows.rows.map((r) => r.id)).toEqual(ids);
 
       await tdb.rollback();
