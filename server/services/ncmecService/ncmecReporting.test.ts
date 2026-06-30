@@ -203,13 +203,22 @@ describe('NCMEC reporting', () => {
       );
     });
 
-    it('throws on an unparseable media or message timestamp', () => {
-      expect(() => latestEvidenceTimestamp([media('not-a-date')], [])).toThrow(
-        /Invalid timestamp for incidentDateTime/,
-      );
-      expect(() => latestEvidenceTimestamp([], [thread('not-a-date')])).toThrow(
-        /Invalid timestamp for incidentDateTime/,
-      );
+    it('skips an unparseable timestamp and uses the latest valid one', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread('not-a-date', '2026-01-08T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-08T00:00:00.000Z');
+    });
+
+    it('falls back to ~now when evidence exists but no timestamp parses', () => {
+      const before = Date.now();
+      const result = latestEvidenceTimestamp([media('not-a-date')], []);
+      const after = Date.now();
+      const ms = Date.parse(result);
+      expect(ms).toBeGreaterThanOrEqual(before);
+      expect(ms).toBeLessThanOrEqual(after);
     });
   });
 

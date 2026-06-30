@@ -35,8 +35,18 @@ describe('summarizeNcmecErrorForReviewer', () => {
 
   it('passes through known reviewer-friendly local errors verbatim', () => {
     expect(
-      summarizeNcmecErrorForReviewer(new Error('No media in report')),
-    ).toBe('No media in report');
+      summarizeNcmecErrorForReviewer(
+        new Error('Report has neither media nor messages'),
+      ),
+    ).toBe('Report has neither media nor messages');
+  });
+
+  it('classifies an unparseable incidentDateTime timestamp as validation', () => {
+    expect(
+      summarizeNcmecErrorForReviewer(
+        new Error('Invalid timestamp for incidentDateTime: not-a-date'),
+      ),
+    ).toMatch(/failed validation/);
   });
 
   it('classifies missing-config throws to a config category', () => {
