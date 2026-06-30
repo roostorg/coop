@@ -173,7 +173,27 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const { default: getBottle } = await importIocContainer();
       const bottle = await getBottle();
       const deps = bottle.container as Dependencies;
+
+      // Start the item-processing worker inline so that content submitted via
+      // POST /api/v1/items/async gets drained from the Redis queue, run
+      // through the rule engine, and indexed — without a separate worker
+      // process. Mirrors test/integ/setupIntegrationServer.ts.
+      const workerAbort = new AbortController();
+      const workerRun = deps.ItemProcessingWorker.run(workerAbort.signal);
+      workerRun.catch((err) => {
+        console.error('ItemProcessingWorker exited with error', err);
+      });
+
       await use(deps);
+
+      workerAbort.abort();
+      try {
+        await deps.ItemProcessingWorker.shutdown();
+      } catch {
+        // Best-effort: BullMQ's Worker.close() closes the shared ioredis
+        // connection, which can make closeSharedResourcesForShutdown throw
+        // "Connection is closed." on its own quit(). Benign — swallow.
+      }
       await deps.closeSharedResourcesForShutdown();
     },
     { scope: 'worker' },

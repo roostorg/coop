@@ -143,13 +143,6 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 
-      - name: Dump server and worker logs
-        if: ${{ always() }}
-        run: |
-          echo "::group::server.log"; cat /tmp/server.log 2>/dev/null || echo "(no server.log)"; echo "::endgroup::"
-          echo "::group::worker.log"; cat /tmp/worker.log 2>/dev/null || echo "(no worker.log)"; echo "::endgroup::"
-          echo "::group::client.log (tail)"; tail -50 /tmp/client.log 2>/dev/null || echo "(no client.log)"; echo "::endgroup::"
-
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
