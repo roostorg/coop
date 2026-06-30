@@ -241,4 +241,103 @@ describe('NCMEC field coverage (Layer 1)', () => {
       expect(renderXml(scenarios[key]).length).toBeGreaterThan(0);
     }
   });
+
+  describe('XSD ordering locks (#869 class)', () => {
+    const orderOf = (emitted: string[], xsdSequence: string[]): string[] => {
+      const idx = new Map(xsdSequence.map((k, i) => [k, i] as const));
+      return emitted
+        .filter((k) => idx.has(k))
+        .sort((a, b) => idx.get(a)! - idx.get(b)!);
+    };
+
+    const XSD = {
+      incidentSummary: [
+        'incidentType',
+        'platform',
+        'escalateToHighPriority',
+        'reportAnnotations',
+        'incidentDateTime',
+        'incidentDateTimeDescription',
+      ],
+      personOrUserReported: [
+        'personOrUserReportedPerson',
+        'vehicleDescription',
+        'espIdentifier',
+        'espService',
+        'compromisedAccount',
+        'screenName',
+        'displayName',
+        'profileUrl',
+        'profileBio',
+        'ipCaptureEvent',
+        'deviceId',
+        'thirdPartyUserReported',
+        'priorCTReports',
+        'groupIdentifier',
+        'accountTemporarilyDisabled',
+        'accountPermanentlyDisabled',
+        'estimatedLocation',
+        'allEmailsReported',
+        'associatedAccount',
+        'additionalInfo',
+      ],
+      fileDetails: [
+        'reportId',
+        'fileId',
+        'fileName',
+        'originalFileName',
+        'uploadedToEspTimestamp',
+        'locationOfFile',
+        'fileViewedByEsp',
+        'exifViewedByEsp',
+        'publiclyAvailable',
+        'fileRelevance',
+        'fileAnnotations',
+        'industryClassification',
+        'originalFileHash',
+        'ipCaptureEvent',
+        'deviceId',
+        'details',
+        'additionalInfo',
+      ],
+      ipCaptureEvent: [
+        'ipAddress',
+        'eventName',
+        'dateTime',
+        'possibleProxy',
+        'port',
+      ],
+    };
+
+    it('incidentSummary children follow XSD sequence', () => {
+      const max = scenarios.max as AnyReport;
+      const emitted = Object.keys(max.report.incidentSummary);
+      expect(orderOf(emitted, XSD.incidentSummary)).toEqual(
+        emitted.filter((k) => XSD.incidentSummary.includes(k)),
+      );
+    });
+
+    it('personOrUserReported children follow XSD sequence', () => {
+      const max = scenarios.max as AnyReport;
+      const emitted = Object.keys(max.report.personOrUserReported);
+      expect(orderOf(emitted, XSD.personOrUserReported)).toEqual(
+        emitted.filter((k) => XSD.personOrUserReported.includes(k)),
+      );
+    });
+
+    it('ipCaptureEvent children follow XSD sequence (the #869 order)', () => {
+      // Assert on the builder's OWN synthesised event (the role-IP event
+      // constructed by mergeFieldRoleIpIntoEvents), not the webhook-sourced
+      // event[0]: the builder does not canonicalise webhook key order, so
+      // event[0] reflects the test fixture's key order rather than builder
+      // behaviour. event[1] is the builder's constructed output and is the
+      // meaningful #869 regression lock. (See task-2-report for the
+      // webhook-pass-through ordering gap this surfaced.)
+      const max = scenarios.max as AnyReport;
+      const evs = max.report.personOrUserReported.ipCaptureEvent;
+      const synthesised = evs[evs.length - 1];
+      const emitted = Object.keys(synthesised);
+      expect(orderOf(emitted, XSD.ipCaptureEvent)).toEqual(emitted);
+    });
+  });
 });
