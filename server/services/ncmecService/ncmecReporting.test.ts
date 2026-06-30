@@ -212,13 +212,13 @@ describe('NCMEC reporting', () => {
       ).toEqual('2026-01-08T00:00:00.000Z');
     });
 
-    it('falls back to ~now when evidence exists but no timestamp parses', () => {
-      const before = Date.now();
-      const result = latestEvidenceTimestamp([media('not-a-date')], []);
-      const after = Date.now();
-      const ms = Date.parse(result);
-      expect(ms).toBeGreaterThanOrEqual(before);
-      expect(ms).toBeLessThanOrEqual(after);
+    it('throws when evidence exists but no timestamp parses', () => {
+      expect(() => latestEvidenceTimestamp([media('not-a-date')], [])).toThrow(
+        /Invalid timestamp for incidentDateTime/,
+      );
+      expect(() => latestEvidenceTimestamp([], [thread('not-a-date')])).toThrow(
+        /Invalid timestamp for incidentDateTime/,
+      );
     });
   });
 

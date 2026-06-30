@@ -535,14 +535,15 @@ export function latestEvidenceTimestamp(
   if (rawTimestamps.length === 0) {
     throw new Error('Report has neither media nor messages');
   }
-  // updated to allow a lenient approach to timestamps. If one fails, it doesn't
-  // fail the report and fallsback to "now"
+  // updated to allow a lenient approach to timestamps. If none parse, throw an
+  // error and surface the bad data via the validation error path
   const evidenceTimestampsMs = rawTimestamps
     .map((raw) => (raw instanceof Date ? raw.getTime() : Date.parse(raw)))
     .filter((ms) => !Number.isNaN(ms));
-  return evidenceTimestampsMs.length > 0
-    ? new Date(Math.max(...evidenceTimestampsMs)).toISOString()
-    : new Date().toISOString();
+  if (evidenceTimestampsMs.length === 0) {
+    throw new Error('Invalid timestamp for incidentDateTime');
+  }
+  return new Date(Math.max(...evidenceTimestampsMs)).toISOString();
 }
 
 /** Build the `ipCaptureEvent` array for an NCMEC person or media block:
