@@ -75,8 +75,7 @@ export type RoutingRuleExecutionsRow = {
 );
 
 export type ManualReviewToolServicePg = {
-  // Shared with CoreAppTablesPg so org-scoping checks can query the caller's
-  // users (see GHSA-mf74-gf5j-hxr9).
+  // Shared with CoreAppTablesPg so org-scoping checks can query public.users.
   'public.users': CoreAppTablesPg['public.users'];
   'manual_review_tool.manual_review_queues': {
     id: string;

@@ -1901,9 +1901,7 @@ const makeQueueDoesNotExistError = (data: ErrorInstanceData) => {
 };
 
 /**
- * Thrown when a caller tries to mutate another org's accessible-queue rows.
- * Guards the cross-org IDOR fixed in GHSA-mf74-gf5j-hxr9: both the target
- * queues and the target user must belong to the caller's org.
+ * Thrown when a target queue or user does not belong to the caller's org.
  */
 const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -1915,9 +1913,8 @@ const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
   });
 
 /**
- * Defense-in-depth org-scoping for accessible-queue mutations
- * (GHSA-mf74-gf5j-hxr9). Rejects before any write if a target queue or
- * target user does not belong to the caller's org.
+ * Rejects before any write if a target queue or user does not belong to the
+ * caller's org.
  */
 async function assertUsersAndQueuesInOrg(
   db: Kysely<ManualReviewToolServicePg>,

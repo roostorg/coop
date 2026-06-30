@@ -7,6 +7,7 @@ import createContentItemTypes from '../../../test/fixtureHelpers/createContentIt
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import {
@@ -232,66 +233,36 @@ describe('QueueOperations', () => {
     },
   );
 
-  // Regression for GHSA-mf74-gf5j-hxr9: addAccessibleQueuesForUser /
-  // removeAccessibleQueuesForUser used to accept an arbitrary queueId /
-  // userId with no org-scoping, so an authenticated user in Org A could
-  // grant (or revoke) access to queues and users belonging to Org B.
-  //
-  // These fixtures build two independent orgs, each with a user and a
-  // queue, then assert that the caller's orgId gates both the queue and
-  // the user.
   const testWithTwoOrgs = () =>
-    makeTestWithFixture(async () => {
-      const container = (await getBottle()).container;
-
+    makeTransactionalTestWithFixture(async ({ deps }) => {
       const buildOrg = async () => {
-        const { org, cleanup: orgCleanup } = await createOrg(
+        const { org } = await createOrg(
           {
-            KyselyPg: container.KyselyPg,
-            ModerationConfigService: container.ModerationConfigService,
-            ApiKeyService: container.ApiKeyService,
+            KyselyPg: deps.KyselyPg,
+            ModerationConfigService: deps.ModerationConfigService,
+            ApiKeyService: deps.ApiKeyService,
           },
           uid(),
         );
-        const { user, cleanup: userCleanup } = await createUser(
-          container.KyselyPg,
-          org.id,
-        );
-        const { queue, cleanup: queueCleanup } = await createMrtQueue({
+        const { user } = await createUser(deps.KyselyPg, org.id);
+        const { queue } = await createMrtQueue({
           orgId: org.id,
-          mrtService: container.ManualReviewToolService,
+          mrtService: deps.ManualReviewToolService,
           userId: user.id,
         });
-        return { org, user, queue, orgCleanup, userCleanup, queueCleanup };
+        return { org, user, queue };
       };
 
-      const attacker = await buildOrg();
-      const victim = await buildOrg();
-
       return {
-        attacker,
-        victim,
-        mrtService: container.ManualReviewToolService,
-        kyselyPg: container.KyselyPg,
-        cleanup: async () => {
-          await attacker.queueCleanup();
-          await victim.queueCleanup();
-          await attacker.userCleanup();
-          await victim.userCleanup();
-          await attacker.orgCleanup();
-          await victim.orgCleanup();
-          await container.KyselyPg.destroy();
-          await container.KyselyPgReadReplica.destroy();
-        },
+        attacker: await buildOrg(),
+        victim: await buildOrg(),
+        mrtService: deps.ManualReviewToolService,
       };
     });
 
   testWithTwoOrgs()(
     'addAccessibleQueuesForUser must not grant access to a queue in a different org',
     async ({ attacker, victim, mrtService }) => {
-      // Attacker (Org A) passes the victim's queueId (Org B) to grant their
-      // own user access. This is a cross-org IDOR: the service must reject it
-      // and no access row should be written.
       await expect(
         mrtService.addAccessibleQueuesForUser({
           orgId: attacker.org.id,
@@ -312,8 +283,6 @@ describe('QueueOperations', () => {
   testWithTwoOrgs()(
     'addAccessibleQueuesForUser must not grant access for a user in a different org',
     async ({ attacker, victim, mrtService }) => {
-      // Attacker (Org A) passes a userId belonging to Org B against their own
-      // queue. The service must reject cross-user cross-org mutation.
       await expect(
         mrtService.addAccessibleQueuesForUser({
           orgId: attacker.org.id,
@@ -334,9 +303,6 @@ describe('QueueOperations', () => {
   testWithTwoOrgs()(
     'removeAccessibleQueuesForUser must not revoke access for a queue in a different org',
     async ({ attacker, victim, mrtService }) => {
-      // Seed legitimate access for the victim's user on the victim's queue,
-      // then have the attacker (Org A) pass the victim's queueId to revoke
-      // it. Must be rejected; the seeded access must survive.
       await mrtService.addAccessibleQueuesForUser({
         orgId: victim.org.id,
         userId: victim.user.id,
@@ -363,9 +329,6 @@ describe('QueueOperations', () => {
   testWithTwoOrgs()(
     'removeAccessibleQueuesForUser must not revoke access for a user in a different org',
     async ({ attacker, victim, mrtService }) => {
-      // Attacker (Org A) passes a userId belonging to Org B against their
-      // own queue. The service must reject the cross-user mutation -- this
-      // is the path that would otherwise delete a victim reviewer's access.
       await expect(
         mrtService.removeAccessibleQueuesForUser({
           orgId: attacker.org.id,
@@ -379,8 +342,6 @@ describe('QueueOperations', () => {
   testWithTwoOrgs()(
     'addAccessibleQueuesForUser grants access within the same org',
     async ({ attacker, mrtService }) => {
-      // Same-org happy path: the caller's own user gets access to the
-      // caller's own queue. Guards against over-rejecting.
       await expect(
         mrtService.addAccessibleQueuesForUser({
           orgId: attacker.org.id,
