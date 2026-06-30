@@ -28,14 +28,31 @@ test('a submitted item can be found in the investigation tool', async ({
   await page.getByRole('button', { name: 'Sign In' }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 
-  // Open the investigation tool and search for the submitted item.
+  // Open the investigation tool. The ingest endpoint is async (202 -> queued),
+  // so the item may not be queryable the instant we search. The investigation
+  // query itself is a one-shot lazy fetch (no auto-retry), and a not-yet-indexed
+  // item renders a stable "Item Not Found" error. So we re-trigger the search
+  // until the item's type name appears, with a generous timeout to outlast the
+  // queue drain. ponytail: a poll-on-not-found loop is the smallest fix that
+  // doesn't couple the test to the queue's internals.
   await page.goto('/dashboard/manual_review/investigation');
-  await page.getByPlaceholder('Enter an item ID').fill(itemId);
-  await page.getByRole('button', { name: 'Search' }).click();
+  const idInput = page.getByPlaceholder('Enter an item ID');
+  const searchButton = page.getByRole('button', { name: 'Search' });
+  const typeName = page.getByText(itemType.name, { exact: true });
 
-  // The investigation summary renders the item type name as a header.
-  // ponytail: asserting on the item type name is the smallest signal that the
-  // item was ingested, indexed, and is queryable through the investigation UI.
-  // Deeper field-rendering/decision assertions belong to the MRT flow test.
-  await expect(page.getByText(itemType.name, { exact: true })).toBeVisible();
+  await expect
+    .poll(
+      async () => {
+        await idInput.fill(itemId);
+        await searchButton.click();
+        return (await typeName.isVisible()) ? 'found' : 'not-found';
+      },
+      {
+        message: 'item is findable in the investigation tool',
+        timeout: 30_000,
+      },
+    )
+    .toBe('found');
+
+  await expect(typeName).toBeVisible();
 });
