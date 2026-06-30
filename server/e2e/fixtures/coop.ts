@@ -1,7 +1,8 @@
 // Load .env before anything reads process.env (the DI container does, heavily).
 import 'dotenv/config';
 
-import { test as base } from '@playwright/test';
+import { test as base, type APIRequestContext } from '@playwright/test';
+import { type Field } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -19,24 +20,33 @@ async function importIocContainer() {
 }
 
 async function importSeedHelpers() {
-  const [createOrg, ums, userPersistence] = await Promise.all([
-    import(`${TRANSPILED}/test/fixtureHelpers/createOrg.js`) as Promise<
-      typeof import('../../test/fixtureHelpers/createOrg.js')
-    >,
-    import(`${TRANSPILED}/services/userManagementService/index.js`) as Promise<
-      typeof import('../../services/userManagementService/index.js')
-    >,
-    import(
-      `${TRANSPILED}/graphql/datasources/userKyselyPersistence.js`
-    ) as Promise<
-      typeof import('../../graphql/datasources/userKyselyPersistence.js')
-    >,
-  ]);
+  const [createOrg, ums, userPersistence, createContentItemTypes] =
+    await Promise.all([
+      import(`${TRANSPILED}/test/fixtureHelpers/createOrg.js`) as Promise<
+        typeof import('../../test/fixtureHelpers/createOrg.js')
+      >,
+      import(
+        `${TRANSPILED}/services/userManagementService/index.js`
+      ) as Promise<
+        typeof import('../../services/userManagementService/index.js')
+      >,
+      import(
+        `${TRANSPILED}/graphql/datasources/userKyselyPersistence.js`
+      ) as Promise<
+        typeof import('../../graphql/datasources/userKyselyPersistence.js')
+      >,
+      import(
+        `${TRANSPILED}/test/fixtureHelpers/createContentItemTypes.js`
+      ) as Promise<
+        typeof import('../../test/fixtureHelpers/createContentItemTypes.js')
+      >,
+    ]);
   return {
     createOrg: createOrg.default,
     hashPassword: ums.hashPassword,
     UserRole: ums.UserRole,
     kyselyUserInsert: userPersistence.kyselyUserInsert,
+    createContentItemTypes: createContentItemTypes.default,
   };
 }
 
@@ -49,6 +59,8 @@ export type SeededAdmin = {
   email: string;
   /** Plaintext password to log in with. */
   password: string;
+  /** API key for the org's ingest endpoint (POST /api/v1/items/async). */
+  apiKey: string;
 };
 
 /**
@@ -87,7 +99,61 @@ class Seeder {
       loginMethods: ['password'],
     });
 
-    return { orgId: org.org.id, userId: user.id, email, password };
+    return {
+      orgId: org.org.id,
+      userId: user.id,
+      email,
+      password,
+      apiKey: org.apiKey,
+    };
+  }
+
+  /**
+   * Create a content item type with the given fields. Wraps `createContentItemTypes`.
+   * Returns the created item type; cleanup is left to multi-tenancy isolation
+   * (unique org id), matching the rest of the seeder.
+   */
+  async createItemType(
+    admin: SeededAdmin,
+    fields: readonly Field[],
+  ): Promise<{ id: string; name: string }> {
+    const { createContentItemTypes } = await importSeedHelpers();
+    const { itemTypes } = await createContentItemTypes({
+      moderationConfigService: this.deps.ModerationConfigService,
+      orgId: admin.orgId,
+      extra: { fields: fields as [Field, ...Field[]] },
+    });
+    const itemType = itemTypes[0];
+    return { id: itemType.id, name: itemType.name };
+  }
+
+  /**
+   * Submit a content item via the real ingest endpoint (POST /api/v1/items/async),
+   * routed through the same origin the browser uses (the vite dev proxy in dev,
+   * or the served build in prod-like setups). Uses Playwright's request context
+   * rather than the server's fetchHTTP: fetchHTTP is an app-code helper (undici +
+   * tracing agent) that is fragile from the test process, whereas `request`
+   * shares the browser's proven network path. The endpoint is async (202), so
+   * the item may not be queryable immediately — callers should retry/poll on
+   * read.
+   */
+  async submitContentItem(
+    request: APIRequestContext,
+    admin: SeededAdmin,
+    itemTypeId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ itemId: string }> {
+    const itemId = uid();
+    const res = await request.post('/api/v1/items/async', {
+      headers: { 'x-api-key': admin.apiKey },
+      data: { items: [{ id: itemId, typeId: itemTypeId, data }] },
+    });
+    if (res.status() !== 202) {
+      throw new Error(
+        `submitContentItem expected 202, got ${res.status()}: ${await res.text()}`,
+      );
+    }
+    return { itemId };
   }
 }
 
@@ -107,7 +173,27 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const { default: getBottle } = await importIocContainer();
       const bottle = await getBottle();
       const deps = bottle.container as Dependencies;
+
+      // Start the item-processing worker inline so that content submitted via
+      // POST /api/v1/items/async gets drained from the Redis queue, run
+      // through the rule engine, and indexed — without a separate worker
+      // process. Mirrors test/integ/setupIntegrationServer.ts.
+      const workerAbort = new AbortController();
+      const workerRun = deps.ItemProcessingWorker.run(workerAbort.signal);
+      workerRun.catch((err) => {
+        console.error('ItemProcessingWorker exited with error', err);
+      });
+
       await use(deps);
+
+      workerAbort.abort();
+      try {
+        await deps.ItemProcessingWorker.shutdown();
+      } catch {
+        // Best-effort: BullMQ's Worker.close() closes the shared ioredis
+        // connection, which can make closeSharedResourcesForShutdown throw
+        // "Connection is closed." on its own quit(). Benign — swallow.
+      }
       await deps.closeSharedResourcesForShutdown();
     },
     { scope: 'worker' },

@@ -10,3 +10,4 @@ export {
   buildSubmitReportParamsFromDecision,
   LEGACY_FALLBACK_INCIDENT_TYPE,
 } from './buildSubmitReportParamsFromDecision.js';
+export { type NcmecReportingServicePg } from './dbTypes.js';
