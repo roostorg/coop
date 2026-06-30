@@ -102,17 +102,11 @@ jobs:
           npm run db:update -- --env staging --db scylla
           npm run db:update -- --env staging --db clickhouse
 
-      - name: Start server, worker, and client
+      - name: Start server and client
         # Redirect output to files so the backgrounded processes don't hold this
         # step's stdout pipe open (which would hang the step).
-        #
-        # The ItemProcessingWorker drains the Redis item-submission queue: it
-        # runs the rule engine and indexes items so they become queryable. E2E
-        # flows that submit content via POST /api/v1/items/async need it running,
-        # or submitted items sit in the queue unprocessed.
         run: |
           npm run server:start > /tmp/server.log 2>&1 &
-          (cd server && npm run runWorkerOrJob -- ItemProcessingWorker) > /tmp/worker.log 2>&1 &
           (cd client && npm start) > /tmp/client.log 2>&1 &
           # Wait (up to 120s) for the API (tcp 8080) and client (http 3000) to be
           # ready. A built-in shell loop avoids fetching an undeclared dependency
@@ -122,7 +116,6 @@ jobs:
             && curl -sf -o /dev/null http://localhost:3000; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "::group::server.log"; cat /tmp/server.log; echo "::endgroup::"
-              echo "::group::worker.log"; cat /tmp/worker.log; echo "::endgroup::"
               echo "::group::client.log"; cat /tmp/client.log; echo "::endgroup::"
               echo "::error::server (8080) / client (3000) not ready within 120s"
               exit 1
@@ -149,6 +142,13 @@ jobs:
         run: cd server && npm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Dump server and worker logs
+        if: ${{ always() }}
+        run: |
+          echo "::group::server.log"; cat /tmp/server.log 2>/dev/null || echo "(no server.log)"; echo "::endgroup::"
+          echo "::group::worker.log"; cat /tmp/worker.log 2>/dev/null || echo "(no worker.log)"; echo "::endgroup::"
+          echo "::group::client.log (tail)"; tail -50 /tmp/client.log 2>/dev/null || echo "(no client.log)"; echo "::endgroup::"
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
