@@ -336,6 +336,13 @@ describe('QueueOperations', () => {
           queueIds: [attacker.queue.id],
         }),
       ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).toContain(attacker.user.id);
     },
   );
 
