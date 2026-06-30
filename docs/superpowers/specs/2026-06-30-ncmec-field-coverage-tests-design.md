@@ -35,11 +35,22 @@ proves the submission flow produces the XML we think it does.
 
 ## Non-goals
 
-- **Not** validating against NCMEC's real CyberTip XSD. NCMEC's XSD is not
-  redistributable (it sits behind the ISPWS documentation access wall), so it
-  cannot be committed to an Apache-2.0 OSS repo and CI cannot fetch it. We
-  lock our _own_ rendered structure instead — drift detection, not schema
-  conformance.
+- **Not** runtime-validating against NCMEC's real CyberTip XSD in CI. The
+  XSD is not redistributable (it sits behind the ISPWS documentation access
+  wall), so it cannot be committed to an Apache-2.0 OSS repo and CI cannot
+  fetch it. **However**, the XSD _is_ available locally at implementation
+  time and is used as the **derivation source** for Layer 1's assertions (see
+  below): the committed test encodes the schema's conclusions (required-field
+  set + canonical child ordering from its `xs:sequence` declarations), but
+  the XSD itself never enters the repo and is never a runtime dependency. The
+  test stays self-contained and CI-runnable; the schema informs it, doesn't
+  run in it.
+  - A _local-only_ runtime XSD validator (XSD on a gitignored path, skip if
+    absent) is explicitly deferred: every Node XSD validator is either
+    native-build (`libxmljs2`) or JVM-based (`xsd-schema-validator`), adding
+    approval-required dep + build friction for a check that can't run in CI.
+    The derived assertion table covers the #843 field-gap class without it;
+    revisit only if the table measurably falls short.
 - **Not** hitting real `exttest.cybertip.org` in CI. Network-dependent,
   rate-limited, and its "incomplete" quality heuristics are not a stable
   contract to assert against.
@@ -53,11 +64,15 @@ Two independent layers.
 
 ### Layer 1 — field-coverage scenario tests (unit)
 
-**What:** resurrect the `audit-ncmec-fields` concept as a committed jest test.
+**What:** resurrect the `audit-ncmec-fields` concept as a committed jest test,
+with the real NCMEC CyberTip XSD (`~/Downloads/ncmec.xsd`, read-only, **not
+committed**) as the source of truth for the assertion table.
 
 Render XML via `buildSubmitReportObject` for three scenarios that mirror the
 #843 audit's columns, parse the result with `xml-js` (already a dependency),
-and assert per-field presence/absence as a table:
+and assert per-field presence/absence as a table. The table's rows and the
+ordering locks are **derived from the XSD's `xs:sequence` declarations and
+`minOccurs` rules** (absence of `minOccurs="0"` ⇒ required), not hand-guessed:
 
 - **`min`** — no schema field roles, no additional-info webhook. This is the
   default for adopters who wire neither, and the configuration that actually
@@ -73,10 +88,11 @@ field role (e.g. the P1 `phone` from #843), the `min` column flips from
 omitted→present and the test fails until the coverage assertion is updated —
 making the gap a deliberate, reviewed change rather than a silent omission.
 
-Additionally assert **element ordering** for the sections where NCMEC enforces
-sequence (the `#869` class): `fileDetails.ipCaptureEvent` children,
-`incidentSummary` children, `personOrUserReported` children. We lock the order
-our builder emits, keyed off the NCMEC docs we already used to fix #869.
+Additionally assert **element ordering** for the sections where the XSD
+declares an `xs:sequence` (the `#869` class): `incidentSummary`,
+`personOrUserReported`, `fileDetails` + its `ipCaptureEvent` children, etc.
+The expected order is read straight from the XSD, so the lock is schema-true,
+not a paraphrase of the docs.
 
 **Location:** `server/services/ncmecService/fieldCoverage.test.ts` (unit test,
 runs under the existing `npm test` jest config, no Docker).
@@ -168,7 +184,9 @@ items/types created for the scenario.
 
 ## What this does not catch
 
-- True XSD conformance (we can't commit NCMEC's schema). Drift detection only.
+- True _runtime_ XSD conformance in CI (we can't commit/fetch NCMEC's schema).
+  Drift detection only — but the drift assertions are derived from the real
+  XSD at implementation time, so they are schema-true, not paraphrased.
 - The reviewer UI → resolver hop (already covered).
 - Production `report.cybertip.org` routing (the `isTest=false` branch); the
   test exercises `isTest=true`. The only `isTest`-gated logic is dedup and
@@ -182,8 +200,9 @@ items/types created for the scenario.
 2. **Layer 2 org-settings fixture.** Is there an existing fixture helper for
    `ncmec_org_settings`, or does one need creating? (I saw none in
    `server/test/fixtureHelpers/`.) If none, this design includes creating one.
-3. **Scenario table maintenance.** Layer 1's table is a hand-maintained
-   assertion list. Acceptable as the regression net, or should it be generated
-   from the TS `Report`/`FileDetails` types? I lean hand-maintained —
-   generated-from-types would assert "the type has a field," not "the field is
-   populated," which is the actual #843 concern.
+3. ~~Scenario table maintenance~~ **Resolved:** the table is hand-maintained
+   but **sourced from the real XSD** (`~/Downloads/ncmec.xsd`, read at
+   implementation time). Generated-from-TS-types was rejected — it would
+   assert "the type has a field," not "the field is populated," which is the
+   actual #843 concern. The XSD is the authority for both the required-field
+   set and the ordering; the committed test encodes its conclusions.
