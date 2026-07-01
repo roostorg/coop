@@ -13,10 +13,7 @@ import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
-import {
-  type CollapseCases,
-  type NonEmptyArray,
-} from '../../utils/typescript-types.js';
+import { type CollapseCases } from '../../utils/typescript-types.js';
 import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
@@ -512,9 +509,7 @@ export function clampIncidentDateTimeToPast(
 ): { value: string; wasClamped: boolean } {
   const maxCreatedAtMs = new Date(maxCreatedAt).getTime();
   if (Number.isNaN(maxCreatedAtMs)) {
-    throw new Error(
-      `Invalid media createdAt timestamp for incidentDateTime: ${maxCreatedAt}`,
-    );
+    throw new Error(`Invalid timestamp for incidentDateTime: ${maxCreatedAt}`);
   }
   const ceilingMs = nowMs - 1000;
   const wasClamped = maxCreatedAtMs > ceilingMs;
@@ -523,6 +518,32 @@ export function clampIncidentDateTimeToPast(
     value: new Date(finalMs).toISOString(),
     wasClamped,
   };
+}
+
+// consolidate timestamp fetching and verification in one function for media and
+// threads
+export function latestEvidenceTimestamp(
+  media: readonly { createdAt: string }[],
+  threads: readonly {
+    reportedContent: readonly { sentAt: string | Date }[];
+  }[],
+): string {
+  const rawTimestamps: (string | Date)[] = [
+    ...media.map((m) => m.createdAt),
+    ...threads.flatMap((t) => t.reportedContent.map((c) => c.sentAt)),
+  ];
+  if (rawTimestamps.length === 0) {
+    throw new Error('Report has neither media nor messages');
+  }
+  // updated to allow a lenient approach to timestamps. If none parse, throw an
+  // error and surface the bad data via the validation error path
+  const evidenceTimestampsMs = rawTimestamps
+    .map((raw) => (raw instanceof Date ? raw.getTime() : Date.parse(raw)))
+    .filter((ms) => !Number.isNaN(ms));
+  if (evidenceTimestampsMs.length === 0) {
+    throw new Error('Invalid timestamp for incidentDateTime');
+  }
+  return new Date(Math.max(...evidenceTimestampsMs)).toISOString();
 }
 
 /** Build the `ipCaptureEvent` array for an NCMEC person or media block:
@@ -1540,6 +1561,7 @@ export default class NcmecReporting {
     }
 
     if (
+      reportedMedia.length > 0 &&
       responseBody.media?.filter(
         (it) => it.missing === false || it.missing === undefined,
       ).length === 0
@@ -1805,22 +1827,10 @@ export default class NcmecReporting {
             return 'UNSUPPORTED_ORG';
           }
 
-          if (reportParams.media.length === 0) {
-            throw new Error('No media in report');
-          }
-          const latestMedia = _.maxBy(reportParams.media, (m) => {
-            const ms = Date.parse(m.createdAt);
-            if (Number.isNaN(ms)) {
-              throw new Error(
-                `Invalid media createdAt timestamp for incidentDateTime: ${m.createdAt}`,
-              );
-            }
-            return ms;
-          });
-          if (latestMedia === undefined) {
-            throw new Error('No media in report');
-          }
-          const maxCreatedAt = latestMedia.createdAt;
+          const maxCreatedAt = latestEvidenceTimestamp(
+            reportParams.media,
+            reportParams.threads,
+          );
 
           const { value: clampedIncidentDateTime, wasClamped } =
             clampIncidentDateTimeToPast(maxCreatedAt);
@@ -2043,8 +2053,7 @@ export default class NcmecReporting {
 
               user_item_type_id: reportParams.reportedUser.typeId,
               reviewer_id: reportParams.reviewerId,
-              // Safe to cast as a non empty array because of the createdAt check above
-              reported_media: reportedMedia as NonEmptyArray<NcmecMediaReport>,
+              reported_media: reportedMedia,
               report_xml: xml,
               additional_files: additionalFiles,
               reported_messages: threadCsvs,

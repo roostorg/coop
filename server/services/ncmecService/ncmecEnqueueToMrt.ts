@@ -177,10 +177,6 @@ export default class NcmecEnqueueToMrt {
       reportedItemType,
     );
 
-    if (allMediaItems.length === 0) {
-      return { status: 'SKIPPED' };
-    }
-
     // TODO: Write this to a data warehouse table and enqueue based off of a job instead
     await this.manualReviewToolService.enqueue(
       {
