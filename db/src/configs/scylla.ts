@@ -24,9 +24,9 @@ const driverOpts = {
     consistency: scyllaTypes.consistencies.localQuorum,
   },
   keyspace: process.env.SCYLLA_KEYSPACE!,
-  protocolOptions: !!process.env.SCYLLA_PORT ? {
-    port: Number(process.env.SCYLLA_PORT),
-  } : undefined,
+  protocolOptions:  {
+    port: parseInt(process.env.SCYLLA_PORT ?? '9042'),
+  },
 };
 
 const scyllaEnvironmentDependentOptions = {
