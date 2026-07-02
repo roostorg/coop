@@ -66,6 +66,7 @@ export default function NCMECPreviousMessages(props: {
     threadsWithMessages: GQLNcmecThreadInput[],
   ) => void;
   selectedThreadsWithMessages: GQLNcmecThreadInput[];
+  reportedMessages: readonly ItemIdentifier[];
 }) {
   const { selectedThreadsWithMessages, setSelectedThreadsWithMessages } = props;
   const [selectedThread, setSelectedThread] = useState<
@@ -78,8 +79,7 @@ export default function NCMECPreviousMessages(props: {
   const { data, loading } = useGQLGetLatestUserSubmittedItemsWithThreadsQuery({
     variables: {
       userId: props.userIdentifier,
-      // TODO: Add reported messages
-      reportedMessages: [],
+      reportedMessages: props.reportedMessages,
     },
     onCompleted: (data) => {
       setSelectedThread(
@@ -115,7 +115,7 @@ export default function NCMECPreviousMessages(props: {
         : 0;
     });
   return (
-    <div className="flex items-start">
+    <div className="flex items-start gap-2">
       <List
         bordered
         dataSource={threadsWithMessages.map((it) => {
