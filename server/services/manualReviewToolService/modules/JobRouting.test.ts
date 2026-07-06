@@ -4,6 +4,7 @@ import { uid } from 'uid';
 
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { toCorrelationId } from '../../../utils/correlationIds.js';
 import { jsonStringify } from '../../../utils/encoding.js';
@@ -29,7 +30,8 @@ describe('JobRouting tests', () => {
         },
         uid(),
       );
-      const userId = uid();
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const userId = user.id;
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: org.id,
