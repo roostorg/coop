@@ -607,7 +607,9 @@ export default function ManualReviewQueuesDashboard() {
                   jobSortType:
                     jobSortType === 'NUM_REPORTS'
                       ? 'Most reported first'
-                      : 'First in, first out',
+                      : jobSortType === 'WEIGHTED'
+                        ? 'Custom (weighted)'
+                        : 'First in, first out',
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [
