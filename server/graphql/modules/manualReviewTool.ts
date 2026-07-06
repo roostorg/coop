@@ -45,7 +45,33 @@ const typeDefs = /* GraphQL */ `
   enum JobSortType {
     FIFO
     NUM_REPORTS
+    WEIGHTED
   }
+
+  enum JobPriorityProperty {
+    numReports
+    userScore
+  }
+
+  type JobPriorityWeight {
+    property: JobPriorityProperty!
+    weight: Float!
+  }
+
+  input JobPriorityWeightInput {
+    property: JobPriorityProperty!
+    weight: Float!
+  }
+
+  input SetJobPriorityWeightsInput {
+    weights: [JobPriorityWeightInput!]!
+  }
+
+  type SetJobPriorityWeightsSuccessResponse {
+    _: Boolean
+  }
+
+  union SetJobPriorityWeightsResponse = SetJobPriorityWeightsSuccessResponse
 
   enum MrtClearReportsDisposition {
     AUTOMATIC_CLOSE
@@ -1017,6 +1043,9 @@ const typeDefs = /* GraphQL */ `
     ): Boolean!
     logSkip(input: LogSkipInput!): Boolean!
     releaseJobLock(input: ReleaseJobLockInput!): Boolean!
+    setJobPriorityWeights(
+      input: SetJobPriorityWeightsInput!
+    ): SetJobPriorityWeightsResponse!
   }
 `;
 
@@ -2645,6 +2674,25 @@ const Mutation: GQLMutationResolvers = {
     } catch (e) {
       return false;
     }
+  },
+  async setJobPriorityWeights(_, params, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to manage org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.setJobPriorityWeights({
+      orgId: user.orgId,
+      weights: params.input.weights,
+    });
+    return gqlSuccessResult(
+      { _: true },
+      'SetJobPriorityWeightsSuccessResponse',
+    );
   },
 };
 

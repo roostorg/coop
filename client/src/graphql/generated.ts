@@ -1768,9 +1768,28 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobPriorityProperty = {
+  NumReports: 'numReports',
+  UserScore: 'userScore',
+} as const;
+
+export type GQLJobPriorityProperty =
+  (typeof GQLJobPriorityProperty)[keyof typeof GQLJobPriorityProperty];
+export type GQLJobPriorityWeight = {
+  readonly __typename: 'JobPriorityWeight';
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['output'];
+};
+
+export type GQLJobPriorityWeightInput = {
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['input'];
+};
+
 export const GQLJobSortType = {
   Fifo: 'FIFO',
   NumReports: 'NUM_REPORTS',
+  Weighted: 'WEIGHTED',
 } as const;
 
 export type GQLJobSortType =
@@ -2550,6 +2569,7 @@ export type GQLMutation = {
   readonly sendPasswordReset: Scalars['Boolean']['output'];
   readonly setAllUserStrikeThresholds: GQLSetAllUserStrikeThresholdsSuccessResponse;
   readonly setIntegrationConfig: GQLSetIntegrationConfigResponse;
+  readonly setJobPriorityWeights: GQLSetJobPriorityWeightsResponse;
   readonly setModeratorSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
   readonly setMrtChartConfigurationSettings?: Maybe<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   readonly setOrgDefaultSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
@@ -2809,6 +2829,10 @@ export type GQLMutationSetAllUserStrikeThresholdsArgs = {
 
 export type GQLMutationSetIntegrationConfigArgs = {
   input: GQLSetIntegrationConfigInput;
+};
+
+export type GQLMutationSetJobPriorityWeightsArgs = {
+  input: GQLSetJobPriorityWeightsInput;
 };
 
 export type GQLMutationSetModeratorSafetySettingsArgs = {
@@ -3260,6 +3284,7 @@ export type GQLOrg = {
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
+  readonly jobPriorityWeights: ReadonlyArray<GQLJobPriorityWeight>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
   /**
@@ -4319,6 +4344,18 @@ export type GQLSetIntegrationConfigResponse =
 export type GQLSetIntegrationConfigSuccessResponse = {
   readonly __typename: 'SetIntegrationConfigSuccessResponse';
   readonly config: GQLIntegrationConfig;
+};
+
+export type GQLSetJobPriorityWeightsInput = {
+  readonly weights: ReadonlyArray<GQLJobPriorityWeightInput>;
+};
+
+export type GQLSetJobPriorityWeightsResponse =
+  GQLSetJobPriorityWeightsSuccessResponse;
+
+export type GQLSetJobPriorityWeightsSuccessResponse = {
+  readonly __typename: 'SetJobPriorityWeightsSuccessResponse';
+  readonly _?: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type GQLSetModeratorSafetySettingsSuccessResponse = {
@@ -24821,6 +24858,38 @@ export type GQLChangePasswordMutation = {
       };
 };
 
+export type GQLJobPriorityWeightsQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLJobPriorityWeightsQuery = {
+  readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
+  } | null;
+  readonly myOrg?: {
+    readonly __typename: 'Org';
+    readonly jobPriorityWeights: ReadonlyArray<{
+      readonly __typename: 'JobPriorityWeight';
+      readonly property: GQLJobPriorityProperty;
+      readonly weight: number;
+    }>;
+  } | null;
+};
+
+export type GQLSetJobPriorityWeightsMutationVariables = Exact<{
+  input: GQLSetJobPriorityWeightsInput;
+}>;
+
+export type GQLSetJobPriorityWeightsMutation = {
+  readonly __typename: 'Mutation';
+  readonly setJobPriorityWeights: {
+    readonly __typename: 'SetJobPriorityWeightsSuccessResponse';
+    readonly _?: boolean | null;
+  };
+};
+
 export type GQLRolesForOrgQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLRolesForOrgQuery = {
@@ -43225,6 +43294,163 @@ export type GQLChangePasswordMutationOptions = Apollo.BaseMutationOptions<
   GQLChangePasswordMutation,
   GQLChangePasswordMutationVariables
 >;
+export const GQLJobPriorityWeightsDocument = gql`
+  query JobPriorityWeights {
+    me {
+      permissions
+    }
+    myOrg {
+      jobPriorityWeights {
+        property
+        weight
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLJobPriorityWeightsQuery__
+ *
+ * To run a query within a React component, call `useGQLJobPriorityWeightsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLJobPriorityWeightsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLJobPriorityWeightsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLJobPriorityWeightsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLJobPriorityWeightsQuery,
+    GQLJobPriorityWeightsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLJobPriorityWeightsQuery,
+    GQLJobPriorityWeightsQueryVariables
+  >(GQLJobPriorityWeightsDocument, options);
+}
+export function useGQLJobPriorityWeightsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLJobPriorityWeightsQuery,
+    GQLJobPriorityWeightsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLJobPriorityWeightsQuery,
+    GQLJobPriorityWeightsQueryVariables
+  >(GQLJobPriorityWeightsDocument, options);
+}
+// @ts-ignore
+export function useGQLJobPriorityWeightsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLJobPriorityWeightsQuery,
+    GQLJobPriorityWeightsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLJobPriorityWeightsQuery,
+  GQLJobPriorityWeightsQueryVariables
+>;
+export function useGQLJobPriorityWeightsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLJobPriorityWeightsQuery,
+        GQLJobPriorityWeightsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLJobPriorityWeightsQuery | undefined,
+  GQLJobPriorityWeightsQueryVariables
+>;
+export function useGQLJobPriorityWeightsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLJobPriorityWeightsQuery,
+        GQLJobPriorityWeightsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLJobPriorityWeightsQuery,
+    GQLJobPriorityWeightsQueryVariables
+  >(GQLJobPriorityWeightsDocument, options);
+}
+export type GQLJobPriorityWeightsQueryHookResult = ReturnType<
+  typeof useGQLJobPriorityWeightsQuery
+>;
+export type GQLJobPriorityWeightsLazyQueryHookResult = ReturnType<
+  typeof useGQLJobPriorityWeightsLazyQuery
+>;
+export type GQLJobPriorityWeightsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLJobPriorityWeightsSuspenseQuery
+>;
+export type GQLJobPriorityWeightsQueryResult = Apollo.QueryResult<
+  GQLJobPriorityWeightsQuery,
+  GQLJobPriorityWeightsQueryVariables
+>;
+export const GQLSetJobPriorityWeightsDocument = gql`
+  mutation SetJobPriorityWeights($input: SetJobPriorityWeightsInput!) {
+    setJobPriorityWeights(input: $input) {
+      ... on SetJobPriorityWeightsSuccessResponse {
+        _
+      }
+    }
+  }
+`;
+export type GQLSetJobPriorityWeightsMutationFn = Apollo.MutationFunction<
+  GQLSetJobPriorityWeightsMutation,
+  GQLSetJobPriorityWeightsMutationVariables
+>;
+
+/**
+ * __useGQLSetJobPriorityWeightsMutation__
+ *
+ * To run a mutation, you first call `useGQLSetJobPriorityWeightsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLSetJobPriorityWeightsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlSetJobPriorityWeightsMutation, { data, loading, error }] = useGQLSetJobPriorityWeightsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLSetJobPriorityWeightsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >(GQLSetJobPriorityWeightsDocument, options);
+}
+export type GQLSetJobPriorityWeightsMutationHookResult = ReturnType<
+  typeof useGQLSetJobPriorityWeightsMutation
+>;
+export type GQLSetJobPriorityWeightsMutationResult =
+  Apollo.MutationResult<GQLSetJobPriorityWeightsMutation>;
+export type GQLSetJobPriorityWeightsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >;
 export const GQLRolesForOrgDocument = gql`
   query RolesForOrg {
     rolesForOrg {
@@ -45485,6 +45711,7 @@ export const namedOperations = {
     UserStrikeThresholds: 'UserStrikeThresholds',
     AccountSettings: 'AccountSettings',
     PersonalSafetySettings: 'PersonalSafetySettings',
+    JobPriorityWeights: 'JobPriorityWeights',
     RolesForOrg: 'RolesForOrg',
     ManageUsers: 'ManageUsers',
     HasNcmecReportingEnabled: 'HasNcmecReportingEnabled',
@@ -45563,6 +45790,7 @@ export const namedOperations = {
     UpdateUserStrikeTTL: 'UpdateUserStrikeTTL',
     UpdateAccountInfo: 'UpdateAccountInfo',
     ChangePassword: 'ChangePassword',
+    SetJobPriorityWeights: 'SetJobPriorityWeights',
     DeleteUser: 'DeleteUser',
     UpdateRole: 'UpdateRole',
     ApproveUser: 'ApproveUser',
