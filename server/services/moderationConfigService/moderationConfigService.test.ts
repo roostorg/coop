@@ -342,6 +342,7 @@ describe('ModerationConfigService', () => {
                   "backgroundImage": undefined,
                   "createdAt": undefined,
                   "displayName": "fakeField",
+                  "email": undefined,
                   "ipAddress": undefined,
                   "isDeleted": undefined,
                   "profileIcon": undefined,
@@ -1315,7 +1316,7 @@ describe('ModerationConfigService', () => {
             ruleId: rule.id,
             readFromReplica: false,
           });
-          expect(result.map((it) => it.id)).toEqual([action.id]);
+          expect(result.map((it) => it.action.id)).toEqual([action.id]);
         },
       );
 

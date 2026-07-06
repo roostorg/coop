@@ -361,51 +361,54 @@ describe('Manual Review Tool Service', () => {
   // stuck in a retry loop. The decision must record the empty-string
   // reviewer id (rendered as "Automatic" client-side) and not throw.
   describe('automatic close decisions', () => {
-    it('records an AUTOMATIC_CLOSE decision with no human reviewer', async () => {
-      const orgId = 'e7c89ce7729';
-      const queueId = '1';
-      const jobPayload = makeDummyJob();
+    testWithQueue(
+      'records an AUTOMATIC_CLOSE decision with no human reviewer',
+      async ({ mrtService, org, queue }) => {
+        const orgId = org.id,
+          queueId = queue.id,
+          jobPayload = makeDummyJob();
 
-      await mrtService['queueOps']['addJob']({
-        jobPayload,
-        orgId,
-        queueId,
-        enqueueSourceInfo: { kind: 'REPORT' },
-      });
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
 
-      const dequeuedJob = await mrtService.dequeueNextJob({
-        orgId,
-        queueId,
-        userId: uuidv1(),
-      });
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: uuidv1(),
+        });
 
-      if (!dequeuedJob) {
-        throw new Error("should've returned a job");
-      }
+        if (!dequeuedJob) {
+          throw new Error("should've returned a job");
+        }
 
-      // Used to throw 23502 (null reviewer_id) before the sentinel fix.
-      await mrtService.submitDecision({
-        queueId,
-        reportHistory: [],
-        jobId: dequeuedJob.job.id,
-        lockToken: dequeuedJob.lockToken,
-        relatedActions: [],
-        orgId,
-        automaticCloseDecision: {
-          type: 'AUTOMATIC_CLOSE',
-          reason: 'ITEM_DELETED_BEFORE_REVIEW',
-        },
-      });
+        // Used to throw 23502 (null reviewer_id) before the sentinel fix.
+        await mrtService.submitDecision({
+          queueId,
+          reportHistory: [],
+          jobId: dequeuedJob.job.id,
+          lockToken: dequeuedJob.lockToken,
+          relatedActions: [],
+          orgId,
+          automaticCloseDecision: {
+            type: 'AUTOMATIC_CLOSE',
+            reason: 'ITEM_DELETED_BEFORE_REVIEW',
+          },
+        });
 
-      const row = await mrtService['pgQuery']
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
-        .where('org_id', '=', orgId)
-        .select(['reviewer_id'])
-        .executeTakeFirst();
+        const row = await mrtService['pgQuery']
+          .selectFrom('manual_review_tool.manual_review_decisions')
+          .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
+          .where('org_id', '=', orgId)
+          .select(['reviewer_id'])
+          .executeTakeFirst();
 
-      expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
-    });
+        expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
+      },
+    );
   });
 
   // Issue #616: when an org sets `mrt_requires_decision_reason_on_action`,
