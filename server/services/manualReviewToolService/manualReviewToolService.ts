@@ -55,6 +55,11 @@ import JobEnrichment, {
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from './modules/JobEnrichment.js';
+import {
+  getJobPriorityForItem,
+  normalizeJobSortType,
+  type JobSortType,
+} from './modules/JobPriority.js';
 import JobRendering from './modules/JobRendering.js';
 import JobRouting, {
   type CreateRoutingRuleInput,
@@ -308,6 +313,11 @@ export class ManualReviewToolService {
   private readonly userReportSweep: UserReportSweep;
 
   constructor(
+    // Lazy getter: breaks a circular dependency (ManualReviewToolService ->
+    // ReportingService -> ActionPublisher -> ManualReviewToolService). Call
+    // the outer function at use time to resolve the real dependency:
+    // this.getNumTimesReported()({ orgId, itemId }).
+    readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
@@ -475,6 +485,17 @@ export class ManualReviewToolService {
                 )
               : enrichedJobPayload;
 
+            const targetQueue =
+              await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+                { orgId: input.orgId, queueId: targetQueueForNewJob },
+              );
+            const priority = await getJobPriorityForItem({
+              orgId: input.orgId,
+              item: input.payload.item,
+              sortType: normalizeJobSortType(targetQueue?.jobSortType),
+              deps: { getNumTimesReported: this.getNumTimesReported() },
+            });
+
             const job = existingJobInSameQueue
               ? await this.queueOps.updateJobForQueue({
                   orgId: input.orgId,
@@ -484,6 +505,7 @@ export class ManualReviewToolService {
                     ...existingJobInSameQueue,
                     payload: finalJobPayload,
                   },
+                  priority,
                 })
               : await this.queueOps.addJob({
                   orgId: input.orgId,
@@ -493,6 +515,7 @@ export class ManualReviewToolService {
                     ...input,
                     payload: finalJobPayload,
                   },
+                  priority,
                 });
 
             if (!job) {
@@ -891,6 +914,7 @@ export class ManualReviewToolService {
     invokedBy: Invoker;
     isAppealsQueue: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: string;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -907,11 +931,96 @@ export class ManualReviewToolService {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: string;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
   }): Promise<ManualReviewQueue> {
-    return this.queueOps.updateManualReviewQueue(input);
+    const previous =
+      await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+        orgId: input.orgId,
+        queueId: input.queueId,
+      });
+    const updated = await this.queueOps.updateManualReviewQueue(input);
+
+    // Changing the sort mode has to re-sort the jobs already sitting in the
+    // queue, not just affect future enqueues — otherwise the queue keeps its
+    // old ordering until every job churns out.
+    if (
+      previous !== undefined &&
+      !updated.isAppealsQueue &&
+      previous.jobSortType !== updated.jobSortType
+    ) {
+      this.#scheduleQueuePriorityRecompute({
+        orgId: input.orgId,
+        queueId: input.queueId,
+        sortType: normalizeJobSortType(updated.jobSortType),
+      });
+    }
+
+    return updated;
+  }
+
+  // In-process chains of background priority recomputes, keyed by queue.
+  // Serializes rapid consecutive sort-mode changes for the same queue so their
+  // per-job re-stamps can't interleave (the last change wins). In-process
+  // only: sweeps from two server instances can still race, in which case the
+  // slower sweep's ordering wins.
+  readonly #priorityRecomputes = new Map<string, Promise<void>>();
+
+  // Re-stamps every pending job's priority in the background. Deliberately
+  // not awaited by callers: a sweep is O(pending jobs) Redis round-trips,
+  // which would time out the mutation on a large queue.
+  #scheduleQueuePriorityRecompute(opts: {
+    orgId: string;
+    queueId: string;
+    sortType: JobSortType;
+  }): void {
+    const key = `${opts.orgId}:${opts.queueId}`;
+    const previous = this.#priorityRecomputes.get(key) ?? Promise.resolve();
+    const next = previous
+      .then(async () =>
+        this.tracer.addActiveSpan(
+          {
+            resource: 'mrtService',
+            operation: 'recomputeQueuePriorities',
+            attributes: {
+              'mrtQueue.orgId': opts.orgId,
+              'mrtQueue.queueId': opts.queueId,
+              'mrtQueue.jobSortType': opts.sortType,
+            },
+          },
+          async () =>
+            this.queueOps.recomputePrioritiesForQueue({
+              orgId: opts.orgId,
+              queueId: opts.queueId,
+              getPriority: async (job) =>
+                getJobPriorityForItem({
+                  orgId: opts.orgId,
+                  item: job.payload.item,
+                  sortType: opts.sortType,
+                  deps: { getNumTimesReported: this.getNumTimesReported() },
+                }),
+            }),
+        ),
+      )
+      .catch(() => {
+        // The failure is recorded on the span by addActiveSpan. There is no
+        // caller to propagate to; the next sort-mode change (or each future
+        // enqueue) re-stamps priorities.
+      })
+      .finally(() => {
+        if (this.#priorityRecomputes.get(key) === next) {
+          this.#priorityRecomputes.delete(key);
+        }
+      });
+    this.#priorityRecomputes.set(key, next);
+  }
+
+  // Test hook: resolves once currently-scheduled background priority
+  // recomputes have settled.
+  async awaitPendingPriorityRecomputes(): Promise<void> {
+    await Promise.all([...this.#priorityRecomputes.values()]);
   }
 
   async getClearReportsTriggerActionsForQueue(opts: {
