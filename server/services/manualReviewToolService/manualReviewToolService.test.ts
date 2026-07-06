@@ -80,35 +80,20 @@ function makeDummyNcmecJob() {
   };
 }
 
-// The settings flags are stored per-org; each helper upserts the org's settings
-// row (creating it if absent) and flips one flag. Tests set what they need on
-// their own fresh org, and the harness rolls it all back — no leak, no reset.
-async function setRequiresDecisionReasonOnAction(
+async function configureDecisionReasonRequirements(
   mrtService: ManualReviewToolService,
-  db: TestDeps['KyselyPg'],
   orgId: string,
-  value: boolean,
+  opts: {
+    onAction?: boolean;
+    onIgnore?: boolean;
+  },
 ) {
-  await mrtService.upsertDefaultSettings({ orgId });
-  await db
-    .updateTable('manual_review_tool.manual_review_tool_settings')
-    .set({ mrt_requires_decision_reason_on_action: value })
-    .where('org_id', '=', orgId)
-    .execute();
-}
-
-async function setRequiresDecisionReasonOnIgnore(
-  mrtService: ManualReviewToolService,
-  db: TestDeps['KyselyPg'],
-  orgId: string,
-  value: boolean,
-) {
-  await mrtService.upsertDefaultSettings({ orgId });
-  await db
-    .updateTable('manual_review_tool.manual_review_tool_settings')
-    .set({ mrt_requires_decision_reason_on_ignore: value })
-    .where('org_id', '=', orgId)
-    .execute();
+  if (opts.onAction !== undefined) {
+    await mrtService.updateRequiresDecisionReason(orgId, opts.onAction);
+  }
+  if (opts.onIgnore !== undefined) {
+    await mrtService.updateRequiresDecisionReasonOnIgnore(orgId, opts.onIgnore);
+  }
 }
 
 async function setRequiresPolicyForDecisions(
@@ -423,13 +408,10 @@ describe('Manual Review Tool Service', () => {
   describe('requires_decision_reason enforcement', () => {
     testWithQueue(
       'rejects a decision with no reason when the flag is on',
-      async ({ mrtService, deps, org, queue, actionId }) => {
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
+      async ({ mrtService, org, queue, actionId }) => {
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: true,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
@@ -481,13 +463,10 @@ describe('Manual Review Tool Service', () => {
 
     testWithQueue(
       'allows a decision with a reason when the flag is on',
-      async ({ mrtService, deps, org, queue, actionId }) => {
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
+      async ({ mrtService, org, queue, actionId }) => {
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: true,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
@@ -537,15 +516,12 @@ describe('Manual Review Tool Service', () => {
 
     testWithQueue(
       'allows a decision with no reason when the flag is off',
-      async ({ mrtService, deps, org, queue, actionId }) => {
+      async ({ mrtService, org, queue, actionId }) => {
         // Control case: default-off behavior must remain unchanged so orgs that
         // never opt in see no difference from this PR.
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          false,
-        );
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: false,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
@@ -597,19 +573,11 @@ describe('Manual Review Tool Service', () => {
     // rejected.
     testWithQueue(
       'rejects an IGNORE decision with no reason when only the ignore flag is on',
-      async ({ mrtService, deps, org, queue }) => {
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          false,
-        );
-        await setRequiresDecisionReasonOnIgnore(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
+      async ({ mrtService, org, queue }) => {
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: false,
+          onIgnore: true,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
@@ -653,19 +621,11 @@ describe('Manual Review Tool Service', () => {
     // a reason — this is the bug from the issue.
     testWithQueue(
       'allows an IGNORE decision with no reason when only the action flag is on',
-      async ({ mrtService, deps, org, queue }) => {
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
-        await setRequiresDecisionReasonOnIgnore(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          false,
-        );
+      async ({ mrtService, org, queue }) => {
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: true,
+          onIgnore: false,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
@@ -707,19 +667,11 @@ describe('Manual Review Tool Service', () => {
     // NOT require a reason.
     testWithQueue(
       'allows a CUSTOM_ACTION decision with no reason when only the ignore flag is on',
-      async ({ mrtService, deps, org, queue, actionId }) => {
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          false,
-        );
-        await setRequiresDecisionReasonOnIgnore(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
+      async ({ mrtService, org, queue, actionId }) => {
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: false,
+          onIgnore: true,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
@@ -773,19 +725,11 @@ describe('Manual Review Tool Service', () => {
     // NCMEC path.
     testWithQueue(
       'allows an IGNORE decision on an NCMEC job with no reason when the flag is on',
-      async ({ mrtService, deps, org, queue }) => {
-        await setRequiresDecisionReasonOnAction(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
-        await setRequiresDecisionReasonOnIgnore(
-          mrtService,
-          deps.KyselyPg,
-          org.id,
-          true,
-        );
+      async ({ mrtService, org, queue }) => {
+        await configureDecisionReasonRequirements(mrtService, org.id, {
+          onAction: true,
+          onIgnore: true,
+        });
 
         const reviewerId = uuidv1();
         const reviewerEmail = 'test@test.com';
