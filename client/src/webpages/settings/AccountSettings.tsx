@@ -39,6 +39,7 @@ import {
 } from '../../graphql/generated';
 import GoldenRetrieverPuppies from '../../images/GoldenRetrieverPuppies.png';
 import {
+  colorSchemeClassName,
   colorSchemeFromPreferences,
   MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
   MODERATOR_SAFETY_COLOR_SCHEMES,
@@ -640,9 +641,7 @@ export default function AccountSettings() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
-              safetySettings.moderatorSafetySepia ? 'sepia' : ''
-            }`}
+            } ${colorSchemeClassName(colorSchemeFromPreferences(safetySettings))}`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

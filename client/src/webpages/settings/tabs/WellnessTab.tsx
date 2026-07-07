@@ -11,11 +11,13 @@ import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  namedOperations,
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import {
+  colorSchemeClassName,
   colorSchemeFromPreferences,
   MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
   MODERATOR_SAFETY_COLOR_SCHEMES,
@@ -81,6 +83,9 @@ export default function WellnessTab() {
 
   const [saveSafetySettings, { loading: isSaving }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
+      // The mutation returns no data, so refetch to update the cached
+      // baseline that hasChanges compares against.
+      refetchQueries: [namedOperations.Query.OrgDefaultSafetySettings],
       onCompleted: () => {
         toast.success('Default wellness settings saved!');
       },
@@ -202,9 +207,7 @@ export default function WellnessTab() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${
-              safetySettings.moderatorSafetySepia ? 'sepia' : ''
-            }`}
+            } ${colorSchemeClassName(colorSchemeFromPreferences(safetySettings))}`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

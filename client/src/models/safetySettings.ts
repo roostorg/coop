@@ -33,6 +33,22 @@ export function colorSchemeFromPreferences(preferences: {
   return 'NONE';
 }
 
+// Tailwind filter class for a resolved color scheme. Deriving classes from the
+// resolved scheme (rather than the raw booleans) keeps the "grayscale wins"
+// invariant even if both flags are somehow set.
+export function colorSchemeClassName(
+  colorScheme: ModeratorSafetyColorScheme,
+): string {
+  switch (colorScheme) {
+    case 'GRAYSCALE':
+      return 'grayscale';
+    case 'SEPIA':
+      return 'sepia';
+    case 'NONE':
+      return '';
+  }
+}
+
 export function preferencesFromColorScheme(
   colorScheme: ModeratorSafetyColorScheme,
 ): {

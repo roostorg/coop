@@ -23,6 +23,7 @@ import {
 } from '../../../graphql/generated';
 import GoldenRetrieverPuppies from '../../../images/GoldenRetrieverPuppies.png';
 import {
+  colorSchemeClassName,
   colorSchemeFromPreferences,
   MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
   MODERATOR_SAFETY_COLOR_SCHEMES,
@@ -189,7 +190,7 @@ export default function ManualReviewSafetySettings() {
             settings.moderatorSafetyBlurLevel != null
               ? BLUR_LEVELS[settings.moderatorSafetyBlurLevel]
               : 'blur-sm'
-          } ${settings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${settings.moderatorSafetySepia ? 'sepia' : ''}`}
+          } ${colorSchemeClassName(colorSchemeFromPreferences(settings))}`}
           alt="puppies"
           src={GoldenRetrieverPuppies}
         />
