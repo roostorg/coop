@@ -1,8 +1,8 @@
-import animate from 'tailwindcss-animate';
 import kit from '@kojodesign/tailwindkit';
 import containerQueries from '@tailwindcss/container-queries';
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
+import animate from 'tailwindcss-animate';
 
 export default {
   darkMode: ['class'],
