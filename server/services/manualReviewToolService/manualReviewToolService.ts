@@ -1660,8 +1660,6 @@ export class ManualReviewToolService {
     return this.queueOps.updateHiddenActionsForQueue(opts);
   }
 
-  // Skipping is one server-side operation so the client can't end up with
-  // half a skip (e.g. lock released but skip not recorded).
   async logSkip(opts: {
     orgId: string;
     queueId: string;
