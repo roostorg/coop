@@ -6,8 +6,8 @@
 !index.html
 !vite.config.ts
 !vite-env.d.ts
-!postcss.config.js
-!tailwind.config.js
+!postcss.config.mjs
+!tailwind.config.mjs
 !tsconfig.json
 !nginx.conf
 !tsconfig.test.json
