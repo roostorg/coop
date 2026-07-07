@@ -11,14 +11,24 @@ import {
   type NCMECReportParams,
 } from '../../services/ncmecService/index.js';
 import {
+  type CoopRequestQuery,
   type CoopResponse,
   type FetchHTTP,
+  type HandleResponseBody,
 } from '../../services/networkingService/index.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../harness/transactionalTest.js';
 
 const MEDIA_URL = 'https://cdn.example/sample.jpg';
 const PRESERVATION_URL = 'https://preserve.example/req';
+
+/** Shape of one recorded outgoing fetchHTTP call. */
+type RecordedCall = {
+  url: string;
+  method: string;
+  body: unknown;
+  headers?: Record<string, string | ReadonlyArray<string>>;
+};
 
 /** Records every outgoing fetchHTTP call and returns canned CyberTip
  * responses. */
@@ -27,85 +37,66 @@ function makeStubFetchHTTP(
   fileId: string,
 ): {
   fetchHTTP: FetchHTTP;
-  calls: Array<{
-    url: string;
-    method: string;
-    body: unknown;
-    headers?: Record<string, string | ReadonlyArray<string>>;
-  }>;
+  calls: RecordedCall[];
 } {
-  const calls: Array<{
-    url: string;
-    method: string;
-    body: unknown;
-    headers?: Record<string, string | ReadonlyArray<string>>;
-  }> = [];
-  const ok = <T>(body: T): CoopResponse<never> =>
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- CoopResponse<never> types body as `never`, but the stub must return a real canned body through that slot.
+  const calls: RecordedCall[] = [];
+  const ok = <T extends HandleResponseBody>(body: unknown): CoopResponse<T> =>
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the stub returns a canned body through a slot typed by the caller's T.
     ({
       status: 200,
       ok: true,
       headers: new Headers(),
       body,
-    }) as CoopResponse<never>;
-  const fetchHTTP = (async (query: never) => {
-    const q = query as {
-      url: string;
-      method: string;
-      body: unknown;
-      headers?: Record<string, string | ReadonlyArray<string>>;
-      handleResponseBody: string;
-    };
+    }) as CoopResponse<T>;
+  const fetchHTTP: FetchHTTP = async <T extends HandleResponseBody>(
+    query: CoopRequestQuery<T>,
+  ): Promise<CoopResponse<T>> => {
+    const { url, method, body, headers } = query;
     // eslint-disable-next-line functional/immutable-data -- request recorder mutates by design
-    calls.push({
-      url: q.url,
-      method: q.method,
-      body: q.body,
-      headers: q.headers,
-    });
+    calls.push({ url, method, body, headers });
 
     // media download for #upload
-    if (q.method === 'get') {
+    if (method === 'get') {
       const stream = new ReadableStream({
         start(ctr) {
           ctr.enqueue(new TextEncoder().encode('fake-media-bytes'));
           ctr.close();
         },
       });
-      return ok(stream) as never;
+      return ok<T>(stream);
     }
     // NCMEC CyberTip protocol — every XML endpoint returns responseCode=0.
     // /submit, /upload, /fileinfo use `reportResponse`; /finish uses
     // `reportDoneResponse`.
     if (
-      q.url.endsWith('/ispws/submit') ||
-      q.url.endsWith('/ispws/upload') ||
-      q.url.endsWith('/ispws/fileinfo')
+      url.endsWith('/ispws/submit') ||
+      url.endsWith('/ispws/upload') ||
+      url.endsWith('/ispws/fileinfo')
     ) {
-      const isSubmit = q.url.endsWith('/ispws/submit');
-      const isUpload = q.url.endsWith('/ispws/upload');
-      return ok({
+      const isSubmit = url.endsWith('/ispws/submit');
+      const isUpload = url.endsWith('/ispws/upload');
+      return ok<T>({
         reportResponse: {
           responseCode: { _text: '0' },
           ...(isSubmit ? { reportId: { _text: reportId } } : {}),
           ...(isUpload ? { fileId: { _text: fileId } } : {}),
         },
-      }) as never;
+      });
     }
-    if (q.url.endsWith('/ispws/finish')) {
-      return ok({
+    if (url.endsWith('/ispws/finish')) {
+      return ok<T>({
         reportDoneResponse: {
           responseCode: { _text: '0' },
           reportId: { _text: reportId },
           files: [{ fileId: { _text: fileId } }],
         },
-      }) as never;
+      });
     }
-    if (q.url === PRESERVATION_URL) {
-      return ok(undefined) as never;
+    if (url === PRESERVATION_URL) {
+      return ok<T>(undefined);
     }
-    throw new Error(`stub fetchHTTP: unexpected request ${q.method} ${q.url}`);
-  }) as unknown as FetchHTTP;
+    throw new Error(`stub fetchHTTP: unexpected request ${method} ${url}`);
+  };
   return { fetchHTTP, calls };
 }
 
@@ -221,11 +212,15 @@ describe('NCMEC submitReport (integration)', () => {
       const submitCall = stub.calls.find(
         (c) => c.url.endsWith('/ispws/submit') && typeof c.body === 'string',
       );
-      expect(submitCall).toBeDefined();
-      const submitXml = String(submitCall!.body);
+      if (!submitCall) {
+        throw new Error(
+          'expected a /ispws/submit request with a string body, but none was recorded',
+        );
+      }
+      const submitXml = String(submitCall.body);
       expect(submitXml).toContain('<incidentType>');
       expect(submitXml).toContain('jane@example.com');
-      expect(submitCall!.headers?.Authorization).toMatch(/^Basic /);
+      expect(submitCall.headers?.Authorization).toMatch(/^Basic /);
 
       // persisted row
       const row = await deps.KyselyPg.selectFrom(

@@ -257,9 +257,67 @@ describe('NCMEC field coverage', () => {
     }
   });
 
-  it('renders all three scenarios to non-empty XML', () => {
+  it('renders all three scenarios to well-formed XML with scenario-specific markers', () => {
+    // The presence table checks the object tree; this is the only test that
+    // exercises the js2xml serialization path, so assert meaningful structural
+    // and field markers per scenario rather than just non-empty output.
+    const markers: Record<
+      ScenarioKey,
+      { present: string[]; absent: string[] }
+    > = {
+      // min: only org-setting-backed required fields — no user data, no
+      // escalation, no top-level additionalInfo. personOrUserReported is
+      // always emitted (espIdentifier/espService) but carries no IP event,
+      // display name, or prior reports.
+      min: {
+        present: [
+          '<report>',
+          '<incidentSummary>',
+          '<incidentType>',
+          '<incidentDateTime>',
+          '<reporter>',
+          '<personOrUserReported>',
+          '<espIdentifier>',
+        ],
+        absent: [
+          '<ipCaptureEvent>',
+          '<displayName>',
+          '<additionalInfo>',
+          '<escalateToHighPriority>',
+        ],
+      },
+      // field-roles: user data via roles populates personOrUserReported + IP
+      // event, but still no escalation or top-level additionalInfo.
+      'field-roles': {
+        present: [
+          '<personOrUserReported>',
+          '<espIdentifier>',
+          '<ipCaptureEvent>',
+          'jane@example.com',
+        ],
+        absent: ['<additionalInfo>', '<escalateToHighPriority>'],
+      },
+      // max: everything wired — escalation, additionalInfo, priorCTReports,
+      // and contactPerson all present.
+      max: {
+        present: [
+          '<escalateToHighPriority>',
+          '<additionalInfo>',
+          '<priorCTReports>',
+          '<contactPerson>',
+        ],
+        absent: [],
+      },
+    };
     for (const key of ['min', 'field-roles', 'max'] as ScenarioKey[]) {
-      expect(renderXml(scenarios[key]).length).toBeGreaterThan(0);
+      const xml = renderXml(scenarios[key]);
+      expect(xml.length).toBeGreaterThan(0);
+      for (const marker of markers[key].present) {
+        expect(xml).toContain(marker);
+      }
+      for (const marker of markers[key].absent) {
+        expect(xml).not.toContain(marker);
+      }
     }
   });
 
@@ -303,25 +361,6 @@ describe('NCMEC field coverage', () => {
         'estimatedLocation',
         'allEmailsReported',
         'associatedAccount',
-        'additionalInfo',
-      ],
-      fileDetails: [
-        'reportId',
-        'fileId',
-        'fileName',
-        'originalFileName',
-        'uploadedToEspTimestamp',
-        'locationOfFile',
-        'fileViewedByEsp',
-        'exifViewedByEsp',
-        'publiclyAvailable',
-        'fileRelevance',
-        'fileAnnotations',
-        'industryClassification',
-        'originalFileHash',
-        'ipCaptureEvent',
-        'deviceId',
-        'details',
         'additionalInfo',
       ],
       ipCaptureEvent: [

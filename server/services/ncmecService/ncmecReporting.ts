@@ -132,9 +132,9 @@ type FileDetails = {
     publiclyAvailable?: boolean;
     fileRelevance?: 'Reported' | 'Supplemental Reported';
     fileAnnotations?: FileAnnotations;
-    ipCaptureEvent?: IPNCMECEvent[];
     industryClassification?: NCMECIndustryClassificationType;
     originalFileHash?: OriginalFileHash[];
+    ipCaptureEvent?: IPNCMECEvent[];
     deviceId?: DeviceId[];
     details?: Detail[];
     additionalInfo?: string[];
@@ -931,6 +931,10 @@ export function buildFileDetailsObject(
         : {}),
       fileRelevance,
       ...(fileAnnotations ? { fileAnnotations } : {}),
+      industryClassification: media.industryClassification,
+      ...(originalFileHash && originalFileHash.length > 0
+        ? { originalFileHash: [...originalFileHash] }
+        : {}),
       ...(additionalInfo.ipCaptureEvent &&
       additionalInfo.ipCaptureEvent.length > 0
         ? {
@@ -942,10 +946,6 @@ export function buildFileDetailsObject(
               ...(it.port ? { port: it.port } : {}),
             })),
           }
-        : {}),
-      industryClassification: media.industryClassification,
-      ...(originalFileHash && originalFileHash.length > 0
-        ? { originalFileHash: [...originalFileHash] }
         : {}),
       ...(additionalInfo.additionalInfo
         ? { additionalInfo: additionalInfo.additionalInfo }
