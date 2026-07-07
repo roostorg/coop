@@ -6,6 +6,8 @@
  * reuses the existing client logo.
  */
 
-export const IMAGE_URL = 'http://localhost:3000/logo192.png';
+export const IMAGE_URL = 'http://127.0.0.1:3000/logo192.png';
 
-export const AUDIO_URL = 'http://localhost:3000/e2e/tone-3s.wav';
+export const AUDIO_URL = 'http://127.0.0.1:3000/e2e/tone-3s.wav';
+
+export const VIDEO_URL = 'http://127.0.0.1:3000/e2e/test-video-2s.mp4';

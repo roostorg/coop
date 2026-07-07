@@ -2,19 +2,16 @@ import { ScalarTypes, type Field } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import { expect, jsonStringify, test } from '../fixtures/coop.js';
-import { AUDIO_URL, IMAGE_URL } from '../fixtures/media.js';
+import { AUDIO_URL, IMAGE_URL, VIDEO_URL } from '../fixtures/media.js';
 
-// VIDEO is intentionally omitted — react-player/lazy (used by
-// ManualReviewJobContentBlurableVideo) crashes in vite dev mode ("Element type
-// is invalid: lazy element must resolve to a class or function"), taking down
-// the whole page (no per-field error boundary). Re-add VIDEO once that is fixed.
 const FIELDS: Field[] = [
   { name: 'text', type: ScalarTypes.STRING, required: true, container: null },
   { name: 'image', type: ScalarTypes.IMAGE, required: false, container: null },
   { name: 'audio', type: ScalarTypes.AUDIO, required: false, container: null },
+  { name: 'video', type: ScalarTypes.VIDEO, required: false, container: null },
 ];
 
-test('an MRT job renders text/image/audio, plays audio, and records a decision', async ({
+test('an MRT job renders text/image/audio/video, plays media, and records a decision', async ({
   page,
   request,
   deps,
@@ -63,6 +60,7 @@ test('an MRT job renders text/image/audio, plays audio, and records a decision',
     text: uniqueText,
     image: IMAGE_URL,
     audio: AUDIO_URL,
+    video: VIDEO_URL,
   });
   await seed.waitForQueueDrained();
 
@@ -74,6 +72,7 @@ test('an MRT job renders text/image/audio, plays audio, and records a decision',
   await expect(page.getByText('Text', { exact: true })).toBeVisible();
   await expect(page.getByText('Image', { exact: true })).toBeVisible();
   await expect(page.getByText('Audio', { exact: true })).toBeVisible();
+  await expect(page.getByText('Video', { exact: true })).toBeVisible();
 
   const audio = page.locator('audio').first();
   await expect(audio).toBeVisible();
@@ -82,6 +81,17 @@ test('an MRT job renders text/image/audio, plays audio, and records a decision',
     el.muted = true;
     await el.play();
   });
+
+  const video = page.locator('video').first();
+  await expect(video).toBeVisible();
+  await video.evaluate(async (el: HTMLVideoElement) => {
+    // eslint-disable-next-line functional/immutable-data -- DOM elements are mutable by nature.
+    el.muted = true;
+    await el.play();
+  });
+  await expect
+    .poll(async () => video.evaluate((el: HTMLVideoElement) => el.currentTime))
+    .toBeGreaterThan(0);
 
   const submitResponse = page.waitForResponse(
     (resp) =>
