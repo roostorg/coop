@@ -1,4 +1,11 @@
 import { Label } from '@/coop-ui/Label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
 import { gql } from '@apollo/client';
@@ -15,6 +22,13 @@ import {
   useGQLSetModeratorSafetySettingsMutation,
 } from '../../../graphql/generated';
 import GoldenRetrieverPuppies from '../../../images/GoldenRetrieverPuppies.png';
+import {
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '../../../models/safetySettings';
 import {
   BLUR_LEVELS,
   BlurStrength,
@@ -85,7 +99,7 @@ export default function ManualReviewSafetySettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
-      moderatorSafetySepia
+      moderatorSafetySepia,
     });
   }, [data?.me?.interfacePreferences]);
 
@@ -128,38 +142,31 @@ export default function ManualReviewSafetySettings() {
               step={1}
             />
           </div>
-          <div className="flex items-center h-10">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="grayscale"
-                defaultChecked
-                onCheckedChange={(value) =>
-                  setSettings({
-                    ...settings,
-                    moderatorSafetyGrayscale: value,
-                  })
-                }
-                checked={settings.moderatorSafetyGrayscale}
-              />
-              <Label htmlFor="grayscale">Grayscale</Label>
-            </div>
+          <div className="flex items-center h-10 gap-2">
+            <Label htmlFor="color-scheme">Color Scheme</Label>
+            <Select
+              value={colorSchemeFromPreferences(settings)}
+              onValueChange={(value) =>
+                setSettings({
+                  ...settings,
+                  ...preferencesFromColorScheme(
+                    value as ModeratorSafetyColorScheme,
+                  ),
+                })
+              }
+            >
+              <SelectTrigger id="color-scheme" size="small" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                  <SelectItem value={scheme} key={scheme}>
+                    {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex items-center h-10">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="sepia"
-                onCheckedChange={(value) =>
-                  setSettings({
-                    ...settings,
-                    moderatorSafetySepia: value,
-                  })
-                }
-                checked={settings.moderatorSafetySepia}
-              />
-              <Label htmlFor="sepia">Sepia</Label>
-            </div>
-          </div>
-          
           <div className="flex items-center h-10">
             <div className="flex items-center space-x-2">
               <Switch

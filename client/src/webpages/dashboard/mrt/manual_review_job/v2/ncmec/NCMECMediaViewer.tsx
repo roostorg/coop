@@ -1,6 +1,19 @@
 import { Label } from '@/coop-ui/Label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
-import { Switch } from '@/coop-ui/Switch';
+import {
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '@/models/safetySettings';
 import { SearchOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 
@@ -256,31 +269,29 @@ export default function NCMECMediaViewer(props: {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Switch
-              id="grayscale"
-              defaultChecked
-              onCheckedChange={(isGrayscale) =>
+            <Label htmlFor="color-scheme">Color Scheme</Label>
+            <Select
+              value={colorSchemeFromPreferences(safetySettings)}
+              onValueChange={(value) =>
                 setSafetySettings({
                   ...safetySettings,
-                  moderatorSafetyGrayscale: isGrayscale,
+                  ...preferencesFromColorScheme(
+                    value as ModeratorSafetyColorScheme,
+                  ),
                 })
               }
-              checked={safetySettings.moderatorSafetyGrayscale}
-            />
-            <Label htmlFor="grayscale">Grayscale</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="sepia"
-              onCheckedChange={(isSepia) =>
-                setSafetySettings({
-                  ...safetySettings,
-                  moderatorSafetySepia: isSepia,
-                })
-              }
-              checked={safetySettings.moderatorSafetySepia}
-            />
-            <Label htmlFor="sepia">Sepia</Label>
+            >
+              <SelectTrigger id="color-scheme" size="small" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                  <SelectItem value={scheme} key={scheme}>
+                    {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}

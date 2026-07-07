@@ -1,4 +1,11 @@
 import { Button } from '@/coop-ui/Button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
@@ -8,6 +15,13 @@ import {
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
+import {
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '@/models/safetySettings';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
@@ -145,31 +159,30 @@ export default function WellnessTab() {
             </div>
             <div className="flex gap-12 mt-2 items-center">
               <Text className="text-base" weight="medium">
-                Greyscale
+                Color Scheme
               </Text>
-              <Switch
-                checked={safetySettings.moderatorSafetyGrayscale}
-                onCheckedChange={(value) =>
+              <Select
+                value={colorSchemeFromPreferences(safetySettings)}
+                onValueChange={(value) =>
                   setSafetySettings({
                     ...safetySettings,
-                    moderatorSafetyGrayscale: value,
+                    ...preferencesFromColorScheme(
+                      value as ModeratorSafetyColorScheme,
+                    ),
                   })
                 }
-              />
-            </div>
-            <div className="flex gap-12 mt-2 items-center">
-              <Text className="text-base" weight="medium">
-                Sepia
-              </Text>
-              <Switch
-                checked={safetySettings.moderatorSafetySepia}
-                onCheckedChange={(value) =>
-                  setSafetySettings({
-                    ...safetySettings,
-                    moderatorSafetySepia: value,
-                  })
-                }
-              />
+              >
+                <SelectTrigger size="small" className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                    <SelectItem value={scheme} key={scheme}>
+                      {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-12 mt-2 items-center">
               <Text className="text-base" weight="medium">
