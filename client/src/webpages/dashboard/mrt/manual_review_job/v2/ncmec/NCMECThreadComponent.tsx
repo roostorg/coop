@@ -201,7 +201,7 @@ export function NCMECThreadComponent(props: {
     },
   );
   return (
-    <div className="mr-4">
+    <div className="flex-1 min-w-0">
       <div className="flex flex-col items-start w-full p-2 rounded gap-2 grow bg-coop-lightblue">
         <div
           className="flex flex-col w-full border border-gray-200 border-solid rounded max-h-[600px] gap-2 p-2 bg-white overflow-scroll"

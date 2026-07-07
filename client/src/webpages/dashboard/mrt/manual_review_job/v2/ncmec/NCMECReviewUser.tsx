@@ -232,6 +232,106 @@ const NCMEC_INCIDENT_TYPE_OPTIONS = Object.entries(
   NCMEC_INCIDENT_TYPE_LABELS,
 ).map(([value, label]) => ({ value: value as GQLNcmecIncidentType, label }));
 
+// Bottom section of the "Confirm & Send NCMEC Report" modal: incident type,
+// escalation, and additional info.
+function NcmecReportFormFields(props: {
+  incidentType: GQLNcmecIncidentType;
+  onIncidentTypeChange: (incidentType: GQLNcmecIncidentType) => void;
+  escalateChecked: boolean;
+  onEscalateCheckedChange: (checked: boolean) => void;
+  escalateReason: string;
+  onEscalateReasonChange: (reason: string) => void;
+  escalateMissingReason: boolean;
+  additionalInfo: string;
+  onAdditionalInfoChange: (additionalInfo: string) => void;
+}) {
+  return (
+    <>
+      <div className="!my-4 divider" />
+      <div className="flex flex-col gap-2">
+        <div className="text-base font-bold">Incident Type Category</div>
+        <select
+          value={props.incidentType}
+          onChange={(e) =>
+            props.onIncidentTypeChange(e.target.value as GQLNcmecIncidentType)
+          }
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-2 my-4">
+        <label className="flex items-center gap-2 text-base font-bold">
+          <input
+            type="checkbox"
+            checked={props.escalateChecked}
+            onChange={(e) => {
+              const next = e.target.checked;
+              props.onEscalateCheckedChange(next);
+              if (!next) {
+                props.onEscalateReasonChange('');
+              }
+            }}
+          />
+          Escalate as High Priority
+        </label>
+        {props.escalateChecked ? (
+          <>
+            <label
+              htmlFor="escalateToHighPriority"
+              className="text-sm font-medium"
+            >
+              Reason for escalation (required)
+            </label>
+            <textarea
+              id="escalateToHighPriority"
+              maxLength={3000}
+              value={props.escalateReason}
+              onChange={(e) => props.onEscalateReasonChange(e.target.value)}
+              placeholder="e.g. immediate risk to child."
+              className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              rows={3}
+            />
+            <div className="flex items-center justify-between">
+              {props.escalateMissingReason ? (
+                <span className="text-xs text-red-600">
+                  A reason is required when escalating.
+                </span>
+              ) : (
+                <span />
+              )}
+              <span className="text-xs text-slate-500">
+                {props.escalateReason.length}/3000 characters
+              </span>
+            </div>
+          </>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="ncmecAdditionalInfo" className="text-base font-bold">
+          Additional details (optional)
+        </label>
+        <textarea
+          id="ncmecAdditionalInfo"
+          maxLength={3000}
+          value={props.additionalInfo}
+          onChange={(e) => props.onAdditionalInfoChange(e.target.value)}
+          placeholder="Any other context/notes to be added to the report."
+          className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          rows={3}
+        />
+        <span className="text-xs text-slate-500">
+          {props.additionalInfo.length}/3000 characters
+        </span>
+      </div>
+    </>
+  );
+}
+
 export default function NCMECReviewUser(
   props: {
     orgId: string;
@@ -264,32 +364,37 @@ export default function NCMECReviewUser(
   );
 
   const [erroredMedia, setErroredMedia] = useState<ItemIdentifier[]>([]);
-  const [selectedTab, setSelectedTab] = useState<'MEDIA' | 'MESSAGES'>('MEDIA');
+  // Flatten media items to their playable URLs, sorted so confirmed CSAM and
+  // the reported item come first. Computed once so the default tab and the
+  // "text-only" checks below agree: a media item that yields zero URLs must
+  // count as no media, not send the reviewer to an empty Media tab.
+  const initialMediaItemsWithUrls = uniqueMediaItems
+    .map((it) =>
+      getUrlsFromItem(it.contentItem).map((urlInfo) => ({ ...it, urlInfo })),
+    )
+    .flat()
+    .sort((a, b) => {
+      // Put confirmed CSAM first, then the reported item, then everything else
+      if (a.isConfirmedCSAM) {
+        return -1;
+      }
+      if (b.isConfirmedCSAM) {
+        return 1;
+      }
+      if (a.isReported) {
+        return -1;
+      }
+      if (b.isReported) {
+        return 1;
+      }
+      return 0;
+    });
+  const [selectedTab, setSelectedTab] = useState<'MEDIA' | 'MESSAGES'>(
+    initialMediaItemsWithUrls.length === 0 ? 'MESSAGES' : 'MEDIA',
+  );
   const [allMediaItemsWithUrls, setAllMediaItemsWithUrls] = useState<
     ((typeof uniqueMediaItems)[number] & { urlInfo: NCMECUrlInfo })[]
-  >(
-    uniqueMediaItems
-      .map((it) =>
-        getUrlsFromItem(it.contentItem).map((urlInfo) => ({ ...it, urlInfo })),
-      )
-      .flat()
-      .sort((a, b) => {
-        // Put confirmed CSAM first, then the reported item, then everything else
-        if (a.isConfirmedCSAM) {
-          return -1;
-        }
-        if (b.isConfirmedCSAM) {
-          return 1;
-        }
-        if (a.isReported) {
-          return -1;
-        }
-        if (b.isReported) {
-          return 1;
-        }
-        return 0;
-      }),
-  );
+  >(initialMediaItemsWithUrls);
   const { data: threadInfo, loading: threadLoading } =
     useGQLGetMoreInfoForThreadItemsQuery({
       variables: {
@@ -363,7 +468,9 @@ export default function NCMECReviewUser(
   const [selectedThreadsWithMessages, setSelectedThreadsWithMessages] =
     useState<GQLNcmecThreadInput[]>([]);
   const [incidentType, setIncidentType] = useState<GQLNcmecIncidentType>(
-    GQLNcmecIncidentType.ChildPornography,
+    allMediaItemsWithUrls.length === 0
+      ? GQLNcmecIncidentType.OnlineEnticementOfChildren
+      : GQLNcmecIncidentType.ChildPornography,
   );
   const [escalateToHighPriority, setEscalateToHighPriority] = useState('');
   const [escalateChecked, setEscalateChecked] = useState(false);
@@ -402,7 +509,7 @@ export default function NCMECReviewUser(
           <ExclamationCircleOutlined />
         </div>
         <div className="text-2xl max-w-[400px] pb-2">
-          Could not find any valid media
+          Could not find any valid media or messages
         </div>
         <CopyTextComponent
           value={erroredMedia.map((it) => it.id).join(',')}
@@ -428,20 +535,23 @@ export default function NCMECReviewUser(
     </div>
   );
 
-  // If allMediaItemsWithUrls is empty, assume that there's nothing left to
-  // review and set an error that submits an ignore.
-  if (allMediaItemsWithUrls.length === 0) {
-    return noValidMedia;
-  }
+  const reportedMessageCount = selectedThreadsWithMessages.reduce(
+    (sum, thread) => sum + thread.reportedContent.length,
+    0,
+  );
+  const isTextOnlyJob = allMediaItemsWithUrls.length === 0;
 
-  if (mediaInDetailView === undefined) {
+  if (allMediaItemsWithUrls.length > 0 && mediaInDetailView === undefined) {
     setMediaInDetailView({
       itemId: allMediaItemsWithUrls[0].contentItem.id,
       urlInfo: allMediaItemsWithUrls[0].urlInfo,
       itemTypeId: allMediaItemsWithUrls[0].contentItem.type.id,
     });
   }
-  if (mediaInDetailView === undefined) {
+  // Media was reported but none of it could be loaded — nothing to review.
+  // (A genuinely media-less job falls through to the tabbed UI, defaulting to
+  // the Messages tab.)
+  if (allMediaItemsWithUrls.length === 0 && erroredMedia.length > 0) {
     return noValidMedia;
   }
 
@@ -551,6 +661,7 @@ export default function NCMECReviewUser(
   };
 
   const goToNextMedia = () => {
+    if (!mediaInDetailView) return;
     const index = allMediaItemsWithUrls.findIndex(
       (it) =>
         it.contentItem.id === mediaInDetailView.itemId &&
@@ -566,6 +677,7 @@ export default function NCMECReviewUser(
   };
 
   const goToPreviousMedia = () => {
+    if (!mediaInDetailView) return;
     const index = allMediaItemsWithUrls.findIndex(
       (it) =>
         it.contentItem.id === mediaInDetailView.itemId &&
@@ -587,8 +699,8 @@ export default function NCMECReviewUser(
   // the user can't play it
   const onMediaError = (mediaId: NCMECMediaIdentifier) => {
     if (
-      mediaInDetailView.itemId === mediaId.itemId &&
-      mediaInDetailView.itemTypeId === mediaId.itemTypeId
+      mediaInDetailView?.itemId === mediaId.itemId &&
+      mediaInDetailView?.itemTypeId === mediaId.itemTypeId
     ) {
       goToNextMedia();
     }
@@ -732,7 +844,7 @@ export default function NCMECReviewUser(
         <div className="!my-4 divider" />
         <div className="flex items-start justify-between gap-4 min-w-0">
           <div className="flex items-start gap-4 text-start min-w-0 flex-1">
-            <div className="text-base font-bold shrink-0 pt-1">Suspect</div>
+            <div className="text-base font-bold shrink-0">Suspect</div>
             <div className="flex flex-row items-start min-w-0 flex-1">
               {profilePicUrl ? (
                 <img
@@ -768,87 +880,17 @@ export default function NCMECReviewUser(
           </>
         ) : null}
 
-        <div className="!my-4 divider" />
-        <div className="flex flex-col gap-2">
-          <div className="text-base font-bold">Incident Type Category</div>
-          <select
-            value={incidentType}
-            onChange={(e) =>
-              setIncidentType(e.target.value as GQLNcmecIncidentType)
-            }
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-base font-bold">
-            <input
-              type="checkbox"
-              checked={escalateChecked}
-              onChange={(e) => {
-                const next = e.target.checked;
-                setEscalateChecked(next);
-                if (!next) {
-                  setEscalateToHighPriority('');
-                }
-              }}
-            />
-            Escalate as High Priority
-          </label>
-          {escalateChecked ? (
-            <>
-              <label
-                htmlFor="escalateToHighPriority"
-                className="text-sm font-medium"
-              >
-                Reason for escalation (required)
-              </label>
-              <textarea
-                id="escalateToHighPriority"
-                maxLength={3000}
-                value={escalateToHighPriority}
-                onChange={(e) => setEscalateToHighPriority(e.target.value)}
-                placeholder="e.g. immediate risk to child."
-                className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                rows={3}
-              />
-              <div className="flex items-center justify-between">
-                {escalateMissingReason ? (
-                  <span className="text-xs text-red-600">
-                    A reason is required when escalating.
-                  </span>
-                ) : (
-                  <span />
-                )}
-                <span className="text-xs text-slate-500">
-                  {escalateToHighPriority.length}/3000 characters
-                </span>
-              </div>
-            </>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="ncmecAdditionalInfo" className="text-base font-bold">
-            Additional details (optional)
-          </label>
-          <textarea
-            id="ncmecAdditionalInfo"
-            maxLength={3000}
-            value={additionalInfo}
-            onChange={(e) => setAdditionalInfo(e.target.value)}
-            placeholder="Any other context/notes to be added to the report."
-            className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            rows={3}
-          />
-          <span className="text-xs text-slate-500">
-            {additionalInfo.length}/3000 characters
-          </span>
-        </div>
+        <NcmecReportFormFields
+          incidentType={incidentType}
+          onIncidentTypeChange={setIncidentType}
+          escalateChecked={escalateChecked}
+          onEscalateCheckedChange={setEscalateChecked}
+          escalateReason={escalateToHighPriority}
+          onEscalateReasonChange={setEscalateToHighPriority}
+          escalateMissingReason={escalateMissingReason}
+          additionalInfo={additionalInfo}
+          onAdditionalInfoChange={setAdditionalInfo}
+        />
       </div>
     </CoopModal>
   ) : null;
@@ -882,8 +924,8 @@ export default function NCMECReviewUser(
 
   const mediaInDetailViewItem = allMediaItemsWithUrls.find(
     (it) =>
-      it.contentItem.id === mediaInDetailView.itemId &&
-      it.urlInfo.url === mediaInDetailView.urlInfo.url,
+      it.contentItem.id === mediaInDetailView?.itemId &&
+      it.urlInfo.url === mediaInDetailView?.urlInfo.url,
   )?.contentItem;
 
   const mediaInDetailViewThread =
@@ -905,16 +947,17 @@ export default function NCMECReviewUser(
     mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
       ? reviewedCount >= effectiveMinToReview
       : reviewedCount === allMediaItemsWithUrls.length;
-  // A report can't be empty: require at least one reported item.
-  const canSendReport = reviewThresholdMet && reportedCount > 0;
+  // A report can't be empty: require at least one reported item (media or message).
+  const canSendReport =
+    reviewThresholdMet && (reportedCount > 0 || reportedMessageCount > 0);
   const sendDisabledReason = !reviewThresholdMet
     ? mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
       ? `Please review at least ${effectiveMinToReview} ${
           effectiveMinToReview === 1 ? 'piece' : 'pieces'
         } of media before sending a report to NCMEC.`
       : 'Please make a decision on every piece of media in this job before sending a report to NCMEC.'
-    : reportedCount === 0
-      ? 'Select a category for at least one piece of media to include it in the report before sending to NCMEC.'
+    : reportedCount === 0 && reportedMessageCount === 0
+      ? 'Select a category for at least one piece of media, or select reported messages, before sending to NCMEC.'
       : '';
 
   return (
@@ -1034,17 +1077,17 @@ export default function NCMECReviewUser(
           </div>
         ) : null}
       </div>
-      {showMessages ? (
+      {showMessages || isTextOnlyJob ? (
         <TabBar
           tabs={[
             { label: 'Media', value: 'MEDIA' },
             { label: 'Messages', value: 'MESSAGES' },
           ]}
-          initialSelectedTab={'MEDIA'}
+          initialSelectedTab={selectedTab}
           onTabClick={setSelectedTab}
         />
       ) : undefined}
-      {selectedTab === 'MEDIA' ? (
+      {selectedTab === 'MEDIA' && mediaInDetailView ? (
         <div ref={inspectedMediaRef} className="flex flex-col w-full">
           <NCMECInspectedMedia
             orgId={orgId}
@@ -1136,8 +1179,10 @@ export default function NCMECReviewUser(
             shouldBlurAll={shouldBlurAll}
             onMediaError={onMediaError}
           />
-          {sendReportModal}
-          {deselectAndIgnoreReportModal}
+        </div>
+      ) : selectedTab === 'MEDIA' ? (
+        <div className="w-full p-8 text-center text-slate-500">
+          No media in this report.
         </div>
       ) : (
         <NCMECPreviousMessages
@@ -1145,8 +1190,11 @@ export default function NCMECReviewUser(
           isActionable={isActionable}
           setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
           selectedThreadsWithMessages={selectedThreadsWithMessages}
+          reportedMessages={payload.reportedMessages}
         />
       )}
+      {sendReportModal}
+      {deselectAndIgnoreReportModal}
     </div>
   );
 }

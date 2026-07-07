@@ -3095,6 +3095,7 @@ export type GQLNcmecManualReviewJobPayload = {
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
   readonly enqueueSourceInfo?: Maybe<GQLManualReviewJobEnqueueSourceInfo>;
   readonly item: GQLUserItem;
+  readonly reportedMessages: ReadonlyArray<GQLItemIdentifier>;
   readonly userScore?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -4572,6 +4573,8 @@ export type GQLSubmitDecisionResponse =
 export type GQLSubmitDecisionSuccessResponse = {
   readonly __typename: 'SubmitDecisionSuccessResponse';
   readonly success: Scalars['Boolean']['output'];
+  /** Non-blocking, reviewer-facing notices about the decision (e.g. an NCMEC escalation that was skipped because the user was already reported). Surfaced as toasts. */
+  readonly warnings: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLSubmitNcmecReportDecisionComponent =
@@ -9017,6 +9020,11 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                     };
                   };
             }>;
+            readonly reportedMessages: ReadonlyArray<{
+              readonly __typename: 'ItemIdentifier';
+              readonly id: string;
+              readonly typeId: string;
+            }>;
             readonly enqueueSourceInfo?:
               | { readonly __typename: 'AppealEnqueueSourceInfo' }
               | {
@@ -11605,6 +11613,11 @@ export type GQLGetDecidedJobQuery = {
                   };
                 };
           }>;
+          readonly reportedMessages: ReadonlyArray<{
+            readonly __typename: 'ItemIdentifier';
+            readonly id: string;
+            readonly typeId: string;
+          }>;
           readonly enqueueSourceInfo?:
             | { readonly __typename: 'AppealEnqueueSourceInfo' }
             | {
@@ -13313,6 +13326,11 @@ export type GQLManualReviewJobInfoQuery = {
                       };
                     };
               }>;
+              readonly reportedMessages: ReadonlyArray<{
+                readonly __typename: 'ItemIdentifier';
+                readonly id: string;
+                readonly typeId: string;
+              }>;
               readonly enqueueSourceInfo?:
                 | { readonly __typename: 'AppealEnqueueSourceInfo' }
                 | {
@@ -14654,6 +14672,11 @@ export type GQLDequeueManualReviewJobMutation = {
                     };
                   };
             }>;
+            readonly reportedMessages: ReadonlyArray<{
+              readonly __typename: 'ItemIdentifier';
+              readonly id: string;
+              readonly typeId: string;
+            }>;
             readonly enqueueSourceInfo?:
               | { readonly __typename: 'AppealEnqueueSourceInfo' }
               | {
@@ -15341,6 +15364,7 @@ export type GQLSubmitManualReviewDecisionMutation = {
     | {
         readonly __typename: 'SubmitDecisionSuccessResponse';
         readonly success: boolean;
+        readonly warnings: ReadonlyArray<string>;
       }
     | {
         readonly __typename: 'SubmittedJobActionNotFoundError';
@@ -16051,6 +16075,11 @@ export type GQLJobFieldsFragment = {
                   }>;
                 };
               };
+        }>;
+        readonly reportedMessages: ReadonlyArray<{
+          readonly __typename: 'ItemIdentifier';
+          readonly id: string;
+          readonly typeId: string;
         }>;
         readonly enqueueSourceInfo?:
           | { readonly __typename: 'AppealEnqueueSourceInfo' }
@@ -25719,6 +25748,10 @@ export const GQLJobFieldsFragmentDoc = gql`
           isConfirmedCSAM
           isReported
         }
+        reportedMessages {
+          id
+          typeId
+        }
         enqueueSourceInfo {
           ... on ReportEnqueueSourceInfo {
             kind
@@ -34812,6 +34845,7 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
     submitManualReviewDecision(input: $input) {
       ... on SubmitDecisionSuccessResponse {
         success
+        warnings
       }
       ... on JobHasAlreadyBeenSubmittedError {
         title
