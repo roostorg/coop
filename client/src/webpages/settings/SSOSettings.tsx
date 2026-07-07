@@ -95,8 +95,9 @@ export default function SSOSettings() {
     const org = data.myOrg;
     if (org.ssoUrl != null) setSsoUrl(org.ssoUrl);
     if (org.ssoCert != null) setSsoCert(org.ssoCert);
-    if (org.issuerUrl != null)
-      setIssuerUrl(normalizeIssuerDomain(org.issuerUrl));
+    // Saved issuer is already canonical (validated via server-side discovery
+    // on save) — display it verbatim; normalization only applies to user input.
+    if (org.issuerUrl != null) setIssuerUrl(org.issuerUrl);
     if (org.clientId != null) setClientId(org.clientId);
     if (org.oidcEnabled) setActiveTab('OIDC');
   }, [data]);
