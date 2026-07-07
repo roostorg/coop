@@ -49,7 +49,11 @@ export default function IframeContentDisplayComponent(props: {
       shouldTranslate: false,
       sepia: moderatorSafetySepia,
     });
-  }, [moderatorSafetyBlurLevel, moderatorSafetyGrayscale, moderatorSafetySepia]);
+  }, [
+    moderatorSafetyBlurLevel,
+    moderatorSafetyGrayscale,
+    moderatorSafetySepia,
+  ]);
 
   useEffect(() => {
     // Translation status messages come from the content proxy. With no proxy

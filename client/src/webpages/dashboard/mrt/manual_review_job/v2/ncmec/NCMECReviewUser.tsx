@@ -3,6 +3,7 @@ import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
+import clsx from 'clsx';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
 import uniqWith from 'lodash/uniqWith';
@@ -40,7 +41,6 @@ import ManualReviewJobContentBlurableVideo from '../../ManualReviewJobContentBlu
 import NCMECActions from './NCMECActions';
 import NCMECInspectedMedia from './NCMECInspectedMedia';
 import NCMECMediaGallery from './NCMECMediaGallery';
-import clsx from 'clsx';
 import { BLUR_LEVELS, BlurStrength } from './NCMECMediaViewer';
 import NCMECPreviousMessages from './NCMECPreviousMessages';
 
