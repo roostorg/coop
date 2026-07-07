@@ -1,13 +1,15 @@
 /**
  * Media URLs for e2e tests. The server's item-field validator only accepts
- * http(s) URLs (no data URIs), and the audio must actually load to be played,
- * so we serve a tiny fixture from the client dev server's `public/` dir
+ * http(s) URLs (no data URIs), and the audio/video must actually load to be
+ * played, so we serve tiny fixtures from the client dev server's `public/` dir
  * (localhost is allowed via ALLOW_USER_INPUT_LOCALHOST_URIS=true). The image
  * reuses the existing client logo.
  */
 
-export const IMAGE_URL = 'http://127.0.0.1:3000/logo192.png';
+const mediaBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
 
-export const AUDIO_URL = 'http://127.0.0.1:3000/e2e/tone-3s.wav';
+export const IMAGE_URL = `${mediaBaseUrl}/logo192.png`;
 
-export const VIDEO_URL = 'http://127.0.0.1:3000/e2e/test-video-2s.mp4';
+export const AUDIO_URL = `${mediaBaseUrl}/e2e/tone-3s.wav`;
+
+export const VIDEO_URL = `${mediaBaseUrl}/e2e/test-video-2s.mp4`;
