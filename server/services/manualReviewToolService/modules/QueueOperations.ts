@@ -44,7 +44,11 @@ import {
   UserPermission,
   type Invoker,
 } from '../../userManagementService/index.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
+import {
+  type ClearReportsDisposition,
+  type ClearReportsScope,
+  type ManualReviewToolServicePg,
+} from '../dbTypes.js';
 import {
   type AppealEnqueueSourceInfo,
   type JobId,
@@ -67,6 +71,9 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
+  // Null disposition disables "clear other reports for this user" (issue #650).
+  clearReportsDisposition: ClearReportsDisposition | null;
+  clearReportsScope: ClearReportsScope;
 };
 
 const PgQueueSelection = [
@@ -78,6 +85,8 @@ const PgQueueSelection = [
   'created_at as createdAt',
   'is_appeals_queue as isAppealsQueue',
   'auto_close_jobs as autoCloseJobs',
+  'clear_reports_disposition as clearReportsDisposition',
+  'clear_reports_scope as clearReportsScope',
 ] as const;
 
 // BullJobId represents the ID we give a job within Bull. It's only unique among
@@ -95,7 +104,8 @@ export type ManualReviewQueueErrorType = 'ManualReviewQueueNameExistsError';
 export type QueueOperationsErrorType =
   | 'DeleteAllJobsUnauthorizedError'
   | 'QueueDoesNotExistError'
-  | 'UnableToDeleteDefaultQueueError';
+  | 'UnableToDeleteDefaultQueueError'
+  | 'AccessibleQueueNotInOrgError';
 
 // Compound identifier for a queue. orgId is needed for security, but also
 // because queues are/will be actually sharded across redis instances for
@@ -232,6 +242,9 @@ export default class QueueOperations {
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
+    clearReportsDisposition?: ClearReportsDisposition | null;
+    clearReportsScope?: ClearReportsScope;
+    clearReportsTriggerActionIds?: readonly string[];
   }) {
     const {
       name,
@@ -241,6 +254,9 @@ export default class QueueOperations {
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = input;
     const { orgId } = invokedBy;
 
@@ -250,6 +266,11 @@ export default class QueueOperations {
         { shouldErrorSpan: true },
       );
     }
+
+    // Defense-in-depth org-scoping: every user granted access to the new
+    // queue must belong to the caller's org. The queue itself is always
+    // created in the caller's org (orgId from the invoker).
+    await assertUsersInOrg(this.pgQuery, { orgId, userIds });
 
     try {
       return await this.transactionWithRetry(async (transaction) => {
@@ -276,6 +297,8 @@ export default class QueueOperations {
               description: replaceEmptyStringWithNull(description),
               is_appeals_queue: isAppealsQueue ?? false,
               auto_close_jobs: autoCloseJobs ?? false,
+              clear_reports_disposition: clearReportsDisposition ?? null,
+              clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
             },
           ])
           .executeTakeFirstOrThrow();
@@ -297,6 +320,12 @@ export default class QueueOperations {
           actionIdsToUnhide: [],
           orgId,
         });
+        await this.setClearReportsTriggerActionsForQueue({
+          transaction,
+          queueId: queue.id,
+          orgId,
+          actionIds: clearReportsTriggerActionIds ?? [],
+        });
         return queue;
       });
     } catch (e) {
@@ -316,6 +345,10 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    clearReportsDisposition?: ClearReportsDisposition | null;
+    clearReportsScope?: ClearReportsScope;
+    // When provided, replaces the queue's full set of trigger actions.
+    clearReportsTriggerActionIds?: readonly string[];
   }) {
     const {
       queueId,
@@ -326,7 +359,20 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
     } = input;
+
+    // Defense-in-depth org-scoping: the target queue and every user granted
+    // access must belong to the caller's org. Reject before any write so a
+    // cross-org queueId or userId can't mutate users_and_accessible_queues
+    // rows belonging to another org.
+    await assertUsersAndQueuesInOrg(this.pgQuery, {
+      orgId,
+      userIds,
+      queueIds: [queueId],
+    });
 
     return this.transactionWithRetry(async (transaction) => {
       const [updatedQueue, _, __] = await Promise.all([
@@ -337,6 +383,9 @@ export default class QueueOperations {
               name,
               description: replaceEmptyStringWithNull(description),
               auto_close_jobs: autoCloseJobs,
+              // null disables the feature and must survive removeUndefinedKeys.
+              clear_reports_disposition: clearReportsDisposition,
+              clear_reports_scope: clearReportsScope,
             }),
           )
           .where('id', '=', queueId)
@@ -367,6 +416,14 @@ export default class QueueOperations {
         actionIdsToHide,
         actionIdsToUnhide,
       });
+      if (clearReportsTriggerActionIds !== undefined) {
+        await this.setClearReportsTriggerActionsForQueue({
+          transaction,
+          queueId,
+          orgId,
+          actionIds: clearReportsTriggerActionIds,
+        });
+      }
       return updatedQueue;
     });
   }
@@ -542,6 +599,8 @@ export default class QueueOperations {
         'queues.created_at as createdAt',
         'queues.is_appeals_queue as isAppealsQueue',
         'queues.auto_close_jobs as autoCloseJobs',
+        'queues.clear_reports_disposition as clearReportsDisposition',
+        'queues.clear_reports_scope as clearReportsScope',
       ])
       .where('favorite_queues.user_id', '=', userId)
       .where('favorite_queues.org_id', '=', orgId)
@@ -612,10 +671,18 @@ export default class QueueOperations {
       .execute();
   }
 
-  async addAccessibleQueuesForUser(
-    userIds: string[],
-    queueIds: readonly string[],
-  ) {
+  async addAccessibleQueuesForUser(opts: {
+    orgId: string;
+    userIds: readonly string[];
+    queueIds: readonly string[];
+  }) {
+    const { orgId, userIds, queueIds } = opts;
+    await assertUsersAndQueuesInOrg(this.pgQuery, {
+      orgId,
+      userIds,
+      queueIds,
+    });
+
     return this.pgQuery
       .insertInto('manual_review_tool.users_and_accessible_queues')
       .values(
@@ -627,10 +694,18 @@ export default class QueueOperations {
       .execute();
   }
 
-  async removeAccessibleQueuesForUser(
-    userId: string,
-    queueIds: readonly string[],
-  ) {
+  async removeAccessibleQueuesForUser(opts: {
+    orgId: string;
+    userId: string;
+    queueIds: readonly string[];
+  }) {
+    const { orgId, userId, queueIds } = opts;
+    await assertUsersAndQueuesInOrg(this.pgQuery, {
+      orgId,
+      userIds: [userId],
+      queueIds,
+    });
+
     return this.pgQuery
       .deleteFrom('manual_review_tool.users_and_accessible_queues')
       .where('user_id', '=', userId)
@@ -900,7 +975,10 @@ export default class QueueOperations {
         if (snapshotIds.length >= maxJobs) {
           break;
         }
-        snapshotIds.push(legacy.data.id);
+        const id = legacy?.data?.id;
+        if (id != null) {
+          snapshotIds.push(id);
+        }
       }
       if (legacyJobs.length < batchSize) {
         break;
@@ -1634,6 +1712,57 @@ export default class QueueOperations {
         .execute();
     }
   }
+
+  // Action IDs whose use triggers the clear-other-reports sweep (issue #650).
+  async getClearReportsTriggerActionsForQueue(opts: {
+    queueId: string;
+    orgId: string;
+  }): Promise<string[]> {
+    const { queueId, orgId } = opts;
+    return (
+      await this.pgQuery
+        .selectFrom(
+          'manual_review_tool.queues_and_clear_reports_trigger_actions',
+        )
+        .select(['action_id'])
+        .where('queue_id', '=', queueId)
+        .where('org_id', '=', orgId)
+        .execute()
+    ).map((it) => it.action_id);
+  }
+
+  // Replaces the queue's trigger actions with `actionIds` (pass [] to clear).
+  async setClearReportsTriggerActionsForQueue(opts: {
+    queueId: string;
+    orgId: string;
+    actionIds: readonly string[];
+    transaction?: Transaction<ManualReviewToolServicePg>;
+  }) {
+    const { queueId, orgId, actionIds, transaction } = opts;
+    const queryInterface = transaction ?? this.pgQuery;
+
+    await queryInterface
+      .deleteFrom('manual_review_tool.queues_and_clear_reports_trigger_actions')
+      .where('queue_id', '=', queueId)
+      .where('org_id', '=', orgId)
+      .execute();
+
+    const uniqueActionIds = [...new Set(actionIds)];
+    if (uniqueActionIds.length > 0) {
+      await queryInterface
+        .insertInto(
+          'manual_review_tool.queues_and_clear_reports_trigger_actions',
+        )
+        .values(
+          uniqueActionIds.map((actionId) => ({
+            queue_id: queueId,
+            action_id: actionId,
+            org_id: orgId,
+          })),
+        )
+        .execute();
+    }
+  }
 }
 
 /**
@@ -1785,6 +1914,80 @@ const makeQueueDoesNotExistError = (data: ErrorInstanceData) => {
     ...data,
   });
 };
+
+/**
+ * Thrown when a target queue or user does not belong to the caller's org.
+ */
+const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 403,
+    type: [ErrorType.Unauthorized],
+    title: "Queue or user does not belong to the caller's organization",
+    name: 'AccessibleQueueNotInOrgError',
+    ...data,
+  });
+
+/**
+ * Rejects before any write if a target queue does not belong to the caller's
+ * org. Defense-in-depth org-scoping for accessible-queue mutations.
+ */
+async function assertQueuesInOrg(
+  db: Kysely<ManualReviewToolServicePg>,
+  opts: { orgId: string; queueIds: readonly string[] },
+) {
+  const { orgId, queueIds } = opts;
+  const inOrgQueues = await db
+    .selectFrom('manual_review_tool.manual_review_queues')
+    .select('id')
+    .where('org_id', '=', orgId)
+    .where('id', 'in', queueIds)
+    .execute();
+  if (inOrgQueues.length !== new Set(queueIds).size) {
+    throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
+  }
+}
+
+/**
+ * Rejects before any write if a target user does not belong to the caller's
+ * org. Defense-in-depth org-scoping for accessible-queue mutations.
+ */
+async function assertUsersInOrg(
+  db: Kysely<ManualReviewToolServicePg>,
+  opts: { orgId: string; userIds: readonly string[] },
+) {
+  const { orgId, userIds } = opts;
+  const inOrgUsers = await db
+    .selectFrom('public.users')
+    .select('id')
+    .where('org_id', '=', orgId)
+    .where('id', 'in', userIds)
+    .execute();
+  if (inOrgUsers.length !== new Set(userIds).size) {
+    throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
+  }
+}
+
+/**
+ * Rejects before any write if a target queue or user does not belong to the
+ * caller's org.
+ */
+async function assertUsersAndQueuesInOrg(
+  db: Kysely<ManualReviewToolServicePg>,
+  opts: {
+    orgId: string;
+    userIds: readonly string[];
+    queueIds: readonly string[];
+  },
+) {
+  await assertQueuesInOrg(db, {
+    orgId: opts.orgId,
+    queueIds: opts.queueIds,
+  });
+  await assertUsersInOrg(db, {
+    orgId: opts.orgId,
+    userIds: opts.userIds,
+  });
+}
 
 export const makeUnableToDeleteDefaultQueueError = (
   data: ErrorInstanceData,

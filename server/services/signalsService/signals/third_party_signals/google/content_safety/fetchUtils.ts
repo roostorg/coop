@@ -1,4 +1,7 @@
-import type { CoopResponse, FetchHTTP } from '../../../../../networkingService/index.js';
+import type {
+  CoopResponse,
+  FetchHTTP,
+} from '../../../../../networkingService/index.js';
 
 export async function fetchWithTimeout(
   fetchHTTP: FetchHTTP,
@@ -40,4 +43,3 @@ export async function fetchImage(
 
   return Buffer.from(response.body);
 }
-

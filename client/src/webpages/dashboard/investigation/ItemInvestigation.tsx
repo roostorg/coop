@@ -121,6 +121,9 @@ gql`
             }
           }
         }
+        ... on UserItem {
+          userStrikeCount
+        }
       }
     }
   }

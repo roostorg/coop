@@ -132,7 +132,13 @@ export const DELETE_HASH_BANK_MUTATION = gql`
 `;
 
 export const UPDATE_EXCHANGE_CREDENTIALS_MUTATION = gql`
-  mutation UpdateExchangeCredentials($apiName: String!, $credentialsJson: String!) {
-    updateExchangeCredentials(apiName: $apiName, credentialsJson: $credentialsJson)
+  mutation UpdateExchangeCredentials(
+    $apiName: String!
+    $credentialsJson: String!
+  ) {
+    updateExchangeCredentials(
+      apiName: $apiName
+      credentialsJson: $credentialsJson
+    )
   }
-`; 
+`;

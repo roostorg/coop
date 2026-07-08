@@ -18,9 +18,9 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { getFieldDerivationCost } from '../services/derivedFieldsService/index.js';
 import {
-  type Condition,
   ConditionCompletionOutcome,
   ConditionFailureOutcome,
+  type Condition,
   type ConditionOutcome,
   type ConditionSet,
 } from '../services/moderationConfigService/index.js';

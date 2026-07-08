@@ -2,11 +2,11 @@ name: Run all PR checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
-  actions: read
-  checks: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,15 +21,56 @@ jobs:
     outputs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
+      db: ${{ steps.filter.outputs.db }}
+      migrator: ${{ steps.filter.outputs.migrator }}
     steps:
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
         with:
           filters: |
+            # Changes to the dockerised CI plumbing re-run the jobs that
+            # depend on it, so this workflow, the compose file, and the
+            # Dockerfile are exercised even when no app code changed.
+            docker: &docker
+              - 'docker-compose.yaml'
+              - 'Dockerfile'
+              - '.env.githubci'
+              - '.github/workflows/apply_pr_checks.yaml'
+              - '.github/actions/prepare-docker-images/**'
             server:
               - 'server/**'
+              - *docker
             client:
               - 'client/**'
+              - *docker
+            db:
+              - 'db/**'
+            migrator:
+              - 'migrator/**'
+
+  check_formatting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run prettier
 
   check_generated_graphql:
     timeout-minutes: 4
@@ -37,24 +78,32 @@ jobs:
     if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Prepare Docker images
+        uses: ./.github/actions/prepare-docker-images
+        with:
+          build: codegen-check
       - name: Check generated GraphQL is up to date
         run: docker compose run --rm --quiet-pull codegen-check
 
   check_migration_order:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           # this is needed to fetch the main branch
           ref: ${{ github.base_ref || 'main' }}
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+          persist-credentials: false
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           # this is needed to fetch the main branch
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
+          persist-credentials: false
 
       - name: Check changed migration files
         id: check-changed-migration-files
@@ -92,7 +141,7 @@ jobs:
 
           # Checkout main so that we're correctly identifying the existing migrations
           # in the loop below.
-          git checkout ${{ github.base_ref || 'main' }}
+          git checkout "$BASE_REF"
 
           # Loop through each sub-directory under the scripts directory
           for subdir in ${SCRIPTS_DIR}*/ ; do
@@ -100,7 +149,7 @@ jobs:
             IFS=$'\n' sorted_existing_migrations=($(sort <<<"${existing_migrations[*]}"))
             most_recent_migration_datestamp=$(datestamp ${sorted_existing_migrations[-1]})
 
-            readarray -t CHANGED_FILES < <(git diff --name-only $GITHUB_SHA ${{ github.base_ref || 'main' }})
+            readarray -t CHANGED_FILES < <(git diff --name-only "$GITHUB_SHA" "$BASE_REF")
 
             # Identify and validate changed migration files in the current sub-directory
             printf "%s\n" "${existing_migrations[@]}"
@@ -118,6 +167,8 @@ jobs:
           done
 
           exit 0
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
 
   # jobs have to be defined in the root workflow file in order to be marked as
   # 'Required Checks' in GitHub CI
@@ -126,9 +177,21 @@ jobs:
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: write # for dorny/test-reporter to create a check run
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Prepare Docker images
+        uses: ./.github/actions/prepare-docker-images
+        with:
+          pull: postgres scylla clickhouse redis
+          build: backend test
 
       - name: Lint
         run: docker compose run --rm --quiet-pull backend npm run lint
@@ -142,18 +205,56 @@ jobs:
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
-        # could be helpful for debugging in that case; otherwise, they're just
-        # noise that's costing us money in Datadog.
+        # could be helpful for debugging in that case.
         if: failure()
         name: Get Migrations Logs
         run: docker compose logs migrations
 
       - name: Test Report
         if: always() # run this step even if previous step failed
-        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5  # v1.9.1
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         continue-on-error: true
         with:
           name: JEST Tests # Name of the check run which will be created
+          path: server/reports/jest-*.xml # Path to test results
+          reporter: jest-junit # Format of test results
+
+  # Integration tests (`*.integ.test.ts`) run as a separate job so they execute
+  # in parallel with the unit tests / lint / build above and report failures
+  # independently. They exercise the full database stack, so the `test` service's
+  # migration dependencies bring up Postgres, Scylla, and ClickHouse first.
+  check_api_server_integration:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: write # for dorny/test-reporter to create a check run
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Migrate CI DBs and run integration tests
+        run: |
+          docker compose run --rm --quiet-pull test npm run test:integ
+          echo "ATTENTION: If this step fails, look in the next step for the migration logs."
+
+      - # Only output the migration logs if the prior step failed, as they
+        # could be helpful for debugging in that case.
+        if: failure()
+        name: Get Migrations Logs
+        run: docker compose logs migrations
+
+      - name: Test Report
+        if: always() # run this step even if previous step failed
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        continue-on-error: true
+        with:
+          name: JEST Integration Tests # Name of the check run which will be created
           path: server/reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
 
@@ -164,7 +265,14 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Prepare Docker images
+        uses: ./.github/actions/prepare-docker-images
+        with:
+          build: client
 
       - name: Lint client
         run: docker compose run --rm --quiet-pull client npm run lint
@@ -172,4 +280,51 @@ jobs:
       - name: Build client
         run: docker compose run --rm --quiet-pull client npm run build
 
+  # db and migrator have no ESLint setup, so CI only typechecks them.
+  typecheck_db:
+    needs: changes
+    if: needs.changes.outputs.db == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'db/package-lock.json'
+
+      - name: Typecheck db
+        run: |
+          cd db
+          npm ci
+          npm run typecheck
+
+  typecheck_migrator:
+    needs: changes
+    if: needs.changes.outputs.migrator == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'migrator/package-lock.json'
+
+      - name: Typecheck migrator
+        run: |
+          cd migrator
+          npm ci
+          npm run typecheck

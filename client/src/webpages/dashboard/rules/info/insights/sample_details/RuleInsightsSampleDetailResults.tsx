@@ -340,7 +340,14 @@ export function RuleInsightsSampleDetailResultsImpl(props: {
           }`}
         >
           {conditionSet.conditions.map((condition, conditionIndex) => {
-            condition = condition as LeafConditionWithResult;
+            if ('conditions' in condition) {
+              return (
+                <div key={conditionIndex} className="flex items-start py-3">
+                  {renderPrefix(conditionSet.conjunction, conditionIndex)}
+                  {renderConditionSet(condition)}
+                </div>
+              );
+            }
             return (
               <div key={conditionIndex} className="flex items-start py-3">
                 {renderConditionOutcome(condition.result?.outcome)}

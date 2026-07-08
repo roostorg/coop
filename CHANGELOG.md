@@ -1,3 +1,71 @@
+# main (unreleased)
+
+**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.2...main
+
+# Coop 1.0.2
+
+This release addresses reported security advisories, improves NCMEC CyberTipline reporting, and includes front-end quality-of-life improvements.
+
+## Security
+
+> [!NOTE]
+> For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
+
+- Routine dependency package upgrades to address vulnerabilities
+- See [Security and quality](https://github.com/roostorg/community/security) for published security advisories
+
+## NCMEC
+
+- Added `email` as a supported schema field role for user items, ensuring inclusion and validation for NCMEC reports (#840, #842)
+- `EMAIL_ADDRESS` added as a first-class scalar in `@roostorg/coop-types` (v2.4.0) (#841)
+- Auto-populate `originalFileName` (from the media URL) and `fileRelevance` (defaults to `Reported`) for NCMEC reports (#855)
+- Fixed `fileDetails.ipCaptureEvent` XSD element ordering (#856)
+
+## Review Console
+
+- Added User Strikes count to job and item investigation views (#766)
+- Added decision reasons to recent decisions view and CSV exports (#772)
+- Split "require decision reason" into separate action and ignore settings (#780)
+- Fixed duplicate entries in recent decisions (#774)
+- Empty threads are no longer hidden (#804)
+- Improved Review Console dashboard display by ellipsizing long queue IDs (#849)
+- Improved moderator textarea placeholder for clarity (#711)
+- Fixed content URL rendering in the review iframe when no content proxy is configured (#777)
+
+## Actions
+
+- Parameterized actions now work with proactive rules and user strikes (#792)
+- New per-queue "clear other reports for a user" sweep action; sweep now also handles related items (#817, #835)
+- Added `creator` field to action webhook callbacks (#755)
+
+## Investigations
+
+- Added IP address lookup to investigation view (#754)
+
+## Other fixes
+
+- Added client-side email validation for invites (#786)
+- Express session store now properly closed on API shutdown (#825)
+
+## CI & infrastructure
+
+- Server integration tests now run in CI (#827); basic Playwright E2E test suite added (#823)
+- Server tests isolated via transaction rollback (#732)
+- TypeScript type-checking added for `db` and `migrator` in CI (#782)
+- Prettier enforced globally in CI (#834)
+- GitHub Actions updated to Node 24 runtime (#795)
+- `zizmor` added to lint CI workflows for security issues (#721)
+- Knip added across all packages to remove unused dependencies (#734, #760, #761, #762)
+- Redis user/password now correctly set in no-cluster mode (#747)
+
+## New contributors
+
+- @reitblatt made their first contribution in https://github.com/roostorg/coop/pull/785
+- @jess-upscrolled made their first contribution in https://github.com/roostorg/coop/pull/804
+- @ltianyi992 made their first contribution in https://github.com/roostorg/coop/pull/711
+
+**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
+
 # Coop 1.0.1
 
 ## Review Console

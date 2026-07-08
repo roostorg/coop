@@ -1,20 +1,20 @@
-import { useGQLIsDemoOrgQuery } from '@/graphql/generated';
+import { GQLSignal, useGQLIsDemoOrgQuery } from '@/graphql/generated';
 import { SearchOutlined } from '@ant-design/icons';
 import { Input } from 'antd';
 import { useMemo, useState } from 'react';
 
-import { CoreSignal } from '../../../../../models/signal';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
 import RuleFormSignalModalMenuItem from './RuleFormSignalModalMenuItem';
 import RuleFormSignalModalNoSearchResults from './RuleFormSignalModalNoSearchResults';
 
 export default function RuleFormSignalModalSignalGallery(props: {
-  allSignals: CoreSignal[];
-  onSelectSignal: (signal: CoreSignal) => void;
-  onSignalInfoSelected: (signal: CoreSignal) => void;
+  allSignals: GQLSignal[];
+  onSelectSignal: (signal: GQLSignal) => void;
+  onSignalInfoSelected: (signal: GQLSignal) => void;
   isAutomatedRule?: boolean;
 }) {
-  const { allSignals, onSelectSignal, onSignalInfoSelected, isAutomatedRule } = props;
+  const { allSignals, onSelectSignal, onSignalInfoSelected, isAutomatedRule } =
+    props;
   const { data: isDemoOrgData } = useGQLIsDemoOrgQuery();
   const isDemoOrg = isDemoOrgData?.myOrg?.isDemoOrg ?? false;
 
@@ -24,13 +24,14 @@ export default function RuleFormSignalModalSignalGallery(props: {
     () =>
       allSignals
         // Show built-in Coop signals (no integration), known integrations (in INTEGRATION_CONFIGS), or plugin integrations (any other string)
-        .filter((signal) =>
-          signal.integration === null ||
-          INTEGRATION_CONFIGS.some(
-            (config) => signal.integration === config.name,
-          ) ||
-          (typeof signal.integration === 'string' &&
-            signal.integration.length > 0),
+        .filter(
+          (signal) =>
+            signal.integration === null ||
+            INTEGRATION_CONFIGS.some(
+              (config) => signal.integration === config.name,
+            ) ||
+            (typeof signal.integration === 'string' &&
+              signal.integration.length > 0),
         )
         // Then filter out the text similarity score signals
         .filter((it) => it.type !== 'TEXT_SIMILARITY_SCORE')
@@ -63,28 +64,31 @@ export default function RuleFormSignalModalSignalGallery(props: {
           {[...filteredSignals]
             .map((signal) => {
               // Override disabledInfo if signal is restricted for automated rules
-              const effectiveDisabledInfo = 
+              const effectiveDisabledInfo =
                 isAutomatedRule && !signal.allowedInAutomatedRules
                   ? {
                       __typename: 'DisabledInfo' as const,
                       disabled: true,
-                      disabledMessage: 'This signal can only be used in routing rules, not in automated rules with actions.',
+                      disabledMessage:
+                        'This signal can only be used in routing rules, not in automated rules with actions.',
                     }
                   : signal.disabledInfo;
-              
+
               return {
                 signal,
                 effectiveDisabledInfo,
               };
             })
             .sort((a, b) =>
-              a.effectiveDisabledInfo.disabled && !b.effectiveDisabledInfo.disabled
+              a.effectiveDisabledInfo.disabled &&
+              !b.effectiveDisabledInfo.disabled
                 ? 1
-                : !a.effectiveDisabledInfo.disabled && b.effectiveDisabledInfo.disabled
-                ? -1
-                : `${a.signal.integration}_${a.signal.name}`.localeCompare(
-                    `${b.signal.integration}_${b.signal.name}`,
-                  ),
+                : !a.effectiveDisabledInfo.disabled &&
+                    b.effectiveDisabledInfo.disabled
+                  ? -1
+                  : `${a.signal.integration}_${a.signal.name}`.localeCompare(
+                      `${b.signal.integration}_${b.signal.name}`,
+                    ),
             )
             .map(({ signal, effectiveDisabledInfo }) => {
               const staticConfig = INTEGRATION_CONFIGS.find(

@@ -13,6 +13,8 @@ import {
   type NcmecContentItemSubmission,
   type ReportHistory,
 } from './manualReviewToolService.js';
+import { AUTOMATED_DECISION_REVIEWER_ID } from './modules/JobDecisioning.js';
+import { jobIdToGuid } from './modules/QueueOperations.js';
 
 function makeDummyJob() {
   return {
@@ -270,10 +272,68 @@ describe('Manual Review Tool Service', () => {
     it.skip('should reject duplicate decisions on jobs dequeued again after the lock expires', async () => {});
   });
 
-  // Issue #616: when an org sets `mrt_requires_decision_reason`, submitDecision
-  // must reject decisions whose reason is empty. The UI already blocks this;
-  // the server-side check closes the API-bypass gap. Parallels the
+  // Regression: AUTOMATIC_CLOSE decisions have no human reviewer, but
+  // `manual_review_decisions.reviewer_id` is NOT NULL. Passing undefined
+  // through used to insert a null and fail with 23502, which left the job
+  // stuck in a retry loop. The decision must record the empty-string
+  // reviewer id (rendered as "Automatic" client-side) and not throw.
+  describe('automatic close decisions', () => {
+    it('records an AUTOMATIC_CLOSE decision with no human reviewer', async () => {
+      const orgId = 'e7c89ce7729';
+      const queueId = '1';
+      const jobPayload = makeDummyJob();
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: uuidv1(),
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      // Used to throw 23502 (null reviewer_id) before the sentinel fix.
+      await mrtService.submitDecision({
+        queueId,
+        reportHistory: [],
+        jobId: dequeuedJob.job.id,
+        lockToken: dequeuedJob.lockToken,
+        relatedActions: [],
+        orgId,
+        automaticCloseDecision: {
+          type: 'AUTOMATIC_CLOSE',
+          reason: 'ITEM_DELETED_BEFORE_REVIEW',
+        },
+      });
+
+      const row = await mrtService['pgQuery']
+        .selectFrom('manual_review_tool.manual_review_decisions')
+        .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
+        .where('org_id', '=', orgId)
+        .select(['reviewer_id'])
+        .executeTakeFirst();
+
+      expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
+    });
+  });
+
+  // Issue #616: when an org sets `mrt_requires_decision_reason_on_action`,
+  // submitDecision must reject decisions whose reason is empty. The UI already
+  // blocks this; the server-side check closes the API-bypass gap. Parallels the
   // requires_policy_for_decisions enforcement from #533.
+  //
+  // Issue #757: the requirement is split into two flags — one for violating
+  // (non-ignore) decisions (`..._on_action`) and one for ignores
+  // (`..._on_ignore`) — so the cases below also cover that an IGNORE decision is
+  // gated by the ignore flag, not the action flag.
   describe('requires_decision_reason enforcement', () => {
     const orgId = 'e7c89ce7729';
     const queueId = '1';
@@ -285,7 +345,16 @@ describe('Manual Review Tool Service', () => {
       await mrtService.upsertDefaultSettings({ orgId });
       await mrtService['pgQuery']
         .updateTable('manual_review_tool.manual_review_tool_settings')
-        .set({ mrt_requires_decision_reason: value })
+        .set({ mrt_requires_decision_reason_on_action: value })
+        .where('org_id', '=', orgId)
+        .execute();
+    };
+
+    const setRequiresDecisionReasonOnIgnore = async (value: boolean) => {
+      await mrtService.upsertDefaultSettings({ orgId });
+      await mrtService['pgQuery']
+        .updateTable('manual_review_tool.manual_review_tool_settings')
+        .set({ mrt_requires_decision_reason_on_ignore: value })
         .where('org_id', '=', orgId)
         .execute();
     };
@@ -309,9 +378,10 @@ describe('Manual Review Tool Service', () => {
     });
 
     afterEach(async () => {
-      // Reset so the flag doesn't leak into other tests in this file or
+      // Reset so the flags don't leak into other tests in this file or
       // subsequent runs that reuse the seeded org.
       await setRequiresDecisionReason(false);
+      await setRequiresDecisionReasonOnIgnore(false);
     });
 
     it('rejects a decision with no reason when the flag is on', async () => {
@@ -461,12 +531,149 @@ describe('Manual Review Tool Service', () => {
       });
     });
 
+    // Issue #757: an IGNORE decision is gated by the ignore flag, not the
+    // action flag. With only the ignore flag on, an IGNORE with no reason is
+    // rejected.
+    it('rejects an IGNORE decision with no reason when only the ignore flag is on', async () => {
+      await setRequiresDecisionReason(false);
+      await setRequiresDecisionReasonOnIgnore(true);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyJob();
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await expect(
+        mrtService.submitDecision({
+          queueId,
+          reportHistory: [],
+          jobId: dequeuedJob.job.id,
+          lockToken: dequeuedJob.lockToken,
+          decisionComponents: [{ type: 'IGNORE' }],
+          relatedActions: [],
+          reviewerId,
+          reviewerEmail,
+          orgId,
+          // decisionReason intentionally omitted
+        }),
+      ).rejects.toThrow(/requires every decision to include a reason/i);
+    });
+
+    // Issue #757: with only the action flag on, ignoring a job must NOT require
+    // a reason — this is the bug from the issue.
+    it('allows an IGNORE decision with no reason when only the action flag is on', async () => {
+      await setRequiresDecisionReason(true);
+      await setRequiresDecisionReasonOnIgnore(false);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyJob();
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await mrtService.submitDecision({
+        queueId,
+        reportHistory: [],
+        jobId: dequeuedJob.job.id,
+        lockToken: dequeuedJob.lockToken,
+        decisionComponents: [{ type: 'IGNORE' }],
+        relatedActions: [],
+        reviewerId,
+        reviewerEmail,
+        orgId,
+        // decisionReason intentionally omitted
+      });
+    });
+
+    // Issue #757: with only the ignore flag on, acting on a violating job must
+    // NOT require a reason.
+    it('allows a CUSTOM_ACTION decision with no reason when only the ignore flag is on', async () => {
+      await setRequiresDecisionReason(false);
+      await setRequiresDecisionReasonOnIgnore(true);
+
+      const reviewerId = uuidv1();
+      const reviewerEmail = 'test@test.com';
+      const jobPayload = makeDummyJob();
+      const itemId = jobPayload.payload.item.itemId;
+      const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId,
+        queueId,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+
+      const dequeuedJob = await mrtService.dequeueNextJob({
+        orgId,
+        queueId,
+        userId: reviewerId,
+      });
+
+      if (!dequeuedJob) {
+        throw new Error("should've returned a job");
+      }
+
+      await mrtService.submitDecision({
+        queueId,
+        reportHistory: [],
+        jobId: dequeuedJob.job.id,
+        lockToken: dequeuedJob.lockToken,
+        decisionComponents: [
+          {
+            type: 'CUSTOM_ACTION',
+            actions: [{ id: seededActionId }],
+            policies: [{ id: uuidv1() }],
+            itemIds: [itemId],
+            itemTypeId,
+          },
+        ],
+        relatedActions: [],
+        reviewerId,
+        reviewerEmail,
+        orgId,
+        // decisionReason intentionally omitted
+      });
+    });
+
     // Issue #736: NCMEC review uses Submit NCMEC Report or Ignore, neither of
     // which carries a written decision reason. The require-reason flag is for
     // moderation decisions on standard MRT jobs and should not block the
     // NCMEC path.
     it('allows an IGNORE decision on an NCMEC job with no reason when the flag is on', async () => {
       await setRequiresDecisionReason(true);
+      await setRequiresDecisionReasonOnIgnore(true);
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';

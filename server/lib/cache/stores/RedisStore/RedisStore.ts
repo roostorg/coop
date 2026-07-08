@@ -1,12 +1,12 @@
-import { readFileSync } from "fs";
-import { fileURLToPath } from "node:url";
-import path, { dirname } from "path";
-import { type Pipeline, type Redis } from "ioredis";
-import _InternalIORedisScript from "ioredis/built/Script.js";
-import { type Transaction } from "ioredis/built/transaction.js";
-import _ from "lodash";
-import Segment, { TypedStringCmd } from "pipeline-segment";
-import { type Jsonify } from "type-fest";
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'node:url';
+import path, { dirname } from 'path';
+import { type Pipeline, type Redis } from 'ioredis';
+import _InternalIORedisScript from 'ioredis/built/Script.js';
+import { type Transaction } from 'ioredis/built/transaction.js';
+import _ from 'lodash';
+import Segment, { TypedStringCmd } from 'pipeline-segment';
+import { type Jsonify } from 'type-fest';
 
 import {
   type AnyParams,
@@ -19,17 +19,17 @@ import {
   type Store,
   type StoreEntryInput,
   type Vary,
-} from "../../types/index.js";
-import { type Bind2, type JSON } from "../../types/utils.js";
-import collapsedTaskCreator from "../../utils/collapsedTaskCreator.js";
-import * as entryUtils from "../../utils/normalizedProducerResultResourceHelpers.js";
-import TimerSet from "../../utils/TimerSet.js";
-import { defaultLoggersByComponent, withRetries } from "../../utils/utils.js";
+} from '../../types/index.js';
+import { type Bind2, type JSON } from '../../types/utils.js';
+import collapsedTaskCreator from '../../utils/collapsedTaskCreator.js';
+import * as entryUtils from '../../utils/normalizedProducerResultResourceHelpers.js';
+import TimerSet from '../../utils/TimerSet.js';
+import { defaultLoggersByComponent, withRetries } from '../../utils/utils.js';
 import {
   requestVariantKeyForVaryKeys,
   resultVariantKey,
   type VaryKeys,
-} from "../../utils/varyHelpers.js";
+} from '../../utils/varyHelpers.js';
 
 const { throttle } = _;
 const Script = _InternalIORedisScript.default;
@@ -110,15 +110,14 @@ export default class RedisStore<
   T extends JSON,
   U extends AnyValidators,
   V extends AnyParams,
-> implements Store<T, U, V>
-{
+> implements Store<T, U, V> {
   private readonly keyPrefix: string;
   private readonly expectedClockSkew: number;
   private readonly timerSet = new TimerSet();
 
-  private readonly logWarn: Bind2<Logger, "redis-store", "warn">;
-  private readonly logTrace: Bind2<Logger, "redis-store", "trace">;
-  private readonly logError: Bind2<Logger, "redis-store", "error">;
+  private readonly logWarn: Bind2<Logger, 'redis-store', 'warn'>;
+  private readonly logTrace: Bind2<Logger, 'redis-store', 'trace'>;
+  private readonly logError: Bind2<Logger, 'redis-store', 'error'>;
 
   /**
    * @param redis An ioredis instance.
@@ -151,13 +150,13 @@ export default class RedisStore<
     } = {},
   ) {
     const unboundLogger =
-      options.logger ?? defaultLoggersByComponent["redis-store"];
+      options.logger ?? defaultLoggersByComponent['redis-store'];
 
-    this.keyPrefix = options.keyPrefix ?? "";
+    this.keyPrefix = options.keyPrefix ?? '';
     this.expectedClockSkew = options.expectedClockSkew ?? 5; // 5s.
-    this.logWarn = unboundLogger.bind(null, "redis-store", "warn");
-    this.logTrace = unboundLogger.bind(null, "redis-store", "trace");
-    this.logError = unboundLogger.bind(null, "redis-store", "error");
+    this.logWarn = unboundLogger.bind(null, 'redis-store', 'warn');
+    this.logTrace = unboundLogger.bind(null, 'redis-store', 'trace');
+    this.logError = unboundLogger.bind(null, 'redis-store', 'error');
   }
 
   /**
@@ -172,7 +171,7 @@ export default class RedisStore<
    * @param parts Array of string (hierarchical) segments to put into the key.
    */
   private key(parts: readonly string[]) {
-    return [this.keyPrefix, ...parts].join(":");
+    return [this.keyPrefix, ...parts].join(':');
   }
 
   /**
@@ -184,15 +183,15 @@ export default class RedisStore<
    * and {@see {@link requestVariantKeyForVaryKeys}}.
    */
   private redisKeyForVaryKeysSets(resourceId: string) {
-    return this.key(["r", resourceId, "varyKeysSets"]);
+    return this.key(['r', resourceId, 'varyKeysSets']);
   }
 
   private redisKeyForEntryKeys(resourceId: string) {
-    return this.key(["r", resourceId, "entryKeys"]);
+    return this.key(['r', resourceId, 'entryKeys']);
   }
 
   private redisKeyForVariant(resourceId: string, variantKey: string) {
-    return this.key(["r", resourceId, "v", variantKey]);
+    return this.key(['r', resourceId, 'v', variantKey]);
   }
 
   /**
@@ -204,7 +203,7 @@ export default class RedisStore<
       [
         // Pass the array of keys as a single argument, rather than using them
         // as the arguments list, to work around https://github.com/luin/ioredis/issues/801
-        TypedStringCmd("mget", [
+        TypedStringCmd('mget', [
           variantKeys.map((k) => this.redisKeyForVariant(id, k)),
         ]),
       ],
@@ -224,12 +223,12 @@ export default class RedisStore<
     // load might come back empty in a few cases, but, in most cases, it'll
     // save us from having to make a second call altogether.
     this.logTrace(
-      "querying for default variant and param name sets for id",
+      'querying for default variant and param name sets for id',
       id,
     );
 
     const [varyKeysSets, emptyVaryVariant] = await Segment.from(
-      [TypedStringCmd("smembers", [this.redisKeyForVaryKeysSets(id)])],
+      [TypedStringCmd('smembers', [this.redisKeyForVaryKeysSets(id)])],
       ([varyKeysSetsResult]) => {
         // If we got an empty varyKeysSetsResult, handle the fact that that
         // could be because we don't store the varyKeysSets key in redis at all
@@ -245,7 +244,7 @@ export default class RedisStore<
       .append(this.getVariantsSegment(id, [EMPTY_VARY_VARIANT_KEY]))
       .run(this.redis);
 
-    this.logTrace("got (processed) results", {
+    this.logTrace('got (processed) results', {
       emptyVaryVariant,
       varyKeysSets,
     });
@@ -254,7 +253,7 @@ export default class RedisStore<
       requestVariantKeyForVaryKeys(normalizedParams, it),
     );
 
-    this.logTrace("computed potential variant keys", {
+    this.logTrace('computed potential variant keys', {
       variantKeys,
       normalizedParams,
     });
@@ -264,7 +263,7 @@ export default class RedisStore<
     variantKeysSet.delete(EMPTY_VARY_VARIANT_KEY); // TODO: necessary?
     const unfetchedVariantKeys = [...variantKeysSet.values()];
     this.logTrace(
-      "if any, fetching unfetched variants (second round trip)",
+      'if any, fetching unfetched variants (second round trip)',
       unfetchedVariantKeys,
     );
 
@@ -277,12 +276,12 @@ export default class RedisStore<
       ...extraEntries,
     ];
 
-    this.logTrace("returning entries created from found data", res);
+    this.logTrace('returning entries created from found data', res);
     return res;
   }
 
   public async store(entriesWithTimes: readonly StoreEntryInput<T, U, V>[]) {
-    this.logTrace("storing entries", entriesWithTimes);
+    this.logTrace('storing entries', entriesWithTimes);
 
     // Group the provided entries by their resource id, and, within each
     // resource id, by their variantKey. If multiple entries for the same
@@ -305,7 +304,7 @@ export default class RedisStore<
         const entryForVariant = variantsToStoreForId[variantKey].entry;
         if (entryForVariant) {
           this.logWarn(
-            "unable to store two entries for the same variant; one will be ignored",
+            'unable to store two entries for the same variant; one will be ignored',
             { conflictingEntries: [entryForVariant, entry] },
           );
         }
@@ -396,7 +395,7 @@ export default class RedisStore<
           pipeline.zadd(
             this.redisKeyForEntryKeys(id),
             maxStoreForSeconds === Infinity
-              ? "inf"
+              ? 'inf'
               : String(absoluteExpireTimeMs),
             redisEntryKeyForVariant,
           );
@@ -447,9 +446,9 @@ export default class RedisStore<
     // `pipeline._queue.map(({ name, args }: any) => ({ name, args }))`, but
     // that's kinda heavy for this, which is in the performance critical path.
     // Users should look at their redis logs instead.
-    this.logTrace("about to run pipeline to store all provided entries");
+    this.logTrace('about to run pipeline to store all provided entries');
     await tryPipeline(pipeline);
-    this.logTrace("stored entries successfully");
+    this.logTrace('stored entries successfully');
   }
 
   /**
@@ -484,10 +483,10 @@ export default class RedisStore<
       // starts, on the assumption that the items in the entryKeys key end with
       // the variantKey. The +2 is +1 to account for lua's 1-based indexing, and
       // +1 again because of the colon.
-      this.redisKeyForVariant(id, "").length + 1,
+      this.redisKeyForVariant(id, '').length + 1,
     ];
     const expectedClockSkew = this.expectedClockSkew;
-    this.logTrace("cleaning up resource", { id, args, expectedClockSkew });
+    this.logTrace('cleaning up resource', { id, args, expectedClockSkew });
     return cleanupResourceScript.execute(this.redis, args, {});
   }
 
@@ -504,7 +503,7 @@ export default class RedisStore<
       this.redisKeyForVaryKeysSets(id),
       this.redisKeyForVariant(id, EMPTY_VARY_VARIANT_KEY),
     ];
-    this.logTrace("deleting entries for id", { args });
+    this.logTrace('deleting entries for id', { args });
     return deleteResourceScript.execute(this.redis, args, {});
   }
 
@@ -516,15 +515,15 @@ export default class RedisStore<
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const deleteResourceScript = new Script(
-  readFileSync(path.join(__dirname, "./lua/deleteResource.lua"), {
-    encoding: "utf-8",
+  readFileSync(path.join(__dirname, './lua/deleteResource.lua'), {
+    encoding: 'utf-8',
   }),
   3,
 );
 
 const cleanupResourceScript = new Script(
-  readFileSync(path.join(__dirname, "./lua/cleanupResource.lua"), {
-    encoding: "utf-8",
+  readFileSync(path.join(__dirname, './lua/cleanupResource.lua'), {
+    encoding: 'utf-8',
   }),
   2,
 );

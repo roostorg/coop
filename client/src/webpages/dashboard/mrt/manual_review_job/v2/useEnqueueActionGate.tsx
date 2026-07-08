@@ -1,12 +1,11 @@
+import { type GQLActionParameter } from '@/graphql/generated';
+import groupBy from 'lodash/groupBy';
+import { useCallback, useState, type ReactNode } from 'react';
+
+import { type ActionParameterValues } from '@/components/ActionParameterInputs';
 import ActionParametersModal, {
   defaultValuesForParameters,
 } from '@/components/ActionParametersModal';
-import {
-  type ActionParameterValues,
-} from '@/components/ActionParameterInputs';
-import { type GQLActionParameter } from '@/graphql/generated';
-import groupBy from 'lodash/groupBy';
-import { type ReactNode, useCallback, useState } from 'react';
 
 import { type ManualReviewJobEnqueuedActionData } from '../ManualReviewJobReview';
 
@@ -117,9 +116,8 @@ export function useEnqueueActionGate(args: {
       const parameters = actionMeta?.parameters ?? [];
       if (parameters.length === 0) return;
       const initialValues =
-        (entry.customMrtApiParamDecisionPayload as
-          | ActionParameterValues
-          | undefined) ?? defaultValuesForParameters(parameters);
+        entry.customMrtApiParamDecisionPayload ??
+        defaultValuesForParameters(parameters);
       const match = (it: ManualReviewJobEnqueuedActionData) =>
         it.action.id === entry.action.id &&
         it.target.identifier.itemId === entry.target.identifier.itemId &&

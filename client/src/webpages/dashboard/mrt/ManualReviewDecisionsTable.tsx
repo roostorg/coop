@@ -187,8 +187,8 @@ export default function ManualReviewDecisionsTable(props: {
       return a.Header === 'Name'
         ? -1
         : b.Header === 'Name'
-        ? 1
-        : a.Header.localeCompare(b.Header);
+          ? 1
+          : a.Header.localeCompare(b.Header);
     });
 
   const filledInData = columns

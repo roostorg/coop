@@ -24,8 +24,8 @@ export type ItemModelScoreLogEntry<HasFailure extends boolean> = {
   failureReason: HasFailure extends true
     ? string
     : HasFailure extends false
-    ? undefined
-    : string | undefined;
+      ? undefined
+      : string | undefined;
   model: HasFailure extends true
     ? undefined
     : {

@@ -1,7 +1,7 @@
 import { type Dependencies } from '../../iocContainer/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { makeBadRequestError } from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { type GetPoliciesOutput } from './PoliciesRoutes.js';
 
 export default function getPolicies({
@@ -19,7 +19,7 @@ export default function getPolicies({
         }),
       );
     }
-    
+
     const { orgId } = req;
 
     const policies = await ModerationConfigService.getPolicies({ orgId });

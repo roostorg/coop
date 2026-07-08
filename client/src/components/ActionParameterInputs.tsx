@@ -3,8 +3,8 @@ import { Input, InputNumber, Select, Switch, Tooltip } from 'antd';
 import { useMemo } from 'react';
 
 import {
-  type GQLActionParameter,
   GQLActionParameterType,
+  type GQLActionParameter,
 } from '../graphql/generated';
 
 const { Option } = Select;
@@ -260,7 +260,10 @@ export function findMissingRequiredParameters(
       (Array.isArray(value) && value.length === 0);
     // A `defaultValue` on the spec satisfies "required" since the server will
     // backfill on publish — keeps the UX consistent with server behavior.
-    if (isEmpty && (param.defaultValue === undefined || param.defaultValue === null)) {
+    if (
+      isEmpty &&
+      (param.defaultValue === undefined || param.defaultValue === null)
+    ) {
       missing.push(param.displayName);
     }
   }
@@ -273,25 +276,22 @@ export function findMissingRequiredParameters(
  * replaced. Tiny but used in three call sites.
  */
 export function useUpdateActionValues(
-  setMap: (
-    next: Readonly<Record<string, ActionParameterValues>>,
-  ) => void,
+  setMap: (next: Readonly<Record<string, ActionParameterValues>>) => void,
   map: Readonly<Record<string, ActionParameterValues>>,
 ) {
   return useMemo(
-    () =>
-      (actionId: string, values: ActionParameterValues) => {
-        // Drop the entry entirely when the values map is empty, so the GQL
-        // input doesn't carry meaningless `{}` entries that confuse log
-        // readers.
-        if (Object.keys(values).length === 0) {
-          if (!(actionId in map)) return;
-          const { [actionId]: _omitted, ...rest } = map;
-          setMap(rest);
-          return;
-        }
-        setMap({ ...map, [actionId]: values });
-      },
+    () => (actionId: string, values: ActionParameterValues) => {
+      // Drop the entry entirely when the values map is empty, so the GQL
+      // input doesn't carry meaningless `{}` entries that confuse log
+      // readers.
+      if (Object.keys(values).length === 0) {
+        if (!(actionId in map)) return;
+        const { [actionId]: _omitted, ...rest } = map;
+        setMap(rest);
+        return;
+      }
+      setMap({ ...map, [actionId]: values });
+    },
     [map, setMap],
   );
 }

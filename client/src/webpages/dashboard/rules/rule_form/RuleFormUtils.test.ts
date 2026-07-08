@@ -3,10 +3,10 @@ import { vi } from 'vitest';
 import {
   GQLConditionConjunction,
   GQLScalarType,
+  GQLSignal,
   GQLSignalPricingStructureType,
   GQLSignalType,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { RuleFormConditionSet, RuleFormLeafCondition } from '../types';
 import {
   getConditionInputScalarType,
@@ -23,7 +23,8 @@ vi.mock('./RuleFormUtils', async () => {
 // NB: See docs above shouldConditionPromptForComparatorAndThreshold
 // above the caveats for this particular implementation
 describe('Test Rule Form Utils', () => {
-  const sampleSignal: CoreSignal = {
+  const sampleSignal: GQLSignal = {
+    __typename: 'Signal',
     id: '1234',
     type: GQLSignalType.TextMatchingContainsRegex,
     shouldPromptForMatchingValues: false,
@@ -104,21 +105,26 @@ describe('Test Rule Form Utils', () => {
     });
 
     it('Condition with input and selected signal with non-boolean output should show comparator/threshold', () => {
+      const nonBooleanSignal = {
+        ...sampleSignal,
+        outputType: {
+          __typename: 'ScalarSignalOutputType' as const,
+          scalarType: GQLScalarType.Number,
+        },
+      };
+
       const condition: RuleFormLeafCondition = {
         input: {
           type: 'CONTENT_FIELD',
           name: 'num_likes',
           contentTypeId: '12345',
         },
-        eligibleSignals: [sampleSignal],
-        signal: sampleSignal,
+        eligibleSignals: [nonBooleanSignal],
+        signal: nonBooleanSignal,
       };
 
-      vi.mocked(getConditionInputScalarType).mockReturnValue(
-        GQLScalarType.Number,
-      );
       expect(shouldConditionPromptForComparatorAndThreshold(condition)).toEqual(
-        false,
+        true,
       );
     });
   });

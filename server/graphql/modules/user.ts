@@ -79,6 +79,7 @@ const typeDefs = /* GraphQL */ `
   type UserInterfacePreferences {
     moderatorSafetyMuteVideo: Boolean!
     moderatorSafetyGrayscale: Boolean!
+    moderatorSafetySepia: Boolean!
     moderatorSafetyBlurLevel: Int!
     mrtChartConfigurations: [ManualReviewChartSettings!]!
   }
@@ -87,6 +88,7 @@ const typeDefs = /* GraphQL */ `
     moderatorSafetyMuteVideo: Boolean!
     moderatorSafetyGrayscale: Boolean!
     moderatorSafetyBlurLevel: Int!
+    moderatorSafetySepia: Boolean!
   }
 
   input ManualReviewChartConfigurationsInput {
@@ -213,7 +215,11 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
-    return context.dataSources.userAPI.changePassword(user, params.input);
+    return context.dataSources.userAPI.changePassword(
+      user,
+      params.input,
+      context.req.sessionID,
+    );
   },
   async deleteUser(_, params, context) {
     const user = context.getUser();

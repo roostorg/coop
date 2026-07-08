@@ -1,6 +1,19 @@
 import { Label } from '@/coop-ui/Label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
-import { Switch } from '@/coop-ui/Switch';
+import {
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '@/models/safetySettings';
 import { SearchOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 
@@ -84,10 +97,12 @@ export default function NCMECMediaViewer(props: {
     moderatorSafetyBlurLevel: BlurStrength;
     moderatorSafetyGrayscale: boolean;
     moderatorSafetyMuteVideo: boolean;
+    moderatorSafetySepia: boolean;
   }>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
 
   const { loading, error, data } = useGQLPersonalSafetySettingsQuery();
@@ -170,7 +185,7 @@ export default function NCMECMediaViewer(props: {
                 shouldBlur
                   ? BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel]
                   : 0
-              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${safetySettings.moderatorSafetySepia ? 'sepia' : ''}`}
               alt=""
               src={mediaId.urlInfo.url}
               onError={(img) => {
@@ -190,7 +205,7 @@ export default function NCMECMediaViewer(props: {
                 isInInspectedView
                   ? 'w-auto'
                   : 'object-scale-down grow max-w-64 max-h-48'
-              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${safetySettings.moderatorSafetySepia ? 'sepia' : ''}`}
               url={mediaId.urlInfo.url}
               options={{
                 shouldBlur:
@@ -218,12 +233,12 @@ export default function NCMECMediaViewer(props: {
                     state!.category === 'A1'
                       ? 'border-red-400'
                       : state!.category === 'A2'
-                      ? 'border-orange-400'
-                      : state!.category === 'B1'
-                      ? 'border-amber-400'
-                      : state!.category === 'B2'
-                      ? 'border-blue-400'
-                      : 'border-slate-500'
+                        ? 'border-orange-400'
+                        : state!.category === 'B1'
+                          ? 'border-amber-400'
+                          : state!.category === 'B2'
+                            ? 'border-blue-400'
+                            : 'border-slate-500'
                   }`
                 : 'border-transparent'
             }`}
@@ -254,18 +269,29 @@ export default function NCMECMediaViewer(props: {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Switch
-              id="grayscale"
-              defaultChecked
-              onCheckedChange={(isGrayscale) =>
+            <Label htmlFor="color-scheme">Color Scheme</Label>
+            <Select
+              value={colorSchemeFromPreferences(safetySettings)}
+              onValueChange={(value) =>
                 setSafetySettings({
                   ...safetySettings,
-                  moderatorSafetyGrayscale: isGrayscale,
+                  ...preferencesFromColorScheme(
+                    value as ModeratorSafetyColorScheme,
+                  ),
                 })
               }
-              checked={safetySettings.moderatorSafetyGrayscale}
-            />
-            <Label htmlFor="grayscale">Grayscale</Label>
+            >
+              <SelectTrigger id="color-scheme" size="small" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                  <SelectItem value={scheme} key={scheme}>
+                    {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}

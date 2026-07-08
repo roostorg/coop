@@ -72,15 +72,15 @@ export function stripTypename<T extends object>(it: T): WithoutTypename<T> {
     Array.isArray(it)
       ? it.map(stripTypename)
       : isPlainObject(it)
-      ? mapValues(omit(it, '__typename'), stripTypename)
-      : it
+        ? mapValues(omit(it, '__typename'), stripTypename)
+        : it
   ) as WithoutTypename<T>;
 }
 
 export type WithoutTypename<T> = T extends (infer U)[]
   ? WithoutTypename<U>[]
   : T extends (...args: any[]) => any
-  ? T
-  : T extends object
-  ? Omit<{ [K in keyof T]: WithoutTypename<T[K]> }, '__typename'>
-  : T;
+    ? T
+    : T extends object
+      ? Omit<{ [K in keyof T]: WithoutTypename<T[K]> }, '__typename'>
+      : T;

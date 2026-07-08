@@ -87,6 +87,16 @@ export const IpAddressArbitrary = fc.oneof(
   ),
 );
 
+// RFC 2606 reserved domains for example purposes.
+export const EmailAddressArbitrary = fc.constantFrom(
+  'yuki@example.com',
+  'amara@example.org',
+  'priya@example.net',
+  'mateo@example.com',
+  'aaliyah@example.org',
+  'jian@example.net',
+);
+
 export const ScalarValidValuesArbitraries = {
   [ScalarTypes.AUDIO]: MediaUrlArbitrary,
   [ScalarTypes.BOOLEAN]: fc.boolean(),
@@ -106,6 +116,7 @@ export const ScalarValidValuesArbitraries = {
   [ScalarTypes.RELATED_ITEM]: RelatedItemArbitrary,
   [ScalarTypes.POLICY_ID]: IdLikeArbitrary,
   [ScalarTypes.IP_ADDRESS]: IpAddressArbitrary,
+  [ScalarTypes.EMAIL_ADDRESS]: EmailAddressArbitrary,
 };
 
 export const ScalarFieldArbitrary = fc

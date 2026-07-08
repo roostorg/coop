@@ -142,22 +142,22 @@ export type FixSingleTableReturnedRowType<
         : never
       : never
     : Builder extends
-        | SelectQueryBuilder<
-            infer DB,
-            infer TB,
-            Selection<infer DB, infer TB, infer SelectionType>
-          >
-        | InsertQueryBuilder<
-            infer DB,
-            infer TB,
-            Selection<infer DB, infer TB, infer SelectionType>
-          >
-    ? FixKyselyRowCorrelation<
-        DB[TB] & WhereClause,
-        readonly (SelectionType & string)[],
-        []
-      >
-    : never;
+          | SelectQueryBuilder<
+              infer DB,
+              infer TB,
+              Selection<infer DB, infer TB, infer SelectionType>
+            >
+          | InsertQueryBuilder<
+              infer DB,
+              infer TB,
+              Selection<infer DB, infer TB, infer SelectionType>
+            >
+      ? FixKyselyRowCorrelation<
+          DB[TB] & WhereClause,
+          readonly (SelectionType & string)[],
+          []
+        >
+      : never;
 
 /**
  * Creates an object with a key, where the type of the value for that key

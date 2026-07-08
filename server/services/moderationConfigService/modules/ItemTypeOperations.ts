@@ -55,6 +55,7 @@ const itemTypeDbSelection = [
   'profile_icon_field as profileIconField',
   'background_image_field as backgroundImageField',
   'ip_address_field as ipAddressField',
+  'email_field as emailField',
   'org_id as orgId',
   'is_default_user as isDefaultUserType',
 ] as const;
@@ -465,6 +466,7 @@ export default class ItemTypeOperations {
         displayName?: string | null;
         isDeleted?: string | null;
         ipAddress?: string | null;
+        email?: string | null;
       };
     },
   ) {
@@ -483,6 +485,7 @@ export default class ItemTypeOperations {
         display_name_field: input.schemaFieldRoles.displayName,
         is_deleted_field: input.schemaFieldRoles.isDeleted,
         ip_address_field: input.schemaFieldRoles.ipAddress,
+        email_field: input.schemaFieldRoles.email,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -508,6 +511,7 @@ export default class ItemTypeOperations {
         displayName?: string | null;
         isDeleted?: string | null;
         ipAddress?: string | null;
+        email?: string | null;
       };
     },
   ): Promise<UserItemType> {
@@ -536,6 +540,7 @@ export default class ItemTypeOperations {
           ip_address_field: replaceEmptyStringWithNull(
             input.schemaFieldRoles.ipAddress,
           ),
+          email_field: replaceEmptyStringWithNull(input.schemaFieldRoles.email),
         }),
       )
       .where('id', '=', input.id)
@@ -764,6 +769,7 @@ function dbResultToItemType<T extends ItemTypeKind>(
             profileIcon: input.profileIconField ?? undefined,
             isDeleted: input.isDeletedField ?? undefined,
             ipAddress: input.ipAddressField ?? undefined,
+            email: input.emailField ?? undefined,
           } satisfies UserItemType['schemaFieldRoles'];
         default:
           assertUnreachable(input.kind);

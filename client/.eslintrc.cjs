@@ -2,8 +2,7 @@ const restrictedSyntax = [
   {
     selector:
       ':matches(TSTypeAliasDeclaration[id.name=Props], TSInterfaceDeclaration[id.name=Props])',
-    message:
-      'React types for props should be inlined',
+    message: 'React types for props should be inlined',
   },
   {
     selector:
@@ -24,7 +23,7 @@ module.exports = {
   extends: ['plugin:react/recommended', 'plugin:react-hooks/recommended'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ['./tsconfig.json'],
+    project: ['./tsconfig.json', './tsconfig.test.json'],
     tsconfigRootDir: __dirname,
   },
   ignorePatterns: [
@@ -33,7 +32,7 @@ module.exports = {
     'tailwind.config.js',
     '*.stories.tsx',
     'vite.config.ts',
-    'vite-env.d.ts'
+    'vite-env.d.ts',
   ],
   plugins: ['@typescript-eslint', 'custom-rules'],
   rules: {
@@ -130,8 +129,7 @@ module.exports = {
       {
         object: 'window',
         property: 'open',
-        message:
-          'Use an <a> tag to open links, rather than window.open.',
+        message: 'Use an <a> tag to open links, rather than window.open.',
       },
       {
         object: '_',

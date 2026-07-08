@@ -7,6 +7,7 @@ import createContentItemTypes from '../../../test/fixtureHelpers/createContentIt
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import {
@@ -229,6 +230,181 @@ describe('QueueOperations', () => {
           userPermissions: [UserPermission.MANAGE_ORG],
         }),
       ).resolves.toBeUndefined();
+    },
+  );
+
+  const testWithTwoOrgs = () =>
+    makeTransactionalTestWithFixture(async ({ deps }) => {
+      const buildOrg = async () => {
+        const { org } = await createOrg(
+          {
+            KyselyPg: deps.KyselyPg,
+            ModerationConfigService: deps.ModerationConfigService,
+            ApiKeyService: deps.ApiKeyService,
+          },
+          uid(),
+        );
+        const { user } = await createUser(deps.KyselyPg, org.id);
+        const { queue } = await createMrtQueue({
+          orgId: org.id,
+          mrtService: deps.ManualReviewToolService,
+          userId: user.id,
+        });
+        return { org, user, queue };
+      };
+
+      return {
+        attacker: await buildOrg(),
+        victim: await buildOrg(),
+        mrtService: deps.ManualReviewToolService,
+      };
+    });
+
+  testWithTwoOrgs()(
+    'addAccessibleQueuesForUser must not grant access to a queue in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      await expect(
+        mrtService.addAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [victim.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: victim.org.id,
+        queueId: victim.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).not.toContain(attacker.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'addAccessibleQueuesForUser must not grant access for a user in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      await expect(
+        mrtService.addAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: victim.user.id,
+          queueIds: [attacker.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: victim.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'removeAccessibleQueuesForUser must not revoke access for a queue in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      await mrtService.addAccessibleQueuesForUser({
+        orgId: victim.org.id,
+        userId: victim.user.id,
+        queueIds: [victim.queue.id],
+      });
+
+      await expect(
+        mrtService.removeAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [victim.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: victim.org.id,
+        queueId: victim.queue.id,
+        userId: victim.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).toContain(victim.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'removeAccessibleQueuesForUser must not revoke access for a user in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      await expect(
+        mrtService.removeAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: victim.user.id,
+          queueIds: [attacker.queue.id],
+        }),
+      ).rejects.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).toContain(attacker.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'addAccessibleQueuesForUser grants access within the same org',
+    async ({ attacker, mrtService }) => {
+      await expect(
+        mrtService.addAccessibleQueuesForUser({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [attacker.queue.id],
+        }),
+      ).resolves.toBeDefined();
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).toContain(attacker.user.id);
+    },
+  );
+
+  testWithTwoOrgs()(
+    'createManualReviewQueue must not grant access to a user in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      await expect(
+        mrtService.createManualReviewQueue({
+          name: 'attacker-queue',
+          description: null,
+          userIds: [victim.user.id],
+          hiddenActionIds: [],
+          isAppealsQueue: false,
+          invokedBy: {
+            userId: attacker.user.id,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: attacker.org.id,
+          },
+        }),
+      ).rejects.toMatchObject({ name: 'AccessibleQueueNotInOrgError' });
+    },
+  );
+
+  testWithTwoOrgs()(
+    'updateManualReviewQueue must not grant access to a user in a different org',
+    async ({ attacker, victim, mrtService }) => {
+      await expect(
+        mrtService.updateManualReviewQueue({
+          orgId: attacker.org.id,
+          queueId: attacker.queue.id,
+          userIds: [attacker.user.id, victim.user.id],
+          actionIdsToHide: [],
+          actionIdsToUnhide: [],
+        }),
+      ).rejects.toMatchObject({ name: 'AccessibleQueueNotInOrgError' });
+
+      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+        orgId: attacker.org.id,
+        queueId: attacker.queue.id,
+        userId: attacker.user.id,
+      });
+      expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
     },
   );
 });

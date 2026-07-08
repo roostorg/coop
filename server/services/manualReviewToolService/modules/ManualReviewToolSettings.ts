@@ -20,7 +20,8 @@ export default class ManualReviewToolSettings {
       .values({
         org_id: orgId,
         requires_policy_for_decisions: false,
-        mrt_requires_decision_reason: false,
+        mrt_requires_decision_reason_on_action: false,
+        mrt_requires_decision_reason_on_ignore: false,
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
         ignore_callback_url: null,
@@ -43,10 +44,19 @@ export default class ManualReviewToolSettings {
   async getRequiresDecisionReason(orgId: string) {
     const decisionReasonRow = await this.pgQuery
       .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'mrt_requires_decision_reason'])
+      .select(['org_id', 'mrt_requires_decision_reason_on_action'])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
-    return decisionReasonRow?.mrt_requires_decision_reason ?? false;
+    return decisionReasonRow?.mrt_requires_decision_reason_on_action ?? false;
+  }
+
+  async getRequiresDecisionReasonOnIgnore(orgId: string) {
+    const decisionReasonRow = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_tool_settings')
+      .select(['org_id', 'mrt_requires_decision_reason_on_ignore'])
+      .where('org_id', '=', orgId)
+      .executeTakeFirst();
+    return decisionReasonRow?.mrt_requires_decision_reason_on_ignore ?? false;
   }
 
   async getHideSkipButtonForNonAdmins(orgId: string) {
@@ -87,7 +97,8 @@ export default class ManualReviewToolSettings {
       .values({
         org_id: orgId,
         requires_policy_for_decisions: false,
-        mrt_requires_decision_reason: false,
+        mrt_requires_decision_reason_on_action: false,
+        mrt_requires_decision_reason_on_ignore: false,
         hide_skip_button_for_non_admins: false,
         preview_jobs_view_enabled: false,
         ignore_callback_url: null,
@@ -104,7 +115,15 @@ export default class ManualReviewToolSettings {
   }
 
   async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
-    await this.upsertSettings(orgId, { mrt_requires_decision_reason: enabled });
+    await this.upsertSettings(orgId, {
+      mrt_requires_decision_reason_on_action: enabled,
+    });
+  }
+
+  async updateRequiresDecisionReasonOnIgnore(orgId: string, enabled: boolean) {
+    await this.upsertSettings(orgId, {
+      mrt_requires_decision_reason_on_ignore: enabled,
+    });
   }
 
   async updateHideSkipButtonForNonAdmins(orgId: string, enabled: boolean) {

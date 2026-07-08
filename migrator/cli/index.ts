@@ -166,6 +166,10 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
             choices: ['remaining', 'next', 'only', 'until'],
             default: 'remaining',
           })
+          .positional('name', {
+            describe: 'Name of a specific script, for use with "only"/"until".',
+            type: 'string',
+          })
           .check(({ target, name, db, env }) => {
             const needsSpecificScript = target === 'only' || target === 'until';
             if (!needsSpecificScript && name) {
@@ -245,10 +249,11 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
                   await migrator.up({ step: 1 });
                   break;
                 case 'only':
-                  await migrator.up({ migrations: [name] });
+                  // `name` presence for only/until is guaranteed by the check() above.
+                  await migrator.up({ migrations: [name!] });
                   break;
                 case 'until':
-                  await migrator.up({ to: name });
+                  await migrator.up({ to: name! });
               }
             } finally {
               // Await not return so that any errors from the try aren't swallowed.

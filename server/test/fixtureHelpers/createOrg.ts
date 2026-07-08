@@ -36,9 +36,10 @@ export default async function createOrg(
     null,
   ).catch(logErrorAndThrow);
 
-  const defaultUserItemType = await deps.ModerationConfigService.createDefaultUserType(
-    orgId,
-  ).catch(logErrorAndThrow);
+  const defaultUserItemType =
+    await deps.ModerationConfigService.createDefaultUserType(orgId).catch(
+      logErrorAndThrow,
+    );
 
   await deps.ModerationConfigService.upsertBuiltInActions(orgId).catch(
     logErrorAndThrow,

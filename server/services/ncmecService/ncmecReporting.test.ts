@@ -3,6 +3,7 @@ import {
   clampIncidentDateTimeToPast,
   mergeFieldRoleIpIntoEvents,
   NCMECEvent,
+  resolveReportedPersonEmail,
   summarizeCyberTipFailure,
 } from './ncmecReporting.js';
 
@@ -305,7 +306,80 @@ describe('NCMEC reporting', () => {
       expect(webhook).toHaveLength(1);
       expect(params).toHaveLength(1);
     });
+
+    it('canonicalises webhook/param event key order to the XSD sequence', () => {
+      // A webhook returning ipCaptureEvent with keys in non-XSD order must be
+      // rebuilt as { ipAddress, eventName, dateTime, possibleProxy?, port? }
+      // before serialisation, or xml-js emits out-of-order children and NCMEC
+      // rejects the report with responseCode=4100.
+      const nonCanonicalWebhook = {
+        eventName: NCMECEvent.Login,
+        dateTime: '2026-01-01T00:00:00.000Z',
+        ipAddress: '192.0.2.1',
+        port: 443,
+        possibleProxy: true,
+      };
+      const result = mergeFieldRoleIpIntoEvents(
+        [nonCanonicalWebhook],
+        undefined,
+        undefined,
+        synth,
+      );
+      expect(result).toEqual([nonCanonicalWebhook]);
+      expect(Object.keys(result![0])).toEqual([
+        'ipAddress',
+        'eventName',
+        'dateTime',
+        'possibleProxy',
+        'port',
+      ]);
+    });
   });
+
+  describe('resolveReportedPersonEmail', () => {
+    it('returns the webhook emails when present', () => {
+      const webhook = [
+        { _text: 'verified@example.com', _attributes: { verified: true } },
+      ];
+      expect(resolveReportedPersonEmail(webhook, 'role@example.com')).toEqual(
+        webhook,
+      );
+    });
+
+    it('falls back to the field-role email when the webhook returned an empty array', () => {
+      expect(resolveReportedPersonEmail([], 'role@example.com')).toEqual([
+        { _text: 'role@example.com' },
+      ]);
+    });
+
+    it('falls back to the field-role email when the webhook returned undefined', () => {
+      expect(resolveReportedPersonEmail(undefined, 'role@example.com')).toEqual(
+        [{ _text: 'role@example.com' }],
+      );
+    });
+
+    it('returns undefined when neither source has data', () => {
+      expect(resolveReportedPersonEmail(undefined, undefined)).toBeUndefined();
+      expect(resolveReportedPersonEmail([], undefined)).toBeUndefined();
+    });
+
+    it('treats whitespace-only field-role email as absent', () => {
+      // NCMEC validates the email shape on receipt; a `{ _text: "  " }`
+      // submission would fail the same way the original incomplete-report
+      // bug did. Trim and drop rather than ship whitespace.
+      expect(resolveReportedPersonEmail(undefined, '   ')).toBeUndefined();
+      expect(resolveReportedPersonEmail([], '\t\n')).toBeUndefined();
+    });
+
+    it('trims surrounding whitespace from a valid field-role email', () => {
+      expect(
+        resolveReportedPersonEmail(undefined, '  role@example.com  '),
+      ).toEqual([{ _text: 'role@example.com' }]);
+    });
+  });
+
+  // toOriginalFileHashes tests moved to ./toOriginalFileHashes.test.ts
+  // (this file was over the 500-line max-lines limit after expansion).
 
   describe('summarizeCyberTipFailure', () => {
     const previousDebug = process.env.NCMEC_DEBUG;

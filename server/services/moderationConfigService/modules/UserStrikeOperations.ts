@@ -1,4 +1,5 @@
 import { type Kysely } from 'kysely';
+import { type JsonObject } from 'type-fest';
 
 import {
   CoopError,
@@ -18,6 +19,7 @@ const userStrikeThresholdSelection = [
   'org_id as orgId',
   'threshold',
   'actions',
+  'action_parameters as actionParameters',
 ] as const;
 
 export default class UserStrikeOperations {
@@ -48,6 +50,7 @@ export default class UserStrikeOperations {
     thresholdSettings: {
       threshold: number;
       actions: string[];
+      actionParameters?: JsonObject;
     };
   }) {
     const { orgId: org_id, thresholdSettings } = opts;
@@ -59,6 +62,7 @@ export default class UserStrikeOperations {
           org_id,
           threshold: thresholdSettings.threshold,
           actions: thresholdSettings.actions,
+          action_parameters: thresholdSettings.actionParameters ?? {},
         })
         .returning(userStrikeThresholdSelection)
         .executeTakeFirstOrThrow();
@@ -75,6 +79,7 @@ export default class UserStrikeOperations {
       id: string;
       threshold?: number;
       actions?: string[];
+      actionParameters?: JsonObject;
     };
   }) {
     const { orgId, thresholdSettings } = opts;
@@ -86,6 +91,7 @@ export default class UserStrikeOperations {
           removeUndefinedKeys({
             threshold: thresholdSettings.threshold,
             actions: thresholdSettings.actions,
+            action_parameters: thresholdSettings.actionParameters,
           }),
         )
         .where('id', '=', thresholdSettings.id)
@@ -107,6 +113,7 @@ export default class UserStrikeOperations {
     thresholds: readonly {
       threshold: number;
       actions: readonly string[];
+      actionParameters?: JsonObject;
     }[];
   }) {
     await this.transactionWithRetry(async (trx) => {
@@ -121,10 +128,12 @@ export default class UserStrikeOperations {
             org_id: opts.orgId,
             threshold: threshold.threshold,
             actions: [...threshold.actions],
+            action_parameters: threshold.actionParameters ?? {},
           })
           .onConflict((oc) =>
             oc.columns(['org_id', 'threshold']).doUpdateSet({
               actions: [...threshold.actions],
+              action_parameters: threshold.actionParameters ?? {},
             }),
           )
           .execute();

@@ -65,9 +65,7 @@ export async function getPolicyActionPenaltiesForOrg(
     actions.map((action) => ({
       actionId: action.id,
       policyId: policy.id,
-      penalties: [
-        computeActionPolicyPenalty(action.penalty, policy.penalty),
-      ],
+      penalties: [computeActionPolicyPenalty(action.penalty, policy.penalty)],
     })),
   );
 }

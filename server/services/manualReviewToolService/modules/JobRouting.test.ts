@@ -5,6 +5,7 @@ import { uid } from 'uid';
 import getBottle from '../../../iocContainer/index.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
 import { toCorrelationId } from '../../../utils/correlationIds.js';
 import { jsonStringify } from '../../../utils/encoding.js';
@@ -30,7 +31,11 @@ describe('JobRouting tests', () => {
       },
       uid(),
     );
-    const userId = uid();
+    const { user, cleanup: userCleanup } = await createUser(
+      container.KyselyPg,
+      org.id,
+    );
+    const userId = user.id;
     const { itemTypes, cleanup: itemTypesCleanup } =
       await createContentItemTypes({
         moderationConfigService: container.ModerationConfigService,
@@ -249,6 +254,7 @@ describe('JobRouting tests', () => {
           noPolicyQueue.id,
         );
         await itemTypesCleanup();
+        await userCleanup();
         await orgCleanup();
         await container.closeSharedResourcesForShutdown();
       },

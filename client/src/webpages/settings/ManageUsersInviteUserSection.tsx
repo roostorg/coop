@@ -154,6 +154,16 @@ export default function ManageUsersInviteUserSection() {
     });
   };
 
+  const emailIsInvalid =
+    Boolean(email?.length) &&
+    !/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email ?? '');
+  const isDisabled = !email?.length || emailIsInvalid || !role;
+  const disabledReason = !email?.length
+    ? 'Enter an email address to continue'
+    : emailIsInvalid
+      ? 'Enter a valid email address'
+      : 'Select a role to continue';
+
   return (
     <div className="flex flex-col items-start mb-8 text-start">
       <FormSectionHeader
@@ -166,6 +176,7 @@ export default function ManageUsersInviteUserSection() {
           placeholder="Email address"
           onChange={(e) => setEmail(e.target.value)}
           value={email}
+          error={emailIsInvalid}
         />
       </div>
       <div className="mt-8 mb-4 text-base text-zinc-900">
@@ -193,7 +204,9 @@ export default function ManageUsersInviteUserSection() {
           size="middle"
           onClick={onInviteUser}
           loading={loading}
-          disabled={!email?.length || !role}
+          disabled={isDisabled}
+          disabledTooltipTitle={disabledReason}
+          disabledTooltipPlacement="top"
         />
       </div>
       {roleModalVisible && (

@@ -71,6 +71,11 @@ export type GQLAction =
 
 export type GQLActionBase = {
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  /**
+   * Configured parameter values for this action in the context of a rule or
+   * strike threshold. Null when resolved outside of a rule context.
+   */
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -592,6 +597,8 @@ export type GQLContentManualReviewJobPayload = {
 
 export type GQLContentRule = GQLRule & {
   readonly __typename: 'ContentRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -740,6 +747,9 @@ export type GQLCreateContentItemTypeInput = {
 
 export type GQLCreateContentRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly contentTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -776,6 +786,11 @@ export type GQLCreateManualReviewJobCommentInput = {
 
 export type GQLCreateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
@@ -842,6 +857,9 @@ export type GQLCreateUserItemTypeInput = {
 
 export type GQLCreateUserRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly expirationTime?: InputMaybe<Scalars['DateTime']['input']>;
@@ -863,6 +881,7 @@ export type GQLCustomAction = GQLActionBase & {
   readonly callbackUrl: Scalars['String']['output'];
   readonly callbackUrlBody?: Maybe<Scalars['JSONObject']['output']>;
   readonly callbackUrlHeaders?: Maybe<Scalars['JSONObject']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   /**
    * Deprecated alias for `parameters` retained for back-compat with the
    * initial MRT-only parameter implementation. New consumers should read
@@ -1099,6 +1118,7 @@ export type GQLDisabledInfoInput = {
 export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
   readonly __typename: 'EnqueueAuthorToMrtAction';
   readonly applyUserStrikes: Scalars['Boolean']['output'];
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1111,6 +1131,7 @@ export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
 export type GQLEnqueueToMrtAction = GQLActionBase & {
   readonly __typename: 'EnqueueToMrtAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1123,6 +1144,7 @@ export type GQLEnqueueToMrtAction = GQLActionBase & {
 export type GQLEnqueueToNcmecAction = GQLActionBase & {
   readonly __typename: 'EnqueueToNcmecAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1256,6 +1278,7 @@ export const GQLFieldType = {
   Audio: 'AUDIO',
   Boolean: 'BOOLEAN',
   Datetime: 'DATETIME',
+  EmailAddress: 'EMAIL_ADDRESS',
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
@@ -2201,6 +2224,9 @@ export type GQLManualReviewJobWithDecisions = {
 export type GQLManualReviewQueue = {
   readonly __typename: 'ManualReviewQueue';
   readonly autoCloseJobs: Scalars['Boolean']['output'];
+  readonly clearReportsDisposition?: Maybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope: GQLMrtClearReportsScope;
+  readonly clearReportsTriggerActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly explicitlyAssignedReviewers: ReadonlyArray<GQLUser>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['output']>;
@@ -2320,8 +2346,24 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['input'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['input'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['input'];
 };
 
+export const GQLMrtClearReportsDisposition = {
+  AutomaticClose: 'AUTOMATIC_CLOSE',
+  Ignore: 'IGNORE',
+  SameAction: 'SAME_ACTION',
+} as const;
+
+export type GQLMrtClearReportsDisposition =
+  (typeof GQLMrtClearReportsDisposition)[keyof typeof GQLMrtClearReportsDisposition];
+export const GQLMrtClearReportsScope = {
+  AllQueues: 'ALL_QUEUES',
+  CurrentQueue: 'CURRENT_QUEUE',
+} as const;
+
+export type GQLMrtClearReportsScope =
+  (typeof GQLMrtClearReportsScope)[keyof typeof GQLMrtClearReportsScope];
 export type GQLMrtJobEnqueueSourceInfo = {
   readonly __typename: 'MrtJobEnqueueSourceInfo';
   readonly kind: GQLJobCreationSourceOptions;
@@ -2527,6 +2569,7 @@ export type GQLMutation = {
   readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
   readonly updateRequiresDecisionReason: Scalars['Boolean']['output'];
+  readonly updateRequiresDecisionReasonOnIgnore: Scalars['Boolean']['output'];
   readonly updateRequiresPolicyForDecisions: Scalars['Boolean']['output'];
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
@@ -2867,6 +2910,10 @@ export type GQLMutationUpdateReportingRuleArgs = {
 };
 
 export type GQLMutationUpdateRequiresDecisionReasonArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs = {
   enabled: Scalars['Boolean']['input'];
 };
 
@@ -3228,6 +3275,7 @@ export type GQLOrg = {
   readonly publicSigningKey: Scalars['String']['output'];
   readonly reportingRules: ReadonlyArray<GQLReportingRule>;
   readonly requiresDecisionReasonInMrt: Scalars['Boolean']['output'];
+  readonly requiresDecisionReasonOnIgnoreInMrt: Scalars['Boolean']['output'];
   readonly requiresPolicyForDecisionsInMrt: Scalars['Boolean']['output'];
   readonly routingRules: ReadonlyArray<GQLRoutingRule>;
   readonly rules: ReadonlyArray<GQLRule>;
@@ -4063,6 +4111,8 @@ export const GQLRoutingRuleStatus = {
 export type GQLRoutingRuleStatus =
   (typeof GQLRoutingRuleStatus)[keyof typeof GQLRoutingRuleStatus];
 export type GQLRule = {
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -4083,6 +4133,17 @@ export type GQLRule = {
 
 export type GQLRuleBacktestsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+};
+
+export type GQLRuleActionParameterValues = {
+  readonly __typename: 'RuleActionParameterValues';
+  readonly actionId: Scalars['ID']['output'];
+  readonly parameters: Scalars['JSONObject']['output'];
+};
+
+export type GQLRuleActionParameterValuesInput = {
+  readonly actionId: Scalars['ID']['input'];
+  readonly parameters: Scalars['JSONObject']['input'];
 };
 
 export const GQLRuleEnvironment = {
@@ -4203,6 +4264,7 @@ export const GQLScalarType = {
   Audio: 'AUDIO',
   Boolean: 'BOOLEAN',
   Datetime: 'DATETIME',
+  EmailAddress: 'EMAIL_ADDRESS',
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
@@ -4267,6 +4329,7 @@ export type GQLSetPluginIntegrationConfigInput = {
 };
 
 export type GQLSetUserStrikeThresholdInput = {
+  readonly actionParameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly actions: ReadonlyArray<Scalars['String']['input']>;
   readonly threshold: Scalars['Int']['input'];
 };
@@ -4343,6 +4406,7 @@ export const GQLSignalInputType = {
   Audio: 'AUDIO',
   Boolean: 'BOOLEAN',
   Datetime: 'DATETIME',
+  EmailAddress: 'EMAIL_ADDRESS',
   FullItem: 'FULL_ITEM',
   Geohash: 'GEOHASH',
   Id: 'ID',
@@ -4709,6 +4773,9 @@ export type GQLUpdateContentItemTypeInput = {
 
 export type GQLUpdateContentRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly contentTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -4750,6 +4817,11 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly actionIdsToHide: ReadonlyArray<Scalars['ID']['input']>;
   readonly actionIdsToUnhide: ReadonlyArray<Scalars['ID']['input']>;
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name?: InputMaybe<Scalars['String']['input']>;
@@ -4877,6 +4949,9 @@ export type GQLUpdateUserItemTypeInput = {
 
 export type GQLUpdateUserRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -4972,6 +5047,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['output'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['output'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['output'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['output'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -4983,6 +5059,7 @@ export type GQLUserItem = GQLItemBase & {
   readonly submissionTime?: Maybe<Scalars['DateTime']['output']>;
   readonly type: GQLUserItemType;
   readonly userScore: Scalars['Int']['output'];
+  readonly userStrikeCount: Scalars['Int']['output'];
 };
 
 export type GQLUserItemType = GQLItemTypeBase & {
@@ -5078,6 +5155,8 @@ export const GQLUserRole = {
 export type GQLUserRole = (typeof GQLUserRole)[keyof typeof GQLUserRole];
 export type GQLUserRule = GQLRule & {
   readonly __typename: 'UserRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -5105,6 +5184,7 @@ export type GQLUserSchemaFieldRoles = {
   readonly backgroundImage?: Maybe<Scalars['String']['output']>;
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly email?: Maybe<Scalars['String']['output']>;
   readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
   readonly profileIcon?: Maybe<Scalars['String']['output']>;
@@ -5114,6 +5194,7 @@ export type GQLUserSchemaFieldRolesInput = {
   readonly backgroundImage?: InputMaybe<Scalars['String']['input']>;
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly email?: InputMaybe<Scalars['String']['input']>;
   readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
   readonly profileIcon?: InputMaybe<Scalars['String']['input']>;
@@ -5127,6 +5208,7 @@ export type GQLUserStrikeBucket = {
 
 export type GQLUserStrikeThreshold = {
   readonly __typename: 'UserStrikeThreshold';
+  readonly actionParameters: Scalars['JSONObject']['output'];
   readonly actions: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['String']['output'];
   readonly threshold: Scalars['Int']['output'];
@@ -5839,6 +5921,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes?: boolean | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
         }
       | {
           readonly __typename: 'EnqueueAuthorToMrtAction';
@@ -7066,6 +7165,7 @@ export type GQLGetItemsWithIdQuery = {
           readonly data: JsonObject;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
+          readonly userStrikeCount: number;
           readonly type: {
             readonly __typename: 'UserItemType';
             readonly id: string;
@@ -9158,6 +9258,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
             readonly actionsTaken: ReadonlyArray<string>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -9315,6 +9416,7 @@ export type GQLGetDecidedJobFromJobIdQuery = {
             }>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -9806,6 +9908,9 @@ export type GQLManualReviewQueueQuery = {
     readonly hiddenActionIds: ReadonlyArray<string>;
     readonly isAppealsQueue: boolean;
     readonly autoCloseJobs: boolean;
+    readonly clearReportsDisposition?: GQLMrtClearReportsDisposition | null;
+    readonly clearReportsScope: GQLMrtClearReportsScope;
+    readonly clearReportsTriggerActionIds: ReadonlyArray<string>;
     readonly explicitlyAssignedReviewers: ReadonlyArray<{
       readonly __typename: 'User';
       readonly id: string;
@@ -11741,6 +11846,7 @@ export type GQLGetDecidedJobQuery = {
           readonly actionsTaken: ReadonlyArray<string>;
           readonly item: {
             readonly __typename: 'UserItem';
+            readonly userStrikeCount: number;
             readonly id: string;
             readonly submissionId: string;
             readonly submissionTime?: Date | string | null;
@@ -11898,6 +12004,7 @@ export type GQLGetDecidedJobQuery = {
           }>;
           readonly item: {
             readonly __typename: 'UserItem';
+            readonly userStrikeCount: number;
             readonly id: string;
             readonly submissionId: string;
             readonly submissionTime?: Date | string | null;
@@ -12158,6 +12265,7 @@ export type GQLManualReviewSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -12205,6 +12313,7 @@ export type GQLManualReviewJobInfoQuery = {
     readonly hasNCMECReportingEnabled: boolean;
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
+    readonly requiresDecisionReasonOnIgnoreInMrt: boolean;
     readonly allowMultiplePoliciesPerAction: boolean;
     readonly hideSkipButtonForNonAdmins: boolean;
     readonly policies: ReadonlyArray<{
@@ -13446,6 +13555,7 @@ export type GQLManualReviewJobInfoQuery = {
               readonly actionsTaken: ReadonlyArray<string>;
               readonly item: {
                 readonly __typename: 'UserItem';
+                readonly userStrikeCount: number;
                 readonly id: string;
                 readonly submissionId: string;
                 readonly submissionTime?: Date | string | null;
@@ -13603,6 +13713,7 @@ export type GQLManualReviewJobInfoQuery = {
               }>;
               readonly item: {
                 readonly __typename: 'UserItem';
+                readonly userStrikeCount: number;
                 readonly id: string;
                 readonly submissionId: string;
                 readonly submissionTime?: Date | string | null;
@@ -14785,6 +14896,7 @@ export type GQLDequeueManualReviewJobMutation = {
             readonly actionsTaken: ReadonlyArray<string>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -14942,6 +15054,7 @@ export type GQLDequeueManualReviewJobMutation = {
             }>;
             readonly item: {
               readonly __typename: 'UserItem';
+              readonly userStrikeCount: number;
               readonly id: string;
               readonly submissionId: string;
               readonly submissionTime?: Date | string | null;
@@ -16181,6 +16294,7 @@ export type GQLJobFieldsFragment = {
         readonly actionsTaken: ReadonlyArray<string>;
         readonly item: {
           readonly __typename: 'UserItem';
+          readonly userStrikeCount: number;
           readonly id: string;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
@@ -16338,6 +16452,7 @@ export type GQLJobFieldsFragment = {
         }>;
         readonly item: {
           readonly __typename: 'UserItem';
+          readonly userStrikeCount: number;
           readonly id: string;
           readonly submissionId: string;
           readonly submissionTime?: Date | string | null;
@@ -17386,6 +17501,7 @@ export type GQLGetUserItemsQuery = {
         readonly submissionId: string;
         readonly submissionTime?: Date | string | null;
         readonly data: JsonObject;
+        readonly userStrikeCount: number;
         readonly type: {
           readonly __typename: 'UserItemType';
           readonly id: string;
@@ -22038,6 +22154,23 @@ export type GQLReportingRuleFormOrgDataQuery = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -22817,6 +22950,24 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22840,6 +22991,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22863,6 +23015,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -22886,6 +23039,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23087,6 +23241,24 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
+        readonly parameters: ReadonlyArray<{
+          readonly __typename: 'ActionParameter';
+          readonly name: string;
+          readonly displayName: string;
+          readonly description?: string | null;
+          readonly type: GQLActionParameterType;
+          readonly required: boolean;
+          readonly min?: number | null;
+          readonly max?: number | null;
+          readonly maxLength?: number | null;
+          readonly defaultValue?: JsonValue | null;
+          readonly options?: ReadonlyArray<{
+            readonly __typename: 'ActionParameterOption';
+            readonly value: string;
+            readonly label: string;
+          }> | null;
+        }>;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23110,6 +23282,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23133,6 +23306,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23156,6 +23330,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
         readonly id: string;
         readonly name: string;
         readonly description?: string | null;
+        readonly configuredParameters?: JsonObject | null;
         readonly itemTypes: ReadonlyArray<
           | {
               readonly __typename: 'ContentItemType';
@@ -23547,6 +23722,24 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
+              readonly parameters: ReadonlyArray<{
+                readonly __typename: 'ActionParameter';
+                readonly name: string;
+                readonly displayName: string;
+                readonly description?: string | null;
+                readonly type: GQLActionParameterType;
+                readonly required: boolean;
+                readonly min?: number | null;
+                readonly max?: number | null;
+                readonly maxLength?: number | null;
+                readonly defaultValue?: JsonValue | null;
+                readonly options?: ReadonlyArray<{
+                  readonly __typename: 'ActionParameterOption';
+                  readonly value: string;
+                  readonly label: string;
+                }> | null;
+              }>;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23570,6 +23763,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23593,6 +23787,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23616,6 +23811,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23816,6 +24012,24 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
+              readonly parameters: ReadonlyArray<{
+                readonly __typename: 'ActionParameter';
+                readonly name: string;
+                readonly displayName: string;
+                readonly description?: string | null;
+                readonly type: GQLActionParameterType;
+                readonly required: boolean;
+                readonly min?: number | null;
+                readonly max?: number | null;
+                readonly maxLength?: number | null;
+                readonly defaultValue?: JsonValue | null;
+                readonly options?: ReadonlyArray<{
+                  readonly __typename: 'ActionParameterOption';
+                  readonly value: string;
+                  readonly label: string;
+                }> | null;
+              }>;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23839,6 +24053,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23862,6 +24077,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23885,6 +24101,7 @@ export type GQLRuleQuery = {
               readonly id: string;
               readonly name: string;
               readonly description?: string | null;
+              readonly configuredParameters?: JsonObject | null;
               readonly itemTypes: ReadonlyArray<
                 | {
                     readonly __typename: 'ContentItemType';
@@ -23913,6 +24130,23 @@ type GQLActionFragmentCustomActionFragment = {
   readonly id: string;
   readonly name: string;
   readonly description?: string | null;
+  readonly parameters: ReadonlyArray<{
+    readonly __typename: 'ActionParameter';
+    readonly name: string;
+    readonly displayName: string;
+    readonly description?: string | null;
+    readonly type: GQLActionParameterType;
+    readonly required: boolean;
+    readonly min?: number | null;
+    readonly max?: number | null;
+    readonly maxLength?: number | null;
+    readonly defaultValue?: JsonValue | null;
+    readonly options?: ReadonlyArray<{
+      readonly __typename: 'ActionParameterOption';
+      readonly value: string;
+      readonly label: string;
+    }> | null;
+  }>;
   readonly itemTypes: ReadonlyArray<
     | {
         readonly __typename: 'ContentItemType';
@@ -24209,6 +24443,23 @@ export type GQLContentRuleFormConfigQuery = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly parameters: ReadonlyArray<{
+            readonly __typename: 'ActionParameter';
+            readonly name: string;
+            readonly displayName: string;
+            readonly description?: string | null;
+            readonly type: GQLActionParameterType;
+            readonly required: boolean;
+            readonly min?: number | null;
+            readonly max?: number | null;
+            readonly maxLength?: number | null;
+            readonly defaultValue?: JsonValue | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'ActionParameterOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -24472,6 +24723,7 @@ export type GQLUserStrikeThresholdsQuery = {
       readonly id: string;
       readonly threshold: number;
       readonly actions: ReadonlyArray<string>;
+      readonly actionParameters: JsonObject;
     }>;
   } | null;
 };
@@ -24527,6 +24779,7 @@ export type GQLPersonalSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -24815,6 +25068,7 @@ export type GQLDeploymentSettingsQuery = {
     readonly allowMultiplePoliciesPerAction: boolean;
     readonly requiresPolicyForDecisionsInMrt: boolean;
     readonly requiresDecisionReasonInMrt: boolean;
+    readonly requiresDecisionReasonOnIgnoreInMrt: boolean;
     readonly previewJobsViewEnabled: boolean;
     readonly hideSkipButtonForNonAdmins: boolean;
     readonly userStrikeTTL: number;
@@ -24885,6 +25139,15 @@ export type GQLUpdateRequiresDecisionReasonMutationVariables = Exact<{
 export type GQLUpdateRequiresDecisionReasonMutation = {
   readonly __typename: 'Mutation';
   readonly updateRequiresDecisionReason: boolean;
+};
+
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateRequiresDecisionReasonOnIgnore: boolean;
 };
 
 export type GQLUpdateHideSkipButtonForNonAdminsMutationVariables = Exact<{
@@ -24994,6 +25257,7 @@ export type GQLOrgDefaultSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -25275,6 +25539,9 @@ export const GQLJobFieldsFragmentDoc = gql`
           ... on ItemBase {
             ...ItemFields
           }
+          ... on UserItem {
+            userStrikeCount
+          }
         }
         itemThreadContentItems {
           ... on ContentItem {
@@ -25402,6 +25669,9 @@ export const GQLJobFieldsFragmentDoc = gql`
         item {
           ... on ItemBase {
             ...ItemFields
+          }
+          ... on UserItem {
+            userStrikeCount
           }
         }
         additionalContentItems {
@@ -25909,6 +26179,22 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        parameters {
+          name
+          displayName
+          description
+          type
+          required
+          options {
+            value
+            label
+          }
+          min
+          max
+          maxLength
+          defaultValue
+        }
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25920,6 +26206,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25931,6 +26218,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25942,6 +26230,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
         id
         name
         description
+        configuredParameters
         itemTypes {
           ... on ItemTypeBase {
             id
@@ -25959,6 +26248,21 @@ export const GQLActionFragmentFragmentDoc = gql`
       id
       name
       description
+      parameters {
+        name
+        displayName
+        description
+        type
+        required
+        options {
+          value
+          label
+        }
+        min
+        max
+        maxLength
+        defaultValue
+      }
       itemTypes {
         ... on ItemTypeBase {
           id
@@ -28280,6 +28584,23 @@ export const GQLActionsDocument = gql`
           penalty
           applyUserStrikes
         }
+        ... on CustomAction {
+          parameters {
+            name
+            displayName
+            description
+            type
+            required
+            options {
+              value
+              label
+            }
+            min
+            max
+            maxLength
+            defaultValue
+          }
+        }
       }
     }
     me {
@@ -30476,6 +30797,9 @@ export const GQLGetItemsWithIdDocument = gql`
             }
           }
         }
+        ... on UserItem {
+          userStrikeCount
+        }
       }
     }
   }
@@ -32428,6 +32752,9 @@ export const GQLManualReviewQueueDocument = gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        clearReportsDisposition
+        clearReportsScope
+        clearReportsTriggerActionIds
       }
     }
   }
@@ -34042,6 +34369,7 @@ export const GQLManualReviewSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -34313,6 +34641,7 @@ export const GQLManualReviewJobInfoDocument = gql`
       hasNCMECReportingEnabled
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       allowMultiplePoliciesPerAction
       hideSkipButtonForNonAdmins
     }
@@ -36428,6 +36757,7 @@ export const GQLGetUserItemsDocument = gql`
         submissionId
         submissionTime
         data
+        userStrikeCount
         type {
           id
           name
@@ -42373,6 +42703,7 @@ export const GQLUserStrikeThresholdsDocument = gql`
         id
         threshold
         actions
+        actionParameters
       }
       userStrikeTTL
     }
@@ -42683,6 +43014,7 @@ export const GQLPersonalSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -43955,6 +44287,7 @@ export const GQLDeploymentSettingsDocument = gql`
       allowMultiplePoliciesPerAction
       requiresPolicyForDecisionsInMrt
       requiresDecisionReasonInMrt
+      requiresDecisionReasonOnIgnoreInMrt
       previewJobsViewEnabled
       hideSkipButtonForNonAdmins
       userStrikeTTL
@@ -44357,6 +44690,55 @@ export type GQLUpdateRequiresDecisionReasonMutationOptions =
   Apollo.BaseMutationOptions<
     GQLUpdateRequiresDecisionReasonMutation,
     GQLUpdateRequiresDecisionReasonMutationVariables
+  >;
+export const GQLUpdateRequiresDecisionReasonOnIgnoreDocument = gql`
+  mutation UpdateRequiresDecisionReasonOnIgnore($enabled: Boolean!) {
+    updateRequiresDecisionReasonOnIgnore(enabled: $enabled)
+  }
+`;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >;
+
+/**
+ * __useGQLUpdateRequiresDecisionReasonOnIgnoreMutation__
+ *
+ * To run a mutation, you first call `useGQLUpdateRequiresDecisionReasonOnIgnoreMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateRequiresDecisionReasonOnIgnoreMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlUpdateRequiresDecisionReasonOnIgnoreMutation, { data, loading, error }] = useGQLUpdateRequiresDecisionReasonOnIgnoreMutation({
+ *   variables: {
+ *      enabled: // value for 'enabled'
+ *   },
+ * });
+ */
+export function useGQLUpdateRequiresDecisionReasonOnIgnoreMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
+  >(GQLUpdateRequiresDecisionReasonOnIgnoreDocument, options);
+}
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationHookResult =
+  ReturnType<typeof useGQLUpdateRequiresDecisionReasonOnIgnoreMutation>;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationResult =
+  Apollo.MutationResult<GQLUpdateRequiresDecisionReasonOnIgnoreMutation>;
+export type GQLUpdateRequiresDecisionReasonOnIgnoreMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutation,
+    GQLUpdateRequiresDecisionReasonOnIgnoreMutationVariables
   >;
 export const GQLUpdateHideSkipButtonForNonAdminsDocument = gql`
   mutation UpdateHideSkipButtonForNonAdmins($enabled: Boolean!) {
@@ -44823,6 +45205,7 @@ export const GQLOrgDefaultSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -45189,6 +45572,8 @@ export const namedOperations = {
     UpdateSamlEnabled: 'UpdateSamlEnabled',
     UpdateRequiresPolicyForDecisions: 'UpdateRequiresPolicyForDecisions',
     UpdateRequiresDecisionReason: 'UpdateRequiresDecisionReason',
+    UpdateRequiresDecisionReasonOnIgnore:
+      'UpdateRequiresDecisionReasonOnIgnore',
     UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
     UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
     UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',

@@ -246,6 +246,22 @@ export const fieldTypeHandlers: Handlers = {
     },
     getValues: scalarGetValues,
   },
+  [ScalarTypes.EMAIL_ADDRESS]: {
+    // Leading/trailing whitespace stripped; all-whitespace/empty becomes
+    // "field omitted". Format validation (RFC 5321/5322 shape) is deferred
+    // to a follow-up issue per PR #840 reviewer note; for now this just
+    // enforces "string" so the type system can rely on it.
+    coerce: (v) => {
+      if (typeof v !== 'string') {
+        return new Error(
+          'This field, if given, must be a string email address.',
+        );
+      }
+      const trimmed = v.trim();
+      return trimmed === '' ? null : trimmed;
+    },
+    getValues: scalarGetValues,
+  },
   [ContainerTypes.ARRAY]: {
     coerce(value, itemTypeIds, container) {
       if (!Array.isArray(value)) {

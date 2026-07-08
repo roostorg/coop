@@ -745,7 +745,12 @@ export default function ManualReviewQueuesDashboard() {
                 />
               </div>
             ),
-            id: <CopyTextComponent value={values.id} />,
+            id: (
+              <CopyTextComponent
+                value={values.id}
+                displayValue={`${values.id.slice(0, 8)}…`}
+              />
+            ),
             name: (
               <div className="ContentTypesDashboard-type-name">
                 {values.name}

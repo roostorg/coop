@@ -195,7 +195,10 @@ function TableRowComponent(props: {
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'STRING': {
+    case 'STRING':
+    case 'EMAIL_ADDRESS': {
+      // EMAIL_ADDRESS renders as plain text for now; a follow-up could make
+      // it a mailto/pivot link the way IP_ADDRESS pivots on the IP.
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
           {label ? (
@@ -250,9 +253,14 @@ function TableRowComponent(props: {
         return <NotProvidedComponent />;
       }
 
-      // Extract matched banks if available
-      const matchedBanks = (value as any)?.matchedBanks;
-      const hasMatches = Array.isArray(matchedBanks) && matchedBanks.length > 0;
+      // Extract matched banks if available, normalizing to a string[] so the
+      // render path below always has a concrete array to map over.
+      const rawMatchedBanks = (value as { matchedBanks?: string[] })
+        .matchedBanks;
+      const matchedBanks = Array.isArray(rawMatchedBanks)
+        ? rawMatchedBanks
+        : [];
+      const hasMatches = matchedBanks.length > 0;
 
       return (
         <div className="flex flex-col px-2 align-top text-start">
@@ -270,12 +278,13 @@ function TableRowComponent(props: {
                   ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                   : (2 as const),
               grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+              sepia: safetySettings?.moderatorSafetySepia ?? false,
             }}
           />
           {label ? <div className="font-bold">{label}</div> : null}
           {hasMatches && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {matchedBanks.map((bankName: string) => (
+              {matchedBanks.map((bankName) => (
                 <span
                   key={bankName}
                   className="inline-block px-2 py-0.5 text-s font-large bg-gray-200 rounded"
@@ -344,6 +353,7 @@ function TableRowComponent(props: {
                     ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                     : (2 as const),
                 grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+                sepia: safetySettings?.moderatorSafetySepia ?? false,
               }}
             />
             {label ? <div className="font-bold">{label}</div> : null}
@@ -515,6 +525,7 @@ function FieldComponent(props: {
     case 'URL':
     case 'POLICY_ID':
     case 'IP_ADDRESS':
+    case 'EMAIL_ADDRESS':
     case 'DATETIME':
       return (
         <div className="py-0" key={data.name}>
@@ -571,6 +582,7 @@ function ContainerComponent(props: {
             case 'DATETIME':
             case 'POLICY_ID':
             case 'IP_ADDRESS':
+            case 'EMAIL_ADDRESS':
               return true;
             case 'AUDIO':
             case 'IMAGE':
@@ -591,7 +603,7 @@ function ContainerComponent(props: {
             }));
       }
       case 'MAP': {
-        const mapValue = data.value as { [key: string]: ScalarTypeRuntimeType };
+        const mapValue = data.value;
         return isPlainObject(mapValue)
           ? Object.keys(mapValue).map((key) => ({
               value: mapValue[key],
@@ -613,6 +625,7 @@ function ContainerComponent(props: {
       case 'URL':
       case 'POLICY_ID':
       case 'IP_ADDRESS':
+      case 'EMAIL_ADDRESS':
       case 'MEDIA':
       case 'VIDEO': {
         throw Error('Cannot call container component with scalar field');

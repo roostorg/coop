@@ -78,6 +78,7 @@ const deploymentSettingsMock: MockedResponse = {
         allowMultiplePoliciesPerAction: false,
         requiresPolicyForDecisionsInMrt: false,
         requiresDecisionReasonInMrt: false,
+        requiresDecisionReasonOnIgnoreInMrt: false,
         hideSkipButtonForNonAdmins: false,
         previewJobsViewEnabled: false,
         ignoreCallbackUrl: null,
@@ -127,6 +128,7 @@ const wellnessSettingsMock: MockedResponse = {
           moderatorSafetyBlurLevel: 2,
           moderatorSafetyGrayscale: true,
           moderatorSafetyMuteVideo: true,
+          moderatorSafetySepia: false,
         },
       },
     },
@@ -454,6 +456,7 @@ describe('SettingsPage', () => {
       const mock = makeDeploymentMock({
         requiresPolicyForDecisionsInMrt: true,
         requiresDecisionReasonInMrt: true,
+        requiresDecisionReasonOnIgnoreInMrt: true,
         hideSkipButtonForNonAdmins: true,
         previewJobsViewEnabled: true,
       });
@@ -560,12 +563,14 @@ describe('SettingsPage', () => {
           screen.getByText('Default Wellness Settings'),
         ).toBeInTheDocument();
         expect(screen.getByText('Blur Media')).toBeInTheDocument();
-        expect(screen.getByText('Greyscale')).toBeInTheDocument();
+        expect(screen.getByText('Color Scheme')).toBeInTheDocument();
         expect(screen.getByText('Mute videos')).toBeInTheDocument();
       });
+      // Grayscale=true / sepia=false in the mock maps to the GRAYSCALE scheme.
+      expect(screen.getByRole('combobox')).toHaveTextContent('Grayscale');
       const switches = screen.getAllByRole('switch');
+      expect(switches).toHaveLength(1);
       expect(switches[0]).toHaveAttribute('aria-checked', 'true');
-      expect(switches[1]).toHaveAttribute('aria-checked', 'true');
     });
 
     it('calls save mutation with updated settings', async () => {
@@ -582,8 +587,9 @@ describe('SettingsPage', () => {
               variables: {
                 orgDefaultSafetySettings: {
                   moderatorSafetyBlurLevel: 2,
-                  moderatorSafetyGrayscale: false,
-                  moderatorSafetyMuteVideo: true,
+                  moderatorSafetyGrayscale: true,
+                  moderatorSafetyMuteVideo: false,
+                  moderatorSafetySepia: false,
                 },
               },
             },
@@ -593,7 +599,7 @@ describe('SettingsPage', () => {
         'wellness',
       );
       await waitFor(() => {
-        expect(screen.getByText('Greyscale')).toBeInTheDocument();
+        expect(screen.getByText('Mute videos')).toBeInTheDocument();
       });
 
       userEvent.click(screen.getAllByRole('switch')[0]);

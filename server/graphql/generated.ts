@@ -139,6 +139,11 @@ export type GQLAction =
 
 export type GQLActionBase = {
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  /**
+   * Configured parameter values for this action in the context of a rule or
+   * strike threshold. Null when resolved outside of a rule context.
+   */
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -660,6 +665,8 @@ export type GQLContentManualReviewJobPayload = {
 
 export type GQLContentRule = GQLRule & {
   readonly __typename?: 'ContentRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -808,6 +815,9 @@ export type GQLCreateContentItemTypeInput = {
 
 export type GQLCreateContentRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly contentTypeIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -844,6 +854,11 @@ export type GQLCreateManualReviewJobCommentInput = {
 
 export type GQLCreateManualReviewQueueInput = {
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
@@ -910,6 +925,9 @@ export type GQLCreateUserItemTypeInput = {
 
 export type GQLCreateUserRuleInput = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly conditionSet: GQLConditionSetInput;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly expirationTime?: InputMaybe<Scalars['DateTime']['input']>;
@@ -931,6 +949,7 @@ export type GQLCustomAction = GQLActionBase & {
   readonly callbackUrl: Scalars['String']['output'];
   readonly callbackUrlBody?: Maybe<Scalars['JSONObject']['output']>;
   readonly callbackUrlHeaders?: Maybe<Scalars['JSONObject']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   /**
    * Deprecated alias for `parameters` retained for back-compat with the
    * initial MRT-only parameter implementation. New consumers should read
@@ -1167,6 +1186,7 @@ export type GQLDisabledInfoInput = {
 export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
   readonly __typename?: 'EnqueueAuthorToMrtAction';
   readonly applyUserStrikes: Scalars['Boolean']['output'];
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1179,6 +1199,7 @@ export type GQLEnqueueAuthorToMrtAction = GQLActionBase & {
 export type GQLEnqueueToMrtAction = GQLActionBase & {
   readonly __typename?: 'EnqueueToMrtAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1191,6 +1212,7 @@ export type GQLEnqueueToMrtAction = GQLActionBase & {
 export type GQLEnqueueToNcmecAction = GQLActionBase & {
   readonly __typename?: 'EnqueueToNcmecAction';
   readonly applyUserStrikes?: Maybe<Scalars['Boolean']['output']>;
+  readonly configuredParameters?: Maybe<Scalars['JSONObject']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
@@ -1324,6 +1346,7 @@ export const GQLFieldType = {
   Audio: 'AUDIO',
   Boolean: 'BOOLEAN',
   Datetime: 'DATETIME',
+  EmailAddress: 'EMAIL_ADDRESS',
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
@@ -2269,6 +2292,9 @@ export type GQLManualReviewJobWithDecisions = {
 export type GQLManualReviewQueue = {
   readonly __typename?: 'ManualReviewQueue';
   readonly autoCloseJobs: Scalars['Boolean']['output'];
+  readonly clearReportsDisposition?: Maybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope: GQLMrtClearReportsScope;
+  readonly clearReportsTriggerActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly explicitlyAssignedReviewers: ReadonlyArray<GQLUser>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['output']>;
@@ -2388,8 +2414,24 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['input'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['input'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['input'];
 };
 
+export const GQLMrtClearReportsDisposition = {
+  AutomaticClose: 'AUTOMATIC_CLOSE',
+  Ignore: 'IGNORE',
+  SameAction: 'SAME_ACTION',
+} as const;
+
+export type GQLMrtClearReportsDisposition =
+  (typeof GQLMrtClearReportsDisposition)[keyof typeof GQLMrtClearReportsDisposition];
+export const GQLMrtClearReportsScope = {
+  AllQueues: 'ALL_QUEUES',
+  CurrentQueue: 'CURRENT_QUEUE',
+} as const;
+
+export type GQLMrtClearReportsScope =
+  (typeof GQLMrtClearReportsScope)[keyof typeof GQLMrtClearReportsScope];
 export type GQLMrtJobEnqueueSourceInfo = {
   readonly __typename?: 'MrtJobEnqueueSourceInfo';
   readonly kind: GQLJobCreationSourceOptions;
@@ -2595,6 +2637,7 @@ export type GQLMutation = {
   readonly updatePreviewJobsViewEnabled: Scalars['Boolean']['output'];
   readonly updateReportingRule: GQLUpdateReportingRuleResponse;
   readonly updateRequiresDecisionReason: Scalars['Boolean']['output'];
+  readonly updateRequiresDecisionReasonOnIgnore: Scalars['Boolean']['output'];
   readonly updateRequiresPolicyForDecisions: Scalars['Boolean']['output'];
   readonly updateRole?: Maybe<Scalars['Boolean']['output']>;
   readonly updateRolePermissions: GQLRole;
@@ -2935,6 +2978,10 @@ export type GQLMutationUpdateReportingRuleArgs = {
 };
 
 export type GQLMutationUpdateRequiresDecisionReasonArgs = {
+  enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs = {
   enabled: Scalars['Boolean']['input'];
 };
 
@@ -3296,6 +3343,7 @@ export type GQLOrg = {
   readonly publicSigningKey: Scalars['String']['output'];
   readonly reportingRules: ReadonlyArray<GQLReportingRule>;
   readonly requiresDecisionReasonInMrt: Scalars['Boolean']['output'];
+  readonly requiresDecisionReasonOnIgnoreInMrt: Scalars['Boolean']['output'];
   readonly requiresPolicyForDecisionsInMrt: Scalars['Boolean']['output'];
   readonly routingRules: ReadonlyArray<GQLRoutingRule>;
   readonly rules: ReadonlyArray<GQLRule>;
@@ -4131,6 +4179,8 @@ export const GQLRoutingRuleStatus = {
 export type GQLRoutingRuleStatus =
   (typeof GQLRoutingRuleStatus)[keyof typeof GQLRoutingRuleStatus];
 export type GQLRule = {
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -4151,6 +4201,17 @@ export type GQLRule = {
 
 export type GQLRuleBacktestsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+};
+
+export type GQLRuleActionParameterValues = {
+  readonly __typename?: 'RuleActionParameterValues';
+  readonly actionId: Scalars['ID']['output'];
+  readonly parameters: Scalars['JSONObject']['output'];
+};
+
+export type GQLRuleActionParameterValuesInput = {
+  readonly actionId: Scalars['ID']['input'];
+  readonly parameters: Scalars['JSONObject']['input'];
 };
 
 export const GQLRuleEnvironment = {
@@ -4271,6 +4332,7 @@ export const GQLScalarType = {
   Audio: 'AUDIO',
   Boolean: 'BOOLEAN',
   Datetime: 'DATETIME',
+  EmailAddress: 'EMAIL_ADDRESS',
   Geohash: 'GEOHASH',
   Id: 'ID',
   Image: 'IMAGE',
@@ -4335,6 +4397,7 @@ export type GQLSetPluginIntegrationConfigInput = {
 };
 
 export type GQLSetUserStrikeThresholdInput = {
+  readonly actionParameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly actions: ReadonlyArray<Scalars['String']['input']>;
   readonly threshold: Scalars['Int']['input'];
 };
@@ -4411,6 +4474,7 @@ export const GQLSignalInputType = {
   Audio: 'AUDIO',
   Boolean: 'BOOLEAN',
   Datetime: 'DATETIME',
+  EmailAddress: 'EMAIL_ADDRESS',
   FullItem: 'FULL_ITEM',
   Geohash: 'GEOHASH',
   Id: 'ID',
@@ -4777,6 +4841,9 @@ export type GQLUpdateContentItemTypeInput = {
 
 export type GQLUpdateContentRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly contentTypeIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -4818,6 +4885,11 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly actionIdsToHide: ReadonlyArray<Scalars['ID']['input']>;
   readonly actionIdsToUnhide: ReadonlyArray<Scalars['ID']['input']>;
   readonly autoCloseJobs: Scalars['Boolean']['input'];
+  readonly clearReportsDisposition?: InputMaybe<GQLMrtClearReportsDisposition>;
+  readonly clearReportsScope?: InputMaybe<GQLMrtClearReportsScope>;
+  readonly clearReportsTriggerActionIds?: InputMaybe<
+    ReadonlyArray<Scalars['ID']['input']>
+  >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name?: InputMaybe<Scalars['String']['input']>;
@@ -4945,6 +5017,9 @@ export type GQLUpdateUserItemTypeInput = {
 
 export type GQLUpdateUserRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly actionParameters?: InputMaybe<
+    ReadonlyArray<GQLRuleActionParameterValuesInput>
+  >;
   readonly cancelRunningBacktests?: InputMaybe<Scalars['Boolean']['input']>;
   readonly conditionSet?: InputMaybe<GQLConditionSetInput>;
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -5040,6 +5115,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['output'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['output'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['output'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['output'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -5051,6 +5127,7 @@ export type GQLUserItem = GQLItemBase & {
   readonly submissionTime?: Maybe<Scalars['DateTime']['output']>;
   readonly type: GQLUserItemType;
   readonly userScore: Scalars['Int']['output'];
+  readonly userStrikeCount: Scalars['Int']['output'];
 };
 
 export type GQLUserItemType = GQLItemTypeBase & {
@@ -5146,6 +5223,8 @@ export const GQLUserRole = {
 export type GQLUserRole = (typeof GQLUserRole)[keyof typeof GQLUserRole];
 export type GQLUserRule = GQLRule & {
   readonly __typename?: 'UserRule';
+  /** @deprecated Use configuredParameters on each Action instead. */
+  readonly actionParameters: ReadonlyArray<GQLRuleActionParameterValues>;
   readonly actions: ReadonlyArray<GQLAction>;
   readonly backtests: ReadonlyArray<GQLBacktest>;
   readonly conditionSet: GQLConditionSet;
@@ -5173,6 +5252,7 @@ export type GQLUserSchemaFieldRoles = {
   readonly backgroundImage?: Maybe<Scalars['String']['output']>;
   readonly createdAt?: Maybe<Scalars['String']['output']>;
   readonly displayName?: Maybe<Scalars['String']['output']>;
+  readonly email?: Maybe<Scalars['String']['output']>;
   readonly ipAddress?: Maybe<Scalars['String']['output']>;
   readonly isDeleted?: Maybe<Scalars['String']['output']>;
   readonly profileIcon?: Maybe<Scalars['String']['output']>;
@@ -5182,6 +5262,7 @@ export type GQLUserSchemaFieldRolesInput = {
   readonly backgroundImage?: InputMaybe<Scalars['String']['input']>;
   readonly createdAt?: InputMaybe<Scalars['String']['input']>;
   readonly displayName?: InputMaybe<Scalars['String']['input']>;
+  readonly email?: InputMaybe<Scalars['String']['input']>;
   readonly ipAddress?: InputMaybe<Scalars['String']['input']>;
   readonly isDeleted?: InputMaybe<Scalars['String']['input']>;
   readonly profileIcon?: InputMaybe<Scalars['String']['input']>;
@@ -5195,6 +5276,7 @@ export type GQLUserStrikeBucket = {
 
 export type GQLUserStrikeThreshold = {
   readonly __typename?: 'UserStrikeThreshold';
+  readonly actionParameters: Scalars['JSONObject']['output'];
   readonly actions: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['String']['output'];
   readonly threshold: Scalars['Int']['output'];
@@ -6115,6 +6197,8 @@ export type GQLResolversTypes = {
   ModelCardSection: ResolverTypeWrapper<GQLModelCardSection>;
   ModelCardSubsection: ResolverTypeWrapper<GQLModelCardSubsection>;
   ModeratorSafetySettingsInput: GQLModeratorSafetySettingsInput;
+  MrtClearReportsDisposition: GQLMrtClearReportsDisposition;
+  MrtClearReportsScope: GQLMrtClearReportsScope;
   MrtJobEnqueueSourceInfo: ResolverTypeWrapper<GQLMrtJobEnqueueSourceInfo>;
   MutateAccessibleQueuesForUserSuccessResponse: ResolverTypeWrapper<GQLMutateAccessibleQueuesForUserSuccessResponse>;
   MutateActionError: GQLMutateActionError;
@@ -6336,6 +6420,8 @@ export type GQLResolversTypes = {
   RoutingRuleNameExistsError: ResolverTypeWrapper<GQLRoutingRuleNameExistsError>;
   RoutingRuleStatus: GQLRoutingRuleStatus;
   Rule: ResolverTypeWrapper<GraphQLRuleParent>;
+  RuleActionParameterValues: ResolverTypeWrapper<GQLRuleActionParameterValues>;
+  RuleActionParameterValuesInput: GQLRuleActionParameterValuesInput;
   RuleEnvironment: GQLRuleEnvironment;
   RuleExecutionEnqueueSourceInfo: ResolverTypeWrapper<
     Omit<GQLRuleExecutionEnqueueSourceInfo, 'rules'> & {
@@ -7028,6 +7114,8 @@ export type GQLResolversParentTypes = {
   RoutingRule: RoutingRuleWithoutVersion;
   RoutingRuleNameExistsError: GQLRoutingRuleNameExistsError;
   Rule: GraphQLRuleParent;
+  RuleActionParameterValues: GQLRuleActionParameterValues;
+  RuleActionParameterValuesInput: GQLRuleActionParameterValuesInput;
   RuleExecutionEnqueueSourceInfo: Omit<
     GQLRuleExecutionEnqueueSourceInfo,
     'rules'
@@ -8086,6 +8174,11 @@ export type GQLContentRuleResolvers<
   ParentType extends GQLResolversParentTypes['ContentRule'] =
     GQLResolversParentTypes['ContentRule'],
 > = {
+  actionParameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['RuleActionParameterValues']>,
+    ParentType,
+    ContextType
+  >;
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
     ParentType,
@@ -8397,6 +8490,11 @@ export type GQLCustomActionResolvers<
     ContextType
   >;
   callbackUrlHeaders?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
+  configuredParameters?: Resolver<
     Maybe<GQLResolversTypes['JSONObject']>,
     ParentType,
     ContextType
@@ -8737,6 +8835,11 @@ export type GQLEnqueueAuthorToMrtActionResolvers<
     ParentType,
     ContextType
   >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -8773,6 +8876,11 @@ export type GQLEnqueueToMrtActionResolvers<
     ParentType,
     ContextType
   >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -8806,6 +8914,11 @@ export type GQLEnqueueToNcmecActionResolvers<
 > = {
   applyUserStrikes?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
+  configuredParameters?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
     ParentType,
     ContextType
   >;
@@ -10324,6 +10437,21 @@ export type GQLManualReviewQueueResolvers<
     ParentType,
     ContextType
   >;
+  clearReportsDisposition?: Resolver<
+    Maybe<GQLResolversTypes['MrtClearReportsDisposition']>,
+    ParentType,
+    ContextType
+  >;
+  clearReportsScope?: Resolver<
+    GQLResolversTypes['MrtClearReportsScope'],
+    ParentType,
+    ContextType
+  >;
+  clearReportsTriggerActionIds?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ID']>,
+    ParentType,
+    ContextType
+  >;
   description?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -11383,6 +11511,15 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationUpdateRequiresDecisionReasonArgs, 'enabled'>
   >;
+  updateRequiresDecisionReasonOnIgnore?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      GQLMutationUpdateRequiresDecisionReasonOnIgnoreArgs,
+      'enabled'
+    >
+  >;
   updateRequiresPolicyForDecisions?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -11941,6 +12078,11 @@ export type GQLOrgResolvers<
     ContextType
   >;
   requiresDecisionReasonInMrt?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  requiresDecisionReasonOnIgnoreInMrt?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
     ContextType
@@ -13327,6 +13469,19 @@ export type GQLRuleResolvers<
   >;
 };
 
+export type GQLRuleActionParameterValuesResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['RuleActionParameterValues'] =
+    GQLResolversParentTypes['RuleActionParameterValues'],
+> = {
+  actionId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
+  parameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLRuleExecutionEnqueueSourceInfoResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['RuleExecutionEnqueueSourceInfo'] =
@@ -14564,6 +14719,11 @@ export type GQLUserInterfacePreferencesResolvers<
     ParentType,
     ContextType
   >;
+  moderatorSafetySepia?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
   mrtChartConfigurations?: Resolver<
     ReadonlyArray<GQLResolversTypes['ManualReviewChartSettings']>,
     ParentType,
@@ -14586,6 +14746,7 @@ export type GQLUserItemResolvers<
   >;
   type?: Resolver<GQLResolversTypes['UserItemType'], ParentType, ContextType>;
   userScore?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  userStrikeCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -14744,6 +14905,11 @@ export type GQLUserRuleResolvers<
   ParentType extends GQLResolversParentTypes['UserRule'] =
     GQLResolversParentTypes['UserRule'],
 > = {
+  actionParameters?: Resolver<
+    ReadonlyArray<GQLResolversTypes['RuleActionParameterValues']>,
+    ParentType,
+    ContextType
+  >;
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['Action']>,
     ParentType,
@@ -14820,6 +14986,7 @@ export type GQLUserSchemaFieldRolesResolvers<
     ParentType,
     ContextType
   >;
+  email?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
   ipAddress?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -14852,6 +15019,11 @@ export type GQLUserStrikeThresholdResolvers<
   ParentType extends GQLResolversParentTypes['UserStrikeThreshold'] =
     GQLResolversParentTypes['UserStrikeThreshold'],
 > = {
+  actionParameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
   actions?: Resolver<
     ReadonlyArray<GQLResolversTypes['ID']>,
     ParentType,
@@ -15172,6 +15344,7 @@ export type GQLResolvers<ContextType = Context> = {
   RoutingRule?: GQLRoutingRuleResolvers<ContextType>;
   RoutingRuleNameExistsError?: GQLRoutingRuleNameExistsErrorResolvers<ContextType>;
   Rule?: GQLRuleResolvers<ContextType>;
+  RuleActionParameterValues?: GQLRuleActionParameterValuesResolvers<ContextType>;
   RuleExecutionEnqueueSourceInfo?: GQLRuleExecutionEnqueueSourceInfoResolvers<ContextType>;
   RuleExecutionResult?: GQLRuleExecutionResultResolvers<ContextType>;
   RuleExecutionResultEdge?: GQLRuleExecutionResultEdgeResolvers<ContextType>;
