@@ -1,3 +1,12 @@
+# main (unreleased)
+
+**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.2...main
+
+## NCMEC
+
+- Text-only (no-media) content can now be reviewed and reported to NCMEC from the review console, with reviewer message-thread context shown for these cases (#881)
+- Skipped NCMEC escalations now surface a non-blocking warning toast instead of failing silently (#881)
+
 # Coop 1.0.1
 
 ## Review Console
