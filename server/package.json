@@ -26,7 +26,9 @@
     "knip": "knip",
     "atproto:setup": "node --loader ts-node/esm --require dotenv/config bin/atproto-setup.ts",
     "atproto:demo": "node --loader ts-node/esm bin/atproto-demo.mts",
-    "atproto:proxy": "node --loader ts-node/esm bin/atproto-proxy.mts"
+    "atproto:proxy": "node --loader ts-node/esm bin/atproto-proxy.mts",
+    "export-text-bank": "node --loader ts-node/esm --require dotenv/config bin/export-text-bank.ts",
+    "import-text-bank": "node --loader ts-node/esm --require dotenv/config bin/import-text-bank.ts"
   },
   "author": "Roostorg",
   "license": "ISC",
