@@ -471,8 +471,9 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/job_priorities',
-        handle: { isUsingLegacyCSS: false },
-        lazy: lazyRoute(async () => import('../settings/JobPrioritySettings')),
+        element: (
+          <Navigate replace to="/dashboard/settings?tab=review-console" />
+        ),
       },
       // Account
       {
@@ -657,11 +658,6 @@ export default function Dashboard() {
         {
           title: 'NCMEC Settings' as const,
           urlPath: 'ncmec',
-          requiredPermissions: [GQLUserPermission.ManageOrg],
-        },
-        {
-          title: 'Job Priorities' as const,
-          urlPath: 'job_priorities',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
       ]),
