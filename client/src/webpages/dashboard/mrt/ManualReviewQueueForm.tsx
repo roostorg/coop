@@ -655,8 +655,15 @@ export default function ManualReviewQueueForm() {
             'Jobs are reviewed in the order they were received.'}
           {jobSortType === 'NUM_REPORTS' &&
             'Jobs with more user reports are surfaced to reviewers first.'}
-          {jobSortType === 'WEIGHTED' &&
-            'Jobs are ordered using the weights configured in Settings → Job Priorities.'}
+          {jobSortType === 'WEIGHTED' && (
+            <>
+              Jobs are scored using the weights configured in{' '}
+              <Link to="/dashboard/settings?tab=review-console">
+                Job Priority Weights
+              </Link>{' '}
+              and reviewed in priority order.
+            </>
+          )}
         </div>
       </div>
       {divider()}
