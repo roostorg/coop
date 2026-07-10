@@ -469,6 +469,12 @@ export function DashboardRoutes() {
         path: 'settings/deployment',
         element: <Navigate replace to="/dashboard/settings?tab=other" />,
       },
+      {
+        path: 'settings/job_priorities',
+        element: (
+          <Navigate replace to="/dashboard/settings?tab=review-console" />
+        ),
+      },
       // Account
       {
         path: 'account',

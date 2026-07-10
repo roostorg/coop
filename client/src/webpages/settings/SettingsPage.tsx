@@ -38,6 +38,10 @@ gql`
       ignoreCallbackUrl
       partialItemsEndpoint
       partialItemsRequestHeaders
+      jobPriorityWeights {
+        property
+        weight
+      }
     }
     appealSettings {
       appealsCallbackUrl
@@ -75,6 +79,13 @@ gql`
   }
   mutation UpdateIgnoreCallbackUrl($url: String) {
     updateIgnoreCallbackUrl(url: $url)
+  }
+  mutation SetJobPriorityWeights($input: SetJobPriorityWeightsInput!) {
+    setJobPriorityWeights(input: $input) {
+      ... on SetJobPriorityWeightsSuccessResponse {
+        _
+      }
+    }
   }
 `;
 

@@ -1768,9 +1768,28 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobPriorityProperty = {
+  NumReports: 'numReports',
+  UserScore: 'userScore',
+} as const;
+
+export type GQLJobPriorityProperty =
+  (typeof GQLJobPriorityProperty)[keyof typeof GQLJobPriorityProperty];
+export type GQLJobPriorityWeight = {
+  readonly __typename: 'JobPriorityWeight';
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['output'];
+};
+
+export type GQLJobPriorityWeightInput = {
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['input'];
+};
+
 export const GQLJobSortType = {
   Fifo: 'FIFO',
   NumReports: 'NUM_REPORTS',
+  Weighted: 'WEIGHTED',
 } as const;
 
 export type GQLJobSortType =
@@ -2550,6 +2569,7 @@ export type GQLMutation = {
   readonly sendPasswordReset: Scalars['Boolean']['output'];
   readonly setAllUserStrikeThresholds: GQLSetAllUserStrikeThresholdsSuccessResponse;
   readonly setIntegrationConfig: GQLSetIntegrationConfigResponse;
+  readonly setJobPriorityWeights: GQLSetJobPriorityWeightsResponse;
   readonly setModeratorSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
   readonly setMrtChartConfigurationSettings?: Maybe<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   readonly setOrgDefaultSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
@@ -2809,6 +2829,10 @@ export type GQLMutationSetAllUserStrikeThresholdsArgs = {
 
 export type GQLMutationSetIntegrationConfigArgs = {
   input: GQLSetIntegrationConfigInput;
+};
+
+export type GQLMutationSetJobPriorityWeightsArgs = {
+  input: GQLSetJobPriorityWeightsInput;
 };
 
 export type GQLMutationSetModeratorSafetySettingsArgs = {
@@ -3260,6 +3284,7 @@ export type GQLOrg = {
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
+  readonly jobPriorityWeights: ReadonlyArray<GQLJobPriorityWeight>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
   /**
@@ -4319,6 +4344,18 @@ export type GQLSetIntegrationConfigResponse =
 export type GQLSetIntegrationConfigSuccessResponse = {
   readonly __typename: 'SetIntegrationConfigSuccessResponse';
   readonly config: GQLIntegrationConfig;
+};
+
+export type GQLSetJobPriorityWeightsInput = {
+  readonly weights: ReadonlyArray<GQLJobPriorityWeightInput>;
+};
+
+export type GQLSetJobPriorityWeightsResponse =
+  GQLSetJobPriorityWeightsSuccessResponse;
+
+export type GQLSetJobPriorityWeightsSuccessResponse = {
+  readonly __typename: 'SetJobPriorityWeightsSuccessResponse';
+  readonly _?: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type GQLSetModeratorSafetySettingsSuccessResponse = {
@@ -25087,6 +25124,11 @@ export type GQLDeploymentSettingsQuery = {
     readonly ignoreCallbackUrl?: string | null;
     readonly partialItemsEndpoint?: string | null;
     readonly partialItemsRequestHeaders?: JsonObject | null;
+    readonly jobPriorityWeights: ReadonlyArray<{
+      readonly __typename: 'JobPriorityWeight';
+      readonly property: GQLJobPriorityProperty;
+      readonly weight: number;
+    }>;
   } | null;
   readonly appealSettings?: {
     readonly __typename: 'AppealSettings';
@@ -25184,6 +25226,18 @@ export type GQLUpdateIgnoreCallbackUrlMutationVariables = Exact<{
 export type GQLUpdateIgnoreCallbackUrlMutation = {
   readonly __typename: 'Mutation';
   readonly updateIgnoreCallbackUrl: boolean;
+};
+
+export type GQLSetJobPriorityWeightsMutationVariables = Exact<{
+  input: GQLSetJobPriorityWeightsInput;
+}>;
+
+export type GQLSetJobPriorityWeightsMutation = {
+  readonly __typename: 'Mutation';
+  readonly setJobPriorityWeights: {
+    readonly __typename: 'SetJobPriorityWeightsSuccessResponse';
+    readonly _?: boolean | null;
+  };
 };
 
 export type GQLUpdateAppealSettingsMutationVariables = Exact<{
@@ -44306,6 +44360,10 @@ export const GQLDeploymentSettingsDocument = gql`
       ignoreCallbackUrl
       partialItemsEndpoint
       partialItemsRequestHeaders
+      jobPriorityWeights {
+        property
+        weight
+      }
     }
     appealSettings {
       appealsCallbackUrl
@@ -44896,6 +44954,59 @@ export type GQLUpdateIgnoreCallbackUrlMutationOptions =
   Apollo.BaseMutationOptions<
     GQLUpdateIgnoreCallbackUrlMutation,
     GQLUpdateIgnoreCallbackUrlMutationVariables
+  >;
+export const GQLSetJobPriorityWeightsDocument = gql`
+  mutation SetJobPriorityWeights($input: SetJobPriorityWeightsInput!) {
+    setJobPriorityWeights(input: $input) {
+      ... on SetJobPriorityWeightsSuccessResponse {
+        _
+      }
+    }
+  }
+`;
+export type GQLSetJobPriorityWeightsMutationFn = Apollo.MutationFunction<
+  GQLSetJobPriorityWeightsMutation,
+  GQLSetJobPriorityWeightsMutationVariables
+>;
+
+/**
+ * __useGQLSetJobPriorityWeightsMutation__
+ *
+ * To run a mutation, you first call `useGQLSetJobPriorityWeightsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLSetJobPriorityWeightsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlSetJobPriorityWeightsMutation, { data, loading, error }] = useGQLSetJobPriorityWeightsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLSetJobPriorityWeightsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >(GQLSetJobPriorityWeightsDocument, options);
+}
+export type GQLSetJobPriorityWeightsMutationHookResult = ReturnType<
+  typeof useGQLSetJobPriorityWeightsMutation
+>;
+export type GQLSetJobPriorityWeightsMutationResult =
+  Apollo.MutationResult<GQLSetJobPriorityWeightsMutation>;
+export type GQLSetJobPriorityWeightsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
   >;
 export const GQLUpdateAppealSettingsDocument = gql`
   mutation UpdateAppealSettings($input: AppealSettingsInput!) {
@@ -45585,6 +45696,7 @@ export const namedOperations = {
     UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
     UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
     UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',
+    SetJobPriorityWeights: 'SetJobPriorityWeights',
     UpdateAppealSettings: 'UpdateAppealSettings',
     UpdateOrgInfo: 'UpdateOrgInfo',
     UpdatePartialItemsSettings: 'UpdatePartialItemsSettings',

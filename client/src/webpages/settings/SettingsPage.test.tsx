@@ -85,6 +85,7 @@ const deploymentSettingsMock: MockedResponse = {
         userStrikeTTL: 90,
         partialItemsEndpoint: null,
         partialItemsRequestHeaders: null,
+        jobPriorityWeights: [],
       },
       appealSettings: {
         appealsCallbackUrl: null,
@@ -447,8 +448,28 @@ describe('SettingsPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
+        expect(screen.getByText('Job Priority Weights')).toBeInTheDocument();
         expect(screen.getByText('Webhooks')).toBeInTheDocument();
       });
+    });
+
+    it('reflects initial job priority weights from server data', async () => {
+      const mock = makeDeploymentMock({
+        jobPriorityWeights: [
+          { property: 'numReports', weight: 7 },
+          { property: 'userScore', weight: 3 },
+        ],
+      });
+      renderWithProviders([mock], 'review-console');
+      await waitFor(() => {
+        expect(screen.getByText('Job Priority Weights')).toBeInTheDocument();
+      });
+      expect(screen.getByText('# of User Reports')).toBeInTheDocument();
+      expect(screen.getByText('User Score')).toBeInTheDocument();
+      // Each slider's value reflects the persisted weight for its property.
+      const sliders = screen.getAllByRole('slider');
+      expect(sliders[0]).toHaveAttribute('aria-valuenow', '7');
+      expect(sliders[1]).toHaveAttribute('aria-valuenow', '3');
     });
 
     it('reflects initial toggle states from server data', async () => {
