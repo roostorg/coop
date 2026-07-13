@@ -12,7 +12,6 @@ import {
 } from './userApiErrors.js';
 import {
   kyselyUserFindByEmail,
-  kyselyUserUpdate,
   type GraphQLUserParent,
 } from './userKyselyPersistence.js';
 
@@ -22,24 +21,37 @@ import {
  * never fail the login it's piggybacking on: any error here is logged and
  * swallowed, and the row is picked up again on the user's next login.
  *
- * Deliberately a plain `kyselyUserUpdate` column write, NOT the transactional
- * path `UserApi.changePassword` / `resetPasswordForToken` use — those also
+ * Deliberately a plain column write, NOT the transactional path
+ * `UserApi.changePassword` / `resetPasswordForToken` use — those also
  * purge the user's other sessions as part of an explicit password *change*.
  * Reusing that path here would silently log out every user the first time
  * their legacy hash gets upgraded, even though their password never changed
  * (see #778, which added that session purge).
+ *
+ * The write is a compare-and-swap on `verifiedHash` (the exact stored hash
+ * the plaintext was just checked against) rather than an unconditional
+ * update by id: if a concurrent password change lands between verification
+ * and this write, zero rows match and the stale rehash is dropped instead
+ * of clobbering the newer hash — an id-only write here could resurrect an
+ * old password that a concurrent change had just replaced.
  */
 async function rehashPasswordOnLogin(
   deps: {
     kyselyPg: Dependencies['KyselyPg'];
     tracer: Dependencies['Tracer'];
   },
-  user: GraphQLUserParent,
+  userId: string,
+  verifiedHash: string,
   plaintextPassword: string,
 ): Promise<void> {
   try {
     const rehashed = await hashPassword(plaintextPassword);
-    await kyselyUserUpdate(deps.kyselyPg, user.id, { password: rehashed });
+    await deps.kyselyPg
+      .updateTable('public.users')
+      .set({ password: rehashed, updated_at: new Date() })
+      .where('id', '=', userId)
+      .where('password', '=', verifiedHash)
+      .execute();
   } catch (e) {
     deps.tracer.logActiveSpanFailedIfAny(e);
   }
@@ -102,7 +114,7 @@ export async function verifyEmailPasswordCredentials(
     }
 
     if (passwordNeedsRehash(user.password)) {
-      await rehashPasswordOnLogin(deps, user, password);
+      await rehashPasswordOnLogin(deps, user.id, user.password, password);
     }
 
     return user;
