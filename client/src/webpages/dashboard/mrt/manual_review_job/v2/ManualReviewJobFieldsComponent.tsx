@@ -14,6 +14,7 @@ import ReactAudioPlayer from 'react-audio-player';
 import { Link } from 'react-router-dom';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
+import CollapsibleText from './components/CollapsibleText';
 
 import {
   GQLContentItem,
@@ -190,12 +191,23 @@ function TableRowComponent(props: {
         </div>
       );
     }
+    case 'STRING': {
+      return (
+        <div className="flex flex-col whitespace-normal align-top text-start">
+          {label ? (
+            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+              {label}
+            </div>
+          ) : null}
+          <CollapsibleText text={String(value)} />
+        </div>
+      );
+    }
     case 'BOOLEAN':
     case 'GEOHASH':
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'STRING':
     case 'EMAIL_ADDRESS': {
       // EMAIL_ADDRESS renders as plain text for now; a follow-up could make
       // it a mailto/pivot link the way IP_ADDRESS pivots on the IP.
