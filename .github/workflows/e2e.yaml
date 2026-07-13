@@ -82,6 +82,7 @@ jobs:
           cp server/.env.example server/.env
           cp db/.env.example db/.env
           cp client/.env.example client/.env
+          sed -i "s/^ITEM_QUEUE_TRAFFIC_PERCENTAGE=.*/ITEM_QUEUE_TRAFFIC_PERCENTAGE='1'/" server/.env
 
       - name: Install dependencies
         run: |
@@ -144,7 +145,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 
       - name: Upload Playwright report
-        if: ${{ !cancelled() }}
+        if: ${{ failure() }}
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: playwright-report
