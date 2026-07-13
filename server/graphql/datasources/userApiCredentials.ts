@@ -1,5 +1,9 @@
 import { type Dependencies } from '../../iocContainer/index.js';
-import { passwordMatchesHash } from '../../services/userManagementService/index.js';
+import {
+  hashPassword,
+  passwordMatchesHash,
+  passwordNeedsRehash,
+} from '../../services/userManagementService/index.js';
 import { CoopError, makeInternalServerError } from '../../utils/errors.js';
 import {
   makeLoginIncorrectPasswordError,
@@ -8,8 +12,38 @@ import {
 } from './userApiErrors.js';
 import {
   kyselyUserFindByEmail,
+  kyselyUserUpdate,
   type GraphQLUserParent,
 } from './userKyselyPersistence.js';
+
+/**
+ * Best-effort upgrade of a legacy-cost bcrypt hash to the current work
+ * factor, run after a password has already been verified correct. Must
+ * never fail the login it's piggybacking on: any error here is logged and
+ * swallowed, and the row is picked up again on the user's next login.
+ *
+ * Deliberately a plain `kyselyUserUpdate` column write, NOT the transactional
+ * path `UserApi.changePassword` / `resetPasswordForToken` use — those also
+ * purge the user's other sessions as part of an explicit password *change*.
+ * Reusing that path here would silently log out every user the first time
+ * their legacy hash gets upgraded, even though their password never changed
+ * (see #778, which added that session purge).
+ */
+async function rehashPasswordOnLogin(
+  deps: {
+    kyselyPg: Dependencies['KyselyPg'];
+    tracer: Dependencies['Tracer'];
+  },
+  user: GraphQLUserParent,
+  plaintextPassword: string,
+): Promise<void> {
+  try {
+    const rehashed = await hashPassword(plaintextPassword);
+    await kyselyUserUpdate(deps.kyselyPg, user.id, { password: rehashed });
+  } catch (e) {
+    deps.tracer.logActiveSpanFailedIfAny(e);
+  }
+}
 
 /**
  * Look up a user by email and verify their password, applying the same
@@ -65,6 +99,10 @@ export async function verifyEmailPasswordCredentials(
       !(await passwordMatchesHash(password, user.password))
     ) {
       throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
+    }
+
+    if (passwordNeedsRehash(user.password)) {
+      await rehashPasswordOnLogin(deps, user, password);
     }
 
     return user;
