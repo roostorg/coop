@@ -1589,12 +1589,14 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job
-    // BullMQ maintains FIFO order within each state, so we only need to compare
-    // the first job from each state to find the oldest overall
+    // Get the first waiting job and first delayed job. getWaiting/getDelayed
+    // return jobs oldest-first, so we only need to compare the first job from
+    // each state to find the oldest overall. NB: the equivalent
+    // queue.getJobs([state], 0, 0) defaults to descending order and would
+    // return the *newest* job instead.
     const [waitingJobs, delayedJobs] = await Promise.all([
-      queue.getJobs(['waiting'], 0, 0),
-      queue.getJobs(['delayed'], 0, 0),
+      queue.getWaiting(0, 0),
+      queue.getDelayed(0, 0),
     ]);
 
     // If no jobs exist in either state, return null

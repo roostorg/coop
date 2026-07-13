@@ -2,6 +2,7 @@
 import { v1 as uuidv1 } from 'uuid';
 
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
+import makeDummyMrtJobPayload from '../../test/fixtureHelpers/makeDummyMrtJobPayload.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -15,34 +16,6 @@ import {
 } from './manualReviewToolService.js';
 import { AUTOMATED_DECISION_REVIEWER_ID } from './modules/JobDecisioning.js';
 import { jobIdToGuid } from './modules/QueueOperations.js';
-
-function makeDummyJob() {
-  return {
-    createdAt: new Date(),
-    policyIds: [] as string[],
-    payload: {
-      kind: 'DEFAULT',
-      reportHistory: [] as ReportHistory,
-      item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
-        submissionId: makeSubmissionId(),
-        submissionTime: new Date(),
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        data: {} as NormalizedItemData,
-        itemTypeIdentifier: {
-          id: uuidv1(),
-          version: new Date().toISOString(),
-          schemaVariant: 'original',
-        },
-        creator: {
-          id: uuidv1(),
-          typeId: uuidv1(),
-        },
-        itemId: uuidv1(),
-      }),
-      enqueueSourceInfo: { kind: 'REPORT' },
-    },
-  } as const;
-}
 
 function makeDummyNcmecJob() {
   return {
@@ -203,7 +176,7 @@ describe('Manual Review Tool Service', () => {
         queueId = '1',
         reviewerId = uuidv1(),
         reviewerEmail = 'test@test.com',
-        jobPayload = makeDummyJob();
+        jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId,
         itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -281,7 +254,7 @@ describe('Manual Review Tool Service', () => {
     it('records an AUTOMATIC_CLOSE decision with no human reviewer', async () => {
       const orgId = 'e7c89ce7729';
       const queueId = '1';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
 
       await mrtService['queueOps']['addJob']({
         jobPayload,
@@ -389,7 +362,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -439,7 +412,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -489,7 +462,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -540,7 +513,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
 
       await mrtService['queueOps']['addJob']({
         jobPayload,
@@ -583,7 +556,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
 
       await mrtService['queueOps']['addJob']({
         jobPayload,
@@ -624,7 +597,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -755,7 +728,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -806,7 +779,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
@@ -853,7 +826,7 @@ describe('Manual Review Tool Service', () => {
 
       const reviewerId = uuidv1();
       const reviewerEmail = 'test@test.com';
-      const jobPayload = makeDummyJob();
+      const jobPayload = makeDummyMrtJobPayload();
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
 
