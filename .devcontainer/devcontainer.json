@@ -1,0 +1,21 @@
+{
+  "name": "Coop TrustCon Demo",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "forwardPorts": [3000, 8080, 9876, 8090],
+  "portsAttributes": {
+    "3000": { "label": "Coop client" },
+    "8080": { "label": "Coop server / GraphQL" },
+    "9876": { "label": "HMA (OpenMediaMatch)" },
+    "8090": { "label": "Ozone label relay" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "remoteUser": "node"
+}
