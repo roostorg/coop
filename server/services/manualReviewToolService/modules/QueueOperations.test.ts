@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 import { uid } from 'uid';
+import { v1 as uuidv1 } from 'uuid';
 
 import getBottle from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
@@ -81,8 +82,10 @@ describe('QueueOperations', () => {
 
       return {
         org,
+        user,
         actions,
         queue,
+        kyselyPg: container.KyselyPg,
         mrtService: container.ManualReviewToolService,
         cleanup: async () => {
           await queuesCleanup();
@@ -406,5 +409,82 @@ describe('QueueOperations', () => {
       });
       expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
     },
+  );
+
+  // Regression: deleting a queue that a routing rule points to used to silently
+  // cascade-delete the rule, breaking routing for the org. The FK is now
+  // RESTRICT, so the service throws QueueHasDependentRoutingRulesError instead.
+  type QueueFixture = Parameters<
+    Parameters<ReturnType<typeof testWithQueueAndActions>>[1]
+  >[0];
+
+  const expectDeletionBlockedByRoutingRule = async (
+    { org, user, mrtService, kyselyPg }: QueueFixture,
+    table:
+      | 'manual_review_tool.routing_rules'
+      | 'manual_review_tool.appeals_routing_rules',
+    ruleName: string,
+  ) => {
+    const secondQueue = await mrtService.createManualReviewQueue({
+      name: `delete-test-queue-${uid()}`,
+      description: null,
+      userIds: [user.id],
+      hiddenActionIds: [],
+      isAppealsQueue: false,
+      invokedBy: {
+        userId: user.id,
+        permissions: [UserPermission.EDIT_MRT_QUEUES],
+        orgId: org.id,
+      },
+    });
+
+    await kyselyPg
+      .insertInto(table)
+      .values({
+        id: uuidv1(),
+        org_id: org.id,
+        name: ruleName,
+        description: null,
+        status: 'LIVE',
+        condition_set: { conditions: [], conjunction: 'AND' },
+        destination_queue_id: secondQueue.id,
+        creator_id: user.id,
+        sequence_number: 99,
+      })
+      .execute();
+
+    await expect(
+      mrtService.deleteManualReviewQueue(org.id, secondQueue.id),
+    ).rejects.toMatchObject({ name: 'QueueHasDependentRoutingRulesError' });
+
+    // Clean up manually since the queue was not deleted.
+    await kyselyPg
+      .deleteFrom(table)
+      .where('destination_queue_id', '=', secondQueue.id)
+      .execute();
+    await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
+      org.id,
+      secondQueue.id,
+    );
+  };
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue throws QueueHasDependentRoutingRulesError when a routing rule references the queue',
+    async (ctx) =>
+      expectDeletionBlockedByRoutingRule(
+        ctx,
+        'manual_review_tool.routing_rules',
+        'block-deletion-rule',
+      ),
+  );
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue throws QueueHasDependentRoutingRulesError when an appeals routing rule references the queue',
+    async (ctx) =>
+      expectDeletionBlockedByRoutingRule(
+        ctx,
+        'manual_review_tool.appeals_routing_rules',
+        'block-deletion-appeals-rule',
+      ),
   );
 });

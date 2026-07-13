@@ -593,10 +593,9 @@ describe('JobRouting tests', () => {
           orgId: org.id,
           queueId: defaultQueue.id,
         });
-      // Deleting the queue will also delete the routing rule, via cascading
-      // delete. However, the old routing rules will still be in the MRT Service's
-      // cache, meaning that running the rules will now point to a queue that
-      // doesn't exist. In this case, it should fall back to the default.
+      // deleteManualReviewQueueForTestsDO_NOT_USE removes any routing rules that
+      // reference the queue (RESTRICT FK) before deleting it. After deletion,
+      // enqueue should find no matching rules and fall back to the default queue.
       await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
         org.id,
         anotherQueue.id,
