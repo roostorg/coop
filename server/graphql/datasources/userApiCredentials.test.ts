@@ -82,7 +82,7 @@ function makeDeps(kyselyPg: Kysely<unknown>) {
 describe('verifyEmailPasswordCredentials', () => {
   const password = 'correct horse battery staple';
 
-  it('rehashes and persists a legacy work-factor-5 hash on successful login', async () => {
+  it('rehashes a legacy bcrypt hash to Argon2id on successful login', async () => {
     const legacyBcryptHash = await bcrypt.hash(password, 5);
     const userRow = makeUserRow({ password: legacyBcryptHash });
     const { kyselyPg, updateTable, updateBuilder } = makeMockKyselyPg({
@@ -99,7 +99,9 @@ describe('verifyEmailPasswordCredentials', () => {
     expect(result.id).toBe('user-123');
     expect(updateTable).toHaveBeenCalledWith('public.users');
     const [[persistedPatch]] = updateBuilder.set.mock.calls;
-    expect(persistedPatch.password).toMatch(/^\$2[aby]\$12\$/);
+    expect(persistedPatch.password).toMatch(
+      /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/,
+    );
     // Compare-and-swap guard (PR #901 review): the write must be scoped to
     // the exact hash that was just verified, not the user id alone, so a
     // concurrent password change can never be clobbered by a rehash of the
@@ -117,7 +119,7 @@ describe('verifyEmailPasswordCredentials', () => {
     ).resolves.toBe(true);
   });
 
-  it('does not rehash when the stored hash is already at the target work factor', async () => {
+  it('does not rehash when the stored hash is already a current Argon2id hash', async () => {
     const currentHash = await hashPassword(password);
     const userRow = makeUserRow({ password: currentHash });
     const { kyselyPg, updateTable } = makeMockKyselyPg({ userRow });
@@ -138,6 +140,28 @@ describe('verifyEmailPasswordCredentials', () => {
       verifyEmailPasswordCredentials(deps, 'test@example.com', 'wrong'),
     ).rejects.toThrow();
 
+    expect(updateTable).not.toHaveBeenCalled();
+  });
+
+  it('fails closed and logs when the stored hash cannot be evaluated', async () => {
+    // A corrupt row, or Argon2 failing operationally (the 19 MiB allocation
+    // can fail under memory pressure, taking down *every* login). Both throw
+    // out of `passwordMatchesHash`. The user-facing answer is still "wrong
+    // password" — but it must be logged, or a total verification outage is
+    // indistinguishable from a flood of users mistyping their passwords.
+    // A bad base64 salt is one of the shapes `argon2Verify` throws on rather
+    // than resolving false — see the corrupt-input cases in `utils.test.ts`.
+    const userRow = makeUserRow({
+      password: '$argon2id$v=19$m=19456,t=2,p=1$!!!!$!!!!',
+    });
+    const { kyselyPg, updateTable } = makeMockKyselyPg({ userRow });
+    const { deps, logActiveSpanFailedIfAny } = makeDeps(kyselyPg);
+
+    await expect(
+      verifyEmailPasswordCredentials(deps, 'test@example.com', password),
+    ).rejects.toThrow();
+
+    expect(logActiveSpanFailedIfAny).toHaveBeenCalled();
     expect(updateTable).not.toHaveBeenCalled();
   });
 

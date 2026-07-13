@@ -16,9 +16,13 @@ import {
 } from './userKyselyPersistence.js';
 
 /**
- * Best-effort upgrade of a legacy-cost bcrypt hash to the current work
- * factor, run after a password has already been verified correct. Must
- * never fail the login it's piggybacking on: any error here is logged and
+ * Best-effort upgrade of a stale password hash — a legacy bcrypt one, or an
+ * Argon2id one minted at weaker parameters — to a fresh Argon2id hash at
+ * today's parameters. Runs only after the password has already been verified
+ * correct, because re-hashing requires the plaintext: it cannot be done as a
+ * migration, only opportunistically at the one moment we hold the password.
+ *
+ * Must never fail the login it's piggybacking on: any error here is logged and
  * swallowed, and the row is picked up again on the user's next login.
  *
  * Deliberately a plain column write, NOT the transactional path
@@ -106,10 +110,25 @@ export async function verifyEmailPasswordCredentials(
 
     // `loginMethods` includes 'password', so the DB CHECK constraint
     // guarantees `user.password` is non-null here.
-    if (
-      user.password == null ||
-      !(await passwordMatchesHash(password, user.password))
-    ) {
+    //
+    // `passwordMatchesHash` throws if the stored hash can't be evaluated at
+    // all — a corrupt row, or Argon2 failing operationally. Log that and treat
+    // it as a non-match: an unevaluable hash authenticates nobody, and the
+    // user-facing truth is still "this password does not match". The log is
+    // what keeps a total verification outage distinguishable from a flood of
+    // users mistyping their passwords, since both look identical from outside.
+    if (user.password == null) {
+      throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
+    }
+
+    let passwordMatches = false;
+    try {
+      passwordMatches = await passwordMatchesHash(password, user.password);
+    } catch (e) {
+      deps.tracer.logActiveSpanFailedIfAny(e);
+    }
+
+    if (!passwordMatches) {
       throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
     }
 
