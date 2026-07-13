@@ -540,7 +540,7 @@ function FieldComponent(props: {
     case 'EMAIL_ADDRESS':
     case 'DATETIME':
       return (
-        <div className="py-0" key={data.name}>
+        <div className="py-0 min-w-0" key={data.name}>
           {!hideLabels ? (
             <div className="pb-px align-top text-start whitespace-nowrap">
               <ContentFieldLabelComponent data={data} />
