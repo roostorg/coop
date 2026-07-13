@@ -277,6 +277,9 @@ jobs:
       - name: Lint client
         run: docker compose run --rm --quiet-pull client npm run lint
 
+      - name: Test client
+        run: docker compose run --rm --quiet-pull client npm run test:prepush
+
       - name: Build client
         run: docker compose run --rm --quiet-pull client npm run build
 

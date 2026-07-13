@@ -90,7 +90,7 @@ describe('MergedReportsComponent invalidation actions', () => {
     // Expand the table; collapsed by default.
     screen.getByRole('button', { name: /show/i }).click();
     const buttons = screen.getAllByRole('button', {
-      name: /invalidate reports/i,
+      name: /invalidate all reports/i,
     });
     expect(buttons).toHaveLength(2);
   });
@@ -99,7 +99,7 @@ describe('MergedReportsComponent invalidation actions', () => {
     renderMerged(false);
     screen.getByRole('button', { name: /show/i }).click();
     expect(
-      screen.queryByRole('button', { name: /invalidate reports/i }),
+      screen.queryByRole('button', { name: /invalidate all reports/i }),
     ).not.toBeInTheDocument();
   });
 });

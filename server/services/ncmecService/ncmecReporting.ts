@@ -132,9 +132,9 @@ type FileDetails = {
     publiclyAvailable?: boolean;
     fileRelevance?: 'Reported' | 'Supplemental Reported';
     fileAnnotations?: FileAnnotations;
-    ipCaptureEvent?: IPNCMECEvent[];
     industryClassification?: NCMECIndustryClassificationType;
     originalFileHash?: OriginalFileHash[];
+    ipCaptureEvent?: IPNCMECEvent[];
     deviceId?: DeviceId[];
     details?: Detail[];
     additionalInfo?: string[];
@@ -525,6 +525,25 @@ export function clampIncidentDateTimeToPast(
   };
 }
 
+/** Rebuild an ipCaptureEvent object with keys in NCMEC XSD `xs:sequence`
+ * order (ipAddress, eventName, dateTime, possibleProxy, port) so xml-js
+ * serialises the children in the order NCMEC's validator requires. Webhook
+ * and caller-supplied events arrive in arbitrary key order; without this,
+ * a non-canonical webhook event produces out-of-order XML and NCMEC rejects
+ * the report with responseCode=4100. Absent keys
+ * are omitted so optional fields stay optional. */
+function canonicaliseIpEvent(event: IPNCMECEvent): IPNCMECEvent {
+  const out: IPNCMECEvent = {
+    ipAddress: event.ipAddress,
+    eventName: event.eventName,
+    dateTime: event.dateTime,
+  };
+  if (event.possibleProxy !== undefined)
+    out.possibleProxy = event.possibleProxy;
+  if (event.port !== undefined) out.port = event.port;
+  return out;
+}
+
 /** Build the `ipCaptureEvent` array for an NCMEC person or media block:
  * webhook events + caller-supplied events + role-IP-synthesised event, in
  * that order. Returns `undefined` when all sources are empty. */
@@ -546,8 +565,8 @@ export function mergeFieldRoleIpIntoEvents(
   const trimmedRoleIp =
     typeof roleIpAddress === 'string' ? roleIpAddress.trim() : '';
   const events: IPNCMECEvent[] = [
-    ...(webhookEvents ?? []),
-    ...paramEventsArray,
+    ...(webhookEvents ?? []).map(canonicaliseIpEvent),
+    ...paramEventsArray.map(canonicaliseIpEvent),
     ...(trimmedRoleIp !== ''
       ? [
           {
@@ -912,6 +931,10 @@ export function buildFileDetailsObject(
         : {}),
       fileRelevance,
       ...(fileAnnotations ? { fileAnnotations } : {}),
+      industryClassification: media.industryClassification,
+      ...(originalFileHash && originalFileHash.length > 0
+        ? { originalFileHash: [...originalFileHash] }
+        : {}),
       ...(additionalInfo.ipCaptureEvent &&
       additionalInfo.ipCaptureEvent.length > 0
         ? {
@@ -923,10 +946,6 @@ export function buildFileDetailsObject(
               ...(it.port ? { port: it.port } : {}),
             })),
           }
-        : {}),
-      industryClassification: media.industryClassification,
-      ...(originalFileHash && originalFileHash.length > 0
-        ? { originalFileHash: [...originalFileHash] }
         : {}),
       ...(additionalInfo.additionalInfo
         ? { additionalInfo: additionalInfo.additionalInfo }
