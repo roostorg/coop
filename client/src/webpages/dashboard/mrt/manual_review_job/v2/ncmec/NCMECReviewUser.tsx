@@ -249,8 +249,11 @@ function NcmecReportFormFields(props: {
     <>
       <div className="!my-4 divider" />
       <div className="flex flex-col gap-2">
-        <div className="text-base font-bold">Incident Type Category</div>
+        <label htmlFor="ncmecIncidentType" className="text-base font-bold">
+          Incident Type Category
+        </label>
         <select
+          id="ncmecIncidentType"
           value={props.incidentType}
           onChange={(e) =>
             props.onIncidentTypeChange(e.target.value as GQLNcmecIncidentType)
