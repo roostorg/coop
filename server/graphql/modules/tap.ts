@@ -1,17 +1,14 @@
 import { unauthenticatedError } from '../utils/errors.js';
-import { TapAdminApi } from '../../services/tapConnectorService/tapAdminApi.js';
+import { type TapAdminApi } from '../../services/tapConnectorService/tapAdminApi.js';
 import { logErrorJson } from '../../utils/logging.js';
 
 /**
- * Create a TapAdminApi client from env vars. This talks directly to the Tap
- * HTTP API so the GraphQL server doesn't need the worker process to be
- * running in the same process.
+ * Resolve the connector's admin surface from the in-process worker. Jetstream
+ * has no HTTP admin API, so "repos"/"stats" are backed by the worker's
+ * JetstreamClient. Returns null when the worker isn't running in this process.
  */
-function getTapAdminApi(): TapAdminApi | null {
-  const tapUrl = process.env.TAP_URL;
-  const tapEnabled = process.env.TAP_ENABLED === 'true';
-  if (!tapEnabled || !tapUrl) return null;
-  return new TapAdminApi(tapUrl, process.env.TAP_ADMIN_PASSWORD ?? '');
+function getTapAdminApi(context: any): TapAdminApi | null {
+  return context.services.TapConnectorWorker?.getAdminApi() ?? null;
 }
 
 const typeDefs = /* GraphQL */ `
@@ -47,7 +44,7 @@ const Query: any = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    const adminApi = getTapAdminApi();
+    const adminApi = getTapAdminApi(context);
     if (!adminApi) return null;
 
     try {
@@ -64,7 +61,7 @@ const Query: any = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    const adminApi = getTapAdminApi();
+    const adminApi = getTapAdminApi(context);
     if (!adminApi) return null;
 
     try {
@@ -88,7 +85,7 @@ const Mutation: any = {
       );
     }
 
-    const adminApi = getTapAdminApi();
+    const adminApi = getTapAdminApi(context);
     if (!adminApi) return false;
 
     try {
@@ -115,7 +112,7 @@ const Mutation: any = {
       );
     }
 
-    const adminApi = getTapAdminApi();
+    const adminApi = getTapAdminApi(context);
     if (!adminApi) return false;
 
     try {

@@ -47,7 +47,7 @@ import { toCorrelationId } from '../../utils/correlationIds.js';
 import { type Worker } from '../../workers_jobs/index.js';
 
 import { TapAdminApi, type TapStats, type TapRepoInfo } from './tapAdminApi.js';
-import { TapClient } from './tapClient.js';
+import { JetstreamClient } from './jetstreamClient.js';
 import { transformTapEvent } from './transformers.js';
 import { type TapConnectorConfig, type TapEvent } from './types.js';
 
@@ -97,7 +97,7 @@ const makeTapConnectorWorker = inject(
     _Meter: unknown,
     itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite,
   ): TapConnectorWorker => {
-    let tapClient: TapClient | null = null;
+    let jetstreamClient: JetstreamClient | null = null;
     let tapAdminApi: TapAdminApi | null = null;
     let shutdownRequested = false;
     let submittedCount = 0;
@@ -134,9 +134,15 @@ const makeTapConnectorWorker = inject(
       return false;
     }
 
+    const wantedDidsEnv = process.env.JETSTREAM_WANTED_DIDS?.split(',')
+      .map((d) => d.trim())
+      .filter((d) => d.length > 0);
+
     const config: TapConnectorConfig = {
-      tapUrl: process.env.TAP_URL ?? 'http://tap:2480',
-      tapAdminPassword: process.env.TAP_ADMIN_PASSWORD ?? '',
+      jetstreamUrl:
+        process.env.JETSTREAM_URL ??
+        'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post',
+      wantedDids: wantedDidsEnv,
       batchSize: parseInt(process.env.TAP_BATCH_SIZE ?? '100', 10),
       batchIntervalMs: parseInt(
         process.env.TAP_BATCH_INTERVAL_MS ?? '1000',
@@ -512,13 +518,9 @@ const makeTapConnectorWorker = inject(
           `[TapConnector] Starting with ingestion mode: ${ingestionMode}`,
         );
 
-        tapAdminApi = new TapAdminApi(
-          config.tapUrl,
-          config.tapAdminPassword,
-        );
-
-        tapClient = new TapClient({
-          tapUrl: config.tapUrl,
+        jetstreamClient = new JetstreamClient({
+          jetstreamUrl: config.jetstreamUrl,
+          wantedDids: config.wantedDids,
           onEvents: (events) => processBatch(events),
           onError: (err) => {
             console.error('[TapConnector] Event error:', err.message);
@@ -527,7 +529,9 @@ const makeTapConnectorWorker = inject(
           batchSize: config.batchSize,
         });
 
-        tapClient.connect();
+        tapAdminApi = new TapAdminApi(jetstreamClient);
+
+        jetstreamClient.connect();
 
         await new Promise<void>((resolve) => {
           const checkShutdown = setInterval(() => {
@@ -545,7 +549,7 @@ const makeTapConnectorWorker = inject(
 
       async shutdown(): Promise<void> {
         shutdownRequested = true;
-        await tapClient?.close();
+        await jetstreamClient?.close();
       },
 
       getAdminApi(): TapAdminApi | null {

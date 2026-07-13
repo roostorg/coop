@@ -62,8 +62,8 @@ export interface ATProtoProfileRecord {
 }
 
 export interface TapConnectorConfig {
-  tapUrl: string;
-  tapAdminPassword: string;
+  jetstreamUrl: string;
+  wantedDids?: string[];
   batchSize: number;
   batchIntervalMs: number;
   orgId: string;
