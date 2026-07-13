@@ -658,7 +658,7 @@ function ContainerComponent(props: {
         type: data.container!.valueScalarType,
       };
       return (
-        <div key={i} className="align-top text-start whitespace-nowrap">
+        <div key={i} className="align-top text-start min-w-0">
           {/*Talk to ethan about how to avoid casting here*/}
           <TableRowComponent
             data={itemData as TableRowComponentData}
@@ -701,14 +701,14 @@ function ContainerComponent(props: {
         </div>
       ) : null}
       <div
-        className={` ${
+        className={`${
           data.container!.valueScalarType === 'IMAGE' ||
           data.container!.valueScalarType === 'VIDEO' ||
           data.container!.valueScalarType === 'AUDIO' ||
           data.container!.valueScalarType === 'MEDIA'
-            ? ''
-            : 'flex-col'
-        } flex overflow-x-scroll border-slate-200 rounded p-1.5 ${
+            ? 'flex overflow-x-scroll'
+            : 'flex flex-col'
+        } border-slate-200 rounded p-1.5 ${
           transparentBackground ? '' : 'bg-slate-100'
         } ${expanded ? 'max-h-96 overflow-y-auto' : 'overflow-y-hidden'}`}
       >
