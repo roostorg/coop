@@ -22,17 +22,18 @@ function makeMockKyselyPg(opts: {
   };
   const selectFrom = jest.fn().mockReturnValue(selectBuilder);
 
-  const updateExecuteTakeFirst = jest.fn();
+  const updateExecute = jest.fn();
   if (opts.updateShouldThrow) {
-    updateExecuteTakeFirst.mockRejectedValue(new Error('update failed'));
+    updateExecute.mockRejectedValue(new Error('update failed'));
   } else {
-    updateExecuteTakeFirst.mockResolvedValue(opts.userRow);
+    // Kysely's `execute()` on an update resolves to UpdateResult[]; the
+    // rehash path ignores it (zero matched rows = lost the CAS, no-op).
+    updateExecute.mockResolvedValue([]);
   }
   const updateBuilder = {
     set: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
-    returning: jest.fn().mockReturnThis(),
-    executeTakeFirst: updateExecuteTakeFirst,
+    execute: updateExecute,
   };
   const updateTable = jest.fn().mockReturnValue(updateBuilder);
 
@@ -99,6 +100,16 @@ describe('verifyEmailPasswordCredentials', () => {
     expect(updateTable).toHaveBeenCalledWith('public.users');
     const [[persistedPatch]] = updateBuilder.set.mock.calls;
     expect(persistedPatch.password).toMatch(/^\$2[aby]\$12\$/);
+    // Compare-and-swap guard (PR #901 review): the write must be scoped to
+    // the exact hash that was just verified, not the user id alone, so a
+    // concurrent password change can never be clobbered by a rehash of the
+    // old plaintext.
+    expect(updateBuilder.where).toHaveBeenCalledWith('id', '=', 'user-123');
+    expect(updateBuilder.where).toHaveBeenCalledWith(
+      'password',
+      '=',
+      legacyBcryptHash,
+    );
     // Verified through `passwordMatchesHash` — the same path a real login
     // takes — rather than reimplementing the comparison in the test.
     await expect(
