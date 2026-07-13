@@ -10,9 +10,12 @@ import {
   type RawItemSubmission,
 } from '../itemProcessingService/index.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
+import { type BskyFeedViewPost } from './transformers.js';
 
 const PROFILE_ENDPOINT =
   'https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile';
+const AUTHOR_FEED_ENDPOINT =
+  'https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed';
 
 interface BskyProfile {
   did?: string;
@@ -24,7 +27,9 @@ interface BskyProfile {
   createdAt?: string;
 }
 
-export async function fetchBskyProfile(did: string): Promise<BskyProfile | null> {
+export async function fetchBskyProfile(
+  did: string,
+): Promise<BskyProfile | null> {
   const url = `${PROFILE_ENDPOINT}?actor=${encodeURIComponent(did)}`;
   const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
   if (!resp.ok) return null;
@@ -53,6 +58,32 @@ export function buildAccountSubmission(
       ...(profile.createdAt ? { createdAt: profile.createdAt } : {}),
     },
   };
+}
+
+interface BskyAuthorFeedResponse {
+  feed?: BskyFeedViewPost[];
+  cursor?: string;
+}
+
+/**
+ * Fetches an author's recent original posts (no replies) from the public
+ * Bluesky API so a reviewer sees the account's other posts as context.
+ */
+export async function fetchAuthorFeed(
+  did: string,
+  limit: number,
+): Promise<BskyFeedViewPost[]> {
+  const params = new URLSearchParams({
+    actor: did,
+    limit: String(limit),
+    filter: 'posts_no_replies',
+  });
+  const resp = await fetch(`${AUTHOR_FEED_ENDPOINT}?${params.toString()}`, {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!resp.ok) return [];
+  const body = (await resp.json()) as BskyAuthorFeedResponse;
+  return body.feed ?? [];
 }
 
 export async function submitAccountItem(opts: {

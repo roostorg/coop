@@ -105,6 +105,81 @@ export function transformPost(event: TapRecordEvent): RawItemSubmission | null {
   };
 }
 
+/** A post view as returned by app.bsky.feed.getAuthorFeed. */
+export interface BskyFeedPostView {
+  uri?: string;
+  cid?: string;
+  author?: { did?: string; handle?: string };
+  record?: ATProtoPostRecord;
+  indexedAt?: string;
+}
+
+export interface BskyFeedViewPost {
+  post?: BskyFeedPostView;
+}
+
+/** Parses an at:// URI into its did / collection / rkey components. */
+function parseAtUri(
+  uri: string,
+): { did: string; collection: string; rkey: string } | null {
+  const match = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/.exec(uri);
+  if (!match) return null;
+  return { did: match[1], collection: match[2], rkey: match[3] };
+}
+
+/**
+ * Maps a getAuthorFeed post view into the same ATproto-post RawItemSubmission
+ * shape produced by transformPost. The item id is the post's at:// uri and the
+ * author links to the ATproto-account for the post's DID, so the author's other
+ * posts show up as context in review.
+ */
+export function buildAuthorFeedPostSubmission(
+  view: BskyFeedViewPost,
+): RawItemSubmission | null {
+  const post = view.post;
+  if (!post?.uri || !post.cid || !post.record) return null;
+  const parsed = parseAtUri(post.uri);
+  if (!parsed) return null;
+  const { did, rkey } = parsed;
+  const record = post.record;
+
+  const images = extractImageUrls(did, record);
+  const video = extractVideoUrl(did, record);
+
+  return {
+    id: post.uri,
+    typeId: ATPROTO_POST_TYPE_ID,
+    data: {
+      text: record.text ?? '',
+      authorDid: { id: did, typeId: ATPROTO_ACCOUNT_TYPE_ID },
+      rkey,
+      cid: post.cid,
+      createdAt: record.createdAt ?? new Date().toISOString(),
+      atUri: post.uri,
+      ...(images.length > 0 ? { images } : {}),
+      ...(video != null ? { video } : {}),
+      ...(record.reply?.parent?.uri
+        ? {
+            replyParent: {
+              id: record.reply.parent.uri,
+              typeId: ATPROTO_POST_TYPE_ID,
+            },
+          }
+        : {}),
+      ...(record.reply?.root?.uri
+        ? {
+            replyRoot: {
+              id: record.reply.root.uri,
+              typeId: ATPROTO_POST_TYPE_ID,
+            },
+          }
+        : {}),
+      ...(record.langs ? { langs: record.langs } : {}),
+      isLive: false,
+    },
+  };
+}
+
 /**
  * Transforms an identity event into a RawItemSubmission
  * for the ATproto-account ItemType.

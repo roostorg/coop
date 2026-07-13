@@ -22,33 +22,36 @@ import { v1 as uuidv1 } from 'uuid';
 import { type ItemSubmissionMessageValue } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { type ItemSubmissionBulkWrite } from '../../queues/itemSubmissionQueue.js';
+import { toCorrelationId } from '../../utils/correlationIds.js';
+import { jsonStringify } from '../../utils/encoding.js';
+import { type Worker } from '../../workers_jobs/index.js';
+import { type ItemInvestigationService } from '../itemInvestigationService/index.js';
 import {
-  rawItemSubmissionToItemSubmission,
-  itemSubmissionToItemSubmissionWithTypeIdentifier,
   getFieldValueForRole,
+  itemSubmissionToItemSubmissionWithTypeIdentifier,
+  rawItemSubmissionToItemSubmission,
   type ItemSubmission,
 } from '../itemProcessingService/index.js';
+import { type ManualReviewToolService } from '../manualReviewToolService/index.js';
+import { type ModerationConfigService } from '../moderationConfigService/index.js';
+import { type ReportingService } from '../reportingService/index.js';
 import {
   buildAccountSubmission,
+  fetchAuthorFeed,
   fetchBskyProfile,
   submitAccountItem,
 } from './accountEnrichment.js';
+import { JetstreamClient } from './jetstreamClient.js';
 import {
   buildPostSubmission,
   fetchBskyPost,
   submitPostItem,
 } from './postEnrichment.js';
-import { type ModerationConfigService } from '../moderationConfigService/index.js';
-import { type ReportingService } from '../reportingService/index.js';
-import { type ManualReviewToolService } from '../manualReviewToolService/index.js';
-import { type ItemInvestigationService } from '../itemInvestigationService/index.js';
-import { jsonStringify } from '../../utils/encoding.js';
-import { toCorrelationId } from '../../utils/correlationIds.js';
-import { type Worker } from '../../workers_jobs/index.js';
-
-import { TapAdminApi, type TapStats, type TapRepoInfo } from './tapAdminApi.js';
-import { JetstreamClient } from './jetstreamClient.js';
-import { transformTapEvent } from './transformers.js';
+import { TapAdminApi, type TapRepoInfo, type TapStats } from './tapAdminApi.js';
+import {
+  buildAuthorFeedPostSubmission,
+  transformTapEvent,
+} from './transformers.js';
 import { type TapConnectorConfig, type TapEvent } from './types.js';
 
 export { TapAdminApi, type TapStats, type TapRepoInfo } from './tapAdminApi.js';
@@ -105,6 +108,12 @@ const makeTapConnectorWorker = inject(
       process.env.INGEST_MAX_SUBMISSIONS ?? '1000',
       10,
     );
+    // How many of a newly-enriched author's recent posts to also submit as
+    // reviewer context. 0 disables.
+    const AUTHOR_FEED_LIMIT = parseInt(
+      process.env.INGEST_AUTHOR_FEED_LIMIT ?? '5',
+      10,
+    );
 
     // Dedup: track recently seen item IDs to avoid duplicate reports.
     // Key is the item ID (AT URI for posts, DID for accounts), value is
@@ -156,8 +165,7 @@ const makeTapConnectorWorker = inject(
       (process.env.INGEST_MODE as IngestionMode) ?? 'report';
     const useReportPath =
       ingestionMode === 'report' || ingestionMode === 'both';
-    const useItemsPath =
-      ingestionMode === 'items' || ingestionMode === 'both';
+    const useItemsPath = ingestionMode === 'items' || ingestionMode === 'both';
 
     /**
      * Submit an item through the /report pipeline:
@@ -347,8 +355,45 @@ const makeTapConnectorWorker = inject(
           submitViaItemsPath,
         });
         console.log(`[TapConnector] enrich: submitted account ${did}`);
+        // Fetch the author's recent posts as reviewer context. This runs only
+        // on first enrichment of a DID (guarded by enrichedDids above), and
+        // submits posts directly via submitPostItem — it does not re-enter
+        // processBatch/enrichAuthorAccount, so there is no enrichment recursion.
+        await enrichAuthorFeed(did);
       } catch (err) {
         console.log(`[TapConnector] enrich: error for ${did}:`, err);
+      }
+    }
+
+    async function enrichAuthorFeed(did: string): Promise<void> {
+      if (AUTHOR_FEED_LIMIT <= 0) return;
+      try {
+        const feed = await fetchAuthorFeed(did, AUTHOR_FEED_LIMIT);
+        for (const view of feed) {
+          const uri = view.post?.uri;
+          if (!uri) continue;
+          // Skip posts we've already submitted (via reply enrichment or a
+          // prior feed fetch); also register in the batch dedup so the post
+          // that triggered enrichment isn't submitted twice.
+          if (enrichedPosts.has(uri) || isDuplicate(uri)) continue;
+          enrichedPosts.add(uri);
+          const rawSubmission = buildAuthorFeedPostSubmission(view);
+          if (!rawSubmission) continue;
+          await submitPostItem({
+            rawSubmission,
+            orgId: config.orgId,
+            moderationConfigService,
+            submitViaItemsPath,
+          });
+          console.log(
+            `[TapConnector] enrich: submitted author-feed post ${uri}`,
+          );
+        }
+      } catch (err) {
+        console.log(
+          `[TapConnector] enrich: author feed error for ${did}:`,
+          err,
+        );
       }
     }
 
@@ -406,7 +451,9 @@ const makeTapConnectorWorker = inject(
       }
       void runWithConcurrency(Array.from(replyUris), 2, enrichReferencedPost);
 
-      console.log(`[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`);
+      console.log(
+        `[TapConnector] Transformed ${rawSubmissions.length}/${events.length} events${hashtagFilter ? ` (filter: ${hashtagFilter})` : ''}`,
+      );
       if (rawSubmissions.length === 0) return;
 
       const itemTypes = await moderationConfigService.getItemTypes({
@@ -426,7 +473,12 @@ const makeTapConnectorWorker = inject(
         itemTypes,
         config.orgId,
         // Look up by ID from the already-fetched list
-        async ({ typeSelector }: { orgId: string; typeSelector: { id: string } }) => {
+        async ({
+          typeSelector,
+        }: {
+          orgId: string;
+          typeSelector: { id: string };
+        }) => {
           return itemTypes.find((it) => it.id === typeSelector.id);
         },
       );
@@ -460,18 +512,26 @@ const makeTapConnectorWorker = inject(
 
           const result = await toItemSubmission(rawSubmission);
           if (result.error || !result.itemSubmission) {
-            const errMsgs = result.error?.errors?.map((e: any) => e.message ?? e.title ?? String(e)).join('; ');
-            console.log(`[TapConnector] Rejected [${rawSubmission.id}]: ${errMsgs ?? 'no itemSubmission'}`);
+            const errMsgs = result.error?.errors
+              ?.map((e: any) => e.message ?? e.title ?? String(e))
+              .join('; ');
+            console.log(
+              `[TapConnector] Rejected [${rawSubmission.id}]: ${errMsgs ?? 'no itemSubmission'}`,
+            );
             continue;
           }
           // Enforce submission cap
           if (submittedCount >= MAX_SUBMISSIONS) {
-            console.log(`[TapConnector] Reached cap of ${MAX_SUBMISSIONS} submissions, stopping`);
+            console.log(
+              `[TapConnector] Reached cap of ${MAX_SUBMISSIONS} submissions, stopping`,
+            );
             shutdownRequested = true;
             return;
           }
           submittedCount++;
-          console.log(`[TapConnector] [${submittedCount}/${MAX_SUBMISSIONS}] Submitting ${rawSubmission.id}`);
+          console.log(
+            `[TapConnector] [${submittedCount}/${MAX_SUBMISSIONS}] Submitting ${rawSubmission.id}`,
+          );
 
           const itemSubmission = result.itemSubmission as ItemSubmission & {
             submissionTime: Date;
@@ -500,7 +560,6 @@ const makeTapConnectorWorker = inject(
           );
         }
       }
-
     }
 
     return {
