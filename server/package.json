@@ -23,6 +23,9 @@
     "create-org": "node --loader ts-node/esm --require dotenv/config bin/create-org-and-user.ts",
     "get-invite": "node --loader ts-node/esm --require dotenv/config bin/get-invite-token.ts",
     "recover-mrt-queue": "node --loader ts-node/esm --require dotenv/config bin/recover-mrt-queue.ts",
+    "atproto:proxy": "node --loader ts-node/esm bin/atproto-proxy.mts",
+    "export-text-bank": "node --loader ts-node/esm --require dotenv/config bin/export-text-bank.ts",
+    "import-text-bank": "node --loader ts-node/esm --require dotenv/config bin/import-text-bank.ts",
     "knip": "knip"
   },
   "author": "Roostorg",
