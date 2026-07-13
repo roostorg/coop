@@ -2,7 +2,7 @@
  * Tap Connector Service — Ingests AT Protocol events from Tap and submits
  * them to Coop for moderation.
  *
- * Supports two ingestion modes controlled by TAP_INGESTION_MODE:
+ * Supports two ingestion modes controlled by INGEST_MODE:
  *
  * - "report" (default): Items go through the reporting pipeline
  *   (ReportingService → reporting rules → ManualReviewToolService). Items
@@ -72,9 +72,9 @@ function getSyntheticThreadId(
 }
 
 // Demo content filter: drop posts containing any term from the
-// comma-separated TAP_DENY_TERMS env var. Case-insensitive substring match.
+// comma-separated INGEST_DENY_TERMS env var. Case-insensitive substring match.
 // The term list itself lives in .env (gitignored) so it isn't published.
-const NSFD_TERMS = (process.env.TAP_DENY_TERMS ?? '')
+const NSFD_TERMS = (process.env.INGEST_DENY_TERMS ?? '')
   .toLowerCase()
   .split(',')
   .map((t) => t.trim())
@@ -102,7 +102,7 @@ const makeTapConnectorWorker = inject(
     let shutdownRequested = false;
     let submittedCount = 0;
     const MAX_SUBMISSIONS = parseInt(
-      process.env.TAP_MAX_SUBMISSIONS ?? '1000',
+      process.env.INGEST_MAX_SUBMISSIONS ?? '1000',
       10,
     );
 
@@ -143,17 +143,17 @@ const makeTapConnectorWorker = inject(
         process.env.JETSTREAM_URL ??
         'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post',
       wantedDids: wantedDidsEnv,
-      batchSize: parseInt(process.env.TAP_BATCH_SIZE ?? '100', 10),
+      batchSize: parseInt(process.env.INGEST_BATCH_SIZE ?? '100', 10),
       batchIntervalMs: parseInt(
-        process.env.TAP_BATCH_INTERVAL_MS ?? '1000',
+        process.env.INGEST_BATCH_INTERVAL_MS ?? '1000',
         10,
       ),
-      orgId: process.env.TAP_ORG_ID ?? '',
-      apiKey: process.env.TAP_API_KEY ?? '',
+      orgId: process.env.INGEST_ORG_ID ?? '',
+      apiKey: process.env.INGEST_API_KEY ?? '',
     };
 
     const ingestionMode: IngestionMode =
-      (process.env.TAP_INGESTION_MODE as IngestionMode) ?? 'report';
+      (process.env.INGEST_MODE as IngestionMode) ?? 'report';
     const useReportPath =
       ingestionMode === 'report' || ingestionMode === 'both';
     const useItemsPath =
@@ -357,7 +357,7 @@ const makeTapConnectorWorker = inject(
 
       console.log(`[TapConnector] Processing batch of ${events.length} events`);
 
-      const hashtagFilter = process.env.TAP_HASHTAG_FILTER?.toLowerCase();
+      const hashtagFilter = process.env.INGEST_HASHTAG_FILTER?.toLowerCase();
       const rawSubmissions = events
         .map(transformTapEvent)
         .filter((s): s is NonNullable<typeof s> => s != null)
@@ -509,7 +509,7 @@ const makeTapConnectorWorker = inject(
       async run(_signal?: AbortSignal): Promise<void> {
         if (!config.orgId) {
           console.error(
-            '[TapConnector] TAP_ORG_ID not set, skipping startup',
+            '[TapConnector] INGEST_ORG_ID not set, skipping startup',
           );
           return;
         }
