@@ -15,7 +15,7 @@ describe('CollapsibleText', () => {
   it('collapses text exceeding maxGraphemes and shows Read more', () => {
     const longText = 'a'.repeat(2001);
     render(<CollapsibleText text={longText} />);
-    // The clamped preview still contains the start of the text.
+    // The full text is in the DOM (CSS line-clamp hides overflow visually, not in the DOM).
     expect(screen.getByText(longText)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /read more/i }),
@@ -45,11 +45,19 @@ describe('CollapsibleText', () => {
   });
 
   it('counts graphemes, not UTF-16 code units (emoji with skin tone)', () => {
-    // 👨🏿 is a single grapheme but multiple UTF-16 code units / code points.
-    // 2001 such graphemes should trigger the collapse.
+    // 👨🏿 is a single grapheme but 4 UTF-16 code units. A naive `.length`
+    // check would collapse at 501 such graphemes (length 2004 > 2000), but
+    // a correct grapheme count (501) stays under the threshold → no collapse.
     const grapheme = '👨🏿';
-    const longText = grapheme.repeat(2001);
-    render(<CollapsibleText text={longText} />);
+    const underThresholdByGrapheme = grapheme.repeat(501);
+    expect(underThresholdByGrapheme.length).toBeGreaterThan(2000);
+    render(<CollapsibleText text={underThresholdByGrapheme} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+
+    // 2001 graphemes (8016 UTF-16 code units) does exceed the grapheme
+    // threshold → collapses.
+    const overThresholdByGrapheme = grapheme.repeat(2001);
+    render(<CollapsibleText text={overThresholdByGrapheme} />);
     expect(
       screen.getByRole('button', { name: /read more/i }),
     ).toBeInTheDocument();
