@@ -1,5 +1,5 @@
 import { Button, Input } from 'antd';
-import { Plus, Trash2 } from 'lucide-react';
+import { Eye, EyeClosed, Plus, Trash2 } from 'lucide-react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
@@ -7,6 +7,9 @@ import {
   GQLOpenAiIntegrationApiCredential,
   GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
+
+const passwordIconRender = (visible: boolean) =>
+  visible ? <Eye size={14} /> : <EyeClosed size={14} />;
 
 export default function IntegrationConfigApiCredentialsSection(props: {
   name: string;
@@ -23,8 +26,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     return (
       <div className={`flex flex-col ${inputWidthClass}`}>
         <div className="mb-1">API Key</div>
-        <Input
+        <Input.Password
           value={apiCredential.apiKey}
+          iconRender={passwordIconRender}
           onChange={(event) =>
             setApiCredential({
               ...apiCredential,
@@ -42,8 +46,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     return (
       <div className={`flex flex-col ${inputWidthClass}`}>
         <div className="mb-1">API Key</div>
-        <Input
+        <Input.Password
           value={apiCredential.apiKey}
+          iconRender={passwordIconRender}
           onChange={(event) =>
             setApiCredential({
               ...apiCredential,
@@ -92,8 +97,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
       <div className="flex flex-col gap-4">
         <div className={`flex flex-col ${inputWidthClass}`}>
           <div className="mb-1">API Key</div>
-          <Input
+          <Input.Password
             value={apiCredential.apiKey}
+            iconRender={passwordIconRender}
             onChange={(event) =>
               setApiCredential({
                 ...apiCredential,

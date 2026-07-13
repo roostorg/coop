@@ -41,6 +41,11 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
     releaseDate: 'Ongoing',
     sections: [
       {
+        id: 'modelDetails',
+        title: 'Model Details',
+        fields: [{ label: 'Details', value: 'TBD' }],
+      },
+      {
         id: 'trainingData',
         title: 'Training Data Sources',
         fields: [{ label: 'Data Sources', value: 'TBD' }],
@@ -108,6 +113,11 @@ const OPENAI: IntegrationManifestEntry = {
     version: 'Omni-moderation-2024-09-26',
     releaseDate: 'September 2024',
     sections: [
+      {
+        id: 'modelDetails',
+        title: 'Model Details',
+        fields: [{ label: 'Details', value: 'TBD' }],
+      },
       {
         id: 'trainingData',
         title: 'Training Data Sources',
@@ -208,6 +218,11 @@ const ZENTROPI: IntegrationManifestEntry = {
     version: '1.x',
     releaseDate: 'July 20, 2025',
     sections: [
+      {
+        id: 'modelDetails',
+        title: 'Model Details',
+        fields: [{ label: 'Details', value: 'TBD' }],
+      },
       {
         id: 'trainingData',
         title: 'Training Data Sources',

@@ -1479,7 +1479,11 @@ function ManualReviewJobReviewImpl(props: {
       />
     ) : 'itemThreadContentItems' in payload &&
       payload.itemThreadContentItems &&
-      payload.itemThreadContentItems.length > 0 ? (
+      payload.itemThreadContentItems.length > 0 &&
+      !(
+        payload.__typename === 'ContentManualReviewJobPayload' &&
+        payload.item.type.name === 'ATproto-post'
+      ) ? (
       <ManualReviewJobOtherItemsComponent
         reportedMessages={
           payload.__typename === 'UserManualReviewJobPayload'

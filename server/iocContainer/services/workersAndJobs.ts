@@ -1,6 +1,9 @@
 import type Bottle from '@ethanresnick/bottlejs';
 
 import { makeDetectRulePassRateAnomaliesJob } from '../../services/ruleAnomalyDetectionService/index.js';
+import makeTapConnectorWorker, {
+  type TapConnectorWorker,
+} from '../../services/tapConnectorService/index.js';
 import { makeRefreshUserScoresCacheJob } from '../../services/userStatisticsService/index.js';
 import { type Job, type Worker } from '../../workers_jobs/index.js';
 import makeItemProcessingWorker from '../../workers_jobs/ItemProcessingWorker.js';
@@ -15,6 +18,7 @@ declare module '../index.js' {
     // NB: worker deps cannot be renamed
     // w/o breaking the kubernetes logic that starts them!
     ItemProcessingWorker: Worker;
+    TapConnectorWorker: TapConnectorWorker;
 
     // Jobs. Like workers, can't be renamed w/o breaking stuff.
     // The distinction between jobs and workers is that workers run continuously,
@@ -30,6 +34,7 @@ declare module '../index.js' {
 
 export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
   register(bottle, 'ItemProcessingWorker', makeItemProcessingWorker);
+  register(bottle, 'TapConnectorWorker', makeTapConnectorWorker);
   register(bottle, 'RunUserRulesJob', makeRunUserRulesJob);
   register(
     bottle,

@@ -33,6 +33,7 @@ import {
   useGQLDashboardOrgQuery,
   useGQLLogoutMutation,
 } from '../../graphql/generated';
+import TapSettings from '../settings/TapSettings';
 
 gql`
   query DashboardOrg {
@@ -453,6 +454,11 @@ export function DashboardRoutes() {
         lazy: lazyRoute(async () => import('../settings/NCMECSettings')),
       },
       {
+        path: 'settings/tap',
+        element: <TapSettings />,
+        handle: { isUsingLegacyCSS: false },
+      },
+      {
         path: 'settings/users',
         handle: { isUsingLegacyCSS: true },
         lazy: lazyRoute(async () => import('../settings/ManageUsers')),
@@ -652,6 +658,11 @@ export default function Dashboard() {
         {
           title: 'NCMEC Settings' as const,
           urlPath: 'ncmec',
+          requiredPermissions: [GQLUserPermission.ManageOrg],
+        },
+        {
+          title: 'AT Protocol' as const,
+          urlPath: 'tap',
           requiredPermissions: [GQLUserPermission.ManageOrg],
         },
       ]),

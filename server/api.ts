@@ -94,7 +94,12 @@ export default async function makeApiServer(deps: Dependencies) {
   const app = express();
   const { KyselyPg, KyselyPgPool } = deps;
 
-  app.use(cors());
+  app.use(
+    cors({
+      origin: process.env.CORS_ORIGIN || true,
+      credentials: true,
+    }),
+  );
 
   app.use(
     helmet(
@@ -134,9 +139,12 @@ export default async function makeApiServer(deps: Dependencies) {
       secret: process.env.SESSION_SECRET!,
       store: sessionStoreInstance,
       cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure:
+          process.env.COOKIE_SECURE === 'true' ||
+          process.env.NODE_ENV === 'production',
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: (process.env.COOKIE_SAME_SITE as 'lax' | 'none' | 'strict') || 'lax',
+        domain: process.env.COOKIE_DOMAIN || undefined,
         // 30 Days in milliseconds
         maxAge: 30 * 24 * 60 * 60 * 1000,
       },
@@ -455,6 +463,7 @@ function makeGqlServices(deps: Dependencies) {
       'UserHistoryQueries',
       'UserStrikeService',
       'SSOService',
+      'TapConnectorWorker',
     ]),
     // Calling sendEmail straight from a resolver is hella sketch, as the
     // resolvers shouldn’t have real business logic in them. Future sendEmail
