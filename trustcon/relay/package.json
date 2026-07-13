@@ -1,0 +1,16 @@
+{
+  "name": "trustcon-label-relay",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "publish-labeler": "node ../ozone/publish-labeler-record.mjs"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.13.35"
+  }
+}
