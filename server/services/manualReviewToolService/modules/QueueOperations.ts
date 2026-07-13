@@ -163,7 +163,7 @@ export default class QueueOperations {
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
     private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
-    redis: RedisConnection,
+    private readonly redis: RedisConnection,
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
@@ -1253,7 +1253,9 @@ export default class QueueOperations {
 
     let hasDecision = true;
     while (hasDecision) {
-      const job = await worker.getNextJob(lockToken);
+      // block: false so a drained queue returns null immediately instead of
+      // long-polling and hanging the reviewer's request.
+      const job = await worker.getNextJob(lockToken, { block: false });
 
       if (!job) {
         return null;
@@ -1304,47 +1306,104 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullWorker({ orgId, queueId });
 
-    let hasDecision = true;
-    while (hasDecision) {
-      const job = await worker.getNextJob(lockToken);
+    // Jobs this reviewer skipped within the skip window (the lock token is
+    // the reviewer's userId). The scan steps past them by keeping them locked
+    // until it finishes, then releases them in `finally` so they return to
+    // the shared pool — a skip is per-reviewer, not global.
+    const reviewerSkips = await this.getActiveReviewerSkips({
+      orgId,
+      queueId,
+      reviewerId: lockToken,
+    });
+    const heldAside: Job<StoredManualReviewJob>[] = [];
 
-      if (!job) {
-        return null;
+    try {
+      while (true) {
+        const job = await worker.getNextJob(lockToken, { block: false });
+
+        if (!job) {
+          return null;
+        }
+        if (reviewerSkips.has(job.data.id)) {
+          heldAside.push(job);
+          continue;
+        }
+
+        const convertedJob = await this.legacyJobToJob(job, orgId);
+
+        // There is a race condition due to the locking mechanism where a job can
+        // be decided on but not dequeued, so we check here if the first job in the
+        // queue has a decision, and if so use the lock token to immediately
+        // remove it, then grab a new job and return to the caller. it is very
+        // unlikely that there are multiple jobs like this at the front of the
+        // queue, but not impossible.
+        const decision = await this.pgQueryReadReplica
+          .selectFrom('manual_review_tool.manual_review_decisions')
+          .select(['decision_components']) // not really necessary to return anything
+          .where('created_at', '>=', new Date('2023-10-01'))
+          .where('org_id', '=', orgId)
+          .where('id', '=', jobIdToGuid(convertedJob.data.id))
+          .executeTakeFirst();
+
+        if (decision !== undefined) {
+          await this.removeJob({
+            orgId,
+            queueId,
+            lockToken,
+            jobId: convertedJob.data.id,
+          }).catch(() => {});
+          // then continue while loop
+        } else {
+          // this is the most likely case, where there is a job
+          // and it has never been decided before
+          return { job: convertedJob.data, lockToken };
+        }
       }
-
-      const convertedJob = await this.legacyJobToJob(job, orgId);
-
-      // There is a race condition due to the locking mechanism where a job can
-      // be decided on but not dequeued, so we check here if the first job in the
-      // queue has a decision, and if so use the lock token to immediately
-      // remove it, then grab a new job and return to the caller. it is very
-      // unlikely that there are multiple jobs like this at the front of the
-      // queue, but not impossible.
-      const decision = await this.pgQueryReadReplica
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .select(['decision_components']) // not really necessary to return anything
-        .where('created_at', '>=', new Date('2023-10-01'))
-        .where('org_id', '=', orgId)
-        .where('id', '=', jobIdToGuid(convertedJob.data.id))
-        .executeTakeFirst();
-
-      hasDecision = decision !== undefined;
-
-      if (hasDecision) {
-        await this.removeJob({
+    } finally {
+      // Release the held-aside jobs so other reviewers can pick them up
+      // immediately. This reviewer stays excluded via the skip set.
+      for (const held of heldAside) {
+        await this.releaseJobLock({
           orgId,
           queueId,
+          jobId: held.data.id,
           lockToken,
-          jobId: convertedJob.data.id,
         }).catch(() => {});
-        // then continue while loop
-      } else {
-        // this is the most likely case, where there is a job
-        // and it has never been decided before
-        return { job: convertedJob.data, lockToken };
       }
     }
-    return null;
+  }
+
+  static readonly REVIEWER_SKIP_TTL_MS = 30 * 60 * 1000;
+
+  #reviewerSkipKey(orgId: string, queueId: string, reviewerId: string): string {
+    return `{${orgId}}:mrt-reviewer-skips:${queueId}:${reviewerId}`;
+  }
+
+  async recordReviewerSkip(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+    jobId: string;
+  }): Promise<void> {
+    const { orgId, queueId, reviewerId, jobId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    const expiresAt = Date.now() + QueueOperations.REVIEWER_SKIP_TTL_MS;
+    await this.redis.zadd(key, expiresAt, jobId);
+    // Backstop: the whole set disappears once everything in it has expired.
+    await this.redis.pexpire(key, QueueOperations.REVIEWER_SKIP_TTL_MS);
+  }
+
+  async getActiveReviewerSkips(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+  }): Promise<Set<string>> {
+    const { orgId, queueId, reviewerId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    // Drop expired entries, then read what's still active.
+    await this.redis.zremrangebyscore(key, 0, Date.now());
+    const ids = await this.redis.zrange(key, 0, -1);
+    return new Set(ids);
   }
 
   /**
@@ -1942,9 +2001,13 @@ export async function getBullWorker<JobData = unknown>(
   await worker.startStalledCheckTimer();
 
   // Cast worker to a version of its original type, but fixed to correctly
-  // indicate that getNextJob() can return undefined
+  // indicate that getNextJob() can return undefined and accepts a `block`
+  // option (false = return immediately instead of long-polling).
   return worker as unknown as Omit<Worker<JobData>, 'getNextJob'> & {
-    getNextJob: (lockToken: string) => Promise<Job<JobData> | undefined>;
+    getNextJob: (
+      lockToken: string,
+      opts?: { block?: boolean },
+    ) => Promise<Job<JobData> | undefined>;
   };
 }
 

@@ -1667,6 +1667,22 @@ export class ManualReviewToolService {
     userId: string;
   }) {
     await this.skipOps.logSkip(opts);
+    // Hide the job from THIS reviewer for the skip window; the dequeue path
+    // reads this back and steps past it.
+    await this.queueOps.recordReviewerSkip({
+      orgId: opts.orgId,
+      queueId: opts.queueId,
+      reviewerId: opts.userId,
+      jobId: opts.jobId,
+    });
+    // Release the reviewer's lock (the lock token is the reviewer's userId)
+    // so the job returns to the shared pool immediately for everyone else.
+    await this.releaseJobLock({
+      orgId: opts.orgId,
+      queueId: opts.queueId,
+      jobId: opts.jobId,
+      lockToken: opts.userId,
+    });
   }
 
   async releaseJobLock(opts: {

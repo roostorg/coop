@@ -39,7 +39,6 @@ import {
   useGQLDequeueManualReviewJobMutation,
   useGQLLogSkipMutation,
   useGQLManualReviewJobInfoQuery,
-  useGQLReleaseJobLockMutation,
   useGQLSubmitManualReviewDecisionMutation,
   type GQLActionParameter,
   type GQLThreadManualReviewJobPayload,
@@ -221,10 +220,6 @@ gql`
   mutation LogSkip($input: LogSkipInput!) {
     logSkip(input: $input)
   }
-
-  mutation ReleaseJobLock($input: ReleaseJobLockInput!) {
-    releaseJobLock(input: $input)
-  }
 `;
 
 enum BuiltInActionType {
@@ -342,17 +337,18 @@ function ManualReviewJobReviewImpl(props: {
 
   const actionStore = useContext(ManualReviewActionStore);
 
-  const setSelectedRelatedActions = (
-    actions: ManualReviewJobEnqueuedActionData[],
-  ) => {
-    actionStore?.setActions(
-      actions.map((it) => ({
-        itemId: it.target.identifier.itemId,
-        action: it.action,
-      })),
-    );
-    selectedRelatedActionsSetter(actions);
-  };
+  const setSelectedRelatedActions = useCallback(
+    (actions: ManualReviewJobEnqueuedActionData[]) => {
+      actionStore?.setActions(
+        actions.map((it) => ({
+          itemId: it.target.identifier.itemId,
+          action: it.action,
+        })),
+      );
+      selectedRelatedActionsSetter(actions);
+    },
+    [actionStore],
+  );
 
   const { queueId, jobId, lockToken } = useParams<{
     queueId?: string;
@@ -364,12 +360,12 @@ function ManualReviewJobReviewImpl(props: {
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
     setSelectedPrimaryPolicies([]);
     setSelectedRelatedActions([]);
     setDecisionReason(undefined);
-  };
+  }, [setSelectedRelatedActions]);
 
   const {
     data,
@@ -389,9 +385,12 @@ function ManualReviewJobReviewImpl(props: {
     onCompleted: (data) => {
       // Here, we update the URL to include the queue ID, job ID, and lock
       // token. That way, users are able to send around the URL to others.
-      // In case we can't find the required job, we can just fail silently.
       const { dequeueManualReviewJob } = data;
       if (dequeueManualReviewJob == null) {
+        // No reviewable job: the queue is drained, or everything left is
+        // skipped by this reviewer. Send them back to the queue list instead
+        // of leaving them on a perpetual loading spinner.
+        navigate('/dashboard/manual_review/queues', { replace: true });
         return;
       }
 
@@ -739,10 +738,6 @@ function ManualReviewJobReviewImpl(props: {
     fetchPolicy: 'no-cache',
   });
 
-  const [releaseJobLock] = useGQLReleaseJobLockMutation({
-    fetchPolicy: 'no-cache',
-  });
-
   const advanceToNextJobAfterInvalidation = useCallback(async () => {
     setIsAdvancingToNextJob(true);
     try {
@@ -754,8 +749,7 @@ function ManualReviewJobReviewImpl(props: {
     } finally {
       setIsAdvancingToNextJob(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getNextJob, navigate]);
+  }, [getNextJob, navigate, resetState]);
 
   // Runs after the invalidate mutation resolves. Refreshes the job view,
   // and if invalidation deleted the current job, advances to the next one.
@@ -783,20 +777,21 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
-    // First, release the lock on the current job and log the skip
+    // Skipping is one server-side operation: it logs the skip, hides the job
+    // from this reviewer for the skip window, and releases the lock so the
+    // job returns to the shared pool for everyone else.
     if (queueId && job?.id && lockToken) {
-      await Promise.all([
-        logSkip(),
-        releaseJobLock({
-          variables: {
-            input: {
-              queueId,
-              jobId: job.id,
-              lockToken,
-            },
-          },
-        }),
-      ]);
+      const result = await logSkip();
+      if (result.data?.logSkip !== true) {
+        // Nothing was released or hidden; stay on the current job so the
+        // reviewer can retry (or decide) instead of advancing past it.
+        setModalInfo({
+          visible: true,
+          modalBody: 'Failed to skip this job. Please try again.',
+          footer: [{ title: 'Ok', type: 'primary', onClick: hideModal }],
+        });
+        return;
+      }
     }
 
     // Reset state and try to get the next job
@@ -809,7 +804,11 @@ function ManualReviewJobReviewImpl(props: {
     }
   };
 
-  if (loading || jobDataLoading || (!closedJob && !lockToken)) {
+  // `loading && !data`: the job-info query reloads in place (e.g. when its
+  // jobIds variable changes while advancing, or on refetch after an
+  // invalidation). Once we have data, keep the current view up during those
+  // reloads instead of flashing the full-screen spinner.
+  if ((loading && !data) || jobDataLoading || (!closedJob && !lockToken)) {
     return (
       <div className="flex items-center justify-center w-full h-screen">
         <ComponentLoading />

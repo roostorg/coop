@@ -2,6 +2,12 @@
 
 **Full Changelog**: https://github.com/roostorg/coop/compare/1.0.2...main
 
+## Review Console
+
+- Added per-queue job sort modes for manual review: FIFO (default, unchanged), most-reported-first, and custom weighted — ordering is computed at enqueue via BullMQ job priority, so the locked dequeue path is unchanged (#718)
+- Added org-configurable job priority weights (Settings → Job Priorities) for weighted queues; changing weights or a queue's sort mode re-sorts already-queued jobs in a background sweep (#892)
+- Skip is now per-reviewer: a skipped job is hidden from that reviewer for 30 minutes while returning to the shared pool immediately; entering a drained or fully-skipped queue redirects to the queue list (#893)
+
 # Coop 1.0.2
 
 This release addresses reported security advisories, improves NCMEC CyberTipline reporting, and includes front-end quality-of-life improvements.

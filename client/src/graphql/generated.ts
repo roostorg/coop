@@ -15409,15 +15409,6 @@ export type GQLLogSkipMutation = {
   readonly logSkip: boolean;
 };
 
-export type GQLReleaseJobLockMutationVariables = Exact<{
-  input: GQLReleaseJobLockInput;
-}>;
-
-export type GQLReleaseJobLockMutation = {
-  readonly __typename: 'Mutation';
-  readonly releaseJobLock: boolean;
-};
-
 export type GQLJobFieldsFragment = {
   readonly __typename: 'ManualReviewJob';
   readonly id: string;
@@ -35009,54 +35000,6 @@ export type GQLLogSkipMutationOptions = Apollo.BaseMutationOptions<
   GQLLogSkipMutation,
   GQLLogSkipMutationVariables
 >;
-export const GQLReleaseJobLockDocument = gql`
-  mutation ReleaseJobLock($input: ReleaseJobLockInput!) {
-    releaseJobLock(input: $input)
-  }
-`;
-export type GQLReleaseJobLockMutationFn = Apollo.MutationFunction<
-  GQLReleaseJobLockMutation,
-  GQLReleaseJobLockMutationVariables
->;
-
-/**
- * __useGQLReleaseJobLockMutation__
- *
- * To run a mutation, you first call `useGQLReleaseJobLockMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLReleaseJobLockMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlReleaseJobLockMutation, { data, loading, error }] = useGQLReleaseJobLockMutation({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLReleaseJobLockMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLReleaseJobLockMutation,
-    GQLReleaseJobLockMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLReleaseJobLockMutation,
-    GQLReleaseJobLockMutationVariables
-  >(GQLReleaseJobLockDocument, options);
-}
-export type GQLReleaseJobLockMutationHookResult = ReturnType<
-  typeof useGQLReleaseJobLockMutation
->;
-export type GQLReleaseJobLockMutationResult =
-  Apollo.MutationResult<GQLReleaseJobLockMutation>;
-export type GQLReleaseJobLockMutationOptions = Apollo.BaseMutationOptions<
-  GQLReleaseJobLockMutation,
-  GQLReleaseJobLockMutationVariables
->;
 export const GQLGetRelatedItemsDocument = gql`
   query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
     latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
@@ -45648,7 +45591,6 @@ export const namedOperations = {
     DequeueManualReviewJob: 'DequeueManualReviewJob',
     SubmitManualReviewDecision: 'SubmitManualReviewDecision',
     LogSkip: 'LogSkip',
-    ReleaseJobLock: 'ReleaseJobLock',
     AddJobComment: 'AddJobComment',
     DeleteJobComment: 'DeleteJobComment',
     DeleteRoutingRule: 'DeleteRoutingRule',
