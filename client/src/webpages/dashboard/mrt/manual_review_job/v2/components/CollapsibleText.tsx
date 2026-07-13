@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 
 type CollapsibleTextProps = {
   text: string;
@@ -6,14 +6,22 @@ type CollapsibleTextProps = {
   maxGraphemes?: number;
 };
 
-/** Count graphemes using Intl.Segmenter (handles all scripts correctly). */
-function countGraphemes(text: string): number {
+/**
+ * Count graphemes using Intl.Segmenter (handles all scripts correctly),
+ * stopping early once the count is known to exceed `threshold`. This avoids
+ * segmenting an entire pathological paste (e.g. a 1MB string) when we only
+ * need to know whether it crosses the collapse threshold.
+ */
+function exceedsGraphemeThreshold(text: string, threshold: number): boolean {
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   let count = 0;
   for (const _ of segmenter.segment(text)) {
     count += 1;
+    if (count > threshold) {
+      return true;
+    }
   }
-  return count;
+  return false;
 }
 
 /**
@@ -32,10 +40,18 @@ function CollapsibleTextImpl({
   maxGraphemes = 2000,
 }: CollapsibleTextProps) {
   const isCollapsible = useMemo(
-    () => countGraphemes(text) > maxGraphemes,
+    () => exceedsGraphemeThreshold(text, maxGraphemes),
     [text, maxGraphemes],
   );
   const [expanded, setExpanded] = useState(false);
+
+  // When the text prop changes (e.g. navigating between review jobs that reuse
+  // the same field name → React reuses this component instance), reset to the
+  // collapsed state so newly loaded long content doesn't inherit the previous
+  // job's expanded view.
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
 
   if (!isCollapsible) {
     return (

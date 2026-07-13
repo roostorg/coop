@@ -65,16 +65,39 @@ describe('CollapsibleText', () => {
 
   it('respects custom maxGraphemes and maxLines thresholds', () => {
     // 11 chars, under default maxGraphemes (2000) but over custom maxGraphemes (10).
-    render(
+    const { container } = render(
       <CollapsibleText text="12345678901" maxGraphemes={10} maxLines={2} />,
     );
     expect(
       screen.getByRole('button', { name: /read more/i }),
     ).toBeInTheDocument();
+    // The maxLines prop drives the visual clamp: assert it lands on the clamped
+    // div's WebkitLineClamp style (jsdom has no layout, so this is the verifiable
+    // surface for the line-count constraint).
+    const clampedDiv = container.querySelector(
+      'div[style*="-webkit-box"]',
+    ) as HTMLElement;
+    expect(clampedDiv.style.webkitLineClamp).toBe('2');
   });
 
   it('does not collapse text at exactly maxGraphemes', () => {
     render(<CollapsibleText text={'a'.repeat(2000)} />);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('resets to collapsed when the text prop changes', () => {
+    // Simulates navigating between review jobs that reuse the same field name
+    // (React reuses the CollapsibleText instance). Expanding one long value,
+    //then rendering a different long value, must restore the collapsed state.
+    const { rerender } = render(<CollapsibleText text={'a'.repeat(2001)} />);
+    fireEvent.click(screen.getByRole('button', { name: /read more/i }));
+    expect(
+      screen.getByRole('button', { name: /read less/i }),
+    ).toBeInTheDocument();
+
+    rerender(<CollapsibleText text={'b'.repeat(2001)} />);
+    expect(
+      screen.getByRole('button', { name: /read more/i }),
+    ).toBeInTheDocument();
   });
 });
