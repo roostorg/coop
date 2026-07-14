@@ -1,0 +1,5 @@
+# Secrets for the workshop deploy — never commit
+.fly.env
+*.fly.env
+.env
+*/.env
