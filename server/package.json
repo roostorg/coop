@@ -133,7 +133,7 @@
     "supertest": "^6.2.2",
     "ts-node": "^10.9.1",
     "tsc-watch": "^4.6.0",
-    "typescript": "5.5.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.57.2",
     "vite": "^7.3.6",
     "vitest": "^5.0.1"
