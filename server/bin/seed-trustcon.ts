@@ -178,6 +178,12 @@ const KEYWORD_BANK_NAME = 'CCF Christchurch keyword dataset (placeholder)';
 const HASH_BANK_NAME = 'CCF known-content stand-in (benign)';
 const STANDARD_QUEUE_NAME = 'CCF TVEC standard review';
 const PRIORITY_QUEUE_NAME = 'CCF TVEC priority review';
+// General (non-TVEC) example queues so the demo review console is not
+// TVEC-only. Incoming is the default triage queue for the firehose.
+const INCOMING_QUEUE_NAME = 'Incoming reports';
+const SPAM_QUEUE_NAME = 'Spam';
+const HARASSMENT_QUEUE_NAME = 'Harassment and abuse';
+const ADULT_QUEUE_NAME = 'Adult content';
 const BLEEP_ACTION_NAME = 'Emit Bleep label (CCF demo)';
 const BLOOP_ACTION_NAME = 'Emit Bloop label (CCF demo)';
 
@@ -546,7 +552,10 @@ async function seedTrustcon() {
         { orgId },
       );
 
-    async function ensureQueue(name: string): Promise<string> {
+    async function ensureQueue(
+      name: string,
+      description: string,
+    ): Promise<string> {
       const existing = findByName(existingQueues, name);
       if (existing) {
         console.log(`Queue exists, skipping: ${name}`);
@@ -556,7 +565,7 @@ async function seedTrustcon() {
         const queue =
           await container.ManualReviewToolService.createManualReviewQueue({
             name,
-            description: `${POLICY_SOURCE_NOTE}. CCF TVEC review queue.`,
+            description,
             // Assign the admin so the queue has a reviewer (an empty list also
             // produces an invalid `id IN ()` query in assertUsersInOrg).
             userIds: [adminUserId],
@@ -583,8 +592,32 @@ async function seedTrustcon() {
       }
     }
 
-    const standardQueueId = await ensureQueue(STANDARD_QUEUE_NAME);
-    const priorityQueueId = await ensureQueue(PRIORITY_QUEUE_NAME);
+    const CCF_QUEUE_DESC = `${POLICY_SOURCE_NOTE}. CCF TVEC review queue.`;
+    const standardQueueId = await ensureQueue(
+      STANDARD_QUEUE_NAME,
+      CCF_QUEUE_DESC,
+    );
+    const priorityQueueId = await ensureQueue(
+      PRIORITY_QUEUE_NAME,
+      CCF_QUEUE_DESC,
+    );
+
+    // General (non-TVEC) example queues. Incoming is the default triage queue
+    // the firehose routes to; the rest give the demo a realistic multi-queue
+    // console reviewers can move items into.
+    const incomingQueueId = await ensureQueue(
+      INCOMING_QUEUE_NAME,
+      'Example triage queue for incoming content.',
+    );
+    await ensureQueue(SPAM_QUEUE_NAME, 'Example review queue for spam.');
+    await ensureQueue(
+      HARASSMENT_QUEUE_NAME,
+      'Example review queue for harassment and abuse.',
+    );
+    await ensureQueue(
+      ADULT_QUEUE_NAME,
+      'Example review queue for adult content.',
+    );
 
     // -----------------------------------------------------------------------
     // Step 5 + 7: LIVE content rules. Each rule enqueues to MRT (ENQUEUE_TO_MRT)
@@ -733,13 +766,12 @@ async function seedTrustcon() {
     // -----------------------------------------------------------------------
     const existingRoutingRules =
       await container.ManualReviewToolService.getRoutingRules({ orgId });
-    const defaultRoutingRuleName = 'CCF TVEC default routing (standard)';
+    const defaultRoutingRuleName = 'Default incoming routing';
     if (findByName([...existingRoutingRules], defaultRoutingRuleName)) {
       console.log(`Routing rule exists, skipping: ${defaultRoutingRuleName}`);
     } else {
-      // Trivially-satisfiable catch-all: match posts whose text field is not
-      // absent is unreliable, so we lean on the standard queue also being the
-      // org default queue. This routing rule makes the intent explicit.
+      // Catch-all: route the incoming firehose to the general triage queue.
+      // TVEC-matched content is moved to the CCF queues on review.
       const routingConditionSet: ConditionSet = {
         conjunction: 'AND',
         conditions: [
@@ -758,7 +790,7 @@ async function seedTrustcon() {
             itemTypeIds: [postTypeId as NonEmptyString],
             creatorId: adminUserId,
             conditionSet: routingConditionSet,
-            destinationQueueId: standardQueueId,
+            destinationQueueId: incomingQueueId,
           });
         console.log(
           `Created routing rule: ${defaultRoutingRuleName} (${routingRule.id})`,
