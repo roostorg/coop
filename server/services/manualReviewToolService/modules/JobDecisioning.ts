@@ -86,7 +86,8 @@ export const AUTOMATED_DECISION_REVIEWER_ID = '';
 export function parseItemCreatedAt(
   value: string | number | Date | null | undefined,
 ): Date | null {
-  if (!value) {
+  // Guard only null/undefined/empty-string; a numeric 0 is a valid epoch.
+  if (value == null || value === '') {
     return null;
   }
   const parsed = new Date(value);
