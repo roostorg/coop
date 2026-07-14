@@ -13,6 +13,23 @@ runs in your browser through GitHub Codespaces.
 
 They run as two separate Codespaces. You can work either one, in any order.
 
+## Getting started: open your Codespace
+
+Nothing to install. Each tool runs in a GitHub Codespace in your browser.
+
+1. Open the Codespace link your facilitator shares (or, on the repo page,
+   **Code -> Codespaces -> create a codespace on the workshop branch**).
+2. Wait for it to finish setting up. The first open runs a one-time setup that
+   takes a few minutes: it starts the services, seeds the demo, and launches the
+   app. You can watch progress in the terminal; it is ready when it prints
+   **"Setup complete."**
+3. When a "port forwarded" notice appears, open the app in your browser:
+   - **Coop:** port **3000**. Sign in as `admin@trustcon.local` with the
+     password `trustcon`.
+   - **Osprey:** port **5002** (the UI).
+4. If the page is not ready yet, wait a minute (the server compiles on first
+   start) and refresh. You can reopen any forwarded port from the **Ports** tab.
+
 ## Your two case studies
 
 Both are from the Christchurch Call Foundation's CTVE 101 Toolkit, and they act
