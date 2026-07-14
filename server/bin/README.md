@@ -238,3 +238,65 @@ npm run recover-mrt-queue -- \
 - Report history is best-effort: only inbound `submitReport` rows that made
   it into `REPORTING_SERVICE.REPORTS` are restored. Rule-driven enqueues
   (`ENQUEUE_TO_MRT`) never had a report history to begin with.
+
+---
+
+## seed-trustcon.ts
+
+Seeds a TrustCon TVEC demo into an existing ingestion org. Everything it
+creates (policies, banks, rules, queues, actions) is attributed to the
+Christchurch Call Foundation (CCF), which authored the template TVEC policy;
+Coop only provides the tooling.
+
+### What gets created
+
+1. Resolves the `ATproto-post` / `ATproto-account` item types (must already
+   exist from the staging seed migration; the script errors out if
+   `ATproto-post` is missing).
+2. One Coop policy per CCF TVEC "remove" category (TVEC1..TVEC8), named
+   `CCF TVEC: <code> <title>`, with the real CCF policy text as `policyText`.
+3. A placeholder keyword bank (`CCF Christchurch keyword dataset
+(placeholder)`) with benign stand-in terms. Swap in the real CCF lexicon by
+   editing the `KEYWORD_TERMS` array at the top of the script.
+4. An empty benign HMA hash bank (`CCF known-content stand-in (benign)`).
+   Populate it with harmless images later via the HMA UI.
+5. A Zentropi CoPE-B classifier rule (assumes the org's Zentropi credential is
+   already configured; no API key is set).
+6. Two manual review queues: `CCF TVEC standard review` and
+   `CCF TVEC priority review`.
+7. Three LIVE content rules (hash-match, keyword-match, classifier), each
+   linked to a relevant CCF policy and enqueuing to MRT.
+8. Two `CUSTOM_ACTION` webhook actions (`Emit Bleep label (CCF demo)` /
+   `Emit Bloop label (CCF demo)`) that POST to `<relay-url>/label`.
+9. A default routing rule sending `ATproto-post` items to the standard queue.
+
+The script is idempotent by name: re-running it skips entities that already
+exist.
+
+### Usage
+
+From the `server` directory:
+
+```bash
+npm run seed-trustcon -- \
+  --org-id "<orgId>" \
+  --relay-url "http://localhost:8090"
+```
+
+### Parameters
+
+- `--org-id` (required): ingestion org to seed into.
+- `--relay-url` (required): base URL of the Ozone label relay; the webhook
+  actions POST to `<relay-url>/label`.
+- `--user-id` (optional): admin user id to attribute config to. Defaults to the
+  first `ADMIN` user in the org.
+- `--zentropi-labeler-version-id` (optional): Zentropi CoPE-B labeler version id
+  to wire into the classifier rule's subcategory. Without it the classifier rule
+  is created but has no published labeler to evaluate against.
+
+### Notes
+
+- Requires the staging DB seed to have run first (creates the ATproto item
+  types).
+- The keyword bank ships with obvious placeholder terms; replace them with the
+  real CCF dataset before using the demo for anything real.
