@@ -1,0 +1,9 @@
+{
+  "name": "trustcon-ozone-scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@atproto/api": "^0.13.35"
+  }
+}

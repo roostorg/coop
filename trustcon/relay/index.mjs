@@ -45,9 +45,7 @@ async function resolveCid(atUri) {
 }
 
 let agentPromise;
-async function getOzoneAgent() {
-  // VERIFY-AT-DEPLOY: exact login/proxy wiring depends on your Ozone deployment.
-  // Standard pattern: log in at the PDS, then proxy tools.ozone.* to the labeler service.
+async function getPdsAgent() {
   if (!agentPromise) {
     agentPromise = (async () => {
       const agent = new AtpAgent({ service: ADMIN_PDS_URL });
@@ -55,23 +53,35 @@ async function getOzoneAgent() {
         identifier: ADMIN_IDENTIFIER,
         password: ADMIN_APP_PASSWORD,
       });
-      return agent.withProxy('atproto_labeler', OZONE_SERVER_DID);
+      return agent;
     })();
   }
   return agentPromise;
 }
 
+const ozoneAgent = new AtpAgent({ service: OZONE_URL });
+
+// Call Ozone directly with a short-lived service-auth token minted per emit.
+// Works against both a local Ozone and a public one, without depending on the
+// labeler service being registered in the account's DID doc.
 async function emitLabel({ uri, cid, val }) {
-  const agent = await getOzoneAgent();
-  await agent.tools.ozone.moderation.emitEvent({
-    event: {
-      $type: 'tools.ozone.moderation.defs#modEventLabel',
-      createLabelVals: [val],
-      negateLabelVals: [],
-    },
-    subject: { $type: 'com.atproto.repo.strongRef', uri, cid },
-    createdBy: ADMIN_DID,
+  const pds = await getPdsAgent();
+  const { data: auth } = await pds.com.atproto.server.getServiceAuth({
+    aud: OZONE_SERVER_DID,
+    lxm: 'tools.ozone.moderation.emitEvent',
   });
+  await ozoneAgent.tools.ozone.moderation.emitEvent(
+    {
+      event: {
+        $type: 'tools.ozone.moderation.defs#modEventLabel',
+        createLabelVals: [val],
+        negateLabelVals: [],
+      },
+      subject: { $type: 'com.atproto.repo.strongRef', uri, cid },
+      createdBy: ADMIN_DID,
+    },
+    { headers: { authorization: `Bearer ${auth.token}` }, encoding: 'application/json' },
+  );
 }
 
 function renderPage() {

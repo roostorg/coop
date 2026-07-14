@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node index.mjs",
+    "start": "node --env-file=.env index.mjs",
     "publish-labeler": "node ../ozone/publish-labeler-record.mjs"
   },
   "dependencies": {
