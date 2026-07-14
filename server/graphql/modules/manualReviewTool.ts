@@ -214,6 +214,7 @@ const typeDefs = /* GraphQL */ `
     item: UserItem!
     userScore: Int
     allMediaItems: [NcmecContentItem!]!
+    reportedMessages: [ItemIdentifier!]!
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo
   }
 
@@ -313,6 +314,10 @@ const typeDefs = /* GraphQL */ `
 
   type SubmitDecisionSuccessResponse {
     success: Boolean!
+    """
+    Non-blocking, reviewer-facing notices about the decision (e.g. an NCMEC escalation that was skipped because the user was already reported). Surfaced as toasts.
+    """
+    warnings: [String!]!
   }
 
   type JobHasAlreadyBeenSubmittedError implements Error {
@@ -1622,6 +1627,12 @@ const ThreadAppealManualReviewJobPayload: GQLThreadAppealManualReviewJobPayloadR
   };
 
 const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
+  reportedMessages(it) {
+    return (it.reportedMessages ?? []).map((id) => ({
+      id: id.id,
+      typeId: id.typeId,
+    }));
+  },
   async item(it, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -2318,7 +2329,7 @@ const Mutation: GQLMutationResolvers = {
         decisionReason: decisionReason ?? undefined,
       });
       return gqlSuccessResult(
-        { success: true },
+        { success: true, warnings: [] },
         'SubmitDecisionSuccessResponse',
       );
     } catch (e: unknown) {

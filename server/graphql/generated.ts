@@ -3163,6 +3163,7 @@ export type GQLNcmecManualReviewJobPayload = {
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
   readonly enqueueSourceInfo?: Maybe<GQLManualReviewJobEnqueueSourceInfo>;
   readonly item: GQLUserItem;
+  readonly reportedMessages: ReadonlyArray<GQLItemIdentifier>;
   readonly userScore?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -4640,6 +4641,8 @@ export type GQLSubmitDecisionResponse =
 export type GQLSubmitDecisionSuccessResponse = {
   readonly __typename?: 'SubmitDecisionSuccessResponse';
   readonly success: Scalars['Boolean']['output'];
+  /** Non-blocking, reviewer-facing notices about the decision (e.g. an NCMEC escalation that was skipped because the user was already reported). Surfaced as toasts. */
+  readonly warnings: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLSubmitNcmecReportDecisionComponent =
@@ -11717,6 +11720,11 @@ export type GQLNcmecManualReviewJobPayloadResolvers<
     ContextType
   >;
   item?: Resolver<GQLResolversTypes['UserItem'], ParentType, ContextType>;
+  reportedMessages?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ItemIdentifier']>,
+    ParentType,
+    ContextType
+  >;
   userScore?: Resolver<
     Maybe<GQLResolversTypes['Int']>,
     ParentType,
@@ -14065,6 +14073,11 @@ export type GQLSubmitDecisionSuccessResponseResolvers<
     GQLResolversParentTypes['SubmitDecisionSuccessResponse'],
 > = {
   success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  warnings?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 

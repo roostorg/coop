@@ -207,6 +207,9 @@ export type NcmecManualReviewJobPayload = {
   kind: 'NCMEC';
   item: ItemSubmissionWithTypeIdentifier; // the user being reviewed
   allMediaItems: NcmecContentItemSubmission[]; // all the user's media from the last 30 days
+  // Content item(s) that triggered the report (when the reported item was
+  // content, not the user). Empty for account-level reports.
+  reportedMessages?: ItemIdentifier[];
   userScore?: UserScore;
   enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
   reportHistory: ReportHistory;
