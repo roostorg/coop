@@ -91,10 +91,13 @@ Coop reviews "items" (a post, a user, a thread). To bring your own content in:
 1. **Define an item type** that matches your data's shape (its fields), in the UI
    or via the API, so Coop knows what your content looks like.
 2. **Send your data in** with a POST to Coop's ingestion API, authenticated with
-   your org's API key (the `x-api-key` header):
-   - `POST /api/v1/items` submits items; they persist, run through your rules,
-     and land in a review queue.
+   your org's API key (the `X-API-KEY` header):
+   - `POST /api/v1/items/async/` submits items in a batch; they run through your
+     rules and land in a review queue (returns 202; also does HMA image hashing
+     if `data.images` has URLs).
+   - `POST /api/v1/content/` is the legacy synchronous single-item version.
    - `POST /api/v1/report` files a report on an item (the reactive path).
+     See `docs/api/` for the full request shapes and field types.
 3. Optionally, **connect a model you already run** as a custom signal, so Coop
    scores your items with it (see "Add your own logic").
 
