@@ -27,10 +27,10 @@
  *   --zentropi-labeler-version-id <id>    Zentropi CoPE-B labeler version to wire
  *                                         into the classifier rule's subcategory.
  *
- * Prerequisite: the `ATproto-post` and `ATproto-account` item types must already
- * exist (created by the staging DB seed migration
- * `add_atproto_item_types.seed.staging.sql`). The script exits with a clear
- * error if `ATproto-post` is missing.
+ * The script creates the `ATproto-account` and `ATproto-post` item types in the
+ * target org if they are missing (matching the staging DB seed migration
+ * `add_atproto_item_types.seed.staging.sql`), so it does not depend on that
+ * migration having run. Existing item types are resolved and left untouched.
  */
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
@@ -181,6 +181,65 @@ const PRIORITY_QUEUE_NAME = 'CCF TVEC priority review';
 const BLEEP_ACTION_NAME = 'Emit Bleep label (CCF demo)';
 const BLOOP_ACTION_NAME = 'Emit Bloop label (CCF demo)';
 
+// ---------------------------------------------------------------------------
+// AT Protocol item type schemas. Mirror
+// db/src/scripts/api-server-pg/2026.03.23T00.00.00.add_atproto_item_types.seed.staging.sql
+// so the script can create the item types itself when the staging seed has
+// not run. RELATED_ITEM fields are plain scalar fields (the Field type carries
+// no target item type), so they match the SQL and need no cross-references.
+// ---------------------------------------------------------------------------
+const ATPROTO_ACCOUNT_ITEM_TYPE_NAME = 'ATproto-account';
+const ATPROTO_POST_ITEM_TYPE_NAME = 'ATproto-post';
+
+const ATPROTO_ACCOUNT_SCHEMA = [
+  { name: 'did', type: 'STRING', required: true, container: null },
+  { name: 'handle', type: 'STRING', required: true, container: null },
+  { name: 'displayName', type: 'STRING', required: false, container: null },
+  { name: 'description', type: 'STRING', required: false, container: null },
+  { name: 'avatar', type: 'IMAGE', required: false, container: null },
+  { name: 'banner', type: 'IMAGE', required: false, container: null },
+  { name: 'createdAt', type: 'DATETIME', required: false, container: null },
+  { name: 'isActive', type: 'BOOLEAN', required: true, container: null },
+] as const;
+
+const ATPROTO_POST_SCHEMA = [
+  { name: 'text', type: 'STRING', required: true, container: null },
+  { name: 'authorDid', type: 'RELATED_ITEM', required: true, container: null },
+  { name: 'authorHandle', type: 'STRING', required: false, container: null },
+  { name: 'rkey', type: 'STRING', required: true, container: null },
+  { name: 'cid', type: 'STRING', required: false, container: null },
+  { name: 'createdAt', type: 'DATETIME', required: true, container: null },
+  { name: 'atUri', type: 'STRING', required: true, container: null },
+  {
+    name: 'images',
+    type: 'ARRAY',
+    required: false,
+    container: {
+      containerType: 'ARRAY',
+      keyScalarType: null,
+      valueScalarType: 'IMAGE',
+    },
+  },
+  {
+    name: 'replyParent',
+    type: 'RELATED_ITEM',
+    required: false,
+    container: null,
+  },
+  { name: 'replyRoot', type: 'RELATED_ITEM', required: false, container: null },
+  {
+    name: 'langs',
+    type: 'ARRAY',
+    required: false,
+    container: {
+      containerType: 'ARRAY',
+      keyScalarType: null,
+      valueScalarType: 'STRING',
+    },
+  },
+  { name: 'isLive', type: 'BOOLEAN', required: true, container: null },
+] as const;
+
 const argv = await yargs(hideBin(process.argv))
   .options({
     'org-id': {
@@ -237,27 +296,57 @@ async function seedTrustcon() {
 
   try {
     // -----------------------------------------------------------------------
-    // Step 1: Resolve item types (must already exist via the seed migration).
+    // Step 1: Ensure the AT Protocol item types exist, creating them if the
+    // staging DB seed migration has not run. ATproto-account (USER) is created
+    // before ATproto-post (CONTENT). Idempotent: existing item types (as in the
+    // staging orgs) are resolved and left untouched.
     // -----------------------------------------------------------------------
     const itemTypes = await container.ModerationConfigService.getItemTypes({
       orgId,
     });
-    const postType = findByName(itemTypes, 'ATproto-post');
-    const accountType = findByName(itemTypes, 'ATproto-account');
-    if (!postType) {
-      console.error(
-        `\nItem type "ATproto-post" not found in org "${orgId}".\n` +
-          `Run the staging DB seed first (adds ATproto-post / ATproto-account):\n` +
-          `  npm run db:update -- --env staging --db api-server-pg\n`,
+
+    let accountType = findByName(itemTypes, ATPROTO_ACCOUNT_ITEM_TYPE_NAME);
+    if (accountType) {
+      console.log(`Item type ATproto-account exists: ${accountType.id}`);
+    } else {
+      accountType = await container.ModerationConfigService.createUserType(
+        orgId,
+        {
+          name: ATPROTO_ACCOUNT_ITEM_TYPE_NAME,
+          description: 'AT Protocol account from the Bluesky network',
+          schema: ATPROTO_ACCOUNT_SCHEMA,
+          schemaFieldRoles: {
+            displayName: 'handle',
+            createdAt: 'createdAt',
+            profileIcon: 'avatar',
+            backgroundImage: 'banner',
+          },
+        },
       );
-      await container.closeSharedResourcesForShutdown();
-      process.exit(1);
+      console.log(`Created item type ATproto-account: ${accountType.id}`);
+    }
+
+    let postType = findByName(itemTypes, ATPROTO_POST_ITEM_TYPE_NAME);
+    if (postType) {
+      console.log(`Item type ATproto-post exists: ${postType.id}`);
+    } else {
+      postType = await container.ModerationConfigService.createContentType(
+        orgId,
+        {
+          name: ATPROTO_POST_ITEM_TYPE_NAME,
+          description: 'AT Protocol post from the Bluesky firehose',
+          schema: ATPROTO_POST_SCHEMA,
+          schemaFieldRoles: {
+            creatorId: 'authorDid',
+            threadId: 'replyRoot',
+            parentId: 'replyParent',
+            createdAt: 'createdAt',
+          },
+        },
+      );
+      console.log(`Created item type ATproto-post: ${postType.id}`);
     }
     const postTypeId = postType.id;
-    console.log(`Item type ATproto-post: ${postTypeId}`);
-    if (accountType) {
-      console.log(`Item type ATproto-account: ${accountType.id}`);
-    }
 
     // -----------------------------------------------------------------------
     // Resolve an admin user id and build an Invoker with full ADMIN perms.
