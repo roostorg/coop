@@ -185,6 +185,25 @@ const DEFAULT_QUEUE_NAME = 'Default Queue';
 const SPAM_QUEUE_NAME = 'Spam';
 const HARASSMENT_QUEUE_NAME = 'Harassment and abuse';
 const ADULT_QUEUE_NAME = 'Adult content';
+
+// Non-TVEC scam detection rules, tagged "scams". Illustrative terms only.
+const SCAM_TAG = 'scams';
+const SCAM_FINANCIAL_BANK_NAME = 'Scam terms: financial lures';
+const SCAM_PHISHING_BANK_NAME = 'Scam terms: phishing lures';
+const SCAM_FINANCIAL_TERMS = [
+  'double your money',
+  'guaranteed returns',
+  'crypto giveaway',
+  'free crypto',
+  'dm me to invest',
+];
+const SCAM_PHISHING_TERMS = [
+  'verify your account',
+  'confirm your password',
+  'your account is suspended',
+  'click here to claim',
+  'send your seed phrase',
+];
 const BLEEP_ACTION_NAME = 'Emit Bleep label (CCF demo)';
 const BLOOP_ACTION_NAME = 'Emit Bloop label (CCF demo)';
 
@@ -454,6 +473,53 @@ async function seedTrustcon() {
       );
     }
 
+    // Scam keyword banks (non-TVEC), used by the scam rules below.
+    async function ensureTextBank(
+      bankName: string,
+      description: string,
+      terms: readonly string[],
+    ): Promise<string> {
+      const existing = findByName(existingTextBanks, bankName);
+      if (existing) {
+        console.log(`Text bank exists, skipping: ${bankName}`);
+        return existing.id;
+      }
+      try {
+        const bank = await container.ModerationConfigService.createTextBank(
+          orgId,
+          {
+            name: bankName,
+            description,
+            type: 'STRING',
+            strings: [...terms],
+            ownerId: null,
+          },
+        );
+        console.log(`Created text bank: ${bankName} (${bank.id})`);
+        return bank.id;
+      } catch (error: unknown) {
+        if (isCoopErrorOfType(error, 'MatchingBankNameExistsError')) {
+          console.log(`Text bank already exists, skipping: ${bankName}`);
+          const refreshed =
+            await container.ModerationConfigService.getTextBanks({ orgId });
+          const found = findByName(refreshed, bankName);
+          if (found) return found.id;
+        }
+        throw error;
+      }
+    }
+
+    const scamFinancialBankId = await ensureTextBank(
+      SCAM_FINANCIAL_BANK_NAME,
+      'Illustrative financial and crypto scam lures for the demo.',
+      SCAM_FINANCIAL_TERMS,
+    );
+    const scamPhishingBankId = await ensureTextBank(
+      SCAM_PHISHING_BANK_NAME,
+      'Illustrative phishing and account-takeover scam lures for the demo.',
+      SCAM_PHISHING_TERMS,
+    );
+
     // -----------------------------------------------------------------------
     // Step 4: HMA hash bank (benign stand-in, left empty).
     // -----------------------------------------------------------------------
@@ -644,6 +710,7 @@ async function seedTrustcon() {
       name: string,
       conditionSet: CreateContentRuleInput['conditionSet'],
       policyCode: string,
+      extra?: { tags?: readonly string[]; description?: string },
     ): Promise<void> {
       if (findByName(existingRules, name)) {
         console.log(`Rule exists, skipping: ${name}`);
@@ -652,13 +719,14 @@ async function seedTrustcon() {
       const policyId = policyIdByCode.get(policyCode);
       const input: CreateContentRuleInput = {
         name,
-        description: `${POLICY_SOURCE_NOTE}. CCF TVEC demo rule.`,
+        description:
+          extra?.description ?? `${POLICY_SOURCE_NOTE}. CCF TVEC demo rule.`,
         status: 'LIVE',
         contentTypeIds: [postTypeId],
         conditionSet,
         actionIds: [enqueueActionId],
         policyIds: policyId ? [policyId] : [],
-        tags: [],
+        tags: extra?.tags ? [...extra.tags] : [],
         maxDailyActions: null,
       };
       try {
@@ -759,6 +827,60 @@ async function seedTrustcon() {
         ],
       },
       'TVEC7',
+    );
+
+    // -----------------------------------------------------------------------
+    // Non-TVEC scam rules, tagged "scams". Text-match against the scam banks
+    // and enqueue for review, like the other rules. Not attributed to CCF.
+    // -----------------------------------------------------------------------
+    await ensureRule(
+      'Scam: financial lure',
+      {
+        conjunction: 'AND',
+        conditions: [
+          {
+            input: { type: 'CONTENT_COOP_INPUT', name: CoopInput.ALL_TEXT },
+            signal: {
+              id: jsonStringify({
+                type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
+              }),
+              type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
+              name: 'Contains text',
+            },
+            matchingValues: { textBankIds: [scamFinancialBankId] },
+          },
+        ],
+      },
+      '',
+      {
+        tags: [SCAM_TAG],
+        description: 'Example scam rule: financial and crypto lure keywords.',
+      },
+    );
+    await ensureRule(
+      'Scam: phishing lure',
+      {
+        conjunction: 'AND',
+        conditions: [
+          {
+            input: { type: 'CONTENT_COOP_INPUT', name: CoopInput.ALL_TEXT },
+            signal: {
+              id: jsonStringify({
+                type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
+              }),
+              type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
+              name: 'Contains text',
+            },
+            matchingValues: { textBankIds: [scamPhishingBankId] },
+          },
+        ],
+      },
+      '',
+      {
+        tags: [SCAM_TAG],
+        description:
+          'Example scam rule: phishing and account-takeover keywords.',
+      },
     );
 
     // -----------------------------------------------------------------------
