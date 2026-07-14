@@ -17,5 +17,6 @@
     "8090": { "label": "Ozone label relay" }
   },
   "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh",
   "remoteUser": "node"
 }
