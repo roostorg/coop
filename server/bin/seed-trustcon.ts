@@ -468,7 +468,9 @@ async function seedTrustcon() {
           await container.ManualReviewToolService.createManualReviewQueue({
             name,
             description: `${POLICY_SOURCE_NOTE}. CCF TVEC review queue.`,
-            userIds: [],
+            // Assign the admin so the queue has a reviewer (an empty list also
+            // produces an invalid `id IN ()` query in assertUsersInOrg).
+            userIds: [adminUserId],
             // Explicitly empty so the Bleep/Bloop label actions remain pickable.
             hiddenActionIds: [],
             invokedBy: invoker,
