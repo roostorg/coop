@@ -2,6 +2,10 @@
 
 **Full Changelog**: https://github.com/roostorg/coop/compare/1.0.2...main
 
+## Review Console
+
+- Fixed a "Job submission failed" error that prevented reviewers from clearing jobs whose item had an unparseable `Created At` value; the decision now records instead of failing (#913)
+
 # Coop 1.0.2
 
 This release addresses reported security advisories, improves NCMEC CyberTipline reporting, and includes front-end quality-of-life improvements.
