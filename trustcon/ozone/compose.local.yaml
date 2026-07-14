@@ -1,0 +1,33 @@
+# Local (no-TLS) Ozone labeler for TrustCon testing. This is NOT the public
+# workshop endpoint; it runs Ozone + its Postgres on localhost so we can prove
+# the relay -> emitEvent -> label flow works before deploying to a public host.
+#
+#   docker compose -f trustcon/ozone/compose.local.yaml up -d
+#
+services:
+  ozone-db:
+    image: postgres:14.11-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ozone
+    volumes:
+      - ozone_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ozone']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  ozone:
+    image: ghcr.io/bluesky-social/ozone:0.1
+    env_file:
+      - .env
+    ports:
+      - '3001:3000'
+    depends_on:
+      ozone-db:
+        condition: service_healthy
+
+volumes:
+  ozone_pg:
