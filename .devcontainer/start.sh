@@ -13,7 +13,8 @@ if ! grep -q '^INGEST_ORG_ID=[^[:space:]]' server/.env 2>/dev/null; then
 fi
 
 echo "==> Starting the Coop server (:8080, serves client on :3000)"
-nohup bash -c 'cd server && npm run server:start' \
+# `server:start` is a root script (cd server && npm start); run it from root.
+nohup bash -c 'npm run server:start' \
   > .devcontainer/logs/server.log 2>&1 &
 
 echo "==> Starting the Jetstream connector worker"

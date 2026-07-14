@@ -23,6 +23,32 @@ echo "==> Starting backing services (Postgres, ClickHouse, Scylla, Redis, HMA)"
 # in a browser, which fails headless and would abort under `set -e`).
 docker compose up --detach postgres clickhouse hma scylla redis otel-collector
 
+echo "==> Waiting for data services to be healthy (migrations and the seed need them)"
+wait_healthy() {
+  local name="coop-${1}-1"
+  for _ in $(seq 1 60); do
+    [ "$(docker inspect "$name" --format '{{.State.Health.Status}}' 2>/dev/null)" = "healthy" ] && return 0
+    sleep 3
+  done
+  echo "WARNING: $name did not become healthy in time"; return 1
+}
+wait_healthy postgres
+wait_healthy scylla
+wait_healthy clickhouse
+
+# HMA runs its own DB migration on startup and can lose the race with Postgres
+# (it exits with "relation ... does not exist"). Ensure it is actually serving,
+# restarting it if it raced. The seed's hash bank needs it.
+echo "==> Ensuring HMA is up"
+HMA_URL="$(grep -E '^HMA_SERVICE_URL=' server/.env 2>/dev/null | cut -d= -f2)"
+HMA_URL="${HMA_URL:-http://localhost:9876}"
+for _ in $(seq 1 40); do
+  [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$HMA_URL/status" 2>/dev/null)" = "200" ] && break
+  [ "$(docker inspect coop-hma-1 --format '{{.State.Status}}' 2>/dev/null)" != "running" ] \
+    && docker compose up -d hma >/dev/null 2>&1
+  sleep 5
+done
+
 echo "==> Installing dependencies"
 npm install
 (cd server && npm install)
