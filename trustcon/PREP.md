@@ -14,29 +14,26 @@ persistent Ozone labeler. Participants follow the two CCF case studies as guides
 - Days 5-6: participant one-pager, capacity check.
 - Day 7: full dry run on fresh Codespaces.
 
-## A. Ozone labeler (shared, persistent) [you]
+## A. Ozone labeler (shared, persistent) — DEPLOYED and verified
 
-The labeler emits benign Bleep/Bloop labels on real Bluesky posts when a Coop
-reviewer takes the real-action path. It is hosted once, ahead of time, not
-inside the ephemeral Codespaces. Scripts and env templates live in
-`trustcon/ozone/` and `trustcon/relay/`; the full deploy checklist is in
-`trustcon/README.md`. Summary:
+Live and subscribable; no steps to run. Verified end to end: a Coop action to
+relay to Ozone `emitEvent` to a real signed label, served publicly.
 
-1. Create a dedicated Bluesky **service account** for the labeler. Note its DID.
-2. Stand up a host with a public IP, DNS name, and TLS (2 GB RAM is enough).
-3. Generate the secp256k1 signing key (command in `trustcon/ozone/.env.example`).
-4. Deploy Ozone with its official compose (github.com/bluesky-social/ozone).
-5. Announce the service from the Ozone UI (publishes the labeler record).
-6. Declare the two label values once:
-   `SERVICE_IDENTIFIER=... SERVICE_APP_PASSWORD=... node trustcon/ozone/publish-labeler-record.mjs`
-7. Deploy the relay (`cd trustcon/relay && npm install && npm start`) at a URL
-   the Coop Codespaces can reach; fill `trustcon/relay/.env` with the admin
-   app password and the labeler DID.
-8. **Publish the labeler DID/handle to attendees** a few days early so they can
-   subscribe in the Bluesky app and watch labels land live.
+- Labeler account: `trustcon-labeler.bsky.social` (`did:plc:5jv4bzk2pitgnypnqjdcgpom`)
+- Ozone: https://trustcon-labeler.fly.dev (Fly, `sjc`) with Fly Postgres `trustcon-labeler-db`
+- Labels: `bleep`, `bloop` (severity `inform`, blurs `none`); the DID doc advertises the labeler service and signing key
+- Relay: `trustcon/relay` (Node), points `OZONE_URL` at the Fly labeler and only ever emits `bleep`/`bloop`, on the specific post (strong ref), never the account
 
-Guardrail: the relay only ever emits `bleep`/`bloop`, and only on the specific
-post (strong ref), never the account. Plan the post-event teardown (section D).
+Attendees subscribe by adding `trustcon-labeler.bsky.social` as a labeler in the
+Bluesky app; then any Bleep/Bloop label appears in their app in real time.
+
+The relay runs inside each Coop Codespace (Coop action to `localhost` relay to the
+Fly Ozone); the seed's Bleep/Bloop actions target that local relay. The relay
+needs `OZONE_URL`, `OZONE_SERVER_DID`, and the labeler admin app password in its
+`.env` (a secret to distribute to facilitators, not commit).
+
+Teardown after the workshop: `fly apps destroy trustcon-labeler trustcon-labeler-db`,
+revoke the Fly token, and negate any labels left on real posts (section D).
 
 ## B. Coop Codespace
 
