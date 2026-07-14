@@ -178,9 +178,10 @@ const KEYWORD_BANK_NAME = 'CCF Christchurch keyword dataset (placeholder)';
 const HASH_BANK_NAME = 'CCF known-content stand-in (benign)';
 const STANDARD_QUEUE_NAME = 'CCF TVEC standard review';
 const PRIORITY_QUEUE_NAME = 'CCF TVEC priority review';
-// General (non-TVEC) example queues so the demo review console is not
-// TVEC-only. Incoming is the default triage queue for the firehose.
-const INCOMING_QUEUE_NAME = 'Incoming reports';
+// The Default Queue is created first so it becomes the org's default queue (the
+// first queue an org gets is marked default; unrouted items fall back to it).
+// The rest are general example queues so the console is not TVEC-only.
+const DEFAULT_QUEUE_NAME = 'Default Queue';
 const SPAM_QUEUE_NAME = 'Spam';
 const HARASSMENT_QUEUE_NAME = 'Harassment and abuse';
 const ADULT_QUEUE_NAME = 'Adult content';
@@ -481,6 +482,12 @@ async function seedTrustcon() {
     // before the rules (step 7) if we ever attach them there. Idempotent by
     // name.
     // -----------------------------------------------------------------------
+    // Ensure the built-in enqueue actions exist (ENQUEUE_TO_MRT,
+    // ENQUEUE_AUTHOR_TO_MRT, ENQUEUE_TO_NCMEC). createOrg upserts these, but an
+    // org created before ENQUEUE_TO_NCMEC was added to the built-in list would
+    // be missing it, so upsert here too. Idempotent (only inserts missing types).
+    await container.ModerationConfigService.upsertBuiltInActions(orgId);
+
     const existingActions = await container.ModerationConfigService.getActions({
       orgId,
     });
@@ -592,6 +599,13 @@ async function seedTrustcon() {
       }
     }
 
+    // Default Queue FIRST so it becomes the org's default queue (unrouted items
+    // fall back to it, and the firehose routes here). All other queues after.
+    const defaultQueueId = await ensureQueue(
+      DEFAULT_QUEUE_NAME,
+      'Default review queue. Incoming content lands here for triage.',
+    );
+
     const CCF_QUEUE_DESC = `${POLICY_SOURCE_NOTE}. CCF TVEC review queue.`;
     const standardQueueId = await ensureQueue(
       STANDARD_QUEUE_NAME,
@@ -600,14 +614,6 @@ async function seedTrustcon() {
     const priorityQueueId = await ensureQueue(
       PRIORITY_QUEUE_NAME,
       CCF_QUEUE_DESC,
-    );
-
-    // General (non-TVEC) example queues. Incoming is the default triage queue
-    // the firehose routes to; the rest give the demo a realistic multi-queue
-    // console reviewers can move items into.
-    const incomingQueueId = await ensureQueue(
-      INCOMING_QUEUE_NAME,
-      'Example triage queue for incoming content.',
     );
     await ensureQueue(SPAM_QUEUE_NAME, 'Example review queue for spam.');
     await ensureQueue(
@@ -790,7 +796,7 @@ async function seedTrustcon() {
             itemTypeIds: [postTypeId as NonEmptyString],
             creatorId: adminUserId,
             conditionSet: routingConditionSet,
-            destinationQueueId: incomingQueueId,
+            destinationQueueId: defaultQueueId,
           });
         console.log(
           `Created routing rule: ${defaultRoutingRuleName} (${routingRule.id})`,
