@@ -132,17 +132,29 @@ Bluesky connector reads a live feed and submits each post against these types.
 
 ### How do I get my data into Osprey?
 
-Osprey processes a stream of events. To feed it your own:
+Osprey processes a stream of **events** (it calls them actions), one per thing
+that happens on your platform: a post, a login, a follow, a purchase. Each event
+is a small record with:
 
-- **Produce your events to Osprey's input**, as JSON, one event per action. The
-  demo's synthetic producer does exactly this against Osprey's input (Kafka)
-  topic, so you can point your own producer at the same place.
+- an **id** (unique per event),
+- a **name** (the event type, for example `PostCreated` or `UserLogin`),
+- a **data** object holding the fields your rules look at (the post text, the
+  account's age, the IP, and so on).
+
+Your rules read from `data`, so put whatever a rule needs to make its decision in
+there. Two ways to feed events in:
+
+- **Produce events to Osprey's input topic.** Osprey reads from a Kafka topic
+  (`osprey.actions_input` by default); point your own producer at it, one event
+  per action. The demo's synthetic producer does exactly this, so you can copy
+  its event shape.
 - **Or write an input plugin** for your source. Osprey's Bluesky example
   (`jetstream_input_stream.py`) subscribes to a live feed and yields events; swap
-  in your source and Osprey runs your rules on it.
+  in your source and Osprey runs your rules on it. This is the better route when
+  your data is not already in Kafka.
 
-Once events are flowing, your rules evaluate them in real time and you watch the
-hits in the event stream.
+Once events are flowing, your rules evaluate each one in real time and you watch
+the hits in the event stream.
 
 ### Add your own logic
 
