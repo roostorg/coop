@@ -1,85 +1,103 @@
 # TrustCon workshop: participant guide
 
-You will run an end-to-end Trust & Safety workflow against real Bluesky content
-using two open-source ROOST tools. No engineering background needed. Everything
-runs in your browser through GitHub Codespaces.
+Two open-source ROOST tools, one end-to-end Trust & Safety workflow, run against
+real Bluesky content.
 
-## The two tools
+- **Coop** is a review tool: it turns signals about content into review queues,
+  policies, rules, and actions, so a person can make and act on decisions.
+- **Osprey** is a real-time rules engine: it watches a live feed and reacts as
+  content streams in.
 
-- **Osprey** is a real-time rules engine. It watches a live Bluesky feed and
-  fires rules as content streams in.
-- **Coop** is a review tool. It turns signals into review queues, policies,
-  rules, and actions, so a person can make and act on decisions.
+Two Christchurch Call Foundation (CCF) case studies are your step-by-step guides
+throughout:
 
-They run as two separate Codespaces. You can work either one, in any order.
+- **Coop, "Identifying References to the Christchurch Attack"** — detect and act
+  on terrorist and violent extremist content (TVEC) with hashes, keywords, and a
+  classifier.
+- **Osprey, "Monitoring Harm Amplification After a TVE Incident"** — use
+  behavioral signals (posting spikes, account age, coordination) to catch
+  post-incident amplification.
 
-## Getting started: open your Codespace
+## Two ways to take part
 
-Nothing to install. Each tool runs in a GitHub Codespace in your browser.
+Pick the path that fits you:
 
-1. Open the Codespace link your facilitator shares (or, on the repo page,
-   **Code -> Codespaces -> create a codespace on the workshop branch**).
-2. Wait for it to finish setting up. The first open runs a one-time setup that
-   takes a few minutes: it starts the services, seeds the demo, and launches the
-   app. You can watch progress in the terminal; it is ready when it prints
-   **"Setup complete."**
-3. When a "port forwarded" notice appears, open the app in your browser:
-   - **Coop:** port **3000**. Sign in as `admin@trustcon.local` with the
-     password `trustcon`.
-   - **Osprey:** port **5002** (the UI).
-4. If the page is not ready yet, wait a minute (the server compiles on first
-   start) and refresh. You can reopen any forwarded port from the **Ports** tab.
+- **No engineering background? Use the hosted environment (Path A).** ROOST runs
+  everything for you; you work in your browser. Your goal is to **add your own
+  policies and create rules.**
+- **Comfortable running code? Run it on your own computer (Path B).** Your goal
+  is to **get your own data flowing into Coop or Osprey, or add your own plugin
+  or rule function.**
 
-## Your two case studies
+---
 
-Both are from the Christchurch Call Foundation's CTVE 101 Toolkit, and they act
-as step-by-step guides:
+## Path A — Hosted, no setup
 
-- **Coop, "Identifying References to the Christchurch Attack"**: detect and act
-  on terrorist and violent extremist content (TVEC) using hashes, keywords, and
-  a classifier, and route it to review or action.
-- **Osprey, "Monitoring Harm Amplification After a TVE Incident"**: use
-  behavioral signals (velocity, account age, coordination) to catch post-incident
-  amplification in real time.
+ROOST provides a ready-to-use environment. Open the **link your facilitator
+shares** and you are in, nothing to install. The demo is already running: Coop's
+queues are filled with real Bluesky posts, and Osprey shows a live stream.
 
-## In Coop
+Your goal is to **add a policy and create a rule.** Use the case studies as your
+guide.
 
-Your Codespace opens signed in, with review queues already populated with real,
-benign Bluesky posts.
+### In Coop
 
-1. **Review.** Open a TVEC queue and triage a few items. Each shows the author's
-   account and their other recent posts as context, the way a real reviewer works.
-2. **Add a policy.** Create a policy in a couple of fields; it is what reviewers
-   decide against.
-3. **Build a rule.** Assemble a rule from a ready-made signal (keyword, hash, or
-   classifier) and route matches to a queue. Watch an item land in it.
-4. **Take an action.** Attach an action to a decision and run it.
+1. **Look at the review queue.** Open a queue and step through a few posts. Each
+   shows the author's account and their other recent posts as context, the way a
+   real reviewer works.
+2. **Add a policy.** Create one in a couple of fields, it is what a reviewer
+   decides against.
+3. **Create a rule.** Assemble a rule from a ready-made signal (a keyword list, a
+   hash match, or the classifier) and send matches to a queue. Watch a post land
+   in it.
+4. **Take an action.** Attach an action to a decision:
+   - **Practice action:** shows what would have happened, with no outside effect.
+   - **Real action:** places a harmless **Bleep** or **Bloop** label on the
+     actual Bluesky post. To see it, subscribe to the labeler (below).
 
-## Actions: mock or real
+### In Osprey
 
-- **Mock action:** posts to a local receiver that shows you what would have
-  happened. Safe for following the guide with no outside effect.
-- **Real Ozone action:** places a real, benign **Bleep** or **Bloop** label on
-  the reviewed Bluesky post, through the workshop's live labeler.
+1. **Watch the live stream** of posts and the rules firing on them.
+2. **Open the rules picture** (the visualizer) to see how a rule fits together.
+3. **Create or tweak a rule**, add a phrase to watch for, reload, and see
+   matching posts light up. That is writing a detection in under a minute.
 
-## See real labels: subscribe to the labeler
+### See the real labels
 
 In the Bluesky app or bsky.app, open
 **bsky.app/profile/trustcon-labeler.bsky.social** and press **Subscribe**. Bleep
-and Bloop labels you emit will show up in your app. New labels can take a few
-minutes to appear while Bluesky syncs the labeler.
+and Bloop labels you emit show up in your app. New labels can take a few minutes
+to appear while Bluesky catches up.
 
-## In Osprey
+---
 
-Your Codespace opens with a live Bluesky feed flowing.
+## Path B — On your own computer
 
-1. **Watch the stream.** See events and rule hits arrive in real time.
-2. **See the graph.** Open the rules visualizer to see how a rule fits together.
-3. **Author a rule.** Edit a rule file to add a watch phrase, reload, and watch
-   matching posts light up. That is writing a detection in under a minute.
+Run Coop or Osprey locally and connect it to your own world. Each repo has setup
+instructions in its README:
 
-## Take it further (after the session)
+- **Coop:** github.com/roostorg/coop
+- **Osprey:** github.com/roostorg/osprey
 
-- Run either tool locally; the Codespace is a portable starting point.
-- Point Osprey at your own event stream instead of Bluesky.
-- Bring your own model into Coop as a custom signal, no rewrite of the model.
+The workshop's Bluesky wiring is a worked example you can learn from, on the
+`trustcon` branch of Coop and the `juliet/trustcon-devcontainer` branch of Osprey.
+
+Your goal is to **bring your own data in, or add your own logic.**
+
+### Get your own data flowing
+
+- **Osprey:** point it at your own event source instead of Bluesky. An input
+  plugin turns your stream into events Osprey processes.
+- **Coop:** send your own content and reports in through Coop's API so they show
+  up as items to review, or wire your own model in as a signal.
+
+### Add your own logic
+
+- **Osprey:** write your own rule function (a UDF), a small plugin a rule can
+  call, like "does this text match my pattern" or "does this image match my hash
+  set."
+- **Coop:** add a custom signal or plug-in integration, so Coop calls a model or
+  service you already run and reads back a score.
+
+The two case studies work here too: use them as a template, then swap in your own
+data, policies, and detections.
