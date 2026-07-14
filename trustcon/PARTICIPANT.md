@@ -88,8 +88,8 @@ Your goal is to **bring your own data in, or add your own logic.**
 
 Coop reviews "items" (a post, a user, a thread). To bring your own content in:
 
-1. **Define an item type** that matches your data's shape (its fields), in the UI
-   or via the API, so Coop knows what your content looks like.
+1. **Create an Item Type** that matches your data's shape, so Coop knows what
+   your content looks like (see "Creating an Item Type" below).
 2. **Send your data in** with a POST to Coop's ingestion API, authenticated with
    your org's API key (the `X-API-KEY` header):
    - `POST /api/v1/items/async/` submits items in a batch; they run through your
@@ -101,8 +101,34 @@ Coop reviews "items" (a post, a user, a thread). To bring your own content in:
 3. Optionally, **connect a model you already run** as a custom signal, so Coop
    scores your items with it (see "Add your own logic").
 
-The workshop's Bluesky connector (on the `trustcon` branch) is a full worked
-example: it reads a live feed and submits each post to Coop as an item.
+#### Creating an Item Type
+
+Do this first, in **Settings -> Item Types -> New Item Type**:
+
+1. **Name it** for what it is on your platform ("Post", "Profile", "Comment
+   thread").
+2. **Pick its category:** **Content** (a post, comment, listing, review),
+   **User** (a profile), or **Thread** (an ordered list of content). Coop renders
+   and processes each one differently.
+3. **Add a field for each piece of your data**, giving each a name and a type:
+   - `STRING`, `BOOLEAN`, `NUMBER`
+   - `IMAGE`, audio, or video (you submit these as a URL)
+   - `DATETIME` (ISO 8601), `GEOHASH`, `URL`
+   - `RELATED_ITEM`, a link to another item as `{ id, typeId }` (for example a
+     post's author, or its parent thread)
+   - `ARRAY` of any of the above (for example a list of image URLs, or tags)
+4. **Set field roles** where they apply, so Coop knows which field is the author,
+   the created-at time, the display name, and the thread or parent. These roles
+   are what let the review screen show the author and their surrounding context.
+5. **Save.** Coop generates an **Item Type ID**. Copy it: that is the `typeId`
+   you put on every item you send, and the `data` you send must use the field
+   names and types you defined here.
+
+The workshop's two demo item types are a worked example. `ATproto-post` is a
+Content type (a `text` string, an `images` array, a `createdAt` datetime, and an
+`authorDid` related-item pointing at the account); `ATproto-account` is a User
+type (a `handle`, a `displayName`, an avatar image). The `trustcon` branch's
+Bluesky connector reads a live feed and submits each post against these types.
 
 ### How do I get my data into Osprey?
 
