@@ -84,12 +84,36 @@ The workshop's Bluesky wiring is a worked example you can learn from, on the
 
 Your goal is to **bring your own data in, or add your own logic.**
 
-### Get your own data flowing
+### How do I get my data into Coop?
 
-- **Osprey:** point it at your own event source instead of Bluesky. An input
-  plugin turns your stream into events Osprey processes.
-- **Coop:** send your own content and reports in through Coop's API so they show
-  up as items to review, or wire your own model in as a signal.
+Coop reviews "items" (a post, a user, a thread). To bring your own content in:
+
+1. **Define an item type** that matches your data's shape (its fields), in the UI
+   or via the API, so Coop knows what your content looks like.
+2. **Send your data in** with a POST to Coop's ingestion API, authenticated with
+   your org's API key (the `x-api-key` header):
+   - `POST /api/v1/items` submits items; they persist, run through your rules,
+     and land in a review queue.
+   - `POST /api/v1/report` files a report on an item (the reactive path).
+3. Optionally, **connect a model you already run** as a custom signal, so Coop
+   scores your items with it (see "Add your own logic").
+
+The workshop's Bluesky connector (on the `trustcon` branch) is a full worked
+example: it reads a live feed and submits each post to Coop as an item.
+
+### How do I get my data into Osprey?
+
+Osprey processes a stream of events. To feed it your own:
+
+- **Produce your events to Osprey's input**, as JSON, one event per action. The
+  demo's synthetic producer does exactly this against Osprey's input (Kafka)
+  topic, so you can point your own producer at the same place.
+- **Or write an input plugin** for your source. Osprey's Bluesky example
+  (`jetstream_input_stream.py`) subscribes to a live feed and yields events; swap
+  in your source and Osprey runs your rules on it.
+
+Once events are flowing, your rules evaluate them in real time and you watch the
+hits in the event stream.
 
 ### Add your own logic
 
