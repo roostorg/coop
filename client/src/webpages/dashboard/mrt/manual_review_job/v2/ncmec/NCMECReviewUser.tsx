@@ -447,7 +447,7 @@ export default function NCMECReviewUser(
   }
 
   const {
-    moderatorSafetyBlurLevel = 2 as BlurStrength,
+    moderatorSafetyBlurLevel = 2,
     moderatorSafetyGrayscale = true,
     moderatorSafetyMuteVideo = true,
     moderatorSafetySepia = false,

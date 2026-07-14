@@ -685,7 +685,7 @@ export default function RuleForm() {
     const out: Record<string, Record<string, unknown>> = {};
     for (const action of rule?.actions ?? []) {
       if ('configuredParameters' in action && action.configuredParameters) {
-        out[action.id] = action.configuredParameters as Record<string, unknown>;
+        out[action.id] = action.configuredParameters;
       }
     }
     return out;

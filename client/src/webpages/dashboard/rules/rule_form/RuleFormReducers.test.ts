@@ -7,7 +7,7 @@ import {
   GQLSignalPricingStructureType,
   GQLSignalType,
 } from '../../../../graphql/generated';
-import { RuleFormConditionSet, RuleFormLeafCondition } from '../types';
+import { RuleFormLeafCondition } from '../types';
 import { initialState, RuleFormState } from './RuleForm';
 import { RuleFormReducerActionType, updateInput } from './RuleFormReducers';
 import {
@@ -86,7 +86,7 @@ describe('updateInput signal eligibility', () => {
         conditions: [
           { input: oldInput, signal: custom1, eligibleSignals: [custom1] },
         ],
-      } as RuleFormConditionSet,
+      },
     };
 
     const result = updateInput(state, {
@@ -117,7 +117,7 @@ describe('updateInput signal eligibility', () => {
         conditions: [
           { input: oldInput, signal: custom2, eligibleSignals: [custom2] },
         ],
-      } as RuleFormConditionSet,
+      },
     };
 
     const result = updateInput(state, {
