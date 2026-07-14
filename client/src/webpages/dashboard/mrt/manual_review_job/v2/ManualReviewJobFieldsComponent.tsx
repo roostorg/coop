@@ -14,7 +14,7 @@ import ReactAudioPlayer from 'react-audio-player';
 import { Link } from 'react-router-dom';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
-import CollapsibleText from './components/CollapsibleText';
+import CollapsibleText from '@/webpages/dashboard/mrt/manual_review_job/v2/components/CollapsibleText';
 
 import {
   GQLContentItem,

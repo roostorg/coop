@@ -3,7 +3,7 @@ import React from 'react';
 
 import '@testing-library/jest-dom/extend-expect';
 
-import CollapsibleText from './CollapsibleText';
+import CollapsibleText from '@/webpages/dashboard/mrt/manual_review_job/v2/components/CollapsibleText';
 
 describe('CollapsibleText', () => {
   it('renders short text in full without a Read more button', () => {
@@ -63,21 +63,32 @@ describe('CollapsibleText', () => {
     ).toBeInTheDocument();
   });
 
-  it('respects custom maxGraphemes and maxLines thresholds', () => {
+  it('respects a custom maxGraphemes threshold', () => {
     // 11 chars, under default maxGraphemes (2000) but over custom maxGraphemes (10).
-    const { container } = render(
-      <CollapsibleText text="12345678901" maxGraphemes={10} maxLines={2} />,
-    );
+    render(<CollapsibleText text="12345678901" maxGraphemes={10} />);
     expect(
       screen.getByRole('button', { name: /read more/i }),
     ).toBeInTheDocument();
-    // The maxLines prop drives the visual clamp: assert it lands on the clamped
-    // div's WebkitLineClamp style (jsdom has no layout, so this is the verifiable
-    // surface for the line-count constraint).
+  });
+
+  it('respects a custom maxLines threshold for wrapping text', () => {
+    const wrappingText = 'wrap '.repeat(20).trim();
+    const { container, rerender } = render(
+      <div style={{ width: 80 }}>
+        <CollapsibleText text={wrappingText} maxGraphemes={10} maxLines={2} />
+      </div>,
+    );
     const clampedDiv = container.querySelector(
       'div[style*="-webkit-box"]',
     ) as HTMLElement;
     expect(clampedDiv.style.webkitLineClamp).toBe('2');
+
+    rerender(
+      <div style={{ width: 80 }}>
+        <CollapsibleText text={wrappingText} maxGraphemes={10} maxLines={3} />
+      </div>,
+    );
+    expect(clampedDiv.style.webkitLineClamp).toBe('3');
   });
 
   it('does not collapse text at exactly maxGraphemes', () => {
