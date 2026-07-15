@@ -1,10 +1,3 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/coop-ui/Select';
 import { isTypingInEditableElement } from '@/utils/misc';
 import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
@@ -792,25 +785,20 @@ export default function NCMECReviewUser(
           <label htmlFor="ncmecIncidentType" className="text-base font-bold">
             Incident Type Category
           </label>
-          <Select
+          <select
+            id="ncmecIncidentType"
             value={incidentType}
-            onValueChange={(value) =>
-              setIncidentType(value as GQLNcmecIncidentType)
+            onChange={(e) =>
+              setIncidentType(e.target.value as GQLNcmecIncidentType)
             }
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <SelectTrigger id="ncmecIncidentType" size="small">
-              <SelectValue />
-            </SelectTrigger>
-            {/* Above the antd modal (z-index 1000) this select lives in;
-                SelectContent's default is z-50. */}
-            <SelectContent className="z-[1050]">
-              {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-col gap-2">
           <label className="flex items-center gap-2 text-base font-bold">
@@ -1045,23 +1033,20 @@ export default function NCMECReviewUser(
               >
                 Incident Type Category
               </label>
-              <Select
+              <select
+                id="ncmecIncidentTypePage"
                 value={incidentType}
-                onValueChange={(value) =>
-                  setIncidentType(value as GQLNcmecIncidentType)
+                onChange={(e) =>
+                  setIncidentType(e.target.value as GQLNcmecIncidentType)
                 }
+                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <SelectTrigger id="ncmecIncidentTypePage" size="small">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
               <p className="text-xs text-slate-500">
                 Select the primary incident type for this NCMEC report
               </p>
