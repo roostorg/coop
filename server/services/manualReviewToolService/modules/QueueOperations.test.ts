@@ -1,14 +1,12 @@
 import fc from 'fast-check';
 import { uid } from 'uid';
 
-import getBottle from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
-import { makeTestWithFixture } from '../../../test/utils.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import {
   bullJobIdtoExternalJobId,
@@ -34,48 +32,42 @@ describe('QueueOperations', () => {
   });
 
   const testWithQueueAndActions = () =>
-    makeTestWithFixture(async () => {
-      const container = (await getBottle()).container;
-
-      const { org, cleanup: orgCleanup } = await createOrg(
+    makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
-          ModerationConfigService: container.ModerationConfigService,
-          ApiKeyService: container.ApiKeyService,
+          KyselyPg: deps.KyselyPg,
+          ModerationConfigService: deps.ModerationConfigService,
+          ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
 
-      const { user, cleanup: userCleanup } = await createUser(
-        container.KyselyPg,
-        org.id,
-      );
-      const { itemTypes, cleanup: itemTypesCleanup } =
-        await createContentItemTypes({
-          moderationConfigService: container.ModerationConfigService,
-          orgId: org.id,
-          extra: {
-            fields: [
-              {
-                name: 'someField',
-                type: 'NUMBER',
-                required: false,
-                container: null,
-              },
-            ],
-          },
-        });
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { itemTypes } = await createContentItemTypes({
+        moderationConfigService: deps.ModerationConfigService,
+        orgId: org.id,
+        extra: {
+          fields: [
+            {
+              name: 'someField',
+              type: 'NUMBER',
+              required: false,
+              container: null,
+            },
+          ],
+        },
+      });
 
-      const { actions, cleanup: actionsCleanup } = await createActions({
-        actionAPI: container.ActionAPIDataSource,
+      const { actions } = await createActions({
+        actionAPI: deps.ActionAPIDataSource,
         itemTypeIds: itemTypes.map((it) => it.id),
         orgId: org.id,
         numActions: 3,
       });
 
-      const { queue, cleanup: queuesCleanup } = await createMrtQueue({
+      const { queue } = await createMrtQueue({
         orgId: org.id,
-        mrtService: container.ManualReviewToolService,
+        mrtService: deps.ManualReviewToolService,
         userId: user.id,
       });
 
@@ -83,16 +75,7 @@ describe('QueueOperations', () => {
         org,
         actions,
         queue,
-        mrtService: container.ManualReviewToolService,
-        cleanup: async () => {
-          await queuesCleanup();
-          await actionsCleanup();
-          await itemTypesCleanup();
-          await userCleanup();
-          await orgCleanup();
-          await container.KyselyPg.destroy();
-          await container.KyselyPgReadReplica.destroy();
-        },
+        mrtService: deps.ManualReviewToolService,
       };
     });
 
