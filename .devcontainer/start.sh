@@ -21,6 +21,20 @@ echo "==> Starting the Jetstream connector worker"
 nohup bash -c 'cd server && npm run runWorkerOrJob -- TapConnectorWorker' \
   > .devcontainer/logs/connector.log 2>&1 &
 
+# One-time: once the server accepts connections, backfill every org's review
+# queues with sample posts. Guarded by a marker so it runs once per fresh seed
+# (setup.sh clears the marker); backfill uses stable item ids, so it's safe.
+if [ -f server/workshop-credentials.json ] && [ ! -f .devcontainer/.workshop-backfilled ]; then
+  echo "==> Scheduling one-time queue backfill (waits for the server; runs in background)"
+  nohup bash -c '
+    for _ in $(seq 1 60); do curl -s http://localhost:8080 >/dev/null 2>&1 && break; sleep 2; done
+    sleep 3
+    if (cd server && npm run backfill-items -- --base-url http://localhost:8080); then
+      touch .devcontainer/.workshop-backfilled
+    fi
+  ' > .devcontainer/logs/backfill.log 2>&1 &
+fi
+
 cat <<'DONE'
 ==> Services launched in the background.
     Logs:   .devcontainer/logs/server.log · .devcontainer/logs/connector.log

@@ -50,3 +50,7 @@ ncmec-reports/
 
 # Workshop credentials handout (contains API keys and passwords)
 workshop-credentials.*
+
+# Codespace runtime artifacts
+.devcontainer/logs/
+.devcontainer/.workshop-backfilled

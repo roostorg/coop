@@ -8,10 +8,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-DEMO_EMAIL="admin@trustcon.local"
-DEMO_WEBSITE="https://trustcon-demo.example"
 DEMO_PASSWORD="trustcon"
 RELAY_URL="${RELAY_URL:-http://localhost:8090}"
+ORGS="${WORKSHOP_ORGS:-6}"
 
 echo "==> Copying .env files"
 cp -n server/.env.example server/.env || true
@@ -64,40 +63,37 @@ done
 echo "==> Building the client (production build; the Codespace proxy is unreliable with vite HMR)"
 (cd client && npm run build)
 
-echo "==> Creating the demo org"
-strip_ansi() { sed 's/\x1b\[[0-9;]*m//g'; }
-ORG_OUT=$(cd server && npm run create-org -- --name "TrustCon Demo" \
-  --email "$DEMO_EMAIL" --website "$DEMO_WEBSITE" \
-  --firstName Demo --lastName Admin --password "$DEMO_PASSWORD" 2>&1 || true)
-ORG_ID=$(echo "$ORG_OUT" | grep -a "Organization ID:" | strip_ansi | awk '{print $3}')
-API_KEY=$(echo "$ORG_OUT" | grep -a "API Key:" | strip_ansi | awk '{print $3}')
+echo "==> Creating $ORGS workshop orgs (role-based teams) and seeding each with the CCF config"
+(cd server && npm run seed-orgs -- --orgs "$ORGS" --users-per-org 5 \
+  --password "$DEMO_PASSWORD" --relay-url "$RELAY_URL")
 
-if [ -z "${ORG_ID:-}" ]; then
-  echo "    (org may already exist; looking it up in Postgres)"
-  ORG_ID=$(docker compose exec -T postgres psql -U postgres -d postgres -tAc \
-    "select id from orgs where email='$DEMO_EMAIL' order by created_at desc limit 1;" \
-    2>/dev/null | tr -d '[:space:]')
-fi
-[ -n "${ORG_ID:-}" ] || { echo "ERROR: could not determine the demo org id"; exit 1; }
-echo "    demo org: $ORG_ID"
+CREDS="server/workshop-credentials.json"
+[ -f "$CREDS" ] || { echo "ERROR: seed-orgs did not write $CREDS"; exit 1; }
 
-echo "==> Wiring Jetstream ingestion into the demo org"
+# Team 1 (the first org) gets the live Jetstream connector; every org, Team 1
+# included, is backfilled with sample items by start.sh once the server is up.
+ORG_ID=$(node -e "process.stdout.write(require('./$CREDS')[0].orgId)")
+API_KEY=$(node -e "process.stdout.write(require('./$CREDS')[0].apiKey)")
+[ -n "$ORG_ID" ] || { echo "ERROR: could not read the first org from $CREDS"; exit 1; }
+echo "    live-ingestion org (Team 1): $ORG_ID"
+
+echo "==> Wiring Jetstream ingestion into Team 1"
 perl -pi -e "s#^INGEST_ORG_ID=.*#INGEST_ORG_ID=$ORG_ID#;" server/.env
 grep -q '^INGEST_ORG_ID=' server/.env || echo "INGEST_ORG_ID=$ORG_ID" >> server/.env
-if [ -n "${API_KEY:-}" ]; then
-  perl -pi -e "s#^INGEST_API_KEY=.*#INGEST_API_KEY=$API_KEY#;" server/.env
-  grep -q '^INGEST_API_KEY=' server/.env || echo "INGEST_API_KEY=$API_KEY" >> server/.env
-fi
+perl -pi -e "s#^INGEST_API_KEY=.*#INGEST_API_KEY=$API_KEY#;" server/.env
+grep -q '^INGEST_API_KEY=' server/.env || echo "INGEST_API_KEY=$API_KEY" >> server/.env
 
-echo "==> Seeding the CCF TVEC + general demo config"
-(cd server && npm run seed-trustcon -- --org-id "$ORG_ID" --relay-url "$RELAY_URL")
+# Let start.sh run its one-time queue backfill against this fresh set of orgs.
+rm -f .devcontainer/.workshop-backfilled
 
 cat <<NEXT
 
-==> Setup complete. Org $ORG_ID is seeded and Jetstream ingestion is wired.
-    Sign in as: $DEMO_EMAIL / $DEMO_PASSWORD
+==> Setup complete. $ORGS orgs seeded; Team 1 ($ORG_ID) has live Jetstream ingestion.
+    Logins for every org (shared password "$DEMO_PASSWORD") are in
+    server/workshop-credentials.md (also .csv). Hand these out by table.
 
-    Services start automatically via .devcontainer/start.sh. To (re)start by hand:
+    Services start automatically via .devcontainer/start.sh, which also backfills
+    every org's queues with sample items once the server is up. To (re)start by hand:
       bash .devcontainer/start.sh
 
     Client:  http://localhost:3000
