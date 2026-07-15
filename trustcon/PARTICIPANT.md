@@ -31,6 +31,67 @@ Pick the path that fits you:
 
 ---
 
+## Before the workshop: come prepared
+
+A little setup ahead of time means you spend the session building, not
+installing or reading. Do the part that matches your path.
+
+### Everyone
+
+- A laptop and a modern browser (Chrome or Firefox).
+- A **GitHub account** (used to sign in to the environment and view the repos).
+- A **Bluesky account** (bsky.app), so you can subscribe to the workshop labeler
+  and watch Bleep/Bloop labels land on real posts.
+- **Skim the two CCF case studies** and the two 101s (Coop and Osprey) so the
+  live demo makes sense from the first minute.
+- **Bring one real example from your own platform:** a policy you enforce, a rule
+  you wish you had, or a pattern you want to catch. You will leave the session
+  having actually built it.
+
+### Hosted path (no coding)
+
+Nothing to install. Bring the **access link** and sign-in your facilitator sends,
+plus the policy or rule idea above. That idea is your raw material for the day.
+
+### Local path (technical): do this the day before
+
+This is where preparation pays off most. The stacks are large and the first run
+pulls several GB of Docker images, so warm everything ahead of time rather than
+downloading during the session.
+
+**Install:**
+
+- **Docker Desktop** (Compose v2). Free up RAM: Coop wants about 8 GB, Osprey
+  about 16 GB.
+- **Node 24** (use `nvm`; both repos pin it via `.nvmrc`).
+- For Osprey only: **uv** (Python) and **corepack/pnpm** (its UI).
+- **git** and an editor (VS Code is fine).
+
+**Clone and pre-pull the images** (your facilitator will confirm the exact repo
+and `trustcon` branch to use):
+
+- Coop: clone the repo, check out the `trustcon` branch, then run `npm run up`
+  once to pull the backing services (Postgres, ClickHouse, Scylla, Redis, HMA).
+- Osprey: clone the workshop `trustcon` branch, then pull its images ahead of
+  time; the first `run-atproto.sh up` downloads Druid, MinIO, and more and takes
+  several minutes.
+- Prefer **Codespaces** to a local install? You will need Codespaces access and a
+  16 GB machine type; ask the facilitator to turn on a prebuild.
+
+**Bring your own data** (this is the technical goal, and the highest-value prep):
+
+- **For Coop:** know your content's **field shape** (what fields a post or user
+  has) so you can define an Item Type, and bring a small **sample as JSON** plus a
+  way to POST it (curl or a short script). You will get an API key on the day.
+- **For Osprey:** bring a handful of **sample events as JSON**, or a small
+  producer that can write to its input topic (`osprey.actions_input`), or know
+  your event source well enough to write a short input plugin for it.
+- **Bring a detection to port:** if you already run a model or a rule, bring the
+  idea (and, for a UDF, comfort with Python) so you can wire it in as a signal, a
+  UDF, or an SML rule.
+
+---
+
 ## Path A — Hosted, no setup
 
 ROOST provides a ready-to-use environment. Open the **link your facilitator
