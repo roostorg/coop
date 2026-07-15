@@ -60,3 +60,87 @@ spikes in posting, coordinated re-uploads, bursts of new accounts, brigading.
 - **Output sinks:** send results wherever you need, including into your own
   systems or a labeling service.
 - **UDFs:** add your own detection logic as a plugin.
+
+## In the workshop: create and edit a rule in the UI
+
+This workshop build lets you author rules in the browser, no file editing
+needed. In the dashboard, open **Rules** and choose **New rule**.
+
+1. **Draft** it in the builder, or switch to the code editor to write SML
+   directly.
+2. **Validate.** Osprey checks your draft against the live engine and shows any
+   errors inline, so you fix them before anything goes live.
+3. **Save** it as a draft. Drafts show up on the Rules page for the whole group
+   to see and refine.
+
+Everyone shares one super-user login for the workshop, so all drafts land in one
+shared list. Draft and validate as much as you like; leave the single **Deploy**
+to the facilitator, since deploying writes the rule to disk and can edit the
+shared `main.sml`, so two people deploying at once would collide. Once it is
+deployed and the worker reloads, watch your rule start matching in the Event
+stream.
+
+## In the workshop: run a query in the console
+
+The Event stream is also an investigation console. Use the **query filter** to
+narrow it, written as conditions over rules and features, for example:
+
+- `PostContainsTestRule == True` to show only posts that tripped that rule.
+- a condition on a feature value to find, say, posts from very new accounts.
+
+Save a query you will reuse from the **saved queries** list, and open any entity
+(a user, a post) to see the labels and past events attached to it. This is the
+"dig into what happened" half of Osprey, the same surface a safety team uses to
+investigate.
+
+## For technical participants: write a UDF or an SML rule
+
+Two ways to bring your own logic. Both use the workshop's
+`example_atproto_plugins` and `example_atproto_rules` as copy-me templates.
+
+**Add a UDF (a Python plugin a rule can call).** A UDF is a small class that
+takes typed arguments and returns a value:
+
+```python
+class DidArguments(ArgumentsBase):
+    did: str
+
+class AtprotoHandle(UDFBase[DidArguments, str]):
+    category = 'atproto'
+    execute_async = True  # optional: runs in the gevent pool
+    def execute(self, execution_context, arguments: DidArguments) -> str:
+        ...
+        return handle
+```
+
+Register it so rules can see it, in `register_plugins.py`:
+
+```python
+@hookimpl_osprey
+def register_udfs():
+    return [AtprotoHandle, AtprotoDisplayName]
+```
+
+Restart the worker and your UDF is callable from SML. The same file's
+`register_input_stream` hook is how you swap in your own event source.
+
+**Write an SML rule.** SML is a subset of Python. A rule reads *features* and
+matches *conditions*:
+
+```python
+# models/record/post.sml  (define a feature pulled from the event)
+PostText: str = JsonData(path='$.commit.record.text', required=False)
+
+# rules/record/post/my_rule.sml  (match on it, then act)
+MyRule = Rule(
+  when_all=[TextContains(text=PostText, phrase='your phrase')],
+  description='what this catches',
+)
+WhenRules(rules_any=[MyRule], then=[LabelAdd(entity=UserId, label='your-label')])
+```
+
+Import the models your rule depends on, add the file under the tree that
+`main.sml` requires, then either push it with
+`osprey-cli push_rules example_atproto_rules` (which validates first) or restart
+the worker to reload. The UI's code editor produces exactly this SML, so a rule
+you draft in the browser and one you write in a file are the same thing.
