@@ -1,5 +1,12 @@
 import { DateString } from '@roostorg/coop-types';
-import { addDays, addHours, format, isBefore } from 'date-fns';
+import {
+  addDays,
+  addHours,
+  format,
+  formatDistanceToNow,
+  isBefore,
+  isValid,
+} from 'date-fns';
 
 export enum LookbackLength {
   CUSTOM = 'Custom',
@@ -30,6 +37,34 @@ export function formatDate(date = new Date()): string {
 
 function toDate(date: string | DateString | Date): Date {
   return date instanceof Date ? date : new Date(date);
+}
+
+type MaybeDate = string | DateString | Date | null | undefined;
+
+/**
+ * date-fns `format` throws on an invalid date; this returns `fallback` instead.
+ */
+export function safeFormat(
+  date: MaybeDate,
+  formatStr: string,
+  fallback = 'Unknown',
+): string {
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? format(d, formatStr) : fallback;
+}
+
+/**
+ * date-fns `formatDistanceToNow` throws on an invalid date; this returns
+ * `fallback` instead.
+ */
+export function safeFormatDistanceToNow(
+  date: MaybeDate,
+  fallback = 'Unknown',
+): string {
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? formatDistanceToNow(d, { addSuffix: true }) : fallback;
 }
 
 export function parseDatetimeToReadableStringInUTC(

@@ -1,5 +1,5 @@
+import { safeFormat } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Row } from 'react-table';
@@ -198,7 +198,7 @@ export default function ManualReviewQueueJobsPreview() {
             </div>
           ),
           createdAt: (
-            <div>{format(new Date(values.createdAt), 'MM/dd/yy hh:mm a')}</div>
+            <div>{safeFormat(values.createdAt, 'MM/dd/yy hh:mm a')}</div>
           ),
           jobId: values.jobId,
           values,
