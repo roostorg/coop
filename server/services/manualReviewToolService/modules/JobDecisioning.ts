@@ -5,6 +5,7 @@ import { type JsonObject } from 'type-fest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
+import { jsonStringify } from '../../../utils/encoding.js';
 import {
   CoopError,
   ErrorType,
@@ -647,6 +648,35 @@ export default class JobDecisioning {
         )
       : null;
     const itemCreatedAt = parseItemCreatedAt(itemCreatedAtField);
+
+    // Record when a present createdAt couldn't be parsed. We store null so the
+    // decision still saves, but surface the bad value so it's diagnosable and
+    // can be backfilled rather than silently dropped.
+    if (
+      itemCreatedAt === null &&
+      itemCreatedAtField != null &&
+      itemCreatedAtField !== ''
+    ) {
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'logDecision.invalidItemCreatedAt',
+        },
+        (span) => {
+          span.setAttribute('job.id', job.id);
+          span.setAttribute('org.id', orgId);
+          this.tracer.logSpanFailed(
+            span,
+            new Error(
+              `Unparseable item createdAt for job ${job.id}: ${jsonStringify(
+                itemCreatedAtField,
+              )}. Storing null.`,
+            ),
+          );
+          return null;
+        },
+      );
+    }
 
     return this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
