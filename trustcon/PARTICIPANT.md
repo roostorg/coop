@@ -67,14 +67,14 @@ downloading during the session.
 - For Osprey only: **uv** (Python) and **corepack/pnpm** (its UI).
 - **git** and an editor (VS Code is fine).
 
-**Clone and pre-pull the images** (your facilitator will confirm the exact repo
-and `trustcon` branch to use):
+**Clone and pre-pull the images** (both use the `trustcon` branch):
 
-- Coop: clone the repo, check out the `trustcon` branch, then run `npm run up`
-  once to pull the backing services (Postgres, ClickHouse, Scylla, Redis, HMA).
-- Osprey: clone the workshop `trustcon` branch, then pull its images ahead of
-  time; the first `run-atproto.sh up` downloads Druid, MinIO, and more and takes
-  several minutes.
+- Coop: `git clone https://github.com/roostorg/coop`, check out `trustcon`, then
+  run `npm run up` once to pull the backing services (Postgres, ClickHouse,
+  Scylla, Redis, HMA).
+- Osprey: `git clone https://github.com/roostorg/osprey`, check out `trustcon`,
+  then pull its images ahead of time; the first `run-atproto.sh up` downloads
+  Druid, MinIO, and more and takes several minutes.
 - Prefer **Codespaces** to a local install? You will need Codespaces access and a
   16 GB machine type; ask the facilitator to turn on a prebuild.
 
