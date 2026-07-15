@@ -1462,6 +1462,10 @@ export default async function getBottle() {
         _input: ManualReviewJobInput | ManualReviewAppealJobInput,
         _queueId: string,
       ) {},
+      // Resolved lazily off the container because NcmecService itself depends
+      // on ManualReviewToolService.
+      async (params) =>
+        container.NcmecService.getUserHasExistingNcmeReport(params),
     );
   });
 

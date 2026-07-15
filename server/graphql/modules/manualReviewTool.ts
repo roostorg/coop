@@ -2316,20 +2316,21 @@ const Mutation: GQLMutationResolvers = {
         policyId: report.policyId === null ? undefined : report.policyId,
       }));
 
-      await context.services.ManualReviewToolService.submitDecision({
-        reportHistory: [...reportHistoryNoNullFields],
-        queueId,
-        jobId,
-        lockToken,
-        decisionComponents: decisionPayloads,
-        relatedActions: [...relatedItemActions],
-        reviewerId: userId,
-        reviewerEmail: userEmail,
-        orgId,
-        decisionReason: decisionReason ?? undefined,
-      });
+      const { warnings } =
+        await context.services.ManualReviewToolService.submitDecision({
+          reportHistory: [...reportHistoryNoNullFields],
+          queueId,
+          jobId,
+          lockToken,
+          decisionComponents: decisionPayloads,
+          relatedActions: [...relatedItemActions],
+          reviewerId: userId,
+          reviewerEmail: userEmail,
+          orgId,
+          decisionReason: decisionReason ?? undefined,
+        });
       return gqlSuccessResult(
-        { success: true, warnings: [] },
+        { success: true, warnings },
         'SubmitDecisionSuccessResponse',
       );
     } catch (e: unknown) {

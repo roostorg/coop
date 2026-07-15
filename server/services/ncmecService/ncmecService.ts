@@ -105,6 +105,14 @@ export class NcmecService {
     return this.ncmecReporting.getNcmecMessages(orgId, userId, reportedMedia);
   }
 
+  async getUserHasExistingNcmeReport(params: {
+    orgId: string;
+    userId: string;
+    userItemTypeId: string;
+  }) {
+    return this.ncmecReporting.getUserHasExistingNcmeReport(params);
+  }
+
   async enqueueForHumanReviewIfApplicable(
     input: {
       orgId: string;

@@ -172,6 +172,11 @@ export default class JobDecisioning {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly manualReviewToolSettings: ManualReviewToolSettings,
+    private readonly getUserHasExistingNcmecReport: (params: {
+      orgId: string;
+      userId: string;
+      userItemTypeId: string;
+    }) => Promise<boolean>,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -462,6 +467,63 @@ export default class JobDecisioning {
     if (error) {
       throw error;
     }
+
+    return {
+      warnings:
+        newDecisionStored && automaticCloseDecision === undefined
+          ? await this.#ncmecEscalationSkipWarnings({ decisionComponents, job })
+          : [],
+    };
+  }
+
+  /**
+   * The NCMEC re-enqueue for a TRANSFORM_JOB_AND_RECREATE_IN_QUEUE decision
+   * runs asynchronously via onRecordDecision, and it silently no-ops when the
+   * reviewed user already has a submitted NCMEC report (see
+   * NcmecEnqueueToMrt.enqueueForHumanReviewIfApplicable). Predict that skip
+   * here, with the same check the enqueue path performs, so the reviewer is
+   * told on the decision response instead of believing the escalation went
+   * through.
+   */
+  async #ncmecEscalationSkipWarnings(opts: {
+    decisionComponents: ManualReviewDecisionComponent[];
+    job: {
+      orgId: string;
+      payload: { item: { itemId: string; itemTypeIdentifier: { id: string } } };
+    };
+  }): Promise<string[]> {
+    const escalatesToNcmec = opts.decisionComponents.some(
+      (it) =>
+        it.type === 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE' &&
+        it.newJobKind === 'NCMEC',
+    );
+    if (!escalatesToNcmec) {
+      return [];
+    }
+    const hasExistingReport = await this.getUserHasExistingNcmecReport({
+      orgId: opts.job.orgId,
+      userId: opts.job.payload.item.itemId,
+      userItemTypeId: opts.job.payload.item.itemTypeIdentifier.id,
+    }).catch((error) => {
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'ncmecEscalationSkipWarnings',
+        },
+        (span) => {
+          span.setAttribute('org.id', opts.job.orgId);
+          span.setAttribute('item.id', opts.job.payload.item.itemId);
+          this.tracer.logSpanFailed(span, error);
+          return null;
+        },
+      );
+      return false;
+    });
+    return hasExistingReport
+      ? [
+          'NCMEC escalation was skipped: this user already has a submitted NCMEC report.',
+        ]
+      : [];
   }
 
   /**

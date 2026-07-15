@@ -326,6 +326,11 @@ export class ManualReviewToolService {
       input: ManualReviewJobInput | ManualReviewAppealJobInput,
       queueId: string,
     ) => Promise<void>,
+    readonly getUserHasExistingNcmecReport: (params: {
+      orgId: string;
+      userId: string;
+      userItemTypeId: string;
+    }) => Promise<boolean>,
   ) {
     this.queueOps = new QueueOperations(
       pgQuery,
@@ -360,6 +365,7 @@ export class ManualReviewToolService {
       moderationConfigService,
       this.tracer,
       this.manualReviewToolSettings,
+      getUserHasExistingNcmecReport,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
