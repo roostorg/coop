@@ -26,7 +26,7 @@ Remaining before the day, highest-impact first:
 - [ ] **Turn on Codespaces prebuilds** once the setup is stable (D).
 - [ ] Finalize the CCF case-study handouts and the labeler one-pager (F).
 
-## A. Ozone labeler (shared, persistent) — DEPLOYED and verified
+## A. Ozone labeler (shared, persistent): DEPLOYED and verified
 
 Live and subscribable; no steps to run. Verified end to end: a Coop action to
 relay to Ozone `emitEvent` to a real signed label, served publicly.
