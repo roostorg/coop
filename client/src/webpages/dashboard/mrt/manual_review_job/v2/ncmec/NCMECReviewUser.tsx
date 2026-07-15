@@ -1,3 +1,10 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { isTypingInEditableElement } from '@/utils/misc';
 import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
@@ -231,109 +238,6 @@ const NCMEC_INCIDENT_TYPE_LABELS: Record<GQLNcmecIncidentType, string> = {
 const NCMEC_INCIDENT_TYPE_OPTIONS = Object.entries(
   NCMEC_INCIDENT_TYPE_LABELS,
 ).map(([value, label]) => ({ value: value as GQLNcmecIncidentType, label }));
-
-// Bottom section of the "Confirm & Send NCMEC Report" modal: incident type,
-// escalation, and additional info.
-function NcmecReportFormFields(props: {
-  incidentType: GQLNcmecIncidentType;
-  onIncidentTypeChange: (incidentType: GQLNcmecIncidentType) => void;
-  escalateChecked: boolean;
-  onEscalateCheckedChange: (checked: boolean) => void;
-  escalateReason: string;
-  onEscalateReasonChange: (reason: string) => void;
-  escalateMissingReason: boolean;
-  additionalInfo: string;
-  onAdditionalInfoChange: (additionalInfo: string) => void;
-}) {
-  return (
-    <>
-      <div className="!my-4 divider" />
-      <div className="flex flex-col gap-2">
-        <label htmlFor="ncmecIncidentType" className="text-base font-bold">
-          Incident Type Category
-        </label>
-        <select
-          id="ncmecIncidentType"
-          value={props.incidentType}
-          onChange={(e) =>
-            props.onIncidentTypeChange(e.target.value as GQLNcmecIncidentType)
-          }
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-2 my-4">
-        <label className="flex items-center gap-2 text-base font-bold">
-          <input
-            type="checkbox"
-            checked={props.escalateChecked}
-            onChange={(e) => {
-              const next = e.target.checked;
-              props.onEscalateCheckedChange(next);
-              if (!next) {
-                props.onEscalateReasonChange('');
-              }
-            }}
-          />
-          Escalate as High Priority
-        </label>
-        {props.escalateChecked ? (
-          <>
-            <label
-              htmlFor="escalateToHighPriority"
-              className="text-sm font-medium"
-            >
-              Reason for escalation (required)
-            </label>
-            <textarea
-              id="escalateToHighPriority"
-              maxLength={3000}
-              value={props.escalateReason}
-              onChange={(e) => props.onEscalateReasonChange(e.target.value)}
-              placeholder="e.g. immediate risk to child."
-              className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              rows={3}
-            />
-            <div className="flex items-center justify-between">
-              {props.escalateMissingReason ? (
-                <span className="text-xs text-red-600">
-                  A reason is required when escalating.
-                </span>
-              ) : (
-                <span />
-              )}
-              <span className="text-xs text-slate-500">
-                {props.escalateReason.length}/3000 characters
-              </span>
-            </div>
-          </>
-        ) : null}
-      </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor="ncmecAdditionalInfo" className="text-base font-bold">
-          Additional details (optional)
-        </label>
-        <textarea
-          id="ncmecAdditionalInfo"
-          maxLength={3000}
-          value={props.additionalInfo}
-          onChange={(e) => props.onAdditionalInfoChange(e.target.value)}
-          placeholder="Any other context/notes to be added to the report."
-          className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          rows={3}
-        />
-        <span className="text-xs text-slate-500">
-          {props.additionalInfo.length}/3000 characters
-        </span>
-      </div>
-    </>
-  );
-}
 
 export default function NCMECReviewUser(
   props: {
@@ -847,7 +751,7 @@ export default function NCMECReviewUser(
         <div className="!my-4 divider" />
         <div className="flex items-start justify-between gap-4 min-w-0">
           <div className="flex items-start gap-4 text-start min-w-0 flex-1">
-            <div className="text-base font-bold shrink-0">Suspect</div>
+            <div className="text-base font-bold shrink-0 pt-1">Suspect</div>
             <div className="flex flex-row items-start min-w-0 flex-1">
               {profilePicUrl ? (
                 <img
@@ -883,17 +787,95 @@ export default function NCMECReviewUser(
           </>
         ) : null}
 
-        <NcmecReportFormFields
-          incidentType={incidentType}
-          onIncidentTypeChange={setIncidentType}
-          escalateChecked={escalateChecked}
-          onEscalateCheckedChange={setEscalateChecked}
-          escalateReason={escalateToHighPriority}
-          onEscalateReasonChange={setEscalateToHighPriority}
-          escalateMissingReason={escalateMissingReason}
-          additionalInfo={additionalInfo}
-          onAdditionalInfoChange={setAdditionalInfo}
-        />
+        <div className="!my-4 divider" />
+        <div className="flex flex-col gap-2">
+          <label htmlFor="ncmecIncidentType" className="text-base font-bold">
+            Incident Type Category
+          </label>
+          <Select
+            value={incidentType}
+            onValueChange={(value) =>
+              setIncidentType(value as GQLNcmecIncidentType)
+            }
+          >
+            <SelectTrigger id="ncmecIncidentType" size="small">
+              <SelectValue />
+            </SelectTrigger>
+            {/* Above the antd modal (z-index 1000) this select lives in;
+                SelectContent's default is z-50. */}
+            <SelectContent className="z-[1050]">
+              {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-base font-bold">
+            <input
+              type="checkbox"
+              checked={escalateChecked}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setEscalateChecked(next);
+                if (!next) {
+                  setEscalateToHighPriority('');
+                }
+              }}
+            />
+            Escalate as High Priority
+          </label>
+          {escalateChecked ? (
+            <>
+              <label
+                htmlFor="escalateToHighPriority"
+                className="text-sm font-medium"
+              >
+                Reason for escalation (required)
+              </label>
+              <textarea
+                id="escalateToHighPriority"
+                maxLength={3000}
+                value={escalateToHighPriority}
+                onChange={(e) => setEscalateToHighPriority(e.target.value)}
+                placeholder="e.g. immediate risk to child."
+                className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                rows={3}
+              />
+              <div className="flex items-center justify-between">
+                {escalateMissingReason ? (
+                  <span className="text-xs text-red-600">
+                    A reason is required when escalating.
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <span className="text-xs text-slate-500">
+                  {escalateToHighPriority.length}/3000 characters
+                </span>
+              </div>
+            </>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="ncmecAdditionalInfo" className="text-base font-bold">
+            Additional details (optional)
+          </label>
+          <textarea
+            id="ncmecAdditionalInfo"
+            maxLength={3000}
+            value={additionalInfo}
+            onChange={(e) => setAdditionalInfo(e.target.value)}
+            placeholder="Any other context/notes to be added to the report."
+            className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            rows={3}
+          />
+          <span className="text-xs text-slate-500">
+            {additionalInfo.length}/3000 characters
+          </span>
+        </div>
       </div>
     </CoopModal>
   ) : null;
@@ -1057,22 +1039,29 @@ export default function NCMECReviewUser(
               }
             />
             <div className="flex flex-col gap-2 px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <label className="text-sm font-semibold text-slate-700">
+              <label
+                htmlFor="ncmecIncidentTypePage"
+                className="text-sm font-semibold text-slate-700"
+              >
                 Incident Type Category
               </label>
-              <select
+              <Select
                 value={incidentType}
-                onChange={(e) =>
-                  setIncidentType(e.target.value as GQLNcmecIncidentType)
+                onValueChange={(value) =>
+                  setIncidentType(value as GQLNcmecIncidentType)
                 }
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="ncmecIncidentTypePage" size="small">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-slate-500">
                 Select the primary incident type for this NCMEC report
               </p>

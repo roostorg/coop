@@ -10,6 +10,7 @@ import {
   useGQLGetLatestUserSubmittedItemsWithThreadsQuery,
   type GQLMessageWithIpAddress,
 } from '../../../../../../graphql/generated';
+import { stripTypename } from '../../../../../../graphql/inputHelpers';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
 import { NCMECThreadComponent } from './NCMECThreadComponent';
 
@@ -79,7 +80,9 @@ export default function NCMECPreviousMessages(props: {
   const { data, loading } = useGQLGetLatestUserSubmittedItemsWithThreadsQuery({
     variables: {
       userId: props.userIdentifier,
-      reportedMessages: props.reportedMessages,
+      // These come from a query response, and GraphQL rejects the extra
+      // __typename on ItemIdentifierInput.
+      reportedMessages: props.reportedMessages.map(stripTypename),
     },
     onCompleted: (data) => {
       setSelectedThread(
@@ -115,7 +118,7 @@ export default function NCMECPreviousMessages(props: {
         : 0;
     });
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-start">
       <List
         bordered
         dataSource={threadsWithMessages.map((it) => {
