@@ -27,6 +27,7 @@
     "export-text-bank": "node --loader ts-node/esm --require dotenv/config bin/export-text-bank.ts",
     "import-text-bank": "node --loader ts-node/esm --require dotenv/config bin/import-text-bank.ts",
     "seed-trustcon": "node --loader ts-node/esm --require dotenv/config bin/seed-trustcon.ts",
+    "seed-orgs": "node --loader ts-node/esm --require dotenv/config bin/seed-orgs.ts",
     "knip": "knip"
   },
   "author": "Roostorg",

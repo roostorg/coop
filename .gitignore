@@ -47,3 +47,6 @@ ncmec-reports/
 
 # Database backups (may contain API keys and credentials)
 .devops/backups/
+
+# Workshop credentials handout (contains API keys and passwords)
+workshop-credentials.*
