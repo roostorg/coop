@@ -1,0 +1,125 @@
+{
+  "_comment": "Synthetic sample posts for backfilling workshop orgs. Text-only, benign, some crafted to trip the seeded scam rules so queues arrive with rule hits. No real users. backfill-items.ts expands each into an ATproto-post submission per org using that org's item-type IDs.",
+  "posts": [
+    {
+      "handle": "moneymagnet.example",
+      "text": "Double your money in 24 hours! DM me to invest and I'll show you how 🚀"
+    },
+    {
+      "handle": "airdrop-alerts.example",
+      "text": "FREE CRYPTO giveaway for our first 100 followers. Click here to claim before it's gone!"
+    },
+    {
+      "handle": "yieldfarmer.example",
+      "text": "Guaranteed returns of 40% monthly, zero risk. Send your seed phrase to get started today."
+    },
+    {
+      "handle": "account-security.example",
+      "text": "Your account is suspended. Verify your account here within 24h to restore access."
+    },
+    {
+      "handle": "wallet-support.example",
+      "text": "Official support: confirm your password to re-secure your wallet after the breach."
+    },
+    {
+      "handle": "cryptowhale.example",
+      "text": "Crypto giveaway is LIVE. Free crypto to everyone who reposts and follows."
+    },
+    {
+      "handle": "earlyretire.example",
+      "text": "I turned $500 into $50k last month. DM me to invest, spots are limited."
+    },
+    {
+      "handle": "urgent-notice.example",
+      "text": "URGENT: your account is suspended. Click here to claim your remaining balance."
+    },
+    {
+      "handle": "new-airdrop.example",
+      "text": "New airdrop is here! Just send your seed phrase to verify your account and receive tokens."
+    },
+    {
+      "handle": "fastgains.example",
+      "text": "Limited time only: guaranteed returns, double your money, act fast before it closes."
+    },
+    {
+      "handle": "riverrunner.example",
+      "text": "just finished a 10k along the river, absolutely gorgeous morning out there ☀️"
+    },
+    {
+      "handle": "sourdoughsue.example",
+      "text": "anyone have good sourdough starter tips? mine keeps dying after a week"
+    },
+    {
+      "handle": "bingewatcher.example",
+      "text": "rewatching the entire series before the finale drops this weekend, no spoilers please"
+    },
+    {
+      "handle": "cortadofan.example",
+      "text": "the new espresso place downtown is unreal, do yourself a favor and get the cortado"
+    },
+    {
+      "handle": "hottakehank.example",
+      "text": "hot take that shouldn't be a hot take: pineapple absolutely belongs on pizza"
+    },
+    {
+      "handle": "plantparent.example",
+      "text": "spent the whole weekend repotting my plants, deeply satisfying and my apartment is a jungle now"
+    },
+    {
+      "handle": "basslearner.example",
+      "text": "trying to learn the bass line for this song and my fingers genuinely hurt, worth it though"
+    },
+    {
+      "handle": "quietworker.example",
+      "text": "the library extended its hours, finally somewhere quiet to actually get work done"
+    },
+    {
+      "handle": "summitseeker.example",
+      "text": "made it to the summit! the views were worth every single switchback on the way up"
+    },
+    {
+      "handle": "catservant.example",
+      "text": "my cat has unilaterally decided 4am is breakfast time and I am powerless to stop her"
+    },
+    {
+      "handle": "scifireader.example",
+      "text": "reading recs? just finished a fantastic sci-fi trilogy and now I have a book-shaped hole in my life"
+    },
+    {
+      "handle": "marketgoer.example",
+      "text": "the farmers market had the best heirloom tomatoes today, bought way too many, no regrets"
+    },
+    {
+      "handle": "semicolondev.example",
+      "text": "debugging for three hours and of course it was a single missing semicolon 😑"
+    },
+    {
+      "handle": "firstsnow.example",
+      "text": "first snow of the season and the whole city suddenly looks like a different place"
+    },
+    {
+      "handle": "oatmilktrial.example",
+      "text": "trying oat milk in my coffee all week as an experiment, the jury is still very much out"
+    },
+    {
+      "handle": "gardenplot.example",
+      "text": "the community garden plots finally opened up and I grabbed one, tomatoes incoming"
+    },
+    {
+      "handle": "stargazer.example",
+      "text": "watched the meteor shower last night from the roof, counted at least a dozen, incredible"
+    },
+    {
+      "handle": "matchamorning.example",
+      "text": "new bakery on 5th has a matcha croissant that genuinely changed my morning routine"
+    },
+    {
+      "handle": "aquariumday.example",
+      "text": "took the kids to the aquarium and the jellyfish tank absolutely stole the show"
+    },
+    {
+      "handle": "shelforganizer.example",
+      "text": "finally organized my bookshelf by color, it was chaos for a day but worth it"
+    }
+  ]
+}

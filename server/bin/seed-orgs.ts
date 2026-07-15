@@ -27,6 +27,7 @@ import {
   hashPassword,
   UserRole,
 } from '../services/userManagementService/index.js';
+import { jsonStringify } from '../utils/encoding.js';
 
 // A realistic T&S team, in the order users are assigned. ADMIN is always first
 // because the CCF seed attributes its config to the org's ADMIN user.
@@ -90,6 +91,8 @@ type SeededOrg = {
   orgId: string;
   apiKey: string;
   adminUserId: string;
+  postTypeId: string | null;
+  accountTypeId: string | null;
   users: SeededUser[];
 };
 
@@ -174,50 +177,60 @@ async function main() {
         users.push({ email, role, password: argv.password });
       }
 
+      // Seed the CCF config for this org (which creates the ATproto item types),
+      // then resolve the item-type IDs the backfill needs. The seed runs as a
+      // child process so we reuse it as-is; the DB write is visible to our
+      // still-open container afterward.
+      let postTypeId: string | null = null;
+      let accountTypeId: string | null = null;
+      if (argv.seed) {
+        const seedArgs = [
+          'run',
+          'seed-trustcon',
+          '--',
+          '--org-id',
+          orgId,
+          '--user-id',
+          adminUserId,
+        ];
+        if (argv['relay-url']) seedArgs.push('--relay-url', argv['relay-url']);
+        console.log(`▶️  Seeding CCF config for ${name} (${orgId})`);
+        try {
+          execFileSync('npm', seedArgs, { stdio: 'inherit' });
+          const itemTypes =
+            await container.ModerationConfigService.getItemTypes({ orgId });
+          const findId = (nm: string) =>
+            itemTypes.find((t) => t.name === nm)?.id ?? null;
+          postTypeId = findId('ATproto-post');
+          accountTypeId = findId('ATproto-account');
+        } catch {
+          console.error(
+            `❌ CCF seed failed for ${name} (${orgId}); continuing. ` +
+              `Re-run: npm run seed-trustcon -- --org-id ${orgId} --user-id ${adminUserId}`,
+          );
+        }
+      }
+
       seeded.push({
         index: n,
         name,
         orgId: org.id,
         apiKey,
         adminUserId,
+        postTypeId,
+        accountTypeId,
         users,
       });
-      console.log(`✅ Created ${name} (${org.id}) with ${users.length} users`);
+      console.log(`✅ ${name} (${org.id}): ${users.length} users`);
     }
-
-    // Parent DB work is done; release pooled connections before spawning the
-    // per-org CCF seed as independent child processes.
-    await container.closeSharedResourcesForShutdown();
 
     writeCredentials(seeded);
-
-    if (argv.seed) {
-      for (const o of seeded) {
-        const args = [
-          'run',
-          'seed-trustcon',
-          '--',
-          '--org-id',
-          o.orgId,
-          '--user-id',
-          o.adminUserId,
-        ];
-        if (argv['relay-url']) args.push('--relay-url', argv['relay-url']);
-        console.log(`\n▶️  Seeding CCF config for ${o.name} (${o.orgId})`);
-        try {
-          execFileSync('npm', args, { stdio: 'inherit' });
-        } catch {
-          console.error(
-            `❌ CCF seed failed for ${o.name} (${o.orgId}); continuing. ` +
-              `Re-run: npm run seed-trustcon -- --org-id ${o.orgId} --user-id ${o.adminUserId}`,
-          );
-        }
-      }
-    }
+    await container.closeSharedResourcesForShutdown();
 
     console.log(
       `\n✅ Done. ${seeded.length} orgs, ${seeded.reduce((n, o) => n + o.users.length, 0)} users.` +
-        `\n🔑 Credentials written to ${resolve(argv.out)} (and .csv). Do not commit.\n`,
+        `\n🔑 Credentials written to ${resolve(argv.out)} (+ .csv, .json). Do not commit.` +
+        `\n   Next: start the server, then run backfill-items to fill each org's queues.\n`,
     );
     process.exit(0);
   } catch (error: unknown) {
@@ -258,10 +271,22 @@ function writeCredentials(seeded: SeededOrg[]): void {
     md.push('');
   }
 
+  // Machine-readable form consumed by backfill-items (org keys + item-type IDs).
+  const json = seeded.map((o) => ({
+    name: o.name,
+    orgId: o.orgId,
+    apiKey: o.apiKey,
+    postTypeId: o.postTypeId,
+    accountTypeId: o.accountTypeId,
+    users: o.users,
+  }));
+
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is an operator-supplied CLI arg
   writeFileSync(argv.out, md.join('\n'));
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is an operator-supplied CLI arg
   writeFileSync(argv.out.replace(/\.md$/, '.csv'), csv.join('\n'));
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is an operator-supplied CLI arg
+  writeFileSync(argv.out.replace(/\.md$/, '.json'), jsonStringify(json));
 }
 
 main().catch((error) => {
