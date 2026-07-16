@@ -26,6 +26,7 @@ import useDynamicLegacyCSS from '@/hooks/useDynamicLegacyCSS';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Sidebar, { MenuItem } from '@/components/Sidebar';
+import ThemeSync from '@/components/ThemeSync';
 
 import {
   GQLUserPermission,
@@ -702,11 +703,14 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`flex w-full h-screen${isUsingLegacyCSS ? '' : ' bg-slate-50'}`}
+      className={`flex w-full h-screen${
+        isUsingLegacyCSS ? '' : ' bg-slate-50 dark:bg-neutral-950'
+      }`}
     >
       <Helmet>
         <title>Home</title>
       </Helmet>
+      <ThemeSync />
       <Sidebar
         menuItems={menuItems}
         settingsMenuItems={settingsMenuItems}
@@ -718,7 +722,7 @@ export default function Dashboard() {
       />
       {isUsingLegacyCSS ? (
         <>
-          <div className="w-px h-full bg-[#e5e7eb]" />
+          <div className="w-px h-full bg-[#e5e7eb] dark:bg-neutral-800" />
           <div className="flex justify-center w-full px-12 py-8 overflow-auto">
             <ErrorBoundary
               key={pathname}
