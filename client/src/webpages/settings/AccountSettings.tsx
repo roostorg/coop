@@ -22,6 +22,7 @@ import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import { gql } from '@apollo/client';
+import { useTheme } from 'next-themes';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -29,13 +30,16 @@ import { useNavigate } from 'react-router-dom';
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 
 import {
+  GQLThemePreference,
   namedOperations,
   useGQLAccountSettingsQuery,
   useGQLChangePasswordMutation,
   useGQLDeleteUserMutation,
   useGQLPersonalSafetySettingsQuery,
   useGQLSetModeratorSafetySettingsMutation,
+  useGQLSetThemePreferenceMutation,
   useGQLUpdateAccountInfoMutation,
+  useGQLUserThemePreferenceQuery,
 } from '../../graphql/generated';
 import GoldenRetrieverPuppies from '../../images/GoldenRetrieverPuppies.png';
 import {
@@ -46,6 +50,11 @@ import {
   preferencesFromColorScheme,
   type ModeratorSafetyColorScheme,
 } from '../../models/safetySettings';
+import {
+  NEXT_THEME_FOR_PREFERENCE,
+  THEME_PREFERENCE_LABELS,
+  THEME_PREFERENCES,
+} from '../../models/theme';
 import {
   BLUR_LEVELS,
   type BlurStrength,
@@ -90,6 +99,12 @@ gql`
     setModeratorSafetySettings(
       moderatorSafetySettings: $moderatorSafetySettings
     ) {
+      _
+    }
+  }
+
+  mutation SetThemePreference($themePreference: ThemePreference!) {
+    setThemePreference(themePreference: $themePreference) {
       _
     }
   }
@@ -187,6 +202,45 @@ export default function AccountSettings() {
 
   const [updateAccountInfo, { loading: isUpdateAccountInfoLoading }] =
     useGQLUpdateAccountInfoMutation();
+
+  const { setTheme } = useTheme();
+  const { data: themePreferenceData } = useGQLUserThemePreferenceQuery();
+  const [saveThemePreference] = useGQLSetThemePreferenceMutation();
+  // Light mirrors the app default for users who have never chosen a theme.
+  const [themePreference, setThemePreference] = useState<GQLThemePreference>(
+    GQLThemePreference.Light,
+  );
+
+  useEffect(() => {
+    const savedPreference =
+      themePreferenceData?.me?.interfacePreferences?.themePreference;
+    if (savedPreference) {
+      setThemePreference(savedPreference);
+    }
+  }, [themePreferenceData?.me?.interfacePreferences?.themePreference]);
+
+  // Theme changes apply (and persist) immediately rather than waiting for
+  // the Save button, so the user gets instant feedback and can back out.
+  const handleThemePreferenceChange = useCallback(
+    (value: string) => {
+      const preference = value as GQLThemePreference;
+      const previous = themePreference;
+      setThemePreference(preference);
+      setTheme(NEXT_THEME_FOR_PREFERENCE[preference]);
+      saveThemePreference({
+        variables: { themePreference: preference },
+        refetchQueries: [namedOperations.Query.UserThemePreference],
+      }).catch(() => {
+        setThemePreference(previous);
+        setTheme(NEXT_THEME_FOR_PREFERENCE[previous]);
+        toast.error('Error Saving Theme', {
+          description:
+            "We couldn't save your theme preference. Please try again.",
+        });
+      });
+    },
+    [themePreference, setTheme, saveThemePreference],
+  );
 
   const [changePassword, { loading: isChangePasswordLoading }] =
     useGQLChangePasswordMutation({
@@ -585,6 +639,34 @@ export default function AccountSettings() {
             </Button>
           </div>
         )}
+
+        <div className="mb-8">
+          <Heading size="LG" className="mb-2">
+            Appearance
+          </Heading>
+          <Text size="SM" className="mb-4">
+            Choose how Coop looks to you. "System" follows your device's color
+            scheme.
+          </Text>
+          <div className="flex gap-3 items-center justify-between w-64">
+            <Label>Theme</Label>
+            <Select
+              value={themePreference}
+              onValueChange={handleThemePreferenceChange}
+            >
+              <SelectTrigger size="small" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {THEME_PREFERENCES.map((preference) => (
+                  <SelectItem value={preference} key={preference}>
+                    {THEME_PREFERENCE_LABELS[preference]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         <div className="mb-8">
           <Heading>Wellness</Heading>

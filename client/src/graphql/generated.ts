@@ -5300,6 +5300,22 @@ export type GQLZentropiLabelerVersionInput = {
   readonly label: Scalars['String']['input'];
 };
 
+export type GQLUserThemePreferenceQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLUserThemePreferenceQuery = {
+  readonly __typename: 'Query';
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly id: string;
+    readonly interfacePreferences: {
+      readonly __typename: 'UserInterfacePreferences';
+      readonly themePreference?: GQLThemePreference | null;
+    };
+  } | null;
+};
+
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLApiAuthQuery = {
@@ -24821,6 +24837,18 @@ export type GQLUpdateAccountInfoMutation = {
   readonly updateAccountInfo?: boolean | null;
 };
 
+export type GQLSetThemePreferenceMutationVariables = Exact<{
+  themePreference: GQLThemePreference;
+}>;
+
+export type GQLSetThemePreferenceMutation = {
+  readonly __typename: 'Mutation';
+  readonly setThemePreference?: {
+    readonly __typename: 'SetThemePreferenceSuccessResponse';
+    readonly _?: boolean | null;
+  } | null;
+};
+
 export type GQLChangePasswordMutationVariables = Exact<{
   input: GQLChangePasswordInput;
 }>;
@@ -26332,6 +26360,107 @@ export const GQLActionFragmentFragmentDoc = gql`
     }
   }
 `;
+export const GQLUserThemePreferenceDocument = gql`
+  query UserThemePreference {
+    me {
+      id
+      interfacePreferences {
+        themePreference
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLUserThemePreferenceQuery__
+ *
+ * To run a query within a React component, call `useGQLUserThemePreferenceQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLUserThemePreferenceQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLUserThemePreferenceQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLUserThemePreferenceQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLUserThemePreferenceQuery,
+    GQLUserThemePreferenceQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLUserThemePreferenceQuery,
+    GQLUserThemePreferenceQueryVariables
+  >(GQLUserThemePreferenceDocument, options);
+}
+export function useGQLUserThemePreferenceLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLUserThemePreferenceQuery,
+    GQLUserThemePreferenceQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLUserThemePreferenceQuery,
+    GQLUserThemePreferenceQueryVariables
+  >(GQLUserThemePreferenceDocument, options);
+}
+// @ts-ignore
+export function useGQLUserThemePreferenceSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLUserThemePreferenceQuery,
+    GQLUserThemePreferenceQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLUserThemePreferenceQuery,
+  GQLUserThemePreferenceQueryVariables
+>;
+export function useGQLUserThemePreferenceSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLUserThemePreferenceQuery,
+        GQLUserThemePreferenceQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLUserThemePreferenceQuery | undefined,
+  GQLUserThemePreferenceQueryVariables
+>;
+export function useGQLUserThemePreferenceSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLUserThemePreferenceQuery,
+        GQLUserThemePreferenceQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLUserThemePreferenceQuery,
+    GQLUserThemePreferenceQueryVariables
+  >(GQLUserThemePreferenceDocument, options);
+}
+export type GQLUserThemePreferenceQueryHookResult = ReturnType<
+  typeof useGQLUserThemePreferenceQuery
+>;
+export type GQLUserThemePreferenceLazyQueryHookResult = ReturnType<
+  typeof useGQLUserThemePreferenceLazyQuery
+>;
+export type GQLUserThemePreferenceSuspenseQueryHookResult = ReturnType<
+  typeof useGQLUserThemePreferenceSuspenseQuery
+>;
+export type GQLUserThemePreferenceQueryResult = Apollo.QueryResult<
+  GQLUserThemePreferenceQuery,
+  GQLUserThemePreferenceQueryVariables
+>;
 export const GQLApiAuthDocument = gql`
   query ApiAuth {
     apiKey
@@ -43186,6 +43315,56 @@ export type GQLUpdateAccountInfoMutationOptions = Apollo.BaseMutationOptions<
   GQLUpdateAccountInfoMutation,
   GQLUpdateAccountInfoMutationVariables
 >;
+export const GQLSetThemePreferenceDocument = gql`
+  mutation SetThemePreference($themePreference: ThemePreference!) {
+    setThemePreference(themePreference: $themePreference) {
+      _
+    }
+  }
+`;
+export type GQLSetThemePreferenceMutationFn = Apollo.MutationFunction<
+  GQLSetThemePreferenceMutation,
+  GQLSetThemePreferenceMutationVariables
+>;
+
+/**
+ * __useGQLSetThemePreferenceMutation__
+ *
+ * To run a mutation, you first call `useGQLSetThemePreferenceMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLSetThemePreferenceMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlSetThemePreferenceMutation, { data, loading, error }] = useGQLSetThemePreferenceMutation({
+ *   variables: {
+ *      themePreference: // value for 'themePreference'
+ *   },
+ * });
+ */
+export function useGQLSetThemePreferenceMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLSetThemePreferenceMutation,
+    GQLSetThemePreferenceMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLSetThemePreferenceMutation,
+    GQLSetThemePreferenceMutationVariables
+  >(GQLSetThemePreferenceDocument, options);
+}
+export type GQLSetThemePreferenceMutationHookResult = ReturnType<
+  typeof useGQLSetThemePreferenceMutation
+>;
+export type GQLSetThemePreferenceMutationResult =
+  Apollo.MutationResult<GQLSetThemePreferenceMutation>;
+export type GQLSetThemePreferenceMutationOptions = Apollo.BaseMutationOptions<
+  GQLSetThemePreferenceMutation,
+  GQLSetThemePreferenceMutationVariables
+>;
 export const GQLChangePasswordDocument = gql`
   mutation ChangePassword($input: ChangePasswordInput!) {
     changePassword(input: $input) {
@@ -45385,6 +45564,7 @@ export type GQLSetOrgDefaultSafetySettingsMutationOptions =
   >;
 export const namedOperations = {
   Query: {
+    UserThemePreference: 'UserThemePreference',
     ApiAuth: 'ApiAuth',
     HashBanks: 'HashBanks',
     HashBankById: 'HashBankById',
@@ -45581,6 +45761,7 @@ export const namedOperations = {
     SetAllUserStrikeThreshold: 'SetAllUserStrikeThreshold',
     UpdateUserStrikeTTL: 'UpdateUserStrikeTTL',
     UpdateAccountInfo: 'UpdateAccountInfo',
+    SetThemePreference: 'SetThemePreference',
     ChangePassword: 'ChangePassword',
     DeleteUser: 'DeleteUser',
     UpdateRole: 'UpdateRole',
