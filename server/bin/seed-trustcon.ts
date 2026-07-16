@@ -204,8 +204,8 @@ const SCAM_PHISHING_TERMS = [
   'click here to claim',
   'send your seed phrase',
 ];
-const BLEEP_ACTION_NAME = 'Emit Bleep label (CCF demo)';
-const BLOOP_ACTION_NAME = 'Emit Bloop label (CCF demo)';
+const BLEEP_ACTION_NAME = 'Emit Bleep label';
+const BLOOP_ACTION_NAME = 'Emit Bloop label';
 
 // ---------------------------------------------------------------------------
 // AT Protocol item type schemas. Mirror
@@ -572,7 +572,7 @@ async function seedTrustcon() {
           orgId,
           {
             name,
-            description: `CCF TVEC demo: emit the "${labelVal}" Ozone label via the label relay.`,
+            description: `emit the benign "${labelVal}" Bluesky label`,
             type: 'CUSTOM_ACTION',
             callbackUrl: `${relayUrl}/label`,
             callbackUrlHeaders: {},
