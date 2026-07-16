@@ -30,6 +30,19 @@ export default defineConfig({
       },
     },
   },
+  // `vite preview` serves the production build (used in Codespaces, where the
+  // HMR dev server is unreliable through the port proxy). It needs its own proxy
+  // so the client's relative `/api` calls reach the server on :8080.
+  preview: {
+    port: 3000,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

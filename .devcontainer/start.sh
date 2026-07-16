@@ -12,10 +12,16 @@ if ! grep -q '^INGEST_ORG_ID=[^[:space:]]' server/.env 2>/dev/null; then
   echo "WARNING: INGEST_ORG_ID not set in server/.env; run .devcontainer/setup.sh first."
 fi
 
-echo "==> Starting the Coop server (:8080, serves client on :3000)"
+echo "==> Starting the Coop server (:8080, GraphQL + REST API)"
 # `server:start` is a root script (cd server && npm start); run it from root.
 nohup bash -c 'npm run server:start' \
   > .devcontainer/logs/server.log 2>&1 &
+
+echo "==> Serving the built client on :3000 (vite preview; proxies /api to :8080)"
+# The client is a production build (setup.sh ran `vite build`); nothing serves
+# it otherwise, so `vite preview` hosts build/ and proxies /api to the server.
+nohup bash -c 'cd client && npm run preview' \
+  > .devcontainer/logs/client.log 2>&1 &
 
 echo "==> Starting the Jetstream connector worker"
 nohup bash -c 'cd server && npm run runWorkerOrJob -- TapConnectorWorker' \

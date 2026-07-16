@@ -6,6 +6,7 @@
     "analyze": "npm run build && source-map-explorer 'build/static/js/*.js'",
     "start": "vite --port 3000",
     "build": "vite build",
+    "preview": "vite preview --host",
     "test": "vitest --passWithNoTests",
     "test:prepush": "vitest run --passWithNoTests",
     "check:prepush": "npm run build && npm run test:prepush",
