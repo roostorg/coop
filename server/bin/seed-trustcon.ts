@@ -279,6 +279,12 @@ const argv = await yargs(hideBin(process.argv))
       description:
         'Base URL of the Ozone label relay (e.g. http://localhost:8090)',
     },
+    'relay-token': {
+      type: 'string',
+      demandOption: false,
+      description:
+        'Bearer token for the label relay; sent as the action callbackUrlHeaders Authorization. Required for a relay with RELAY_TOKEN set.',
+    },
     'user-id': {
       type: 'string',
       demandOption: false,
@@ -305,6 +311,7 @@ function findByName<T extends { name: string }>(
 async function seedTrustcon() {
   const orgId = argv['org-id'];
   const relayUrl = argv['relay-url'].replace(/\/+$/, '');
+  const relayToken = argv['relay-token'];
 
   const bottle = await getBottle();
   const container = bottle.container;
@@ -575,7 +582,9 @@ async function seedTrustcon() {
             description: `emit the benign "${labelVal}" Bluesky label`,
             type: 'CUSTOM_ACTION',
             callbackUrl: `${relayUrl}/label`,
-            callbackUrlHeaders: {},
+            callbackUrlHeaders: relayToken
+              ? { Authorization: `Bearer ${relayToken}` }
+              : {},
             callbackUrlBody: { labelVal },
             itemTypeIds: [postTypeId],
           },

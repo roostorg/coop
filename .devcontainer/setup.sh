@@ -10,6 +10,7 @@ cd "$(dirname "$0")/.."
 
 DEMO_PASSWORD="trustcon"
 RELAY_URL="${RELAY_URL:-http://localhost:8090}"
+RELAY_TOKEN="${RELAY_TOKEN:-}"
 ORGS="${WORKSHOP_ORGS:-6}"
 
 echo "==> Copying .env files"
@@ -65,7 +66,7 @@ echo "==> Building the client (production build; the Codespace proxy is unreliab
 
 echo "==> Creating $ORGS workshop orgs (role-based teams) and seeding each with the CCF config"
 (cd server && npm run seed-orgs -- --orgs "$ORGS" --users-per-org 5 \
-  --password "$DEMO_PASSWORD" --relay-url "$RELAY_URL")
+  --password "$DEMO_PASSWORD" --relay-url "$RELAY_URL" --relay-token "$RELAY_TOKEN")
 
 CREDS="server/workshop-credentials.json"
 [ -f "$CREDS" ] || { echo "ERROR: seed-orgs did not write $CREDS"; exit 1; }

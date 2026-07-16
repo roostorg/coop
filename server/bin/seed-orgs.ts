@@ -70,6 +70,10 @@ const argv = await yargs(hideBin(process.argv))
       type: 'string',
       description: 'Passed through to the CCF seed for Bleep/Bloop actions',
     },
+    'relay-token': {
+      type: 'string',
+      description: 'Passed through to the CCF seed as the relay bearer token',
+    },
     seed: {
       type: 'boolean',
       default: true,
@@ -194,6 +198,8 @@ async function main() {
           adminUserId,
         ];
         if (argv['relay-url']) seedArgs.push('--relay-url', argv['relay-url']);
+        if (argv['relay-token'])
+          seedArgs.push('--relay-token', argv['relay-token']);
         console.log(`▶️  Seeding CCF config for ${name} (${orgId})`);
         try {
           execFileSync('npm', seedArgs, { stdio: 'inherit' });

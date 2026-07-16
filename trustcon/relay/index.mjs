@@ -16,6 +16,7 @@ const {
   ADMIN_DID, // did used as createdBy; must be listed in OZONE_ADMIN_DIDS
   ALLOWED_LABELS = 'bleep,bloop', // guardrail: only these values may ever be emitted
   APPVIEW_URL = 'https://public.api.bsky.app',
+  RELAY_TOKEN, // if set, POST /label requires `Authorization: Bearer <RELAY_TOKEN>`
 } = process.env;
 
 const allowed = new Set(
@@ -108,6 +109,14 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.method === 'POST' && req.url === '/label') {
+    // When RELAY_TOKEN is set (e.g. a public/deployed relay), require it. Both
+    // callers send it: Coop via the action's callbackUrlHeaders, Osprey via the
+    // label sink. Unset (local dev) leaves the endpoint open.
+    if (RELAY_TOKEN && req.headers.authorization !== `Bearer ${RELAY_TOKEN}`) {
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'unauthorized' }));
+      return;
+    }
     let raw = '';
     req.on('data', (c) => {
       raw += c;
