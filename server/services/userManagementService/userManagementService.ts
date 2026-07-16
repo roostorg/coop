@@ -12,7 +12,7 @@ import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWit
 import { asyncRandomBytes } from '../../utils/misc.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
-import type { MrtChartConfig } from './dbTypes.js';
+import type { MrtChartConfig, ThemePreference } from './dbTypes.js';
 import type { UserManagementPg } from './index.js';
 import {
   UserPermission,
@@ -67,6 +67,7 @@ class UserManagementService {
         moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
         moderatorSafetySepia: row.moderator_safety_sepia,
         mrtChartConfigurations: row.mrt_chart_configurations ?? [],
+        themePreference: row.theme_preference,
       };
     }
 
@@ -85,6 +86,7 @@ class UserManagementService {
         row?.moderator_safety_mute_video ??
         orgDefaults.moderatorSafetyMuteVideo,
       mrtChartConfigurations: row?.mrt_chart_configurations ?? [],
+      themePreference: row?.theme_preference ?? null,
     };
   }
 
@@ -171,10 +173,11 @@ class UserManagementService {
         moderatorSafetySepia: boolean;
       };
       mrtChartConfigurations?: readonly MrtChartConfig[];
+      themePreference?: ThemePreference;
     };
   }) {
     const { userId, userInterfaceSettings } = input;
-    const { moderatorSafetySettings, mrtChartConfigurations } =
+    const { moderatorSafetySettings, mrtChartConfigurations, themePreference } =
       userInterfaceSettings;
 
     const dbFormattedInterfaceSettings = {
@@ -195,6 +198,7 @@ class UserManagementService {
             mrt_chart_configurations: [...mrtChartConfigurations],
           }
         : {}),
+      ...(themePreference ? { theme_preference: themePreference } : {}),
     };
 
     let query = this.pgQuery

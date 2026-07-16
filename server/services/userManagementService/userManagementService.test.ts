@@ -207,6 +207,92 @@ describe('UserManagementService', () => {
     );
   });
 
+  describe('#upsertUserInterfaceSettings', () => {
+    testWithFixtures('persists the theme preference', async ({ sut }) => {
+      const mockInsert = {
+        values: jest.fn().mockReturnThis(),
+        onConflict: jest.fn().mockReturnThis(),
+        returningAll: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue([]),
+      };
+      (mockDb.insertInto as jest.Mock).mockReturnValue(mockInsert);
+
+      await sut.upsertUserInterfaceSettings({
+        userId: 'user-123',
+        userInterfaceSettings: { themePreference: 'DARK' },
+      });
+
+      expect(mockDb.insertInto).toHaveBeenCalledWith(
+        'user_management_service.user_interface_settings',
+      );
+      expect(mockInsert.values).toHaveBeenCalledWith({
+        user_id: 'user-123',
+        theme_preference: 'DARK',
+      });
+    });
+  });
+
+  describe('#getUserInterfaceSettings', () => {
+    testWithFixtures(
+      'returns the stored theme preference alongside safety settings',
+      async ({ sut }) => {
+        const mockSelect = {
+          selectAll: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          executeTakeFirst: jest.fn().mockResolvedValue({
+            user_id: 'user-123',
+            moderator_safety_grayscale: true,
+            moderator_safety_sepia: false,
+            moderator_safety_blur_level: 2,
+            moderator_safety_mute_video: true,
+            mrt_chart_configurations: null,
+            theme_preference: 'DARK',
+          }),
+        };
+        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+
+        const settings = await sut.getUserInterfaceSettings({
+          userId: 'user-123',
+          orgId: 'org-456',
+        });
+
+        expect(settings.themePreference).toBe('DARK');
+      },
+    );
+
+    testWithFixtures(
+      'returns a null theme preference when the user has no settings row',
+      async ({ sut }) => {
+        const mockUserSelect = {
+          selectAll: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          executeTakeFirst: jest.fn().mockResolvedValue(undefined),
+        };
+        const mockOrgDefaultsSelect = {
+          selectAll: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          executeTakeFirstOrThrow: jest.fn().mockResolvedValue({
+            org_id: 'org-456',
+            moderator_safety_grayscale: true,
+            moderator_safety_sepia: false,
+            moderator_safety_blur_level: 2,
+            moderator_safety_mute_video: true,
+          }),
+        };
+        (mockDb.selectFrom as jest.Mock)
+          .mockReturnValueOnce(mockUserSelect)
+          .mockReturnValueOnce(mockOrgDefaultsSelect);
+
+        const settings = await sut.getUserInterfaceSettings({
+          userId: 'user-123',
+          orgId: 'org-456',
+        });
+
+        expect(settings.themePreference).toBeNull();
+      },
+    );
+  });
+
   describe('#resetPasswordForToken', () => {
     testWithFixtures(
       'invalidates all sessions for the user after resetting the password',

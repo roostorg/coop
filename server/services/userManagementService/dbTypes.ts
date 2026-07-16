@@ -22,6 +22,8 @@ export type MrtChartConfig = {
     )
 );
 
+export type ThemePreference = 'SYSTEM' | 'LIGHT' | 'DARK';
+
 export type UserManagementPg = {
   'user_management_service.user_interface_settings': {
     user_id: string;
@@ -30,6 +32,8 @@ export type UserManagementPg = {
     moderator_safety_sepia: boolean | null;
     moderator_safety_blur_level: number | null;
     mrt_chart_configurations: MrtChartConfig[] | null;
+    // NULL means "follow the system color scheme" (see issue #365)
+    theme_preference: ThemePreference | null;
   };
   // We use ColumnType in this table because all the moderator_safety columns
   // are non-null and have default values, so we can provide null values on

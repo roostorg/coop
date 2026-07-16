@@ -2614,6 +2614,7 @@ export type GQLMutation = {
   readonly setMrtChartConfigurationSettings?: Maybe<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   readonly setOrgDefaultSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
   readonly setPluginIntegrationConfig: GQLSetIntegrationConfigResponse;
+  readonly setThemePreference?: Maybe<GQLSetThemePreferenceSuccessResponse>;
   readonly signUp: GQLSignUpResponse;
   readonly submitManualReviewDecision: GQLSubmitDecisionResponse;
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
@@ -2885,6 +2886,10 @@ export type GQLMutationSetOrgDefaultSafetySettingsArgs = {
 
 export type GQLMutationSetPluginIntegrationConfigArgs = {
   input: GQLSetPluginIntegrationConfigInput;
+};
+
+export type GQLMutationSetThemePreferenceArgs = {
+  themePreference: GQLThemePreference;
 };
 
 export type GQLMutationSignUpArgs = {
@@ -4396,6 +4401,11 @@ export type GQLSetPluginIntegrationConfigInput = {
   readonly integrationId: Scalars['String']['input'];
 };
 
+export type GQLSetThemePreferenceSuccessResponse = {
+  readonly __typename?: 'SetThemePreferenceSuccessResponse';
+  readonly _?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type GQLSetUserStrikeThresholdInput = {
   readonly actionParameters?: InputMaybe<Scalars['JSONObject']['input']>;
   readonly actions: ReadonlyArray<Scalars['String']['input']>;
@@ -4695,6 +4705,18 @@ export const GQLTextBankType = {
 
 export type GQLTextBankType =
   (typeof GQLTextBankType)[keyof typeof GQLTextBankType];
+/**
+ * The user's color scheme preference. SYSTEM means "follow the operating
+ * system / browser color scheme".
+ */
+export const GQLThemePreference = {
+  Dark: 'DARK',
+  Light: 'LIGHT',
+  System: 'SYSTEM',
+} as const;
+
+export type GQLThemePreference =
+  (typeof GQLThemePreference)[keyof typeof GQLThemePreference];
 export type GQLThreadAppealManualReviewJobPayload = {
   readonly __typename?: 'ThreadAppealManualReviewJobPayload';
   readonly actionsTaken: ReadonlyArray<Scalars['String']['output']>;
@@ -5117,6 +5139,11 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['output'];
   readonly moderatorSafetySepia: Scalars['Boolean']['output'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
+  /**
+   * Null means the user has never chosen a theme; the client falls back to
+   * its default (currently light).
+   */
+  readonly themePreference?: Maybe<GQLThemePreference>;
 };
 
 export type GQLUserItem = GQLItemBase & {
@@ -6476,6 +6503,7 @@ export type GQLResolversTypes = {
   SetModeratorSafetySettingsSuccessResponse: ResolverTypeWrapper<GQLSetModeratorSafetySettingsSuccessResponse>;
   SetMrtChartConfigurationSettingsSuccessResponse: ResolverTypeWrapper<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   SetPluginIntegrationConfigInput: GQLSetPluginIntegrationConfigInput;
+  SetThemePreferenceSuccessResponse: ResolverTypeWrapper<GQLSetThemePreferenceSuccessResponse>;
   SetUserStrikeThresholdInput: GQLSetUserStrikeThresholdInput;
   SignUpInput: GQLSignUpInput;
   SignUpResponse: ResolverTypeWrapper<
@@ -6527,6 +6555,7 @@ export type GQLResolversTypes = {
   TableDecisionCount: ResolverTypeWrapper<GQLTableDecisionCount>;
   TextBank: ResolverTypeWrapper<GQLTextBank>;
   TextBankType: GQLTextBankType;
+  ThemePreference: GQLThemePreference;
   ThreadAppealManualReviewJobPayload: ResolverTypeWrapper<ThreadAppealReviewJobPayload>;
   ThreadItem: ResolverTypeWrapper<
     Omit<GQLThreadItem, 'type'> & { type: GQLResolversTypes['ThreadItemType'] }
@@ -7159,6 +7188,7 @@ export type GQLResolversParentTypes = {
   SetModeratorSafetySettingsSuccessResponse: GQLSetModeratorSafetySettingsSuccessResponse;
   SetMrtChartConfigurationSettingsSuccessResponse: GQLSetMrtChartConfigurationSettingsSuccessResponse;
   SetPluginIntegrationConfigInput: GQLSetPluginIntegrationConfigInput;
+  SetThemePreferenceSuccessResponse: GQLSetThemePreferenceSuccessResponse;
   SetUserStrikeThresholdInput: GQLSetUserStrikeThresholdInput;
   SignUpInput: GQLSignUpInput;
   SignUpResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['SignUpResponse'];
@@ -11367,6 +11397,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationSetPluginIntegrationConfigArgs, 'input'>
   >;
+  setThemePreference?: Resolver<
+    Maybe<GQLResolversTypes['SetThemePreferenceSuccessResponse']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationSetThemePreferenceArgs, 'themePreference'>
+  >;
   signUp?: Resolver<
     GQLResolversTypes['SignUpResponse'],
     ParentType,
@@ -13775,6 +13811,15 @@ export type GQLSetMrtChartConfigurationSettingsSuccessResponseResolvers<
   _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
 };
 
+export type GQLSetThemePreferenceSuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['SetThemePreferenceSuccessResponse'] =
+    GQLResolversParentTypes['SetThemePreferenceSuccessResponse'],
+> = {
+  _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
+};
+
 export type GQLSignUpResponseResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['SignUpResponse'] =
@@ -14729,6 +14774,11 @@ export type GQLUserInterfacePreferencesResolvers<
     ParentType,
     ContextType
   >;
+  themePreference?: Resolver<
+    Maybe<GQLResolversTypes['ThemePreference']>,
+    ParentType,
+    ContextType
+  >;
 };
 
 export type GQLUserItemResolvers<
@@ -15362,6 +15412,7 @@ export type GQLResolvers<ContextType = Context> = {
   SetIntegrationConfigSuccessResponse?: GQLSetIntegrationConfigSuccessResponseResolvers<ContextType>;
   SetModeratorSafetySettingsSuccessResponse?: GQLSetModeratorSafetySettingsSuccessResponseResolvers<ContextType>;
   SetMrtChartConfigurationSettingsSuccessResponse?: GQLSetMrtChartConfigurationSettingsSuccessResponseResolvers<ContextType>;
+  SetThemePreferenceSuccessResponse?: GQLSetThemePreferenceSuccessResponseResolvers<ContextType>;
   SignUpResponse?: GQLSignUpResponseResolvers<ContextType>;
   SignUpSuccessResponse?: GQLSignUpSuccessResponseResolvers<ContextType>;
   SignUpUserExistsError?: GQLSignUpUserExistsErrorResolvers<ContextType>;
