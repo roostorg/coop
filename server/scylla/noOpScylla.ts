@@ -2,6 +2,26 @@ import Scylla from './scylla.js';
 import { type DBDefinition, type CqlSelectOptions } from './cqlUtils.js';
 
 /**
+ * Parses the `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` feature flag from its raw
+ * string value (i.e. `process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED`).
+ *
+ * Shared by the `Scylla` DI factory in `iocContainer` (to decide whether to
+ * return a real Scylla or a {@link NoOpScylla}) and by the unit tests. Defaults
+ * to enabled when unset/empty so existing deployments are unaffected; only the
+ * explicit falsey values `false`/`0`/`no` (case/whitespace-insensitive) disable
+ * the Scylla-backed features.
+ *
+ * Kept as a pure function of its argument (it does not read `process.env`
+ * itself) so callers own where the value comes from and tests stay independent
+ * of the ambient environment.
+ */
+export function itemInvestigationAndStrikesEnabled(
+  raw: string | undefined,
+): boolean {
+  return !['false', '0', 'no'].includes((raw ?? 'true').trim().toLowerCase());
+}
+
+/**
  * A no-op implementation of {@link Scylla} used when the Scylla-backed features
  * (item investigation and user strikes) are disabled via
  * `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false`.
@@ -51,11 +71,11 @@ export default class NoOpScylla<
       };
     }[RelationName],
   ): Promise<Awaited<ReturnType<Scylla<DB>['insert']>>> {
-    // There is no cluster to write to; return a minimal empty result set that
-    // satisfies the driver's `ResultSet` shape used by the base class.
-    return { rows: [], rowLength: 0 } as unknown as Awaited<
-      ReturnType<Scylla<DB>['insert']>
-    >;
+    // There is no cluster to write to; return a minimal empty result set. The
+    // real driver returns a full `ResultSet`, but no-op consumers never read
+    // the result, so a minimal shape is sufficient here.
+    // @ts-expect-error - minimal stand-in for the driver's ResultSet; unused by callers
+    return { rows: [], rowLength: 0 };
   }
 
   /** Return no rows. */

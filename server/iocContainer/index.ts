@@ -59,7 +59,9 @@ import makeRuleEvaluator, {
   type RuleEvaluator,
 } from '../rule_engine/RuleEvaluator.js';
 import { Scylla } from '../scylla/index.js';
-import NoOpScylla from '../scylla/noOpScylla.js';
+import NoOpScylla, {
+  itemInvestigationAndStrikesEnabled,
+} from '../scylla/noOpScylla.js';
 import {
   makeActionStatisticsService,
   type ActionStatisticsService,
@@ -789,12 +791,11 @@ export default async function getBottle() {
     // `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false` to swap in a no-op that
     // drops writes and returns empty reads, so no `SCYLLA_*` connection env
     // vars are required. Defaults to enabled to preserve existing behaviour.
-    const itemInvestigationAndStrikesEnabled = !['false', '0', 'no'].includes(
-      (process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED ?? 'true')
-        .trim()
-        .toLowerCase(),
-    );
-    if (!itemInvestigationAndStrikesEnabled) {
+    if (
+      !itemInvestigationAndStrikesEnabled(
+        process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
+      )
+    ) {
       // eslint-disable-next-line no-restricted-syntax
       logJson(
         'scylla.disabled ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false; using no-op Scylla',

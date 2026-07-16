@@ -1,4 +1,6 @@
-import NoOpScylla from './noOpScylla.js';
+import NoOpScylla, {
+  itemInvestigationAndStrikesEnabled,
+} from './noOpScylla.js';
 import Scylla from './scylla.js';
 
 /**
@@ -8,17 +10,11 @@ import Scylla from './scylla.js';
  * Two things are covered:
  *  1. The behavioural contract of {@link NoOpScylla} (drops writes, empty reads,
  *     connect/close resolve).
- *  2. The exact flag-parsing predicate used by the `Scylla` DI factory in
- *     `iocContainer` to decide enabled-vs-disabled. Kept in sync here so the
+ *  2. The exact flag-parsing predicate (`itemInvestigationAndStrikesEnabled`)
+ *     used by the `Scylla` DI factory in `iocContainer` to decide
+ *     enabled-vs-disabled. Imported directly (not mirrored) so the
  *     default-enabled (upstream-preserving) behaviour is guarded by a test.
  */
-
-// Mirror of the predicate in `server/iocContainer/index.ts`. If you change the
-// gate there, update this to match (and vice-versa) — this test is the guard
-// that the default preserves existing (Scylla-enabled) behaviour.
-function itemInvestigationAndStrikesEnabled(raw: string | undefined): boolean {
-  return !['false', '0', 'no'].includes((raw ?? 'true').trim().toLowerCase());
-}
 
 describe('ITEM_INVESTIGATION_AND_STRIKES_ENABLED gate predicate', () => {
   test('defaults to enabled when unset (preserves upstream behaviour)', () => {
