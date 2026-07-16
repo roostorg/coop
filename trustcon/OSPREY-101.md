@@ -93,6 +93,22 @@ Save a query you will reuse from the **saved queries** list, and open any entity
 "dig into what happened" half of Osprey, the same surface a safety team uses to
 investigate.
 
+## In the workshop: label an entity by hand
+
+Rules apply labels automatically, but people apply them too, and that human
+judgment is a first-class part of Osprey. From a query result or the event
+stream, open an entity (a user or a post) to see its labels and history, then:
+
+- **Add a label:** open the label form, pick a label, add a short **reason**, and
+  choose whether it is **permanent** or **expires** (say, in two weeks). Submit,
+  and it shows as manually added, next to any labels the rules applied.
+- **Remove a label:** on the entity's label list, click the **remove** (trash)
+  button next to a label and give a reason. It is marked **manually removed**
+  rather than deleted, so the record of who added and removed it is kept.
+
+Labels are the bridge between human decisions and the automated rules: a label a
+person adds (or a rule applies) becomes state other rules can act on later.
+
 ## For technical participants: write a UDF or an SML rule
 
 Two ways to bring your own logic. Both use the workshop's
