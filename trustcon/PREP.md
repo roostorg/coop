@@ -39,12 +39,24 @@ relay to Ozone `emitEvent` to a real signed label, served publicly.
 Attendees subscribe by adding `trustcon-labeler.bsky.social` as a labeler in the
 Bluesky app; then any Bleep/Bloop label appears in their app in real time.
 
-The relay runs inside each Coop Codespace (Coop action to `localhost` relay to the
-Fly Ozone); the seed's Bleep/Bloop actions target that local relay. The relay
-needs `OZONE_URL`, `OZONE_SERVER_DID`, and the labeler admin app password in its
-`.env` (a secret to distribute to facilitators, not commit).
+**One shared relay, deployed** (`trustcon/relay`, has a Dockerfile + fly.toml).
+Both the Coop action and the Osprey label sink post to it, so the labeler admin
+secret lives in one place (Fly), not in every Codespace, and the callback URL is
+a realistic hosted one. Deploy + wire it once: [you]
 
-Teardown after the workshop: `fly apps destroy trustcon-labeler trustcon-labeler-db`,
+1. `cd trustcon/relay && fly deploy` (app `trustcon-relay`).
+2. `fly secrets set -a trustcon-relay OZONE_URL=https://trustcon-labeler.fly.dev`
+   `OZONE_SERVER_DID=did:plc:5jv4bzk2pitgnypnqjdcgpom ADMIN_IDENTIFIER=<admin>`
+   `ADMIN_APP_PASSWORD=<secret> ADMIN_DID=<admin did> RELAY_TOKEN=<random>`
+3. Set Codespaces secrets so fresh Codespaces pick them up:
+   - roostorg/coop: `RELAY_URL=https://trustcon-relay.fly.dev`, `RELAY_TOKEN=<same>`
+   - roostorg/osprey: `OZONE_RELAY_URL=https://trustcon-relay.fly.dev`, `OZONE_RELAY_TOKEN=<same>`
+
+The relay's `/label` requires `Authorization: Bearer <RELAY_TOKEN>`; Coop sends it
+via the action's callbackUrlHeaders and Osprey via the sink, so all three share
+the one token. A local relay with no `RELAY_TOKEN` stays open for dev.
+
+Teardown after the workshop: `fly apps destroy trustcon-labeler trustcon-labeler-db trustcon-relay`,
 revoke the Fly token, and negate any labels left on real posts (section D).
 
 ## B. Coop Codespace (one shared, multi-org)
