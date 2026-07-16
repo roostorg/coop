@@ -23,7 +23,7 @@ const Toast = ({ ...props }: ToastProps) => {
         classNames: {
           toast:
             'w-[var(--width)] p-4 border rounded-lg shadow-sm flex items-center space-x-3',
-          default: 'bg-white',
+          default: 'bg-white dark:bg-neutral-800',
           icon: 'w-5 h-5',
           description: 'text-sm',
         },

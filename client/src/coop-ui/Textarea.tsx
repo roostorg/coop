@@ -10,8 +10,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, startSlot, endSlot, ...props }, ref) => {
     const textareaClasses = cn(
       'py-3 px-4 w-full text-sm font-medium transition-colors placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none',
-      'border border-gray-200 bg-white',
-      'hover:border-gray-300',
+      'border border-gray-200 bg-white dark:bg-neutral-800 dark:border-neutral-700 dark:placeholder:text-neutral-500',
+      'hover:border-gray-300 dark:hover:border-neutral-600',
       'focus:z-10 focus:outline-none focus:border-indigo-500 focus:shadow-focus-indigo',
       startSlot && endSlot
         ? 'rounded-none'

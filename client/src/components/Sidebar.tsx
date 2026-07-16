@@ -17,6 +17,7 @@ import { Link, useLocation } from 'react-router-dom';
 import DashboardMenuButton from '@/webpages/dashboard/components/DashboardMenuButton';
 
 import LogoAndWordmarkPurple from '../images/LogoAndWordmarkPurple.png';
+import LogoAndWordmarkWhite from '../images/LogoAndWordmarkWhite.png';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- value consumed only via `typeof` for MenuItemName
 const MenuItemNames = makeEnumLike([
@@ -211,8 +212,8 @@ export default function Sidebar(props: SidebarProps) {
             <div
               className={`flex cursor-pointer w-min h-min p-[8px] rounded border-none ${
                 isFooterButtonSelected
-                  ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50'
-                  : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100'
+                  ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50 dark:bg-indigo-950 dark:hover:bg-indigo-950'
+                  : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100 dark:text-neutral-200 dark:hover:text-neutral-400 dark:hover:bg-neutral-800'
               }`}
               onClick={() => {
                 onClick();
@@ -221,7 +222,7 @@ export default function Sidebar(props: SidebarProps) {
             >
               <Icon
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="fill-black dark:fill-neutral-200"
               />
             </div>
           ) : (
@@ -229,14 +230,14 @@ export default function Sidebar(props: SidebarProps) {
               to={url}
               className={`flex cursor-pointer w-min h-min p-[8px] rounded border-none ${
                 isFooterButtonSelected
-                  ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50'
-                  : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100'
+                  ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50 dark:bg-indigo-950 dark:hover:bg-indigo-950'
+                  : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100 dark:text-neutral-200 dark:hover:text-neutral-400 dark:hover:bg-neutral-800'
               }`}
               onClick={() => setSelectedMenuItem(menuItemName)}
             >
               <Icon
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="fill-black dark:fill-neutral-200"
               />
             </Link>
           )}
@@ -258,8 +259,8 @@ export default function Sidebar(props: SidebarProps) {
   const settingsMenu = (
     <div
       className={cn(
-        'bg-slate-50 overflow-hidden',
-        'border border-t-0 border-gray-200 border-solid border-x-0',
+        'bg-slate-50 dark:bg-neutral-800 overflow-hidden',
+        'border border-t-0 border-gray-200 dark:border-neutral-700 border-solid border-x-0',
         {
           'max-h-[1000px]': isSettingsMenuVisible,
           'max-h-0': !isSettingsMenuVisible,
@@ -277,7 +278,7 @@ export default function Sidebar(props: SidebarProps) {
             className={`flex text-start items-center rounded-lg my-[4px] cursor-pointer hover:text-primary ${
               selectedMenuItem === item.title
                 ? 'text-primary font-bold'
-                : 'text-black font-medium'
+                : 'text-black font-medium dark:text-neutral-200'
             } ${collapsed ? 'w-fit' : 'py-[6px] px-[8px]'}`}
             onClick={() => setSelectedMenuItem(item.title)}
           >
@@ -292,7 +293,7 @@ export default function Sidebar(props: SidebarProps) {
 
   return (
     <div
-      className={`relative flex flex-col justify-between bg-white ${
+      className={`relative flex flex-col justify-between bg-white dark:bg-neutral-900 ${
         collapsed ? '' : 'min-w-[250px]'
       } text-[14px] leading-normal`}
     >
@@ -305,6 +306,14 @@ export default function Sidebar(props: SidebarProps) {
                 alt="Logo"
                 width="110"
                 height="29"
+                className="dark:hidden"
+              />
+              <img
+                src={LogoAndWordmarkWhite}
+                alt="Logo"
+                width="110"
+                height="29"
+                className="hidden dark:block"
               />
             </Link>
           )}
@@ -315,12 +324,12 @@ export default function Sidebar(props: SidebarProps) {
             {collapsed ? (
               <AngleDoubleRight
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="fill-black dark:fill-neutral-200"
               />
             ) : (
               <AngleDoubleLeft
                 style={{ width: '16px', height: '16px' }}
-                className="fill-black"
+                className="fill-black dark:fill-neutral-200"
               />
             )}
           </div>
@@ -339,7 +348,7 @@ export default function Sidebar(props: SidebarProps) {
           </div>
         ) : null}
         {settingsMenu}
-        <div className="flex justify-center gap-[20px] p-[16px] bg-slate-50">
+        <div className="flex justify-center gap-[20px] p-[16px] bg-slate-50 dark:bg-neutral-800">
           {!collapsed &&
             footerButton({
               icon: ExitFilled,
@@ -364,13 +373,13 @@ export default function Sidebar(props: SidebarProps) {
                     }}
                     className={`flex cursor-pointer w-min h-min p-[8px] rounded border-none ${
                       isSettingsSelected
-                        ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50'
-                        : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100'
+                        ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50 dark:bg-indigo-950 dark:hover:bg-indigo-950'
+                        : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100 dark:text-neutral-200 dark:hover:text-neutral-400 dark:hover:bg-neutral-800'
                     }`}
                   >
                     <CogFilled
                       style={{ width: '16px', height: '16px' }}
-                      className="fill-black"
+                      className="fill-black dark:fill-neutral-200"
                     />
                   </div>
                 </TooltipTrigger>

@@ -39,7 +39,7 @@ function Calendar({
         ),
         day: cn(
           buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'h-8 w-8 p-0 flex items-center justify-center text-gray-900 rounded-md',
+          'h-8 w-8 p-0 flex items-center justify-center text-gray-900 dark:text-neutral-100 rounded-md',
         ),
         day_range_start: 'day-range-start',
         day_range_end: 'day-range-end',

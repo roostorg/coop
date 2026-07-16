@@ -37,7 +37,7 @@ export default function DashboardMenuButton(props: {
       } ${
         selected || highlighted
           ? `text-primary font-bold ${level === 0 ? 'bg-primary/10' : ''}`
-          : 'text-black font-medium'
+          : 'text-black font-medium dark:text-neutral-200'
       } ${
         collapsed
           ? 'w-fit p-[8px]'
@@ -52,7 +52,7 @@ export default function DashboardMenuButton(props: {
       {Icon ? (
         <Icon
           style={{ width: '20px', height: '20px' }}
-          className="fill-black"
+          className="fill-black dark:fill-neutral-200"
         />
       ) : null}
       {collapsed ? null : (
