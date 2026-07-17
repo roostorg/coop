@@ -10,21 +10,51 @@ Participants follow the two CCF case studies as guides. The hosted room is
 
 ## Status (workshop is 2026-07-21)
 
-Done: Ozone labeler deployed and verified (A); Coop Codespace multi-org
-provisioning wired end to end (B); Osprey Codespace devcontainer plus in-app rule
-authoring on the branch (C); participant guide, both 101s, and the facilitator
-runbook written (F).
+Done: Ozone labeler and relay deployed and verified (A); Coop Codespace multi-org
+provisioning wired and dry-run on a fresh Codespace end to end (B, E); Osprey
+Codespace devcontainer plus in-app rule authoring on the `trustcon` branch,
+booted as an integrated whole and proven draft to validate to deploy to
+rule-fires against live Jetstream (C); both shared Codespaces load-tested at ~37
+concurrent and cleared it (D); participant guide, both 101s, and this runbook
+written (F).
 
 Remaining before the day, highest-impact first:
 
-- [ ] **Boot the Osprey stack as an integrated whole** and prove draft to deploy to
-      rule-fires (C). Biggest unproven piece.
-- [ ] **Fresh-Codespace dry run of the whole Coop flow** (E); doubles as the
-      capacity baseline.
-- [ ] **Load-test each shared Codespace** at ~room scale (D).
 - [ ] **Distribute the per-table Coop logins** and decide HMA hash population (B).
+- [ ] **On the day: set the Osprey Codespace's 5002 + 5004 ports to Public**, and
+      confirm Kafka + the worker are healthy so recent events are flowing (C).
 - [ ] **Turn on Codespaces prebuilds** once the setup is stable (D).
 - [ ] Finalize the CCF case-study handouts and the labeler one-pager (F).
+
+## Day-of bring-up (quick reference)
+
+Both shared Codespaces open from the `trustcon` branch and self-provision via
+their devcontainer. Open each about 30 minutes before the room so images pull and
+seeds run in advance.
+
+**Coop** (roostorg/coop, `trustcon`, 4-core / 16 GB):
+
+1. Open the Codespace. `setup.sh` runs migrations, seeds 6 orgs with the CCF
+   config, backfills every queue with sample posts, and starts the server plus the
+   client. First open takes several minutes.
+2. The client is served on port 3000 (via `vite preview`) and the API on 8080.
+   Open the port-3000 URL.
+3. Copy `server/workshop-credentials.md` out and give each table its org's logins.
+   Shared password is `trustcon`; emails are `<role>.team<N>@trustcon.local`
+   (roles `admin`, `moderator`, `analyst`, `rules-manager`, `moderator-manager`;
+   teams 1 to 6).
+
+**Osprey** (roostorg/osprey, `trustcon`, 16 GB):
+
+1. Open the Codespace. `setup.sh` brings up the full Druid, Kafka, worker, and UI
+   stack against live Jetstream. First open takes several minutes (Druid is slow).
+2. **Set ports 5002 (UI) and 5004 (UI API) to Public** in the Ports panel
+   (right-click the port, Port Visibility, Public), so attendees' browsers reach
+   them.
+3. Open the port-5002 URL. The Event stream should show live posts and the Rules
+   page should load. There is no login (shared super-user).
+4. If the UI shows "Failed to load initial application config", or Kafka is
+   unhealthy, see section C.
 
 ## A. Ozone labeler (shared, persistent): DEPLOYED and verified
 
@@ -106,13 +136,28 @@ Facilitator facts:
   facilitator does the single Deploy (it writes a shared file, so simultaneous
   deploys collide). Ask people to use distinct rule names.
 
+Proven end to end: the full stack boots as an integrated whole, the event stream
+flows live, and draft to validate to save to (facilitator) deploy to rule-fires
+works. Two config fixes are on the branch so a fresh Codespace serves ~37
+concurrent authors: the UI API runs 4 gunicorn workers (a single worker
+serialized the room into errors under load), and the UI points at the forwarded
+API URL automatically when it detects a Codespace.
+
 Still to do by hand: [you]
 
-- [ ] **Boot the whole stack once and prove the loop.** The branch merges the rule
-      authoring + enrichment cleanly and typechecks, but the full stack has never
-      been started as an integrated whole. Confirm: stack comes up, event stream
-      flows, and draft to validate to save to (facilitator) deploy to rule-fires
-      works end to end. This is the biggest open technical risk.
+- [ ] **Set ports 5002 + 5004 to Public** on the shared Codespace (Ports panel,
+      right-click, Port Visibility, Public). The browser reaches the API
+      cross-origin this way; without it the UI shows "Failed to load initial
+      application config".
+- [ ] **Confirm Kafka and the worker are healthy** so recent events are flowing
+      (the Event stream defaults to a recent window, which is empty if ingestion
+      stopped). Kafka has no persistent volume, so after a Codespace restart it can
+      come up unhealthy and block the worker and UI API. Recover with:
+      `docker compose up -d --force-recreate --no-deps osprey-kafka`, wait for it
+      to report healthy, then `bash run-atproto.sh up -d`.
+- [ ] Keep attendees on **recent, short time windows** in the Event stream. The
+      raw event-list scan over very large windows is the one slow path under heavy
+      concurrency (see D); recent windows are fast.
 - [ ] The CCF harm-amplification rules are deferred, so the Osprey case study
       isn't demonstrated yet; the demo currently runs a generic example rule.
 
@@ -121,9 +166,17 @@ Still to do by hand: [you]
 - **Audience split:** ~37 hosted (non-technical), ~13 local (technical). The two
   tools run sequentially, so each shared Codespace peaks at ~37 concurrent during
   its own segment (Coop, then Osprey), never both at once.
-- **Load-test before the day (top logistics risk):** confirm one Codespace stays
-  responsive with ~37 concurrent sessions of a single tool. If it thrashes, keep a
-  second warm instance of that tool ready to split the room.
+- **Load-test done: one box is enough for each tool, no second instance needed.**
+  At ~37 concurrent on a 4-core / 16 GB Codespace:
+  - **Coop** cleared it with wide margin (37 users browsing queues plus concurrent
+    policy and rule writes; p95 well under a second, no errors), including a 2x
+    stress run.
+  - **Osprey** cleared the real workshop load (37 people authoring and validating
+    rules and queries, p95 under 400ms, no timeouts) once the UI API runs 4
+    gunicorn workers. The one slow path is the raw event-list scan over very large
+    time windows under heavy concurrency, which is a property of the single
+    embedded Druid, not the box; it is not the workshop activity, so keep
+    attendees on recent windows.
 - **Machine size:** 4-core / 16 GB minimum per Coop Codespace. The Coop stack
   (Postgres, ClickHouse, Scylla, Redis, HMA) is memory-heavy; a 2-core / 8 GB
   machine will thrash. Confirm your org allows the 16 GB machine type.
@@ -139,28 +192,29 @@ Still to do by hand: [you]
 
 ## E. Dry run [you + me]
 
-On a fresh Codespace, from a cold open, confirm:
+Ran on a fresh Codespace from a cold open; results below.
 
-Coop:
+Coop (dry run passed 2026-07-16):
 
-- [ ] Devcontainer + `setup.sh` complete without manual fixups.
-- [ ] `seed-orgs` creates the orgs and writes `workshop-credentials.{md,csv,json}`.
-- [ ] Each org has the CCF policies, queues (Default Queue first), the "Enqueue for
+- [x] Devcontainer + `setup.sh` complete without manual fixups (caught and fixed
+      one bug: the built client is now served on port 3000 via `vite preview`).
+- [x] `seed-orgs` creates the orgs and writes `workshop-credentials.{md,csv,json}`.
+- [x] Each org has the CCF policies, queues (Default Queue first), the "Enqueue for
       NCMEC Review" action, and the scam rules.
-- [ ] `start.sh` backfills every org's queues; scam-keyword posts show rule hits.
-- [ ] Team 1 also receives live Jetstream posts, with author + other-posts context.
-- [ ] The mock action path shows a call in the relay page.
-- [ ] The real Ozone action places a Bleep/Bloop label visible via the Ozone UI
-      (the Bluesky app may lag).
+- [x] `start.sh` backfills every org's queues; scam-keyword posts show rule hits.
+- [x] Team 1 also receives live Jetstream posts, with author + other-posts context.
+- [x] The real Ozone action places a Bleep/Bloop label (verified end to end via the
+      relay and `queryLabels`; the Bluesky app AppView may lag a few minutes).
 
-Osprey (this is the biggest unproven piece, see C):
+Osprey (proven end to end, see C):
 
-- [ ] The full stack boots as an integrated whole; the event stream flows.
-- [ ] A rule drafted in the UI validates, saves, and (once deployed) fires.
+- [x] The full stack boots as an integrated whole; the event stream flows live.
+- [x] A rule drafted in the UI validates, saves, and (once deployed) fires on live
+      Bluesky posts.
 
 Capacity:
 
-- [ ] The box stays responsive under concurrent use (approximate the room load).
+- [x] Both boxes stay responsive at ~37 concurrent for their own tool (see D).
 
 ## F. Participant materials
 

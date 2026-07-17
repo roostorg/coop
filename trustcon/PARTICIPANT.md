@@ -141,7 +141,7 @@ instructions in its README:
 - **Osprey:** github.com/roostorg/osprey
 
 The workshop's Bluesky wiring is a worked example you can learn from, on the
-`trustcon` branch of Coop and the `juliet/trustcon-devcontainer` branch of Osprey.
+`trustcon` branch of both Coop and Osprey.
 
 Your goal is to **bring your own data in, or add your own logic.**
 
