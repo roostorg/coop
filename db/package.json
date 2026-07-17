@@ -18,14 +18,14 @@
   "author": "Roostorg",
   "license": "ISC",
   "dependencies": {
-    "@clickhouse/client": "^1.18.3",
-    "@roostorg/db-migrator": "^1.1.0",
-    "cassandra-driver": "^4.8.0",
-    "kysely": "^0.28.17",
-    "pg": "^8.7.1",
+    "@clickhouse/client": "^1.23.1",
+    "@roostorg/db-migrator": "^1.1.1",
+    "cassandra-driver": "^4.9.0",
+    "kysely": "^0.29.3",
+    "pg": "^8.22.0",
     "sequelize": "^6.37.8",
     "ts-node": "^10.9.2",
-    "umzug": "^3.0.0"
+    "umzug": "^3.8.3"
   },
   "overrides": {
     "ajv": "~8.18.0",
