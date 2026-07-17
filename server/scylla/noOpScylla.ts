@@ -1,5 +1,5 @@
+import { type CqlSelectOptions, type DBDefinition } from './cqlUtils.js';
 import Scylla from './scylla.js';
-import { type DBDefinition, type CqlSelectOptions } from './cqlUtils.js';
 
 /**
  * Parses the `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` feature flag from its raw
@@ -41,9 +41,7 @@ export function itemInvestigationAndStrikesEnabled(
  * This keeps every consumer compiling and running unchanged; they simply observe
  * empty data (e.g. user strike counts read as 0) and their writes are discarded.
  */
-export default class NoOpScylla<
-  DB extends DBDefinition,
-> extends Scylla<DB> {
+export default class NoOpScylla<DB extends DBDefinition> extends Scylla<DB> {
   constructor() {
     // The base class only stores the client and never touches it once all
     // query methods are overridden below, so a null client cast is safe here.
