@@ -35,7 +35,7 @@
   "devDependencies": {
     "@types/pg": "^8.10.2",
     "dotenv": "^17.4.2",
-    "knip": "^6.16.1",
+    "knip": "^6.26.0",
     "typescript": "^6.0.3"
   }
 }
