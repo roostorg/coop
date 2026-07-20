@@ -775,6 +775,9 @@ export default async function getBottle() {
             executionContext,
           );
         },
+        itemInvestigationAndStrikesEnabled(
+          process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
+        ),
       ),
   );
 
