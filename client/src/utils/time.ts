@@ -68,9 +68,12 @@ export function safeFormatDistanceToNow(
 }
 
 export function parseDatetimeToReadableStringInUTC(
-  date: string | DateString | Date,
+  date: MaybeDate,
+  fallback = 'Unknown',
 ): string {
+  if (date == null) return fallback;
   const d = toDate(date);
+  if (!isValid(d)) return fallback;
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC',
     month: '2-digit',
@@ -86,15 +89,21 @@ export function parseDatetimeToReadableStringInUTC(
 }
 
 export function parseDatetimeToReadableStringInCurrentTimeZone(
-  date: string | DateString | Date,
+  date: MaybeDate,
+  fallback = 'Unknown',
 ): string {
-  return format(toDate(date), 'MM/dd/yy hh:mm:ss a');
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? format(d, 'MM/dd/yy hh:mm:ss a') : fallback;
 }
 
 export function parseDatetimeToMonthDayYearDateStringInCurrentTimeZone(
-  date: string | DateString | Date,
+  date: MaybeDate,
+  fallback = 'Unknown',
 ): string {
-  return format(toDate(date), 'MMM d, yyyy');
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? format(d, 'MMM d, yyyy') : fallback;
 }
 
 export function startOfHourUTC(date: Date): Date {

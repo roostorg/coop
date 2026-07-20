@@ -1,4 +1,10 @@
-import { safeFormat, safeFormatDistanceToNow } from './time';
+import {
+  parseDatetimeToMonthDayYearDateStringInCurrentTimeZone,
+  parseDatetimeToReadableStringInCurrentTimeZone,
+  parseDatetimeToReadableStringInUTC,
+  safeFormat,
+  safeFormatDistanceToNow,
+} from './time';
 
 describe('Time utils tests', () => {
   describe('safeFormat', () => {
@@ -37,6 +43,64 @@ describe('Time utils tests', () => {
 
     it('returns the fallback for null', () => {
       expect(safeFormatDistanceToNow(null)).toBe('Unknown');
+    });
+  });
+
+  describe('parseDatetimeToReadableStringInUTC', () => {
+    it('formats a valid date', () => {
+      expect(
+        parseDatetimeToReadableStringInUTC('2026-07-15T13:06:00Z'),
+      ).toMatch(/07\/15\/26/);
+    });
+
+    it('returns fallback for an unparseable string', () => {
+      expect(parseDatetimeToReadableStringInUTC('not a date')).toBe('Unknown');
+    });
+
+    it('returns fallback for null', () => {
+      expect(parseDatetimeToReadableStringInUTC(null)).toBe('Unknown');
+    });
+  });
+
+  describe('parseDatetimeToReadableStringInCurrentTimeZone', () => {
+    it('formats a valid date', () => {
+      expect(
+        parseDatetimeToReadableStringInCurrentTimeZone('2026-07-15T13:06:00Z'),
+      ).toMatch(/07\/15\/26/);
+    });
+
+    it('returns fallback for an unparseable string', () => {
+      expect(parseDatetimeToReadableStringInCurrentTimeZone('not a date')).toBe(
+        'Unknown',
+      );
+    });
+
+    it('returns fallback for null', () => {
+      expect(parseDatetimeToReadableStringInCurrentTimeZone(null)).toBe(
+        'Unknown',
+      );
+    });
+  });
+
+  describe('parseDatetimeToMonthDayYearDateStringInCurrentTimeZone', () => {
+    it('formats a valid date', () => {
+      expect(
+        parseDatetimeToMonthDayYearDateStringInCurrentTimeZone(
+          '2026-07-15T13:06:00Z',
+        ),
+      ).toMatch(/Jul 15, 2026/);
+    });
+
+    it('returns fallback for an unparseable string', () => {
+      expect(
+        parseDatetimeToMonthDayYearDateStringInCurrentTimeZone('not a date'),
+      ).toBe('Unknown');
+    });
+
+    it('returns fallback for null', () => {
+      expect(parseDatetimeToMonthDayYearDateStringInCurrentTimeZone(null)).toBe(
+        'Unknown',
+      );
     });
   });
 });
