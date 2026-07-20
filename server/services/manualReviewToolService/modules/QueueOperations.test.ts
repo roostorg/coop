@@ -6,6 +6,7 @@ import createContentItemTypes from '../../../test/fixtureHelpers/createContentIt
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
+import makeDummyMrtJobPayload from '../../../test/fixtureHelpers/makeDummyMrtJobPayload.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import {
@@ -200,6 +201,44 @@ describe('QueueOperations', () => {
           userPermissions: [UserPermission.EDIT_MRT_QUEUES],
         }),
       ).rejects.toMatchObject({ name: 'DeleteAllJobsUnauthorizedError' });
+    },
+  );
+
+  // Regression: this used to read the queue with getJobs([state], 0, 0),
+  // which defaults to descending order and returns the *newest* job — the
+  // dashboard's "Oldest Task Age" column showed the newest task's age.
+  testWithQueueAndActions()(
+    'getOldestJobCreatedAt returns the oldest waiting job, not the newest',
+    async ({ org, queue, mrtService }) => {
+      const olderCreatedAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const newerCreatedAt = new Date(Date.now() - 60 * 1000);
+
+      // Enqueue the older job first: BullMQ pushes new jobs onto the head of
+      // the wait list, so a descending read returns the most recently added
+      // job and this test fails without the oldest-first fix.
+      await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: makeDummyMrtJobPayload({ createdAt: olderCreatedAt }),
+      });
+      await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: makeDummyMrtJobPayload({ createdAt: newerCreatedAt }),
+      });
+
+      const oldest = await mrtService.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+
+      expect(oldest).not.toBeNull();
+      // BullMQ round-trips job data through JSON, so createdAt may come back
+      // as an ISO string; compare by timestamp.
+      expect(new Date(oldest!).getTime()).toEqual(olderCreatedAt.getTime());
     },
   );
 
