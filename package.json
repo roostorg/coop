@@ -11,6 +11,7 @@
     "create-org": "cd server && npm run create-org --",
     "seed-orgs": "cd server && npm run seed-orgs --",
     "backfill-items": "cd server && npm run backfill-items --",
+    "seed-hash-bank-images": "cd server && npm run seed-hash-bank-images --",
     "db:add": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts add",
     "db:clean": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts clean",
     "db:update": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts apply",

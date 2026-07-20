@@ -29,6 +29,7 @@
     "seed-trustcon": "node --loader ts-node/esm --require dotenv/config bin/seed-trustcon.ts",
     "seed-orgs": "node --loader ts-node/esm --require dotenv/config bin/seed-orgs.ts",
     "backfill-items": "node --loader ts-node/esm --require dotenv/config bin/backfill-items.ts",
+    "seed-hash-bank-images": "node --loader ts-node/esm --require dotenv/config bin/seed-hash-bank-images.ts",
     "knip": "knip"
   },
   "author": "Roostorg",

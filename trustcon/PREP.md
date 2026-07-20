@@ -110,12 +110,13 @@ Still to do by hand: [you]
 - [ ] **Distribute logins by table.** The run writes `server/workshop-credentials.md`
       (and `.csv`) with each org's ID, API key, and per-user logins (shared password
       `trustcon`). It is gitignored, so copy it out and give each table its own org.
-- [ ] **HMA hash bank is manual and per-org.** Populating it with benign images
-      (chicken photos from Wikimedia Commons, via Settings then Matching Banks) is
-      the stand-in for a shared TVEC hash set, but it is per-org and tedious across
-      6 orgs. Optional: the scam text rules already produce queue hits from the
-      backfill, so hash-match hits are a bonus. Decide whether to populate all,
-      one (Team 1 for the demo), or none.
+- [ ] **Populate the HMA hash bank (optional, per-org).** The seed creates the
+      benign bank empty; there is no in-app image upload. Fill it with the bundled
+      pigeon photos (`trustcon/benign images/`) via
+      `npm run seed-hash-bank-images -- --all` (or `--org-id <id>` for just Team 1),
+      with the HMA service up. This is the stand-in for a shared TVEC hash set;
+      the scam text rules already produce queue hits from the backfill, so
+      hash-match hits are a bonus. Decide whether to populate all, one, or none.
 - [ ] **Start the relay** if using the real Ozone action (needs the labeler admin
       secret; see A).
 
