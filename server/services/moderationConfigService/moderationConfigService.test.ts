@@ -8,6 +8,8 @@ import getBottle from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { type MockedServer } from '../../test/setupMockedServer.js';
 import {
   makeMockPgDialect,
   type MockPgExecute,
@@ -19,215 +21,145 @@ import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   RuleStatus,
   RuleType,
-  type Action,
   type ConditionSet,
-  type ItemType,
   type Policy,
-  type UserItemType,
 } from './index.js';
 import { ModerationConfigService } from './moderationConfigService.js';
 import { PolicyType } from './types/policies.js';
 
-describe('ModerationConfigService', () => {
-  let container: Awaited<ReturnType<typeof getBottle>>['container'];
-  let sutWithPrimary: ModerationConfigService;
-  let sutWithReadReplica: ModerationConfigService;
-  let defaultUserItemType: UserItemType;
+type TestDeps = MockedServer['deps'];
 
-  // NB: because we don't create a new org for each tests (that feels like
-  // overkill), we have to track entities added in each write test, by adding
-  // them to the variables below, so that we can assert on the results when
-  // reading.
-  let allCreatedItemTypes = [] as ItemType[];
-  const createdItemTypes = {
-    get ALL() {
-      return allCreatedItemTypes;
-    },
-    get USER() {
-      return allCreatedItemTypes.filter((it) => it.kind === 'USER');
-    },
-    get CONTENT() {
-      return allCreatedItemTypes.filter((it) => it.kind === 'CONTENT');
-    },
-    get THREAD() {
-      return allCreatedItemTypes.filter((it) => it.kind === 'THREAD');
-    },
+type Sut = ConstructorParameters<typeof ModerationConfigService>[0];
+
+// We test the moderationConfigService as a black box: every test gets a fresh
+// org and seeds data only through the public methods, then verifies it can read
+// or delete that data with only the public methods. The transactional harness
+// rolls everything back after each test, so there's no cleanup and no state
+// leaking between tests (and therefore no ordering dependency between them).
+//
+// To test that the correct db is queried (i.e., replicas vs the primary), we
+// use two service instances, each with access only to the db we expect to be
+// hit; the other db is a kysely instance that throws if it's ever used.
+function makeSuts(primary: Sut, replica: Sut) {
+  const kyselyShouldBeUnused = new Kysely<ModerationConfigServicePg>({
+    dialect: makeMockPgDialect(
+      jest.fn<MockPgExecute>().mockImplementation(async () => {
+        throw new Error('Did not expect this kysely instance to be used!');
+      }),
+    ),
+  });
+
+  return {
+    sutWithPrimary: new ModerationConfigService(
+      primary,
+      kyselyShouldBeUnused,
+      async () => {},
+    ),
+    sutWithReadReplica: new ModerationConfigService(
+      kyselyShouldBeUnused,
+      replica,
+      async () => {},
+    ),
   };
+}
 
-  let createdActions = [] as Action[];
-
-  const createdPolicies = [
+async function setupOrg(deps: TestDeps) {
+  const suts = makeSuts(deps.KyselyPg, deps.KyselyPgReadReplica);
+  const { org, defaultUserItemType } = await createOrg(
     {
-      id: '1',
-      name: 'Example policy',
-      orgId: 'orgId',
-      parentId: 'parentId',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      semanticVersion: 1,
-      policyText: '',
-      policyType: PolicyType.DRUG_SALES,
-      userStrikeCount: 1,
-      applyUserStrikeCountConfigToChildren: false,
-      penalty: 'NONE',
+      KyselyPg: deps.KyselyPg,
+      ModerationConfigService: deps.ModerationConfigService,
+      ApiKeyService: deps.ApiKeyService,
     },
-  ] satisfies Policy[];
+    uid(),
+  );
+  return { ...suts, org, defaultUserItemType };
+}
 
-  const dummyOrgId = uid();
-  let dummyOrgCleanup: () => Promise<void>;
-  const dummySchema = [
-    { name: 'fakeField', type: 'STRING', required: false, container: null },
-  ] as const;
+type SupportsReplicaMethod = Satisfies<
+  | 'getItemTypes'
+  | 'getItemType'
+  | 'getItemTypesByKind'
+  | 'getDefaultUserType'
+  | 'getItemTypesForAction'
+  | 'getItemTypesForRule'
+  | 'getActions'
+  | 'getPolicies',
+  keyof ModerationConfigService
+>;
 
-  // Every time we'll run these tests, we'll generate a new org from scratch,
-  // and then delete it at the end (which should hopefully do a cascading delete
-  // of most/all of its relevant data). Testing this way let's us truly test the
-  // moderationConfigService as a black box -- inserting data only using the
-  // public methods, and then verifying that we can retrieve it or delete it
-  // with only the public methods. Any other approach would require our tests to
-  // memorize exactly what queries the service is issuing and the schema of the
-  // underlying db tables, which makes the tests more brittle/harder to maintain
-  // than I'd like if the service is refactored.
-  beforeAll(async () => {
-    container = (await getBottle()).container;
-
-    // An instance of kysely that will throw if any queries are run through it;
-    // used to test that the moderationConfigService is querying the correct db.
-    const kyselyShouldBeUnused = new Kysely<ModerationConfigServicePg>({
-      dialect: makeMockPgDialect(
-        jest.fn<MockPgExecute>().mockImplementation(async () => {
-          throw new Error('Did not expect this kysely instance to be used!');
-        }),
-      ),
-    });
-
-    // In order to test that the correct db is queried (i.e., replicas vs the
-    // primary), we'll just use different instances of the service, where each
-    // only has access to the db we expect to be hit.
-
-    sutWithPrimary = new ModerationConfigService(
-      container.KyselyPg,
-      kyselyShouldBeUnused,
-      async () => {},
-    );
-
-    sutWithReadReplica = new ModerationConfigService(
-      kyselyShouldBeUnused,
-      container.KyselyPgReadReplica,
-      async () => {},
-    );
-
-    const createOrgResult = await createOrg(
-      {
-        KyselyPg: container.KyselyPg,
-        ModerationConfigService: container.ModerationConfigService,
-        ApiKeyService: container.ApiKeyService,
-      },
-      dummyOrgId,
-    );
-
-    defaultUserItemType = createOrgResult.defaultUserItemType;
-    dummyOrgCleanup = createOrgResult.cleanup;
-    allCreatedItemTypes = [...allCreatedItemTypes, defaultUserItemType];
-  });
-
-  afterAll(async () => {
-    await dummyOrgCleanup();
-
-    await Promise.all([
-      container.KyselyPg.destroy(),
-      container.KyselyPgReadReplica.destroy(),
-    ]);
-  });
-
-  const itemTypeSnapshotMatchers = {
-    id: expect.any(String),
-    version: expect.any(String),
-    orgId: expect.any(String),
-  };
-
-  const actionSnapshotMatchers = {
-    id: expect.any(String),
-    orgId: expect.any(String),
-  };
-
-  type SupportsReplicaMethod = Satisfies<
-    | 'getItemTypes'
-    | 'getItemType'
-    | 'getItemTypesByKind'
-    | 'getDefaultUserType'
-    | 'getItemTypesForAction'
-    | 'getItemTypesForRule'
-    | 'getActions'
-    | 'getPolicies',
-    keyof ModerationConfigService
+async function expectReadReplicaUse<T extends SupportsReplicaMethod>(
+  suts: {
+    sutWithPrimary: ModerationConfigService;
+    sutWithReadReplica: ModerationConfigService;
+  },
+  method: T,
+  baseFilter: Parameters<ModerationConfigService[T]>[0],
+) {
+  // cast baseFilter to prevent TS errors that would arise because TS can't
+  // verify that the particular string that `method` takes on at runtime
+  // corresponsds to the particular binding for baseFilter.
+  const filters = baseFilter as UnionToIntersection<
+    Parameters<ModerationConfigService[SupportsReplicaMethod]>[0]
   >;
 
-  async function testReadReplicaUse<T extends SupportsReplicaMethod>(
-    method: T,
-    baseFilter: Parameters<ModerationConfigService[T]>[0],
-  ) {
-    // cast baseFilter to prevent TS errors that would arise because TS can't
-    // verify that the particular string that `method` takes on at runtime
-    // corresponsds to the particular binding for baseFilter.
-    const filters = baseFilter as UnionToIntersection<
-      Parameters<ModerationConfigService[SupportsReplicaMethod]>[0]
-    >;
+  // We're calling these to test that none of them throw, which'll only be
+  // true if the proper db is used.
+  await suts.sutWithPrimary[method](filters);
+  await suts.sutWithPrimary[method]({ ...filters, readFromReplica: false });
+  await suts.sutWithReadReplica[method]({ ...filters, readFromReplica: true });
+}
 
-    // We're calling these to test that none of them throw, which'll only be
-    // true if the proper db is used.
-    await sutWithPrimary[method](filters);
-    await sutWithPrimary[method]({ ...filters, readFromReplica: false });
-    await sutWithReadReplica[method]({ ...filters, readFromReplica: true });
-  }
+const dummySchema = [
+  { name: 'fakeField', type: 'STRING', required: false, container: null },
+] as const;
 
-  const minimalRuleConditionSet = {
-    conjunction: 'AND' as const,
-    conditions: [
-      {
-        input: { type: 'FULL_ITEM' as const },
-        comparator: 'IS_NOT_PROVIDED' as const,
-      },
-    ],
-  } satisfies ConditionSet;
+const minimalRuleConditionSet = {
+  conjunction: 'AND' as const,
+  conditions: [
+    {
+      input: { type: 'FULL_ITEM' as const },
+      comparator: 'IS_NOT_PROVIDED' as const,
+    },
+  ],
+} satisfies ConditionSet;
+
+const itemTypeSnapshotMatchers = {
+  id: expect.any(String),
+  version: expect.any(String),
+  orgId: expect.any(String),
+};
+
+const actionSnapshotMatchers = {
+  id: expect.any(String),
+  orgId: expect.any(String),
+};
+
+describe('ModerationConfigService', () => {
+  const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) =>
+    setupOrg(deps),
+  );
 
   describe('#getRuleByIdAndOrg', () => {
-    const testWithRuleRow = makeTestWithFixture(async () => {
-      const { org, cleanup: orgCleanup } = await createOrg(
-        {
-          KyselyPg: container.KyselyPg,
-          ModerationConfigService: container.ModerationConfigService,
-          ApiKeyService: container.ApiKeyService,
-        },
-        uid(),
-      );
-      const { user, cleanup: userCleanup } = await createUser(
-        container.KyselyPg,
-        org.id,
-      );
-      const rule = await createRule(container.KyselyPg, org.id, {
-        creator: user,
-        name: 'getRuleByIdAndOrg fixture rule',
-        ruleType: RuleType.USER,
-        status: RuleStatus.DRAFT,
-        conditionSet: minimalRuleConditionSet,
-      });
+    const testWithRuleRow = makeTransactionalTestWithFixture(
+      async ({ deps }) => {
+        const base = await setupOrg(deps);
+        const { user } = await createUser(deps.KyselyPg, base.org.id);
+        const rule = await createRule(deps.KyselyPg, base.org.id, {
+          creator: user,
+          name: 'getRuleByIdAndOrg fixture rule',
+          ruleType: RuleType.USER,
+          status: RuleStatus.DRAFT,
+          conditionSet: minimalRuleConditionSet,
+        });
 
-      return {
-        org,
-        user,
-        ruleId: rule.id,
-        async cleanup() {
-          await rule.destroy();
-          await userCleanup();
-          await orgCleanup();
-        },
-      };
-    });
+        return { ...base, user, ruleId: rule.id };
+      },
+    );
 
     testWithRuleRow(
       'returns the rule when the org id matches the rule row',
-      async ({ org, ruleId }) => {
+      async ({ sutWithPrimary, org, ruleId }) => {
         const row = await sutWithPrimary.getRuleByIdAndOrg(ruleId, org.id, {
           readFromReplica: false,
         });
@@ -239,273 +171,322 @@ describe('ModerationConfigService', () => {
 
     testWithRuleRow(
       'returns null when the org id does not match (IDOR guard)',
-      async ({ ruleId }) => {
-        const { org: otherOrg, cleanup: otherOrgCleanup } = await createOrg(
+      async ({ sutWithPrimary, deps, ruleId }) => {
+        const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: container.KyselyPg,
-            ModerationConfigService: container.ModerationConfigService,
-            ApiKeyService: container.ApiKeyService,
+            KyselyPg: deps.KyselyPg,
+            ModerationConfigService: deps.ModerationConfigService,
+            ApiKeyService: deps.ApiKeyService,
           },
           uid(),
         );
-        try {
-          const row = await sutWithPrimary.getRuleByIdAndOrg(
-            ruleId,
-            otherOrg.id,
-            { readFromReplica: false },
-          );
-          expect(row).toBeNull();
-        } finally {
-          await otherOrgCleanup();
-        }
+        const row = await sutWithPrimary.getRuleByIdAndOrg(
+          ruleId,
+          otherOrg.id,
+          {
+            readFromReplica: false,
+          },
+        );
+        expect(row).toBeNull();
       },
     );
   });
 
-  // NB: there is an ordering dependency between these tests, as the creation
-  // tests run first and then the read tests assert on the presence of their
-  // writes.
   describe('ItemType-Returning methods', () => {
     describe('Creation methods', () => {
       describe('#createContentType', () => {
-        it('should return and durably save the new item type', async () => {
-          const saved = await sutWithPrimary.createContentType(dummyOrgId, {
-            schema: dummySchema,
-            description: null,
-            name: 'Content Item Type',
-            schemaFieldRoles: {
-              displayName: 'fakeField',
-            },
-          });
-
-          const fetched = await sutWithPrimary.getItemType({
-            orgId: dummyOrgId,
-            itemTypeSelector: { id: saved.id },
-          });
-
-          expect(saved).toMatchInlineSnapshot(
-            itemTypeSnapshotMatchers,
-            `
-            {
-              "description": null,
-              "id": Any<String>,
-              "kind": "CONTENT",
-              "name": "Content Item Type",
-              "orgId": Any<String>,
-              "schema": [
-                {
-                  "container": null,
-                  "name": "fakeField",
-                  "required": false,
-                  "type": "STRING",
-                },
-              ],
-              "schemaFieldRoles": {
-                "createdAt": undefined,
-                "creatorId": undefined,
-                "displayName": "fakeField",
-                "ipAddress": undefined,
-                "isDeleted": undefined,
-                "parentId": undefined,
-                "threadId": undefined,
+        testWithOrg(
+          'should return and durably save the new item type',
+          async ({ sutWithPrimary, org }) => {
+            const saved = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'Content Item Type',
+              schemaFieldRoles: {
+                displayName: 'fakeField',
               },
-              "schemaVariant": "original",
-              "version": Any<String>,
-            }
-          `,
-          );
-          expect(saved.orgId).toBe(dummyOrgId);
-          expect(saved).toEqual(fetched);
-          allCreatedItemTypes = [...allCreatedItemTypes, saved];
-        });
+            });
+
+            const fetched = await sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: saved.id },
+            });
+
+            expect(saved).toMatchInlineSnapshot(
+              itemTypeSnapshotMatchers,
+              `
+              {
+                "description": null,
+                "id": Any<String>,
+                "kind": "CONTENT",
+                "name": "Content Item Type",
+                "orgId": Any<String>,
+                "schema": [
+                  {
+                    "container": null,
+                    "name": "fakeField",
+                    "required": false,
+                    "type": "STRING",
+                  },
+                ],
+                "schemaFieldRoles": {
+                  "createdAt": undefined,
+                  "creatorId": undefined,
+                  "displayName": "fakeField",
+                  "ipAddress": undefined,
+                  "isDeleted": undefined,
+                  "parentId": undefined,
+                  "threadId": undefined,
+                },
+                "schemaVariant": "original",
+                "version": Any<String>,
+              }
+            `,
+            );
+            expect(saved.orgId).toBe(org.id);
+            expect(saved).toEqual(fetched);
+          },
+        );
       });
 
       describe('#createThreadType', () => {
-        it('should return and durably save the new item type', async () => {
-          const saved = await sutWithPrimary.createThreadType(dummyOrgId, {
-            schema: dummySchema,
-            description: 'Test description',
-            name: 'Thread Item Type',
-            schemaFieldRoles: {
-              displayName: 'fakeField',
-            },
-          });
-
-          const fetched = await sutWithPrimary.getItemType({
-            orgId: dummyOrgId,
-            itemTypeSelector: { id: saved.id },
-          });
-
-          expect(saved).toMatchInlineSnapshot(
-            itemTypeSnapshotMatchers,
-            `
-            {
-              "description": "Test description",
-              "id": Any<String>,
-              "kind": "THREAD",
-              "name": "Thread Item Type",
-              "orgId": Any<String>,
-              "schema": [
-                {
-                  "container": null,
-                  "name": "fakeField",
-                  "required": false,
-                  "type": "STRING",
-                },
-              ],
-              "schemaFieldRoles": {
-                "createdAt": undefined,
-                "creatorId": undefined,
-                "displayName": "fakeField",
-                "ipAddress": undefined,
-                "isDeleted": undefined,
+        testWithOrg(
+          'should return and durably save the new item type',
+          async ({ sutWithPrimary, org }) => {
+            const saved = await sutWithPrimary.createThreadType(org.id, {
+              schema: dummySchema,
+              description: 'Test description',
+              name: 'Thread Item Type',
+              schemaFieldRoles: {
+                displayName: 'fakeField',
               },
-              "schemaVariant": "original",
-              "version": Any<String>,
-            }
-          `,
-          );
-          expect(saved.orgId).toBe(dummyOrgId);
-          expect(saved).toEqual(fetched);
-          allCreatedItemTypes = [...allCreatedItemTypes, saved];
-        });
+            });
+
+            const fetched = await sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: saved.id },
+            });
+
+            expect(saved).toMatchInlineSnapshot(
+              itemTypeSnapshotMatchers,
+              `
+              {
+                "description": "Test description",
+                "id": Any<String>,
+                "kind": "THREAD",
+                "name": "Thread Item Type",
+                "orgId": Any<String>,
+                "schema": [
+                  {
+                    "container": null,
+                    "name": "fakeField",
+                    "required": false,
+                    "type": "STRING",
+                  },
+                ],
+                "schemaFieldRoles": {
+                  "createdAt": undefined,
+                  "creatorId": undefined,
+                  "displayName": "fakeField",
+                  "ipAddress": undefined,
+                  "isDeleted": undefined,
+                },
+                "schemaVariant": "original",
+                "version": Any<String>,
+              }
+            `,
+            );
+            expect(saved.orgId).toBe(org.id);
+            expect(saved).toEqual(fetched);
+          },
+        );
       });
 
       describe('#createUserType', () => {
-        it('should return and durably save the new item type', async () => {
-          const saved = await sutWithPrimary.createUserType(dummyOrgId, {
-            schema: dummySchema,
-            description: null,
-            name: 'User Item Type',
-            schemaFieldRoles: {
-              displayName: 'fakeField',
-            },
-          });
-
-          const fetched = await sutWithPrimary.getItemType({
-            orgId: dummyOrgId,
-            itemTypeSelector: { id: saved.id },
-          });
-
-          expect(saved).toMatchInlineSnapshot(
-            itemTypeSnapshotMatchers,
-            `
-            {
-              "description": null,
-              "id": Any<String>,
-              "isDefaultUserType": false,
-              "kind": "USER",
-              "name": "User Item Type",
-              "orgId": Any<String>,
-              "schema": [
-                {
-                  "container": null,
-                  "name": "fakeField",
-                  "required": false,
-                  "type": "STRING",
-                },
-              ],
-              "schemaFieldRoles": {
-                "backgroundImage": undefined,
-                "createdAt": undefined,
-                "displayName": "fakeField",
-                "email": undefined,
-                "ipAddress": undefined,
-                "isDeleted": undefined,
-                "profileIcon": undefined,
+        testWithOrg(
+          'should return and durably save the new item type',
+          async ({ sutWithPrimary, org }) => {
+            const saved = await sutWithPrimary.createUserType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'User Item Type',
+              schemaFieldRoles: {
+                displayName: 'fakeField',
               },
-              "schemaVariant": "original",
-              "version": Any<String>,
-            }
-          `,
-          );
-          expect(saved.orgId).toBe(dummyOrgId);
-          expect(saved).toEqual(fetched);
-          allCreatedItemTypes = [...allCreatedItemTypes, saved];
-        });
+            });
+
+            const fetched = await sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: saved.id },
+            });
+
+            expect(saved).toMatchInlineSnapshot(
+              itemTypeSnapshotMatchers,
+              `
+              {
+                "description": null,
+                "id": Any<String>,
+                "isDefaultUserType": false,
+                "kind": "USER",
+                "name": "User Item Type",
+                "orgId": Any<String>,
+                "schema": [
+                  {
+                    "container": null,
+                    "name": "fakeField",
+                    "required": false,
+                    "type": "STRING",
+                  },
+                ],
+                "schemaFieldRoles": {
+                  "backgroundImage": undefined,
+                  "createdAt": undefined,
+                  "displayName": "fakeField",
+                  "email": undefined,
+                  "ipAddress": undefined,
+                  "isDeleted": undefined,
+                  "profileIcon": undefined,
+                },
+                "schemaVariant": "original",
+                "version": Any<String>,
+              }
+            `,
+            );
+            expect(saved.orgId).toBe(org.id);
+            expect(saved).toEqual(fetched);
+          },
+        );
       });
     });
 
     describe('Read methods', () => {
       describe('#getItemTypes', () => {
-        it('should return all item types, properly formatted', async () => {
-          const res = await sutWithPrimary.getItemTypes({ orgId: dummyOrgId });
-          expect(res).toHaveLength(createdItemTypes.ALL.length);
-          expect(res).toEqual(expect.arrayContaining(createdItemTypes.ALL));
-        });
+        testWithOrg(
+          'should return all item types, properly formatted',
+          async ({ sutWithPrimary, org, defaultUserItemType }) => {
+            const contentType = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'Content Item Type',
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+            const threadType = await sutWithPrimary.createThreadType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'Thread Item Type',
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+            const userType = await sutWithPrimary.createUserType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'User Item Type',
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+
+            const expected = [
+              defaultUserItemType,
+              contentType,
+              threadType,
+              userType,
+            ];
+            const res = await sutWithPrimary.getItemTypes({ orgId: org.id });
+            expect(res).toHaveLength(expected.length);
+            expect(res).toEqual(expect.arrayContaining(expected));
+          },
+        );
       });
 
       describe('#getItemTypesByKind', () => {
-        it('should filter by kind', async () => {
-          const [userItemTypes, contentItemTypes, threadItemTypes] =
-            await Promise.all([
-              sutWithPrimary.getItemTypesByKind({
-                orgId: dummyOrgId,
-                kind: 'USER',
-              }),
-              sutWithPrimary.getItemTypesByKind({
-                orgId: dummyOrgId,
-                kind: 'CONTENT',
-              }),
-              sutWithPrimary.getItemTypesByKind({
-                orgId: dummyOrgId,
-                kind: 'THREAD',
-              }),
-            ]);
+        testWithOrg(
+          'should filter by kind',
+          async ({ sutWithPrimary, org, defaultUserItemType }) => {
+            const contentType = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'Content Item Type',
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+            const threadType = await sutWithPrimary.createThreadType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'Thread Item Type',
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+            const userType = await sutWithPrimary.createUserType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: 'User Item Type',
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
 
-          expect(userItemTypes).toHaveLength(createdItemTypes.USER.length);
-          expect(userItemTypes).toEqual(
-            expect.arrayContaining(createdItemTypes.USER),
-          );
+            const userItemTypes = await sutWithPrimary.getItemTypesByKind({
+              orgId: org.id,
+              kind: 'USER',
+            });
+            const contentItemTypes = await sutWithPrimary.getItemTypesByKind({
+              orgId: org.id,
+              kind: 'CONTENT',
+            });
+            const threadItemTypes = await sutWithPrimary.getItemTypesByKind({
+              orgId: org.id,
+              kind: 'THREAD',
+            });
 
-          expect(contentItemTypes).toHaveLength(
-            createdItemTypes.CONTENT.length,
-          );
-          expect(contentItemTypes).toEqual(
-            expect.arrayContaining(createdItemTypes.CONTENT),
-          );
+            expect(userItemTypes).toHaveLength(2);
+            expect(userItemTypes).toEqual(
+              expect.arrayContaining([defaultUserItemType, userType]),
+            );
 
-          expect(threadItemTypes).toHaveLength(createdItemTypes.THREAD.length);
-          expect(threadItemTypes).toEqual(
-            expect.arrayContaining(createdItemTypes.THREAD),
-          );
-        });
+            expect(contentItemTypes).toEqual([contentType]);
+            expect(threadItemTypes).toEqual([threadType]);
+          },
+        );
       });
 
       describe('#getDefaultUserType', () => {
-        it('should return the defualt user type, properly formatted', async () => {
-          const res = await sutWithPrimary.getDefaultUserType({
-            orgId: dummyOrgId,
-          });
-          expect(res).toEqual(defaultUserItemType);
-        });
+        testWithOrg(
+          'should return the default user type, properly formatted',
+          async ({ sutWithPrimary, org, defaultUserItemType }) => {
+            const res = await sutWithPrimary.getDefaultUserType({
+              orgId: org.id,
+            });
+            expect(res).toEqual(defaultUserItemType);
+          },
+        );
       });
 
       describe('#getItemTypesForAction', () => {
-        it('should query from the proper db', async () => {
-          // These tests will throw if the wrong db is used (see kyselyShouldBeUnused)
-          await sutWithPrimary.getItemTypesForAction({
-            orgId: dummyOrgId,
-            actionId: 'someId',
-            directives: { maxAge: 0 },
-          });
-          await sutWithReadReplica.getItemTypesForAction({
-            orgId: dummyOrgId,
-            actionId: 'someId',
-            directives: { maxAge: 10 },
-          });
-        });
+        testWithOrg(
+          'should query from the proper db',
+          async ({ sutWithPrimary, sutWithReadReplica, org }) => {
+            // These tests will throw if the wrong db is used (see kyselyShouldBeUnused)
+            await sutWithPrimary.getItemTypesForAction({
+              orgId: org.id,
+              actionId: 'someId',
+              directives: { maxAge: 0 },
+            });
+            await sutWithReadReplica.getItemTypesForAction({
+              orgId: org.id,
+              actionId: 'someId',
+              directives: { maxAge: 10 },
+            });
+          },
+        );
 
         it.skip('should return the right results', () => {});
       });
 
       describe('#getItemTypesForRule', () => {
-        it('should query from the proper db', async () => {
-          await testReadReplicaUse('getItemTypesForRule', {
-            orgId: dummyOrgId,
-            ruleId: 'sasts',
-          });
-        });
+        testWithOrg(
+          'should query from the proper db',
+          async ({ sutWithPrimary, sutWithReadReplica, org }) => {
+            await expectReadReplicaUse(
+              { sutWithPrimary, sutWithReadReplica },
+              'getItemTypesForRule',
+              { orgId: org.id, ruleId: 'sasts' },
+            );
+          },
+        );
 
         it.skip('should return the right results', () => {});
       });
@@ -515,67 +496,63 @@ describe('ModerationConfigService', () => {
   describe('Action-returning methods', () => {
     describe('Creation methods', () => {
       describe('#upsertBuiltInActions', () => {
-        it('seeds the three built-in (non-CUSTOM_ACTION) rows for the org', async () => {
-          const all = await sutWithPrimary.getActions({ orgId: dummyOrgId });
-          const builtIns = all.filter(
-            (it) => it.actionType !== 'CUSTOM_ACTION',
-          );
-          const types = builtIns.map((it) => it.actionType).sort();
-          expect(types).toEqual(
-            [
-              'ENQUEUE_AUTHOR_TO_MRT',
-              'ENQUEUE_TO_MRT',
-              'ENQUEUE_TO_NCMEC',
-            ].sort(),
-          );
-          for (const action of builtIns) {
-            expect(action.orgId).toBe(dummyOrgId);
-            expect(action).not.toHaveProperty('callbackUrl');
-          }
-        });
-
-        it('is idempotent: calling twice does not create duplicates', async () => {
-          const before = await sutWithPrimary.getActions({
-            orgId: dummyOrgId,
-          });
-          const beforeBuiltIns = before
-            .filter((it) => it.actionType !== 'CUSTOM_ACTION')
-            .map((it) => it.id)
-            .sort();
-          await sutWithPrimary.upsertBuiltInActions(dummyOrgId);
-          const after = await sutWithPrimary.getActions({
-            orgId: dummyOrgId,
-          });
-          const afterBuiltIns = after
-            .filter((it) => it.actionType !== 'CUSTOM_ACTION')
-            .map((it) => it.id)
-            .sort();
-          expect(afterBuiltIns).toEqual(beforeBuiltIns);
-        });
-
-        it('built-ins surface for the appropriate item type kinds', async () => {
-          const fresh = await createOrg(
-            {
-              KyselyPg: container.KyselyPg,
-              ModerationConfigService: container.ModerationConfigService,
-              ApiKeyService: container.ApiKeyService,
-            },
-            uid(),
-          );
-          try {
-            const contentType = await sutWithPrimary.createContentType(
-              fresh.org.id,
-              {
-                schema: dummySchema,
-                description: null,
-                name: faker.random.alphaNumeric(16),
-                schemaFieldRoles: { displayName: 'fakeField' },
-              },
+        testWithOrg(
+          'seeds the three built-in (non-CUSTOM_ACTION) rows for the org',
+          async ({ sutWithPrimary, org }) => {
+            const all = await sutWithPrimary.getActions({ orgId: org.id });
+            const builtIns = all.filter(
+              (it) => it.actionType !== 'CUSTOM_ACTION',
             );
+            const types = builtIns.map((it) => it.actionType).sort();
+            expect(types).toEqual(
+              [
+                'ENQUEUE_AUTHOR_TO_MRT',
+                'ENQUEUE_TO_MRT',
+                'ENQUEUE_TO_NCMEC',
+              ].sort(),
+            );
+            for (const action of builtIns) {
+              expect(action.orgId).toBe(org.id);
+              expect(action).not.toHaveProperty('callbackUrl');
+            }
+          },
+        );
+
+        testWithOrg(
+          'is idempotent: calling twice does not create duplicates',
+          async ({ sutWithPrimary, org }) => {
+            const before = await sutWithPrimary.getActions({
+              orgId: org.id,
+            });
+            const beforeBuiltIns = before
+              .filter((it) => it.actionType !== 'CUSTOM_ACTION')
+              .map((it) => it.id)
+              .sort();
+            await sutWithPrimary.upsertBuiltInActions(org.id);
+            const after = await sutWithPrimary.getActions({
+              orgId: org.id,
+            });
+            const afterBuiltIns = after
+              .filter((it) => it.actionType !== 'CUSTOM_ACTION')
+              .map((it) => it.id)
+              .sort();
+            expect(afterBuiltIns).toEqual(beforeBuiltIns);
+          },
+        );
+
+        testWithOrg(
+          'built-ins surface for the appropriate item type kinds',
+          async ({ sutWithPrimary, org, defaultUserItemType }) => {
+            const contentType = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: faker.random.alphaNumeric(16),
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
 
             const forUser = await sutWithPrimary.getActionsForItemType({
-              orgId: fresh.org.id,
-              itemTypeId: fresh.defaultUserItemType.id,
+              orgId: org.id,
+              itemTypeId: defaultUserItemType.id,
               itemTypeKind: 'USER',
             });
             expect(forUser.map((it) => it.actionType).sort()).toEqual(
@@ -583,7 +560,7 @@ describe('ModerationConfigService', () => {
             );
 
             const forContent = await sutWithPrimary.getActionsForItemType({
-              orgId: fresh.org.id,
+              orgId: org.id,
               itemTypeId: contentType.id,
               itemTypeKind: 'CONTENT',
             });
@@ -594,95 +571,129 @@ describe('ModerationConfigService', () => {
                 'ENQUEUE_TO_NCMEC',
               ].sort(),
             );
-          } finally {
-            await fresh.cleanup();
-          }
-        });
+          },
+        );
       });
 
       describe('#createAction', () => {
-        it('should return and durably save the new action', async () => {
-          const saved = await sutWithPrimary.createAction(dummyOrgId, {
-            name: 'Test Action',
-            description: 'Test description',
-            type: 'CUSTOM_ACTION',
-            callbackUrl: 'https://example.com',
-            callbackUrlHeaders: null,
-            callbackUrlBody: null,
-            applyUserStrikes: false,
-          });
+        testWithOrg(
+          'should return and durably save the new action',
+          async ({ sutWithPrimary, org }) => {
+            const saved = await sutWithPrimary.createAction(org.id, {
+              name: 'Test Action',
+              description: 'Test description',
+              type: 'CUSTOM_ACTION',
+              callbackUrl: 'https://example.com',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              applyUserStrikes: false,
+            });
 
-          const [fetched] = await sutWithPrimary.getActions({
-            orgId: dummyOrgId,
-            ids: [saved.id],
-          });
+            const [fetched] = await sutWithPrimary.getActions({
+              orgId: org.id,
+              ids: [saved.id],
+            });
 
-          expect(saved).toMatchInlineSnapshot(
-            actionSnapshotMatchers,
-            `
-            {
-              "actionType": "CUSTOM_ACTION",
-              "applyUserStrikes": false,
-              "callbackUrl": "https://example.com",
-              "callbackUrlBody": null,
-              "callbackUrlHeaders": null,
-              "customMrtApiParams": null,
-              "description": "Test description",
-              "id": Any<String>,
-              "name": "Test Action",
-              "orgId": Any<String>,
-              "penalty": "NONE",
-            }
-          `,
-          );
-          expect(saved.orgId).toBe(dummyOrgId);
-          expect(saved).toEqual(fetched);
-          createdActions = [...createdActions, saved];
-        });
+            expect(saved).toMatchInlineSnapshot(
+              actionSnapshotMatchers,
+              `
+              {
+                "actionType": "CUSTOM_ACTION",
+                "applyUserStrikes": false,
+                "callbackUrl": "https://example.com",
+                "callbackUrlBody": null,
+                "callbackUrlHeaders": null,
+                "customMrtApiParams": null,
+                "description": "Test description",
+                "id": Any<String>,
+                "name": "Test Action",
+                "orgId": Any<String>,
+                "penalty": "NONE",
+              }
+            `,
+            );
+            expect(saved.orgId).toBe(org.id);
+            expect(saved).toEqual(fetched);
+          },
+        );
       });
     });
 
     describe('Read methods', () => {
       describe('#getActions', () => {
-        it('should query from the proper db', async () => {
-          await testReadReplicaUse('getActions', { orgId: dummyOrgId });
-        });
+        testWithOrg(
+          'should query from the proper db',
+          async ({ sutWithPrimary, sutWithReadReplica, org }) => {
+            await expectReadReplicaUse(
+              { sutWithPrimary, sutWithReadReplica },
+              'getActions',
+              { orgId: org.id },
+            );
+          },
+        );
 
-        it('should return all actions, properly formatted', async () => {
-          const res = await sutWithPrimary.getActions({ orgId: dummyOrgId });
-          const customActions = res.filter(
-            (it) => it.actionType === 'CUSTOM_ACTION',
-          );
-          expect(customActions).toHaveLength(createdActions.length);
-          expect(customActions).toEqual(expect.arrayContaining(createdActions));
-        });
+        testWithOrg(
+          'should return all custom actions, properly formatted',
+          async ({ sutWithPrimary, org }) => {
+            const createdActions = [
+              await sutWithPrimary.createAction(org.id, {
+                name: faker.random.alphaNumeric(16),
+                description: 'Test description',
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                applyUserStrikes: false,
+              }),
+              await sutWithPrimary.createAction(org.id, {
+                name: faker.random.alphaNumeric(16),
+                description: null,
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                applyUserStrikes: false,
+              }),
+            ];
 
-        it('should round-trip a non-null customMrtApiParams value', async () => {
-          const action = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(16),
-            description: null,
-            type: 'CUSTOM_ACTION',
-            callbackUrl: 'https://example.com',
-            callbackUrlHeaders: null,
-            callbackUrlBody: null,
-          });
+            const res = await sutWithPrimary.getActions({ orgId: org.id });
+            const customActions = res.filter(
+              (it) => it.actionType === 'CUSTOM_ACTION',
+            );
+            expect(customActions).toHaveLength(createdActions.length);
+            expect(customActions).toEqual(
+              expect.arrayContaining(createdActions),
+            );
+          },
+        );
 
-          // Legacy shape pre-dating the typed parameter spec — set it via raw
-          // Kysely to verify the read mapping still surfaces older rows
-          // unchanged for back-compat.
-          const params = [
-            { key: 'foo', value: 'bar' },
-            { key: 'baz', value: 'qux' },
-          ];
-          await container.KyselyPg.updateTable('public.actions')
-            .set({ custom_mrt_api_params: params })
-            .where('id', '=', action.id)
-            .where('org_id', '=', dummyOrgId)
-            .execute();
+        testWithOrg(
+          'should round-trip a non-null customMrtApiParams value',
+          async ({ sutWithPrimary, deps, org }) => {
+            const action = await sutWithPrimary.createAction(org.id, {
+              name: faker.random.alphaNumeric(16),
+              description: null,
+              type: 'CUSTOM_ACTION',
+              callbackUrl: 'https://example.com',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+            });
 
-          try {
+            // Legacy shape pre-dating the typed parameter spec — set it via raw
+            // Kysely to verify the read mapping still surfaces older rows
+            // unchanged for back-compat.
+            const params = [
+              { key: 'foo', value: 'bar' },
+              { key: 'baz', value: 'qux' },
+            ];
+            await deps.KyselyPg.updateTable('public.actions')
+              .set({ custom_mrt_api_params: params })
+              .where('id', '=', action.id)
+              .where('org_id', '=', org.id)
+              .execute();
+
             const [fetched] = await sutWithPrimary.getActions({
-              orgId: dummyOrgId,
+              orgId: org.id,
               ids: [action.id],
             });
             expect(fetched).toBeDefined();
@@ -691,121 +702,110 @@ describe('ModerationConfigService', () => {
             expect(
               (fetched as { customMrtApiParams: unknown }).customMrtApiParams,
             ).toEqual(params);
-          } finally {
-            await sutWithPrimary.deleteCustomAction({
-              orgId: dummyOrgId,
-              actionId: action.id,
-            });
-          }
-        });
+          },
+        );
 
-        it('round-trips typed parameters through createAction', async () => {
-          const parameters = [
-            {
-              name: 'num_days_banned',
-              displayName: 'Days to ban',
-              type: 'NUMBER',
-              required: true,
-              min: 1,
-              max: 365,
-              defaultValue: 7,
-            },
-            {
-              name: 'reason',
-              displayName: 'Reason',
-              type: 'SELECT',
-              required: true,
-              options: [
-                { value: 'spam', label: 'Spam' },
-                { value: 'abuse', label: 'Abuse' },
-              ],
-            },
-            {
-              name: 'notify_user',
-              displayName: 'Notify user',
-              type: 'BOOLEAN',
-              required: false,
-              defaultValue: false,
-            },
-          ];
+        testWithOrg(
+          'round-trips typed parameters through createAction',
+          async ({ sutWithPrimary, org }) => {
+            const parameters = [
+              {
+                name: 'num_days_banned',
+                displayName: 'Days to ban',
+                type: 'NUMBER',
+                required: true,
+                min: 1,
+                max: 365,
+                defaultValue: 7,
+              },
+              {
+                name: 'reason',
+                displayName: 'Reason',
+                type: 'SELECT',
+                required: true,
+                options: [
+                  { value: 'spam', label: 'Spam' },
+                  { value: 'abuse', label: 'Abuse' },
+                ],
+              },
+              {
+                name: 'notify_user',
+                displayName: 'Notify user',
+                type: 'BOOLEAN',
+                required: false,
+                defaultValue: false,
+              },
+            ];
 
-          const created = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(16),
-            description: null,
-            type: 'CUSTOM_ACTION',
-            callbackUrl: 'https://example.com',
-            callbackUrlHeaders: null,
-            callbackUrlBody: null,
-            parameters,
-          });
-
-          try {
-            const [fetched] = await sutWithPrimary.getActions({
-              orgId: dummyOrgId,
-              ids: [created.id],
-            });
-            expect(fetched.actionType).toBe('CUSTOM_ACTION');
-            const stored = (fetched as { customMrtApiParams: unknown })
-              .customMrtApiParams;
-            expect(stored).toEqual(parameters);
-          } finally {
-            await sutWithPrimary.deleteCustomAction({
-              orgId: dummyOrgId,
-              actionId: created.id,
-            });
-          }
-        });
-
-        it('rejects invalid parameters at create time', async () => {
-          await expect(
-            sutWithPrimary.createAction(dummyOrgId, {
+            const created = await sutWithPrimary.createAction(org.id, {
               name: faker.random.alphaNumeric(16),
               description: null,
               type: 'CUSTOM_ACTION',
               callbackUrl: 'https://example.com',
               callbackUrlHeaders: null,
               callbackUrlBody: null,
-              parameters: [
-                {
-                  name: 'invalid name with spaces',
-                  displayName: 'X',
-                  type: 'STRING',
-                  required: false,
-                },
-              ],
-            }),
-          ).rejects.toMatchObject({ status: 400 });
-        });
+              parameters,
+            });
+
+            const [fetched] = await sutWithPrimary.getActions({
+              orgId: org.id,
+              ids: [created.id],
+            });
+            expect(fetched.actionType).toBe('CUSTOM_ACTION');
+            const stored = (fetched as { customMrtApiParams: unknown })
+              .customMrtApiParams;
+            expect(stored).toEqual(parameters);
+          },
+        );
+
+        testWithOrg(
+          'rejects invalid parameters at create time',
+          async ({ sutWithPrimary, org }) => {
+            await expect(
+              sutWithPrimary.createAction(org.id, {
+                name: faker.random.alphaNumeric(16),
+                description: null,
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                parameters: [
+                  {
+                    name: 'invalid name with spaces',
+                    displayName: 'X',
+                    type: 'STRING',
+                    required: false,
+                  },
+                ],
+              }),
+            ).rejects.toMatchObject({ status: 400 });
+          },
+        );
       });
     });
 
     describe('Update methods', () => {
       describe('#updateCustomAction', () => {
-        const testWithAction = makeTestWithFixture(async () => {
-          const action = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(16),
-            description: 'before',
-            type: 'CUSTOM_ACTION',
-            callbackUrl: 'https://before.example.com',
-            callbackUrlHeaders: null,
-            callbackUrlBody: null,
-            applyUserStrikes: false,
-          });
-          return {
-            action,
-            async cleanup() {
-              await sutWithPrimary.deleteCustomAction({
-                orgId: dummyOrgId,
-                actionId: action.id,
-              });
-            },
-          };
-        });
+        const testWithAction = makeTransactionalTestWithFixture(
+          async ({ deps }) => {
+            const base = await setupOrg(deps);
+            const action = await base.sutWithPrimary.createAction(base.org.id, {
+              name: faker.random.alphaNumeric(16),
+              description: 'before',
+              type: 'CUSTOM_ACTION',
+              callbackUrl: 'https://before.example.com',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+              applyUserStrikes: false,
+            });
+            return { ...base, action };
+          },
+        );
 
         testWithAction(
           'should update user-editable fields and bump updated_at',
-          async ({ action }) => {
-            const before = await container.KyselyPg.selectFrom('public.actions')
+          async ({ sutWithPrimary, deps, org, action }) => {
+            const before = await deps.KyselyPg.selectFrom('public.actions')
               .select(['updated_at'])
               .where('id', '=', action.id)
               .executeTakeFirstOrThrow();
@@ -813,24 +813,21 @@ describe('ModerationConfigService', () => {
             // Wait briefly so updated_at can advance even on fast clocks.
             await new Promise((resolve) => setTimeout(resolve, 5));
 
-            const updated = await sutWithPrimary.updateCustomAction(
-              dummyOrgId,
-              {
-                actionId: action.id,
-                patch: {
-                  description: 'after',
-                  callbackUrl: 'https://after.example.com',
-                  applyUserStrikes: true,
-                },
+            const updated = await sutWithPrimary.updateCustomAction(org.id, {
+              actionId: action.id,
+              patch: {
+                description: 'after',
+                callbackUrl: 'https://after.example.com',
+                applyUserStrikes: true,
               },
-            );
+            });
 
             expect(updated.actionType).toBe('CUSTOM_ACTION');
             expect(updated.description).toBe('after');
             expect(updated.callbackUrl).toBe('https://after.example.com');
             expect(updated.applyUserStrikes).toBe(true);
 
-            const after = await container.KyselyPg.selectFrom('public.actions')
+            const after = await deps.KyselyPg.selectFrom('public.actions')
               .select(['updated_at', 'description'])
               .where('id', '=', action.id)
               .executeTakeFirstOrThrow();
@@ -843,20 +840,20 @@ describe('ModerationConfigService', () => {
 
         testWithAction(
           'should not bump updated_at for an empty patch with no itemTypeIds',
-          async ({ action }) => {
-            const before = await container.KyselyPg.selectFrom('public.actions')
+          async ({ sutWithPrimary, deps, org, action }) => {
+            const before = await deps.KyselyPg.selectFrom('public.actions')
               .select(['updated_at'])
               .where('id', '=', action.id)
               .executeTakeFirstOrThrow();
 
             await new Promise((resolve) => setTimeout(resolve, 5));
 
-            const result = await sutWithPrimary.updateCustomAction(dummyOrgId, {
+            const result = await sutWithPrimary.updateCustomAction(org.id, {
               actionId: action.id,
               patch: {},
             });
 
-            const after = await container.KyselyPg.selectFrom('public.actions')
+            const after = await deps.KyselyPg.selectFrom('public.actions')
               .select(['updated_at'])
               .where('id', '=', action.id)
               .executeTakeFirstOrThrow();
@@ -869,41 +866,37 @@ describe('ModerationConfigService', () => {
 
         testWithAction(
           'should throw NotFound when called with the wrong org',
-          async ({ action }) => {
-            const otherOrg = await createOrg(
+          async ({ sutWithPrimary, deps, action }) => {
+            const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: container.KyselyPg,
-                ModerationConfigService: container.ModerationConfigService,
-                ApiKeyService: container.ApiKeyService,
+                KyselyPg: deps.KyselyPg,
+                ModerationConfigService: deps.ModerationConfigService,
+                ApiKeyService: deps.ApiKeyService,
               },
               uid(),
             );
-            try {
-              await expect(
-                sutWithPrimary.updateCustomAction(otherOrg.org.id, {
-                  actionId: action.id,
-                  patch: { description: 'leaked' },
-                }),
-              ).rejects.toThrow(
-                expect.objectContaining({ type: [ErrorType.NotFound] }),
-              );
+            await expect(
+              sutWithPrimary.updateCustomAction(otherOrg.id, {
+                actionId: action.id,
+                patch: { description: 'leaked' },
+              }),
+            ).rejects.toThrow(
+              expect.objectContaining({ type: [ErrorType.NotFound] }),
+            );
 
-              // The action's row in the original org must be untouched.
-              const row = await container.KyselyPg.selectFrom('public.actions')
-                .select(['description'])
-                .where('id', '=', action.id)
-                .executeTakeFirstOrThrow();
-              expect(row.description).toBe('before');
-            } finally {
-              await otherOrg.cleanup();
-            }
+            // The action's row in the original org must be untouched.
+            const row = await deps.KyselyPg.selectFrom('public.actions')
+              .select(['description'])
+              .where('id', '=', action.id)
+              .executeTakeFirstOrThrow();
+            expect(row.description).toBe('before');
           },
         );
 
         testWithAction(
           'updates parameters when patch.parameters is supplied',
-          async ({ action }) => {
-            await sutWithPrimary.updateCustomAction(dummyOrgId, {
+          async ({ sutWithPrimary, org, action }) => {
+            await sutWithPrimary.updateCustomAction(org.id, {
               actionId: action.id,
               patch: {
                 parameters: [
@@ -918,7 +911,7 @@ describe('ModerationConfigService', () => {
             });
 
             const [afterSet] = await sutWithPrimary.getActions({
-              orgId: dummyOrgId,
+              orgId: org.id,
               ids: [action.id],
             });
             expect(
@@ -933,12 +926,12 @@ describe('ModerationConfigService', () => {
             ]);
 
             // Passing `[]` should clear, not leave the existing list in place.
-            await sutWithPrimary.updateCustomAction(dummyOrgId, {
+            await sutWithPrimary.updateCustomAction(org.id, {
               actionId: action.id,
               patch: { parameters: [] },
             });
             const [afterClear] = await sutWithPrimary.getActions({
-              orgId: dummyOrgId,
+              orgId: org.id,
               ids: [action.id],
             });
             expect(
@@ -950,8 +943,8 @@ describe('ModerationConfigService', () => {
 
         testWithAction(
           'leaves parameters unchanged when patch.parameters is omitted',
-          async ({ action }) => {
-            await sutWithPrimary.updateCustomAction(dummyOrgId, {
+          async ({ sutWithPrimary, org, action }) => {
+            await sutWithPrimary.updateCustomAction(org.id, {
               actionId: action.id,
               patch: {
                 parameters: [
@@ -964,12 +957,12 @@ describe('ModerationConfigService', () => {
                 ],
               },
             });
-            await sutWithPrimary.updateCustomAction(dummyOrgId, {
+            await sutWithPrimary.updateCustomAction(org.id, {
               actionId: action.id,
               patch: { description: 'after' },
             });
             const [fetched] = await sutWithPrimary.getActions({
-              orgId: dummyOrgId,
+              orgId: org.id,
               ids: [action.id],
             });
             expect(fetched.description).toBe('after');
@@ -988,8 +981,8 @@ describe('ModerationConfigService', () => {
 
         testWithAction(
           'should reject renaming onto an existing action name',
-          async ({ action }) => {
-            const other = await sutWithPrimary.createAction(dummyOrgId, {
+          async ({ sutWithPrimary, org, action }) => {
+            const other = await sutWithPrimary.createAction(org.id, {
               name: faker.random.alphaNumeric(16),
               description: null,
               type: 'CUSTOM_ACTION',
@@ -997,100 +990,70 @@ describe('ModerationConfigService', () => {
               callbackUrlHeaders: null,
               callbackUrlBody: null,
             });
-            try {
-              await expect(
-                sutWithPrimary.updateCustomAction(dummyOrgId, {
-                  actionId: action.id,
-                  patch: { name: other.name },
-                }),
-              ).rejects.toThrow(
-                expect.objectContaining({
-                  type: [ErrorType.UniqueViolation],
-                }),
-              );
-            } finally {
-              await sutWithPrimary.deleteCustomAction({
-                orgId: dummyOrgId,
-                actionId: other.id,
-              });
-            }
+            await expect(
+              sutWithPrimary.updateCustomAction(org.id, {
+                actionId: action.id,
+                patch: { name: other.name },
+              }),
+            ).rejects.toThrow(
+              expect.objectContaining({
+                type: [ErrorType.UniqueViolation],
+              }),
+            );
           },
         );
 
         testWithAction(
           'should replace the item-type junction when itemTypeIds is provided',
-          async ({ action }) => {
-            const itemTypeA = await sutWithPrimary.createContentType(
-              dummyOrgId,
-              {
-                schema: dummySchema,
-                description: null,
-                name: faker.random.alphaNumeric(16),
-                schemaFieldRoles: { displayName: 'fakeField' },
-              },
-            );
-            const itemTypeB = await sutWithPrimary.createContentType(
-              dummyOrgId,
-              {
-                schema: dummySchema,
-                description: null,
-                name: faker.random.alphaNumeric(16),
-                schemaFieldRoles: { displayName: 'fakeField' },
-              },
-            );
+          async ({ sutWithPrimary, deps, org, action }) => {
+            const itemTypeA = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: faker.random.alphaNumeric(16),
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+            const itemTypeB = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: faker.random.alphaNumeric(16),
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
 
-            try {
-              await sutWithPrimary.updateCustomAction(dummyOrgId, {
-                actionId: action.id,
-                patch: {},
-                itemTypeIds: [itemTypeA.id],
-              });
-              expect(
-                await container.KyselyPg.selectFrom(
-                  'public.actions_and_item_types',
-                )
-                  .select(['item_type_id'])
-                  .where('action_id', '=', action.id)
-                  .execute(),
-              ).toEqual([{ item_type_id: itemTypeA.id }]);
+            await sutWithPrimary.updateCustomAction(org.id, {
+              actionId: action.id,
+              patch: {},
+              itemTypeIds: [itemTypeA.id],
+            });
+            expect(
+              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
+                .select(['item_type_id'])
+                .where('action_id', '=', action.id)
+                .execute(),
+            ).toEqual([{ item_type_id: itemTypeA.id }]);
 
-              await sutWithPrimary.updateCustomAction(dummyOrgId, {
-                actionId: action.id,
-                patch: {},
-                itemTypeIds: [itemTypeB.id],
-              });
-              expect(
-                await container.KyselyPg.selectFrom(
-                  'public.actions_and_item_types',
-                )
-                  .select(['item_type_id'])
-                  .where('action_id', '=', action.id)
-                  .execute(),
-              ).toEqual([{ item_type_id: itemTypeB.id }]);
+            await sutWithPrimary.updateCustomAction(org.id, {
+              actionId: action.id,
+              patch: {},
+              itemTypeIds: [itemTypeB.id],
+            });
+            expect(
+              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
+                .select(['item_type_id'])
+                .where('action_id', '=', action.id)
+                .execute(),
+            ).toEqual([{ item_type_id: itemTypeB.id }]);
 
-              await sutWithPrimary.updateCustomAction(dummyOrgId, {
-                actionId: action.id,
-                patch: {},
-                itemTypeIds: [],
-              });
-              expect(
-                await container.KyselyPg.selectFrom(
-                  'public.actions_and_item_types',
-                )
-                  .select(['item_type_id'])
-                  .where('action_id', '=', action.id)
-                  .execute(),
-              ).toEqual([]);
-            } finally {
-              await sutWithPrimary.deleteItemType({
-                orgId: dummyOrgId,
-                itemTypeId: itemTypeA.id,
-              });
-              await sutWithPrimary.deleteItemType({
-                orgId: dummyOrgId,
-                itemTypeId: itemTypeB.id,
-              });
-            }
+            await sutWithPrimary.updateCustomAction(org.id, {
+              actionId: action.id,
+              patch: {},
+              itemTypeIds: [],
+            });
+            expect(
+              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
+                .select(['item_type_id'])
+                .where('action_id', '=', action.id)
+                .execute(),
+            ).toEqual([]);
           },
         );
       });
@@ -1098,148 +1061,127 @@ describe('ModerationConfigService', () => {
 
     describe('Delete methods', () => {
       describe('#deleteCustomAction', () => {
-        const testWithAction = makeTestWithFixture(async () => {
-          const action = await sutWithPrimary.createAction(dummyOrgId, {
-            name: faker.random.alphaNumeric(16),
-            description: null,
-            type: 'CUSTOM_ACTION',
-            callbackUrl: 'https://example.com',
-            callbackUrlHeaders: null,
-            callbackUrlBody: null,
-          });
-          return {
-            action,
-            // Best-effort cleanup; the test under assertion may have already
-            // removed the row.
-            async cleanup() {
-              await sutWithPrimary
-                .deleteCustomAction({
-                  orgId: dummyOrgId,
-                  actionId: action.id,
-                })
-                .catch(() => {});
-            },
-          };
-        });
+        const testWithAction = makeTransactionalTestWithFixture(
+          async ({ deps }) => {
+            const base = await setupOrg(deps);
+            const action = await base.sutWithPrimary.createAction(base.org.id, {
+              name: faker.random.alphaNumeric(16),
+              description: null,
+              type: 'CUSTOM_ACTION',
+              callbackUrl: 'https://example.com',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+            });
+            return { ...base, action };
+          },
+        );
 
         testWithAction(
           'should return true and delete the action on success',
-          async ({ action }) => {
+          async ({ sutWithPrimary, org, action }) => {
             const result = await sutWithPrimary.deleteCustomAction({
-              orgId: dummyOrgId,
+              orgId: org.id,
               actionId: action.id,
             });
             expect(result).toBe(true);
             expect(
               await sutWithPrimary.getActions({
-                orgId: dummyOrgId,
+                orgId: org.id,
                 ids: [action.id],
               }),
             ).toEqual([]);
           },
         );
 
-        it('should return false when the action does not exist', async () => {
-          const result = await sutWithPrimary.deleteCustomAction({
-            orgId: dummyOrgId,
-            actionId: uid(),
-          });
-          expect(result).toBe(false);
-        });
+        testWithOrg(
+          'should return false when the action does not exist',
+          async ({ sutWithPrimary, org }) => {
+            const result = await sutWithPrimary.deleteCustomAction({
+              orgId: org.id,
+              actionId: uid(),
+            });
+            expect(result).toBe(false);
+          },
+        );
 
         testWithAction(
           'should return false when called with the wrong org and leave the row intact',
-          async ({ action }) => {
-            const otherOrg = await createOrg(
+          async ({ sutWithPrimary, deps, org, action }) => {
+            const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: container.KyselyPg,
-                ModerationConfigService: container.ModerationConfigService,
-                ApiKeyService: container.ApiKeyService,
+                KyselyPg: deps.KyselyPg,
+                ModerationConfigService: deps.ModerationConfigService,
+                ApiKeyService: deps.ApiKeyService,
               },
               uid(),
             );
-            try {
-              const result = await sutWithPrimary.deleteCustomAction({
-                orgId: otherOrg.org.id,
-                actionId: action.id,
-              });
-              expect(result).toBe(false);
-              const [stillThere] = await sutWithPrimary.getActions({
-                orgId: dummyOrgId,
-                ids: [action.id],
-              });
-              expect(stillThere.id).toBe(action.id);
-            } finally {
-              await otherOrg.cleanup();
-            }
+            const result = await sutWithPrimary.deleteCustomAction({
+              orgId: otherOrg.id,
+              actionId: action.id,
+            });
+            expect(result).toBe(false);
+            const [stillThere] = await sutWithPrimary.getActions({
+              orgId: org.id,
+              ids: [action.id],
+            });
+            expect(stillThere.id).toBe(action.id);
           },
         );
 
         testWithAction(
           'should clean up rules_and_actions and actions_and_item_types junction rows',
-          async ({ action }) => {
-            const itemType = await sutWithPrimary.createContentType(
-              dummyOrgId,
-              {
-                schema: dummySchema,
-                description: null,
-                name: faker.random.alphaNumeric(16),
-                schemaFieldRoles: { displayName: 'fakeField' },
-              },
-            );
-            const rule = await createRule(container.KyselyPg, dummyOrgId);
+          async ({ sutWithPrimary, deps, org, action }) => {
+            const itemType = await sutWithPrimary.createContentType(org.id, {
+              schema: dummySchema,
+              description: null,
+              name: faker.random.alphaNumeric(16),
+              schemaFieldRoles: { displayName: 'fakeField' },
+            });
+            const rule = await createRule(deps.KyselyPg, org.id);
 
-            await container.KyselyPg.insertInto('public.actions_and_item_types')
+            await deps.KyselyPg.insertInto('public.actions_and_item_types')
               .values({ action_id: action.id, item_type_id: itemType.id })
               .execute();
-            await container.KyselyPg.insertInto('public.rules_and_actions')
+            await deps.KyselyPg.insertInto('public.rules_and_actions')
               .values({ action_id: action.id, rule_id: rule.id })
               .execute();
 
-            try {
-              const result = await sutWithPrimary.deleteCustomAction({
-                orgId: dummyOrgId,
-                actionId: action.id,
-              });
-              expect(result).toBe(true);
-              expect(
-                await container.KyselyPg.selectFrom(
-                  'public.actions_and_item_types',
-                )
-                  .select(['action_id'])
-                  .where('action_id', '=', action.id)
-                  .execute(),
-              ).toEqual([]);
-              expect(
-                await container.KyselyPg.selectFrom('public.rules_and_actions')
-                  .select(['action_id'])
-                  .where('action_id', '=', action.id)
-                  .execute(),
-              ).toEqual([]);
-            } finally {
-              await rule.destroy();
-              await sutWithPrimary.deleteItemType({
-                orgId: dummyOrgId,
-                itemTypeId: itemType.id,
-              });
-            }
+            const result = await sutWithPrimary.deleteCustomAction({
+              orgId: org.id,
+              actionId: action.id,
+            });
+            expect(result).toBe(true);
+            expect(
+              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
+                .select(['action_id'])
+                .where('action_id', '=', action.id)
+                .execute(),
+            ).toEqual([]);
+            expect(
+              await deps.KyselyPg.selectFrom('public.rules_and_actions')
+                .select(['action_id'])
+                .where('action_id', '=', action.id)
+                .execute(),
+            ).toEqual([]);
           },
         );
       });
     });
 
     describe('#getActionsForItemType', () => {
-      const testWithItemTypeAndActions = makeTestWithFixture(async () => {
-        const itemType = await sutWithPrimary.createContentType(dummyOrgId, {
-          schema: dummySchema,
-          description: null,
-          name: faker.random.alphaNumeric(16),
-          schemaFieldRoles: { displayName: 'fakeField' },
-        });
+      const testWithItemTypeAndActions = makeTransactionalTestWithFixture(
+        async ({ deps }) => {
+          const base = await setupOrg(deps);
+          const { sutWithPrimary, org } = base;
 
-        const viaJunctionAction = await sutWithPrimary.createAction(
-          dummyOrgId,
-          {
+          const itemType = await sutWithPrimary.createContentType(org.id, {
+            schema: dummySchema,
+            description: null,
+            name: faker.random.alphaNumeric(16),
+            schemaFieldRoles: { displayName: 'fakeField' },
+          });
+
+          const viaJunctionAction = await sutWithPrimary.createAction(org.id, {
             name: faker.random.alphaNumeric(16),
             description: null,
             type: 'CUSTOM_ACTION',
@@ -1247,76 +1189,62 @@ describe('ModerationConfigService', () => {
             callbackUrlHeaders: null,
             callbackUrlBody: null,
             itemTypeIds: [itemType.id],
-          },
-        );
+          });
 
-        const viaAppliesAllAction = await sutWithPrimary.createAction(
-          dummyOrgId,
-          {
+          const viaAppliesAllAction = await sutWithPrimary.createAction(
+            org.id,
+            {
+              name: faker.random.alphaNumeric(16),
+              description: null,
+              type: 'CUSTOM_ACTION',
+              callbackUrl: 'https://example.com',
+              callbackUrlHeaders: null,
+              callbackUrlBody: null,
+            },
+          );
+          await deps.KyselyPg.updateTable('public.actions')
+            .set({ applies_to_all_items_of_kind: ['CONTENT'] })
+            .where('id', '=', viaAppliesAllAction.id)
+            .execute();
+
+          // Action satisfying both branches; result should still include it once.
+          const viaBothAction = await sutWithPrimary.createAction(org.id, {
             name: faker.random.alphaNumeric(16),
             description: null,
             type: 'CUSTOM_ACTION',
             callbackUrl: 'https://example.com',
             callbackUrlHeaders: null,
             callbackUrlBody: null,
-          },
-        );
-        await container.KyselyPg.updateTable('public.actions')
-          .set({ applies_to_all_items_of_kind: ['CONTENT'] })
-          .where('id', '=', viaAppliesAllAction.id)
-          .execute();
+            itemTypeIds: [itemType.id],
+          });
+          await deps.KyselyPg.updateTable('public.actions')
+            .set({ applies_to_all_items_of_kind: ['CONTENT'] })
+            .where('id', '=', viaBothAction.id)
+            .execute();
 
-        // Action satisfying both branches; result should still include it once.
-        const viaBothAction = await sutWithPrimary.createAction(dummyOrgId, {
-          name: faker.random.alphaNumeric(16),
-          description: null,
-          type: 'CUSTOM_ACTION',
-          callbackUrl: 'https://example.com',
-          callbackUrlHeaders: null,
-          callbackUrlBody: null,
-          itemTypeIds: [itemType.id],
-        });
-        await container.KyselyPg.updateTable('public.actions')
-          .set({ applies_to_all_items_of_kind: ['CONTENT'] })
-          .where('id', '=', viaBothAction.id)
-          .execute();
-
-        return {
-          itemType,
-          viaJunctionAction,
-          viaAppliesAllAction,
-          viaBothAction,
-          async cleanup() {
-            await Promise.all(
-              [
-                viaJunctionAction.id,
-                viaAppliesAllAction.id,
-                viaBothAction.id,
-              ].map(async (id) =>
-                sutWithPrimary.deleteCustomAction({
-                  orgId: dummyOrgId,
-                  actionId: id,
-                }),
-              ),
-            );
-            await sutWithPrimary.deleteItemType({
-              orgId: dummyOrgId,
-              itemTypeId: itemType.id,
-            });
-          },
-        };
-      });
+          return {
+            ...base,
+            itemType,
+            viaJunctionAction,
+            viaAppliesAllAction,
+            viaBothAction,
+          };
+        },
+      );
 
       testWithItemTypeAndActions(
         'should return actions from both branches, deduped, scoped to the org',
         async ({
+          sutWithPrimary,
+          deps,
+          org,
           itemType,
           viaJunctionAction,
           viaAppliesAllAction,
           viaBothAction,
         }) => {
           const result = await sutWithPrimary.getActionsForItemType({
-            orgId: dummyOrgId,
+            orgId: org.id,
             itemTypeId: itemType.id,
             itemTypeKind: 'CONTENT',
             readFromReplica: false,
@@ -1337,63 +1265,54 @@ describe('ModerationConfigService', () => {
           // Calling with a different org should never surface this org's
           // applies-to-all rows (they'd otherwise leak across orgs since the
           // ANY(...) predicate alone has no tenant scope).
-          const otherOrg = await createOrg(
+          const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: container.KyselyPg,
-              ModerationConfigService: container.ModerationConfigService,
-              ApiKeyService: container.ApiKeyService,
+              KyselyPg: deps.KyselyPg,
+              ModerationConfigService: deps.ModerationConfigService,
+              ApiKeyService: deps.ApiKeyService,
             },
             uid(),
           );
-          try {
-            const otherResult = await sutWithPrimary.getActionsForItemType({
-              orgId: otherOrg.org.id,
-              itemTypeId: itemType.id,
-              itemTypeKind: 'CONTENT',
-              readFromReplica: false,
-            });
-            expect(
-              otherResult.filter((it) => it.actionType === 'CUSTOM_ACTION'),
-            ).toEqual([]);
-          } finally {
-            await otherOrg.cleanup();
-          }
+          const otherResult = await sutWithPrimary.getActionsForItemType({
+            orgId: otherOrg.id,
+            itemTypeId: itemType.id,
+            itemTypeKind: 'CONTENT',
+            readFromReplica: false,
+          });
+          expect(
+            otherResult.filter((it) => it.actionType === 'CUSTOM_ACTION'),
+          ).toEqual([]);
         },
       );
     });
 
     describe('#getActionsForRuleId', () => {
-      const testWithRuleAndAction = makeTestWithFixture(async () => {
-        const rule = await createRule(container.KyselyPg, dummyOrgId);
-        const action = await sutWithPrimary.createAction(dummyOrgId, {
-          name: faker.random.alphaNumeric(16),
-          description: null,
-          type: 'CUSTOM_ACTION',
-          callbackUrl: 'https://example.com',
-          callbackUrlHeaders: null,
-          callbackUrlBody: null,
-        });
-        await container.KyselyPg.insertInto('public.rules_and_actions')
-          .values({ action_id: action.id, rule_id: rule.id })
-          .execute();
-        return {
-          rule,
-          action,
-          async cleanup() {
-            await sutWithPrimary.deleteCustomAction({
-              orgId: dummyOrgId,
-              actionId: action.id,
-            });
-            await rule.destroy();
-          },
-        };
-      });
+      const testWithRuleAndAction = makeTransactionalTestWithFixture(
+        async ({ deps }) => {
+          const base = await setupOrg(deps);
+          const { sutWithPrimary, org } = base;
+
+          const rule = await createRule(deps.KyselyPg, org.id);
+          const action = await sutWithPrimary.createAction(org.id, {
+            name: faker.random.alphaNumeric(16),
+            description: null,
+            type: 'CUSTOM_ACTION',
+            callbackUrl: 'https://example.com',
+            callbackUrlHeaders: null,
+            callbackUrlBody: null,
+          });
+          await deps.KyselyPg.insertInto('public.rules_and_actions')
+            .values({ action_id: action.id, rule_id: rule.id })
+            .execute();
+          return { ...base, rule, action };
+        },
+      );
 
       testWithRuleAndAction(
         'should return actions for a rule scoped to the caller org',
-        async ({ rule, action }) => {
+        async ({ sutWithPrimary, org, rule, action }) => {
           const result = await sutWithPrimary.getActionsForRuleId({
-            orgId: dummyOrgId,
+            orgId: org.id,
             ruleId: rule.id,
             readFromReplica: false,
           });
@@ -1403,25 +1322,21 @@ describe('ModerationConfigService', () => {
 
       testWithRuleAndAction(
         'should not return actions when called with a different org',
-        async ({ rule }) => {
-          const otherOrg = await createOrg(
+        async ({ sutWithPrimary, deps, rule }) => {
+          const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: container.KyselyPg,
-              ModerationConfigService: container.ModerationConfigService,
-              ApiKeyService: container.ApiKeyService,
+              KyselyPg: deps.KyselyPg,
+              ModerationConfigService: deps.ModerationConfigService,
+              ApiKeyService: deps.ApiKeyService,
             },
             uid(),
           );
-          try {
-            const result = await sutWithPrimary.getActionsForRuleId({
-              orgId: otherOrg.org.id,
-              ruleId: rule.id,
-              readFromReplica: false,
-            });
-            expect(result).toEqual([]);
-          } finally {
-            await otherOrg.cleanup();
-          }
+          const result = await sutWithPrimary.getActionsForRuleId({
+            orgId: otherOrg.id,
+            ruleId: rule.id,
+            readFromReplica: false,
+          });
+          expect(result).toEqual([]);
         },
       );
     });
@@ -1429,46 +1344,40 @@ describe('ModerationConfigService', () => {
 
   describe('Policy returning methods', () => {
     describe('Read methods', () => {
-      it('should query from the proper db', async () => {
-        await testReadReplicaUse('getPolicies', { orgId: dummyOrgId });
-      });
+      testWithOrg(
+        'should query from the proper db',
+        async ({ sutWithPrimary, sutWithReadReplica, org }) => {
+          await expectReadReplicaUse(
+            { sutWithPrimary, sutWithReadReplica },
+            'getPolicies',
+            { orgId: org.id },
+          );
+        },
+      );
 
       // TODO: Fill in this test once we've implemented the policy mutations
-      it.skip('should return all policies, properly formatted', async () => {
-        const res = await sutWithPrimary.getPolicies({ orgId: dummyOrgId });
-        expect(res).toHaveLength(createdPolicies.length);
-        expect(res).toEqual(expect.arrayContaining(createdPolicies));
-      });
+      testWithOrg.skip(
+        'should return all policies, properly formatted',
+        async ({ sutWithPrimary, org }) => {
+          const createdPolicies = [] as Policy[];
+          const res = await sutWithPrimary.getPolicies({ orgId: org.id });
+          expect(res).toHaveLength(createdPolicies.length);
+          expect(res).toEqual(expect.arrayContaining(createdPolicies));
+        },
+      );
     });
     describe('Mutations', () => {
-      const testWithUserAndOrg = makeTestWithFixture(async () => {
-        const { org, cleanup: orgCleanup } = await createOrg(
-          {
-            KyselyPg: container.KyselyPg,
-            ModerationConfigService: container.ModerationConfigService,
-            ApiKeyService: container.ApiKeyService,
-          },
-          uid(),
-        );
-
-        const { user, cleanup: userCleanup } = await createUser(
-          container.KyselyPg,
-          org.id,
-        );
-
-        return {
-          org,
-          user,
-          async cleanup() {
-            await userCleanup();
-            await orgCleanup();
-          },
-        };
-      });
+      const testWithUserAndOrg = makeTransactionalTestWithFixture(
+        async ({ deps }) => {
+          const base = await setupOrg(deps);
+          const { user } = await createUser(deps.KyselyPg, base.org.id);
+          return { ...base, user };
+        },
+      );
 
       testWithUserAndOrg(
         'should create a root policy',
-        async ({ org, user }) => {
+        async ({ sutWithPrimary, org, user }) => {
           const policy = await sutWithPrimary.createPolicy({
             orgId: org.id,
             policy: {
@@ -1493,7 +1402,7 @@ describe('ModerationConfigService', () => {
 
       testWithUserAndOrg(
         'should create parent and child policies',
-        async ({ org, user }) => {
+        async ({ sutWithPrimary, org, user }) => {
           const parentPolicy = await sutWithPrimary.createPolicy({
             orgId: org.id,
             policy: {
@@ -1536,7 +1445,7 @@ describe('ModerationConfigService', () => {
 
       testWithUserAndOrg(
         'should update an existing policy',
-        async ({ org, user }) => {
+        async ({ sutWithPrimary, org, user }) => {
           const policy = await sutWithPrimary.createPolicy({
             orgId: org.id,
             policy: {
@@ -1580,7 +1489,7 @@ describe('ModerationConfigService', () => {
 
       testWithUserAndOrg(
         'Prevent creation of policy with the same name as an existing policy',
-        async ({ org, user }) => {
+        async ({ sutWithPrimary, org, user }) => {
           await sutWithPrimary.createPolicy({
             orgId: org.id,
             policy: {
@@ -1621,135 +1530,153 @@ describe('ModerationConfigService', () => {
     });
   });
   describe('TextBank-returning methods', () => {
-    let createdTextBanks = [] as {
-      id: string;
-      orgId: string;
-      name: string;
-      description: string | null;
-      type: 'STRING' | 'REGEX';
-      createdAt: Date;
-      updatedAt: Date;
-      ownerId: string | null;
-      strings: string[];
-    }[];
-
     describe('Mutations', () => {
       describe('#createTextBank', () => {
-        it('should create a text bank', async () => {
-          const textBank = await sutWithPrimary.createTextBank(dummyOrgId, {
-            name: 'Test Text Bank',
-            description: 'Test description',
-            type: 'STRING' as const,
-            strings: ['test entry 1', 'test entry 2'],
-          });
-
-          expect(textBank).toEqual(
-            expect.objectContaining({
-              createdAt: expect.any(Date),
-              updatedAt: expect.any(Date),
-              description: 'Test description',
-              id: expect.any(String),
+        testWithOrg(
+          'should create a text bank',
+          async ({ sutWithPrimary, org }) => {
+            const textBank = await sutWithPrimary.createTextBank(org.id, {
               name: 'Test Text Bank',
-              orgId: expect.any(String),
-              ownerId: null,
+              description: 'Test description',
+              type: 'STRING' as const,
               strings: ['test entry 1', 'test entry 2'],
-              type: 'STRING',
-            }),
-          );
+            });
 
-          expect(textBank.orgId).toBe(dummyOrgId);
-          createdTextBanks = [...createdTextBanks, textBank];
-        });
+            expect(textBank).toEqual(
+              expect.objectContaining({
+                createdAt: expect.any(Date),
+                updatedAt: expect.any(Date),
+                description: 'Test description',
+                id: expect.any(String),
+                name: 'Test Text Bank',
+                orgId: expect.any(String),
+                ownerId: null,
+                strings: ['test entry 1', 'test entry 2'],
+                type: 'STRING',
+              }),
+            );
+
+            expect(textBank.orgId).toBe(org.id);
+          },
+        );
       });
     });
 
     describe('Read methods', () => {
       describe('#getTextBanks', () => {
-        it('should return all text banks, properly formatted', async () => {
-          const res = await sutWithPrimary.getTextBanks({ orgId: dummyOrgId });
-          expect(res).toHaveLength(createdTextBanks.length);
-          expect(res).toEqual(expect.arrayContaining(createdTextBanks));
-        });
+        testWithOrg(
+          'should return all text banks, properly formatted',
+          async ({ sutWithPrimary, org }) => {
+            const createdTextBanks = [
+              await sutWithPrimary.createTextBank(org.id, {
+                name: 'Test Text Bank 1',
+                description: 'Test description',
+                type: 'STRING' as const,
+                strings: ['test entry 1', 'test entry 2'],
+              }),
+              await sutWithPrimary.createTextBank(org.id, {
+                name: 'Test Text Bank 2',
+                description: null,
+                type: 'REGEX' as const,
+                strings: ['.*'],
+              }),
+            ];
+
+            const res = await sutWithPrimary.getTextBanks({ orgId: org.id });
+            expect(res).toHaveLength(createdTextBanks.length);
+            expect(res).toEqual(expect.arrayContaining(createdTextBanks));
+          },
+        );
       });
 
       describe('#getTextBank', () => {
-        it('should return a specific text bank, properly formatted', async () => {
-          const textBank = createdTextBanks[0];
-          const res = await sutWithPrimary.getTextBank({
-            orgId: dummyOrgId,
-            id: textBank.id,
-          });
-          expect(res).toEqual(textBank);
-        });
+        testWithOrg(
+          'should return a specific text bank, properly formatted',
+          async ({ sutWithPrimary, org }) => {
+            const textBank = await sutWithPrimary.createTextBank(org.id, {
+              name: 'Test Text Bank',
+              description: 'Test description',
+              type: 'STRING' as const,
+              strings: ['test entry 1', 'test entry 2'],
+            });
+
+            const res = await sutWithPrimary.getTextBank({
+              orgId: org.id,
+              id: textBank.id,
+            });
+            expect(res).toEqual(textBank);
+          },
+        );
       });
     });
   });
 
   describe('#getItemType', () => {
-    const testWithOneItemTypeFixture = makeTestWithFixture(async () => {
-      const itemType = await sutWithPrimary.createContentType(dummyOrgId, {
-        schema: dummySchema,
-        description: null,
-        name: faker.random.alphaNumeric(16),
-        schemaFieldRoles: {
-          displayName: 'fakeField',
-        },
-      });
+    const testWithOneItemTypeFixture = makeTransactionalTestWithFixture(
+      async ({ deps }) => {
+        const base = await setupOrg(deps);
+        const itemType = await base.sutWithPrimary.createContentType(
+          base.org.id,
+          {
+            schema: dummySchema,
+            description: null,
+            name: faker.random.alphaNumeric(16),
+            schemaFieldRoles: {
+              displayName: 'fakeField',
+            },
+          },
+        );
 
-      return {
-        itemType,
-        async cleanup() {
-          await sutWithPrimary.deleteItemType({
-            orgId: dummyOrgId,
-            itemTypeId: itemType.id,
-          });
-        },
-      };
-    });
+        return { ...base, itemType };
+      },
+    );
 
-    const testWithTwoItemTypesFixture = makeTestWithFixture(async () => {
-      const itemType = await sutWithPrimary.createContentType(dummyOrgId, {
-        schema: dummySchema,
-        description: null,
-        name: faker.random.alphaNumeric(16),
-        schemaFieldRoles: {
-          displayName: 'fakeField',
-        },
-      });
+    const testWithTwoItemTypesFixture = makeTransactionalTestWithFixture(
+      async ({ deps }) => {
+        const base = await setupOrg(deps);
+        const itemType = await base.sutWithPrimary.createContentType(
+          base.org.id,
+          {
+            schema: dummySchema,
+            description: null,
+            name: faker.random.alphaNumeric(16),
+            schemaFieldRoles: {
+              displayName: 'fakeField',
+            },
+          },
+        );
 
-      const newItemType = await sutWithPrimary.updateContentType(dummyOrgId, {
-        id: itemType.id,
-        name: faker.random.alphaNumeric(16),
-        schemaFieldRoles: {
-          creatorId: undefined,
-        },
-      });
+        const newItemType = await base.sutWithPrimary.updateContentType(
+          base.org.id,
+          {
+            id: itemType.id,
+            name: faker.random.alphaNumeric(16),
+            schemaFieldRoles: {
+              creatorId: undefined,
+            },
+          },
+        );
 
-      return {
-        itemType,
-        newItemType,
-        async cleanup() {
-          await sutWithPrimary.deleteItemType({
-            orgId: dummyOrgId,
-            itemTypeId: itemType.id,
-          });
-        },
-      };
-    });
+        return { ...base, itemType, newItemType };
+      },
+    );
 
-    it("Should return undefined if an item type with the given ID doesn't exist", async () => {
-      const itemType = await sutWithPrimary.getItemType({
-        orgId: dummyOrgId,
-        itemTypeSelector: { id: 'fakeId' },
-      });
+    testWithOrg(
+      "Should return undefined if an item type with the given ID doesn't exist",
+      async ({ sutWithPrimary, org }) => {
+        const itemType = await sutWithPrimary.getItemType({
+          orgId: org.id,
+          itemTypeSelector: { id: 'fakeId' },
+        });
 
-      expect(itemType).toBeUndefined();
-    });
+        expect(itemType).toBeUndefined();
+      },
+    );
     testWithOneItemTypeFixture(
       'Should return a partial item type if requested for a selector without a version',
-      async ({ itemType }) => {
+      async ({ sutWithPrimary, org, itemType }) => {
         const fetched = await sutWithPrimary.getItemType({
-          orgId: dummyOrgId,
+          orgId: org.id,
           itemTypeSelector: { id: itemType.id, schemaVariant: 'partial' },
         });
 
@@ -1759,9 +1686,9 @@ describe('ModerationConfigService', () => {
     );
     testWithTwoItemTypesFixture(
       'Should return a partial item type if requested for a selector with a version',
-      async ({ itemType, newItemType }) => {
+      async ({ sutWithPrimary, org, itemType, newItemType }) => {
         const fetched = await sutWithPrimary.getItemType({
-          orgId: dummyOrgId,
+          orgId: org.id,
           itemTypeSelector: {
             id: itemType.id,
             schemaVariant: 'partial',
@@ -1772,18 +1699,13 @@ describe('ModerationConfigService', () => {
         expect(fetched).not.toBeNull();
         expect(fetched!.name).toEqual(newItemType.name);
         fetched!.schema.forEach((it) => expect(it.required).toEqual(false));
-
-        await sutWithPrimary.deleteItemType({
-          itemTypeId: itemType.id,
-          orgId: dummyOrgId,
-        });
       },
     );
     testWithTwoItemTypesFixture(
       'Should return latest item type if only an ID is provided',
-      async ({ itemType, newItemType }) => {
+      async ({ sutWithPrimary, org, itemType, newItemType }) => {
         const fetched = await sutWithPrimary.getItemType({
-          orgId: dummyOrgId,
+          orgId: org.id,
           itemTypeSelector: { id: itemType.id },
         });
 
@@ -1791,10 +1713,54 @@ describe('ModerationConfigService', () => {
         expect(fetched!.name).toEqual(newItemType.name);
       },
     );
-    testWithOneItemTypeFixture(
+    // Fetching a *historical* version needs two versions with distinct
+    // timestamps. `item_type_versions` is a view over the system-versioned
+    // `item_types` table, whose `version` is `transaction_timestamp()`. The
+    // rollback harness runs the whole test in one transaction, so a create +
+    // update there share a timestamp and collapse into a single version — there
+    // is no older version left to fetch. This test therefore commits its two
+    // versions through the real container (separate transactions => distinct
+    // timestamps) and cleans up after itself; it's still self-contained.
+    const testWithHistoricalItemType = makeTestWithFixture(async () => {
+      const { container } = await getBottle();
+      const sut = new ModerationConfigService(
+        container.KyselyPg,
+        container.KyselyPgReadReplica,
+        async () => {},
+      );
+      const { org, cleanup: orgCleanup } = await createOrg(
+        {
+          KyselyPg: container.KyselyPg,
+          ModerationConfigService: container.ModerationConfigService,
+          ApiKeyService: container.ApiKeyService,
+        },
+        uid(),
+      );
+      const itemType = await sut.createContentType(org.id, {
+        schema: dummySchema,
+        description: null,
+        name: faker.random.alphaNumeric(16),
+        schemaFieldRoles: { displayName: 'fakeField' },
+      });
+
+      return {
+        sut,
+        org,
+        itemType,
+        async cleanup() {
+          await orgCleanup();
+          await Promise.all([
+            container.KyselyPg.destroy(),
+            container.KyselyPgReadReplica.destroy(),
+          ]);
+        },
+      };
+    });
+
+    testWithHistoricalItemType(
       'Should return requested item type version',
-      async ({ itemType }) => {
-        await sutWithPrimary.updateContentType(dummyOrgId, {
+      async ({ sut, org, itemType }) => {
+        await sut.updateContentType(org.id, {
           id: itemType.id,
           name: faker.random.alphaNumeric(16),
           schemaFieldRoles: {
@@ -1802,8 +1768,8 @@ describe('ModerationConfigService', () => {
           },
         });
 
-        const fetched = await sutWithPrimary.getItemType({
-          orgId: dummyOrgId,
+        const fetched = await sut.getItemType({
+          orgId: org.id,
           itemTypeSelector: { id: itemType.id, version: itemType.version },
         });
 

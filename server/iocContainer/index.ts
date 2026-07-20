@@ -59,6 +59,9 @@ import makeRuleEvaluator, {
   type RuleEvaluator,
 } from '../rule_engine/RuleEvaluator.js';
 import { Scylla } from '../scylla/index.js';
+import NoOpScylla, {
+  itemInvestigationAndStrikesEnabled,
+} from '../scylla/noOpScylla.js';
 import {
   makeActionStatisticsService,
   type ActionStatisticsService,
@@ -772,6 +775,9 @@ export default async function getBottle() {
             executionContext,
           );
         },
+        itemInvestigationAndStrikesEnabled(
+          process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
+        ),
       ),
   );
 
@@ -783,6 +789,23 @@ export default async function getBottle() {
   // keyspace aware and it's very annoying and likely error prone to be
   // switching keyspaces with `USE KEYSPACE` all the time.
   bottle.factory('Scylla', () => {
+    // Scylla backs the item-investigation and user-strike features. Operators
+    // who don't need those (and don't want to run a Scylla cluster) can set
+    // `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false` to swap in a no-op that
+    // drops writes and returns empty reads, so no `SCYLLA_*` connection env
+    // vars are required. Defaults to enabled to preserve existing behaviour.
+    if (
+      !itemInvestigationAndStrikesEnabled(
+        process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
+      )
+    ) {
+      // eslint-disable-next-line no-restricted-syntax
+      logJson(
+        'scylla.disabled ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false; using no-op Scylla',
+      );
+      return new NoOpScylla();
+    }
+
     const contactPoints = safeGetEnvVar('SCYLLA_HOSTS')
       .split(',')
       .map((it) => it.trim())

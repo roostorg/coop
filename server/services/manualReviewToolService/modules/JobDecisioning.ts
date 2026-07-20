@@ -5,12 +5,14 @@ import { type JsonObject } from 'type-fest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
+import { jsonStringify } from '../../../utils/encoding.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { assertUnreachable } from '../../../utils/misc.js';
+import { isValidDate } from '../../../utils/time.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
@@ -74,6 +76,24 @@ type MRTJobAutoCloseReason =
  * everywhere without a schema migration or any client change.
  */
 export const AUTOMATED_DECISION_REVIEWER_ID = '';
+
+/**
+ * Normalizes an item's createdAt field value into a Date for the
+ * `item_created_at` column. A truthy-but-unparseable value (whitespace, or a
+ * non-ISO format some report sources emit) yields an Invalid Date, which throws
+ * on pg serialization and fails the entire decision insert. Return null in that
+ * case so the nullable column absorbs it and the decision still records.
+ */
+export function parseItemCreatedAt(
+  value: string | number | Date | null | undefined,
+): Date | null {
+  // Guard only null/undefined/empty-string; a numeric 0 is a valid epoch.
+  if (value == null || value === '') {
+    return null;
+  }
+  const parsed = new Date(value);
+  return isValidDate(parsed) ? parsed : null;
+}
 
 export type ManualReviewDecisionComponent =
   | { type: 'IGNORE' }
@@ -627,9 +647,36 @@ export default class JobDecisioning {
           job.payload.item.data,
         )
       : null;
-    const itemCreatedAt = itemCreatedAtField
-      ? new Date(itemCreatedAtField)
-      : null;
+    const itemCreatedAt = parseItemCreatedAt(itemCreatedAtField);
+
+    // Record when a present createdAt couldn't be parsed. We store null so the
+    // decision still saves, but surface the bad value so it's diagnosable and
+    // can be backfilled rather than silently dropped.
+    if (
+      itemCreatedAt === null &&
+      itemCreatedAtField != null &&
+      itemCreatedAtField !== ''
+    ) {
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'logDecision.invalidItemCreatedAt',
+        },
+        (span) => {
+          span.setAttribute('job.id', job.id);
+          span.setAttribute('org.id', orgId);
+          this.tracer.logSpanFailed(
+            span,
+            new Error(
+              `Unparseable item createdAt for job ${job.id}: ${jsonStringify(
+                itemCreatedAtField,
+              )}. Storing null.`,
+            ),
+          );
+          return null;
+        },
+      );
+    }
 
     return this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
