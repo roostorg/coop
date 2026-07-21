@@ -102,7 +102,7 @@ describe('verifyEmailPasswordCredentials', () => {
     expect(persistedPatch.password).toMatch(
       /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/,
     );
-    // Compare-and-swap guard (PR #901 review): the write must be scoped to
+    // Compare-and-swap guard: the write must be scoped to
     // the exact hash that was just verified, not the user id alone, so a
     // concurrent password change can never be clobbered by a rehash of the
     // old plaintext.
@@ -143,12 +143,16 @@ describe('verifyEmailPasswordCredentials', () => {
     expect(updateTable).not.toHaveBeenCalled();
   });
 
-  it('fails closed and logs when the stored hash cannot be evaluated', async () => {
+  it('surfaces a generic internal-server error and logs when the stored hash cannot be evaluated', async () => {
     // A corrupt row, or Argon2 failing operationally (the 19 MiB allocation
-    // can fail under memory pressure, taking down *every* login). Both throw
-    // out of `passwordMatchesHash`. The user-facing answer is still "wrong
-    // password" — but it must be logged, or a total verification outage is
-    // indistinguishable from a flood of users mistyping their passwords.
+    // can fail under memory pressure, taking down *every* login) makes
+    // `passwordMatchesHash` throw. That's not special-cased as "wrong
+    // password" — it propagates to the outer catch-all, which logs it and
+    // rethrows as a generic `InternalServerError`, so a verification outage
+    // stays distinguishable from a flood of users mistyping their passwords
+    // (which throws a distinctly-named `LoginIncorrectPasswordError` instead —
+    // pinned by name here so a reintroduced "treat as non-match" special case
+    // would fail this test instead of silently reverting).
     // A bad base64 salt is one of the shapes `argon2Verify` throws on rather
     // than resolving false — see the corrupt-input cases in `utils.test.ts`.
     const userRow = makeUserRow({
@@ -159,13 +163,13 @@ describe('verifyEmailPasswordCredentials', () => {
 
     await expect(
       verifyEmailPasswordCredentials(deps, 'test@example.com', password),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'InternalServerError' });
 
     expect(logActiveSpanFailedIfAny).toHaveBeenCalled();
     expect(updateTable).not.toHaveBeenCalled();
   });
 
-  it('still succeeds the login when the rehash write fails (#778 regression guard)', async () => {
+  it('still succeeds the login when the rehash write throws', async () => {
     const legacyBcryptHash = await bcrypt.hash(password, 5);
     const userRow = makeUserRow({ password: legacyBcryptHash });
     const { kyselyPg } = makeMockKyselyPg({
@@ -174,11 +178,10 @@ describe('verifyEmailPasswordCredentials', () => {
     });
     const { deps, logActiveSpanFailedIfAny } = makeDeps(kyselyPg);
 
-    // The login itself must succeed even though the opportunistic rehash
-    // write throws — the session must never be sacrificed for a background
-    // hash upgrade. This is exactly the failure mode the transactional
-    // session-purging update paths (`changePassword`, `resetPasswordForToken`,
-    // #778) would trigger if reused here.
+    // `rehashPasswordOnLogin` swallows any error from the write — e.g. a
+    // transient DB failure — and logs it instead: the opportunistic hash
+    // upgrade must never cost the user a login that already verified
+    // correctly.
     const result = await verifyEmailPasswordCredentials(
       deps,
       'test@example.com',
