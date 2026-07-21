@@ -403,7 +403,12 @@ export default function ItemInvestigation(props: {
       try {
         return getFieldValueForRole(
           {
-            // eslint-disable-next-line custom-rules/no-casting-in-getFieldValueForRole
+            // The cast is load-bearing under TS 6: `getFieldValueForRole` is
+            // generic, and without it the `ThreadItemType` member of `item.type`
+            // has no overlap with the inferred parameter type. `no-unnecessary-
+            // type-assertion` disagrees because it compares against the
+            // already-inferred contextual type; tsc fails if the cast is removed.
+            // eslint-disable-next-line custom-rules/no-casting-in-getFieldValueForRole, @typescript-eslint/no-unnecessary-type-assertion
             type: item.type as Parameters<
               typeof getFieldValueForRole
             >[0]['type'],

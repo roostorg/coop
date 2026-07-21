@@ -22,6 +22,13 @@ export function filterNullOrUndefined<T>(
   return array.filter((it) => it !== null && it !== undefined) as T[];
 }
 
+// `Array.isArray` is typed as `arg is any[]`, which can't narrow a
+// `readonly T[]` out of the union — readonly arrays aren't assignable to
+// `any[]`, so they survive into the else branch and widen the return type.
+function isReadonlyArray<T>(value: readonly T[] | T): value is readonly T[] {
+  return Array.isArray(value);
+}
+
 export function arrayFromArrayOrSingleItem<T>(array: readonly T[] | T): T[] {
-  return Array.isArray(array) ? [...array] : [array];
+  return isReadonlyArray(array) ? [...array] : [array];
 }

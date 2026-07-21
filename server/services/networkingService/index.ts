@@ -213,15 +213,26 @@ export async function fetchHTTP<T extends HandleResponseBody>(
           // If the body isn't already an ArrayBuffer, we need to encode the body
           // as an ArrayBuffer, so we first coerce it to a string from a `string |
           // URLSearchParams` type, and then encode it with TextEncoder
-          const bodyBuffer =
-            castBody instanceof ArrayBuffer
-              ? castBody
-              : new TextEncoder().encode(
-                  // `satisfies` ensures that new body types, on which we can't
-                  // necessarily just call toString, won't get accidentally
-                  // handled incorrectly
-                  (castBody satisfies string | URLSearchParams).toString(),
-                );
+          const bodyBuffer = ((): ArrayBuffer => {
+            if (castBody instanceof ArrayBuffer) {
+              return castBody;
+            }
+
+            const encoded = new TextEncoder().encode(
+              // `satisfies` ensures that new body types, on which we can't
+              // necessarily just call toString, won't get accidentally
+              // handled incorrectly
+              (castBody satisfies string | URLSearchParams).toString(),
+            );
+
+            // `signWith` takes an ArrayBuffer, not a view over one. Slice to the
+            // view's bounds rather than handing over `encoded.buffer`, which is
+            // only incidentally exactly the encoded length.
+            return encoded.buffer.slice(
+              encoded.byteOffset,
+              encoded.byteOffset + encoded.byteLength,
+            );
+          })();
 
           const { signature } = await query.signWith(bodyBuffer);
           return b64EncodeArrayBuffer(signature);

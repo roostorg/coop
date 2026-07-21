@@ -19,6 +19,9 @@
     "noFallthroughCasesInSwitch": true,
     "allowJs": true,
     "typeRoots": ["./node_modules/@types", "./shim"],
+    // TS 6 under NodeNext no longer auto-includes every package found in
+    // typeRoots as an ambient global; they have to be named explicitly.
+    "types": ["node", "jest"],
     "skipLibCheck": true,
     "sourceMap": true
   },
