@@ -37,6 +37,7 @@ import {
   ncmecDebugEnabled,
   ncmecDebugLog,
 } from './ncmecDebug.js';
+import { isNcmecTestDeployment } from './ncmecEnv.js';
 import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 
 export const NCMECEvent = makeEnumLike([
@@ -1765,7 +1766,11 @@ export default class NcmecReporting {
 
   async submitReport(
     reportParams: NCMECReportParams,
-    isTest: boolean,
+    /** Whether this individual report row is a test submission. Persisted to
+     * `ncmec_reports.is_test` and used to skip the existing-report dedup
+     * check, the prior-CT-report lookup, and data-preservation requests.
+     * Distinct from `isNcmecTestDeployment()` (env-driven endpoint selection). */
+    isTestReport: boolean,
   ): Promise<NcmecReportResult> {
     return this.tracer.addSpan(
       {
@@ -1791,7 +1796,8 @@ export default class NcmecReporting {
           jsonStringify(logSafeReportParams),
         );
         ncmecDebugLog('submitReport.start', {
-          isTest,
+          isTestReport,
+          sandbox: isNcmecTestDeployment(),
           ...logSafeReportParams,
         });
 
@@ -1860,7 +1866,7 @@ export default class NcmecReporting {
             throw new Error('Insufficient settings');
           }
 
-          if (isTest === false) {
+          if (isTestReport === false) {
             const hasExistingReport = await this.getUserHasExistingNcmeReport({
               orgId: reportParams.orgId,
               userId: reportParams.reportedUser.id,
@@ -1927,7 +1933,7 @@ export default class NcmecReporting {
 
           // Skip for test submissions: prod and exttest report IDs don't
           // cross-reference.
-          const priorCTReports = isTest
+          const priorCTReports = isTestReport
             ? []
             : await this.getPriorCTReportIds({
                 orgId: reportParams.orgId,
@@ -1971,7 +1977,6 @@ export default class NcmecReporting {
           const { reportId, xml } = await this.#submit(
             report,
             cybertipAuthenticationCredentials,
-            isTest,
           );
 
           const reportedMedia = await Promise.all(
@@ -2001,7 +2006,6 @@ export default class NcmecReporting {
                 media,
                 cybertipAuthenticationCredentials,
                 mergedMediaInfo,
-                isTest,
               );
             }),
           );
@@ -2014,7 +2018,6 @@ export default class NcmecReporting {
                       reportId,
                       cybertipAuthenticationCredentials,
                       additionalFile,
-                      isTest,
                     ),
                   ),
                 )
@@ -2025,14 +2028,9 @@ export default class NcmecReporting {
             reportId,
             reportParams.threads,
             cybertipAuthenticationCredentials,
-            isTest,
           );
 
-          await this.#finish(
-            reportId,
-            cybertipAuthenticationCredentials,
-            isTest,
-          );
+          await this.#finish(reportId, cybertipAuthenticationCredentials);
 
           await this.pgQuery
             .insertInto('ncmec_reporting.ncmec_reports')
@@ -2049,11 +2047,14 @@ export default class NcmecReporting {
               additional_files: additionalFiles,
               reported_messages: threadCsvs,
               incident_type: reportParams.incidentType,
-              is_test: isTest,
+              is_test: isTestReport,
             })
             .execute();
 
-          if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
+          if (
+            ncmecConfig?.ncmec_preservation_endpoint &&
+            isTestReport === false
+          ) {
             await this.#sendUserPreservationRequest({
               orgId: reportParams.orgId,
               user: {
@@ -2078,7 +2079,8 @@ export default class NcmecReporting {
             error: e,
             message: jsonStringify({
               reportParams: logSafeReportParams,
-              isTest,
+              isTestReport,
+              sandbox: isNcmecTestDeployment(),
             }),
           });
           span.recordException(e as Exception);
@@ -2104,7 +2106,6 @@ export default class NcmecReporting {
       additionalInfo?: string[] | undefined;
       fileName?: string;
     },
-    isTest: boolean,
   ): Promise<NcmecAdditionalFile> {
     const downloadWithRetries = withRetries(
       {
@@ -2140,7 +2141,6 @@ export default class NcmecReporting {
           }),
           route: '/upload',
           includeContentType: false, // remove ContentType header
-          isTest,
         });
       },
     );
@@ -2162,7 +2162,6 @@ export default class NcmecReporting {
         },
       },
       cybertipAuthenticationCredentials,
-      isTest,
     );
     return {
       ncmecFileId: fileId,
@@ -2174,13 +2173,15 @@ export default class NcmecReporting {
   async #submit(
     report: Report,
     cybertipAuthenticationCredentials: CyberTipAuth,
-    isTest: boolean,
   ) {
     const reportXML = js2xml(report, { compact: true });
 
-    ncmecDebugLog('submit.xml', { isTest, length: reportXML.length });
+    ncmecDebugLog('submit.xml', {
+      sandbox: isNcmecTestDeployment(),
+      length: reportXML.length,
+    });
     await ncmecDebugDump(
-      `${isTest ? 'TEST-' : 'PROD-'}${new Date()
+      `${isNcmecTestDeployment() ? 'TEST-' : 'PROD-'}${new Date()
         .toISOString()
         .replace(/[:.]/g, '-')}-submit.xml`,
       reportXML,
@@ -2190,7 +2191,6 @@ export default class NcmecReporting {
       cybertipAuthenticationCredentials,
       body: reportXML,
       route: '/submit',
-      isTest,
     });
 
     const responseJson = response.body as CyberTipSubmitResponse;
@@ -2211,7 +2211,6 @@ export default class NcmecReporting {
     media: Media,
     cybertipAuthenticationCredentials: CyberTipAuth,
     additionalInfo: MediaAdditionalInfo,
-    isTest: boolean,
   ) {
     // TODO: Handle when this fails because of Unidici's memory limit
     const downloadWithRetries = withRetries(
@@ -2245,7 +2244,6 @@ export default class NcmecReporting {
           }),
           route: '/upload',
           includeContentType: false,
-          isTest,
         });
       },
     );
@@ -2273,7 +2271,6 @@ export default class NcmecReporting {
     const xml = await this.#uploadFileDetails(
       fileDetailsObject,
       cybertipAuthenticationCredentials,
-      isTest,
     );
     return {
       ncmecFileId: fileId,
@@ -2286,17 +2283,16 @@ export default class NcmecReporting {
   async #uploadFileDetails(
     fileDetails: FileDetails,
     cybertipAuthenticationCredentials: CyberTipAuth,
-    isTest: boolean,
   ) {
     const fileDetailsXML = js2xml(fileDetails, { compact: true });
     ncmecDebugLog('fileinfo.xml', {
-      isTest,
+      sandbox: isNcmecTestDeployment(),
       reportId: fileDetails.fileDetails.reportId,
       fileId: fileDetails.fileDetails.fileId,
       length: fileDetailsXML.length,
     });
     await ncmecDebugDump(
-      `${isTest ? 'TEST-' : 'PROD-'}${new Date()
+      `${isNcmecTestDeployment() ? 'TEST-' : 'PROD-'}${new Date()
         .toISOString()
         .replace(/[:.]/g, '-')}-fileinfo-${fileDetails.fileDetails.fileId}.xml`,
       fileDetailsXML,
@@ -2305,7 +2301,6 @@ export default class NcmecReporting {
       cybertipAuthenticationCredentials,
       body: fileDetailsXML,
       route: '/fileinfo',
-      isTest,
     });
 
     const responseJson = response.body as CyberTipFileDetailsResponse;
@@ -2319,7 +2314,6 @@ export default class NcmecReporting {
     reportId: string,
     reportedMedia: readonly NCMECThreadReport[],
     cybertipAuthenticationCredentials: CyberTipAuth,
-    isTest: boolean,
   ) {
     const escapeCSVField = (field: string | undefined | null): string => {
       if (field == null) {
@@ -2377,7 +2371,6 @@ export default class NcmecReporting {
           body: requestBody,
           route: '/upload',
           includeContentType: false,
-          isTest,
         });
 
         if (!response.ok || response.body == null) {
@@ -2403,7 +2396,6 @@ export default class NcmecReporting {
             },
           },
           cybertipAuthenticationCredentials,
-          isTest,
         );
 
         return {
@@ -2418,9 +2410,11 @@ export default class NcmecReporting {
   async #finish(
     reportId: string,
     cybertipAuthenticationCredentials: CyberTipAuth,
-    isTest: boolean,
   ) {
-    ncmecDebugLog('finish.request', { reportId, isTest });
+    ncmecDebugLog('finish.request', {
+      reportId,
+      sandbox: isNcmecTestDeployment(),
+    });
     const requestBody = new FormData();
     requestBody.append('id', reportId);
 
@@ -2429,7 +2423,6 @@ export default class NcmecReporting {
       body: requestBody,
       route: '/finish',
       includeContentType: false,
-      isTest,
     });
 
     if (!response.ok) {
@@ -2488,14 +2481,12 @@ export default class NcmecReporting {
     cybertipAuthenticationCredentials: CyberTipAuth;
     body: string | FormData | FormDataLikeWithStreams;
     route: `/${string}`;
-    isTest: boolean;
     includeContentType?: boolean;
   }) {
     const {
       cybertipAuthenticationCredentials,
       body,
       route,
-      isTest,
       includeContentType = true,
     } = input;
     const username = cybertipAuthenticationCredentials.username;
@@ -2512,12 +2503,13 @@ export default class NcmecReporting {
         jitter: true,
       },
       async () => {
-        const url = isTest
+        const sandbox = isNcmecTestDeployment();
+        const url = sandbox
           ? `https://exttest.cybertip.org/ispws${route}`
           : `https://report.cybertip.org/ispws${route}`;
         ncmecDebugLog('cybertip.request', {
           route,
-          isTest,
+          sandbox,
           bodyKind: typeof body === 'string' ? 'xml' : 'formData',
           bodyLength: typeof body === 'string' ? body.length : undefined,
         });

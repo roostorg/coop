@@ -144,6 +144,7 @@ import {
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestDeployment,
   makeNcmecService,
   type NcmecService,
 } from '../services/ncmecService/index.js';
@@ -1283,16 +1284,15 @@ export default async function getBottle() {
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  // Submissions go to the NCMEC test endpoint
-                  // (exttest.cybertip.org) unless the deployment is explicitly
-                  // configured for production via NCMEC_ENV=production. Operators
-                  // are responsible for matching this to whether the credentials
-                  // configured in Settings → NCMEC are production or test
-                  // credentials issued by NCMEC.
-                  const isTest = process.env.NCMEC_ENV !== 'production';
+                  // Per-report test flag, persisted to `ncmec_reports.is_test`.
+                  // Endpoint selection (sandbox vs production) is driven by
+                  // NCMEC_ENV inside submitReport; this flag records whether
+                  // this specific report row is a test submission and gates
+                  // downstream action publishing.
+                  const isTestReport = isNcmecTestDeployment();
                   await container.NcmecService.submitReport(
                     reportParams,
-                    isTest,
+                    isTestReport,
                   );
                   const actionAndPolicy =
                     await container.NcmecService.getNCMECActionsToRunAndPolicies(
@@ -1307,7 +1307,7 @@ export default async function getBottle() {
                     actionAndPolicy != null &&
                     actionAndPolicy.actionsToRunIds != null &&
                     isNonEmptyArray(decisionActions) &&
-                    !isTest
+                    !isTestReport
                   ) {
                     await publishActions({
                       decisionActions,

@@ -16,3 +16,4 @@ export {
   buildSubmitReportParamsFromDecision,
   LEGACY_FALLBACK_INCIDENT_TYPE,
 } from './buildSubmitReportParamsFromDecision.js';
+export { isNcmecTestDeployment } from './ncmecEnv.js';

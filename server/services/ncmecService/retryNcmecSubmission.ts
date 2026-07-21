@@ -4,6 +4,7 @@ import {
   buildSubmitReportParamsFromDecision,
   LEGACY_FALLBACK_INCIDENT_TYPE,
 } from './buildSubmitReportParamsFromDecision.js';
+import { isNcmecTestDeployment } from './ncmecEnv.js';
 import type NcmecReporting from './ncmecReporting.js';
 
 /** Result of a retry attempt. Distinct cases let the GraphQL layer return a
@@ -104,11 +105,14 @@ export async function retryNcmecSubmission(
     return { kind: 'permanent_error', error };
   }
 
-  const isTest = process.env.NCMEC_ENV !== 'production';
+  const isTestReport = isNcmecTestDeployment();
   // submitReport owns `ncmec_reports_errors` writes via `jobId` so retries
   // always update retry_count/last_error. Don't double-write here.
   try {
-    const result = await deps.ncmecReporting.submitReport(reportParams, isTest);
+    const result = await deps.ncmecReporting.submitReport(
+      reportParams,
+      isTestReport,
+    );
     if (result === 'SUCCESS') {
       return { kind: 'success' };
     }

@@ -59,8 +59,14 @@ export class NcmecService {
     );
   }
 
-  async submitReport(reportParams: NCMECReportParams, isTest: boolean) {
-    return this.ncmecReporting.submitReport(reportParams, isTest);
+  async submitReport(
+    reportParams: NCMECReportParams,
+    /** Whether this individual report row is a test submission, persisted to
+     * `ncmec_reports.is_test`. Endpoint selection (sandbox vs production) is
+     * driven by `NCMEC_ENV` inside `NcmecReporting.submitReport`. */
+    isTestReport: boolean,
+  ) {
+    return this.ncmecReporting.submitReport(reportParams, isTestReport);
   }
 
   /** Org-scoped retry for a previously-failed NCMEC submission. See

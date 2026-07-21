@@ -197,13 +197,22 @@ describe('NCMEC submitReport (integration)', () => {
       const result = await ncmecReporting.submitReport(reportParams, false);
       expect(result).toBe('SUCCESS');
 
+      // Endpoint selection follows NCMEC_ENV (unset here → sandbox), NOT the
+      // per-report isTestReport flag. So even though isTestReport=false above,
+      // the requests must go to the test endpoint exttest.cybertip.org.
+      expect(
+        stub.calls
+          .filter((c) => c.url.includes('cybertip.org'))
+          .every((c) => c.url.startsWith('https://exttest.cybertip.org/')),
+      ).toBe(true);
+
       // protocol sequence — the full NCMEC submit flow
       const routes = stub.calls
         .filter((c) => c.url.includes('cybertip.org'))
         .map((c) => c.url.replace(/^.*\/ispws/, ''));
       expect(routes).toEqual(['/submit', '/upload', '/fileinfo', '/finish']);
 
-      // preservation fired (isTest=false + endpoint set)
+      // preservation fired (isTestReport=false + endpoint set)
       expect(stub.calls.some((c) => c.url === PRESERVATION_URL)).toBe(true);
 
       // outgoing /submit request shape — proves the field-role-resolved email,
