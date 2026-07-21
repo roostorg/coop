@@ -56,6 +56,7 @@ gql`
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue
+        jobSortType
       }
     }
   }
@@ -535,6 +536,11 @@ export default function ManualReviewQueuesDashboard() {
               sortType: integerSort,
             }
           : undefined,
+        {
+          Header: 'Sort Order',
+          accessor: 'jobSortType',
+          canSort: false,
+        },
         columnVisibility.startReviewing
           ? {
               Header: '',
@@ -585,6 +591,7 @@ export default function ManualReviewQueuesDashboard() {
                 pendingJobCount,
                 isDefaultQueue,
                 oldestJobCreatedAt,
+                jobSortType,
               }) => {
                 const rulesForQueue =
                   routingRules?.filter((it) => it.destinationQueue.id === id) ??
@@ -597,6 +604,10 @@ export default function ManualReviewQueuesDashboard() {
                   startReviewing: startReviewing(id, pendingJobCount),
                   pendingJobCount: pendingJobCount.toLocaleString('en'),
                   oldestJobCreatedAt,
+                  jobSortType:
+                    jobSortType === 'NUM_REPORTS'
+                      ? 'Most reported first'
+                      : 'First in, first out',
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [

@@ -935,6 +935,10 @@ export default async function getBottle() {
 
   bottle.factory('ManualReviewToolService', (container) => {
     return new ManualReviewToolService(
+      // Lazy getter to break a circular dependency:
+      // ManualReviewToolService -> ReportingService -> ActionPublisher ->
+      // ManualReviewToolService. Resolved at call time, not construction time.
+      () => container.ReportingService.getNumTimesReported,
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,

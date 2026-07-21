@@ -87,6 +87,7 @@ export type ManualReviewToolServicePg = {
     is_default_queue: boolean;
     is_appeals_queue: boolean;
     auto_close_jobs: boolean;
+    job_sort_type: ColumnType<string, string | undefined, string>;
     // Null disables "clear other reports for this user" for the queue.
     clear_reports_disposition: ClearReportsDisposition | null;
     // Has a DB default, so it's optional on insert.
