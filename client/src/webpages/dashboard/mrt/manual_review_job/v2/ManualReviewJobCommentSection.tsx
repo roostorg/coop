@@ -1,3 +1,4 @@
+import { safeFormatDistanceToNow } from '@/utils/time';
 import {
   CommentOutlined,
   DeleteOutlined,
@@ -7,7 +8,6 @@ import {
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
-import { formatDistanceToNow } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
@@ -99,9 +99,7 @@ function ManualReviewJobComment(props: {
               isBeingDeleted ? 'text-gray-300' : 'text-gray-500'
             }`}
           >
-            {formatDistanceToNow(new Date(comment.createdAt as string), {
-              addSuffix: true,
-            })}
+            {safeFormatDistanceToNow(comment.createdAt)}
           </div>
         </div>
         <div

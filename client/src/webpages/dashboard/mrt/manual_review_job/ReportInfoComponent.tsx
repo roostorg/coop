@@ -13,7 +13,7 @@ import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { getFieldValueForRole } from '@/utils/itemUtils';
 import { selectPreferredUserItem } from '@/utils/manualReviewTool';
-import { format } from 'date-fns';
+import { safeFormat } from '@/utils/time';
 import { ExternalLink } from 'lucide-react';
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -153,7 +153,7 @@ export default function ReportInfoComponent(props: {
                   {isAppeal ? 'Appeal ' : 'Report '}Received
                 </th>
                 <td className="py-1 align-top text-start text-slate-500">
-                  {format(new Date(createdAt as string), 'MM/dd/yy hh:mm a')}
+                  {safeFormat(createdAt, 'MM/dd/yy hh:mm a')}
                 </td>
               </tr>
               <tr>
