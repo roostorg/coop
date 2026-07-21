@@ -36,6 +36,9 @@ export default defineConfig({
   preview: {
     port: 3000,
     strictPort: true,
+    // Allow the Codespaces forwarded host (all are *.app.github.dev); newer Vite
+    // blocks unknown Host headers, which 403s the forwarded URL otherwise.
+    allowedHosts: ['.app.github.dev'],
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
