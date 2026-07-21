@@ -1,5 +1,3 @@
-import bcrypt from 'bcryptjs';
-
 import {
   hashPassword,
   passwordMatchesHash,
@@ -10,6 +8,13 @@ import {
 // production rows look like before the Argon2id migration.
 const LEGACY_BCRYPT_HASH =
   '$2a$05$3X5WTL5K1.OfLy6mNBFxt.r6gyBSM25Ph609E.YYSKp9DltrxzJ32';
+
+// Just needs to look like a cost-12 bcrypt hash, not be a genuine one:
+// `passwordNeedsRehash` never parses the cost out of a bcrypt string (see
+// below), so there's no reason to pay for an actual cost-12 bcryptjs hash —
+// pure-JS, so noticeably slow — just to prove "regardless of cost factor".
+const STRONG_BCRYPT_HASH_SHAPE =
+  '$2a$12$3X5WTL5K1.OfLy6mNBFxt.r6gyBSM25Ph609E.YYSKp9DltrxzJ32';
 
 const PASSWORD = 'correct horse battery staple';
 
@@ -45,15 +50,18 @@ describe('passwordMatchesHash', () => {
   });
 
   it('propagates the error when argon2 cannot evaluate the stored hash', async () => {
-    // Corrupt input is not handled uniformly by the library: a bad base64 salt
-    // throws, while a truncated digest quietly resolves `false`. Both shapes
-    // exist, so both are pinned here.
+    // `argon2Verify` isn't uniform on corrupt input: a bad base64 salt throws,
+    // while a truncated digest quietly resolves `false`. Our code doesn't
+    // choose either behavior — `passwordMatchesHash` calls straight through
+    // to the library — so both shapes are pinned here to catch a future
+    // `@node-rs/argon2` upgrade silently changing which one happens.
     //
     // The throw is deliberately not swallowed: this module has no tracer, and
     // a silent `false` would make an operational Argon2 failure (the 19 MiB
     // allocation failing under memory pressure takes down *every* login) look
-    // identical to one user mistyping their password. The login path catches
-    // it, logs it, and fails closed — see `userApiCredentials.test.ts`.
+    // identical to one user mistyping their password. The login path lets it
+    // propagate to its outer catch-all, which logs it and surfaces a generic
+    // error — see `userApiCredentials.test.ts`.
     await expect(
       passwordMatchesHash(PASSWORD, '$argon2id$v=19$m=19456,t=2,p=1$!!!!$!!!!'),
     ).rejects.toThrow();
@@ -65,11 +73,11 @@ describe('passwordMatchesHash', () => {
 });
 
 describe('passwordNeedsRehash', () => {
-  it('flags any bcrypt hash, regardless of cost factor', async () => {
+  it('flags any bcrypt hash, regardless of cost factor', () => {
     // Cost is no longer the question — bcrypt itself is. Both a weak legacy
     // hash and one at a strong cost factor are upgraded to Argon2id on login.
     expect(passwordNeedsRehash(LEGACY_BCRYPT_HASH)).toBe(true);
-    expect(passwordNeedsRehash(await bcrypt.hash(PASSWORD, 12))).toBe(true);
+    expect(passwordNeedsRehash(STRONG_BCRYPT_HASH_SHAPE)).toBe(true);
   });
 
   it('does not flag a hash already at the target parameters', async () => {

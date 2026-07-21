@@ -16,8 +16,7 @@ import {
 } from './userKyselyPersistence.js';
 
 /**
- * Best-effort upgrade of a stale password hash — a legacy bcrypt one, or an
- * Argon2id one minted at weaker parameters — to a fresh Argon2id hash at
+ * Best-effort upgrade of a stale password hash to a fresh Argon2id hash at
  * today's parameters. Runs only after the password has already been verified
  * correct, because re-hashing requires the plaintext: it cannot be done as a
  * migration, only opportunistically at the one moment we hold the password.
@@ -25,19 +24,11 @@ import {
  * Must never fail the login it's piggybacking on: any error here is logged and
  * swallowed, and the row is picked up again on the user's next login.
  *
- * Deliberately a plain column write, NOT the transactional path
- * `UserApi.changePassword` / `resetPasswordForToken` use — those also
- * purge the user's other sessions as part of an explicit password *change*.
- * Reusing that path here would silently log out every user the first time
- * their legacy hash gets upgraded, even though their password never changed
- * (see #778, which added that session purge).
- *
  * The write is a compare-and-swap on `verifiedHash` (the exact stored hash
  * the plaintext was just checked against) rather than an unconditional
  * update by id: if a concurrent password change lands between verification
  * and this write, zero rows match and the stale rehash is dropped instead
- * of clobbering the newer hash — an id-only write here could resurrect an
- * old password that a concurrent change had just replaced.
+ * of clobbering the newer hash.
  */
 async function rehashPasswordOnLogin(
   deps: {
@@ -57,6 +48,12 @@ async function rehashPasswordOnLogin(
       .where('password', '=', verifiedHash)
       .execute();
   } catch (e) {
+    // Expected failures here are transient and infra-level: the UPDATE
+    // hitting a connection-pool limit, a timeout, or a deadlock, or
+    // `hashPassword` failing under memory pressure. None of those are a
+    // reason to fail a login that already verified correctly — this rehash
+    // is an opportunistic upgrade, not a security requirement of this login
+    // — so it's logged for visibility and the row is retried next login.
     deps.tracer.logActiveSpanFailedIfAny(e);
   }
 }
@@ -110,24 +107,11 @@ export async function verifyEmailPasswordCredentials(
 
     // `loginMethods` includes 'password', so the DB CHECK constraint
     // guarantees `user.password` is non-null here.
-    //
-    // `passwordMatchesHash` throws if the stored hash can't be evaluated at
-    // all — a corrupt row, or Argon2 failing operationally. Log that and treat
-    // it as a non-match: an unevaluable hash authenticates nobody, and the
-    // user-facing truth is still "this password does not match". The log is
-    // what keeps a total verification outage distinguishable from a flood of
-    // users mistyping their passwords, since both look identical from outside.
     if (user.password == null) {
       throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
     }
 
-    let passwordMatches = false;
-    try {
-      passwordMatches = await passwordMatchesHash(password, user.password);
-    } catch (e) {
-      deps.tracer.logActiveSpanFailedIfAny(e);
-    }
-
+    const passwordMatches = await passwordMatchesHash(password, user.password);
     if (!passwordMatches) {
       throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
     }
