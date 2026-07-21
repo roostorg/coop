@@ -1,6 +1,3 @@
-// Load .env before anything reads process.env (the DI container does, heavily).
-import 'dotenv/config';
-
 import { test as base, type APIRequestContext } from '@playwright/test';
 import { uid } from 'uid';
 

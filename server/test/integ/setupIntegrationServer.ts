@@ -6,10 +6,6 @@
  * Requires the docker-compose stack from `npm run up` and migrations applied
  * via `npm run db:update`.
  */
-// Load .env before any module that reads process.env (notably the IoC
-// container). The unit-test `npm test` path goes through dotenv via its
-// NODE_OPTIONS; `test:integ` does not, so we do it here.
-import 'dotenv/config';
 
 import * as superTest from 'supertest';
 

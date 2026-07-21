@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 import { uid } from 'uid';
 import { Headers } from 'undici';
 
