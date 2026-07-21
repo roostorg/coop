@@ -2,14 +2,10 @@ import { v1 as uuidv1 } from 'uuid';
 
 import {
   makeSubmissionId,
+  type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
-import { type ItemSubmissionWithTypeIdentifier } from '../services/itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
-import {
-  type ManualReviewToolService,
-  type NcmecContentItemSubmission,
-  type ReportHistory,
-} from '../services/manualReviewToolService/manualReviewToolService.js';
+import { type ManualReviewToolService } from '../services/manualReviewToolService/index.js';
 import { instantiateOpaqueType } from '../utils/typescript-types.js';
 import makeRetryFailedNcmecDecisionsJob from './RetryFailedNcmecDecisionsJob.js';
 
@@ -41,12 +37,14 @@ function makeNcmecDecisionRow(orgId: string): NcmecDecisionRow {
       },
     ],
     job_payload: {
+      id: uuidv1(),
+      orgId,
       createdAt: new Date(),
       policyIds: [],
       payload: {
         kind: 'NCMEC',
-        reportHistory: [] as ReportHistory,
-        allMediaItems: [] as NcmecContentItemSubmission[],
+        reportHistory: [],
+        allMediaItems: [],
         item: instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
           submissionId: makeSubmissionId(),
           submissionTime: new Date(),
@@ -65,8 +63,10 @@ function makeNcmecDecisionRow(orgId: string): NcmecDecisionRow {
         }),
         enqueueSourceInfo: { kind: 'REPORT' },
       },
-    },
-  } as NcmecDecisionRow;
+      // The full `ManualReviewJob` union has many fields the retry job never
+      // reads; cast through `unknown` to avoid mirroring the entire type.
+    } as unknown as NcmecDecisionRow['job_payload'],
+  } as unknown as NcmecDecisionRow;
 }
 
 /** The USER item type returned by `getItemTypeEventuallyConsistent`. Only the

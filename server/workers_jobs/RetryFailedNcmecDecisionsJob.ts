@@ -118,9 +118,16 @@ export default inject(
           getItemTypeEventuallyConsistent,
         });
         submitReportInvoked = true;
+        // Submissions go to the NCMEC test endpoint
+        // (exttest.cybertip.org) unless the deployment is explicitly
+        // configured for production via NCMEC_ENV=production. Operators
+        // are responsible for matching this to whether the credentials
+        // configured in Settings → NCMEC are production or test credentials
+        // issued by NCMEC.
+        const isTest = process.env.NCMEC_ENV !== 'production';
         const reportResult = await ncmecService.submitReport(
           reportParams,
-          false,
+          isTest,
         );
         if (
           reportResult === 'UNSUPPORTED_ORG' ||
@@ -133,7 +140,8 @@ export default inject(
           await ncmecService.getNCMECActionsToRunAndPolicies(orgId);
         if (
           actionAndPolicy != null &&
-          actionAndPolicy.actionsToRunIds != null
+          actionAndPolicy.actionsToRunIds != null &&
+          !isTest
         ) {
           const actions = await moderationConfigService.getActions({
             orgId,
