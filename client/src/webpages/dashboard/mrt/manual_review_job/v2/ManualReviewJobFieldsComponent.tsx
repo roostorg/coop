@@ -14,6 +14,7 @@ import ReactAudioPlayer from 'react-audio-player';
 import { Link } from 'react-router-dom';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
+import CollapsibleText from '@/webpages/dashboard/mrt/manual_review_job/v2/components/CollapsibleText';
 
 import {
   GQLContentItem,
@@ -190,12 +191,23 @@ function TableRowComponent(props: {
         </div>
       );
     }
+    case 'STRING': {
+      return (
+        <div className="flex flex-col whitespace-normal align-top text-start">
+          {label ? (
+            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+              {label}
+            </div>
+          ) : null}
+          <CollapsibleText text={String(value)} />
+        </div>
+      );
+    }
     case 'BOOLEAN':
     case 'GEOHASH':
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'STRING':
     case 'EMAIL_ADDRESS': {
       // EMAIL_ADDRESS renders as plain text for now; a follow-up could make
       // it a mailto/pivot link the way IP_ADDRESS pivots on the IP.
@@ -528,7 +540,7 @@ function FieldComponent(props: {
     case 'EMAIL_ADDRESS':
     case 'DATETIME':
       return (
-        <div className="py-0" key={data.name}>
+        <div className="py-0 min-w-0" key={data.name}>
           {!hideLabels ? (
             <div className="pb-px align-top text-start whitespace-nowrap">
               <ContentFieldLabelComponent data={data} />
@@ -646,7 +658,7 @@ function ContainerComponent(props: {
         type: data.container!.valueScalarType,
       };
       return (
-        <div key={i} className="align-top text-start whitespace-nowrap">
+        <div key={i} className="align-top text-start min-w-0">
           {/*Talk to ethan about how to avoid casting here*/}
           <TableRowComponent
             data={itemData as TableRowComponentData}
@@ -689,14 +701,14 @@ function ContainerComponent(props: {
         </div>
       ) : null}
       <div
-        className={` ${
+        className={`${
           data.container!.valueScalarType === 'IMAGE' ||
           data.container!.valueScalarType === 'VIDEO' ||
           data.container!.valueScalarType === 'AUDIO' ||
           data.container!.valueScalarType === 'MEDIA'
-            ? ''
-            : 'flex-col'
-        } flex overflow-x-scroll border-slate-200 rounded p-1.5 ${
+            ? 'flex overflow-x-scroll'
+            : 'flex flex-col'
+        } border-slate-200 rounded p-1.5 ${
           transparentBackground ? '' : 'bg-slate-100'
         } ${expanded ? 'max-h-96 overflow-y-auto' : 'overflow-y-hidden'}`}
       >
