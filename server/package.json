@@ -162,7 +162,7 @@
     },
     "uuid": "^14.0.0",
     "fast-xml-parser": "^5.8.0",
-    "axios": "^1.16.0",
+    "axios": "^1.18.1",
     "fast-uri": "^3.1.2",
     "protobufjs": "^7.6.3",
     "@protobufjs/utf8": "^1.1.1"
