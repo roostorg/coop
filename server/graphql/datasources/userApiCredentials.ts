@@ -1,5 +1,9 @@
 import { type Dependencies } from '../../iocContainer/index.js';
-import { passwordMatchesHash } from '../../services/userManagementService/index.js';
+import {
+  hashPassword,
+  passwordMatchesHash,
+  passwordNeedsRehash,
+} from '../../services/userManagementService/index.js';
 import { CoopError, makeInternalServerError } from '../../utils/errors.js';
 import {
   makeLoginIncorrectPasswordError,
@@ -10,6 +14,49 @@ import {
   kyselyUserFindByEmail,
   type GraphQLUserParent,
 } from './userKyselyPersistence.js';
+
+/**
+ * Best-effort upgrade of a stale password hash to a fresh Argon2id hash at
+ * today's parameters. Runs only after the password has already been verified
+ * correct, because re-hashing requires the plaintext: it cannot be done as a
+ * migration, only opportunistically at the one moment we hold the password.
+ *
+ * Must never fail the login it's piggybacking on: any error here is logged and
+ * swallowed, and the row is picked up again on the user's next login.
+ *
+ * The write is a compare-and-swap on `verifiedHash` (the exact stored hash
+ * the plaintext was just checked against) rather than an unconditional
+ * update by id: if a concurrent password change lands between verification
+ * and this write, zero rows match and the stale rehash is dropped instead
+ * of clobbering the newer hash.
+ */
+async function rehashPasswordOnLogin(
+  deps: {
+    kyselyPg: Dependencies['KyselyPg'];
+    tracer: Dependencies['Tracer'];
+  },
+  userId: string,
+  verifiedHash: string,
+  plaintextPassword: string,
+): Promise<void> {
+  try {
+    const rehashed = await hashPassword(plaintextPassword);
+    await deps.kyselyPg
+      .updateTable('public.users')
+      .set({ password: rehashed, updated_at: new Date() })
+      .where('id', '=', userId)
+      .where('password', '=', verifiedHash)
+      .execute();
+  } catch (e) {
+    // Expected failures here are transient and infra-level: the UPDATE
+    // hitting a connection-pool limit, a timeout, or a deadlock, or
+    // `hashPassword` failing under memory pressure. None of those are a
+    // reason to fail a login that already verified correctly — this rehash
+    // is an opportunistic upgrade, not a security requirement of this login
+    // — so it's logged for visibility and the row is retried next login.
+    deps.tracer.logActiveSpanFailedIfAny(e);
+  }
+}
 
 /**
  * Look up a user by email and verify their password, applying the same
@@ -60,11 +107,17 @@ export async function verifyEmailPasswordCredentials(
 
     // `loginMethods` includes 'password', so the DB CHECK constraint
     // guarantees `user.password` is non-null here.
-    if (
-      user.password == null ||
-      !(await passwordMatchesHash(password, user.password))
-    ) {
+    if (user.password == null) {
       throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
+    }
+
+    const passwordMatches = await passwordMatchesHash(password, user.password);
+    if (!passwordMatches) {
+      throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
+    }
+
+    if (passwordNeedsRehash(user.password)) {
+      await rehashPasswordOnLogin(deps, user.id, user.password, password);
     }
 
     return user;
