@@ -6,8 +6,6 @@
  * Requires the docker-compose stack from `npm run up` and migrations applied
  * via `npm run db:update`.
  */
-// Env is loaded via `--env-file-if-exists=.env` (local) or the docker-compose
-// `env_file` directive (CI) before this process starts; nothing to import here.
 
 import * as superTest from 'supertest';
 

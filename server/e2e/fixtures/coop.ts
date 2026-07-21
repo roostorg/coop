@@ -1,6 +1,3 @@
-// Env is loaded via `--env-file-if-exists=.env` (local) or the docker-compose
-// `env_file` directive (CI) before this process starts; nothing to import here.
-
 import { test as base, type APIRequestContext } from '@playwright/test';
 import { uid } from 'uid';
 
