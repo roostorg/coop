@@ -2,8 +2,9 @@ import kit from '@kojodesign/tailwindkit';
 import containerQueries from '@tailwindcss/container-queries';
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
+import animate from 'tailwindcss-animate';
 
-module.exports = {
+export default {
   darkMode: ['class'],
   content: [
     './pages/**/*.{ts,astro,tsx}',
@@ -271,7 +272,7 @@ module.exports = {
     forms({
       strategy: 'class',
     }),
-    require('tailwindcss-animate'),
+    animate,
   ],
   corePlugins: { preflight: true },
 };
