@@ -7,7 +7,7 @@ services:
       - --appendonly
       - 'yes'
       - --maxmemory
-      - '256mb'
+      - '1gb'
       - --maxmemory-policy
       - noeviction
     ports:
@@ -17,7 +17,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 1536M
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
