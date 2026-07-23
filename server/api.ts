@@ -6,11 +6,6 @@ import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/dis
 import { expressMiddleware } from '@as-integrations/express5';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
-import {
-  MultiSamlStrategy,
-  type Profile,
-  type VerifiedCallback,
-} from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   ATTR_EXCEPTION_MESSAGE,
@@ -19,7 +14,7 @@ import {
 } from '@opentelemetry/semantic-conventions';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
-import express, { type ErrorRequestHandler, type Request } from 'express';
+import express, { type ErrorRequestHandler } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
@@ -29,20 +24,18 @@ import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
-import { getOrgIdFromPath } from './graphql/utils/orgIdFromPath.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
-import { resolveSamlUser } from './graphql/utils/resolveSamlUser.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
+import { registerOidcRoutes } from './routes/oidcRoutes.js';
+import { registerSamlRoutes } from './routes/samlRoutes.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
   ErrorType,
   getErrorsFromAggregateError,
-  makeBadRequestError,
-  makeInternalServerError,
   makeNotFoundError,
   sanitizeError,
   type SerializableError,
@@ -72,6 +65,16 @@ function getCPUInfo() {
     idle,
     total,
   };
+}
+
+declare module 'express-session' {
+  interface SessionData {
+    oidc?: {
+      code_verifier: string;
+      state: string;
+      org_id: string;
+    };
+  }
 }
 
 async function getCPUUsage() {
@@ -148,80 +151,8 @@ export default async function makeApiServer(deps: Dependencies) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Shared signon/logout verify: bind the user lookup to the org named in the
-  // callback path so an assertion authenticating one org can never resolve a
-  // user from another (GHSA-2v93-383c-9fw2).
-  const verify = async (
-    req: Request,
-    profile: Profile | null,
-    done: VerifiedCallback,
-  ) => resolveSamlUser(KyselyPg, deps.Tracer, req, profile, done);
-
-  passport.use(
-    new MultiSamlStrategy(
-      {
-        passReqToCallback: true,
-        async getSamlOptions(req, done) {
-          // orgId path param should be set in the /saml/* route handlers.
-          const orgId = getOrgIdFromPath(req);
-
-          if (!orgId) {
-            return done(
-              makeNotFoundError('orgId not found in path.', {
-                shouldErrorSpan: true,
-              }),
-            );
-          }
-
-          const samlSettings =
-            await deps.OrgSettingsService.getSamlSettings(orgId);
-
-          if (!samlSettings)
-            return done(
-              makeInternalServerError('Unexpected error.', {
-                shouldErrorSpan: true,
-              }),
-            );
-
-          if (!samlSettings.saml_enabled)
-            return done(
-              makeBadRequestError('SAML not enabled for this organization.', {
-                shouldErrorSpan: true,
-              }),
-            );
-
-          done(null, {
-            entryPoint: samlSettings.sso_url as string,
-            idpCert: samlSettings.cert as string,
-            // I could use UI_URL here but technically the API could be hosted
-            // on a different domain in the future so hopefully this is more
-            // robust, not that it will likely matter.
-            callbackUrl: `${deps.ConfigService.uiUrl}/api/v1/saml/login/${orgId}/callback`,
-            issuer: deps.ConfigService.uiUrl,
-          });
-        },
-      },
-      verify,
-      verify,
-    ),
-  );
-
-  app.get(
-    '/saml/login/:orgId',
-    passport.authenticate('saml', { failureRedirect: '/', failureFlash: true }),
-  );
-
-  app.post(
-    `/saml/login/:orgId/callback`,
-    express.urlencoded(),
-    passport.authenticate('saml', {
-      failureRedirect: '/',
-      failureFlash: true,
-    }),
-    (_req, res) => {
-      res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
-    },
-  );
+  registerSamlRoutes(app, deps);
+  registerOidcRoutes(app, deps);
 
   passport.serializeUser((user, done) => {
     done(null, user.id);
