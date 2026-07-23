@@ -188,6 +188,63 @@ describe('QueueOperations', () => {
     },
   );
 
+  // Regression: #1150 -- MRT queue resolvers used to resolve
+  // queues via *Dangerously*BypassPermissioning helpers with no permission or
+  // membership check, so any authenticated user could read (and dequeue/lock)
+  // every queue in the org, including CSAM/NCMEC queues. They now call
+  // getReviewableQueuesForUser instead; these lock in its filtering.
+  const invoker = (
+    userId: string,
+    permissions: UserPermission[],
+    orgId: string,
+  ) => ({ invoker: { userId, permissions, orgId } });
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser excludes a queue the user is not a member of',
+    async ({ org, queue, mrtService, deps }) => {
+      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const reviewable = await mrtService.getReviewableQueuesForUser(
+        invoker(outsider.id, [UserPermission.VIEW_MRT], org.id),
+      );
+      expect(reviewable.map((q) => q.id)).not.toContain(queue.id);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser includes a queue the user is a member of',
+    async ({ org, queue, user, mrtService }) => {
+      const reviewable = await mrtService.getReviewableQueuesForUser(
+        invoker(user.id, [UserPermission.VIEW_MRT], org.id),
+      );
+      expect(reviewable.map((q) => q.id)).toContain(queue.id);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser returns nothing for a user without VIEW_MRT, even for a queue they are a member of',
+    async ({ org, user, mrtService }) => {
+      const reviewable = await mrtService.getReviewableQueuesForUser(
+        invoker(user.id, [], org.id),
+      );
+      expect(reviewable).toEqual([]);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser bypasses membership for EDIT_MRT_QUEUES holders',
+    async ({ org, queue, mrtService, deps }) => {
+      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const reviewable = await mrtService.getReviewableQueuesForUser(
+        invoker(
+          outsider.id,
+          [UserPermission.VIEW_MRT, UserPermission.EDIT_MRT_QUEUES],
+          org.id,
+        ),
+      );
+      expect(reviewable.map((q) => q.id)).toContain(queue.id);
+    },
+  );
+
   // Regression: `deleteAllJobsFromQueue` is irreversible and used to accept
   // EDIT_MRT_QUEUES (held by moderator managers) -- that gap accidentally
   // cleared a production queue. It now requires MANAGE_ORG.
