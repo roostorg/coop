@@ -101,7 +101,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "jsdom": "^29.1.1",
     "knip": "^6.16.1",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.23",
     "prop-types": "^15.8.1",
     "source-map-explorer": "^2.5.3",
     "storybook": "^9.1.20",
