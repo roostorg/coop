@@ -92,6 +92,85 @@ type FieldsComponentOptions = {
 };
 
 gql`
+  query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
+    latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
+      ... on UserItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+            createdAt
+            profileIcon
+            backgroundImage
+          }
+        }
+      }
+      ... on ContentItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+          }
+        }
+      }
+      ... on ThreadItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+          }
+        }
+      }
+    }
+  }
+`;
+
+gql`
   query ItemTypeHiddenFields {
     myOrg {
       itemTypes {
