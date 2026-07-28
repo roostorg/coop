@@ -403,7 +403,9 @@ export default function ItemInvestigation(props: {
       try {
         return getFieldValueForRole(
           {
-            // eslint-disable-next-line custom-rules/no-casting-in-getFieldValueForRole
+            // The GraphQL result is an item-type union, but the generic helper
+            // requires one compatible schema-role type at this call site.
+            // eslint-disable-next-line custom-rules/no-casting-in-getFieldValueForRole, @typescript-eslint/no-unnecessary-type-assertion
             type: item.type as Parameters<
               typeof getFieldValueForRole
             >[0]['type'],
