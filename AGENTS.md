@@ -200,7 +200,7 @@ Two things differ from a local dev setup:
 
 ## Human-approval-required actions
 
-Routine local setup and verification commands, including `npm ci`, existing build/test/lint/format/check scripts, and read-only Git commands, do not require approval; the gates below apply to the changes being made, not merely to running commands.
+Routine local setup and verification commands, including `npm ci` and existing build/test/lint/format/check scripts, do not require approval; the gates below apply to the changes being made, not merely to running commands.
 
 Stop and get explicit human approval before:
 
