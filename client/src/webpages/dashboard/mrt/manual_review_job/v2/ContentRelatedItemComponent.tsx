@@ -1,10 +1,11 @@
-import { useGQLGetRelatedItemsQuery } from '@/graphql/generated';
+import { GQLContentItem } from '@/graphql/generated';
 import { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/coop-types';
 
 import FieldsComponent from './ManualReviewJobFieldsComponent';
 
+// ManualReviewJobFieldsComponent uses this operation to resolve RELATED_ITEM
+// fields.
 gql`
   query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
     latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
@@ -83,21 +84,17 @@ gql`
     }
   }
 `;
+
+type LoadedContentItem = Pick<GQLContentItem, 'data'> & {
+  type: Pick<GQLContentItem['type'], 'id' | 'baseFields'>;
+};
+
 export default function ContentRelatedItemComponent(props: {
-  relatedItem: ItemIdentifier;
+  item: LoadedContentItem;
   unblurAllMedia: boolean;
   title: string;
 }) {
-  const { relatedItem, unblurAllMedia } = props;
-  const { data, error } = useGQLGetRelatedItemsQuery({
-    variables: {
-      itemIdentifiers: [relatedItem],
-    },
-  });
-  if (!data || error) {
-    return null;
-  }
-  const item = data.latestItemSubmissions[0];
+  const { item, unblurAllMedia } = props;
 
   const fieldData = item.type.baseFields.map(
     (
