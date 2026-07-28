@@ -1348,10 +1348,7 @@ export type NcmecMessagesReport = {
 };
 
 type NcmecReportResult =
-  | 'ALL_MEDIA_MISSING'
-  | 'SUCCESS'
-  | 'UNSUPPORTED_ORG'
-  | 'FAILURE';
+  'ALL_MEDIA_MISSING' | 'SUCCESS' | 'UNSUPPORTED_ORG' | 'FAILURE';
 
 const actionsOnReportCreationAndPoliciesSelection = [
   'actions_to_run_upon_report_creation as actionsToRunIds',
@@ -1394,8 +1391,7 @@ export default class NcmecReporting {
       .where('org_id', '=', orgId)
       .executeTakeFirst();
     return row as
-      | NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings']
-      | undefined;
+      NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined;
   }
 
   async getNCMECActionsToRunAndPolicies(

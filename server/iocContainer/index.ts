@@ -1703,7 +1703,9 @@ export default async function getBottle() {
               Dependencies,
               {
                 [ServiceName in keyof Dependencies]: {
-                  [Method in CloseMethodName]: Dependencies[ServiceName] extends {
+                  [
+                    Method in CloseMethodName
+                  ]: Dependencies[ServiceName] extends {
                     [_ in Method]: unknown;
                   }
                     ? ServiceName

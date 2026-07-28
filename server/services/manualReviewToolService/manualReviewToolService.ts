@@ -262,11 +262,7 @@ export type ManualReviewJobPayload =
   | NcmecManualReviewJobPayload;
 
 export type ManualReviewJobEnqueueSource =
-  | 'APPEAL'
-  | 'REPORT'
-  | 'RULE_EXECUTION'
-  | 'MRT_JOB'
-  | 'POST_ACTIONS';
+  'APPEAL' | 'REPORT' | 'RULE_EXECUTION' | 'MRT_JOB' | 'POST_ACTIONS';
 
 export type RuleExecutionEnqueueSourceInfo = {
   kind: 'RULE_EXECUTION';

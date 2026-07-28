@@ -1057,13 +1057,11 @@ export default function NCMECReviewUser(
           <NCMECInspectedMedia
             orgId={orgId}
             mediaId={mediaInDetailView}
-            fullNcmecContentItem={
-              allMediaItemsWithUrls.find(
-                (it) =>
-                  it.contentItem.id === mediaInDetailView.itemId &&
-                  it.urlInfo.url === mediaInDetailView.urlInfo.url,
-              )!
-            }
+            fullNcmecContentItem={allMediaItemsWithUrls.find(
+              (it) =>
+                it.contentItem.id === mediaInDetailView.itemId &&
+                it.urlInfo.url === mediaInDetailView.urlInfo.url,
+            )!}
             state={selectedMedia.find((it) =>
               areMediaEqual(it, mediaInDetailView),
             )}

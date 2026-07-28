@@ -135,8 +135,7 @@ export type ManualReviewDecisionComponent =
     };
 
 export type ManualReviewDecisionType =
-  | ManualReviewDecisionComponent['type']
-  | 'RELATED_ACTION';
+  ManualReviewDecisionComponent['type'] | 'RELATED_ACTION';
 
 export type CustomActionDecisionComponent = Extract<
   ManualReviewDecisionComponent,

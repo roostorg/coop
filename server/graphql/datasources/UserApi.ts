@@ -159,15 +159,13 @@ class UserAPI {
         token: inviteUserToken,
       });
     }
-    if (
-      !(
-        token != null &&
-        token.email === email &&
-        token.orgId === orgId &&
-        token.role === role &&
-        Date.now() - new Date(token.createdAt).getTime() < 2 * WEEK_MS
-      )
-    ) {
+    if (!(
+      token != null &&
+      token.email === email &&
+      token.orgId === orgId &&
+      token.role === role &&
+      Date.now() - new Date(token.createdAt).getTime() < 2 * WEEK_MS
+    )) {
       throw makeUnauthorizedError('Invalid invite token', {
         shouldErrorSpan: true,
       });

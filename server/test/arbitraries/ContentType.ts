@@ -162,18 +162,18 @@ export const MapFieldArbitrary = fc
     fc.string(),
     fc.boolean(),
   )
-  .map<
-    Field<ContainerTypes['MAP']>
-  >(([valueScalarType, keyScalarType, name, required]) => ({
-    name,
-    required,
-    type: ContainerTypes.MAP,
-    container: {
-      containerType: ContainerTypes.MAP,
-      keyScalarType,
-      valueScalarType,
-    },
-  }));
+  .map<Field<ContainerTypes['MAP']>>(
+    ([valueScalarType, keyScalarType, name, required]) => ({
+      name,
+      required,
+      type: ContainerTypes.MAP,
+      container: {
+        containerType: ContainerTypes.MAP,
+        keyScalarType,
+        valueScalarType,
+      },
+    }),
+  );
 
 export const MapFieldWithValueArbitrary = MapFieldArbitrary.chain((field) =>
   fc.tuple(

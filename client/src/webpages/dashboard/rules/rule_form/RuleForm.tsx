@@ -823,9 +823,7 @@ export default function RuleForm() {
   const showUpdateRuleCaughtErrorModal = (
     isUpdate: boolean,
     errorName:
-      | 'NotFoundError'
-      | 'RuleNameExistsError'
-      | 'RuleHasRunningBacktestsError',
+      'NotFoundError' | 'RuleNameExistsError' | 'RuleHasRunningBacktestsError',
   ) => {
     dispatch({
       type: RuleFormReducerActionType.ShowModal,
@@ -1113,8 +1111,8 @@ export default function RuleForm() {
     dispatch({
       type: RuleFormReducerActionType.UpdateItemTypes,
       payload: {
-        selectedItemTypes: selectedTypeIDs.map(
-          (id: string) => allItemTypes.find((itemType) => itemType.id === id)!,
+        selectedItemTypes: selectedTypeIDs.map((id: string) =>
+          allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
         allSignals: allSignals satisfies readonly GQLSignal[],
