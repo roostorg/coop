@@ -23,6 +23,13 @@ export default defineConfig({
     outDir: 'build',
   },
   server: {
+    // Vite rejects requests whose Host header isn't on its allowlist (a
+    // DNS-rebinding protection, on by default since Vite 5) -- this breaks
+    // the dev server behind any reverse proxy that forwards a different
+    // hostname than localhost (Coder workspace subdomains, ngrok, tailscale
+    // funnel, etc). Opt-in via env var so plain `npm start`/local dev is
+    // unaffected and this stays a no-op unless a proxying setup opts in.
+    allowedHosts: process.env.VITE_DEV_ALLOWED_HOSTS === 'true' ? true : undefined,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
