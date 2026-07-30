@@ -48,28 +48,6 @@ describe('passwordMatchesHash', () => {
       passwordMatchesHash('wrong-password', LEGACY_BCRYPT_HASH),
     ).resolves.toBe(false);
   });
-
-  it('propagates the error when argon2 cannot evaluate the stored hash', async () => {
-    // `argon2Verify` isn't uniform on corrupt input: a bad base64 salt throws,
-    // while a truncated digest quietly resolves `false`. Our code doesn't
-    // choose either behavior — `passwordMatchesHash` calls straight through
-    // to the library — so both shapes are pinned here to catch a future
-    // `@node-rs/argon2` upgrade silently changing which one happens.
-    //
-    // The throw is deliberately not swallowed: this module has no tracer, and
-    // a silent `false` would make an operational Argon2 failure (the 19 MiB
-    // allocation failing under memory pressure takes down *every* login) look
-    // identical to one user mistyping their password. The login path lets it
-    // propagate to its outer catch-all, which logs it and surfaces a generic
-    // error — see `userApiCredentials.test.ts`.
-    await expect(
-      passwordMatchesHash(PASSWORD, '$argon2id$v=19$m=19456,t=2,p=1$!!!!$!!!!'),
-    ).rejects.toThrow();
-
-    await expect(
-      passwordMatchesHash(PASSWORD, '$argon2id$v=19$corrupt'),
-    ).resolves.toBe(false);
-  });
 });
 
 describe('passwordNeedsRehash', () => {

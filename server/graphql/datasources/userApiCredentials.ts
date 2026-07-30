@@ -16,13 +16,15 @@ import {
 } from './userKyselyPersistence.js';
 
 /**
- * Best-effort upgrade of a stale password hash to a fresh Argon2id hash at
- * today's parameters. Runs only after the password has already been verified
- * correct, because re-hashing requires the plaintext: it cannot be done as a
- * migration, only opportunistically at the one moment we hold the password.
+ * Upgrade of a stale password hash to a fresh Argon2id hash at today's
+ * parameters. Runs only after the password has already been verified correct,
+ * because re-hashing requires the plaintext: it cannot be done as a migration,
+ * only opportunistically at the one moment we hold the password.
  *
- * Must never fail the login it's piggybacking on: any error here is logged and
- * swallowed, and the row is picked up again on the user's next login.
+ * Errors are deliberately not caught. Hashing or writing failing here means
+ * something is wrong with the process or the database, and a login is not the
+ * place to paper over that — it propagates to `verifyEmailPasswordCredentials`,
+ * which logs it and fails the login. The user can retry if it was transient.
  *
  * The write is a compare-and-swap on `verifiedHash` (the exact stored hash
  * the plaintext was just checked against) rather than an unconditional
@@ -33,29 +35,18 @@ import {
 async function rehashPasswordOnLogin(
   deps: {
     kyselyPg: Dependencies['KyselyPg'];
-    tracer: Dependencies['Tracer'];
   },
   userId: string,
   verifiedHash: string,
   plaintextPassword: string,
 ): Promise<void> {
-  try {
-    const rehashed = await hashPassword(plaintextPassword);
-    await deps.kyselyPg
-      .updateTable('public.users')
-      .set({ password: rehashed, updated_at: new Date() })
-      .where('id', '=', userId)
-      .where('password', '=', verifiedHash)
-      .execute();
-  } catch (e) {
-    // Expected failures here are transient and infra-level: the UPDATE
-    // hitting a connection-pool limit, a timeout, or a deadlock, or
-    // `hashPassword` failing under memory pressure. None of those are a
-    // reason to fail a login that already verified correctly — this rehash
-    // is an opportunistic upgrade, not a security requirement of this login
-    // — so it's logged for visibility and the row is retried next login.
-    deps.tracer.logActiveSpanFailedIfAny(e);
-  }
+  const rehashed = await hashPassword(plaintextPassword);
+  await deps.kyselyPg
+    .updateTable('public.users')
+    .set({ password: rehashed, updated_at: new Date() })
+    .where('id', '=', userId)
+    .where('password', '=', verifiedHash)
+    .execute();
 }
 
 /**
