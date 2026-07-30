@@ -165,6 +165,8 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.
+- **Errors: fail loudly.** Don't catch an error unless you can name the condition that produces it _and_ say why continuing is correct. A `try`/`catch` that logs and carries on isn't resilience — it turns an unknown fault into a silent one. "It might be transient" (connection-pool limits, timeouts, deadlocks, resource exhaustion) is not a justification: let the request fail and let the caller retry. If an assumption is violated, the code should say so, not paper over it. See the [PR #901 review](https://github.com/roostorg/coop/pull/901) for a worked example.
+- **Don't test the papering-over.** No tests that assert an error was swallowed, and no tests that pin a third-party library's behaviour on input that should never reach it — those lock in the silence they document. Assert the loud failure instead.
 
 ## Dependencies
 
