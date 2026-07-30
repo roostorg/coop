@@ -144,17 +144,12 @@ describe('verifyEmailPasswordCredentials', () => {
   });
 
   it('surfaces a generic internal-server error and logs when the stored hash cannot be evaluated', async () => {
-    // A corrupt row, or Argon2 failing operationally (the 19 MiB allocation
-    // can fail under memory pressure, taking down *every* login) makes
-    // `passwordMatchesHash` throw. That's not special-cased as "wrong
-    // password" — it propagates to the outer catch-all, which logs it and
-    // rethrows as a generic `InternalServerError`, so a verification outage
-    // stays distinguishable from a flood of users mistyping their passwords
-    // (which throws a distinctly-named `LoginIncorrectPasswordError` instead —
-    // pinned by name here so a reintroduced "treat as non-match" special case
-    // would fail this test instead of silently reverting).
-    // A bad base64 salt is one of the shapes `argon2Verify` throws on rather
-    // than resolving false — see the corrupt-input cases in `utils.test.ts`.
+    // A hash argon2 can't parse makes `passwordMatchesHash` throw. That's not
+    // special-cased as "wrong password" — it propagates to the outer
+    // catch-all, which logs it and rethrows as a generic `InternalServerError`.
+    // The error name is pinned so a reintroduced "treat as non-match" special
+    // case fails this test instead of silently reverting: a wrong password
+    // throws a distinctly-named `LoginIncorrectPasswordError`.
     const userRow = makeUserRow({
       password: '$argon2id$v=19$m=19456,t=2,p=1$!!!!$!!!!',
     });
@@ -169,7 +164,7 @@ describe('verifyEmailPasswordCredentials', () => {
     expect(updateTable).not.toHaveBeenCalled();
   });
 
-  it('still succeeds the login when the rehash write throws', async () => {
+  it('fails the login when the rehash write throws', async () => {
     const legacyBcryptHash = await bcrypt.hash(password, 5);
     const userRow = makeUserRow({ password: legacyBcryptHash });
     const { kyselyPg } = makeMockKyselyPg({
@@ -178,17 +173,13 @@ describe('verifyEmailPasswordCredentials', () => {
     });
     const { deps, logActiveSpanFailedIfAny } = makeDeps(kyselyPg);
 
-    // `rehashPasswordOnLogin` swallows any error from the write — e.g. a
-    // transient DB failure — and logs it instead: the opportunistic hash
-    // upgrade must never cost the user a login that already verified
-    // correctly.
-    const result = await verifyEmailPasswordCredentials(
-      deps,
-      'test@example.com',
-      password,
-    );
+    // A failing write means something is wrong with the database, and the
+    // login fails loudly rather than being quietly downgraded to a success
+    // with a stale hash. The user can retry if it was transient.
+    await expect(
+      verifyEmailPasswordCredentials(deps, 'test@example.com', password),
+    ).rejects.toMatchObject({ name: 'InternalServerError' });
 
-    expect(result.id).toBe('user-123');
     expect(logActiveSpanFailedIfAny).toHaveBeenCalled();
   });
 });
