@@ -23,7 +23,7 @@ RUN npm run build
 
 RUN npm prune --omit=dev
 
-FROM busybox:1.37.0
+FROM busybox:1.38.0
 
 COPY --from=build /operator-build/node_modules /autoinstrumentation/node_modules
 COPY --from=build /operator-build/transpiled/ /autoinstrumentation
