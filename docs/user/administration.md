@@ -28,7 +28,7 @@ Enable user user appeals of decisions made in Coop, and configure your platform'
 
 ### Review Console
 
-Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, including whether job decisions can reference multiple policies, plus queue management behavior and webhooks.
+Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, queue management behavior and webhooks.
 
 ![Review Console tab in Settings with toggles for Require Policy, Multiple Policies Per Action, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
 

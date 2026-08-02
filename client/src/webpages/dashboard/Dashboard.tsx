@@ -467,7 +467,9 @@ export function DashboardRoutes() {
       },
       {
         path: 'settings/deployment',
-        element: <Navigate replace to="/dashboard/settings?tab=other" />,
+        element: (
+          <Navigate replace to="/dashboard/settings?tab=partial-items" />
+        ),
       },
       // Account
       {
