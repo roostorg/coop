@@ -5,6 +5,7 @@ import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
   useGQLDeploymentSettingsQuery,
+  useGQLUpdateAllowMultiplePoliciesPerActionMutation,
   useGQLUpdateHideSkipButtonForNonAdminsMutation,
   useGQLUpdateIgnoreCallbackUrlMutation,
   useGQLUpdatePreviewJobsViewEnabledMutation,
@@ -31,11 +32,13 @@ export default function ReviewConsoleTab() {
   const [hideSkip, setHideSkip] = useState(false);
   const [previewJobs, setPreviewJobs] = useState(false);
   const [ignoreCallbackUrl, setIgnoreCallbackUrl] = useState('');
+  const [multiPolicy, setMultiPolicy] = useState(false);
 
   useEffect(() => {
     if (org) {
       setRequirePolicy(org.requiresPolicyForDecisionsInMrt);
       setRequireReason(org.requiresDecisionReasonInMrt);
+      setMultiPolicy(org.allowMultiplePoliciesPerAction);
       setRequireReasonOnIgnore(org.requiresDecisionReasonOnIgnoreInMrt);
       setHideSkip(org.hideSkipButtonForNonAdmins);
       setPreviewJobs(org.previewJobsViewEnabled);
@@ -65,6 +68,8 @@ export default function ReviewConsoleTab() {
     useGQLUpdateHideSkipButtonForNonAdminsMutation(mutationOpts);
   const [updatePreviewJobsMutation, { loading: previewJobsLoading }] =
     useGQLUpdatePreviewJobsViewEnabledMutation(mutationOpts);
+  const [updateMultiPolicyMutation] =
+    useGQLUpdateAllowMultiplePoliciesPerActionMutation(mutationOpts);
   const [updateIgnoreUrl, { loading: ignoreUrlLoading }] =
     useGQLUpdateIgnoreCallbackUrlMutation(mutationOpts);
   if (loading) return <FullScreenLoading />;
@@ -81,6 +86,7 @@ export default function ReviewConsoleTab() {
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||
     requireReason !== org.requiresDecisionReasonInMrt ||
+    multiPolicy !== org.allowMultiplePoliciesPerAction ||
     requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
     previewJobs !== org.previewJobsViewEnabled ||
@@ -97,6 +103,9 @@ export default function ReviewConsoleTab() {
       updateRequireReasonOnIgnore({
         variables: { enabled: requireReasonOnIgnore },
       });
+    }
+    if (multiPolicy !== org.allowMultiplePoliciesPerAction) {
+      updateMultiPolicyMutation({ variables: { enabled: multiPolicy } });
     }
     if (hideSkip !== org.hideSkipButtonForNonAdmins) {
       updateHideSkipMutation({ variables: { enabled: hideSkip } });
@@ -181,6 +190,22 @@ export default function ReviewConsoleTab() {
                 </div>
               </div>
             ) : null}
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Text size="SM" weight="medium">
+                    Multiple Policies Per Action
+                  </Text>
+                  <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                    Allows job decisions to reference multiple policies
+                  </Text>
+                </div>
+                <Switch
+                  checked={multiPolicy}
+                  onCheckedChange={setMultiPolicy}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
