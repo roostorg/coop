@@ -38,11 +38,11 @@ Reviewer wellness controls for media displayed in the Review Console including b
 
 ![Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle](../images/settings-wellness.png)
 
-### Other
+### Partial Items
 
 Configuration for the [Partial Items](../api/partial-items.md) endpoint and the request headers Coop sends to it.
 
-![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers](../images/settings-other.png)
+![Partial Items tab in Settings with fields for Partial Items Endpoint and Partial Items Request Headers](../images/settings-partial-items.png)
 
 ## Item Types
 
