@@ -95,7 +95,8 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
     icon: <ReviewConsoleIcon className="w-4.5 h-4.5" />,
   },
   { value: 'wellness', label: 'Wellness', icon: <Heart size={16} /> },
-  { value: 'other', label: 'Other', icon: <Settings2 size={16} /> },
+  // `value` stays 'other' so existing ?tab=other links keep working.
+  { value: 'other', label: 'Partial Items', icon: <Settings2 size={16} /> },
 ];
 
 export default function SettingsPage() {

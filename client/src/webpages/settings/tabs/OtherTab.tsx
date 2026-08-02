@@ -31,6 +31,10 @@ export default function OtherTab() {
 
   const org = data?.myOrg;
 
+  // Reporting Rules are temporarily hidden from the UI while the feature is
+  // being reworked. The state, mutation and save handling below are kept wired
+  // so the toggle can be restored without re-plumbing it; see git history for
+  // the original markup.
   const [reportingEnabled, setReportingEnabled] = useState(false);
   const [partialItemsEndpoint, setPartialItemsEndpoint] = useState('');
   const [partialItemsHeaders, setPartialItemsHeaders] = useState('');
@@ -156,35 +160,6 @@ export default function OtherTab() {
           </div>
         </div>
       </div>
-
-      {/*<div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
-          <Heading size="2XL" weight="semibold">
-            Other Settings
-          </Heading>
-        </div>
-
-        <div className="flex flex-col gap-5">
-          
-            Reporting Rules are temporarily hidden from the UI while the
-            feature is being reworked. Restore this toggle to re-enable.
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Text size="SM" weight="medium">
-                Enable Reporting Rules
-              </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
-                Activates Report Rules for proactive responses to user reports
-              </Text>
-            </div>
-            <Switch
-              checked={reportingEnabled}
-              onCheckedChange={setReportingEnabled}
-            />
-          </div>
-          
-        </div>
-      </div>*/}
 
       <div className="flex justify-end border-t border-gray-200 pt-4">
         <Button
