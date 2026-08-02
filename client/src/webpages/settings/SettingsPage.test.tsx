@@ -19,6 +19,7 @@ import {
   GQLOrgDefaultSafetySettingsDocument,
   GQLOrgSettingsDocument,
   GQLSetOrgDefaultSafetySettingsDocument,
+  GQLUpdateAllowMultiplePoliciesPerActionDocument,
   GQLUpdateAppealSettingsDocument,
   GQLUpdateHasAppealsEnabledDocument,
   GQLUpdateIgnoreCallbackUrlDocument,
@@ -26,7 +27,6 @@ import {
   GQLUpdatePartialItemsSettingsDocument,
   GQLUpdateRequiresPolicyForDecisionsDocument,
   GQLUpdateSsoCredentialsDocument,
-  GQLUpdateUserStrikeTtlDocument,
 } from '@/graphql/generated';
 
 import SettingsPage from './SettingsPage';
@@ -161,7 +161,9 @@ describe('SettingsPage', () => {
       expect(
         screen.getByRole('tab', { name: /wellness/i }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /other/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /partial items/i }),
+      ).toBeInTheDocument();
     });
 
     it('switches tabs on click', () => {
@@ -449,12 +451,16 @@ describe('SettingsPage', () => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
         expect(screen.getByText('Webhooks')).toBeInTheDocument();
+        expect(
+          screen.getByText('Multiple Policies Per Action'),
+        ).toBeInTheDocument();
       });
     });
 
     it('reflects initial toggle states from server data', async () => {
       const mock = makeDeploymentMock({
         requiresPolicyForDecisionsInMrt: true,
+        allowMultiplePoliciesPerAction: true,
         requiresDecisionReasonInMrt: true,
         requiresDecisionReasonOnIgnoreInMrt: true,
         hideSkipButtonForNonAdmins: true,
@@ -494,6 +500,40 @@ describe('SettingsPage', () => {
       });
 
       userEvent.click(screen.getAllByRole('switch')[0]);
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(mutationFn).toHaveBeenCalled();
+      });
+    });
+
+    it('calls multiple policies per action mutation on save', async () => {
+      const mutationFn = vi.fn(() => ({
+        data: { updateAllowMultiplePoliciesPerAction: true },
+      }));
+
+      renderWithProviders(
+        [
+          deploymentSettingsMock,
+          {
+            request: {
+              query: GQLUpdateAllowMultiplePoliciesPerActionDocument,
+              variables: { enabled: true },
+            },
+            newData: mutationFn,
+          },
+        ],
+        'review-console',
+      );
+      await waitFor(() => {
+        expect(
+          screen.getByText('Multiple Policies Per Action'),
+        ).toBeInTheDocument();
+      });
+
+      // Second switch in the Moderator Requirements list, directly after
+      // "Require Policy for Decisions".
+      userEvent.click(screen.getAllByRole('switch')[1]);
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
@@ -611,15 +651,10 @@ describe('SettingsPage', () => {
     });
   });
 
-  describe('Other tab', () => {
-    it('shows toggles, strike TTL, and partial items', async () => {
+  describe('Partial Items tab', () => {
+    it('shows only partial items settings', async () => {
       renderWithProviders([deploymentSettingsMock], 'other');
       await waitFor(() => {
-        expect(
-          screen.getByText('Multiple Policies Per Action'),
-        ).toBeInTheDocument();
-        // expect(screen.getByText('User Strike TTL (Days)')).toBeInTheDocument();
-        // expect(screen.getByDisplayValue('90')).toBeInTheDocument();
         expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
         expect(
           screen.getByText('Partial Items Request Headers'),
@@ -630,42 +665,6 @@ describe('SettingsPage', () => {
       expect(
         screen.queryByText('Enable Reporting Rules'),
       ).not.toBeInTheDocument();
-    });
-
-    it('calls strike TTL mutation on save', async () => {
-      const mutationFn = vi.fn(() => ({
-        data: {
-          updateUserStrikeTTL: {
-            __typename: 'UpdateUserStrikeTtlSuccessResponse',
-          },
-        },
-      }));
-
-      renderWithProviders(
-        [
-          deploymentSettingsMock,
-          {
-            request: {
-              query: GQLUpdateUserStrikeTtlDocument,
-              variables: { input: { ttlDays: 30 } },
-            },
-            newData: mutationFn,
-          },
-        ],
-        'other',
-      );
-      await waitFor(() => {
-        expect(screen.getByDisplayValue('90')).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByDisplayValue('90'), {
-        target: { value: '30' },
-      });
-      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
-
-      await waitFor(() => {
-        expect(mutationFn).toHaveBeenCalled();
-      });
     });
 
     it('calls partial items mutation on save', async () => {

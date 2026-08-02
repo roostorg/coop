@@ -28,9 +28,9 @@ Enable user user appeals of decisions made in Coop, and configure your platform'
 
 ### Review Console
 
-Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, queue management behavior, and webhooks.
+Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, including whether job decisions can reference multiple policies, plus queue management behavior and webhooks.
 
-![Review Console tab in Settings with toggles for Require Policy, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
+![Review Console tab in Settings with toggles for Require Policy, Multiple Policies Per Action, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
 
 ### Wellness
 
@@ -40,9 +40,9 @@ Reviewer wellness controls for media displayed in the Review Console including b
 
 ### Other
 
-Settings that don't fit cleanly into the other tabs including configuration for the [Partial Items](../api/partial-items.md) endpoint and the ability for job decisions to reference multiple policies.
+Configuration for the [Partial Items](../api/partial-items.md) endpoint and the request headers Coop sends to it.
 
-![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers, plus toggles for Reporting Rules, Multiple Policies Per Action, and a User Strike TTL number input](../images/settings-other.png)
+![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers](../images/settings-other.png)
 
 ## Item Types
 
