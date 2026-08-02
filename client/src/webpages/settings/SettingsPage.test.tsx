@@ -653,7 +653,7 @@ describe('SettingsPage', () => {
 
   describe('Partial Items tab', () => {
     it('shows only partial items settings', async () => {
-      renderWithProviders([deploymentSettingsMock], 'other');
+      renderWithProviders([deploymentSettingsMock], 'partial-items');
       await waitFor(() => {
         expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
         expect(
@@ -688,7 +688,7 @@ describe('SettingsPage', () => {
             newData: mutationFn,
           },
         ],
-        'other',
+        'partial-items',
       );
       await waitFor(() => {
         expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();

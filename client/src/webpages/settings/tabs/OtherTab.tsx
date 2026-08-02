@@ -31,10 +31,6 @@ export default function OtherTab() {
 
   const org = data?.myOrg;
 
-  // Reporting Rules are temporarily hidden from the UI while the feature is
-  // being reworked. The state, mutation and save handling below are kept wired
-  // so the toggle can be restored without re-plumbing it; see git history for
-  // the original markup.
   const [reportingEnabled, setReportingEnabled] = useState(false);
   const [partialItemsEndpoint, setPartialItemsEndpoint] = useState('');
   const [partialItemsHeaders, setPartialItemsHeaders] = useState('');
