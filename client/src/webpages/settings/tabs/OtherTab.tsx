@@ -61,7 +61,7 @@ export default function OtherTab() {
     },
   };
 
-  const [updateReporting] =
+  const [updateReporting, { loading: reportingSaveLoading }] =
     useGQLUpdateHasReportingRulesEnabledMutation(mutationOpts);
   const [updatePartialItems, { loading: partialItemsSaveLoading }] =
     useGQLUpdatePartialItemsSettingsMutation(mutationOpts);
@@ -71,7 +71,7 @@ export default function OtherTab() {
 
   const isHeadersValid = validateJSON(partialItemsHeaders);
   const isEndpointValid = isValidUrl(partialItemsEndpoint);
-  const saveLoading = partialItemsSaveLoading;
+  const saveLoading = reportingSaveLoading || partialItemsSaveLoading;
 
   const partialItemsChanged =
     partialItemsEndpoint !== (org.partialItemsEndpoint ?? '') ||
