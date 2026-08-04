@@ -6,8 +6,8 @@
 {
   "folders": [
     {
-      "path": "."
-    }
+      "path": ".",
+    },
   ],
   "settings": {
     "git.ignoreLimitWarning": true,
@@ -16,6 +16,6 @@
     "typescript.tsdk": "./node_modules/typescript/lib/",
     "rewrap.autoWrap.enabled": true,
     "editor.wordWrap": "off",
-    "githubPullRequests.ignoredPullRequestBranches": ["main"]
-  }
+    "githubPullRequests.ignoredPullRequestBranches": ["main"],
+  },
 }
