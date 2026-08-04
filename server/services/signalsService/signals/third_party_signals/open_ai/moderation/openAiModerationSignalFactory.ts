@@ -10,7 +10,7 @@
  * `(credentials, scores)` like any other signal, preserving the existing
  * registration pattern in `instantiateBuiltInSignals.ts`.
  */
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
 
 import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { type SignalType } from '../../../../types/SignalType.js';
