@@ -1,22 +1,7 @@
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { unzip2 } from '../../utils/fp-helpers.js';
-
-/**
- * ClickHouse returns `DateTime64` values as strings like
- * `"YYYY-MM-DD HH:MM:SS.sss"` with no timezone annotation. Passing that
- * straight to `new Date(...)` interprets it as *local time*, so the parsed
- * instant differs from the stored UTC value by whatever timezone the runtime
- * happens to be in — UTC on production containers, local TZ on a dev
- * machine. Compose the input into a proper ISO string with an explicit `Z`
- * before parsing so the result is always the UTC instant ClickHouse wrote.
- */
-function parseClickhouseTimestamp(raw: string | number | Date): Date {
-  if (raw instanceof Date) return raw;
-  if (typeof raw === 'number') return new Date(raw);
-  const isoish = raw.replace(' ', 'T');
-  return new Date(isoish.endsWith('Z') ? isoish : `${isoish}Z`);
-}
+import { parseClickhouseTimestamp } from '../../utils/time.js';
 
 const makeGetRuleAnomalyDetectionaStatistics =
   (
