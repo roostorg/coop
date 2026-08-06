@@ -11,6 +11,7 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
+  makeBadRequestError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
@@ -57,9 +58,11 @@ import JobEnrichment, {
 } from './modules/JobEnrichment.js';
 import {
   getJobPriorityForItem,
+  JobSortType,
   normalizeJobSortType,
-  type JobSortType,
+  type JobPropertyKey,
 } from './modules/JobPriority.js';
+import JobPriorityWeights from './modules/JobPriorityWeights.js';
 import JobRendering from './modules/JobRendering.js';
 import JobRouting, {
   type CreateRoutingRuleInput,
@@ -301,6 +304,7 @@ export type ManualReviewJobKind = ManualReviewJobPayload['kind'];
 export class ManualReviewToolService {
   private readonly queueOps: QueueOperations;
   private readonly jobRendering: JobRendering;
+  private readonly jobPriorityWeights: JobPriorityWeights;
   private readonly jobRouting: JobRouting;
   private readonly appealsJobRouting: AppealsJobRouting;
   private readonly jobEnrichment: JobEnrichment;
@@ -369,6 +373,7 @@ export class ManualReviewToolService {
       this.manualReviewToolSettings,
     );
     this.jobRendering = new JobRendering(pgQuery);
+    this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
@@ -489,11 +494,13 @@ export class ManualReviewToolService {
               await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
                 { orgId: input.orgId, queueId: targetQueueForNewJob },
               );
+            const sortType = normalizeJobSortType(targetQueue?.jobSortType);
             const priority = await getJobPriorityForItem({
               orgId: input.orgId,
               item: input.payload.item,
-              sortType: normalizeJobSortType(targetQueue?.jobSortType),
-              deps: { getNumTimesReported: this.getNumTimesReported() },
+              sortType,
+              deps: this.#jobPriorityDeps(),
+              weights: await this.#weightsForSort(input.orgId, sortType),
             });
 
             const job = existingJobInSameQueue
@@ -961,6 +968,73 @@ export class ManualReviewToolService {
     return updated;
   }
 
+  async getJobPriorityWeights(opts: { orgId: string }) {
+    return this.jobPriorityWeights.loadForOrg(opts.orgId);
+  }
+
+  async setJobPriorityWeights(opts: {
+    orgId: string;
+    weights: ReadonlyArray<{ property: JobPropertyKey; weight: number }>;
+  }) {
+    const seen = new Set<JobPropertyKey>();
+    for (const { property, weight } of opts.weights) {
+      if (!Number.isFinite(weight) || weight < 0) {
+        throw makeBadRequestError(
+          `Invalid job priority weight for "${property}": must be a non-negative, finite number.`,
+          { shouldErrorSpan: true },
+        );
+      }
+      if (seen.has(property)) {
+        throw makeBadRequestError(
+          `Duplicate job priority weight for "${property}".`,
+          { shouldErrorSpan: true },
+        );
+      }
+      seen.add(property);
+    }
+
+    await this.jobPriorityWeights.upsertForOrg(opts.orgId, opts.weights);
+
+    // New weights change the score of every job already sitting in a
+    // WEIGHTED queue, so re-sort those queues in the background.
+    const queues =
+      await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+        opts.orgId,
+      );
+    for (const queue of queues) {
+      if (
+        queue.isAppealsQueue ||
+        normalizeJobSortType(queue.jobSortType) !== JobSortType.WEIGHTED
+      ) {
+        continue;
+      }
+      this.#scheduleQueuePriorityRecompute({
+        orgId: opts.orgId,
+        queueId: queue.id,
+        sortType: JobSortType.WEIGHTED,
+      });
+    }
+  }
+
+  #jobPriorityDeps() {
+    return {
+      getNumTimesReported: this.getNumTimesReported(),
+      getUserScore: this.userStatisticsService.getUserScore.bind(
+        this.userStatisticsService,
+      ),
+    };
+  }
+
+  // Weights only matter for WEIGHTED queues; skip the read otherwise.
+  async #weightsForSort(
+    orgId: string,
+    sortType: JobSortType,
+  ): Promise<ReadonlyMap<JobPropertyKey, number>> {
+    return sortType === JobSortType.WEIGHTED
+      ? this.jobPriorityWeights.loadForOrg(orgId)
+      : new Map();
+  }
+
   // In-process chains of background priority recomputes, keyed by queue.
   // Serializes rapid consecutive sort-mode changes for the same queue so their
   // per-job re-stamps can't interleave (the last change wins). In-process
@@ -990,8 +1064,14 @@ export class ManualReviewToolService {
               'mrtQueue.jobSortType': opts.sortType,
             },
           },
-          async () =>
-            this.queueOps.recomputePrioritiesForQueue({
+          async () => {
+            // Loaded when the sweep runs (not when it was scheduled) so a
+            // queued-up sweep sees the latest weights.
+            const weights = await this.#weightsForSort(
+              opts.orgId,
+              opts.sortType,
+            );
+            return this.queueOps.recomputePrioritiesForQueue({
               orgId: opts.orgId,
               queueId: opts.queueId,
               getPriority: async (job) =>
@@ -999,9 +1079,11 @@ export class ManualReviewToolService {
                   orgId: opts.orgId,
                   item: job.payload.item,
                   sortType: opts.sortType,
-                  deps: { getNumTimesReported: this.getNumTimesReported() },
+                  deps: this.#jobPriorityDeps(),
+                  weights,
                 }),
-            }),
+            });
+          },
         ),
       )
       .catch(() => {
