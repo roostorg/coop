@@ -1368,7 +1368,17 @@ export default class QueueOperations {
           queueId,
           jobId: held.data.id,
           lockToken,
-        }).catch(() => {});
+        }).catch((error) => {
+          // Not rethrown: this runs in a `finally`, so throwing would replace
+          // whatever result or error the caller was about to receive. The
+          // failure is self-healing — the lock expires on its own after
+          // `lockDuration` — but it shouldn't be silent.
+          // eslint-disable-next-line no-console
+          console.error(
+            `Failed to release held-aside job lock (queue ${queueId}, job ${held.data.id}):`,
+            error,
+          );
+        });
       }
     }
   }
