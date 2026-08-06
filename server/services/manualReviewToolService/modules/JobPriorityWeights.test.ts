@@ -203,4 +203,35 @@ describe('JobPriorityWeights', () => {
       },
     );
   });
+
+  describe('org_id foreign key', () => {
+    testWithFixtures(
+      'cascades: deleting an org removes its weights',
+      async ({ ops, pgQuery, orgId }) => {
+        await ops.upsertForOrg(orgId, [{ property: 'numReports', weight: 7 }]);
+
+        await pgQuery.deleteFrom('orgs').where('id', '=', orgId).execute();
+
+        const rows = await pgQuery
+          .selectFrom('manual_review_tool.job_priority_weights')
+          .selectAll()
+          .where('org_id', '=', orgId)
+          .execute();
+        // Without ON DELETE CASCADE these survive as orphans that a recycled
+        // org id would silently inherit.
+        expect(rows).toEqual([]);
+      },
+    );
+
+    testWithFixtures(
+      'rejects weights for an org that does not exist',
+      async ({ ops }) => {
+        await expect(
+          ops.upsertForOrg('org-that-does-not-exist', [
+            { property: 'numReports', weight: 1 },
+          ]),
+        ).rejects.toMatchObject({ code: '23503' });
+      },
+    );
+  });
 });
