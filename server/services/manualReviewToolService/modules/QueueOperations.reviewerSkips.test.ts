@@ -1,10 +1,9 @@
 import { uid } from 'uid';
 
-import getBottle from '../../../iocContainer/index.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
-import { makeTestWithFixture } from '../../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -14,44 +13,33 @@ import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingServi
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
 
 describe('QueueOperations per-reviewer skips', () => {
-  const testWithQueue = () =>
-    makeTestWithFixture(async () => {
-      const container = (await getBottle()).container;
+  // Runs inside a transaction that rolls back, so the fixtures need no manual
+  // teardown.
+  const testWithQueue = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
+      {
+        KyselyPg: deps.KyselyPg,
+        ModerationConfigService: deps.ModerationConfigService,
+        ApiKeyService: deps.ApiKeyService,
+      },
+      uid(),
+    );
 
-      const { org, cleanup: orgCleanup } = await createOrg(
-        {
-          KyselyPg: container.KyselyPg,
-          ModerationConfigService: container.ModerationConfigService,
-          ApiKeyService: container.ApiKeyService,
-        },
-        uid(),
-      );
+    const { user } = await createUser(deps.KyselyPg, org.id);
 
-      const { user, cleanup: userCleanup } = await createUser(
-        container.KyselyPg,
-        org.id,
-      );
-
-      const { queue, cleanup: queuesCleanup } = await createMrtQueue({
-        orgId: org.id,
-        mrtService: container.ManualReviewToolService,
-        userId: user.id,
-      });
-
-      return {
-        org,
-        queue,
-        user,
-        mrtService: container.ManualReviewToolService,
-        cleanup: async () => {
-          await queuesCleanup();
-          await userCleanup();
-          await orgCleanup();
-          await container.KyselyPg.destroy();
-          await container.KyselyPgReadReplica.destroy();
-        },
-      };
+    const { queue } = await createMrtQueue({
+      orgId: org.id,
+      mrtService: deps.ManualReviewToolService,
+      userId: user.id,
     });
+
+    return {
+      org,
+      queue,
+      user,
+      mrtService: deps.ManualReviewToolService,
+    };
+  });
 
   const makePayloadFor =
     (itemTypeId: string) =>
@@ -75,7 +63,7 @@ describe('QueueOperations per-reviewer skips', () => {
       enqueueSourceInfo: { kind: 'REPORT' },
     });
 
-  testWithQueue()(
+  testWithQueue(
     'a skipped job is hidden from that reviewer but immediately available to others',
     async ({ org, queue, mrtService }) => {
       const queueOps = mrtService['queueOps'];
@@ -119,7 +107,7 @@ describe('QueueOperations per-reviewer skips', () => {
     },
   );
 
-  testWithQueue()(
+  testWithQueue(
     'a queue whose only jobs are skipped returns null instead of hanging',
     async ({ org, queue, mrtService }) => {
       const queueOps = mrtService['queueOps'];
@@ -148,7 +136,7 @@ describe('QueueOperations per-reviewer skips', () => {
     },
   );
 
-  testWithQueue()(
+  testWithQueue(
     'logSkip hides the job from the skipper and releases their lock in one call',
     async ({ org, queue, user, mrtService }) => {
       const queueOps = mrtService['queueOps'];
