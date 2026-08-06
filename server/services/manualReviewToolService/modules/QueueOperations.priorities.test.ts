@@ -11,6 +11,7 @@ import {
   type NormalizedItemData,
 } from '../../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
 import { toBullPriority } from './JobPriority.js';
 import { itemIdToBullJobId } from './QueueOperations.js';
@@ -54,6 +55,45 @@ describe('QueueOperations job priorities', () => {
         },
       };
     });
+
+  testWithQueue()(
+    'an appeals queue stays FIFO even when a sort mode is requested',
+    async ({ org, user, mrtService }) => {
+      // Appeal jobs are enqueued without a priority, so a sort mode on an
+      // appeals queue would be a saved setting that never takes effect.
+      const invokedBy = {
+        userId: user.id,
+        permissions: [UserPermission.EDIT_MRT_QUEUES],
+        orgId: org.id,
+      };
+
+      const appealsQueue = await mrtService.createManualReviewQueue({
+        name: `appeals-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        hiddenActionIds: [],
+        isAppealsQueue: true,
+        jobSortType: 'NUM_REPORTS',
+        invokedBy,
+      });
+      expect(appealsQueue.jobSortType).toBe('FIFO');
+
+      const updated = await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: appealsQueue.id,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        jobSortType: 'NUM_REPORTS',
+      });
+      expect(updated.jobSortType).toBe('FIFO');
+
+      await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
+        org.id,
+        appealsQueue.id,
+      );
+    },
+  );
 
   // A DEFAULT-kind job payload, parameterized only by item type and item id.
   const makePayloadFor =
@@ -107,8 +147,13 @@ describe('QueueOperations job priorities', () => {
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriority: async (job) =>
-          job.payload.item.itemId === 'item-A' ? 2000 : 1000,
+        getPriorities: async (itemIds) =>
+          new Map(
+            itemIds.map((itemId) => [
+              itemId,
+              itemId === 'item-A' ? 2000 : 1000,
+            ]),
+          ),
       });
 
       const first = await queueOps.dequeueNextJobWithLock({
@@ -210,13 +255,14 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      // Re-stamp every job with FIFO's constant priority. Ties must resolve
-      // to arrival order, which is exactly what a NUM_REPORTS -> FIFO switch
-      // relies on.
+      // Demote every job to priority 0, which is what a NUM_REPORTS -> FIFO
+      // switch does: BullMQ moves them out of `prioritized` and back into the
+      // `wait` list, where they must come back out in arrival order.
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriority: async () => toBullPriority(0),
+        getPriorities: async (itemIds) =>
+          new Map(itemIds.map((itemId) => [itemId, 0])),
       });
 
       let dequeued: string[] = [];
@@ -229,6 +275,44 @@ describe('QueueOperations job priorities', () => {
         dequeued = [...dequeued, next?.job.payload.item.itemId ?? '(none)'];
       }
       expect(dequeued).toEqual(arrivalOrder);
+    },
+  );
+
+  testWithQueue()(
+    'a FIFO queue leaves its jobs in the wait list, not the prioritized set',
+    async ({ org, queue, mrtService }) => {
+      // Regression test. Stamping FIFO jobs with a priority (even a constant
+      // one) routes them into BullMQ's `prioritized` sorted set, which empties
+      // the `wait` list for every queue in the org — including ones that never
+      // opted into a sort mode. `getOldestJobCreatedAt` only reads `wait`, so
+      // the queues dashboard silently loses its "oldest job" value.
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      // No `priority` argument at all: this is what the FIFO enqueue path does.
+      for (const itemId of ['item-A', 'item-B']) {
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          jobPayload: { policyIds: [], payload: payloadFor(itemId) },
+        });
+      }
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      expect(await bullQueue.getJobCountByTypes('prioritized')).toBe(0);
+      expect(await bullQueue.getJobCountByTypes('waiting')).toBe(2);
+
+      // The dashboard's "oldest job" value has to survive.
+      const oldest = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+      expect(oldest).not.toBeNull();
     },
   );
 });

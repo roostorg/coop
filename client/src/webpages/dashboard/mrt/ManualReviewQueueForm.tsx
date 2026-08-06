@@ -636,26 +636,31 @@ export default function ManualReviewQueueForm() {
           </div>
         </div>
       ) : null}
-      <div className="mt-8">
-        <div className="font-semibold">Job Sort Order</div>
-        <div className="mb-2 text-slate-500">
-          Controls how jobs in this queue are ordered for reviewers.
+      {/* Appeals queues are always FIFO: appeal jobs aren't enqueued with a
+       * priority, so offering a sort mode here would save a setting that has
+       * no effect. */}
+      {isAppealsQueue ? null : (
+        <div className="mt-8">
+          <div className="font-semibold">Job Sort Order</div>
+          <div className="mb-2 text-slate-500">
+            Controls how jobs in this queue are ordered for reviewers.
+          </div>
+          <Select
+            className="self-start !min-w-[160px]"
+            value={jobSortType}
+            onChange={setJobSortType}
+          >
+            <Option value="FIFO">First in, first out</Option>
+            <Option value="NUM_REPORTS">Most reported first</Option>
+          </Select>
+          <div className="mt-2 text-sm text-slate-400">
+            {jobSortType === 'FIFO' &&
+              'Jobs are reviewed in the order they were received.'}
+            {jobSortType === 'NUM_REPORTS' &&
+              'Jobs with more user reports are surfaced to reviewers first.'}
+          </div>
         </div>
-        <Select
-          className="self-start !min-w-[160px]"
-          value={jobSortType}
-          onChange={setJobSortType}
-        >
-          <Option value="FIFO">First in, first out</Option>
-          <Option value="NUM_REPORTS">Most reported first</Option>
-        </Select>
-        <div className="mt-2 text-sm text-slate-400">
-          {jobSortType === 'FIFO' &&
-            'Jobs are reviewed in the order they were received.'}
-          {jobSortType === 'NUM_REPORTS' &&
-            'Jobs with more user reports are surfaced to reviewers first.'}
-        </div>
-      </div>
+      )}
       {divider()}
       <div className="self-start">
         <CoopButton

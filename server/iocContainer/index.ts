@@ -916,6 +916,7 @@ export default async function getBottle() {
       // ManualReviewToolService -> ReportingService -> ActionPublisher ->
       // ManualReviewToolService. Resolved at call time, not construction time.
       () => container.ReportingService.getNumTimesReported,
+      () => container.ReportingService.getNumTimesReportedForItems,
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,

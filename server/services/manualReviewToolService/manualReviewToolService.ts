@@ -56,6 +56,7 @@ import JobEnrichment, {
   type ManualReviewJobInput,
 } from './modules/JobEnrichment.js';
 import {
+  getJobPrioritiesForItems,
   getJobPriorityForItem,
   normalizeJobSortType,
   type JobSortType,
@@ -318,6 +319,7 @@ export class ManualReviewToolService {
     // the outer function at use time to resolve the real dependency:
     // this.getNumTimesReported()({ orgId, itemId }).
     readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
+    readonly getNumTimesReportedForItems: () => Dependencies['ReportingService']['getNumTimesReportedForItems'],
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
@@ -914,7 +916,7 @@ export class ManualReviewToolService {
     invokedBy: Invoker;
     isAppealsQueue: boolean;
     autoCloseJobs?: boolean;
-    jobSortType?: string;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -931,7 +933,7 @@ export class ManualReviewToolService {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
-    jobSortType?: string;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -941,7 +943,13 @@ export class ManualReviewToolService {
         orgId: input.orgId,
         queueId: input.queueId,
       });
-    const updated = await this.queueOps.updateManualReviewQueue(input);
+
+    // Appeal jobs are never enqueued with a priority, so a sort mode on an
+    // appeals queue would be a stored setting that does nothing. Pin appeals
+    // queues to FIFO rather than saving something we won't honor.
+    const updated = await this.queueOps.updateManualReviewQueue(
+      previous?.isAppealsQueue ? { ...input, jobSortType: 'FIFO' } : input,
+    );
 
     // Changing the sort mode has to re-sort the jobs already sitting in the
     // queue, not just affect future enqueues — otherwise the queue keeps its
@@ -994,12 +1002,15 @@ export class ManualReviewToolService {
             this.queueOps.recomputePrioritiesForQueue({
               orgId: opts.orgId,
               queueId: opts.queueId,
-              getPriority: async (job) =>
-                getJobPriorityForItem({
+              getPriorities: async (itemIds) =>
+                getJobPrioritiesForItems({
                   orgId: opts.orgId,
-                  item: job.payload.item,
+                  itemIds,
                   sortType: opts.sortType,
-                  deps: { getNumTimesReported: this.getNumTimesReported() },
+                  deps: {
+                    getNumTimesReportedForItems:
+                      this.getNumTimesReportedForItems(),
+                  },
                 }),
             }),
         ),

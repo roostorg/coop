@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { StarFilled, TapFilled } from '@/icons';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
 import Star from '@/icons/lni/Web and Technology/star.svg?react';
@@ -6,6 +7,7 @@ import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import Input from 'antd/lib/input';
+import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
@@ -608,6 +610,15 @@ export default function ManualReviewQueuesDashboard() {
                     jobSortType === 'NUM_REPORTS'
                       ? 'Most reported first'
                       : 'First in, first out',
+                  // Jobs on a sorted queue live in BullMQ's prioritized set,
+                  // which is ordered by priority rather than arrival, so
+                  // there's no cheap way to find the oldest one. Flag it so
+                  // the column can explain itself instead of showing a bare
+                  // "N/A" that looks like the queue is empty.
+                  oldestAgeUnavailable:
+                    pendingJobCount > 0 &&
+                    jobSortType !== 'FIFO' &&
+                    oldestJobCreatedAt == null,
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [
@@ -768,12 +779,26 @@ export default function ManualReviewQueuesDashboard() {
               </div>
             ),
             description: <div>{values.description}</div>,
-            oldestTaskAge: (
+            oldestTaskAge: values.oldestAgeUnavailable ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger
+                  aria-label="Why is this unavailable?"
+                  className="flex items-center justify-between w-full text-gray-500 cursor-help"
+                >
+                  —
+                  <Info className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Not tracked for queues with a custom sort order.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
               <div className={getAgeColorClass(values.oldestJobCreatedAt)}>
                 {formatTimeAgo(values.oldestJobCreatedAt)}
               </div>
             ),
             pendingJobCount: <div>{values.pendingJobCount}</div>,
+            jobSortType: <div>{values.jobSortType}</div>,
             startReviewing: (
               <div className="ContentTypesDashboard-type-name">
                 {values.startReviewing}

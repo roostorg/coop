@@ -378,6 +378,17 @@ function makeReportingService(
       const { orgId, itemId } = opts;
       return reportingAnalyticsAdapter.getNumTimesReported(orgId, itemId);
     },
+
+    async getNumTimesReportedForItems(opts: {
+      orgId: string;
+      itemIds: readonly string[];
+    }) {
+      const { orgId, itemIds } = opts;
+      return reportingAnalyticsAdapter.getNumTimesReportedForItems(
+        orgId,
+        itemIds,
+      );
+    },
   };
 }
 

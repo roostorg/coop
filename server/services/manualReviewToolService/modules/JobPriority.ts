@@ -43,6 +43,13 @@ export type JobPriorityDeps = {
   }) => Promise<number | null>;
 };
 
+export type BatchJobPriorityDeps = {
+  getNumTimesReportedForItems: (opts: {
+    orgId: string;
+    itemIds: readonly string[];
+  }) => Promise<ReadonlyMap<string, number>>;
+};
+
 // Convert a "higher = more urgent" score into a BullMQ priority, where lower
 // numbers are dequeued first. Scores outside [0, MAX_BULL_PRIORITY] clamp to
 // the ends of the range.
@@ -51,12 +58,23 @@ export function toBullPriority(score: number): number {
   return MAX_BULL_PRIORITY - Math.round(clamped);
 }
 
+/**
+ * The BullMQ priority to enqueue an item with, or `undefined` for "no
+ * priority".
+ *
+ * FIFO must return `undefined`, not a number. BullMQ routes any job with a
+ * non-zero priority into its `prioritized` sorted set instead of the `wait`
+ * list. Stamping FIFO jobs with a priority would therefore move every job on
+ * every queue out of `wait` — including queues nobody opted in — and silently
+ * break the readers that look there (e.g. `getOldestJobCreatedAt`). Leaving it
+ * unset keeps FIFO byte-for-byte identical to the pre-sort-mode behavior.
+ */
 export async function getJobPriorityForItem(opts: {
   orgId: string;
   item: ItemSubmissionWithTypeIdentifier;
   sortType: JobSortType;
   deps: JobPriorityDeps;
-}): Promise<number> {
+}): Promise<number | undefined> {
   const { orgId, item, deps } = opts;
 
   if (opts.sortType === JobSortType.NUM_REPORTS) {
@@ -67,7 +85,38 @@ export async function getJobPriorityForItem(opts: {
     return toBullPriority(count ?? 0);
   }
 
-  // FIFO: every job gets the same priority and BullMQ tiebreaks by insertion
-  // order, i.e. arrival order.
-  return MAX_BULL_PRIORITY;
+  return undefined;
+}
+
+/**
+ * Priorities for many items at once, keyed by item id.
+ *
+ * Re-sorting a queue needs a priority per pending job. Doing that through
+ * `getJobPriorityForItem` would issue one data warehouse query per job, which
+ * is exactly the queue size where that becomes untenable — so report counts
+ * are fetched in a single batched query instead.
+ */
+export async function getJobPrioritiesForItems(opts: {
+  orgId: string;
+  itemIds: readonly string[];
+  sortType: JobSortType;
+  deps: BatchJobPriorityDeps;
+}): Promise<ReadonlyMap<string, number>> {
+  const { orgId, itemIds, sortType, deps } = opts;
+
+  if (sortType !== JobSortType.NUM_REPORTS) {
+    // Priority 0 means "no priority" to BullMQ, which moves these jobs back
+    // out of the `prioritized` set and into the `wait` list. Unlike the
+    // enqueue path this has to be an explicit 0 rather than `undefined`: a
+    // queue switching back to FIFO needs its already-prioritized jobs
+    // actively demoted, not left alone. The sweep walks oldest-first and
+    // BullMQ prepends each one, so arrival order is preserved.
+    return new Map(itemIds.map((itemId) => [itemId, 0]));
+  }
+
+  const counts = await deps.getNumTimesReportedForItems({ orgId, itemIds });
+  // Items absent from `counts` have never been reported.
+  return new Map(
+    itemIds.map((itemId) => [itemId, toBullPriority(counts.get(itemId) ?? 0)]),
+  );
 }

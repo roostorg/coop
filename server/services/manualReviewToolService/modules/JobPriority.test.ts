@@ -1,5 +1,6 @@
 import type { ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import {
+  getJobPrioritiesForItems,
   getJobPriorityForItem,
   JobSortType,
   normalizeJobSortType,
@@ -36,7 +37,7 @@ function makeItem(opts?: {
 async function priorityFor(opts: {
   reports?: number | null;
   sortType?: JobSortType;
-}): Promise<number> {
+}): Promise<number | undefined> {
   return getJobPriorityForItem({
     orgId,
     item: makeItem(),
@@ -98,13 +99,15 @@ describe('JobPriority', () => {
   });
 
   describe('getJobPriorityForItem — FIFO', () => {
-    test('returns MAX so BullMQ tiebreaks by insertion order', async () => {
-      // FIFO ignores report counts entirely.
+    test('returns no priority so the job stays in BullMQ’s wait list', async () => {
+      // Any non-zero priority would route the job into the `prioritized` set
+      // instead of `wait`, which is what readers like getOldestJobCreatedAt
+      // look at. FIFO must leave the priority unset entirely.
       const priority = await priorityFor({
         reports: 100,
         sortType: JobSortType.FIFO,
       });
-      expect(priority).toBe(MAX_BULL_PRIORITY);
+      expect(priority).toBeUndefined();
     });
 
     test('does not fetch any property values', async () => {
@@ -123,7 +126,7 @@ describe('JobPriority', () => {
     test('more reports dequeue sooner (lower priority number)', async () => {
       const fewReports = await priorityFor({ reports: 2 });
       const manyReports = await priorityFor({ reports: 50 });
-      expect(manyReports).toBeLessThan(fewReports);
+      expect(manyReports).toBeLessThan(fewReports!);
     });
 
     test('a re-report moves the same item forward', async () => {
@@ -131,10 +134,10 @@ describe('JobPriority', () => {
       // new report count; the new priority must be lower (= sooner).
       const before = await priorityFor({ reports: 3 });
       const after = await priorityFor({ reports: 4 });
-      expect(after).toBeLessThan(before);
+      expect(after).toBeLessThan(before!);
     });
 
-    test('zero reports lands at MAX, tied with FIFO arrivals', async () => {
+    test('zero reports lands at MAX, i.e. the back of the queue', async () => {
       expect(await priorityFor({ reports: 0 })).toBe(MAX_BULL_PRIORITY);
     });
 
@@ -144,6 +147,92 @@ describe('JobPriority', () => {
 
     test('a report count above MAX clamps to priority 0', async () => {
       expect(await priorityFor({ reports: MAX_BULL_PRIORITY * 10 })).toBe(0);
+    });
+  });
+
+  describe('getJobPrioritiesForItems', () => {
+    // Re-sorting a queue asks for every pending item's priority at once. The
+    // point of the batch is that it costs one report-count lookup no matter
+    // how many jobs are on the queue.
+    function makeBatchDeps(counts: Record<string, number>) {
+      let lookups = 0;
+      return {
+        lookupCount: () => lookups,
+        deps: {
+          getNumTimesReportedForItems: async (opts: {
+            orgId: string;
+            itemIds: readonly string[];
+          }) => {
+            lookups = lookups + 1;
+            return new Map(
+              Object.entries(counts).filter(([itemId]) =>
+                opts.itemIds.includes(itemId),
+              ),
+            );
+          },
+        },
+      };
+    }
+
+    test('NUM_REPORTS orders items by report count in one lookup', async () => {
+      const { lookupCount, deps } = makeBatchDeps({ a: 2, b: 50 });
+
+      const priorities = await getJobPrioritiesForItems({
+        orgId,
+        itemIds: ['a', 'b'],
+        sortType: JobSortType.NUM_REPORTS,
+        deps,
+      });
+
+      expect(priorities.get('b')).toBeLessThan(priorities.get('a')!);
+      expect(lookupCount()).toBe(1);
+    });
+
+    test('items with no reports fall to the back rather than being skipped', async () => {
+      // The batch query only returns rows for items that have reports, so an
+      // unreported item is absent from the map. It still needs a priority, or
+      // the re-sort would leave its old one in place.
+      const { deps } = makeBatchDeps({ reported: 5 });
+
+      const priorities = await getJobPrioritiesForItems({
+        orgId,
+        itemIds: ['reported', 'never-reported'],
+        sortType: JobSortType.NUM_REPORTS,
+        deps,
+      });
+
+      expect(priorities.get('never-reported')).toBe(MAX_BULL_PRIORITY);
+      expect(priorities.size).toBe(2);
+    });
+
+    test('FIFO demotes every item to priority 0 without querying reports', async () => {
+      // 0 is what moves an already-prioritized job back into the wait list
+      // when a queue switches from NUM_REPORTS to FIFO.
+      const { lookupCount, deps } = makeBatchDeps({ a: 2, b: 50 });
+
+      const priorities = await getJobPrioritiesForItems({
+        orgId,
+        itemIds: ['a', 'b'],
+        sortType: JobSortType.FIFO,
+        deps,
+      });
+
+      expect(priorities.get('a')).toBe(0);
+      expect(priorities.get('b')).toBe(0);
+      expect(lookupCount()).toBe(0);
+    });
+
+    test('agrees with the single-item path', async () => {
+      const { deps } = makeBatchDeps({ a: 7 });
+
+      const batched = await getJobPrioritiesForItems({
+        orgId,
+        itemIds: ['a'],
+        sortType: JobSortType.NUM_REPORTS,
+        deps,
+      });
+
+      expect(batched.get('a')).toBe(toBullPriority(7));
     });
   });
 });
