@@ -13,7 +13,6 @@ import {
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
-import { toBullPriority } from './JobPriority.js';
 import { itemIdToBullJobId } from './QueueOperations.js';
 
 describe('QueueOperations job priorities', () => {
@@ -45,6 +44,7 @@ describe('QueueOperations job priorities', () => {
         org,
         queue,
         user,
+        redis: container.IORedis,
         mrtService: container.ManualReviewToolService,
         cleanup: async () => {
           await queuesCleanup();
@@ -55,6 +55,65 @@ describe('QueueOperations job priorities', () => {
         },
       };
     });
+
+  testWithQueue()(
+    'a sort-mode change bumps the version and releases the lock when done',
+    async ({ org, queue, user, redis, mrtService }) => {
+      // The lock is what makes the sweep safe across server instances, so the
+      // observable contract is: the change is recorded (version bumps) and the
+      // lock is not left held once the sweep finishes.
+      const lockKey = `{${org.id}}:mrt-recompute-lock:${queue.id}`;
+      const versionKey = `{${org.id}}:mrt-recompute-version:${queue.id}`;
+
+      expect(await redis.get(versionKey)).toBeNull();
+
+      await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        jobSortType: 'NUM_REPORTS',
+      });
+
+      // Bumped before the mutation returns, so a sweep already running on
+      // another instance is guaranteed to see it.
+      expect(Number(await redis.get(versionKey))).toBeGreaterThan(0);
+
+      await mrtService.awaitPendingPriorityRecomputes();
+
+      // A lock left held would block every future sweep for this queue until
+      // the TTL expired.
+      expect(await redis.get(lockKey)).toBeNull();
+    },
+  );
+
+  testWithQueue()(
+    'a sweep is skipped when another instance already holds the lock',
+    async ({ org, queue, user, redis, mrtService }) => {
+      // Stand in for another server instance mid-sweep by taking the lock out
+      // from under this one. The mutation must still succeed and must not
+      // block waiting for it.
+      const lockKey = `{${org.id}}:mrt-recompute-lock:${queue.id}`;
+      await redis.set(lockKey, 'held-by-another-instance', 'PX', 10_000);
+
+      const updated = await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        jobSortType: 'NUM_REPORTS',
+      });
+      await mrtService.awaitPendingPriorityRecomputes();
+
+      expect(updated.jobSortType).toBe('NUM_REPORTS');
+      // Ours backed off rather than stealing or clobbering the other holder.
+      expect(await redis.get(lockKey)).toBe('held-by-another-instance');
+
+      await redis.del(lockKey);
+    },
+  );
 
   testWithQueue()(
     'an appeals queue stays FIFO even when a sort mode is requested',

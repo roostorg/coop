@@ -69,6 +69,7 @@ import JobRouting, {
   type UpdateRoutingRuleInput,
 } from './modules/JobRouting.js';
 import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
+import PriorityRecomputeLock from './modules/PriorityRecomputeLock.js';
 import QueueOperations, {
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
@@ -312,6 +313,7 @@ export class ManualReviewToolService {
   private readonly skipOps: SkipOperations;
   private readonly reporterInvalidation: ReporterInvalidation;
   private readonly userReportSweep: UserReportSweep;
+  private readonly priorityRecomputeLock: PriorityRecomputeLock;
 
   constructor(
     // Lazy getter: breaks a circular dependency (ManualReviewToolService ->
@@ -336,6 +338,7 @@ export class ManualReviewToolService {
       queueId: string,
     ) => Promise<void>,
   ) {
+    this.priorityRecomputeLock = new PriorityRecomputeLock(this.redis);
     this.queueOps = new QueueOperations(
       pgQuery,
       pgQueryReadReplica,
@@ -959,22 +962,31 @@ export class ManualReviewToolService {
       !updated.isAppealsQueue &&
       previous.jobSortType !== updated.jobSortType
     ) {
+      // Record that this queue's ordering is stale *before* scheduling, and
+      // await it: whichever instance ends up holding the lock re-reads this
+      // version after sweeping, so bumping it first is what guarantees this
+      // change gets picked up even if another instance is mid-sweep.
+      await this.priorityRecomputeLock.bumpVersion({
+        orgId: input.orgId,
+        queueId: input.queueId,
+      });
       this.#scheduleQueuePriorityRecompute({
         orgId: input.orgId,
         queueId: input.queueId,
-        sortType: normalizeJobSortType(updated.jobSortType),
       });
     }
 
     return updated;
   }
 
-  // In-process chains of background priority recomputes, keyed by queue.
-  // Serializes rapid consecutive sort-mode changes for the same queue so their
-  // per-job re-stamps can't interleave (the last change wins). In-process
-  // only: sweeps from two server instances can still race, in which case the
-  // slower sweep's ordering wins.
-  readonly #priorityRecomputes = new Map<string, Promise<void>>();
+  // In-flight sweeps, tracked only so tests can await them. Coordination
+  // between instances is the Redis lock's job, not this set's.
+  readonly #priorityRecomputes = new Set<Promise<void>>();
+
+  // A sweep that keeps re-sorting while the mode changes under it would spin
+  // forever if an admin toggled repeatedly. Bounded; the version stays bumped,
+  // so the next change picks up where this left off.
+  static readonly #MAX_RECOMPUTE_PASSES = 5;
 
   // Re-stamps every pending job's priority in the background. Deliberately
   // not awaited by callers: a sweep is O(pending jobs) Redis round-trips,
@@ -982,38 +994,18 @@ export class ManualReviewToolService {
   #scheduleQueuePriorityRecompute(opts: {
     orgId: string;
     queueId: string;
-    sortType: JobSortType;
   }): void {
-    const key = `${opts.orgId}:${opts.queueId}`;
-    const previous = this.#priorityRecomputes.get(key) ?? Promise.resolve();
-    const next = previous
-      .then(async () =>
-        this.tracer.addActiveSpan(
-          {
-            resource: 'mrtService',
-            operation: 'recomputeQueuePriorities',
-            attributes: {
-              'mrtQueue.orgId': opts.orgId,
-              'mrtQueue.queueId': opts.queueId,
-              'mrtQueue.jobSortType': opts.sortType,
-            },
+    const running = this.tracer
+      .addActiveSpan(
+        {
+          resource: 'mrtService',
+          operation: 'recomputeQueuePriorities',
+          attributes: {
+            'mrtQueue.orgId': opts.orgId,
+            'mrtQueue.queueId': opts.queueId,
           },
-          async () =>
-            this.queueOps.recomputePrioritiesForQueue({
-              orgId: opts.orgId,
-              queueId: opts.queueId,
-              getPriorities: async (itemIds) =>
-                getJobPrioritiesForItems({
-                  orgId: opts.orgId,
-                  itemIds,
-                  sortType: opts.sortType,
-                  deps: {
-                    getNumTimesReportedForItems:
-                      this.getNumTimesReportedForItems(),
-                  },
-                }),
-            }),
-        ),
+        },
+        async () => this.#recomputeQueuePrioritiesUnderLock(opts),
       )
       .catch(() => {
         // The failure is recorded on the span by addActiveSpan. There is no
@@ -1021,17 +1013,93 @@ export class ManualReviewToolService {
         // enqueue) re-stamps priorities.
       })
       .finally(() => {
-        if (this.#priorityRecomputes.get(key) === next) {
-          this.#priorityRecomputes.delete(key);
-        }
+        this.#priorityRecomputes.delete(running);
       });
-    this.#priorityRecomputes.set(key, next);
+    this.#priorityRecomputes.add(running);
+  }
+
+  /**
+   * Sweeps a queue's priorities while holding the cross-instance lock.
+   *
+   * If another instance holds the lock we return immediately rather than
+   * queueing behind it. That's safe because the caller bumped the version
+   * before scheduling, and the lock holder re-reads the version after each
+   * pass — so our change is picked up by their sweep instead of ours.
+   *
+   * The sort mode is re-read from Postgres on every pass rather than captured
+   * once. If an admin changes it mid-sweep, the next pass has to use the new
+   * mode; reusing a captured value would re-sort to a setting that is no
+   * longer current.
+   */
+  async #recomputeQueuePrioritiesUnderLock(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<void> {
+    const { orgId, queueId } = opts;
+    const token = await this.priorityRecomputeLock.acquire({ orgId, queueId });
+    // The rule below matches on the identifier name `token`. This is a null
+    // check on a lock handle we just generated, not a secret compared against
+    // attacker-supplied input, so there's no timing channel to protect.
+    // eslint-disable-next-line security/detect-possible-timing-attacks
+    if (token == null) {
+      return;
+    }
+
+    try {
+      for (
+        let pass = 0;
+        pass < ManualReviewToolService.#MAX_RECOMPUTE_PASSES;
+        pass++
+      ) {
+        const versionAtStart = await this.priorityRecomputeLock.readVersion({
+          orgId,
+          queueId,
+        });
+
+        const queue =
+          await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+            orgId,
+            queueId,
+          });
+        // Deleted while we waited for the lock.
+        if (queue === undefined) {
+          return;
+        }
+        const sortType = normalizeJobSortType(queue.jobSortType);
+
+        await this.queueOps.recomputePrioritiesForQueue({
+          orgId,
+          queueId,
+          getPriorities: async (itemIds) =>
+            getJobPrioritiesForItems({
+              orgId,
+              itemIds,
+              sortType,
+              deps: {
+                getNumTimesReportedForItems: this.getNumTimesReportedForItems(),
+              },
+            }),
+        });
+
+        const versionAtEnd = await this.priorityRecomputeLock.readVersion({
+          orgId,
+          queueId,
+        });
+        // Nobody changed the mode while we swept, so the ordering we just
+        // wrote is current.
+        if (versionAtEnd === versionAtStart) {
+          return;
+        }
+      }
+    } finally {
+      await this.priorityRecomputeLock.release({ orgId, queueId, token });
+    }
   }
 
   // Test hook: resolves once currently-scheduled background priority
   // recomputes have settled.
   async awaitPendingPriorityRecomputes(): Promise<void> {
-    await Promise.all([...this.#priorityRecomputes.values()]);
+    await Promise.all([...this.#priorityRecomputes]);
   }
 
   async getClearReportsTriggerActionsForQueue(opts: {
