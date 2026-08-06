@@ -1389,6 +1389,15 @@ export default class QueueOperations {
     return `{${orgId}}:mrt-reviewer-skips:${queueId}:${reviewerId}`;
   }
 
+  /**
+   * Hides a job from one reviewer for the skip window and hands it straight
+   * back to everyone else.
+   *
+   * Releasing the lock is part of skipping, not a separate step callers have to
+   * remember — there is no case for recording a skip while still holding the
+   * job. `releaseJobLock` is a no-op when no lock is held, so this is safe even
+   * when the caller never took one.
+   */
   async recordReviewerSkip(opts: {
     orgId: string;
     queueId: string;
@@ -1401,6 +1410,14 @@ export default class QueueOperations {
     await this.redis.zadd(key, expiresAt, jobId);
     // Backstop: the whole set disappears once everything in it has expired.
     await this.redis.pexpire(key, QueueOperations.REVIEWER_SKIP_TTL_MS);
+
+    // The lock token is the reviewer's own id.
+    await this.releaseJobLock({
+      orgId,
+      queueId,
+      jobId: instantiateOpaqueType<JobId>(jobId),
+      lockToken: reviewerId,
+    });
   }
 
   async getActiveReviewerSkips(opts: {
