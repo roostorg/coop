@@ -10,3 +10,4 @@
 !tailwind.config.js
 !tsconfig.json
 !nginx.conf
+!tsconfig.test.json

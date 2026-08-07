@@ -6,7 +6,7 @@ A Node.js CLI for running database migrations and seeds.
 
 ```
 npm install
-node --loader ts-node/esm --require dotenv/config index.ts
+node --env-file-if-exists=.env --loader ts-node/esm index.ts
 ```
 
 This displays available commands and arguments.

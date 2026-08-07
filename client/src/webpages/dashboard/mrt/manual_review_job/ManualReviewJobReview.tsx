@@ -1407,8 +1407,7 @@ function ManualReviewJobReviewImpl(props: {
           // issue. See https://github.com/microsoft/TypeScript/issues/17002 for
           // more details.
           const policyId = policyIds satisfies
-            | string
-            | readonly string[] as string;
+            string | readonly string[] as string;
           setSelectedPrimaryPolicies(policiesFromIds([policyId]));
           setSelectedPrimaryActions(
             selectedPrimaryActions.map((action) => ({
@@ -1463,8 +1462,7 @@ function ManualReviewJobReviewImpl(props: {
       <ManualReviewJobListOfThreadsComponent
         payload={
           payload as
-            | GQLContentManualReviewJobPayload
-            | GQLUserManualReviewJobPayload
+            GQLContentManualReviewJobPayload | GQLUserManualReviewJobPayload
         }
         thread={thread}
         threadMessages={threadItems}

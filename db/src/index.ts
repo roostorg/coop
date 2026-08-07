@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --loader ts-node/esm --require dotenv/config
+#!/usr/bin/env -S node --env-file-if-exists=.env --loader ts-node/esm
 import { makeCli } from '@roostorg/db-migrator';
 
 import apiServerPostgresConfig from './configs/api-server-pg.js';
