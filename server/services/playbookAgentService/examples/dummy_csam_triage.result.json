@@ -1,0 +1,52 @@
+{
+  "playbookId": "dummy_csam_triage",
+  "playbookVersion": "1.0.0",
+  "verdict": {
+    "verdict": "REPORT_AND_REMOVE",
+    "rationale": "The model tried to choose NO_ACTION, but the hard rule should override this verdict.",
+    "confidenceScore": 2,
+    "uLlm": 0.2,
+    "queriesExecuted": [
+      "hash_match_history"
+    ],
+    "supportingEvidence": [
+      "hash_match_history.severity_tier=CRITICAL"
+    ],
+    "contradictingEvidence": [],
+    "criticalEvidenceMissing": false,
+    "hasContradictorySignals": false
+  },
+  "confidence": {
+    "confidenceScore0To1": 0.713,
+    "confidenceScore1To5": 4,
+    "cGround": 0.775,
+    "uLlm": 0.2,
+    "alpha": 0.4,
+    "evidenceCompleteness": 1,
+    "signalStrength": 0.1,
+    "signalAgreement": 1,
+    "dataQuality": 1,
+    "baseCoverage": 1,
+    "additionalCoverage": 0
+  },
+  "hardRuleTriggered": "known_critical_hash",
+  "evidence": [
+    {
+      "item_id": "dummy-item-123",
+      "severity_tier": "CRITICAL",
+      "total_matches": 1,
+      "matched_bank": "known-critical-hash-bank",
+      "_catalogId": "hash_match_history"
+    }
+  ],
+  "queriesExecuted": [
+    "hash_match_history"
+  ],
+  "ranAt": "2026-05-22T00:00:00.000Z",
+  "durationMs": 12,
+  "sessionId": "example-session-id",
+  "artifactTypesStored": [
+    "verdict",
+    "confidence"
+  ]
+}

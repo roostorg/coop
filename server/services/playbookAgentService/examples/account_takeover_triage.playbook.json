@@ -1,0 +1,131 @@
+{
+  "use_case_id": "account_takeover_triage",
+  "version": "1.0.0",
+  "display_name": "Account Takeover Triage",
+  "description": "Investigate suspicious login patterns to determine if an account has been compromised. No hard rules — the LLM decides the verdict based on evidence.",
+  "input_context": [
+    {
+      "field_name": "account_id",
+      "field_type": "string",
+      "required": true,
+      "description": "Account under investigation."
+    },
+    {
+      "field_name": "lookback_days",
+      "field_type": "integer",
+      "required": false,
+      "description": "How far back to look.",
+      "default": 30
+    }
+  ],
+  "evidence_ontology": {
+    "version": "1.0.0",
+    "evidence_types": [
+      {
+        "evidence_id": "login_pattern_changes",
+        "display_name": "Login Pattern Analysis",
+        "description": "Login frequency, failure rate, and geographic anomalies.",
+        "quality": {
+          "minimum_confidence": 0.7,
+          "minimum_num_required_sources": 1
+        }
+      },
+      {
+        "evidence_id": "device_fingerprints",
+        "display_name": "Device Fingerprints",
+        "description": "New or unrecognized devices used for login.",
+        "quality": {
+          "minimum_confidence": 0.5,
+          "minimum_num_required_sources": 1
+        }
+      }
+    ]
+  },
+  "baseline_catalog_refs": [
+    {
+      "catalog_id": "login_patterns",
+      "version": "1.0.0",
+      "catalog_type": "query"
+    }
+  ],
+  "allowed_catalog_refs": [
+    {
+      "catalog_id": "login_patterns",
+      "version": "1.0.0",
+      "catalog_type": "query"
+    },
+    {
+      "catalog_id": "device_fingerprints",
+      "version": "1.0.0",
+      "catalog_type": "query"
+    }
+  ],
+  "evidence_request_policy": {
+    "query_selection_mode": "query_id",
+    "max_rounds": 2,
+    "target_confidence": 0.75,
+    "max_additional_queries": 1,
+    "stop_if_no_new_evidence": true,
+    "trigger_deep_dive_if": "Failed login rate > 50% or logins from 3+ countries in 24h",
+    "guidance": "Look for geographic impossibility, sudden device changes, and credential stuffing patterns."
+  },
+  "labels": [
+    {
+      "label_id": "ATO_CONFIRMED",
+      "display_name": "ATO Confirmed",
+      "description": "Strong evidence of account takeover.",
+      "severity": "CRITICAL"
+    },
+    {
+      "label_id": "ATO_SUSPECTED",
+      "display_name": "ATO Suspected",
+      "description": "Suspicious patterns but not conclusive.",
+      "severity": "HIGH"
+    },
+    {
+      "label_id": "LEGITIMATE",
+      "display_name": "Legitimate Activity",
+      "description": "Login patterns are consistent with account owner.",
+      "severity": "INFO"
+    }
+  ],
+  "decision_logic": {
+    "hard_rules": [],
+    "scoring_guidance": [
+      {
+        "guidance_id": "geo_impossible",
+        "description": "Logins from 2+ countries within 1 hour with >5000km distance is strong ATO signal."
+      },
+      {
+        "guidance_id": "credential_stuffing",
+        "description": "10+ failed logins followed by a success from a new device suggests credential stuffing."
+      }
+    ],
+    "default_label": "LEGITIMATE"
+  },
+  "confidence_computation": {
+    "evidence_completeness_weight": 0.35,
+    "signal_strength_weight": 0.25,
+    "signal_agreement_weight": 0.25,
+    "data_quality_weight": 0.15,
+    "llm_uncertainty_alpha": 0.4,
+    "base_coverage_weight": 0.7,
+    "additional_coverage_weight": 0.3,
+    "critical_evidence_missing_penalty": 0.3,
+    "additional_query_bonus_max": 0.2
+  },
+  "output_contract": {
+    "version": "1.0.0",
+    "required_fields": [
+      "verdict",
+      "rationale",
+      "confidence_score",
+      "u_llm",
+      "queries_executed",
+      "supporting_evidence",
+      "contradicting_evidence",
+      "critical_evidence_missing",
+      "has_contradictory_signals"
+    ]
+  }
+}
