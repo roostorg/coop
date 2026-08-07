@@ -29,6 +29,7 @@ import {
   type ManualReviewDecisionRelatedAction,
   type ManualReviewDecisionType,
 } from './modules/JobDecisioning.js';
+import { type JobSortType } from './modules/JobPriority.js';
 import { type RoutingRuleStatus } from './modules/JobRouting.js';
 
 // What to do with a user's other pending reports when a trigger action is
@@ -85,6 +86,13 @@ export type ManualReviewToolServicePg = {
     is_default_queue: boolean;
     is_appeals_queue: boolean;
     auto_close_jobs: boolean;
+    // Mirrors the manual_review_queues_job_sort_type_check constraint.
+    // Has a DB default, so it's optional on insert.
+    job_sort_type: ColumnType<
+      JobSortType,
+      JobSortType | undefined,
+      JobSortType
+    >;
     // Null disables "clear other reports for this user" for the queue.
     clear_reports_disposition: ClearReportsDisposition | null;
     // Has a DB default, so it's optional on insert.
