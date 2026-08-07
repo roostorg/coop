@@ -90,12 +90,7 @@ gql`
 `;
 
 type Tab =
-  | 'organization'
-  | 'sso'
-  | 'appeals'
-  | 'review-console'
-  | 'wellness'
-  | 'other';
+  'organization' | 'sso' | 'appeals' | 'review-console' | 'wellness' | 'other';
 
 const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   {

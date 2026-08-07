@@ -1,4 +1,4 @@
-FROM node:24.14.1-bullseye-slim AS client_base
+FROM node:24.18.0-bullseye-slim AS client_base
 WORKDIR /app
 
 # ARG is used to get the release id into the ENV from the command line, and then
@@ -20,7 +20,7 @@ ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 ENV DISABLE_ESLINT_PLUGIN=true
 RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT npm run build
 
-FROM nginx:1.27-bookworm AS serve
+FROM nginx:1.29.1-bookworm AS serve
 COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

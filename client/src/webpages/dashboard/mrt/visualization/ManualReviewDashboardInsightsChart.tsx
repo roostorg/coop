@@ -177,10 +177,7 @@ gql`
 `;
 
 export type ManualReviewDashboardInsightsChartMetric =
-  | 'DECISIONS'
-  | 'JOBS'
-  | 'REVIEWED_JOBS'
-  | 'SKIPPED_JOBS';
+  'DECISIONS' | 'JOBS' | 'REVIEWED_JOBS' | 'SKIPPED_JOBS';
 
 export function getEmptyFilterState(
   metric: ManualReviewDashboardInsightsChartMetric,
@@ -223,8 +220,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
   timeWindow: TimeWindow;
   initialChartType: ChartType;
   initialGroupBy:
-    | Array<ManualReviewDashboardInsightsGroupByColumns>
-    | undefined;
+    Array<ManualReviewDashboardInsightsGroupByColumns> | undefined;
   metric: ManualReviewDashboardInsightsChartMetric;
   title?: string;
   isCustomTitle?: boolean;

@@ -4,8 +4,6 @@
  * Proves that `createTransactionalTestDb` lets us wrap a whole test in a single
  * Postgres transaction that is rolled back at the end.
  */
-import 'dotenv/config';
-
 import { Kysely, PostgresDialect, sql } from 'kysely';
 import pg from 'pg';
 
