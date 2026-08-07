@@ -1,4 +1,4 @@
-/* eslint-disable max-lines */
+ 
 import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
