@@ -8,6 +8,10 @@ import {
   validateActionParameterValues,
 } from '../../services/moderationConfigService/index.js';
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
+import {
+  discoverOidcConfig,
+  normalizeIssuerUrl,
+} from '../../services/SSOService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
 import { isValidUrl } from '../../utils/url.js';
@@ -26,6 +30,29 @@ import {
   userInputError,
 } from '../utils/errors.js';
 import { gqlSuccessResult } from '../utils/gqlResult.js';
+
+async function resolveOidcField(
+  org: { id: string },
+  context: Context,
+  field: 'client_id' | 'issuer_url',
+) {
+  const user = context.getUser();
+  if (user == null || user.orgId !== org.id) {
+    throw unauthenticatedError('Authenticated user required');
+  }
+  if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+    throw forbiddenError(
+      'User does not have permission to manage SSO settings',
+    );
+  }
+  const settings = await context.services.OrgSettingsService.getOidcSettings(
+    org.id,
+  );
+  if (!settings) {
+    return null;
+  }
+  return settings[field];
+}
 
 const typeDefs = /* GraphQL */ `
   type Org {
@@ -88,6 +115,9 @@ const typeDefs = /* GraphQL */ `
     ssoUrl: String
     ssoCert: String
     ignoreCallbackUrl: String
+    oidcEnabled: Boolean!
+    issuerUrl: String
+    clientId: String
     hasPartialItemsEndpoint: Boolean!
     partialItemsEndpoint: String
     partialItemsRequestHeaders: JSONObject
@@ -140,9 +170,20 @@ const typeDefs = /* GraphQL */ `
     _: Boolean
   }
 
-  input UpdateSSOCredentialsInput {
+  input UpdateSSOSamlInput {
     ssoUrl: String!
     ssoCert: String!
+  }
+
+  input UpdateSSOOidcInput {
+    issuerUrl: String!
+    clientId: String!
+    clientSecret: String
+  }
+
+  input UpdateSSOSettingsInput @oneOf {
+    saml: UpdateSSOSamlInput
+    oidc: UpdateSSOOidcInput
   }
 
   input UpdateOrgInfoInput {
@@ -172,7 +213,7 @@ const typeDefs = /* GraphQL */ `
     setOrgDefaultSafetySettings(
       orgDefaultSafetySettings: ModeratorSafetySettingsInput!
     ): SetModeratorSafetySettingsSuccessResponse
-    updateSSOCredentials(input: UpdateSSOCredentialsInput!): Boolean!
+    updateSSOSettings(input: UpdateSSOSettingsInput!): Org!
     updateOrgInfo(input: UpdateOrgInfoInput!): UpdateOrgInfoSuccessResponse!
     updateHasAppealsEnabled(enabled: Boolean!): Boolean!
     updateHasReportingRulesEnabled(enabled: Boolean!): Boolean!
@@ -799,6 +840,18 @@ const Org: GQLOrgResolvers = {
 
     return settings.cert;
   },
+  async issuerUrl(org, _, context) {
+    return resolveOidcField(org, context, 'issuer_url');
+  },
+  async clientId(org, _, context) {
+    return resolveOidcField(org, context, 'client_id');
+  },
+  async oidcEnabled(org, _, context) {
+    const settings = await context.services.OrgSettingsService.getOidcSettings(
+      org.id,
+    );
+    return settings?.oidc_enabled ?? false;
+  },
   async hasPartialItemsEndpoint(org, _, context) {
     const partialItemsInfo =
       await context.services.OrgSettingsService.partialItemsInfo(org.id);
@@ -934,23 +987,65 @@ const Mutation: GQLMutationResolvers = {
     });
     return gqlSuccessResult({}, 'UpdateUserStrikeTTLSuccessResponse');
   },
-  async updateSSOCredentials(_, { input }, context) {
+  async updateSSOSettings(_, { input }, context) {
     const user = context.getUser();
     if (!user) {
       throw unauthenticatedError('User required.');
     }
-
     if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError(
         'User does not have permission to manage SSO settings',
       );
     }
 
-    return context.services.OrgSettingsService.updateSamlSettings({
-      orgId: user.orgId,
-      ssoUrl: input.ssoUrl,
-      cert: input.ssoCert,
-    });
+    const { orgId } = user;
+
+    if (input.saml != null) {
+      await context.services.OrgSettingsService.switchSSOMethod({
+        orgId,
+        method: 'saml',
+        ssoUrl: input.saml.ssoUrl,
+        cert: input.saml.ssoCert,
+      });
+    } else {
+      // input.oidc is guaranteed non-null by @oneOf
+      const oidc = input.oidc!;
+      // normalizeIssuerUrl ensures a valid https:// URL for discovery
+      const urlForDiscovery = normalizeIssuerUrl(oidc.issuerUrl);
+
+      // clientSecret is optional when OIDC is already configured — fall back to the stored secret
+      // so admins can update issuerUrl/clientId without re-entering the secret.
+      let secretForDiscovery = oidc.clientSecret || undefined;
+      if (!secretForDiscovery) {
+        const existing =
+          await context.services.OrgSettingsService.getOidcSettings(orgId);
+        if (!existing?.client_secret) {
+          throw userInputError(
+            'clientSecret is required when OIDC is not yet configured',
+          );
+        }
+        secretForDiscovery = existing.client_secret;
+      }
+
+      const config = await discoverOidcConfig(
+        urlForDiscovery,
+        oidc.clientId,
+        secretForDiscovery,
+      );
+      // Store the canonical issuer from the IdP's discovery document, not a string-normalized guess
+      const canonicalIssuerUrl = config.serverMetadata().issuer;
+
+      await context.services.OrgSettingsService.switchSSOMethod({
+        orgId,
+        method: 'oidc',
+        issuerUrl: canonicalIssuerUrl,
+        clientId: oidc.clientId,
+        // undefined = keep the existing stored secret
+        clientSecret: oidc.clientSecret || undefined,
+      });
+    }
+
+    return context.dataSources.orgAPI.getGraphQLOrgFromId(orgId);
   },
   async updateOrgInfo(_, { input }, context) {
     const user = context.getUser();

@@ -283,7 +283,7 @@ export async function kyselyUserInsert(opts: {
       role_id: roleId,
       approved_by_admin: opts.approvedByAdmin ?? false,
       rejected_by_admin: opts.rejectedByAdmin ?? false,
-      login_methods: [...opts.loginMethods],
+      login_methods: opts.loginMethods as LoginMethod[],
       created_at: now,
       updated_at: now,
     })
@@ -367,6 +367,26 @@ export async function kyselyUserUpdate(
   const row = await db
     .updateTable('public.users')
     .set(update)
+    .where('id', '=', userId)
+    .returning(USER_COLUMNS)
+    .returning(loginMethodsAsTextArray)
+    .returning(permissionsArray)
+    .executeTakeFirst();
+
+  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+}
+
+export async function kyselyUserUpdateLoginMethods(
+  db: UsersDb,
+  userId: string,
+  loginMethods: readonly LoginMethod[],
+): Promise<GraphQLUserParent | undefined> {
+  const row = await db
+    .updateTable('public.users')
+    .set({
+      login_methods: loginMethods as LoginMethod[],
+      updated_at: new Date(),
+    })
     .where('id', '=', userId)
     .returning(USER_COLUMNS)
     .returning(loginMethodsAsTextArray)
