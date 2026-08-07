@@ -61,7 +61,7 @@
     "react-helmet-async": "^2.0.3",
     "react-player": "^2.10.1",
     "react-query": "^3.39.1",
-    "react-router-dom": "^6.30.4",
+    "react-router-dom": "^7.0.0",
     "react-syntax-highlighter": "^16.1.0",
     "react-table": "^7.7.0",
     "recharts": "^2.1.10",
