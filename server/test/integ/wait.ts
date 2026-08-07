@@ -60,22 +60,28 @@ export async function waitForItemInScylla(
 ) {
   return waitFor(
     `item ${opts.itemIdentifier.id} in Scylla item_submission_by_thread`,
-    async () => {
-      const rows = await deps.Scylla.select({
-        from: 'item_submission_by_thread',
-        select: '*',
-        where: [
-          [
-            'item_identifier',
-            '=',
-            itemIdentifierToScyllaItemIdentifier(opts.itemIdentifier),
-          ],
-        ],
-      });
-      return rows.length > 0 ? rows[0] : null;
-    },
+    async () => getItemFromScylla(deps, opts),
     { timeoutMs: opts.timeoutMs },
   );
+}
+
+// Single-shot lookup for asserting an item should NOT be in Scylla.
+export async function getItemFromScylla(
+  deps: Pick<Dependencies, 'Scylla'>,
+  opts: { itemIdentifier: ItemIdentifier },
+) {
+  const rows = await deps.Scylla.select({
+    from: 'item_submission_by_thread',
+    select: '*',
+    where: [
+      [
+        'item_identifier',
+        '=',
+        itemIdentifierToScyllaItemIdentifier(opts.itemIdentifier),
+      ],
+    ],
+  });
+  return rows.length > 0 ? rows[0] : null;
 }
 
 export async function waitForItemInClickHouse(
