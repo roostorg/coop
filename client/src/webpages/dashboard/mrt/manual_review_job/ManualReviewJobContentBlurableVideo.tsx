@@ -1,6 +1,6 @@
 import { PlayCircleFilled } from '@ant-design/icons';
 import { useEffect, useRef, useState } from 'react';
-import ReactPlayer from 'react-player/lazy';
+import ReactPlayer from 'react-player';
 
 import CoopModal from '../../components/CoopModal';
 

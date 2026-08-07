@@ -30,8 +30,7 @@ type EligibleAction = {
 };
 
 type ParamsModalState =
-  | { open: false }
-  | { open: true; mode: 'create' | 'edit'; actionId: string };
+  { open: false } | { open: true; mode: 'create' | 'edit'; actionId: string };
 
 export default function ItemAction(props: {
   itemIdentifier: ItemIdentifier;
@@ -187,8 +186,7 @@ export default function ItemAction(props: {
         // issue. See https://github.com/microsoft/TypeScript/issues/17002 for
         // more details.
         const policyId = policyIds satisfies
-          | string
-          | readonly string[] as string;
+          string | readonly string[] as string;
         setSelectedPolicyIds([policyId]);
       }
     },

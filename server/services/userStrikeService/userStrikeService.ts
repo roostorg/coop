@@ -33,6 +33,7 @@ export class UserStrikeService {
     private readonly getUserStrikeTTLinDays: Dependencies['getUserStrikeTTLInDaysEventuallyConsistent'],
     private readonly actionExecutionsAdapter: IActionExecutionsAdapter,
     private readonly publishActions: Dependencies['ActionPublisher']['publishActions'],
+    private readonly enabled: boolean = true,
   ) {
     this.scylla = scylla;
     this.moderationConfigService = moderationConfigService;
@@ -97,6 +98,10 @@ export class UserStrikeService {
       actorEmail?: string;
     },
   ) {
+    if (!this.enabled) {
+      return;
+    }
+
     const targetUser = getUserFromActionTargetItem(executionContext.targetItem);
     const mostSeverePolicy =
       this.findMostSeverePolicyViolationFromActions(triggeredActions);

@@ -6,6 +6,7 @@ import {
 } from '../../storage/dataWarehouse/warehouseDateTypes.js';
 import { type JsonOf } from '../../utils/encoding.js';
 import { type ConditionSetWithResultAsLogged } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
+import { type CoreAppTablesPg } from '../coreAppTables.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
   type ConditionSet,
@@ -33,9 +34,7 @@ import { type RoutingRuleStatus } from './modules/JobRouting.js';
 // What to do with a user's other pending reports when a trigger action is
 // taken on one of their jobs (issue #650).
 export type ClearReportsDisposition =
-  | 'AUTOMATIC_CLOSE'
-  | 'IGNORE'
-  | 'SAME_ACTION';
+  'AUTOMATIC_CLOSE' | 'IGNORE' | 'SAME_ACTION';
 
 export type ClearReportsScope = 'CURRENT_QUEUE' | 'ALL_QUEUES';
 
@@ -74,6 +73,8 @@ export type RoutingRuleExecutionsRow = {
 );
 
 export type ManualReviewToolServicePg = {
+  // Shared with CoreAppTablesPg so org-scoping checks can query public.users.
+  'public.users': CoreAppTablesPg['public.users'];
   'manual_review_tool.manual_review_queues': {
     id: string;
     name: string;
@@ -103,9 +104,7 @@ export type ManualReviewToolServicePg = {
     decision_components: ManualReviewDecisionComponent[];
     related_actions: ManualReviewDecisionRelatedAction[];
     enqueue_source_info:
-      | ManualReviewJobEnqueueSourceInfo
-      | AppealEnqueueSourceInfo
-      | null;
+      ManualReviewJobEnqueueSourceInfo | AppealEnqueueSourceInfo | null;
     item_created_at: Date | null;
     decision_reason: string | null;
   };
@@ -197,8 +196,7 @@ export type ManualReviewToolServicePg = {
     item_type_id: string;
     created_at: Date;
     enqueue_source_info:
-      | ManualReviewJobEnqueueSourceInfo
-      | AppealEnqueueSourceInfo;
+      ManualReviewJobEnqueueSourceInfo | AppealEnqueueSourceInfo;
     policy_ids: string[];
   };
   'manual_review_tool.flattened_job_creations': {

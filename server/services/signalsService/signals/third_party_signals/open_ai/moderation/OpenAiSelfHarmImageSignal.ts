@@ -1,5 +1,5 @@
 import { SignalType } from '../../../../types/SignalType.js';
-import { makeOpenAiImageModerationSignal } from './openAIModerationUtils.js';
+import { makeOpenAiImageModerationSignal } from './openAiModerationSignalFactory.js';
 
 /**
  * OpenAI image-moderation signal scoring whether an image promotes,

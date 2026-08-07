@@ -105,10 +105,18 @@ export function createTransactionalTestDb(
     return result;
   };
 
-  // The single place transaction-control statements are rewritten to
-  // savepoints; everything else passes straight through to the pinned client.
-  // Shared by both the per-connection facade (`connect().query`) and the
-  // pool-level `query` (used by consumers like the express-session store).
+  let queue: Promise<unknown> = Promise.resolve();
+  const runAfterPending = async <T>(thunk: () => Promise<T>): Promise<T> => {
+    const next = queue.then(thunk);
+    queue = next.catch(() => {});
+    return next;
+  };
+
+  // Held for the lifetime of one application transaction (BEGIN →
+  // COMMIT/ROLLBACK). `null` outside any application transaction.
+  let txMutex: Promise<void> | null = null;
+  let endTx: (() => void) | null = null;
+
   const runQuery = async (
     textOrConfig: string | pg.QueryConfig,
     values?: unknown[],
@@ -119,22 +127,65 @@ export function createTransactionalTestDb(
       typeof text === 'string'
         ? text.trim().toLowerCase().replace(/;/g, '')
         : '';
-
     if (normalized === 'begin' || normalized.startsWith('start transaction')) {
-      return openSavepoint();
+      // A BEGIN that arrives while a transaction already holds the connection
+      // is a *nested* transaction (Kysely issues a plain `begin` for nesting,
+      // not a savepoint).
+      if (txMutex !== null) {
+        return openSavepoint(); // → SAVEPOINT coop_test_sp_<new depth>
+      }
+      // Top-level BEGIN: queue behind any in-flight work, wait for a prior
+      // transaction to finish, then acquire the connection for ours.
+      return runAfterPending(async () => {
+        while (txMutex !== null) {
+          await txMutex;
+        }
+        txMutex = new Promise<void>((resolve) => {
+          endTx = resolve;
+        });
+        try {
+          return await openSavepoint(); // → SAVEPOINT coop_test_sp_<new depth>
+        } catch (e) {
+          // BEGIN failed: release the mutex so we don't deadlock the queue.
+          endTx?.();
+          txMutex = null;
+          endTx = null;
+          throw e;
+        }
+      });
     }
-    if (normalized === 'commit') {
-      return closeSavepoint('commit');
-    }
-    if (normalized === 'rollback') {
-      return closeSavepoint('rollback');
+    if (normalized === 'commit' || normalized === 'rollback') {
+      const verb = normalized === 'commit' ? 'commit' : 'rollback';
+      // Only release the mutex when the outermost
+      // savepoint closes (i.e. depth is 0).
+      if (txMutex === null) {
+        throw new Error(
+          `${verb.toUpperCase()} without a matching application transaction`,
+        );
+      }
+      const result = await closeSavepoint(verb);
+      if (savepointDepth === 0) {
+        endTx?.();
+        txMutex = null;
+        endTx = null;
+      }
+      return result;
     }
 
     rejectUnsupportedTransactionControl(normalized, text);
 
-    return values === undefined
-      ? client.query(textOrConfig)
-      : client.query(textOrConfig, values);
+    // Outside a transaction, queue to
+    // preserve wire order against other ad-hoc queries.
+    if (txMutex !== null) {
+      return values === undefined
+        ? client.query(textOrConfig)
+        : client.query(textOrConfig, values);
+    }
+    return runAfterPending(async () =>
+      values === undefined
+        ? client.query(textOrConfig)
+        : client.query(textOrConfig, values),
+    );
   };
 
   const facadeClient = {

@@ -685,7 +685,7 @@ export default function RuleForm() {
     const out: Record<string, Record<string, unknown>> = {};
     for (const action of rule?.actions ?? []) {
       if ('configuredParameters' in action && action.configuredParameters) {
-        out[action.id] = action.configuredParameters as Record<string, unknown>;
+        out[action.id] = action.configuredParameters;
       }
     }
     return out;
@@ -823,9 +823,7 @@ export default function RuleForm() {
   const showUpdateRuleCaughtErrorModal = (
     isUpdate: boolean,
     errorName:
-      | 'NotFoundError'
-      | 'RuleNameExistsError'
-      | 'RuleHasRunningBacktestsError',
+      'NotFoundError' | 'RuleNameExistsError' | 'RuleHasRunningBacktestsError',
   ) => {
     dispatch({
       type: RuleFormReducerActionType.ShowModal,
@@ -1113,8 +1111,8 @@ export default function RuleForm() {
     dispatch({
       type: RuleFormReducerActionType.UpdateItemTypes,
       payload: {
-        selectedItemTypes: selectedTypeIDs.map(
-          (id: string) => allItemTypes.find((itemType) => itemType.id === id)!,
+        selectedItemTypes: selectedTypeIDs.map((id: string) =>
+          allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
         allSignals: allSignals satisfies readonly GQLSignal[],

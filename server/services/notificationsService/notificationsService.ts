@@ -61,8 +61,7 @@ export type Notification<T extends NotificationType = NotificationType> = {
  * specifies a delivery channel. Consider emails like oncall-sre@example.com
  */
 type Recipient =
-  | { type: 'user_id'; value: string }
-  | { type: 'email_address'; value: string };
+  { type: 'user_id'; value: string } | { type: 'email_address'; value: string };
 
 type CreateNotificationInput<T extends NotificationType> = Pick<
   Notification<T>,

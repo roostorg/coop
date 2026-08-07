@@ -197,9 +197,7 @@ export function getScalarType<T extends FieldType>(it: Field<T>) {
 }
 
 export type MediaKind =
-  | ScalarTypes['AUDIO']
-  | ScalarTypes['IMAGE']
-  | ScalarTypes['VIDEO'];
+  ScalarTypes['AUDIO'] | ScalarTypes['IMAGE'] | ScalarTypes['VIDEO'];
 
 export function isMediaType(it: ScalarType): boolean {
   return (
