@@ -231,8 +231,7 @@ export type GQLAddFavoriteRuleSuccessResponse = {
 };
 
 export type GQLAddManualReviewJobCommentResponse =
-  | GQLAddManualReviewJobCommentSuccessResponse
-  | GQLNotFoundError;
+  GQLAddManualReviewJobCommentSuccessResponse | GQLNotFoundError;
 
 export type GQLAddManualReviewJobCommentSuccessResponse = {
   readonly __typename: 'AddManualReviewJobCommentSuccessResponse';
@@ -416,8 +415,7 @@ export type GQLChangePasswordInput = {
 };
 
 export type GQLChangePasswordResponse =
-  | GQLChangePasswordError
-  | GQLChangePasswordSuccessResponse;
+  GQLChangePasswordError | GQLChangePasswordSuccessResponse;
 
 export type GQLChangePasswordSuccessResponse = {
   readonly __typename: 'ChangePasswordSuccessResponse';
@@ -526,8 +524,7 @@ export type GQLConditionSetWithResult = {
 };
 
 export type GQLConditionWithResult =
-  | GQLConditionSetWithResult
-  | GQLLeafConditionWithResult;
+  GQLConditionSetWithResult | GQLLeafConditionWithResult;
 
 export type GQLContainer = {
   readonly __typename: 'Container';
@@ -763,8 +760,7 @@ export type GQLCreateContentRuleInput = {
 };
 
 export type GQLCreateContentRuleResponse =
-  | GQLMutateContentRuleSuccessResponse
-  | GQLRuleNameExistsError;
+  GQLMutateContentRuleSuccessResponse | GQLRuleNameExistsError;
 
 export type GQLCreateHashBankInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -814,8 +810,7 @@ export type GQLCreateReportingRuleInput = {
 };
 
 export type GQLCreateReportingRuleResponse =
-  | GQLMutateReportingRuleSuccessResponse
-  | GQLReportingRuleNameExistsError;
+  GQLMutateReportingRuleSuccessResponse | GQLReportingRuleNameExistsError;
 
 export type GQLCreateRoutingRuleInput = {
   readonly conditionSet: GQLConditionSetInput;
@@ -873,8 +868,7 @@ export type GQLCreateUserRuleInput = {
 };
 
 export type GQLCreateUserRuleResponse =
-  | GQLMutateUserRuleSuccessResponse
-  | GQLRuleNameExistsError;
+  GQLMutateUserRuleSuccessResponse | GQLRuleNameExistsError;
 
 export type GQLCustomAction = GQLActionBase & {
   readonly __typename: 'CustomAction';
@@ -992,8 +986,7 @@ export const GQLDecisionsCountGroupBy = {
 export type GQLDecisionsCountGroupBy =
   (typeof GQLDecisionsCountGroupBy)[keyof typeof GQLDecisionsCountGroupBy];
 export type GQLDeleteAllJobsFromQueueResponse =
-  | GQLDeleteAllJobsFromQueueSuccessResponse
-  | GQLDeleteAllJobsUnauthorizedError;
+  GQLDeleteAllJobsFromQueueSuccessResponse | GQLDeleteAllJobsUnauthorizedError;
 
 export type GQLDeleteAllJobsFromQueueSuccessResponse = {
   readonly __typename: 'DeleteAllJobsFromQueueSuccessResponse';
@@ -1011,8 +1004,7 @@ export type GQLDeleteAllJobsUnauthorizedError = GQLError & {
 };
 
 export type GQLDeleteItemTypeResponse =
-  | GQLCannotDeleteDefaultUserError
-  | GQLDeleteItemTypeSuccessResponse;
+  GQLCannotDeleteDefaultUserError | GQLDeleteItemTypeSuccessResponse;
 
 export type GQLDeleteItemTypeSuccessResponse = {
   readonly __typename: 'DeleteItemTypeSuccessResponse';
@@ -1326,8 +1318,7 @@ export type GQLGetDecisionCountsTableInput = {
 };
 
 export type GQLGetFullReportingRuleResultForItemResponse =
-  | GQLNotFoundError
-  | GQLReportingRuleExecutionResult;
+  GQLNotFoundError | GQLReportingRuleExecutionResult;
 
 export type GQLGetFullResultForItemInput = {
   readonly date?: InputMaybe<Scalars['String']['input']>;
@@ -1337,8 +1328,7 @@ export type GQLGetFullResultForItemInput = {
 };
 
 export type GQLGetFullResultForItemResponse =
-  | GQLNotFoundError
-  | GQLRuleExecutionResult;
+  GQLNotFoundError | GQLRuleExecutionResult;
 
 export type GQLGetJobCreationCountInput = {
   readonly filterBy: GQLJobCreationFilterByInput;
@@ -1630,9 +1620,7 @@ export type GQLItemSubmissions = {
 };
 
 export type GQLItemType =
-  | GQLContentItemType
-  | GQLThreadItemType
-  | GQLUserItemType;
+  GQLContentItemType | GQLThreadItemType | GQLUserItemType;
 
 export type GQLItemTypeBase = {
   readonly baseFields: ReadonlyArray<GQLBaseField>;
@@ -2126,8 +2114,7 @@ export const GQLManualReviewChartMetric = {
 export type GQLManualReviewChartMetric =
   (typeof GQLManualReviewChartMetric)[keyof typeof GQLManualReviewChartMetric];
 export type GQLManualReviewChartSettings =
-  | GQLGetDecisionCountSettings
-  | GQLGetJobCreationCountSettings;
+  GQLGetDecisionCountSettings | GQLGetJobCreationCountSettings;
 
 export type GQLManualReviewChartSettingsInput = {
   readonly decisionCountSettings?: InputMaybe<GQLDecisionCountSettingsInput>;
@@ -2355,6 +2342,7 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['input'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['input'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['input'];
 };
 
 export const GQLMrtClearReportsDisposition = {
@@ -2389,8 +2377,7 @@ export const GQLMutateActionError = {
 export type GQLMutateActionError =
   (typeof GQLMutateActionError)[keyof typeof GQLMutateActionError];
 export type GQLMutateActionResponse =
-  | GQLActionNameExistsError
-  | GQLMutateActionSuccessResponse;
+  GQLActionNameExistsError | GQLMutateActionSuccessResponse;
 
 export type GQLMutateActionSuccessResponse = {
   readonly __typename: 'MutateActionSuccessResponse';
@@ -2404,8 +2391,7 @@ export type GQLMutateBankResponse = {
 };
 
 export type GQLMutateContentItemTypeResponse =
-  | GQLItemTypeNameAlreadyExistsError
-  | GQLMutateContentTypeSuccessResponse;
+  GQLItemTypeNameAlreadyExistsError | GQLMutateContentTypeSuccessResponse;
 
 export type GQLMutateContentRuleSuccessResponse = {
   readonly __typename: 'MutateContentRuleSuccessResponse';
@@ -2418,8 +2404,7 @@ export type GQLMutateContentTypeSuccessResponse = {
 };
 
 export type GQLMutateHashBankResponse =
-  | GQLMatchingBankNameExistsError
-  | GQLMutateHashBankSuccessResponse;
+  GQLMatchingBankNameExistsError | GQLMutateHashBankSuccessResponse;
 
 export type GQLMutateHashBankSuccessResponse = {
   readonly __typename: 'MutateHashBankSuccessResponse';
@@ -2428,8 +2413,7 @@ export type GQLMutateHashBankSuccessResponse = {
 };
 
 export type GQLMutateLocationBankResponse =
-  | GQLLocationBankNameExistsError
-  | GQLMutateLocationBankSuccessResponse;
+  GQLLocationBankNameExistsError | GQLMutateLocationBankSuccessResponse;
 
 export type GQLMutateLocationBankSuccessResponse = {
   readonly __typename: 'MutateLocationBankSuccessResponse';
@@ -2457,8 +2441,7 @@ export type GQLMutateRoutingRulesOrderSuccessResponse = {
 };
 
 export type GQLMutateThreadItemTypeResponse =
-  | GQLItemTypeNameAlreadyExistsError
-  | GQLMutateThreadTypeSuccessResponse;
+  GQLItemTypeNameAlreadyExistsError | GQLMutateThreadTypeSuccessResponse;
 
 export type GQLMutateThreadTypeSuccessResponse = {
   readonly __typename: 'MutateThreadTypeSuccessResponse';
@@ -2466,8 +2449,7 @@ export type GQLMutateThreadTypeSuccessResponse = {
 };
 
 export type GQLMutateUserItemTypeResponse =
-  | GQLItemTypeNameAlreadyExistsError
-  | GQLMutateUserTypeSuccessResponse;
+  GQLItemTypeNameAlreadyExistsError | GQLMutateUserTypeSuccessResponse;
 
 export type GQLMutateUserRuleSuccessResponse = {
   readonly __typename: 'MutateUserRuleSuccessResponse';
@@ -3868,8 +3850,7 @@ export type GQLRemoveAccessibleQueuesToUserInput = {
 };
 
 export type GQLRemoveAccessibleQueuesToUserResponse =
-  | GQLMutateAccessibleQueuesForUserSuccessResponse
-  | GQLNotFoundError;
+  GQLMutateAccessibleQueuesForUserSuccessResponse | GQLNotFoundError;
 
 export type GQLRemoveFavoriteMrtQueueSuccessResponse = {
   readonly __typename: 'RemoveFavoriteMRTQueueSuccessResponse';
@@ -4062,8 +4043,7 @@ export type GQLRotateApiKeyInput = {
 };
 
 export type GQLRotateApiKeyResponse =
-  | GQLRotateApiKeyError
-  | GQLRotateApiKeySuccessResponse;
+  GQLRotateApiKeyError | GQLRotateApiKeySuccessResponse;
 
 export type GQLRotateApiKeySuccessResponse = {
   readonly __typename: 'RotateApiKeySuccessResponse';
@@ -4082,8 +4062,7 @@ export type GQLRotateWebhookSigningKeyError = GQLError & {
 };
 
 export type GQLRotateWebhookSigningKeyResponse =
-  | GQLRotateWebhookSigningKeyError
-  | GQLRotateWebhookSigningKeySuccessResponse;
+  GQLRotateWebhookSigningKeyError | GQLRotateWebhookSigningKeySuccessResponse;
 
 export type GQLRotateWebhookSigningKeySuccessResponse = {
   readonly __typename: 'RotateWebhookSigningKeySuccessResponse';
@@ -4354,8 +4333,7 @@ export type GQLSignUpInput = {
 };
 
 export type GQLSignUpResponse =
-  | GQLSignUpSuccessResponse
-  | GQLSignUpUserExistsError;
+  GQLSignUpSuccessResponse | GQLSignUpUserExistsError;
 
 export type GQLSignUpSuccessResponse = {
   readonly __typename: 'SignUpSuccessResponse';
@@ -4433,8 +4411,7 @@ export const GQLSignalInputType = {
 export type GQLSignalInputType =
   (typeof GQLSignalInputType)[keyof typeof GQLSignalInputType];
 export type GQLSignalOutputType =
-  | GQLEnumSignalOutputType
-  | GQLScalarSignalOutputType;
+  GQLEnumSignalOutputType | GQLScalarSignalOutputType;
 
 export type GQLSignalPricingStructure = {
   readonly __typename: 'SignalPricingStructure';
@@ -4482,6 +4459,12 @@ export const GQLSignalType = {
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
   OpenAiHateThreateningTextModel: 'OPEN_AI_HATE_THREATENING_TEXT_MODEL',
   OpenAiSelfHarmImageModel: 'OPEN_AI_SELF_HARM_IMAGE_MODEL',
+  OpenAiSelfHarmInstructionsImageModel:
+    'OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL',
+  OpenAiSelfHarmInstructionsTextModel:
+    'OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL',
+  OpenAiSelfHarmIntentImageModel: 'OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL',
+  OpenAiSelfHarmIntentTextModel: 'OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL',
   OpenAiSelfHarmTextModel: 'OPEN_AI_SELF_HARM_TEXT_MODEL',
   OpenAiSexualImageModel: 'OPEN_AI_SEXUAL_IMAGE_MODEL',
   OpenAiSexualMinorsTextModel: 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL',
@@ -5056,6 +5039,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['output'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['output'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['output'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['output'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -7477,8 +7461,7 @@ export type GQLGetItemsByIpAddressQuery = {
 
 export type GQLGetAuthorInfoQueryVariables = Exact<{
   userIdentifiers:
-    | ReadonlyArray<GQLItemIdentifierInput>
-    | GQLItemIdentifierInput;
+    ReadonlyArray<GQLItemIdentifierInput> | GQLItemIdentifierInput;
 }>;
 
 export type GQLGetAuthorInfoQuery = {
@@ -12276,6 +12259,7 @@ export type GQLManualReviewSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -16709,105 +16693,6 @@ export type GQLJobFieldsFragment = {
       };
 };
 
-export type GQLGetRelatedItemsQueryVariables = Exact<{
-  itemIdentifiers:
-    | ReadonlyArray<GQLItemIdentifierInput>
-    | GQLItemIdentifierInput;
-}>;
-
-export type GQLGetRelatedItemsQuery = {
-  readonly __typename: 'Query';
-  readonly latestItemSubmissions: ReadonlyArray<
-    | {
-        readonly __typename: 'ContentItem';
-        readonly id: string;
-        readonly submissionId: string;
-        readonly submissionTime?: Date | string | null;
-        readonly data: JsonObject;
-        readonly type: {
-          readonly __typename: 'ContentItemType';
-          readonly id: string;
-          readonly name: string;
-          readonly baseFields: ReadonlyArray<{
-            readonly __typename: 'BaseField';
-            readonly name: string;
-            readonly type: GQLFieldType;
-            readonly required: boolean;
-            readonly container?: {
-              readonly __typename: 'Container';
-              readonly containerType: GQLContainerType;
-              readonly keyScalarType?: GQLScalarType | null;
-              readonly valueScalarType: GQLScalarType;
-            } | null;
-          }>;
-          readonly schemaFieldRoles: {
-            readonly __typename: 'ContentSchemaFieldRoles';
-            readonly displayName?: string | null;
-          };
-        };
-      }
-    | {
-        readonly __typename: 'ThreadItem';
-        readonly id: string;
-        readonly submissionId: string;
-        readonly submissionTime?: Date | string | null;
-        readonly data: JsonObject;
-        readonly type: {
-          readonly __typename: 'ThreadItemType';
-          readonly id: string;
-          readonly name: string;
-          readonly baseFields: ReadonlyArray<{
-            readonly __typename: 'BaseField';
-            readonly name: string;
-            readonly type: GQLFieldType;
-            readonly required: boolean;
-            readonly container?: {
-              readonly __typename: 'Container';
-              readonly containerType: GQLContainerType;
-              readonly keyScalarType?: GQLScalarType | null;
-              readonly valueScalarType: GQLScalarType;
-            } | null;
-          }>;
-          readonly schemaFieldRoles: {
-            readonly __typename: 'ThreadSchemaFieldRoles';
-            readonly displayName?: string | null;
-          };
-        };
-      }
-    | {
-        readonly __typename: 'UserItem';
-        readonly id: string;
-        readonly submissionId: string;
-        readonly submissionTime?: Date | string | null;
-        readonly data: JsonObject;
-        readonly type: {
-          readonly __typename: 'UserItemType';
-          readonly id: string;
-          readonly name: string;
-          readonly baseFields: ReadonlyArray<{
-            readonly __typename: 'BaseField';
-            readonly name: string;
-            readonly type: GQLFieldType;
-            readonly required: boolean;
-            readonly container?: {
-              readonly __typename: 'Container';
-              readonly containerType: GQLContainerType;
-              readonly keyScalarType?: GQLScalarType | null;
-              readonly valueScalarType: GQLScalarType;
-            } | null;
-          }>;
-          readonly schemaFieldRoles: {
-            readonly __typename: 'UserSchemaFieldRoles';
-            readonly displayName?: string | null;
-            readonly createdAt?: string | null;
-            readonly profileIcon?: string | null;
-            readonly backgroundImage?: string | null;
-          };
-        };
-      }
-  >;
-};
-
 export type GQLManualReviewJobCommentFieldsFragment = {
   readonly __typename: 'ManualReviewJobComment';
   readonly id: string;
@@ -16921,6 +16806,104 @@ export type GQLGetThreadHistoryQuery = {
   }>;
 };
 
+export type GQLGetRelatedItemsQueryVariables = Exact<{
+  itemIdentifiers:
+    ReadonlyArray<GQLItemIdentifierInput> | GQLItemIdentifierInput;
+}>;
+
+export type GQLGetRelatedItemsQuery = {
+  readonly __typename: 'Query';
+  readonly latestItemSubmissions: ReadonlyArray<
+    | {
+        readonly __typename: 'ContentItem';
+        readonly id: string;
+        readonly submissionId: string;
+        readonly submissionTime?: Date | string | null;
+        readonly data: JsonObject;
+        readonly type: {
+          readonly __typename: 'ContentItemType';
+          readonly id: string;
+          readonly name: string;
+          readonly baseFields: ReadonlyArray<{
+            readonly __typename: 'BaseField';
+            readonly name: string;
+            readonly type: GQLFieldType;
+            readonly required: boolean;
+            readonly container?: {
+              readonly __typename: 'Container';
+              readonly containerType: GQLContainerType;
+              readonly keyScalarType?: GQLScalarType | null;
+              readonly valueScalarType: GQLScalarType;
+            } | null;
+          }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'ContentSchemaFieldRoles';
+            readonly displayName?: string | null;
+          };
+        };
+      }
+    | {
+        readonly __typename: 'ThreadItem';
+        readonly id: string;
+        readonly submissionId: string;
+        readonly submissionTime?: Date | string | null;
+        readonly data: JsonObject;
+        readonly type: {
+          readonly __typename: 'ThreadItemType';
+          readonly id: string;
+          readonly name: string;
+          readonly baseFields: ReadonlyArray<{
+            readonly __typename: 'BaseField';
+            readonly name: string;
+            readonly type: GQLFieldType;
+            readonly required: boolean;
+            readonly container?: {
+              readonly __typename: 'Container';
+              readonly containerType: GQLContainerType;
+              readonly keyScalarType?: GQLScalarType | null;
+              readonly valueScalarType: GQLScalarType;
+            } | null;
+          }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'ThreadSchemaFieldRoles';
+            readonly displayName?: string | null;
+          };
+        };
+      }
+    | {
+        readonly __typename: 'UserItem';
+        readonly id: string;
+        readonly submissionId: string;
+        readonly submissionTime?: Date | string | null;
+        readonly data: JsonObject;
+        readonly type: {
+          readonly __typename: 'UserItemType';
+          readonly id: string;
+          readonly name: string;
+          readonly baseFields: ReadonlyArray<{
+            readonly __typename: 'BaseField';
+            readonly name: string;
+            readonly type: GQLFieldType;
+            readonly required: boolean;
+            readonly container?: {
+              readonly __typename: 'Container';
+              readonly containerType: GQLContainerType;
+              readonly keyScalarType?: GQLScalarType | null;
+              readonly valueScalarType: GQLScalarType;
+            } | null;
+          }>;
+          readonly schemaFieldRoles: {
+            readonly __typename: 'UserSchemaFieldRoles';
+            readonly displayName?: string | null;
+            readonly createdAt?: string | null;
+            readonly profileIcon?: string | null;
+            readonly backgroundImage?: string | null;
+          };
+        };
+      }
+  >;
+};
+
 export type GQLItemTypeHiddenFieldsQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -16968,8 +16951,7 @@ export type GQLAllManualReviewQueuesQuery = {
 export type GQLGetLatestUserSubmittedItemsWithThreadsQueryVariables = Exact<{
   userId: GQLItemIdentifierInput;
   reportedMessages:
-    | ReadonlyArray<GQLItemIdentifierInput>
-    | GQLItemIdentifierInput;
+    ReadonlyArray<GQLItemIdentifierInput> | GQLItemIdentifierInput;
 }>;
 
 export type GQLGetLatestUserSubmittedItemsWithThreadsQuery = {
@@ -17496,8 +17478,7 @@ export type GQLGetMoreInfoForItemsQuery = {
 
 export type GQLGetUserItemsQueryVariables = Exact<{
   itemIdentifiers:
-    | ReadonlyArray<GQLItemIdentifierInput>
-    | GQLItemIdentifierInput;
+    ReadonlyArray<GQLItemIdentifierInput> | GQLItemIdentifierInput;
 }>;
 
 export type GQLGetUserItemsQuery = {
@@ -24789,6 +24770,7 @@ export type GQLPersonalSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -25266,6 +25248,7 @@ export type GQLOrgDefaultSafetySettingsQuery = {
       readonly moderatorSafetyMuteVideo: boolean;
       readonly moderatorSafetyGrayscale: boolean;
       readonly moderatorSafetyBlurLevel: number;
+      readonly moderatorSafetySepia: boolean;
     };
   } | null;
 };
@@ -28289,8 +28272,7 @@ export function useGQLActionQuery(
     GQLActionQueryVariables
   > &
     (
-      | { variables: GQLActionQueryVariables; skip?: boolean }
-      | { skip: boolean }
+      { variables: GQLActionQueryVariables; skip?: boolean } | { skip: boolean }
     ),
 ) {
   const options = { ...defaultOptions, ...baseOptions };
@@ -34380,6 +34362,7 @@ export const GQLManualReviewSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -35003,180 +34986,6 @@ export type GQLReleaseJobLockMutationOptions = Apollo.BaseMutationOptions<
   GQLReleaseJobLockMutation,
   GQLReleaseJobLockMutationVariables
 >;
-export const GQLGetRelatedItemsDocument = gql`
-  query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
-    latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
-      ... on UserItem {
-        id
-        submissionId
-        submissionTime
-        data
-        type {
-          id
-          name
-          baseFields {
-            name
-            type
-            required
-            container {
-              containerType
-              keyScalarType
-              valueScalarType
-            }
-          }
-          schemaFieldRoles {
-            displayName
-            createdAt
-            profileIcon
-            backgroundImage
-          }
-        }
-      }
-      ... on ContentItem {
-        id
-        submissionId
-        submissionTime
-        data
-        type {
-          id
-          name
-          baseFields {
-            name
-            type
-            required
-            container {
-              containerType
-              keyScalarType
-              valueScalarType
-            }
-          }
-          schemaFieldRoles {
-            displayName
-          }
-        }
-      }
-      ... on ThreadItem {
-        id
-        submissionId
-        submissionTime
-        data
-        type {
-          id
-          name
-          baseFields {
-            name
-            type
-            required
-            container {
-              containerType
-              keyScalarType
-              valueScalarType
-            }
-          }
-          schemaFieldRoles {
-            displayName
-          }
-        }
-      }
-    }
-  }
-`;
-
-/**
- * __useGQLGetRelatedItemsQuery__
- *
- * To run a query within a React component, call `useGQLGetRelatedItemsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLGetRelatedItemsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLGetRelatedItemsQuery({
- *   variables: {
- *      itemIdentifiers: // value for 'itemIdentifiers'
- *   },
- * });
- */
-export function useGQLGetRelatedItemsQuery(
-  baseOptions: Apollo.QueryHookOptions<
-    GQLGetRelatedItemsQuery,
-    GQLGetRelatedItemsQueryVariables
-  > &
-    (
-      | { variables: GQLGetRelatedItemsQueryVariables; skip?: boolean }
-      | { skip: boolean }
-    ),
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<
-    GQLGetRelatedItemsQuery,
-    GQLGetRelatedItemsQueryVariables
-  >(GQLGetRelatedItemsDocument, options);
-}
-export function useGQLGetRelatedItemsLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLGetRelatedItemsQuery,
-    GQLGetRelatedItemsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<
-    GQLGetRelatedItemsQuery,
-    GQLGetRelatedItemsQueryVariables
-  >(GQLGetRelatedItemsDocument, options);
-}
-// @ts-ignore
-export function useGQLGetRelatedItemsSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLGetRelatedItemsQuery,
-    GQLGetRelatedItemsQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<
-  GQLGetRelatedItemsQuery,
-  GQLGetRelatedItemsQueryVariables
->;
-export function useGQLGetRelatedItemsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLGetRelatedItemsQuery,
-        GQLGetRelatedItemsQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLGetRelatedItemsQuery | undefined,
-  GQLGetRelatedItemsQueryVariables
->;
-export function useGQLGetRelatedItemsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLGetRelatedItemsQuery,
-        GQLGetRelatedItemsQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<
-    GQLGetRelatedItemsQuery,
-    GQLGetRelatedItemsQueryVariables
-  >(GQLGetRelatedItemsDocument, options);
-}
-export type GQLGetRelatedItemsQueryHookResult = ReturnType<
-  typeof useGQLGetRelatedItemsQuery
->;
-export type GQLGetRelatedItemsLazyQueryHookResult = ReturnType<
-  typeof useGQLGetRelatedItemsLazyQuery
->;
-export type GQLGetRelatedItemsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLGetRelatedItemsSuspenseQuery
->;
-export type GQLGetRelatedItemsQueryResult = Apollo.QueryResult<
-  GQLGetRelatedItemsQuery,
-  GQLGetRelatedItemsQueryVariables
->;
 export const GQLGetCommentsForJobDocument = gql`
   query GetCommentsForJob($jobId: ID!) {
     getCommentsForJob(jobId: $jobId) {
@@ -35524,6 +35333,180 @@ export type GQLGetThreadHistorySuspenseQueryHookResult = ReturnType<
 export type GQLGetThreadHistoryQueryResult = Apollo.QueryResult<
   GQLGetThreadHistoryQuery,
   GQLGetThreadHistoryQueryVariables
+>;
+export const GQLGetRelatedItemsDocument = gql`
+  query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
+    latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
+      ... on UserItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+            createdAt
+            profileIcon
+            backgroundImage
+          }
+        }
+      }
+      ... on ContentItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+          }
+        }
+      }
+      ... on ThreadItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * __useGQLGetRelatedItemsQuery__
+ *
+ * To run a query within a React component, call `useGQLGetRelatedItemsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetRelatedItemsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetRelatedItemsQuery({
+ *   variables: {
+ *      itemIdentifiers: // value for 'itemIdentifiers'
+ *   },
+ * });
+ */
+export function useGQLGetRelatedItemsQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLGetRelatedItemsQuery,
+    GQLGetRelatedItemsQueryVariables
+  > &
+    (
+      | { variables: GQLGetRelatedItemsQueryVariables; skip?: boolean }
+      | { skip: boolean }
+    ),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetRelatedItemsQuery,
+    GQLGetRelatedItemsQueryVariables
+  >(GQLGetRelatedItemsDocument, options);
+}
+export function useGQLGetRelatedItemsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetRelatedItemsQuery,
+    GQLGetRelatedItemsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetRelatedItemsQuery,
+    GQLGetRelatedItemsQueryVariables
+  >(GQLGetRelatedItemsDocument, options);
+}
+// @ts-ignore
+export function useGQLGetRelatedItemsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetRelatedItemsQuery,
+    GQLGetRelatedItemsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetRelatedItemsQuery,
+  GQLGetRelatedItemsQueryVariables
+>;
+export function useGQLGetRelatedItemsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetRelatedItemsQuery,
+        GQLGetRelatedItemsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetRelatedItemsQuery | undefined,
+  GQLGetRelatedItemsQueryVariables
+>;
+export function useGQLGetRelatedItemsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetRelatedItemsQuery,
+        GQLGetRelatedItemsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetRelatedItemsQuery,
+    GQLGetRelatedItemsQueryVariables
+  >(GQLGetRelatedItemsDocument, options);
+}
+export type GQLGetRelatedItemsQueryHookResult = ReturnType<
+  typeof useGQLGetRelatedItemsQuery
+>;
+export type GQLGetRelatedItemsLazyQueryHookResult = ReturnType<
+  typeof useGQLGetRelatedItemsLazyQuery
+>;
+export type GQLGetRelatedItemsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLGetRelatedItemsSuspenseQuery
+>;
+export type GQLGetRelatedItemsQueryResult = Apollo.QueryResult<
+  GQLGetRelatedItemsQuery,
+  GQLGetRelatedItemsQueryVariables
 >;
 export const GQLItemTypeHiddenFieldsDocument = gql`
   query ItemTypeHiddenFields {
@@ -43024,6 +43007,7 @@ export const GQLPersonalSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -45214,6 +45198,7 @@ export const GQLOrgDefaultSafetySettingsDocument = gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -45420,9 +45405,9 @@ export const namedOperations = {
     GetDecidedJob: 'GetDecidedJob',
     ManualReviewSafetySettings: 'ManualReviewSafetySettings',
     ManualReviewJobInfo: 'ManualReviewJobInfo',
-    getRelatedItems: 'getRelatedItems',
     GetCommentsForJob: 'GetCommentsForJob',
     getThreadHistory: 'getThreadHistory',
+    getRelatedItems: 'getRelatedItems',
     ItemTypeHiddenFields: 'ItemTypeHiddenFields',
     AllManualReviewQueues: 'AllManualReviewQueues',
     getLatestUserSubmittedItemsWithThreads:

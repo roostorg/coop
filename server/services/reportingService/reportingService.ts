@@ -34,8 +34,7 @@ import ReportingRules, {
 
 export type ReporterKind = 'rule' | 'user';
 export type Reporter =
-  | { kind: 'rule'; id: string }
-  | { kind: 'user'; typeId: string; id: string };
+  { kind: 'rule'; id: string } | { kind: 'user'; typeId: string; id: string };
 
 export type Appealer = { typeId: string; id: string };
 

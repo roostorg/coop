@@ -11,8 +11,7 @@ export type CoopEmailAddress =
   (typeof CoopEmailAddress)[keyof typeof CoopEmailAddress];
 
 type Content =
-  | { text: string; html?: string }
-  | { html: string; text?: string };
+  { text: string; html?: string } | { html: string; text?: string };
 
 export type Message = Content & {
   to: string | string[];

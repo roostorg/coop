@@ -35,9 +35,7 @@ import { type RoutingRuleStatus } from './modules/JobRouting.js';
 // What to do with a user's other pending reports when a trigger action is
 // taken on one of their jobs (issue #650).
 export type ClearReportsDisposition =
-  | 'AUTOMATIC_CLOSE'
-  | 'IGNORE'
-  | 'SAME_ACTION';
+  'AUTOMATIC_CLOSE' | 'IGNORE' | 'SAME_ACTION';
 
 export type ClearReportsScope = 'CURRENT_QUEUE' | 'ALL_QUEUES';
 
@@ -90,7 +88,11 @@ export type ManualReviewToolServicePg = {
     auto_close_jobs: boolean;
     // Mirrors the manual_review_queues_job_sort_type_check constraint.
     // Has a DB default, so it's optional on insert.
-    job_sort_type: ColumnType<JobSortType, JobSortType | undefined, JobSortType>;
+    job_sort_type: ColumnType<
+      JobSortType,
+      JobSortType | undefined,
+      JobSortType
+    >;
     // Null disables "clear other reports for this user" for the queue.
     clear_reports_disposition: ClearReportsDisposition | null;
     // Has a DB default, so it's optional on insert.
@@ -110,9 +112,7 @@ export type ManualReviewToolServicePg = {
     decision_components: ManualReviewDecisionComponent[];
     related_actions: ManualReviewDecisionRelatedAction[];
     enqueue_source_info:
-      | ManualReviewJobEnqueueSourceInfo
-      | AppealEnqueueSourceInfo
-      | null;
+      ManualReviewJobEnqueueSourceInfo | AppealEnqueueSourceInfo | null;
     item_created_at: Date | null;
     decision_reason: string | null;
   };
@@ -204,8 +204,7 @@ export type ManualReviewToolServicePg = {
     item_type_id: string;
     created_at: Date;
     enqueue_source_info:
-      | ManualReviewJobEnqueueSourceInfo
-      | AppealEnqueueSourceInfo;
+      ManualReviewJobEnqueueSourceInfo | AppealEnqueueSourceInfo;
     policy_ids: string[];
   };
   'manual_review_tool.flattened_job_creations': {

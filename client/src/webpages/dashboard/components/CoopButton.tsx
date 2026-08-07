@@ -6,11 +6,7 @@ import { Link } from 'react-router-dom';
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
 export type CoopButtonType =
-  | 'primary'
-  | 'secondary'
-  | 'danger'
-  | 'green'
-  | 'link';
+  'primary' | 'secondary' | 'danger' | 'green' | 'link';
 export type CoopButtonFontWeight = 'normal' | 'semibold';
 export type CoopButtonIconStyle = 'fill' | 'stroke';
 

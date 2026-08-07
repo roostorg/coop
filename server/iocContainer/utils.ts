@@ -10,8 +10,7 @@ const DEPENDENCIES = Symbol();
 type DepName = keyof Deps;
 
 export type Factory<D extends any[], R extends any> =
-  | ((...args: D) => R)
-  | (new (...args: D) => R);
+  ((...args: D) => R) | (new (...args: D) => R);
 
 export type AnnotatedFactory<ServiceType> = Factory<any[], ServiceType> & {
   [DEPENDENCIES]: DepName[];
