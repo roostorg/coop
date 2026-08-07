@@ -3,16 +3,7 @@ import { cva, VariantProps } from 'class-variance-authority';
 import React from 'react';
 
 type TextSize =
-  | 'XXS'
-  | 'XS'
-  | 'SM'
-  | 'base'
-  | 'LG'
-  | 'XL'
-  | '2XL'
-  | '3XL'
-  | '4XL'
-  | '5XL';
+  'XXS' | 'XS' | 'SM' | 'base' | 'LG' | 'XL' | '2XL' | '3XL' | '4XL' | '5XL';
 
 type TextWeight = 'regular' | 'medium' | 'semibold' | 'bold';
 

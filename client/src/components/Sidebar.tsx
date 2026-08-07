@@ -353,6 +353,8 @@ export default function Sidebar(props: SidebarProps) {
                 <TooltipTrigger asChild>
                   <div
                     role="button"
+                    aria-label="Settings"
+                    aria-expanded={isSettingsMenuVisible}
                     tabIndex={0}
                     onClick={() => setIsSettingsMenuExpanded((prev) => !prev)}
                     onKeyDown={(e) => {

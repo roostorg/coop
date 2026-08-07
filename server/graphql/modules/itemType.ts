@@ -40,12 +40,10 @@ import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 export type ItemTypeResolversParentType = ItemTypeT | ItemTypeSelector;
 export type ThreadItemTypeResolversParentType =
-  | ThreadItemTypeT
-  | ItemTypeSelector;
+  ThreadItemTypeT | ItemTypeSelector;
 export type UserItemTypeResolversParentType = UserItemTypeT | ItemTypeSelector;
 export type ContentItemTypeResolversParentType =
-  | ContentItemTypeT
-  | ItemTypeSelector;
+  ContentItemTypeT | ItemTypeSelector;
 
 const typeDefs = /* GraphQL */ `
   interface Field {
@@ -1082,13 +1080,9 @@ function isValidField(it: GQLFieldInput): it is Field {
 
   // similar idea to the `satisfies` checks above.
   const containerType = it.container?.containerType satisfies
-    | ContainerType
-    | null
-    | undefined;
+    ContainerType | null | undefined;
   const keyScalarType = it.container?.keyScalarType satisfies
-    | ScalarType
-    | null
-    | undefined;
+    ScalarType | null | undefined;
 
   const isValidContainerType =
     containerTypes.includes(type) &&

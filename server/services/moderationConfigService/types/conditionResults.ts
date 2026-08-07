@@ -21,8 +21,7 @@ export enum ConditionFailureOutcome {
 }
 
 export type ConditionOutcome =
-  | ConditionCompletionOutcome
-  | ConditionFailureOutcome;
+  ConditionCompletionOutcome | ConditionFailureOutcome;
 
 export type ConditionCompletionMetadata = {
   score?: string;
@@ -49,8 +48,7 @@ export type ConditionResult =
         & ConditionResultCommonMetadata)
 
 export type ConditionWithResult =
-  | LeafConditionWithResult
-  | ConditionSetWithResult;
+  LeafConditionWithResult | ConditionSetWithResult;
 
 export type ConditionSetWithResult = Omit<ConditionSet, 'conditions'> & {
   conditions:

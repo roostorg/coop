@@ -37,7 +37,7 @@ export default function ItemTypePreview<T extends ItemTypeKind>(props: {
     case 'CONTENT':
       return <ContentTypePreview roles={roles as ItemTypeRoles<'CONTENT'>} />;
     case 'THREAD':
-      return <ThreadTypePreview roles={roles as ItemTypeRoles<'THREAD'>} />;
+      return <ThreadTypePreview roles={roles} />;
     case 'USER':
       return <UserTypePreview roles={roles as ItemTypeRoles<'USER'>} />;
   }

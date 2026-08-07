@@ -1,11 +1,11 @@
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 
 import { type GetRuleAnomalyDetectionStatistics } from '../../services/ruleAnomalyDetectionService/index.js';
 
 const __dirname = dirname(new URL(import.meta.url).pathname);
-const tableDump = yaml.load(
+const tableDump = load(
   // eslint-disable-next-line security/detect-non-literal-fs-filename
   readFileSync(join(__dirname, './rule_pass_sample_data.yaml'), 'utf-8'),
 ) as {

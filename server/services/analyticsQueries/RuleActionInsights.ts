@@ -477,8 +477,7 @@ export default inject(
 export { type RuleActionInsights, type SignalWithScore };
 
 type GatherSignalsConditionWithResult =
-  | GatherSignalsConditionSetWithResult
-  | GatherSignalsLeafConditionWithResult;
+  GatherSignalsConditionSetWithResult | GatherSignalsLeafConditionWithResult;
 
 type GatherSignalsLeafConditionWithResult = {
   signal?: {

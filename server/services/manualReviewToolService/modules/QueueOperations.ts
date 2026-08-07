@@ -15,6 +15,7 @@ import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
   b64UrlDecode,
   b64UrlEncode,
+  jsonStringify,
   type B64UrlOf,
 } from '../../../utils/encoding.js';
 import {
@@ -23,7 +24,10 @@ import {
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
-import { isUniqueViolationError } from '../../../utils/kysely.js';
+import {
+  isForeignKeyViolationError,
+  isUniqueViolationError,
+} from '../../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
@@ -107,7 +111,8 @@ export type QueueOperationsErrorType =
   | 'DeleteAllJobsUnauthorizedError'
   | 'QueueDoesNotExistError'
   | 'UnableToDeleteDefaultQueueError'
-  | 'AccessibleQueueNotInOrgError';
+  | 'AccessibleQueueNotInOrgError'
+  | 'QueueHasDependentRoutingRulesError';
 
 // Compound identifier for a queue. orgId is needed for security, but also
 // because queues are/will be actually sharded across redis instances for
@@ -164,6 +169,7 @@ export default class QueueOperations {
     private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly redis: RedisConnection,
+    private readonly tracer: Dependencies['Tracer'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
@@ -448,10 +454,9 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
-    await queue.obliterate({ force: true });
-
-    const numDeletedRows = await this.transactionWithRetry(
-      async (transaction) => {
+    let numDeletedRows: bigint;
+    try {
+      numDeletedRows = await this.transactionWithRetry(async (transaction) => {
         // Delete the queue scoped by org first. If it doesn't belong to the
         // caller's org, no rows are touched and we bail before deleting any
         // join rows. `users_and_accessible_queues` has no `org_id` column,
@@ -473,8 +478,55 @@ export default class QueueOperations {
           .execute();
 
         return queueDelete.numDeletedRows;
-      },
-    );
+      });
+    } catch (e) {
+      const constraint = (e as { constraint?: string }).constraint;
+      if (
+        isForeignKeyViolationError(e) &&
+        (constraint === 'routing_rules_destination_queue_id_fkey' ||
+          constraint === 'appeals_routing_rules_destination_queue_id_fkey')
+      ) {
+        // routing_rules and appeals_routing_rules have RESTRICT FKs to this
+        // queue. Query for their names so the error message is actionable.
+        const [routingRules, appealsRoutingRules] = await Promise.all([
+          this.pgQuery
+            .selectFrom('manual_review_tool.routing_rules')
+            .select(['name'])
+            .where('destination_queue_id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .execute(),
+          this.pgQuery
+            .selectFrom('manual_review_tool.appeals_routing_rules')
+            .select(['name'])
+            .where('destination_queue_id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .execute(),
+        ]);
+        const ruleNames = [
+          ...routingRules.map((r) => r.name),
+          ...appealsRoutingRules.map((r) => r.name),
+        ];
+        throw makeQueueHasDependentRoutingRulesError(ruleNames, {
+          shouldErrorSpan: false,
+        });
+      }
+      throw e;
+    }
+
+    if (numDeletedRows === 1n) {
+      try {
+        await queue.obliterate({ force: true });
+      } catch (e) {
+        // The DB row is already gone at this point, so a retry would see
+        // numDeletedRows === 0n and skip obliterate() entirely, silently
+        // leaving orphaned Bull/Redis data behind. Best-effort cleanup:
+        // surface the failure to the active tracing span (mirrors the
+        // pattern used elsewhere, e.g. `UserApi.logout`) so ops can run
+        // `server/bin/recover-mrt-queue.ts`, but still report success since
+        // the DB delete itself succeeded.
+        this.tracer.logActiveSpanFailedIfAny(e);
+      }
+    }
 
     return numDeletedRows === 1n;
   }
@@ -489,8 +541,23 @@ export default class QueueOperations {
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
+    //
+    // routing_rules and appeals_routing_rules have RESTRICT FKs to this queue,
+    // so we must delete any referencing rules before deleting the queue.
     const numDeletedRows = await this.transactionWithRetry(
       async (transaction) => {
+        await transaction
+          .deleteFrom('manual_review_tool.routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .execute();
+
+        await transaction
+          .deleteFrom('manual_review_tool.appeals_routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .execute();
+
         const queueDelete = await transaction
           .deleteFrom('manual_review_tool.manual_review_queues')
           .where('id', '=', queueId)
@@ -1753,12 +1820,14 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job
-    // BullMQ maintains FIFO order within each state, so we only need to compare
-    // the first job from each state to find the oldest overall
+    // Get the first waiting job and first delayed job. getWaiting/getDelayed
+    // return jobs oldest-first, so we only need to compare the first job from
+    // each state to find the oldest overall. NB: the equivalent
+    // queue.getJobs([state], 0, 0) defaults to descending order and would
+    // return the *newest* job instead.
     const [waitingJobs, delayedJobs] = await Promise.all([
-      queue.getJobs(['waiting'], 0, 0),
-      queue.getJobs(['delayed'], 0, 0),
+      queue.getWaiting(0, 0),
+      queue.getDelayed(0, 0),
     ]);
 
     // If no jobs exist in either state, return null
@@ -2211,5 +2280,21 @@ export const makeManualReviewQueueNameExistsError = (data: ErrorInstanceData) =>
     title:
       'A manual review queue with that name already exists in this organization.',
     name: 'ManualReviewQueueNameExistsError',
+    ...data,
+  });
+
+export const makeQueueHasDependentRoutingRulesError = (
+  ruleNames: string[],
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.Conflict],
+    title:
+      ruleNames.length > 0
+        ? `This queue cannot be deleted because it is used by the following routing rules:\n${ruleNames.join(', ')}\nUpdate or delete those rules first.`
+        : 'This queue cannot be deleted because it is still referenced by one or more routing rules. Update or delete those rules first.',
+    detail: ruleNames.length > 0 ? jsonStringify(ruleNames) : undefined,
+    name: 'QueueHasDependentRoutingRulesError',
     ...data,
   });
