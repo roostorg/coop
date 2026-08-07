@@ -33,8 +33,8 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.10.2",
-    "knip": "^6.26.0",
+    "@types/pg": "^8.20.1",
+    "knip": "^6.31.0",
     "typescript": "^6.0.3"
   }
 }
