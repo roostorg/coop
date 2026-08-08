@@ -142,6 +142,74 @@ describe('ClickhouseActionExecutionsAdapter.findInferredUserIdentity', () => {
   });
 });
 
+describe('ClickhouseActionExecutionsAdapter.getRecentUserStrikeActions', () => {
+  it('includes creator fields in the returned records', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'content-1',
+        item_type_id: 'content-type-A',
+        item_type_kind: 'CONTENT',
+        item_creator_id: 'user-7',
+        item_creator_type_id: 'user-type-X',
+        action_id: 'action-ban',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      actionId: 'action-ban',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-A',
+      creatorId: 'user-7',
+      creatorTypeId: 'user-type-X',
+      source: 'user-strike-action-execution',
+    });
+  });
+
+  it('returns null creator fields when columns are missing', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'user-direct',
+        item_type_id: 'user-type-A',
+        item_type_kind: 'USER',
+        item_creator_id: null,
+        item_creator_type_id: null,
+        action_id: 'action-suspend',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.creatorId).toBeNull();
+    expect(results[0]?.creatorTypeId).toBeNull();
+  });
+
+  it('selects item_creator_id and item_creator_type_id in the SQL', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getRecentUserStrikeActions({ orgId: 'org-1', limit: 5 });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain('item_creator_id');
+    expect(sentSql).toContain('item_creator_type_id');
+  });
+});
+
 describe('ClickhouseActionExecutionsAdapter.findContentCreatorIdentity', () => {
   it('returns null when no rows match', async () => {
     const { adapter } = makeAdapter([]);

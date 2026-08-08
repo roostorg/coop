@@ -115,6 +115,8 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         ts,
         item_id,
         item_type_id,
+        item_creator_id,
+        item_creator_type_id,
         action_id,
         action_source
       FROM analytics.ACTION_EXECUTIONS
@@ -134,6 +136,8 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         actionId: row.action_id,
         itemId: row.item_id!,
         itemTypeId: row.item_type_id!,
+        creatorId: row.item_creator_id ?? null,
+        creatorTypeId: row.item_creator_type_id ?? null,
         source: row.action_source ?? 'user-strike-action-execution',
         occurredAt: new Date(row.ts),
       }));
