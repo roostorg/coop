@@ -26,6 +26,8 @@ gql`
     recentUserStrikeActions(input: $input) {
       itemId
       itemTypeId
+      creatorId
+      creatorTypeId
       actionId
       source
       time
@@ -213,14 +215,16 @@ function RecentUserStrikeActionsTable() {
       ?.slice()
       ?.sort((a, b) => (a.time > b.time ? -1 : a.time < b.time ? 1 : 0))
       .map((values) => {
+        const userId = values.creatorId ?? values.itemId;
+        const userTypeId = values.creatorTypeId ?? values.itemTypeId;
         return {
           user: (
             <Link
               className="cursor-pointer shrink-0"
-              to={`/dashboard/manual_review/investigation?id=${values.itemId}&typeId=${values.itemTypeId}`}
+              to={`/dashboard/manual_review/investigation?id=${userId}&typeId=${userTypeId}`}
               target="_blank"
             >
-              {values.itemId}
+              {userId}
             </Link>
           ),
           action: actionsById
