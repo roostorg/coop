@@ -199,6 +199,30 @@ describe('ClickhouseActionExecutionsAdapter.getRecentUserStrikeActions', () => {
     expect(results[0]?.creatorTypeId).toBeNull();
   });
 
+  it('returns both creator fields when both are present in the row', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'content-1',
+        item_type_id: 'content-type-A',
+        item_type_kind: 'CONTENT',
+        item_creator_id: 'user-5',
+        item_creator_type_id: null,
+        action_id: 'action-ban',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results[0]?.creatorId).toBe('user-5');
+    expect(results[0]?.creatorTypeId).toBeNull();
+  });
+
   it('selects item_creator_id and item_creator_type_id in the SQL', async () => {
     const { adapter, query } = makeAdapter([]);
 

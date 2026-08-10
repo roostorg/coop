@@ -215,8 +215,12 @@ function RecentUserStrikeActionsTable() {
       ?.slice()
       ?.sort((a, b) => (a.time > b.time ? -1 : a.time < b.time ? 1 : 0))
       .map((values) => {
-        const userId = values.creatorId ?? values.itemId;
-        const userTypeId = values.creatorTypeId ?? values.itemTypeId;
+        const creatorIdentity =
+          values.creatorId && values.creatorTypeId
+            ? { id: values.creatorId, typeId: values.creatorTypeId }
+            : null;
+        const userId = creatorIdentity?.id ?? values.itemId;
+        const userTypeId = creatorIdentity?.typeId ?? values.itemTypeId;
         return {
           user: (
             <Link

@@ -266,8 +266,9 @@ export class UserStrikeService {
               actionId: it.actionId,
               itemId: it.itemId,
               itemTypeId: it.itemTypeId,
-              creatorId: it.creatorId ?? null,
-              creatorTypeId: it.creatorTypeId ?? null,
+              creatorId: it.creatorId && it.creatorTypeId ? it.creatorId : null,
+              creatorTypeId:
+                it.creatorId && it.creatorTypeId ? it.creatorTypeId : null,
               source: it.source,
               time: it.occurredAt,
             }
