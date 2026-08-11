@@ -181,8 +181,8 @@ export function userPenaltySeveritySort<TData extends RowWithValues>(
 }
 
 /**
- * Creates a date sort function that sorts by a raw date field from the original row data
- * @param dateKey - the key to access the raw date value from rowA.original/rowB.original
+ * Creates a date sort function that sorts by a raw date field from the row values
+ * @param dateKey - the key to access the raw date value from rowA.original.values/rowB.original.values
  * @returns a sort function compatible with react-table
  */
 export function dateSort(dateKey: string) {
@@ -191,8 +191,8 @@ export function dateSort(dateKey: string) {
     rowB: Row<TData>,
     _columnId: string,
   ) => {
-    const a = (rowA.original as unknown as Record<string, unknown>)[dateKey];
-    const b = (rowB.original as unknown as Record<string, unknown>)[dateKey];
+    const a = rowA.original.values[dateKey];
+    const b = rowB.original.values[dateKey];
 
     // Handle null/undefined - push to bottom
     if (!a && !b) return 0;

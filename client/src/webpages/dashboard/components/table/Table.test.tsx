@@ -8,7 +8,7 @@ import {
   DefaultColumnFilter,
   NumberRangeColumnFilter,
 } from './filters';
-import { stringSort } from './sort';
+import { dateSort, stringSort } from './sort';
 import Table, { TableColumnDef } from './Table';
 
 type TableRow = {
@@ -128,6 +128,50 @@ describe('Table behavior', () => {
       'Rendered Alpine',
       'Rendered Alpha',
     ]);
+  });
+
+  it('sorts a rendered age column by its nested raw date value', () => {
+    type QueueRow = {
+      oldestTaskAge: ReactNode;
+      values: { oldestJobCreatedAt: string };
+    };
+    const queueColumns = [
+      {
+        header: 'Oldest Task Age',
+        accessorKey: 'oldestTaskAge',
+        sortFn: dateSort('oldestJobCreatedAt'),
+        sortDescFirst: false,
+      },
+    ] satisfies TableColumnDef<QueueRow>[];
+    const queueData: QueueRow[] = [
+      {
+        oldestTaskAge: <span>Newest task</span>,
+        values: { oldestJobCreatedAt: '2026-08-11T00:00:00Z' },
+      },
+      {
+        oldestTaskAge: <span>Oldest task</span>,
+        values: { oldestJobCreatedAt: '2026-08-01T00:00:00Z' },
+      },
+      {
+        oldestTaskAge: <span>Middle task</span>,
+        values: { oldestJobCreatedAt: '2026-08-06T00:00:00Z' },
+      },
+    ];
+    render(
+      <MemoryRouter>
+        <Table columns={queueColumns} data={queueData} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      screen.getByRole('columnheader', { name: /Oldest Task Age/ }),
+    );
+
+    expect(
+      within(screen.getAllByRole('rowgroup')[1])
+        .getAllByRole('row')
+        .map((row) => within(row).getByRole('cell').textContent),
+    ).toEqual(['Oldest task', 'Middle task', 'Newest task']);
   });
 
   it('does not offer filtering unless a column supplies a filter renderer', () => {
