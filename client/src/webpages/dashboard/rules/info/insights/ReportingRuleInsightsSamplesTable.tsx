@@ -11,7 +11,6 @@ import uniq from 'lodash/uniq';
 import { useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
 import { Link } from 'react-router-dom';
-import { Row } from 'react-table';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../../components/common/CopyTextComponent';
@@ -23,7 +22,7 @@ import {
   SelectColumnFilter,
 } from '../../../components/table/filters';
 import { ruleStatusSort, stringSort } from '../../../components/table/sort';
-import Table from '../../../components/table/Table';
+import Table, { TableRow } from '../../../components/table/Table';
 
 import {
   GQLFieldType,
@@ -235,17 +234,19 @@ export default function ReportingRuleInsightsSamplesTable(props: {
     );
 
     return distinctSignalNames.map((signalName) => ({
-      Header: signalName,
-      accessor: signalName,
-      Filter: (props: ColumnProps) =>
-        NumberRangeColumnFilter({
-          columnProps: props,
-          accessor: signalName,
-          placeholder: '',
-        }),
-      filter: 'between',
+      header: signalName,
+      accessorKey: signalName,
+      meta: {
+        filter: (props: ColumnProps) =>
+          NumberRangeColumnFilter({
+            columnProps: props,
+            accessor: signalName,
+            placeholder: '',
+          }),
+      },
+      filterFn: 'between' as const,
       sortDescFirst: true,
-      sortType: stringSort,
+      sortingFn: stringSort,
     }));
   }, [allSignals, samples]);
 
@@ -289,55 +290,61 @@ export default function ReportingRuleInsightsSamplesTable(props: {
   const columns = useMemo(() => {
     return [
       {
-        Header: 'Timestamp',
-        accessor: 'time',
-        Filter: (props: ColumnProps) =>
-          DateRangeColumnFilter({
-            columnProps: props,
-            accessor: 'date',
-            placeholder: '',
-          }),
-        filter: 'dateRange',
+        header: 'Timestamp',
+        accessorKey: 'time',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DateRangeColumnFilter({
+              columnProps: props,
+              accessor: 'date',
+              placeholder: '',
+            }),
+        },
+        filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortType: stringSort,
+        sortingFn: stringSort,
       },
       {
-        Header: 'Status',
-        accessor: 'status',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'status',
-            placeholder: 'Live',
-          }),
-        filter: 'includes',
-        sortType: ruleStatusSort,
+        header: 'Status',
+        accessorKey: 'status',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'status',
+              placeholder: 'Live',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortingFn: ruleStatusSort,
       },
       {
-        Header: 'Item',
-        accessor: 'item',
-        canSort: false,
+        header: 'Item',
+        accessorKey: 'item',
+        enableSorting: false,
       },
       {
-        Header: 'Item Type',
-        accessor: 'itemTypeName',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'itemTypeName',
-          }),
-        filter: 'includes',
-        sortType: stringSort,
+        header: 'Item Type',
+        accessorKey: 'itemTypeName',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'itemTypeName',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortingFn: stringSort,
       },
       {
-        Header: 'ID',
-        accessor: 'id', // accessor is the "key" in the data
-        canSort: false,
+        header: 'ID',
+        accessorKey: 'id', // accessor is the "key" in the data
+        enableSorting: false,
       },
       {
-        Header: 'Creator ID',
-        accessor: 'creatorId',
-        canSort: false,
+        header: 'Creator ID',
+        accessorKey: 'creatorId',
+        enableSorting: false,
       },
       ...extraColumns,
     ];
@@ -439,8 +446,8 @@ export default function ReportingRuleInsightsSamplesTable(props: {
           values,
           ...Object.fromEntries(
             extraColumns.map((it) => [
-              it.accessor,
-              (values as { [key: string]: any })[it.accessor],
+              it.accessorKey,
+              (values as { [key: string]: any })[it.accessorKey],
             ]),
           ),
         };
@@ -452,7 +459,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
     throw error ?? priorRuleVersionError ?? signalsError!;
   }
 
-  const onSelectRow = (row: Row<any>) => {
+  const onSelectRow = (row: TableRow<any>) => {
     dataValues.length > 0 &&
       setDetailViewData({
         visible: true,

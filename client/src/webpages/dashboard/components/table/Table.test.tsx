@@ -66,7 +66,7 @@ function expectAllRowsVisible() {
 }
 
 const filterFor =
-  (accessor: 'name' | 'status', placeholder: string) => (props: ColumnProps) =>
+  (accessor: string, placeholder: string) => (props: ColumnProps) =>
     DefaultColumnFilter({ columnProps: props, accessor, placeholder });
 
 describe('Table v7 behavior', () => {
@@ -245,7 +245,7 @@ describe('Table v7 behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
     const menu = screen
       .getByRole('button', { name: 'Save' })
-      .closest('.absolute')!;
+      .closest<HTMLElement>('.absolute')!;
     fireEvent.click(within(menu).getByText('Status'));
     fireEvent.change(screen.getByPlaceholderText('Filter statuses'), {
       target: { value: 'Open' },
@@ -258,7 +258,9 @@ describe('Table v7 behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
     fireEvent.click(
       within(
-        screen.getByRole('button', { name: 'Save' }).closest('.absolute')!,
+        screen
+          .getByRole('button', { name: 'Save' })
+          .closest<HTMLElement>('.absolute')!,
       ).getByText('Name'),
     );
     expect(screen.getByTestId('facets').textContent).toBe('Zulu');

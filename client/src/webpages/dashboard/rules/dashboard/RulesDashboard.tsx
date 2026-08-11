@@ -14,7 +14,6 @@ import lowerCase from 'lodash/lowerCase';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import { Column, Row } from 'react-table';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';
@@ -33,7 +32,7 @@ import {
   SelectColumnFilter,
 } from '../../components/table/filters';
 import { ruleStatusSort, stringSort } from '../../components/table/sort';
-import Table from '../../components/table/Table';
+import Table, { TableColumnDef, TableRow } from '../../components/table/Table';
 import TruncatedListTableCell from '../../components/table/TruncatedListTableCell';
 import TruncatedTextTableCell from '../../components/table/TruncatedTextTableCell';
 import UserWithAvatar from '../../components/UserWithAvatar';
@@ -191,7 +190,7 @@ export default function RulesDashboard() {
   const navigate = useNavigate();
   const [timeDivision, setTimeDivision] = useState<TimeDivisionOptions>('DAY');
 
-  const rowLinkTo = (row: Row<any>) => {
+  const rowLinkTo = (row: TableRow<any>) => {
     return `info/${row.original.values.id}`;
   };
 
@@ -284,83 +283,95 @@ export default function RulesDashboard() {
     () =>
       [
         {
-          Header: '',
-          accessor: 'favoriteRules',
-          canSort: false,
+          header: '',
+          accessorKey: 'favoriteRules',
+          enableSorting: false,
         },
         {
-          Header: 'Created',
-          accessor: 'dateCreated',
-          Filter: (props: ColumnProps) =>
-            DateRangeColumnFilter({
-              columnProps: props,
-              accessor: 'dateCreated',
-            }),
-          filter: 'dateRange',
+          header: 'Created',
+          accessorKey: 'dateCreated',
+          meta: {
+            filter: (props: ColumnProps) =>
+              DateRangeColumnFilter({
+                columnProps: props,
+                accessor: 'dateCreated',
+              }),
+          },
+          filterFn: 'dateRange' as const,
           sortDescFirst: true,
-          sortType: stringSort,
+          sortingFn: stringSort,
         },
         {
-          Header: 'Rule',
-          accessor: 'name',
-          Filter: (props: ColumnProps) =>
-            DefaultColumnFilter({
-              columnProps: props,
-              accessor: 'name',
-            }),
-          filter: 'text',
-          sortType: stringSort,
+          header: 'Rule',
+          accessorKey: 'name',
+          meta: {
+            filter: (props: ColumnProps) =>
+              DefaultColumnFilter({
+                columnProps: props,
+                accessor: 'name',
+              }),
+          },
+          filterFn: 'text' as const,
+          sortingFn: stringSort,
         },
         {
-          Header: 'Owner',
-          accessor: 'owner',
-          Filter: (props: ColumnProps) =>
-            SelectColumnFilter({
-              columnProps: props,
-              accessor: 'owner',
-            }),
-          filter: 'includes',
-          canSort: false,
+          header: 'Owner',
+          accessorKey: 'owner',
+          meta: {
+            filter: (props: ColumnProps) =>
+              SelectColumnFilter({
+                columnProps: props,
+                accessor: 'owner',
+              }),
+          },
+          filterFn: 'includes' as const,
+          enableSorting: false,
         },
         {
-          Header: 'Status',
-          accessor: 'status',
-          Filter: (props: ColumnProps) =>
-            SelectColumnFilter({
-              columnProps: props,
-              accessor: 'status',
-            }),
-          filter: 'includes',
-          sortType: ruleStatusSort,
+          header: 'Status',
+          accessorKey: 'status',
+          meta: {
+            filter: (props: ColumnProps) =>
+              SelectColumnFilter({
+                columnProps: props,
+                accessor: 'status',
+              }),
+          },
+          filterFn: 'includes' as const,
+          sortingFn: ruleStatusSort,
         },
         {
-          Header: 'Policies',
-          accessor: 'policies',
-          Filter: (props: ColumnProps) =>
-            SelectColumnFilter({
-              columnProps: props,
-              accessor: 'policies',
-            }),
-          filter: 'includes',
-          canSort: false,
+          header: 'Policies',
+          accessorKey: 'policies',
+          meta: {
+            filter: (props: ColumnProps) =>
+              SelectColumnFilter({
+                columnProps: props,
+                accessor: 'policies',
+              }),
+          },
+          filterFn: 'includes' as const,
+          enableSorting: false,
         },
         {
-          Header: 'Item Types',
-          accessor: 'itemTypes',
-          Filter: (props: ColumnProps) =>
-            SelectColumnFilter({
-              columnProps: props,
-              accessor: 'itemTypes',
-            }),
-          filter: 'includes',
-          canSort: false,
+          header: 'Item Types',
+          accessorKey: 'itemTypes',
+          meta: {
+            filter: (props: ColumnProps) =>
+              SelectColumnFilter({
+                columnProps: props,
+                accessor: 'itemTypes',
+              }),
+          },
+          filterFn: 'includes' as const,
+          enableSorting: false,
         },
         {
-          Header: '',
-          accessor: 'mutations',
-          canSort: false,
+          header: '',
+          accessorKey: 'mutations',
+          enableSorting: false,
         },
-      ] as (Column<object> & { canSort?: boolean })[],
+      ] as (TableColumnDef<object> & { canSort?: boolean })[],
     [],
   );
 

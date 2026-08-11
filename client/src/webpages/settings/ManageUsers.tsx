@@ -314,70 +314,80 @@ export default function ManageUsers() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-            placeholder: 'Jane Smith',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Name',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+              placeholder: 'Jane Smith',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortingFn: stringSort,
       },
       {
-        Header: 'Email',
-        accessor: 'email',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'email',
-            placeholder: 'jane@mywebsite.com',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Email',
+        accessorKey: 'email',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'email',
+              placeholder: 'jane@mywebsite.com',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortingFn: stringSort,
       },
       {
-        Header: 'Role',
-        accessor: 'role',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'role',
-            placeholder: 'Filter by role',
-          }),
-        filter: 'includes',
-        sortType: userRoleSort,
+        header: 'Role',
+        accessorKey: 'role',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'role',
+              placeholder: 'Filter by role',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortingFn: userRoleSort,
       },
       {
-        Header: 'Approval Status',
-        accessor: 'approvalStatus',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'approvalStatus',
-            placeholder: 'Filter by status',
-          }),
-        filter: 'includes',
-        sortType: boolSort,
+        header: 'Approval Status',
+        accessorKey: 'approvalStatus',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'approvalStatus',
+              placeholder: 'Filter by status',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortingFn: boolSort,
       },
       {
-        Header: 'Date Created',
-        accessor: 'dateCreated',
-        Filter: (props: ColumnProps) =>
-          DateRangeColumnFilter({
-            columnProps: props,
-            accessor: 'dateCreated',
-            placeholder: '',
-          }),
-        filter: 'dateRange',
+        header: 'Date Created',
+        accessorKey: 'dateCreated',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DateRangeColumnFilter({
+              columnProps: props,
+              accessor: 'dateCreated',
+              placeholder: '',
+            }),
+        },
+        filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortType: stringSort,
+        sortingFn: stringSort,
       },
       {
-        Header: '',
-        accessor: 'mutations', // accessor is the "key" in the data
-        canSort: false,
+        header: '',
+        accessorKey: 'mutations', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],

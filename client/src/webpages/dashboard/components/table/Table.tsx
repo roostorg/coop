@@ -65,6 +65,9 @@ export default function Table<TData extends Record<string, any>>(
   const table = useReactTable({
     columns,
     data: [...data],
+    defaultColumn: {
+      cell: ({ getValue }) => getValue() as ReactNode,
+    },
     filterFns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
