@@ -1,5 +1,4 @@
 import { Button } from '@/coop-ui/Button';
-import { Loading } from '@/coop-ui/Button.stories';
 import { CheckmarkFilled, PlusFilled, TrashCanFilled } from '@/icons';
 import { treeFromList } from '@/utils/tree';
 import { Input } from 'antd';
@@ -8,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import CoopModal from '../components/CoopModal';
+import ComponentLoading from '@/components/common/ComponentLoading';
 
 import {
   GQLUserPenaltySeverity,
@@ -101,7 +101,7 @@ export default function PolicyForm() {
   }, [data, existingPolicyId, parentPolicyId]);
 
   if ((existingPolicyId || parentPolicyId) && loading) {
-    return <Loading />;
+    return <ComponentLoading />;
   }
 
   const policyTree = treeFromList<Policy>(

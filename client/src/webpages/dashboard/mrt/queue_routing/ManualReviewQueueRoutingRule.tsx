@@ -31,7 +31,7 @@ gql`
 `;
 
 const IconButton = (props: {
-  icon: JSX.Element;
+  icon: React.JSX.Element;
   disabled?: boolean;
   onClick?: () => void;
 }) => {
