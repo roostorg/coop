@@ -233,11 +233,13 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.dataSources.ruleAPI.ruleInsights.getRulePassRateData(
-      rule.id,
-      rule.orgId,
-      args.lookbackStartDate ? new Date(args.lookbackStartDate) : undefined,
-    );
+    return context.services.ReportingService.getReportingRulePassRateData({
+      ruleId: rule.id,
+      orgId: rule.orgId,
+      startDate: args.lookbackStartDate
+        ? new Date(args.lookbackStartDate)
+        : undefined,
+    });
   },
   async latestVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -246,7 +248,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
     }
 
     const samples =
-      await context.dataSources.ruleAPI.ruleInsights.getRulePassingContentSamples(
+      await context.services.ReportingService.getReportingRulePassingContentSamples(
         {
           ruleId: rule.id,
           orgId: rule.orgId,
@@ -255,20 +257,10 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // TODO: type this properly. graphql queries would throw an exception if
-    // asking for fields that aren't populated here. To provide them, we'll
-    // have to update (and add better typings for) getRulePassingContentSamples.
-    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
-    return samples.map((it) => ({
-      ...it,
-      itemId: it.contentId,
-      itemData: jsonStringify(it.content),
-      policyIds: it.policyIds,
-      passed: true,
-      ruleId: rule.id,
-      ruleName: rule.name,
-    })) as any[];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+    // The reporting adapter returns the GraphQL shape, but types environment
+    // as a nullable string rather than the GraphQL enum.
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- adapter type mismatch described above */
+    return samples as any;
   },
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -277,7 +269,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
     }
 
     const samples =
-      await context.dataSources.ruleAPI.ruleInsights.getRulePassingContentSamples(
+      await context.services.ReportingService.getReportingRulePassingContentSamples(
         {
           ruleId: rule.id,
           orgId: rule.orgId,
@@ -286,18 +278,10 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // TODO: type this properly. See latestVersionSamples for context.
-    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
-    return samples.map((it) => ({
-      ...it,
-      itemId: it.contentId,
-      itemData: jsonStringify(it.content),
-      policyIds: it.policyIds,
-      passed: true,
-      ruleId: rule.id,
-      ruleName: rule.name,
-    })) as any[];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+    // The reporting adapter returns the GraphQL shape, but types environment
+    // as a nullable string rather than the GraphQL enum.
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- adapter type mismatch described above */
+    return samples as any;
   },
 };
 
