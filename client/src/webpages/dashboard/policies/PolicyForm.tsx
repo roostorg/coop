@@ -1,4 +1,5 @@
 import { Button } from '@/coop-ui/Button';
+import ComponentLoading from '@/components/common/ComponentLoading';
 import { CheckmarkFilled, PlusFilled, TrashCanFilled } from '@/icons';
 import { treeFromList } from '@/utils/tree';
 import { Input } from 'antd';
@@ -7,7 +8,6 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import CoopModal from '../components/CoopModal';
-import ComponentLoading from '@/components/common/ComponentLoading';
 
 import {
   GQLUserPenaltySeverity,
