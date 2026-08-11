@@ -80,11 +80,11 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
         FROM REPORTING_SERVICE.REPORTING_RULE_EXECUTION_STATISTICS
         WHERE org_id = ?
           AND rule_id = ?
-          AND ts_start_inclusive > ?
+          AND ts_start_inclusive > parseDateTime64BestEffort(?)
         GROUP BY date
         ORDER BY date
       `,
-      [orgId, ruleId, startDate],
+      [orgId, ruleId, startDate.toISOString()],
     );
 
     return rows.map((row) => ({

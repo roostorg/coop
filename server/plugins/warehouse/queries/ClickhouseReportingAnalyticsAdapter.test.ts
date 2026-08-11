@@ -27,6 +27,27 @@ function makeAdapter() {
   };
 }
 
+describe('ClickhouseReportingAnalyticsAdapter.getReportingRulePassRateData', () => {
+  it('formats the start date for ClickHouse DateTime64 comparison', async () => {
+    const { adapter, query } = makeAdapter();
+
+    await adapter.getReportingRulePassRateData({
+      orgId: 'org-pass-rate',
+      ruleId: 'rule-pass-rate',
+      startDate: new Date('2025-08-11T18:15:34.135Z'),
+    });
+
+    expect(query).toHaveBeenCalledTimes(1);
+    const [sql, , params] = query.mock.calls[0];
+    expect(sql).toContain('ts_start_inclusive > parseDateTime64BestEffort(?)');
+    expect(params).toEqual([
+      'org-pass-rate',
+      'rule-pass-rate',
+      '2025-08-11T18:15:34.135Z',
+    ]);
+  });
+});
+
 describe('ClickhouseReportingAnalyticsAdapter.getReportingRulePassingContentSamples', () => {
   it('formats latest-version timestamp and date bounds for ClickHouse', async () => {
     const { adapter, query } = makeAdapter();
