@@ -3,7 +3,11 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ColumnProps, DefaultColumnFilter } from './filters';
+import {
+  ColumnProps,
+  DefaultColumnFilter,
+  NumberRangeColumnFilter,
+} from './filters';
 import { stringSort } from './sort';
 import Table, { TableColumnDef } from './Table';
 
@@ -304,5 +308,58 @@ describe('Table v7 behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
     expect(screen.getByTestId('facets').textContent).toBe('Alpha,Bravo');
+  });
+
+  it('stages an inclusive numeric range and filters raw values on Save', () => {
+    type NumericRow = {
+      score: ReactNode;
+      values: { score: number };
+    };
+    const numericData: NumericRow[] = [
+      { score: <span>Low score</span>, values: { score: 4 } },
+      { score: <span>Boundary score</span>, values: { score: 5 } },
+      { score: <span>High score</span>, values: { score: 8 } },
+    ];
+    const numericColumns = [
+      {
+        header: 'Score',
+        accessorKey: 'score',
+        cell: ({ getValue }) => getValue<ReactNode>(),
+        meta: {
+          filter: (props: ColumnProps<NumericRow>) =>
+            NumberRangeColumnFilter({
+              columnProps: props,
+              accessor: 'score',
+            }),
+        },
+        filterFn: 'range',
+      },
+    ] satisfies TableColumnDef<NumericRow>[];
+    render(
+      <MemoryRouter>
+        <Table columns={numericColumns} data={numericData} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    const filterMenu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute');
+    expect(filterMenu).not.toBeNull();
+    fireEvent.click(within(filterMenu!).getByText('Score'));
+    fireEvent.change(screen.getByPlaceholderText('min'), {
+      target: { value: '5' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('max'), {
+      target: { value: '8' },
+    });
+    expect(screen.getByText('Low score')).toBeTruthy();
+    expect(screen.getByText('Boundary score')).toBeTruthy();
+    expect(screen.getByText('High score')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.queryByText('Low score')).toBeNull();
+    expect(screen.getByText('Boundary score')).toBeTruthy();
+    expect(screen.getByText('High score')).toBeTruthy();
   });
 });

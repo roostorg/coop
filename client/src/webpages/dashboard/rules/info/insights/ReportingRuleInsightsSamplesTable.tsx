@@ -244,7 +244,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
             placeholder: '',
           }),
       },
-      filterFn: 'between' as const,
+      filterFn: 'range' as const,
       sortDescFirst: true,
       sortingFn: stringSort,
     }));

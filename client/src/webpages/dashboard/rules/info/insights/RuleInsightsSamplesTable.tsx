@@ -409,7 +409,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
             placeholder: '',
           }),
       },
-      filterFn: 'between' as const,
+      filterFn: 'range' as const,
       sortDescFirst: true,
       sortingFn: stringSort,
     }));
