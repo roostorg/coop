@@ -24,7 +24,7 @@ import {
   reportingRuleStatusSort,
   stringSort,
 } from '../../components/table/sort';
-import Table, { TableColumnDef, TableRow } from '../../components/table/Table';
+import Table, { TableRow } from '../../components/table/Table';
 import TruncatedListTableCell from '../../components/table/TruncatedListTableCell';
 import TruncatedTextTableCell from '../../components/table/TruncatedTextTableCell';
 import UserWithAvatar from '../../components/UserWithAvatar';
@@ -143,10 +143,6 @@ export default function ReportingRulesDashboard() {
 
   const navigate = useNavigate();
 
-  const rowLinkTo = (row: TableRow<any>) => {
-    return `info/${row.original.values.id}`;
-  };
-
   const permissions = rulesQueryParams.data?.me?.permissions;
   const canEditLiveRules = userHasPermissions(permissions, [
     GQLUserPermission.MutateLiveRules,
@@ -208,79 +204,78 @@ export default function ReportingRulesDashboard() {
   );
 
   const columns = useMemo(
-    () =>
-      [
-        {
-          header: 'Rule',
-          accessorKey: 'name',
-          meta: {
-            filter: (props: ColumnProps) =>
-              DefaultColumnFilter({
-                columnProps: props,
-                accessor: 'name',
-              }),
-          },
-          filterFn: 'text' as const,
-          sortFn: stringSort,
+    () => [
+      {
+        header: 'Rule',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+            }),
         },
-        {
-          header: 'Owner',
-          accessorKey: 'owner',
-          meta: {
-            filter: (props: ColumnProps) =>
-              SelectColumnFilter({
-                columnProps: props,
-                accessor: 'owner',
-              }),
-          },
-          filterFn: 'includes' as const,
-          enableSorting: false,
+        filterFn: 'text' as const,
+        sortFn: stringSort,
+      },
+      {
+        header: 'Owner',
+        accessorKey: 'owner',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'owner',
+            }),
         },
-        {
-          header: 'Status',
-          accessorKey: 'status',
-          meta: {
-            filter: (props: ColumnProps) =>
-              SelectColumnFilter({
-                columnProps: props,
-                accessor: 'status',
-              }),
-          },
-          filterFn: 'includes' as const,
-          sortFn: reportingRuleStatusSort,
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
+        header: 'Status',
+        accessorKey: 'status',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'status',
+            }),
         },
-        {
-          header: 'Policies',
-          accessorKey: 'policies',
-          meta: {
-            filter: (props: ColumnProps) =>
-              SelectColumnFilter({
-                columnProps: props,
-                accessor: 'policies',
-              }),
-          },
-          filterFn: 'includes' as const,
-          enableSorting: false,
+        filterFn: 'includes' as const,
+        sortFn: reportingRuleStatusSort,
+      },
+      {
+        header: 'Policies',
+        accessorKey: 'policies',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'policies',
+            }),
         },
-        {
-          header: 'Item Types',
-          accessorKey: 'itemTypes',
-          meta: {
-            filter: (props: ColumnProps) =>
-              SelectColumnFilter({
-                columnProps: props,
-                accessor: 'itemTypes',
-              }),
-          },
-          filterFn: 'includes' as const,
-          enableSorting: false,
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
+        header: 'Item Types',
+        accessorKey: 'itemTypes',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'itemTypes',
+            }),
         },
-        {
-          header: '',
-          accessorKey: 'mutations',
-          enableSorting: false,
-        },
-      ] as (TableColumnDef<object> & { canSort?: boolean })[],
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
+        header: '',
+        accessorKey: 'mutations',
+        enableSorting: false,
+      },
+    ],
     [],
   );
 
@@ -338,6 +333,10 @@ export default function ReportingRulesDashboard() {
         }),
     [mutations, dataValues],
   );
+
+  const rowLinkTo = (row: TableRow<(typeof tableData)[number]>) => {
+    return `info/${row.original.values.id}`;
+  };
 
   if (rulesQueryParams.error) {
     throw rulesQueryParams.error;

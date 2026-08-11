@@ -10,15 +10,11 @@ import TableFilter from './TableFilter';
 export type TableRowData = TableData;
 export type { TableColumnDef, TableRow } from './tableFeatures';
 
-type RowCallback<TData extends TableData, TResult> = {
-  bivarianceHack(row: TableRow<TData>): TResult;
-}['bivarianceHack'];
-
 type TableProps<TData extends Record<string, any>> = {
   columns: TableColumnDef<NoInfer<TData>, any>[];
   data: readonly TData[];
-  onSelectRow?: RowCallback<TData, void>;
-  rowLinkTo?: RowCallback<TData, string>;
+  onSelectRow?: (row: TableRow<TData>) => void;
+  rowLinkTo?: (row: TableRow<TData>) => string;
   topLeftComponent?: ReactNode;
   topRightComponent?: ReactNode;
   customMaxHeight?: `max-h-[${number}px]`;
@@ -29,7 +25,7 @@ type TableProps<TData extends Record<string, any>> = {
   | {
       isCollapsed?: boolean;
       collapsedColumnTitle?: string;
-      renderCollapsedCell?: RowCallback<TData, ReactNode>;
+      renderCollapsedCell?: (row: TableRow<TData>) => ReactNode;
     }
   | Record<never, never>
 );

@@ -351,10 +351,10 @@ export default function ReportingRuleInsightsSamplesTable(props: {
   }, [extraColumns]);
   const tableData = useMemo(
     () =>
-      (dataValues ?? []).map((values) => {
+      (dataValues ?? []).flatMap((values) => {
         const parsedItem = JSON.parse(values.itemData);
         if (itemTypeFields == null) {
-          return <ComponentLoading key={values.id} />;
+          return [];
         }
         const fields = itemTypeFields[values.itemTypeName];
         if (!fields || fields.length === 0) {
@@ -401,56 +401,60 @@ export default function ReportingRuleInsightsSamplesTable(props: {
             }),
         );
 
-        return {
-          id: (
-            <CopyTextComponent
-              value={values.id}
-              displayValue={<div className="flex min-w-24">{values.id}</div>}
-            />
-          ),
-          itemTypeName: <RoundedTag title={values.itemTypeName} />,
-          creatorId: (
-            <Link
-              to={`/dashboard/manual_review/investigation?id=${values.creatorId}&typeId=${values.creatorTypeId}`}
-              onClick={(event) => event.stopPropagation()}
-              target="_blank"
-            >
-              {values.creatorId}
-            </Link>
-          ),
-          item: (
-            <CopyTextComponent
-              value={formattedItem.filter((it) => it.length > 0).join('\n')}
-              displayValue={
-                <div className="flex flex-col items-start">{item}</div>
-              }
-              footerItems={videoUrls.map((videoUrl) => (
-                <RuleInsightsSamplesPlayVideoButton
-                  key={videoUrl}
-                  onClick={() => {
-                    setVideoPlayerUrl(videoUrl);
-                  }}
-                />
-              ))}
-            />
-          ),
-          time: <div className="flex min-w-[180px]">{values.time}</div>,
-          status: (
-            <div className="flex items-center">
-              <RoundedTag
-                title={capitalize(values.status)}
-                status={values.status}
+        return [
+          {
+            id: (
+              <CopyTextComponent
+                value={values.id}
+                displayValue={<div className="flex min-w-24">{values.id}</div>}
               />
-            </div>
-          ),
-          values,
-          ...Object.fromEntries(
-            extraColumns.map((it) => [
-              it.accessorKey,
-              (values as { [key: string]: any })[it.accessorKey],
-            ]),
-          ),
-        };
+            ),
+            itemTypeName: <RoundedTag title={values.itemTypeName} />,
+            creatorId: (
+              <Link
+                to={`/dashboard/manual_review/investigation?id=${values.creatorId}&typeId=${values.creatorTypeId}`}
+                onClick={(event) => event.stopPropagation()}
+                target="_blank"
+              >
+                {values.creatorId}
+              </Link>
+            ),
+            item: (
+              <CopyTextComponent
+                value={formattedItem.filter((it) => it.length > 0).join('\n')}
+                displayValue={
+                  <div className="flex flex-col items-start">{item}</div>
+                }
+                footerItems={videoUrls.map((videoUrl) => (
+                  <RuleInsightsSamplesPlayVideoButton
+                    key={videoUrl}
+                    onClick={() => {
+                      setVideoPlayerUrl(videoUrl);
+                    }}
+                  />
+                ))}
+              />
+            ),
+            time: <div className="flex min-w-[180px]">{values.time}</div>,
+            status: (
+              <div className="flex items-center">
+                <RoundedTag
+                  title={capitalize(values.status)}
+                  status={values.status}
+                />
+              </div>
+            ),
+            values,
+            ...Object.fromEntries(
+              extraColumns.map((it) => [
+                it.accessorKey,
+                Object.entries(values).find(
+                  ([key]) => key === it.accessorKey,
+                )?.[1],
+              ]),
+            ),
+          },
+        ];
       }),
     [dataValues, itemTypeFields, extraColumns],
   );
@@ -459,12 +463,12 @@ export default function ReportingRuleInsightsSamplesTable(props: {
     throw error ?? priorRuleVersionError ?? signalsError!;
   }
 
-  const onSelectRow = (row: TableRow<any>) => {
+  const onSelectRow = (row: TableRow<(typeof tableData)[number]>) => {
     dataValues.length > 0 &&
       setDetailViewData({
         visible: true,
         item: (() => {
-          const rowData = dataValues[row.index];
+          const rowData = row.original.values;
           return {
             identifier: { id: rowData.id, typeId: rowData.itemTypeId },
             date: rowData.time,
@@ -542,7 +546,6 @@ export default function ReportingRuleInsightsSamplesTable(props: {
         <div className="flex w-full">
           <div className="w-full rounded-[5px] border-solid border-0 border-b border-[#f0f0f0] max-h-[1500px] overflow-scroll scrollbar-hide">
             <Table
-              // @ts-ignore
               columns={columns}
               data={tableData}
               onSelectRow={onSelectRow}

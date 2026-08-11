@@ -221,7 +221,7 @@ export default function ManualReviewQueueJobsPreview() {
     throw Error(`Queue not found for ID ${queueId}`);
   }
 
-  const rowLinkTo = (row: TableRow<any>) => {
+  const rowLinkTo = (row: TableRow<(typeof tableData)[number]>) => {
     // I don't know why but the jobs do not ever render unless you put a fake lock token
     // at the end of the URL, so the `/1` is actually necessary here
     return `/dashboard/manual_review/queues/review/${queueId}/${row.original.jobId}/1`;

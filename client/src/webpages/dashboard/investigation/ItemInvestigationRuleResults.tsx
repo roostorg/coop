@@ -19,7 +19,7 @@ import {
   ruleStatusSort,
   stringSort,
 } from '../components/table/sort';
-import Table, { TableColumnDef, TableRow } from '../components/table/Table';
+import Table, { TableRow } from '../components/table/Table';
 
 import {
   GQLConditionOutcome,
@@ -81,7 +81,7 @@ export default function ItemInvestigationRuleResults(props: {
     [itemHistoryData?.itemWithHistory],
   );
 
-  const columns = useMemo<TableColumnDef<any>[]>(
+  const columns = useMemo(
     () => [
       {
         header: 'Rule',
@@ -238,6 +238,7 @@ export default function ItemInvestigationRuleResults(props: {
             </div>
           ),
           ruleExecutionResult: ruleResult.result,
+          values: ruleResult,
         };
       }),
     [ruleExecutionsHistory, navigate, rules],
@@ -284,7 +285,7 @@ export default function ItemInvestigationRuleResults(props: {
     </CoopModal>
   );
 
-  const onSelectRow = (rowData: TableRow<any>) => {
+  const onSelectRow = (rowData: TableRow<(typeof tableData)[number]>) => {
     const executionResult = ruleExecutionsHistory[rowData.index];
     if (executionResult == null) {
       return;
