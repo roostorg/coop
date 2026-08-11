@@ -200,6 +200,8 @@ Two things differ from a local dev setup:
 
 ## Human-approval-required actions
 
+Routine local setup and verification commands, including `npm ci` and existing build/test/lint/format/check scripts, do not require approval; the gates below apply to the changes being made, not merely to running commands.
+
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE`).
@@ -208,7 +210,7 @@ Stop and get explicit human approval before:
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
 - Auth, session, or request middleware (under `server/api.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
-- Adding, removing, or upgrading any library or package (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
+- Adding, removing, or upgrading any dependency (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
 - Multi-thousand-line diffs — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 
 ## Commit attribution

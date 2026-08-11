@@ -59,8 +59,7 @@ export function getMatchingValuesType(matchingValues: GQLMatchingValues) {
 }
 
 export type ConditionWithResult =
-  | LeafConditionWithResult
-  | ConditionSetWithResult;
+  LeafConditionWithResult | ConditionSetWithResult;
 
 export type ConditionSetWithResult = {
   conditions: [ConditionWithResult, ...ConditionWithResult[]];

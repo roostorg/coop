@@ -82,10 +82,8 @@ function renderSidebar(
   return { ...result, setSelectedMenuItem, logout };
 }
 
-function getSettingsLink() {
-  return screen
-    .getAllByRole('link')
-    .find((el) => el.getAttribute('href') === '/dashboard/settings');
+function getSettingsButton() {
+  return screen.queryByRole('button', { name: 'Settings' });
 }
 
 describe('Sidebar', () => {
@@ -93,7 +91,7 @@ describe('Sidebar', () => {
     renderSidebar();
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByText('Review Console')).toBeInTheDocument();
-    expect(getSettingsLink()).toBeDefined();
+    expect(getSettingsButton()).toBeInTheDocument();
   });
 
   it('shows settings sub-items when on a settings page', () => {
@@ -112,20 +110,21 @@ describe('Sidebar', () => {
 
   it('highlights gear icon on settings pages but not elsewhere', () => {
     const { unmount } = renderSidebar('/dashboard/settings', 'Settings');
-    expect(getSettingsLink()!.className).toContain('text-primary');
+    expect(getSettingsButton()).toHaveClass('text-primary');
     unmount();
 
     renderSidebar('/dashboard/overview', 'Overview');
-    expect(getSettingsLink()!.className).not.toContain('text-primary');
+    expect(getSettingsButton()).not.toHaveClass('text-primary');
   });
 
-  it('sets selectedMenuItem to Settings when gear icon is clicked', () => {
-    const { setSelectedMenuItem } = renderSidebar(
-      '/dashboard/overview',
-      'Overview',
-    );
-    fireEvent.click(getSettingsLink()!);
-    expect(setSelectedMenuItem).toHaveBeenCalledWith('Settings');
+  it('expands settings sub-items when gear icon is clicked', () => {
+    renderSidebar('/dashboard/overview', 'Overview');
+    const settingsButton = getSettingsButton();
+    expect(settingsButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(settingsButton!);
+
+    expect(settingsButton).toHaveAttribute('aria-expanded', 'true');
   });
 
   describe('path-based menu selection', () => {
@@ -142,7 +141,7 @@ describe('Sidebar', () => {
 
   it('hides gear icon when user lacks ManageOrg permission', () => {
     renderSidebar('/dashboard/overview', 'Overview', { permissions: [] });
-    expect(getSettingsLink()).toBeUndefined();
+    expect(getSettingsButton()).not.toBeInTheDocument();
   });
 
   it('hides sub-items when user lacks permissions', () => {

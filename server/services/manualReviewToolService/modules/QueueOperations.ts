@@ -15,6 +15,7 @@ import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
   b64UrlDecode,
   b64UrlEncode,
+  jsonStringify,
   type B64UrlOf,
 } from '../../../utils/encoding.js';
 import {
@@ -23,7 +24,10 @@ import {
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
-import { isUniqueViolationError } from '../../../utils/kysely.js';
+import {
+  isForeignKeyViolationError,
+  isUniqueViolationError,
+} from '../../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
@@ -107,7 +111,8 @@ export type QueueOperationsErrorType =
   | 'DeleteAllJobsUnauthorizedError'
   | 'QueueDoesNotExistError'
   | 'UnableToDeleteDefaultQueueError'
-  | 'AccessibleQueueNotInOrgError';
+  | 'AccessibleQueueNotInOrgError'
+  | 'QueueHasDependentRoutingRulesError';
 
 // Compound identifier for a queue. orgId is needed for security, but also
 // because queues are/will be actually sharded across redis instances for
@@ -163,7 +168,8 @@ export default class QueueOperations {
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
     private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
-    redis: RedisConnection,
+    private readonly redis: RedisConnection,
+    private readonly tracer: Dependencies['Tracer'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
@@ -448,10 +454,9 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
-    await queue.obliterate({ force: true });
-
-    const numDeletedRows = await this.transactionWithRetry(
-      async (transaction) => {
+    let numDeletedRows: bigint;
+    try {
+      numDeletedRows = await this.transactionWithRetry(async (transaction) => {
         // Delete the queue scoped by org first. If it doesn't belong to the
         // caller's org, no rows are touched and we bail before deleting any
         // join rows. `users_and_accessible_queues` has no `org_id` column,
@@ -473,8 +478,55 @@ export default class QueueOperations {
           .execute();
 
         return queueDelete.numDeletedRows;
-      },
-    );
+      });
+    } catch (e) {
+      const constraint = (e as { constraint?: string }).constraint;
+      if (
+        isForeignKeyViolationError(e) &&
+        (constraint === 'routing_rules_destination_queue_id_fkey' ||
+          constraint === 'appeals_routing_rules_destination_queue_id_fkey')
+      ) {
+        // routing_rules and appeals_routing_rules have RESTRICT FKs to this
+        // queue. Query for their names so the error message is actionable.
+        const [routingRules, appealsRoutingRules] = await Promise.all([
+          this.pgQuery
+            .selectFrom('manual_review_tool.routing_rules')
+            .select(['name'])
+            .where('destination_queue_id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .execute(),
+          this.pgQuery
+            .selectFrom('manual_review_tool.appeals_routing_rules')
+            .select(['name'])
+            .where('destination_queue_id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .execute(),
+        ]);
+        const ruleNames = [
+          ...routingRules.map((r) => r.name),
+          ...appealsRoutingRules.map((r) => r.name),
+        ];
+        throw makeQueueHasDependentRoutingRulesError(ruleNames, {
+          shouldErrorSpan: false,
+        });
+      }
+      throw e;
+    }
+
+    if (numDeletedRows === 1n) {
+      try {
+        await queue.obliterate({ force: true });
+      } catch (e) {
+        // The DB row is already gone at this point, so a retry would see
+        // numDeletedRows === 0n and skip obliterate() entirely, silently
+        // leaving orphaned Bull/Redis data behind. Best-effort cleanup:
+        // surface the failure to the active tracing span (mirrors the
+        // pattern used elsewhere, e.g. `UserApi.logout`) so ops can run
+        // `server/bin/recover-mrt-queue.ts`, but still report success since
+        // the DB delete itself succeeded.
+        this.tracer.logActiveSpanFailedIfAny(e);
+      }
+    }
 
     return numDeletedRows === 1n;
   }
@@ -489,8 +541,23 @@ export default class QueueOperations {
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
+    //
+    // routing_rules and appeals_routing_rules have RESTRICT FKs to this queue,
+    // so we must delete any referencing rules before deleting the queue.
     const numDeletedRows = await this.transactionWithRetry(
       async (transaction) => {
+        await transaction
+          .deleteFrom('manual_review_tool.routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .execute();
+
+        await transaction
+          .deleteFrom('manual_review_tool.appeals_routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .execute();
+
         const queueDelete = await transaction
           .deleteFrom('manual_review_tool.manual_review_queues')
           .where('id', '=', queueId)
@@ -1253,7 +1320,9 @@ export default class QueueOperations {
 
     let hasDecision = true;
     while (hasDecision) {
-      const job = await worker.getNextJob(lockToken);
+      // block: false so a drained queue returns null immediately instead of
+      // long-polling and hanging the reviewer's request.
+      const job = await worker.getNextJob(lockToken, { block: false });
 
       if (!job) {
         return null;
@@ -1280,7 +1349,12 @@ export default class QueueOperations {
           queueId,
           lockToken,
           jobId: job.data.id,
-        }).catch(() => {});
+        }).catch((error: unknown) => {
+          // Non-fatal: the scan should still hand this reviewer a job. But it
+          // must not be silent — see the note on the same call in
+          // `dequeueNextJobWithLock`.
+          this.tracer.logActiveSpanFailedIfAny(error);
+        });
         // then continue while loop
       } else {
         // this is the most likely case, where there is a job
@@ -1304,47 +1378,139 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullWorker({ orgId, queueId });
 
-    let hasDecision = true;
-    while (hasDecision) {
-      const job = await worker.getNextJob(lockToken);
+    // Jobs this reviewer skipped within the skip window (the lock token is
+    // the reviewer's userId). The scan steps past them by keeping them locked
+    // until it finishes, then releases them in `finally` so they return to
+    // the shared pool — a skip is per-reviewer, not global.
+    const reviewerSkips = await this.getActiveReviewerSkips({
+      orgId,
+      queueId,
+      reviewerId: lockToken,
+    });
+    const heldAside: Job<StoredManualReviewJob>[] = [];
 
-      if (!job) {
-        return null;
+    try {
+      while (true) {
+        const job = await worker.getNextJob(lockToken, { block: false });
+
+        if (!job) {
+          return null;
+        }
+        if (reviewerSkips.has(job.data.id)) {
+          heldAside.push(job);
+          continue;
+        }
+
+        const convertedJob = await this.legacyJobToJob(job, orgId);
+
+        // There is a race condition due to the locking mechanism where a job can
+        // be decided on but not dequeued, so we check here if the first job in the
+        // queue has a decision, and if so use the lock token to immediately
+        // remove it, then grab a new job and return to the caller. it is very
+        // unlikely that there are multiple jobs like this at the front of the
+        // queue, but not impossible.
+        const decision = await this.pgQueryReadReplica
+          .selectFrom('manual_review_tool.manual_review_decisions')
+          .select(['decision_components']) // not really necessary to return anything
+          .where('created_at', '>=', new Date('2023-10-01'))
+          .where('org_id', '=', orgId)
+          .where('id', '=', jobIdToGuid(convertedJob.data.id))
+          .executeTakeFirst();
+
+        if (decision !== undefined) {
+          await this.removeJob({
+            orgId,
+            queueId,
+            lockToken,
+            jobId: convertedJob.data.id,
+          }).catch((error: unknown) => {
+            // Non-fatal, but not silent either. The common cause is another
+            // reviewer having re-locked the job, in which case they will
+            // retire it and doing nothing is correct. The case that matters is
+            // a Redis failure: the decided job then stays `active` until its
+            // lock expires, after which the stalled checker returns it to
+            // `wait` — forever. `maxStalledCount` does not bound this, because
+            // BullMQ only applies the deferred stall failure inside
+            // `processJob`, which never runs on these workers (`autorun:
+            // false`). So a stuck decided job recirculates indefinitely and
+            // this report is the only signal it happened.
+            this.tracer.logActiveSpanFailedIfAny(error);
+          });
+          // then continue while loop
+        } else {
+          // this is the most likely case, where there is a job
+          // and it has never been decided before
+          return { job: convertedJob.data, lockToken };
+        }
       }
-
-      const convertedJob = await this.legacyJobToJob(job, orgId);
-
-      // There is a race condition due to the locking mechanism where a job can
-      // be decided on but not dequeued, so we check here if the first job in the
-      // queue has a decision, and if so use the lock token to immediately
-      // remove it, then grab a new job and return to the caller. it is very
-      // unlikely that there are multiple jobs like this at the front of the
-      // queue, but not impossible.
-      const decision = await this.pgQueryReadReplica
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .select(['decision_components']) // not really necessary to return anything
-        .where('created_at', '>=', new Date('2023-10-01'))
-        .where('org_id', '=', orgId)
-        .where('id', '=', jobIdToGuid(convertedJob.data.id))
-        .executeTakeFirst();
-
-      hasDecision = decision !== undefined;
-
-      if (hasDecision) {
-        await this.removeJob({
+    } finally {
+      // Release the held-aside jobs so other reviewers can pick them up
+      // immediately. This reviewer stays excluded via the skip set.
+      for (const held of heldAside) {
+        // No `.catch` here on purpose: `releaseJobLock` never rejects — it
+        // reports its own failures to the active span and returns. Chaining a
+        // handler here would be dead code. Releasing is best-effort anyway; a
+        // failure leaves the job locked until `lockDuration` expires, and
+        // throwing from a `finally` would replace whatever result or error the
+        // caller was about to receive.
+        await this.releaseJobLock({
           orgId,
           queueId,
+          jobId: held.data.id,
           lockToken,
-          jobId: convertedJob.data.id,
-        }).catch(() => {});
-        // then continue while loop
-      } else {
-        // this is the most likely case, where there is a job
-        // and it has never been decided before
-        return { job: convertedJob.data, lockToken };
+        });
       }
     }
-    return null;
+  }
+
+  static readonly REVIEWER_SKIP_TTL_MS = 30 * 60 * 1000;
+
+  #reviewerSkipKey(orgId: string, queueId: string, reviewerId: string): string {
+    return `{${orgId}}:mrt-reviewer-skips:${queueId}:${reviewerId}`;
+  }
+
+  /**
+   * Hides a job from one reviewer for the skip window and hands it straight
+   * back to everyone else.
+   *
+   * Releasing the lock is part of skipping, not a separate step callers have to
+   * remember — there is no case for recording a skip while still holding the
+   * job. `releaseJobLock` is a no-op when no lock is held, so this is safe even
+   * when the caller never took one.
+   */
+  async recordReviewerSkip(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+    jobId: string;
+  }): Promise<void> {
+    const { orgId, queueId, reviewerId, jobId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    const expiresAt = Date.now() + QueueOperations.REVIEWER_SKIP_TTL_MS;
+    await this.redis.zadd(key, expiresAt, jobId);
+    // Backstop: the whole set disappears once everything in it has expired.
+    await this.redis.pexpire(key, QueueOperations.REVIEWER_SKIP_TTL_MS);
+
+    // The lock token is the reviewer's own id.
+    await this.releaseJobLock({
+      orgId,
+      queueId,
+      jobId: instantiateOpaqueType<JobId>(jobId),
+      lockToken: reviewerId,
+    });
+  }
+
+  async getActiveReviewerSkips(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+  }): Promise<Set<string>> {
+    const { orgId, queueId, reviewerId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    // Drop expired entries, then read what's still active.
+    await this.redis.zremrangebyscore(key, 0, Date.now());
+    const ids = await this.redis.zrange(key, 0, -1);
+    return new Set(ids);
   }
 
   /**
@@ -1621,9 +1787,14 @@ export default class QueueOperations {
       // The token parameter ensures only the holder of the lock can release it
       await job.moveToDelayed(Date.now(), lockToken);
     } catch (error: unknown) {
-      // If the lock has already expired or the job is in a different state,
-      // we can safely ignore the error as the job is already released
-      // or will be handled by the stalled job checker
+      // Non-fatal: if the lock has already expired or the job moved state, the
+      // job is effectively released already (or the stalled checker will get
+      // it), and callers — including the `releaseJobLock` mutation and the
+      // held-aside loop in `dequeueNextJobWithLock` — treat releasing as
+      // best-effort cleanup that must not fail the operation around it.
+      // Reported rather than swallowed: a persistent failure here keeps a job
+      // locked for the full `lockDuration`, which is invisible otherwise.
+      this.tracer.logActiveSpanFailedIfAny(error);
     }
   }
 
@@ -1667,12 +1838,14 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job
-    // BullMQ maintains FIFO order within each state, so we only need to compare
-    // the first job from each state to find the oldest overall
+    // Get the first waiting job and first delayed job. getWaiting/getDelayed
+    // return jobs oldest-first, so we only need to compare the first job from
+    // each state to find the oldest overall. NB: the equivalent
+    // queue.getJobs([state], 0, 0) defaults to descending order and would
+    // return the *newest* job instead.
     const [waitingJobs, delayedJobs] = await Promise.all([
-      queue.getJobs(['waiting'], 0, 0),
-      queue.getJobs(['delayed'], 0, 0),
+      queue.getWaiting(0, 0),
+      queue.getDelayed(0, 0),
     ]);
 
     // If no jobs exist in either state, return null
@@ -1942,9 +2115,13 @@ export async function getBullWorker<JobData = unknown>(
   await worker.startStalledCheckTimer();
 
   // Cast worker to a version of its original type, but fixed to correctly
-  // indicate that getNextJob() can return undefined
+  // indicate that getNextJob() can return undefined and accepts a `block`
+  // option (false = return immediately instead of long-polling).
   return worker as unknown as Omit<Worker<JobData>, 'getNextJob'> & {
-    getNextJob: (lockToken: string) => Promise<Job<JobData> | undefined>;
+    getNextJob: (
+      lockToken: string,
+      opts?: { block?: boolean },
+    ) => Promise<Job<JobData> | undefined>;
   };
 }
 
@@ -2121,5 +2298,21 @@ export const makeManualReviewQueueNameExistsError = (data: ErrorInstanceData) =>
     title:
       'A manual review queue with that name already exists in this organization.',
     name: 'ManualReviewQueueNameExistsError',
+    ...data,
+  });
+
+export const makeQueueHasDependentRoutingRulesError = (
+  ruleNames: string[],
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.Conflict],
+    title:
+      ruleNames.length > 0
+        ? `This queue cannot be deleted because it is used by the following routing rules:\n${ruleNames.join(', ')}\nUpdate or delete those rules first.`
+        : 'This queue cannot be deleted because it is still referenced by one or more routing rules. Update or delete those rules first.',
+    detail: ruleNames.length > 0 ? jsonStringify(ruleNames) : undefined,
+    name: 'QueueHasDependentRoutingRulesError',
     ...data,
   });

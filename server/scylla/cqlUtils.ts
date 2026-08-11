@@ -23,8 +23,7 @@ type SelectClause<Cols extends string> = readonly [
 ];
 
 type Selector<Cols extends string> =
-  | Cols
-  | { aggregate: 'count' | 'sum' | 'avg' | 'min' | 'max'; col: Cols };
+  Cols | { aggregate: 'count' | 'sum' | 'avg' | 'min' | 'max'; col: Cols };
 
 export type CqlSelectOptions<
   DBRelations extends DBDefinition,

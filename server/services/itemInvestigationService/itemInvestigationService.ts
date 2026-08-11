@@ -573,8 +573,7 @@ export class ItemInvestigationService {
         const submissionId = record.submissionId as SubmissionId;
         const itemData = record.itemData as JsonOf<NormalizedItemData>;
         const schemaVariant = record.itemTypeSchemaVariant as
-          | 'original'
-          | 'partial';
+          'original' | 'partial';
 
         return dbRowToItemSubmissionWithItemTypeIdentifier({
           submission_id: submissionId,
@@ -1092,8 +1091,7 @@ export class ItemInvestigationService {
         item_data: record.itemData as JsonOf<NormalizedItemData>,
         item_submission_time: record.occurredAt,
         item_type_schema_variant: record.itemTypeSchemaVariant as
-          | 'original'
-          | 'partial',
+          'original' | 'partial',
       });
 
     for (const group of recordsByItem.values()) {

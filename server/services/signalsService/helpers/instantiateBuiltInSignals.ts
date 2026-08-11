@@ -28,6 +28,10 @@ import OpenAiGraphicViolenceTextSignal from '../signals/third_party_signals/open
 import OpenAiHateTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.js';
 import OpenAiHateThreateningTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateThreateningTextSignal.js';
 import OpenAiSelfHarmImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmImageSignal.js';
+import OpenAiSelfHarmInstructionsImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmInstructionsImageSignal.js';
+import OpenAiSelfHarmInstructionsTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmInstructionsTextSignal.js';
+import OpenAiSelfHarmIntentImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmIntentImageSignal.js';
+import OpenAiSelfHarmIntentTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmIntentTextSignal.js';
 import OpenAiSelfHarmTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmTextSignal.js';
 import OpenAiSexualImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSexualImageSignal.js';
 import OpenAiSexualMinorsTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSexualMinorsTextSignal.js';
@@ -108,6 +112,26 @@ export function instantiateBuiltInSignals(
       credentialGetters.OPEN_AI,
       getOpenAiScores,
     ),
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL]:
+      new OpenAiSelfHarmInstructionsImageSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL]:
+      new OpenAiSelfHarmInstructionsTextSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL]:
+      new OpenAiSelfHarmIntentImageSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL]:
+      new OpenAiSelfHarmIntentTextSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
     [SignalType.OPEN_AI_SELF_HARM_TEXT_MODEL]: new OpenAiSelfHarmTextSignal(
       credentialGetters.OPEN_AI,
       getOpenAiScores,

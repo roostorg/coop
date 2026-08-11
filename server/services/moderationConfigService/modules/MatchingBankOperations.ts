@@ -155,8 +155,7 @@ export default class MatchingBankOperations {
 }
 
 export type MatchingBankErrorType =
-  | 'MatchingBankNameExistsError'
-  | 'MatchingBankNotFoundError';
+  'MatchingBankNameExistsError' | 'MatchingBankNotFoundError';
 
 export const makeMatchingBankNameExistsError = (data: ErrorInstanceData) =>
   new CoopError({

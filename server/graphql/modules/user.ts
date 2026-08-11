@@ -79,6 +79,7 @@ const typeDefs = /* GraphQL */ `
   type UserInterfacePreferences {
     moderatorSafetyMuteVideo: Boolean!
     moderatorSafetyGrayscale: Boolean!
+    moderatorSafetySepia: Boolean!
     moderatorSafetyBlurLevel: Int!
     mrtChartConfigurations: [ManualReviewChartSettings!]!
   }
@@ -87,6 +88,7 @@ const typeDefs = /* GraphQL */ `
     moderatorSafetyMuteVideo: Boolean!
     moderatorSafetyGrayscale: Boolean!
     moderatorSafetyBlurLevel: Int!
+    moderatorSafetySepia: Boolean!
   }
 
   input ManualReviewChartConfigurationsInput {

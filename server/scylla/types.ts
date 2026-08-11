@@ -28,8 +28,7 @@ export type ScyllaNilItemIdentifier = typeof ScyllaNilItemIdentifier;
 export const ScyllaNilItemIdentifier = { id: '', type_id: '' } as const;
 
 export type ScyllaItemIdentifier =
-  | ScyllaRealItemIdentifier
-  | ScyllaNilItemIdentifier;
+  ScyllaRealItemIdentifier | ScyllaNilItemIdentifier;
 
 export function isRealItemIdentifier(
   it: ScyllaItemIdentifier,

@@ -1,14 +1,14 @@
 import fc from 'fast-check';
 import { uid } from 'uid';
+import { v1 as uuidv1 } from 'uuid';
 
-import getBottle from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
+import makeDummyMrtJobPayload from '../../../test/fixtureHelpers/makeDummyMrtJobPayload.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
-import { makeTestWithFixture } from '../../../test/utils.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import {
   bullJobIdtoExternalJobId,
@@ -34,65 +34,52 @@ describe('QueueOperations', () => {
   });
 
   const testWithQueueAndActions = () =>
-    makeTestWithFixture(async () => {
-      const container = (await getBottle()).container;
-
-      const { org, cleanup: orgCleanup } = await createOrg(
+    makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
-          ModerationConfigService: container.ModerationConfigService,
-          ApiKeyService: container.ApiKeyService,
+          KyselyPg: deps.KyselyPg,
+          ModerationConfigService: deps.ModerationConfigService,
+          ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
 
-      const { user, cleanup: userCleanup } = await createUser(
-        container.KyselyPg,
-        org.id,
-      );
-      const { itemTypes, cleanup: itemTypesCleanup } =
-        await createContentItemTypes({
-          moderationConfigService: container.ModerationConfigService,
-          orgId: org.id,
-          extra: {
-            fields: [
-              {
-                name: 'someField',
-                type: 'NUMBER',
-                required: false,
-                container: null,
-              },
-            ],
-          },
-        });
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { itemTypes } = await createContentItemTypes({
+        moderationConfigService: deps.ModerationConfigService,
+        orgId: org.id,
+        extra: {
+          fields: [
+            {
+              name: 'someField',
+              type: 'NUMBER',
+              required: false,
+              container: null,
+            },
+          ],
+        },
+      });
 
-      const { actions, cleanup: actionsCleanup } = await createActions({
-        actionAPI: container.ActionAPIDataSource,
+      const { actions } = await createActions({
+        actionAPI: deps.ActionAPIDataSource,
         itemTypeIds: itemTypes.map((it) => it.id),
         orgId: org.id,
         numActions: 3,
       });
 
-      const { queue, cleanup: queuesCleanup } = await createMrtQueue({
+      const { queue } = await createMrtQueue({
         orgId: org.id,
-        mrtService: container.ManualReviewToolService,
+        mrtService: deps.ManualReviewToolService,
         userId: user.id,
       });
 
       return {
         org,
+        user,
         actions,
         queue,
-        mrtService: container.ManualReviewToolService,
-        cleanup: async () => {
-          await queuesCleanup();
-          await actionsCleanup();
-          await itemTypesCleanup();
-          await userCleanup();
-          await orgCleanup();
-          await container.KyselyPg.destroy();
-          await container.KyselyPgReadReplica.destroy();
-        },
+        kyselyPg: deps.KyselyPg,
+        mrtService: deps.ManualReviewToolService,
       };
     });
 
@@ -106,7 +93,6 @@ describe('QueueOperations', () => {
       expect(hiddenActions.length).toEqual(0);
     },
   );
-
   testWithQueueAndActions()(
     'Test hiding an action',
     async ({ org, queue, mrtService, actions }) => {
@@ -127,7 +113,6 @@ describe('QueueOperations', () => {
       expect(hiddenActions[0]).toEqual(actionToHide.id);
     },
   );
-
   testWithQueueAndActions()(
     'Test unhiding an action',
     async ({ org, queue, mrtService, actions }) => {
@@ -156,7 +141,6 @@ describe('QueueOperations', () => {
       expect(hiddenActions).not.toContain(actionToUnhide.id);
     },
   );
-
   testWithQueueAndActions()(
     'Test hiding some actions and unhiding some others',
     async ({ org, queue, mrtService, actions }) => {
@@ -220,6 +204,44 @@ describe('QueueOperations', () => {
     },
   );
 
+  // Regression: this used to read the queue with getJobs([state], 0, 0),
+  // which defaults to descending order and returns the *newest* job — the
+  // dashboard's "Oldest Task Age" column showed the newest task's age.
+  testWithQueueAndActions()(
+    'getOldestJobCreatedAt returns the oldest waiting job, not the newest',
+    async ({ org, queue, mrtService }) => {
+      const olderCreatedAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const newerCreatedAt = new Date(Date.now() - 60 * 1000);
+
+      // Enqueue the older job first: BullMQ pushes new jobs onto the head of
+      // the wait list, so a descending read returns the most recently added
+      // job and this test fails without the oldest-first fix.
+      await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: makeDummyMrtJobPayload({ createdAt: olderCreatedAt }),
+      });
+      await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: makeDummyMrtJobPayload({ createdAt: newerCreatedAt }),
+      });
+
+      const oldest = await mrtService.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+
+      expect(oldest).not.toBeNull();
+      // BullMQ round-trips job data through JSON, so createdAt may come back
+      // as an ISO string; compare by timestamp.
+      expect(new Date(oldest!).getTime()).toEqual(olderCreatedAt.getTime());
+    },
+  );
+
   testWithQueueAndActions()(
     'deleteAllJobsFromQueue accepts MANAGE_ORG',
     async ({ org, queue, mrtService }) => {
@@ -232,7 +254,6 @@ describe('QueueOperations', () => {
       ).resolves.toBeUndefined();
     },
   );
-
   const testWithTwoOrgs = () =>
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const buildOrg = async () => {
@@ -279,7 +300,6 @@ describe('QueueOperations', () => {
       expect(viewers.map((v) => v.userId)).not.toContain(attacker.user.id);
     },
   );
-
   testWithTwoOrgs()(
     'addAccessibleQueuesForUser must not grant access for a user in a different org',
     async ({ attacker, victim, mrtService }) => {
@@ -299,7 +319,6 @@ describe('QueueOperations', () => {
       expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
     },
   );
-
   testWithTwoOrgs()(
     'removeAccessibleQueuesForUser must not revoke access for a queue in a different org',
     async ({ attacker, victim, mrtService }) => {
@@ -325,7 +344,6 @@ describe('QueueOperations', () => {
       expect(viewers.map((v) => v.userId)).toContain(victim.user.id);
     },
   );
-
   testWithTwoOrgs()(
     'removeAccessibleQueuesForUser must not revoke access for a user in a different org',
     async ({ attacker, victim, mrtService }) => {
@@ -406,5 +424,77 @@ describe('QueueOperations', () => {
       });
       expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
     },
+  );
+
+  // Regression: RESTRICT FK must block queue deletion when routing rules reference it.
+  type QueueFixture = Parameters<
+    Parameters<ReturnType<typeof testWithQueueAndActions>>[1]
+  >[0];
+  type RuleTable =
+    | 'manual_review_tool.routing_rules'
+    | 'manual_review_tool.appeals_routing_rules';
+
+  const expectDeletionBlockedByRoutingRule = async (
+    { org, user, mrtService, kyselyPg }: QueueFixture,
+    table: RuleTable,
+    ruleName: string,
+  ) => {
+    const secondQueue = await mrtService.createManualReviewQueue({
+      name: `delete-test-queue-${uid()}`,
+      description: null,
+      userIds: [user.id],
+      hiddenActionIds: [],
+      isAppealsQueue: false,
+      invokedBy: {
+        userId: user.id,
+        permissions: [UserPermission.EDIT_MRT_QUEUES],
+        orgId: org.id,
+      },
+    });
+    await kyselyPg
+      .insertInto(table)
+      .values({
+        id: uuidv1(),
+        org_id: org.id,
+        name: ruleName,
+        description: null,
+        status: 'LIVE',
+        condition_set: { conditions: [], conjunction: 'AND' },
+        destination_queue_id: secondQueue.id,
+        creator_id: user.id,
+        sequence_number: 99,
+      })
+      .execute();
+    await expect(
+      mrtService.deleteManualReviewQueue(org.id, secondQueue.id),
+    ).rejects.toMatchObject({ name: 'QueueHasDependentRoutingRulesError' });
+    await kyselyPg
+      .deleteFrom(table)
+      .where('destination_queue_id', '=', secondQueue.id)
+      .execute();
+    await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
+      org.id,
+      secondQueue.id,
+    );
+  };
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue rejects when a routing rule references the queue',
+    async (ctx) =>
+      expectDeletionBlockedByRoutingRule(
+        ctx,
+        'manual_review_tool.routing_rules',
+        'block-rule',
+      ),
+  );
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue rejects when an appeals routing rule references the queue',
+    async (ctx) =>
+      expectDeletionBlockedByRoutingRule(
+        ctx,
+        'manual_review_tool.appeals_routing_rules',
+        'block-appeals-rule',
+      ),
   );
 });

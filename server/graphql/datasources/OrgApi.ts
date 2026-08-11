@@ -195,8 +195,7 @@ class OrgAPI {
 }
 
 export type OrgErrorType =
-  | 'InviteUserTokenExpiredError'
-  | 'InviteUserTokenMissingError';
+  'InviteUserTokenExpiredError' | 'InviteUserTokenMissingError';
 
 function orgValidationFailureToBadRequestError(failure: OrgValidationFailure) {
   return makeBadRequestError(failure.message, {
