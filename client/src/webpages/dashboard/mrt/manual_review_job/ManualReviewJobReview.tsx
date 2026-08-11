@@ -777,26 +777,50 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
+    // This is wired straight to a button's `onClick`, so nothing downstream
+    // catches a rejection: any error escaping here is an unhandled promise
+    // rejection and the reviewer gets no feedback at all. Both the skip and
+    // the follow-up dequeue therefore handle rejection explicitly.
+    const showSkipFailed = () =>
+      setModalInfo({
+        visible: true,
+        modalBody: 'Failed to skip this job. Please try again.',
+        footer: [{ title: 'Ok', type: 'primary', onClick: hideModal }],
+      });
+
     // Skipping is one server-side operation: it logs the skip, hides the job
     // from this reviewer for the skip window, and releases the lock so the
     // job returns to the shared pool for everyone else.
     if (queueId && job?.id && lockToken) {
-      const result = await logSkip();
-      if (result.data?.logSkip !== true) {
-        // Nothing was released or hidden; stay on the current job so the
-        // reviewer can retry (or decide) instead of advancing past it.
-        setModalInfo({
-          visible: true,
-          modalBody: 'Failed to skip this job. Please try again.',
-          footer: [{ title: 'Ok', type: 'primary', onClick: hideModal }],
-        });
+      let skipped: boolean;
+      try {
+        const result = await logSkip();
+        skipped = result.data?.logSkip === true;
+      } catch {
+        // Network/GraphQL failure. Same reviewer-facing outcome as a falsy
+        // response: nothing was released or hidden.
+        skipped = false;
+      }
+      if (!skipped) {
+        // Stay on the current job so the reviewer can retry (or decide)
+        // instead of advancing past it.
+        showSkipFailed();
         return;
       }
     }
 
     // Reset state and try to get the next job
     resetState();
-    const result = await getNextJob();
+    let result;
+    try {
+      result = await getNextJob();
+    } catch {
+      // The skip already succeeded, so the job is gone from this reviewer's
+      // view; only the advance failed. Surface it rather than leaving the
+      // reviewer on a job they no longer hold.
+      showSkipFailed();
+      return;
+    }
 
     // If there's no next job, redirect to the queues page
     if (result.data?.dequeueManualReviewJob == null) {

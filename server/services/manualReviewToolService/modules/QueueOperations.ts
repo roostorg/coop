@@ -1349,7 +1349,12 @@ export default class QueueOperations {
           queueId,
           lockToken,
           jobId: job.data.id,
-        }).catch(() => {});
+        }).catch((error: unknown) => {
+          // Non-fatal: the scan should still hand this reviewer a job. But it
+          // must not be silent — see the note on the same call in
+          // `dequeueNextJobWithLock`.
+          this.tracer.logActiveSpanFailedIfAny(error);
+        });
         // then continue while loop
       } else {
         // this is the most likely case, where there is a job
@@ -1418,7 +1423,19 @@ export default class QueueOperations {
             queueId,
             lockToken,
             jobId: convertedJob.data.id,
-          }).catch(() => {});
+          }).catch((error: unknown) => {
+            // Non-fatal, but not silent either. The common cause is another
+            // reviewer having re-locked the job, in which case they will
+            // retire it and doing nothing is correct. The case that matters is
+            // a Redis failure: the decided job then stays `active` until its
+            // lock expires, after which the stalled checker returns it to
+            // `wait` — forever. `maxStalledCount` does not bound this, because
+            // BullMQ only applies the deferred stall failure inside
+            // `processJob`, which never runs on these workers (`autorun:
+            // false`). So a stuck decided job recirculates indefinitely and
+            // this report is the only signal it happened.
+            this.tracer.logActiveSpanFailedIfAny(error);
+          });
           // then continue while loop
         } else {
           // this is the most likely case, where there is a job
@@ -1430,21 +1447,17 @@ export default class QueueOperations {
       // Release the held-aside jobs so other reviewers can pick them up
       // immediately. This reviewer stays excluded via the skip set.
       for (const held of heldAside) {
+        // No `.catch` here on purpose: `releaseJobLock` never rejects — it
+        // reports its own failures to the active span and returns. Chaining a
+        // handler here would be dead code. Releasing is best-effort anyway; a
+        // failure leaves the job locked until `lockDuration` expires, and
+        // throwing from a `finally` would replace whatever result or error the
+        // caller was about to receive.
         await this.releaseJobLock({
           orgId,
           queueId,
           jobId: held.data.id,
           lockToken,
-        }).catch((error) => {
-          // Not rethrown: this runs in a `finally`, so throwing would replace
-          // whatever result or error the caller was about to receive. The
-          // failure is self-healing — the lock expires on its own after
-          // `lockDuration` — but it shouldn't be silent.
-          // eslint-disable-next-line no-console
-          console.error(
-            `Failed to release held-aside job lock (queue ${queueId}, job ${held.data.id}):`,
-            error,
-          );
         });
       }
     }
@@ -1774,9 +1787,14 @@ export default class QueueOperations {
       // The token parameter ensures only the holder of the lock can release it
       await job.moveToDelayed(Date.now(), lockToken);
     } catch (error: unknown) {
-      // If the lock has already expired or the job is in a different state,
-      // we can safely ignore the error as the job is already released
-      // or will be handled by the stalled job checker
+      // Non-fatal: if the lock has already expired or the job moved state, the
+      // job is effectively released already (or the stalled checker will get
+      // it), and callers — including the `releaseJobLock` mutation and the
+      // held-aside loop in `dequeueNextJobWithLock` — treat releasing as
+      // best-effort cleanup that must not fail the operation around it.
+      // Reported rather than swallowed: a persistent failure here keeps a job
+      // locked for the full `lockDuration`, which is invisible otherwise.
+      this.tracer.logActiveSpanFailedIfAny(error);
     }
   }
 
