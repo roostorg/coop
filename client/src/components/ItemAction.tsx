@@ -176,6 +176,8 @@ export default function ItemAction(props: {
     () => (policies ? policies.map((p) => stripTypename(p)) : []),
     [policies],
   );
+  const allowMultiplePoliciesPerAction =
+    queryData?.myOrg?.allowMultiplePoliciesPerAction ?? false;
 
   const policiesDropdownOnChange = useCallback(
     (policyIds: string | readonly string[]) => {
@@ -273,10 +275,12 @@ export default function ItemAction(props: {
               policies={policiesMemo}
               maxTagCount={1}
               onChange={policiesDropdownOnChange}
-              selectedPolicyIds={selectedPolicyIds}
-              multiple={
-                queryData?.myOrg?.allowMultiplePoliciesPerAction ?? false
+              selectedPolicyIds={
+                allowMultiplePoliciesPerAction
+                  ? selectedPolicyIds
+                  : selectedPolicyIds[0]
               }
+              multiple={allowMultiplePoliciesPerAction}
             />
           </div>
         </div>
