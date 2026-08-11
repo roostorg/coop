@@ -2,13 +2,15 @@
 // lodash as opposed to _ to avoid overloading
 import lodash from 'lodash';
 
+import type { ReportingRulePassingContentSample } from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
 import { gatherSignalsFromResult } from '../../services/analyticsQueries/index.js';
-import { jsonStringify } from '../../utils/encoding.js';
+import { jsonStringify, tryJsonParse } from '../../utils/encoding.js';
 import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
 import type {
   GQLQueryResolvers,
   GQLReportingRuleExecutionResultResolvers,
   GQLReportingRuleInsightsResolvers,
+  GQLResolversParentTypes,
   GQLRuleExecutionResultResolvers,
   GQLRuleInsightsResolvers,
 } from '../generated.js';
@@ -151,6 +153,39 @@ const ReportingRuleExecutionResult: GQLReportingRuleExecutionResultResolvers = {
   },
 };
 
+function normalizeReportingRuleSample(
+  sample: ReportingRulePassingContentSample,
+  rule: { id: string; name: string },
+): GQLResolversParentTypes['ReportingRuleExecutionResult'] {
+  const result =
+    typeof sample.result === 'string'
+      ? (tryJsonParse(sample.result) ?? sample.result)
+      : sample.result;
+
+  return {
+    date: sample.date,
+    ts: sample.ts,
+    itemId: sample.itemId,
+    itemTypeName: sample.itemTypeName,
+    itemTypeId: sample.itemTypeId,
+    itemData:
+      typeof sample.itemData === 'string'
+        ? sample.itemData
+        : jsonStringify(sample.itemData),
+    creatorId: sample.creatorId,
+    creatorTypeId: sample.creatorTypeId,
+    // The warehouse boundary types these JSON and enum columns broadly.
+    result:
+      result as GQLResolversParentTypes['ReportingRuleExecutionResult']['result'],
+    environment:
+      sample.environment as GQLResolversParentTypes['ReportingRuleExecutionResult']['environment'],
+    passed: true,
+    ruleId: rule.id,
+    ruleName: rule.name,
+    policyIds: sample.policyIds,
+  };
+}
+
 const RuleInsights: GQLRuleInsightsResolvers = {
   async passRateData(rule, args, context) {
     const user = context.getUser();
@@ -257,10 +292,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // The reporting adapter returns the GraphQL shape, but types environment
-    // as a nullable string rather than the GraphQL enum.
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- adapter type mismatch described above */
-    return samples as any;
+    return samples.map((sample) => normalizeReportingRuleSample(sample, rule));
   },
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -278,10 +310,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // The reporting adapter returns the GraphQL shape, but types environment
-    // as a nullable string rather than the GraphQL enum.
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- adapter type mismatch described above */
-    return samples as any;
+    return samples.map((sample) => normalizeReportingRuleSample(sample, rule));
   },
 };
 
