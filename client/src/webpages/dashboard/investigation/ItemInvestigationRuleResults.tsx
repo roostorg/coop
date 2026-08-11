@@ -19,7 +19,7 @@ import {
   ruleStatusSort,
   stringSort,
 } from '../components/table/sort';
-import Table, { TableRow } from '../components/table/Table';
+import Table, { TableColumnDef, TableRow } from '../components/table/Table';
 
 import {
   GQLConditionOutcome,
@@ -81,7 +81,7 @@ export default function ItemInvestigationRuleResults(props: {
     [itemHistoryData?.itemWithHistory],
   );
 
-  const columns = useMemo(
+  const columns = useMemo<TableColumnDef<any>[]>(
     () => [
       {
         header: 'Rule',
@@ -237,17 +237,6 @@ export default function ItemInvestigationRuleResults(props: {
               </Button>
             </div>
           ),
-          values: {
-            rule: ruleResult.ruleName,
-            result: getDisplayName(outcome),
-            status: ruleResult.environment,
-            policies: ruleResult.policies,
-            tags: ruleResult.tags,
-            actions:
-              rules
-                ?.find((it) => ruleResult.ruleId === it.id)
-                ?.actions?.map((action) => action.name) ?? [],
-          },
           ruleExecutionResult: ruleResult.result,
         };
       }),

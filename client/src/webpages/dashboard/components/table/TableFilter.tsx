@@ -36,6 +36,18 @@ export default function TableFilter<TData extends RowData>({
     window.addEventListener('resize', position);
     return () => window.removeEventListener('resize', position);
   }, [menuVisible]);
+  const scrollToButton = () => {
+    if (buttonRef.current) {
+      const buttonPosition = buttonRef.current.getBoundingClientRect().top;
+      const halfwayPoint = window.innerHeight / 2;
+      if (buttonPosition > halfwayPoint) {
+        buttonRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  };
   const onSave = () => {
     Object.entries(pending).forEach(([id, value]) =>
       filterColumns.find((c) => c.id === id)?.setFilterValue(value),
@@ -53,9 +65,22 @@ export default function TableFilter<TData extends RowData>({
       <div className="flex items-center justify-start">
         <Button
           ref={buttonRef}
-          className={`font-semibold text-base rounded ${active.length ? 'text-white bg-[#71717a] border-none' : 'bg-white'}`}
-          icon={<FilterOutlined />}
-          onClick={() => setMenuVisible(!menuVisible)}
+          className={`font-semibold text-base rounded ${
+            active.length === 0
+              ? 'bg-white hover:bg-white hover:text-[#71717a] focus:bg-white focus:text-[#71717a]'
+              : 'text-white bg-[#71717a] border-none focus:text-white focus:bg-[#71717a] focus:border-none hover:text-white hover:bg-[#a1a1aa] hover:border-none'
+          }`}
+          icon={
+            <FilterOutlined
+              className={`font-semibold ${
+                active.length === 0 ? 'text-[#71717a]' : 'text-white'
+              }`}
+            />
+          }
+          onClick={() => {
+            setMenuVisible(!menuVisible);
+            scrollToButton();
+          }}
         >
           Filter
         </Button>

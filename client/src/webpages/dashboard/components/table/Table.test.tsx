@@ -205,6 +205,28 @@ describe('Table v7 behavior', () => {
   });
 
   it('facets raw options by other filters but not the probed column filter', () => {
+    const facetData: TableRow[] = [
+      {
+        name: <span>Label One</span>,
+        status: 'Open',
+        values: { id: 'group-a-1', name: 'Alpha', status: 'Open' },
+      },
+      {
+        name: <span>Label Two</span>,
+        status: 'Open',
+        values: { id: 'group-a-2', name: 'Bravo', status: 'Open' },
+      },
+      {
+        name: <span>Label Three</span>,
+        status: 'Open',
+        values: { id: 'group-b-1', name: 'Charlie', status: 'Open' },
+      },
+      {
+        name: <span>Label Four</span>,
+        status: 'Closed',
+        values: { id: 'group-a-3', name: 'Delta', status: 'Closed' },
+      },
+    ];
     const FacetFilter = (props: ColumnProps<TableRow>) => (
       <>
         <div data-testid="facets">
@@ -240,36 +262,47 @@ describe('Table v7 behavior', () => {
         filterFn: 'text',
       },
     ];
-    renderTable(filterColumns);
+    render(
+      <MemoryRouter>
+        <Table columns={filterColumns} data={facetData} />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-    const menu = screen
+    let menu = screen
       .getByRole('button', { name: 'Save' })
       .closest<HTMLElement>('.absolute')!;
+    fireEvent.click(within(menu).getByText('Name'));
+    expect(screen.getByTestId('facets').textContent).toBe(
+      'Alpha,Bravo,Charlie,Delta',
+    );
     fireEvent.click(within(menu).getByText('Status'));
     fireEvent.change(screen.getByPlaceholderText('Filter statuses'), {
       target: { value: 'Open' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    expect(screen.getByTestId('facets').textContent).toBe(
+      'Alpha,Bravo,Charlie',
+    );
+    menu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute')!;
     fireEvent.click(within(menu).getByText('ID'));
     fireEvent.change(screen.getByPlaceholderText('Filter IDs'), {
-      target: { value: 'z' },
+      target: { value: 'group-a' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-    fireEvent.click(
-      within(
-        screen
-          .getByRole('button', { name: 'Save' })
-          .closest<HTMLElement>('.absolute')!,
-      ).getByText('Name'),
-    );
-    expect(screen.getByTestId('facets').textContent).toBe('Zulu');
+    expect(screen.getByTestId('facets').textContent).toBe('Alpha,Bravo');
 
     fireEvent.change(screen.getByPlaceholderText('Filter facets'), {
-      target: { value: 'Zulu' },
+      target: { value: 'Alpha' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-    expect(screen.getByTestId('facets').textContent).toBe('Zulu');
+    expect(screen.getByTestId('facets').textContent).toBe('Alpha,Bravo');
   });
 });
