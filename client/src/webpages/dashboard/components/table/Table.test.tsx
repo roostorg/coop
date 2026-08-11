@@ -21,7 +21,7 @@ const columns = [
   {
     header: 'Name',
     accessorKey: 'name',
-    cell: ({ getValue }) => getValue<ReactNode>(),
+    cell: ({ getValue }): ReactNode => getValue<ReactNode>(),
     sortFn: stringSort,
     sortDescFirst: false,
   },
@@ -395,7 +395,7 @@ describe('Table behavior', () => {
       {
         header: 'Score',
         accessorKey: 'score',
-        cell: ({ getValue }) => getValue<ReactNode>(),
+        cell: ({ getValue }): ReactNode => getValue<ReactNode>(),
         meta: {
           filter: (props: ColumnProps<NumericRow>) =>
             NumberRangeColumnFilter({
