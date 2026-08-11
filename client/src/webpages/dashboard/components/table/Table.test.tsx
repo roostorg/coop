@@ -112,11 +112,15 @@ describe('Table v7 behavior', () => {
     renderTable(filterColumns);
 
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-    fireEvent.click(screen.getAllByText('Name')[0]);
+    const filterMenu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute');
+    expect(filterMenu).not.toBeNull();
+    fireEvent.click(within(filterMenu!).getByText('Name'));
     fireEvent.change(screen.getByPlaceholderText('Filter names'), {
       target: { value: 'alp' },
     });
-    fireEvent.click(screen.getAllByText('Status')[0]);
+    fireEvent.click(within(filterMenu!).getByText('Status'));
     fireEvent.change(screen.getByPlaceholderText('Filter statuses'), {
       target: { value: 'Closed' },
     });
@@ -153,18 +157,20 @@ describe('Table v7 behavior', () => {
       onSelectRow,
     });
 
-    expect(
-      screen.getAllByRole('link').map((link) => link.getAttribute('href')),
-    ).toEqual(
-      expect.arrayContaining([
-        '/rows/a',
-        '/rows/a',
-        '/rows/alpine',
-        '/rows/alpine',
-        '/rows/z',
-        '/rows/z',
-      ]),
+    const bodyRows = within(screen.getAllByRole('rowgroup')[1]).getAllByRole(
+      'row',
     );
+    expect(
+      bodyRows.map((row) =>
+        within(row)
+          .getAllByRole('link')
+          .map((link) => link.getAttribute('href')),
+      ),
+    ).toEqual([
+      ['/rows/z', '/rows/z'],
+      ['/rows/a', '/rows/a'],
+      ['/rows/alpine', '/rows/alpine'],
+    ]);
     const alphaRow = screen.getByText('Rendered Alpha').closest('tr')!;
     fireEvent.click(alphaRow);
     expect(onSelectRow).toHaveBeenCalledTimes(1);
