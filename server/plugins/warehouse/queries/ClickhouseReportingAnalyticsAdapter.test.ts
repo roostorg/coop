@@ -46,6 +46,31 @@ describe('ClickhouseReportingAnalyticsAdapter.getReportingRulePassRateData', () 
       '2025-08-11T18:15:34.135Z',
     ]);
   });
+
+  it('preserves ClickHouse dates while normalizing numeric totals', async () => {
+    const { adapter, query } = makeAdapter();
+    query.mockResolvedValueOnce([
+      {
+        date: '2026-08-04',
+        totalMatches: '12',
+        totalRequests: '34',
+      },
+    ]);
+
+    const result = await adapter.getReportingRulePassRateData({
+      orgId: 'org-pass-rate',
+      ruleId: 'rule-pass-rate',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+    });
+
+    expect(result).toEqual([
+      {
+        date: '2026-08-04',
+        totalMatches: 12,
+        totalRequests: 34,
+      },
+    ]);
+  });
 });
 
 describe('ClickhouseReportingAnalyticsAdapter.getReportingRulePassingContentSamples', () => {
