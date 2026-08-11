@@ -1,5 +1,6 @@
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
+import { getUtcDateOnlyString } from '../../../utils/time.js';
 import {
   type IReportingAnalyticsAdapter,
   type ReportingRulePassingContentSample,
@@ -112,19 +113,19 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
     }
 
     if (filter.type === 'latestVersion') {
-      conditions.push('rule_version >= ?');
+      conditions.push('rule_version >= parseDateTime64BestEffort(?)');
       conditions.push('ds >= toDate(?)');
-      params.push(new Date(filter.minVersion), filter.minDate);
+      params.push(filter.minVersion, getUtcDateOnlyString(filter.minDate));
     } else {
-      conditions.push('rule_version >= ?');
-      conditions.push('rule_version < ?');
+      conditions.push('rule_version >= parseDateTime64BestEffort(?)');
+      conditions.push('rule_version < parseDateTime64BestEffort(?)');
       conditions.push('ds >= toDate(?)');
       conditions.push('ds <= toDate(?)');
       params.push(
-        new Date(filter.fromVersion),
-        new Date(filter.toVersion),
-        filter.fromDate,
-        filter.toDate,
+        filter.fromVersion,
+        filter.toVersion,
+        getUtcDateOnlyString(filter.fromDate),
+        getUtcDateOnlyString(filter.toDate),
       );
     }
 
