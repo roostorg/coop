@@ -1,4 +1,3 @@
- 
 import { faker } from '@faker-js/faker';
 import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
