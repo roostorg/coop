@@ -1,3 +1,4 @@
+import { GQLRuleStatus } from '@/graphql/generated';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,7 +9,7 @@ import {
   DefaultColumnFilter,
   NumberRangeColumnFilter,
 } from './filters';
-import { dateSort, stringSort } from './sort';
+import { dateSort, ruleStatusSort, stringSort } from './sort';
 import Table, { TableColumnDef } from './Table';
 
 type TableRow = {
@@ -128,6 +129,48 @@ describe('Table behavior', () => {
       'Rendered Alpine',
       'Rendered Alpha',
     ]);
+  });
+
+  it('sorts rendered rule statuses by their raw enum values', () => {
+    type StatusRow = {
+      status: ReactNode;
+      values: { status: string };
+    };
+    const statusColumns = [
+      {
+        header: 'Status',
+        accessorKey: 'status',
+        sortFn: ruleStatusSort,
+        sortDescFirst: false,
+      },
+    ] satisfies TableColumnDef<StatusRow>[];
+    const statusData: StatusRow[] = [
+      {
+        status: <span>Background</span>,
+        values: { status: GQLRuleStatus.Background },
+      },
+      {
+        status: <span>Draft</span>,
+        values: { status: GQLRuleStatus.Draft },
+      },
+      {
+        status: <span>Live</span>,
+        values: { status: GQLRuleStatus.Live },
+      },
+    ];
+    render(
+      <MemoryRouter>
+        <Table columns={statusColumns} data={statusData} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /Status/ }));
+
+    expect(
+      within(screen.getAllByRole('rowgroup')[1])
+        .getAllByRole('row')
+        .map((row) => within(row).getByRole('cell').textContent),
+    ).toEqual(['Live', 'Background', 'Draft']);
   });
 
   it('sorts a rendered age column by its nested raw date value', () => {
