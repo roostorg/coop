@@ -68,7 +68,10 @@ describe('Drawer', () => {
     fireEvent.click(screen.getByText('Close Drawer'));
 
     await waitFor(() => {
-      expect(screen.queryByText('Drawer Title')).not.toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toHaveAttribute(
+        'data-state',
+        'closed',
+      );
     });
   });
 });
