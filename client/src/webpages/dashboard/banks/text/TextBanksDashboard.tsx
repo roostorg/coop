@@ -122,7 +122,7 @@ export default function TextBanksDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Description',
@@ -135,7 +135,7 @@ export default function TextBanksDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Type',

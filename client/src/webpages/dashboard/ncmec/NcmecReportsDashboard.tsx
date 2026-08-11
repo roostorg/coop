@@ -328,7 +328,7 @@ export default function NcmecReportsDashboard() {
           ? {
               header: 'Date',
               accessorKey: 'date',
-              sortingFn: stringSort,
+              sortFn: stringSort,
               sortDescFirst: true,
               meta: {
                 filter: (props: ColumnProps) =>
@@ -346,7 +346,7 @@ export default function NcmecReportsDashboard() {
               header: 'Reviewer',
               accessorKey: 'reviewer',
               filterFn: 'includes' as const,
-              sortingFn: stringSort,
+              sortFn: stringSort,
               meta: {
                 filter: (props: ColumnProps) =>
                   SelectColumnFilter({
@@ -363,7 +363,7 @@ export default function NcmecReportsDashboard() {
               header: 'Status',
               accessorKey: 'status',
               filterFn: 'includes' as const,
-              sortingFn: stringSort,
+              sortFn: stringSort,
               meta: {
                 filter: (props: ColumnProps) =>
                   SelectColumnFilter({

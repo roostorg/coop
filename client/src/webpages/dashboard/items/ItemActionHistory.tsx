@@ -192,7 +192,7 @@ export default function ItemActionHistory(props: {
         header: 'Decision Time',
         accessorKey: 'ts',
         sortDescFirst: true,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Actor',

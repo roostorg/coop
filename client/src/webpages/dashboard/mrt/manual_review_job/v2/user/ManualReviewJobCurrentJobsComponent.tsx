@@ -55,7 +55,7 @@ export default function ManualReviewCurrentJobsComponent(props: {
         header: 'Created At',
         accessorKey: 'createdAt',
         sortDescFirst: true,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
     ],
     [],

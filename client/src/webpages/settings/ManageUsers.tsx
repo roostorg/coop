@@ -325,7 +325,7 @@ export default function ManageUsers() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Email',
@@ -339,7 +339,7 @@ export default function ManageUsers() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Role',
@@ -353,7 +353,7 @@ export default function ManageUsers() {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: userRoleSort,
+        sortFn: userRoleSort,
       },
       {
         header: 'Approval Status',
@@ -367,7 +367,7 @@ export default function ManageUsers() {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: boolSort,
+        sortFn: boolSort,
       },
       {
         header: 'Date Created',
@@ -382,7 +382,7 @@ export default function ManageUsers() {
         },
         filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: '',

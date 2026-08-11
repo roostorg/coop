@@ -556,7 +556,7 @@ export default function ManualReviewQueuesDashboard() {
                   }),
               },
               filterFn: 'text' as const,
-              sortingFn: stringSort,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.name
@@ -572,7 +572,7 @@ export default function ManualReviewQueuesDashboard() {
                   }),
               },
               filterFn: 'text' as const,
-              sortingFn: stringSort,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.description
@@ -587,21 +587,21 @@ export default function ManualReviewQueuesDashboard() {
                   }),
               },
               filterFn: 'text' as const,
-              sortingFn: stringSort,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.oldestTaskAge
           ? {
               header: 'Oldest Task Age',
               accessorKey: 'oldestTaskAge',
-              sortingFn: dateSort('oldestJobCreatedAt'),
+              sortFn: dateSort('oldestJobCreatedAt'),
             }
           : undefined,
         columnVisibility.pendingJobCount
           ? {
               header: 'Pending Jobs',
               accessorKey: 'pendingJobCount',
-              sortingFn: integerSort,
+              sortFn: integerSort,
             }
           : undefined,
         columnVisibility.startReviewing

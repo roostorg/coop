@@ -1,34 +1,24 @@
 import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
 import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  Row,
-  RowData,
-  useReactTable,
-} from '@tanstack/react-table';
-import { ReactNode, useMemo, useState } from 'react';
+import { flexRender, useTable } from '@tanstack/react-table';
+import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { getFilterTypes } from './filters';
+import { features, TableColumnDef, TableData, TableRow } from './tableFeatures';
 import TableFilter from './TableFilter';
 
-export type TableRowData = RowData;
-export type TableRow<TData extends RowData> = Row<TData>;
-export type TableColumnDef<TData extends RowData, TValue = unknown> = ColumnDef<
-  TData,
-  TValue
->;
+export type TableRowData = TableData;
+export type { TableColumnDef, TableRow } from './tableFeatures';
+
+type RowCallback<TData extends TableData, TResult> = {
+  bivarianceHack(row: TableRow<TData>): TResult;
+}['bivarianceHack'];
 
 type TableProps<TData extends Record<string, any>> = {
-  columns: TableColumnDef<TData, any>[];
+  columns: TableColumnDef<NoInfer<TData>, any>[];
   data: readonly TData[];
-  onSelectRow?: (rowData: TableRow<TData>) => void;
-  rowLinkTo?: (rowData: TableRow<TData>) => string;
+  onSelectRow?: RowCallback<TData, void>;
+  rowLinkTo?: RowCallback<TData, string>;
   topLeftComponent?: ReactNode;
   topRightComponent?: ReactNode;
   customMaxHeight?: `max-h-[${number}px]`;
@@ -39,7 +29,7 @@ type TableProps<TData extends Record<string, any>> = {
   | {
       isCollapsed?: boolean;
       collapsedColumnTitle?: string;
-      renderCollapsedCell?: (row: TableRow<TData>) => ReactNode;
+      renderCollapsedCell?: RowCallback<TData, ReactNode>;
     }
   | Record<never, never>
 );
@@ -61,18 +51,13 @@ export default function Table<TData extends Record<string, any>>(
   } = props;
   const { isCollapsed, collapsedColumnTitle, renderCollapsedCell } =
     'isCollapsed' in props ? props : {};
-  const filterFns = useMemo(getFilterTypes, []);
-  const table = useReactTable({
+  const table = useTable({
+    features,
     columns,
     data: [...data],
     defaultColumn: {
       cell: ({ getValue }) => getValue() as ReactNode,
     },
-    filterFns,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const rows = table.getRowModel().rows;
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
@@ -181,7 +166,7 @@ export default function Table<TData extends Record<string, any>>(
                     </tr>
                   );
                 }
-                const cells = row.getVisibleCells();
+                const cells = row.getAllCells();
                 return (
                   <tr
                     key={row.id}

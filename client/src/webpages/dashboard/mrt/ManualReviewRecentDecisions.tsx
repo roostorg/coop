@@ -368,7 +368,7 @@ export default function ManualReviewRecentDecisions() {
               header: 'Decision Time',
               accessorKey: 'decisionTime',
               sortDescFirst: true,
-              sortingFn: stringSort,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.decisions

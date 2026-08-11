@@ -1,65 +1,54 @@
-import { FilterFn, Row, RowData } from '@tanstack/react-table';
 import { DatePicker, Input, Select } from 'antd';
 import intersection from 'lodash/intersection';
 import uniq from 'lodash/uniq';
-import { MouseEvent, ReactNode } from 'react';
+import { MouseEvent } from 'react';
 
-declare module '@tanstack/react-table' {
-  interface FilterFns {
-    text: FilterFn<unknown>;
-    includes: FilterFn<unknown>;
-    range: FilterFn<unknown>;
-    dateRange: FilterFn<unknown>;
-  }
-  interface ColumnMeta<TData extends RowData, TValue> {
-    filter?: (props: ColumnProps<TData>) => ReactNode;
-    valueType?: TValue;
-  }
-}
+import type {
+  FacetedRow,
+  FilterRendererProps,
+  TableData,
+} from './tableFeatures';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 type RawRow = { values: Record<string, any> };
 
-export type ColumnProps<TData extends RowData = Record<string, any>> = {
-  preFilteredRows: readonly Pick<Row<TData>, 'original'>[];
-  setUnsavedFilterValue: (value: any) => void;
-  unsavedFilterValue: any;
-  onSave: () => void;
-};
+export type ColumnProps<TData extends TableData = TableData> =
+  FilterRendererProps<TData>;
 export type FilterProps = {
   columnProps: ColumnProps;
   accessor: string;
   placeholder?: string;
 };
-const raw = (row: Row<any>, id: string) => (row.original as RawRow).values[id];
+const raw = (row: FacetedRow, id: string) =>
+  (row.original as RawRow).values[id];
 
 export function getFilterTypes() {
   return {
-    text: ((row, id, value) =>
+    text: (row: FacetedRow, id: string, value: any) =>
       value == null ||
       value.length === 0 ||
       (raw(row, id) != null &&
         String(raw(row, id))
           .toLowerCase()
-          .includes(String(value).toLowerCase()))) as FilterFn<any>,
-    includes: ((row, id, value) =>
+          .includes(String(value).toLowerCase())),
+    includes: (row: FacetedRow, id: string, value: any) =>
       value == null ||
       (Array.isArray(value) && value.length === 0) ||
       (raw(row, id) != null &&
         (Array.isArray(raw(row, id))
           ? intersection(value, raw(row, id)).length > 0
-          : value.includes(raw(row, id))))) as FilterFn<any>,
-    range: ((row, id, value) =>
+          : value.includes(raw(row, id)))),
+    range: (row: FacetedRow, id: string, value: any) =>
       value == null ||
       ((!value[0] || value[0] <= raw(row, id)) &&
-        (!value[1] || value[1] >= raw(row, id)))) as FilterFn<any>,
-    dateRange: ((row, id, value) => {
+        (!value[1] || value[1] >= raw(row, id))),
+    dateRange: (row: FacetedRow, id: string, value: any) => {
       if (value == null) return true;
       const start = value[0]?.format('YYYY-MM-DD');
       const end = value[1]?.format('YYYY-MM-DD');
       return (!start || start <= raw(row, id)) && (!end || end >= raw(row, id));
-    }) as FilterFn<any>,
+    },
   };
 }
 function onClickFilter(event: MouseEvent) {

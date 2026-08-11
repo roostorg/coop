@@ -411,7 +411,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
       },
       filterFn: 'range' as const,
       sortDescFirst: true,
-      sortingFn: stringSort,
+      sortFn: stringSort,
     }));
   }, [allSignals, samples]);
 
@@ -468,7 +468,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
         },
         filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Status',
@@ -482,7 +482,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: ruleStatusSort,
+        sortFn: ruleStatusSort,
       },
       {
         header: 'Content',
@@ -500,7 +500,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'ID',

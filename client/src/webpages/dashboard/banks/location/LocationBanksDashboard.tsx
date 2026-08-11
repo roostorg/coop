@@ -117,7 +117,7 @@ export default function LocationBanksDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Description',
@@ -130,7 +130,7 @@ export default function LocationBanksDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: '',

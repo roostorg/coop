@@ -102,7 +102,7 @@ export default function HashBanksDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Description',
@@ -115,7 +115,7 @@ export default function HashBanksDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Status',

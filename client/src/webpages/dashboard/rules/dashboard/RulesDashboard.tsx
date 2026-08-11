@@ -299,7 +299,7 @@ export default function RulesDashboard() {
           },
           filterFn: 'dateRange' as const,
           sortDescFirst: true,
-          sortingFn: stringSort,
+          sortFn: stringSort,
         },
         {
           header: 'Rule',
@@ -312,7 +312,7 @@ export default function RulesDashboard() {
               }),
           },
           filterFn: 'text' as const,
-          sortingFn: stringSort,
+          sortFn: stringSort,
         },
         {
           header: 'Owner',
@@ -338,7 +338,7 @@ export default function RulesDashboard() {
               }),
           },
           filterFn: 'includes' as const,
-          sortingFn: ruleStatusSort,
+          sortFn: ruleStatusSort,
         },
         {
           header: 'Policies',

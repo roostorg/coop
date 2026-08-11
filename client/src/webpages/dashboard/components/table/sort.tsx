@@ -1,4 +1,3 @@
-import { Row } from '@tanstack/react-table';
 import capitalize from 'lodash/capitalize';
 
 import {
@@ -8,14 +7,16 @@ import {
   GQLUserPenaltySeverity,
   GQLUserRole,
 } from '../../../../graphql/generated';
+import { TableRow } from './tableFeatures';
 
 interface RowWithValues extends Object {
   values: { [key: string]: any };
 }
+type Row<TData extends RowWithValues> = TableRow<TData>;
 
-export function stringSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function stringSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
@@ -32,9 +33,9 @@ export function stringSort(
   return 0;
 }
 
-export function integerSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function integerSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   // the values come formatted with commas, so we remove all
@@ -44,9 +45,9 @@ export function integerSort(
   return s1 > s2 ? 1 : s2 > s1 ? -1 : 0;
 }
 
-export function boolSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function boolSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
@@ -78,10 +79,10 @@ export function boolSort(
  * @param columnId - the ID (aka the accessor prop) of the column we're sorting
  * @returns - -1, 0, or 1 corresponding to the standard sorting return value
  */
-function enumSort(
+function enumSort<TData extends RowWithValues>(
   precedence: any[],
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
@@ -93,9 +94,9 @@ function enumSort(
   return precedence.indexOf(s1) > precedence.indexOf(s2) ? 1 : -1;
 }
 
-export function ruleStatusSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function ruleStatusSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   return enumSort(
@@ -111,9 +112,9 @@ export function ruleStatusSort(
   );
 }
 
-export function reportingRuleStatusSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function reportingRuleStatusSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   return enumSort(
@@ -129,9 +130,9 @@ export function reportingRuleStatusSort(
   );
 }
 
-export function userRoleSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function userRoleSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   return enumSort(
@@ -142,9 +143,9 @@ export function userRoleSort(
   );
 }
 
-export function conditionOutcomeSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function conditionOutcomeSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   return enumSort(
@@ -160,9 +161,9 @@ export function conditionOutcomeSort(
   );
 }
 
-export function userPenaltySeveritySort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
+export function userPenaltySeveritySort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
   columnId: string,
 ) {
   return enumSort(
@@ -185,9 +186,9 @@ export function userPenaltySeveritySort(
  * @returns a sort function compatible with react-table
  */
 export function dateSort(dateKey: string) {
-  return (
-    rowA: Row<RowWithValues>,
-    rowB: Row<RowWithValues>,
+  return <TData extends RowWithValues>(
+    rowA: Row<TData>,
+    rowB: Row<TData>,
     _columnId: string,
   ) => {
     const a = (rowA.original as unknown as Record<string, unknown>)[dateKey];

@@ -150,7 +150,11 @@ export default function ManualReviewDecisionsTable(props: {
 
   const columns = data?.getDecisionsTable
     .reduce<
-      (TableColumnDef<object> & { accessorKey: string; header: string })[]
+      (TableColumnDef<{
+        [key: string]: string | number;
+        groupedByKey: string;
+        name: string;
+      }> & { accessorKey: string; header: string })[]
     >(
       (acc, { action_id, type }) => {
         if (action_id !== null && action_id !== undefined) {

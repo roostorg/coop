@@ -272,7 +272,7 @@ export default function ItemTypesDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Description',
@@ -285,7 +285,7 @@ export default function ItemTypesDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'ID',

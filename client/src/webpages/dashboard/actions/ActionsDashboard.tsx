@@ -163,7 +163,7 @@ export default function ActionsDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Description',
@@ -176,7 +176,7 @@ export default function ActionsDashboard() {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Penalty',
@@ -189,7 +189,7 @@ export default function ActionsDashboard() {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: userPenaltySeveritySort,
+        sortFn: userPenaltySeveritySort,
       },
       {
         header: 'ID',

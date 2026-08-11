@@ -221,7 +221,7 @@ export default function ReportingRulesDashboard() {
               }),
           },
           filterFn: 'text' as const,
-          sortingFn: stringSort,
+          sortFn: stringSort,
         },
         {
           header: 'Owner',
@@ -247,7 +247,7 @@ export default function ReportingRulesDashboard() {
               }),
           },
           filterFn: 'includes' as const,
-          sortingFn: reportingRuleStatusSort,
+          sortFn: reportingRuleStatusSort,
         },
         {
           header: 'Policies',

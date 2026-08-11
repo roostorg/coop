@@ -1,7 +1,6 @@
 import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
 import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
 import { FilterOutlined } from '@ant-design/icons';
-import { Column, RowData } from '@tanstack/react-table';
 import { Button } from 'antd';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
@@ -10,11 +9,12 @@ import { useEffect, useRef, useState } from 'react';
 import CloseButton from '@/components/common/CloseButton';
 
 import CoopButton from '../CoopButton';
+import { TableColumn, TableData } from './tableFeatures';
 
-export default function TableFilter<TData extends RowData>({
+export default function TableFilter<TData extends TableData>({
   columns,
 }: {
-  columns: Column<TData, unknown>[];
+  columns: TableColumn<TData, unknown>[];
 }) {
   const filterColumns = columns.filter(
     (column) => column.getCanFilter() && column.columnDef.meta?.filter,

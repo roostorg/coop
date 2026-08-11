@@ -94,7 +94,7 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'text' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: 'Result',
@@ -107,7 +107,7 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: conditionOutcomeSort,
+        sortFn: conditionOutcomeSort,
       },
       {
         header: 'Status',
@@ -120,7 +120,7 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: ruleStatusSort,
+        sortFn: ruleStatusSort,
       },
       {
         header: 'Policies',
@@ -160,7 +160,7 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
       {
         header: '',

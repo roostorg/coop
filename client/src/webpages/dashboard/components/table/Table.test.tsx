@@ -22,7 +22,7 @@ const columns = [
     header: 'Name',
     accessorKey: 'name',
     cell: ({ getValue }) => getValue<ReactNode>(),
-    sortingFn: stringSort,
+    sortFn: stringSort,
     sortDescFirst: false,
   },
   { header: 'Status', accessorKey: 'status', enableSorting: false },

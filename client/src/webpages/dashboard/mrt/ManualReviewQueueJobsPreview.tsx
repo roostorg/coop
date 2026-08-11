@@ -145,7 +145,7 @@ export default function ManualReviewQueueJobsPreview() {
         },
         filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortingFn: stringSort,
+        sortFn: stringSort,
       },
     ],
     [],
