@@ -90,7 +90,7 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
     return rows.map((row) => ({
       totalMatches: Number(row.totalMatches),
       totalRequests: Number(row.totalRequests),
-      date: new Date(row.date).toJSON(),
+      date: row.date,
     }));
   }
 
