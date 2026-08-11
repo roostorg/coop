@@ -1,12 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column } from 'react-table';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ColumnProps, DefaultColumnFilter } from './filters';
 import { stringSort } from './sort';
-import Table from './Table';
+import Table, { TableColumnDef } from './Table';
 
 type TableRow = {
   name: ReactNode;
@@ -15,9 +14,15 @@ type TableRow = {
 };
 
 const columns = [
-  { Header: 'Name', accessor: 'name', sortType: stringSort },
-  { Header: 'Status', accessor: 'status', canSort: false },
-] as unknown as Column<object>[];
+  {
+    header: 'Name',
+    accessorKey: 'name',
+    cell: ({ getValue }) => getValue<ReactNode>(),
+    sortingFn: stringSort,
+    sortDescFirst: false,
+  },
+  { header: 'Status', accessorKey: 'status', enableSorting: false },
+] satisfies TableColumnDef<TableRow>[];
 
 const data: TableRow[] = [
   {
@@ -37,7 +42,10 @@ const data: TableRow[] = [
   },
 ];
 
-function renderTable(tableColumns: Column<object>[] = columns, props = {}) {
+function renderTable(
+  tableColumns: TableColumnDef<TableRow>[] = columns,
+  props = {},
+) {
   return render(
     <MemoryRouter>
       <Table columns={tableColumns} data={data} {...props} />
@@ -100,15 +108,15 @@ describe('Table v7 behavior', () => {
     const filterColumns = [
       {
         ...columns[0],
-        Filter: filterFor('name', 'Filter names'),
-        filter: 'text',
+        meta: { filter: filterFor('name', 'Filter names') },
+        filterFn: 'text',
       },
       {
         ...columns[1],
-        Filter: filterFor('status', 'Filter statuses'),
-        filter: 'text',
+        meta: { filter: filterFor('status', 'Filter statuses') },
+        filterFn: 'text',
       },
-    ] as unknown as Column<object>[];
+    ] satisfies TableColumnDef<TableRow>[];
     renderTable(filterColumns);
 
     fireEvent.click(screen.getByRole('button', { name: /filter/i }));
@@ -194,5 +202,72 @@ describe('Table v7 behavior', () => {
     expect(screen.getByText('Collapsed Alpine')).toBeTruthy();
     expect(screen.queryByText('Open')).toBeNull();
     expect(screen.queryByText('Closed')).toBeNull();
+  });
+
+  it('facets raw options by other filters but not the probed column filter', () => {
+    const FacetFilter = (props: ColumnProps<TableRow>) => (
+      <>
+        <div data-testid="facets">
+          {props.preFilteredRows
+            .map((row) => row.original.values.name)
+            .sort()
+            .join(',')}
+        </div>
+        <DefaultColumnFilter
+          columnProps={props}
+          accessor="name"
+          placeholder="Filter facets"
+        />
+      </>
+    );
+    const filterColumns: TableColumnDef<TableRow>[] = [
+      {
+        ...columns[0],
+        meta: { filter: FacetFilter },
+        filterFn: 'text',
+      },
+      {
+        ...columns[1],
+        meta: { filter: filterFor('status', 'Filter statuses') },
+        filterFn: 'text',
+      },
+      {
+        header: 'ID',
+        id: 'id',
+        accessorFn: (row) => row.values.id,
+        cell: ({ row }) => `Rendered ${row.original.values.id}`,
+        meta: { filter: filterFor('id', 'Filter IDs') },
+        filterFn: 'text',
+      },
+    ];
+    renderTable(filterColumns);
+
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    const menu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest('.absolute')!;
+    fireEvent.click(within(menu).getByText('Status'));
+    fireEvent.change(screen.getByPlaceholderText('Filter statuses'), {
+      target: { value: 'Open' },
+    });
+    fireEvent.click(within(menu).getByText('ID'));
+    fireEvent.change(screen.getByPlaceholderText('Filter IDs'), {
+      target: { value: 'z' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    fireEvent.click(
+      within(
+        screen.getByRole('button', { name: 'Save' }).closest('.absolute')!,
+      ).getByText('Name'),
+    );
+    expect(screen.getByTestId('facets').textContent).toBe('Zulu');
+
+    fireEvent.change(screen.getByPlaceholderText('Filter facets'), {
+      target: { value: 'Zulu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    expect(screen.getByTestId('facets').textContent).toBe('Zulu');
   });
 });

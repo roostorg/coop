@@ -1,35 +1,51 @@
-/* eslint-disable react/jsx-key */
 import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
 import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  Row,
+  RowData,
+  useReactTable,
+} from '@tanstack/react-table';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Column, Row, useFilters, useSortBy, useTable } from 'react-table';
 
 import { getFilterTypes } from './filters';
 import TableFilter from './TableFilter';
 
-export default function Table(
-  props: {
-    columns: ReadonlyArray<Column<object>>;
-    data: readonly object[];
-    onSelectRow?: (rowData: Row<any>) => void;
-    rowLinkTo?: (rowData: Row<any>) => string;
-    topLeftComponent?: ReactNode;
-    topRightComponent?: ReactNode;
-    customMaxHeight?: `max-h-[${number}px]`;
-    disableFilter?: boolean;
-    containerClassName?: string;
-    /** Force the horizontal scrollbar to always render. Opt-in because tables
-     * that always fit the viewport would otherwise show an unnecessary scrollbar. */
-    alwaysShowScrollbar?: boolean;
-  } & (
-    | {
-        isCollapsed?: boolean;
-        collapsedColumnTitle?: string;
-        renderCollapsedCell?: (row: Row<any>) => ReactNode;
-      }
-    | {}
-  ),
+export type TableRowData = RowData;
+export type TableRow<TData extends RowData> = Row<TData>;
+export type TableColumnDef<TData extends RowData, TValue = unknown> = ColumnDef<
+  TData,
+  TValue
+>;
+
+type TableProps<TData extends Record<string, any>> = {
+  columns: TableColumnDef<TData, any>[];
+  data: readonly TData[];
+  onSelectRow?: (rowData: TableRow<TData>) => void;
+  rowLinkTo?: (rowData: TableRow<TData>) => string;
+  topLeftComponent?: ReactNode;
+  topRightComponent?: ReactNode;
+  customMaxHeight?: `max-h-[${number}px]`;
+  disableFilter?: boolean;
+  containerClassName?: string;
+  alwaysShowScrollbar?: boolean;
+} & (
+  | {
+      isCollapsed?: boolean;
+      collapsedColumnTitle?: string;
+      renderCollapsedCell?: (row: TableRow<TData>) => ReactNode;
+    }
+  | Record<never, never>
+);
+
+export default function Table<TData extends Record<string, any>>(
+  props: TableProps<TData>,
 ) {
   const {
     columns,
@@ -43,60 +59,57 @@ export default function Table(
     containerClassName,
     alwaysShowScrollbar,
   } = props;
-  const {
-    isCollapsed = undefined,
-    collapsedColumnTitle = undefined,
-    renderCollapsedCell = undefined,
-  } = 'isCollapsed' in props ? props : {};
-
-  const rowsAreSelectable = onSelectRow !== undefined;
-
-  const filterTypes = useMemo(getFilterTypes, []);
-
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    /* @ts-ignore */
-    useTable({ columns, data, filterTypes }, useFilters, useSortBy);
-
+  const { isCollapsed, collapsedColumnTitle, renderCollapsedCell } =
+    'isCollapsed' in props ? props : {};
+  const filterFns = useMemo(getFilterTypes, []);
+  const table = useReactTable({
+    columns,
+    data: [...data],
+    filterFns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+  const rows = table.getRowModel().rows;
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
-
-  const selectRow = (row: Row<any>, rowIndex: number) => {
-    if (rowsAreSelectable) {
-      setSelectedRow(rowIndex);
+  const rowsAreSelectable = onSelectRow !== undefined;
+  const selectRow = (row: TableRow<TData>, index: number) => {
+    if (onSelectRow) {
+      setSelectedRow(index);
       onSelectRow(row);
     }
   };
+  const rowClass = (index: number) =>
+    rowsAreSelectable || rowLinkTo
+      ? selectedRow === index
+        ? 'cursor-pointer bg-indigo-100 hover:bg-indigo-100 border border-solid border-indigo-200 group'
+        : `cursor-pointer hover:bg-indigo-100 group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`
+      : index % 2 === 0
+        ? 'bg-white'
+        : 'bg-slate-50';
 
   return (
     <div
       className={`flex flex-col items-start max-w-full mb-8 ${containerClassName ?? 'w-fit'}`}
     >
       <div
-        className={`flex w-full pb-2 items-start gap-4 ${
-          topLeftComponent || topRightComponent
-            ? 'justify-between'
-            : 'justify-end'
-        } ${isCollapsed ? 'flex-col gap-1' : ''}`}
+        className={`flex w-full pb-2 items-start gap-4 ${topLeftComponent || topRightComponent ? 'justify-between' : 'justify-end'} ${isCollapsed ? 'flex-col gap-1' : ''}`}
       >
         {topLeftComponent}
         {disableFilter ? null : (
-          <TableFilter
-            headers={[...headerGroups.values()].flatMap(
-              (group) => group.headers,
-            )}
-          />
+          <TableFilter columns={table.getAllLeafColumns()} />
         )}
         {topRightComponent}
       </div>
       <div className="w-full min-w-0 border border-gray-200 border-solid rounded-md">
         <div
-          className={`min-w-0 overflow-x-auto overflow-y-auto rounded-md ${
-            alwaysShowScrollbar ? 'scrollbar-show' : ''
-          } ${customMaxHeight ?? 'max-h-[1200px]'}`}
+          className={`min-w-0 overflow-x-auto overflow-y-auto rounded-md ${alwaysShowScrollbar ? 'scrollbar-show' : ''} ${customMaxHeight ?? 'max-h-[1200px]'}`}
         >
-          <table {...getTableProps()} className="w-full">
+          <table className="w-full">
             <thead className="sticky top-0 z-10 bg-slate-50">
-              {headerGroups.map((headerGroup, _i) => (
-                <tr {...headerGroup.getHeaderGroupProps()}>
+              {table.getHeaderGroups().map((group) => (
+                <tr key={group.id}>
                   {isCollapsed && collapsedColumnTitle ? (
                     <th className="p-4 text-base font-bold text-gray-500 rounded-t-md text-start align-center">
                       <div className="flex flex-row items-center justify-between flex-nowrap whitespace-nowrap">
@@ -104,48 +117,25 @@ export default function Table(
                       </div>
                     </th>
                   ) : (
-                    headerGroup.headers.map((column, index) => {
-                      // For some reason when we pass `columns` into useTable,
-                      // the `headers` prop in headerGroups doesn't receive the
-                      // canSort value from each of the columns (it's overwritten)
-                      // to true always. So we pull the canSort value from the
-                      // `columns` variable instead of the headerGroup.headers variable.
-                      // NB: canSort defaults to true
-                      const canSort =
-                        columns.find(
-                          /* @ts-ignore */
-                          (col) => col.Header === column.Header,
-                          /* @ts-ignore */
-                        )!.canSort ?? true;
-                      // If we don't set this on the header's column object directly,
-                      // the user can still click the header to sort the row, even
-                      // though the sort UI is hidden.
-                      if (!canSort) {
-                        /* @ts-ignore */
-                        column.canSort = false;
-                      }
+                    group.headers.map((header, index) => {
+                      const sorted = header.column.getIsSorted();
                       return (
                         <th
-                          {...column.getHeaderProps(
-                            /* @ts-ignore */
-                            column.getSortByToggleProps(),
-                          )}
-                          className={`align-center font-bold text-gray-500 text-start text-base !p-0 ${
-                            index === 0
-                              ? 'rounded-tl-md'
-                              : index === headerGroup.headers.length - 1
-                                ? 'rounded-tr-md'
-                                : ''
-                          }`}
+                          key={header.id}
+                          onClick={header.column.getToggleSortingHandler()}
+                          className={`align-center font-bold text-gray-500 text-start text-base !p-0 ${index === 0 ? 'rounded-tl-md' : index === group.headers.length - 1 ? 'rounded-tr-md' : ''}`}
                         >
                           <div className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3">
-                            {column.render('Header')}
-                            {/* @ts-ignore */}
-                            {canSort ? (
-                              /* @ts-ignore */
-                              column.isSortedDesc ? (
-                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" /> /* @ts-ignore */
-                              ) : column.isSorted ? (
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                            {header.column.getCanSort() ? (
+                              sorted === 'desc' ? (
+                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" />
+                              ) : sorted === 'asc' ? (
                                 <SortAmountAsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full scale-y-[-1]" />
                               ) : (
                                 <SortAmountDsc className="w-4 rounded-full fill-gray-500" />
@@ -159,92 +149,64 @@ export default function Table(
                 </tr>
               ))}
             </thead>
-            <tbody {...getTableBodyProps()}>
+            <tbody>
               {rows.map((row, rowIndex) => {
-                prepareRow(row);
-                const cell = renderCollapsedCell && renderCollapsedCell(row);
-                const cellWithWrapper = rowLinkTo ? (
-                  <Link
-                    to={rowLinkTo(row)}
-                    className="flex items-center px-4 py-2 text-black hover:text-black"
-                  >
-                    {cell}
-                  </Link>
-                ) : (
-                  <div className="flex items-center px-4 py-2 text-black hover:text-black">
-                    {cell}
-                  </div>
-                );
-                return isCollapsed ? (
-                  <tr
-                    className={
-                      rowsAreSelectable || rowLinkTo !== undefined
-                        ? selectedRow === rowIndex
-                          ? 'cursor-pointer bg-indigo-100 hover:bg-indigo-100 border border-solid border-indigo-200 group'
-                          : `cursor-pointer hover:bg-indigo-100 group ${
-                              rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                            }`
-                        : rowIndex % 2 === 0
-                          ? 'bg-white'
-                          : 'bg-slate-50'
-                    }
-                    onClick={() => selectRow(row, rowIndex)}
-                  >
-                    <td
-                      className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t ${
-                        rowIndex === rows.length - 1
-                          ? 'rounded-b-md'
-                          : 'rounded-b-none'
-                      }`}
+                if (isCollapsed) {
+                  const content = renderCollapsedCell?.(row);
+                  return (
+                    <tr
+                      key={row.id}
+                      className={rowClass(rowIndex)}
+                      onClick={() => selectRow(row, rowIndex)}
                     >
-                      {cellWithWrapper}
-                    </td>
-                  </tr>
-                ) : (
+                      <td
+                        className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t ${rowIndex === rows.length - 1 ? 'rounded-b-md' : 'rounded-b-none'}`}
+                      >
+                        {rowLinkTo ? (
+                          <Link
+                            to={rowLinkTo(row)}
+                            className="flex items-center px-4 py-2 text-black hover:text-black"
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <div className="flex items-center px-4 py-2 text-black hover:text-black">
+                            {content}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
+                const cells = row.getVisibleCells();
+                return (
                   <tr
-                    {...row.getRowProps()}
-                    className={
-                      rowsAreSelectable || rowLinkTo !== undefined
-                        ? selectedRow === rowIndex
-                          ? 'cursor-pointer bg-indigo-100 hover:bg-indigo-100 border border-solid border-indigo-200 group'
-                          : `cursor-pointer hover:bg-indigo-100 group ${
-                              rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                            }`
-                        : rowIndex % 2 === 0
-                          ? 'bg-white'
-                          : 'bg-slate-50'
-                    }
+                    key={row.id}
+                    className={rowClass(rowIndex)}
                     onClick={() => selectRow(row, rowIndex)}
                   >
-                    {row.cells.map((cell, index) => {
-                      const cellWithWrapper = rowLinkTo ? (
-                        <Link
-                          to={rowLinkTo(row)}
-                          className="flex items-center px-4 py-2 text-black hover:text-black"
-                        >
-                          {cell.render('Cell')}
-                        </Link>
-                      ) : (
-                        <div className="flex items-center max-w-3xl px-4 py-2 overflow-hidden text-ellipsis text-black hover:text-black">
-                          {cell.render('Cell')}
-                        </div>
+                    {cells.map((cell, index) => {
+                      const content = flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
                       );
-
                       return (
                         <td
-                          {...cell.getCellProps()}
-                          className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t text-base ${
-                            rowIndex === rows.length - 1 && index === 0
-                              ? 'rounded-bl-md'
-                              : 'rounded-bl-none'
-                          } ${
-                            rowIndex === rows.length - 1 &&
-                            index === columns.length - 1
-                              ? 'rounded-br-md'
-                              : 'rounded-br-none'
-                          }`}
+                          key={cell.id}
+                          className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t text-base ${rowIndex === rows.length - 1 && index === 0 ? 'rounded-bl-md' : 'rounded-bl-none'} ${rowIndex === rows.length - 1 && index === cells.length - 1 ? 'rounded-br-md' : 'rounded-br-none'}`}
                         >
-                          {cellWithWrapper}
+                          {rowLinkTo ? (
+                            <Link
+                              to={rowLinkTo(row)}
+                              className="flex items-center px-4 py-2 text-black hover:text-black"
+                            >
+                              {content}
+                            </Link>
+                          ) : (
+                            <div className="flex items-center max-w-3xl px-4 py-2 overflow-hidden text-ellipsis text-black hover:text-black">
+                              {content}
+                            </div>
+                          )}
                         </td>
                       );
                     })}

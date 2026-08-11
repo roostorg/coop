@@ -1,5 +1,5 @@
+import { Row } from '@tanstack/react-table';
 import capitalize from 'lodash/capitalize';
-import { IdType, Row } from 'react-table';
 
 import {
   GQLConditionOutcome,
@@ -16,8 +16,7 @@ interface RowWithValues extends Object {
 export function stringSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  _desc?: boolean,
+  columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -36,8 +35,7 @@ export function stringSort(
 export function integerSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  _desc?: boolean,
+  columnId: string,
 ) {
   // the values come formatted with commas, so we remove all
   // comma characters before doing any parsing or comparison
@@ -49,8 +47,7 @@ export function integerSort(
 export function boolSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  _desc?: boolean,
+  columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -85,7 +82,7 @@ function enumSort(
   precedence: any[],
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
+  columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -99,8 +96,7 @@ function enumSort(
 export function ruleStatusSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -118,8 +114,7 @@ export function ruleStatusSort(
 export function reportingRuleStatusSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -137,8 +132,7 @@ export function reportingRuleStatusSort(
 export function userRoleSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+  columnId: string,
 ) {
   return enumSort(
     [GQLUserRole.Admin, GQLUserRole.RulesManager, GQLUserRole.Analyst],
@@ -151,8 +145,7 @@ export function userRoleSort(
 export function conditionOutcomeSort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -170,8 +163,7 @@ export function conditionOutcomeSort(
 export function userPenaltySeveritySort(
   rowA: Row<RowWithValues>,
   rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -196,8 +188,7 @@ export function dateSort(dateKey: string) {
   return (
     rowA: Row<RowWithValues>,
     rowB: Row<RowWithValues>,
-    _columnId: IdType<RowWithValues>,
-    _desc?: boolean,
+    _columnId: string,
   ) => {
     const a = (rowA.original as unknown as Record<string, unknown>)[dateKey];
     const b = (rowB.original as unknown as Record<string, unknown>)[dateKey];
