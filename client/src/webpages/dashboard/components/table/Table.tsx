@@ -108,14 +108,15 @@ export default function Table<TData extends Record<string, any>>(
                   ) : (
                     headerGroup.headers.map((header, index) => {
                       const sorted = header.column.getIsSorted();
-                      const canSort = header.column.getCanSort();
+                      const isSortableHeader =
+                        !header.isPlaceholder && header.column.getCanSort();
                       const headerContent = header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
                             header.getContext(),
                           );
-                      const sortIcon = canSort ? (
+                      const sortIcon = isSortableHeader ? (
                         sorted === 'desc' ? (
                           <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" />
                         ) : sorted === 'asc' ? (
@@ -128,9 +129,13 @@ export default function Table<TData extends Record<string, any>>(
                         <th
                           key={header.id}
                           colSpan={header.colSpan}
-                          onClick={header.column.getToggleSortingHandler()}
+                          onClick={
+                            isSortableHeader
+                              ? header.column.getToggleSortingHandler()
+                              : undefined
+                          }
                           aria-sort={
-                            canSort
+                            isSortableHeader
                               ? sorted === 'asc'
                                 ? 'ascending'
                                 : sorted === 'desc'
@@ -146,7 +151,7 @@ export default function Table<TData extends Record<string, any>>(
                                 : ''
                           }`}
                         >
-                          {canSort && !header.isPlaceholder ? (
+                          {isSortableHeader ? (
                             <button
                               type="button"
                               className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3"

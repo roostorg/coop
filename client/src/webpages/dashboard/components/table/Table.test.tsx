@@ -103,6 +103,38 @@ describe('Table behavior', () => {
     ).toBeTruthy();
   });
 
+  it('keeps placeholder headers inert while grouped sortable headers stay accessible', () => {
+    const groupedColumns = [
+      columns[0],
+      {
+        header: 'Details',
+        columns: [columns[1]],
+      },
+    ] satisfies TableColumnDef<TableRow>[];
+    renderTable(groupedColumns);
+
+    const placeholderHeader = screen
+      .getAllByRole('columnheader')
+      .find((header) => header.textContent === '');
+    expect(placeholderHeader).toBeTruthy();
+    expect(within(placeholderHeader!).queryByRole('button')).toBeNull();
+    expect(placeholderHeader!.hasAttribute('aria-sort')).toBe(false);
+
+    const nameHeader = screen.getByRole('columnheader', { name: /Name/ });
+    const nameSortButton = within(nameHeader).getByRole('button', {
+      name: /Name/,
+    });
+    expect(nameHeader.getAttribute('aria-sort')).toBe('none');
+
+    nameSortButton.focus();
+    userEvent.type(nameSortButton, '{enter}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Alpha',
+      'Rendered Alpine',
+      'Rendered Zulu',
+    ]);
+  });
+
   it('makes sortable headers keyboard accessible and reports their sort direction', () => {
     renderTable();
 
@@ -124,7 +156,11 @@ describe('Table behavior', () => {
       'Rendered Alpine',
       'Rendered Zulu',
     ]);
-    expect(nameHeader.getAttribute('aria-sort')).toBe('ascending');
+    expect(
+      screen
+        .getByRole('columnheader', { name: /Name/ })
+        .getAttribute('aria-sort'),
+    ).toBe('ascending');
 
     userEvent.type(nameSortButton, '{space}', { skipClick: true });
     expect(renderedNames()).toEqual([
@@ -132,7 +168,11 @@ describe('Table behavior', () => {
       'Rendered Alpine',
       'Rendered Alpha',
     ]);
-    expect(nameHeader.getAttribute('aria-sort')).toBe('descending');
+    expect(
+      screen
+        .getByRole('columnheader', { name: /Name/ })
+        .getAttribute('aria-sort'),
+    ).toBe('descending');
   });
 
   it('renders accessor values and sorts by raw values only on sortable headers', () => {
