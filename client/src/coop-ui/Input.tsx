@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils';
 import * as React from 'react';
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   startSlot?: React.ReactNode;
   endSlot?: React.ReactNode;
 }
@@ -17,10 +16,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       startSlot && endSlot
         ? 'rounded-none'
         : startSlot
-        ? 'rounded-r-lg rounded-l-none'
-        : endSlot
-        ? 'rounded-l-lg rounded-r-none'
-        : 'rounded-lg',
+          ? 'rounded-r-lg rounded-l-none'
+          : endSlot
+            ? 'rounded-l-lg rounded-r-none'
+            : 'rounded-lg',
       className,
     );
 

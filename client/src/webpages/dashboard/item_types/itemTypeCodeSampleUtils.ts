@@ -114,12 +114,7 @@ export function generateItemData(
 }
 
 type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [k: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
 
 export function translateJSONObjectToPHP(json: JsonValue): string {
   function translateValue(value: JsonValue, indentLevel: number = 0): string {

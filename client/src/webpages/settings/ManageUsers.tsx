@@ -3,13 +3,14 @@ import { gql } from '@apollo/client';
 import { Select } from 'antd';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
 import DashboardHeader from '../dashboard/components/DashboardHeader';
 import RowMutations from '../dashboard/components/RowMutations';
+import TabBar from '../dashboard/components/TabBar';
 import {
   ColumnProps,
   DateRangeColumnFilter,
@@ -34,10 +35,12 @@ import {
   useGQLGeneratePasswordResetTokenMutation,
   useGQLManageUsersQuery,
   useGQLRejectUserMutation,
+  useGQLRolesForOrgQuery,
   useGQLUpdateRoleMutation,
 } from '../../graphql/generated';
 import { userHasPermissions } from '../../routing/permissions';
 import { titleCaseEnumString } from '../../utils/string';
+import ManageRolesTab from './ManageRolesTab';
 import { getRoleDescription } from './ManageUsersFormUtils';
 import ManageUsersInviteUserSection from './ManageUsersInviteUserSection';
 
@@ -106,9 +109,16 @@ gql`
   }
 `;
 
+type ManageUsersTab = 'users' | 'roles';
+
+const TAB_QUERY_PARAM = 'tab';
+
 export default function ManageUsers() {
-  // Lowest level permission required to manage users
-  const requiredPermissions = [GQLUserPermission.ManageOrg];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get(TAB_QUERY_PARAM);
+  const initialTab: ManageUsersTab =
+    requestedTab === 'roles' ? 'roles' : 'users';
+  const [activeTab, setActiveTab] = useState<ManageUsersTab>(initialTab);
 
   const [modalState, setModalState] = useState<
     ManageUsersModalState | undefined
@@ -129,6 +139,29 @@ export default function ManageUsers() {
   const users = data?.myOrg?.users;
   const pendingInvites = data?.myOrg?.pendingInvites;
   const hasNCMECReportingEnabled = data?.myOrg?.hasNCMECReportingEnabled;
+
+  // Pull DB-backed role names so renames in the role editor flow through.
+  const { data: rolesData } = useGQLRolesForOrgQuery();
+  const rolesByKey = useMemo(() => {
+    const map = new Map<
+      GQLUserRole,
+      { displayName: string; description: string | null }
+    >();
+    for (const r of rolesData?.rolesForOrg ?? []) {
+      map.set(r.key, {
+        displayName: r.displayName,
+        description: r.description ?? null,
+      });
+    }
+    return map;
+  }, [rolesData]);
+  const labelForRole = (role: GQLUserRole): string =>
+    rolesByKey.get(role)?.displayName ?? titleCaseEnumString(role);
+  const descriptionForRole = (role: GQLUserRole): string => {
+    const fromServer = rolesByKey.get(role)?.description;
+    if (fromServer != null && fromServer.length > 0) return fromServer;
+    return getRoleDescription(role) ?? '';
+  };
 
   const hideModal = () => {
     setModalState(undefined);
@@ -357,7 +390,9 @@ export default function ManageUsers() {
         .map((user) => ({
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
-          role: titleCaseEnumString(user.role ?? ''),
+          role: user.role
+            ? labelForRole(user.role)
+            : titleCaseEnumString(user.role ?? ''),
           approvalStatus: Boolean(user.approvedByAdmin)
             ? 'Approved'
             : 'Pending',
@@ -372,7 +407,9 @@ export default function ManageUsers() {
       pendingInvites?.map((invite) => ({
         name: 'Pending Invite',
         email: invite.email,
-        role: titleCaseEnumString(invite.role ?? ''),
+        role: invite.role
+          ? labelForRole(invite.role)
+          : titleCaseEnumString(invite.role ?? ''),
         approvalStatus: 'Invited',
         id: invite.id,
         dateCreated: new Date(invite.createdAt).toISOString().split('T')[0],
@@ -380,7 +417,8 @@ export default function ManageUsers() {
       })) ?? [];
 
     return [...userData, ...inviteData];
-  }, [users, pendingInvites]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, pendingInvites, rolesByKey]);
 
   const tableData = useMemo(
     () =>
@@ -441,10 +479,23 @@ export default function ManageUsers() {
   }
 
   const permissions = data?.me?.permissions;
-  if (!permissions || !userHasPermissions(permissions, requiredPermissions)) {
+  const canManageUsers = userHasPermissions(permissions, [
+    GQLUserPermission.ManageUsers,
+  ]);
+  const canManageRoles = userHasPermissions(permissions, [
+    GQLUserPermission.ManageRoles,
+  ]);
+  if (!permissions || (!canManageUsers && !canManageRoles)) {
     navigate('/dashboard/settings');
     return null;
   }
+
+  // Snap to a tab the caller can use; redundant tab params get rewritten.
+  const effectiveTab: ManageUsersTab = (() => {
+    if (activeTab === 'users' && !canManageUsers) return 'roles';
+    if (activeTab === 'roles' && !canManageRoles) return 'users';
+    return activeTab;
+  })();
 
   if (error) {
     throw error;
@@ -511,21 +562,22 @@ export default function ManageUsers() {
                       <Option
                         key={roleType}
                         value={roleType}
-                        label={titleCaseEnumString(roleType)}
+                        label={labelForRole(roleType)}
                       >
-                        {titleCaseEnumString(roleType)}
+                        {labelForRole(roleType)}
                       </Option>
                     ))}
                 </Select>
               </div>
-              
+
               <div className="divider !mb-6 !mt-8" />
-              
+
               {/* Reset Password Section */}
               <div className="flex flex-col items-start">
                 <div className="text-xl font-bold mb-4">Reset Password</div>
                 <div className="mb-3 text-sm text-gray-600">
-                  Generate a password reset link for this user. An email will be sent if email service is configured.
+                  Generate a password reset link for this user. An email will be
+                  sent if email service is configured.
                 </div>
                 <CoopButton
                   title="Generate Reset Link"
@@ -534,10 +586,12 @@ export default function ManageUsers() {
                   onClick={onGeneratePasswordReset}
                   loading={generateTokenLoading}
                 />
-                
+
                 {passwordResetToken && (
                   <div className="mt-4 flex flex-col gap-2 w-full">
-                    <div className="text-sm font-semibold">Password Reset Link:</div>
+                    <div className="text-sm font-semibold">
+                      Password Reset Link:
+                    </div>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -559,9 +613,9 @@ export default function ManageUsers() {
                   </div>
                 )}
               </div>
-              
+
               <div className="divider !mb-6 !mt-8" />
-              
+
               {/* Roles Description Section */}
               <div className="text-xl font-bold mb-4">Role Descriptions</div>
               <div className="flex flex-col text-start">
@@ -575,10 +629,10 @@ export default function ManageUsers() {
                   .map((role) => (
                     <div key={role} className="flex flex-col">
                       <div className="text-base font-bold">
-                        {titleCaseEnumString(role)}
+                        {labelForRole(role)}
                       </div>
                       <div className="pt-1 pb-4">
-                        {getRoleDescription(role)}
+                        {descriptionForRole(role)}
                       </div>
                     </div>
                   ))}
@@ -619,16 +673,43 @@ export default function ManageUsers() {
     </CoopModal>
   );
 
+  const tabs: { label: string; value: ManageUsersTab }[] = [];
+  if (canManageUsers) tabs.push({ label: 'Users', value: 'users' });
+  if (canManageRoles) tabs.push({ label: 'Roles', value: 'roles' });
+
+  const onTabClick = (tab: ManageUsersTab) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    next.set(TAB_QUERY_PARAM, tab);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <div className="flex flex-col">
       <Helmet>
         <title>Users</title>
       </Helmet>
-      <DashboardHeader title="Users" subtitle="" />
-      {/* @ts-ignore */}
-      <Table columns={columns} data={tableData} />
-      <div className="divider my-9" />
-      <ManageUsersInviteUserSection />
+      <DashboardHeader
+        title="Users"
+        subtitle="Manage your organization's users and roles."
+      />
+      {tabs.length > 1 && (
+        <TabBar<ManageUsersTab>
+          tabs={tabs}
+          initialSelectedTab={effectiveTab}
+          currentSelectedTab={effectiveTab}
+          onTabClick={onTabClick}
+        />
+      )}
+      {effectiveTab === 'users' && (
+        <>
+          {/* @ts-ignore */}
+          <Table columns={columns} data={tableData} />
+          <div className="divider my-9" />
+          <ManageUsersInviteUserSection />
+        </>
+      )}
+      {effectiveTab === 'roles' && <ManageRolesTab />}
       {modal}
     </div>
   );

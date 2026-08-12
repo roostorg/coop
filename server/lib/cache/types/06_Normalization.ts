@@ -1,9 +1,9 @@
-import { type Tagged } from "type-fest";
+import { type Tagged } from 'type-fest';
 
-import { type AnyParams, type AnyParamValue } from "./01_Params.js";
-import { type AnyValidators } from "./02_Validators.js";
-import { type ProducerResultResource, type Vary } from "./04_ProducerResult.js";
-import { type ProducerDirectives } from "./index.js";
+import { type AnyParams, type AnyParamValue } from './01_Params.js';
+import { type AnyValidators } from './02_Validators.js';
+import { type ProducerResultResource, type Vary } from './04_ProducerResult.js';
+import { type ProducerDirectives } from './index.js';
 
 /**
  * @fileoverview When the Cache asks the store to check for cached results that
@@ -32,7 +32,7 @@ import { type ProducerDirectives } from "./index.js";
  */
 export type NormalizedParams<Params extends AnyParams> = Tagged<
   Params,
-  "NormalizedParams"
+  'NormalizedParams'
 >;
 
 export type NormalizeParamName<Params extends AnyParams> = (
@@ -49,12 +49,12 @@ export type NormalizeParamValue<Params extends AnyParams> = <
 // The Vary object, after param names and values have been normalized.
 export type NormalizedVary<Params extends AnyParams> = Tagged<
   Vary<Params>,
-  "NormalizedVary"
+  'NormalizedVary'
 >;
 
 export type NormalizedMaxStale = Tagged<
   [number, number, number],
-  "NormalizedMaxStale"
+  'NormalizedMaxStale'
 >;
 
 export type NormalizedProducerResult<
@@ -82,7 +82,7 @@ export type NormalizedProducerResultResource<
   Params extends AnyParams,
 > = Omit<
   ProducerResultResource<T, Validators, Params>,
-  "vary" | "validators" | "directives" | "initialAge" | "date"
+  'vary' | 'validators' | 'directives' | 'initialAge' | 'date'
 > & {
   vary: NormalizedVary<Params>;
   validators: Partial<Validators>;
@@ -103,7 +103,7 @@ export type Entry<
 
 export type NormalizedProducerDirectives = Omit<
   ProducerDirectives,
-  "maxStale"
+  'maxStale'
 > & {
   maxStale?: NormalizedMaxStale;
 };

@@ -38,8 +38,11 @@ export default function IntegrationsDashboard() {
     useGQLAvailableIntegrationsQuery({
       fetchPolicy: 'network-only',
     });
-  const { loading: loadingMy, error, data: myData } =
-    useGQLMyIntegrationsQuery();
+  const {
+    loading: loadingMy,
+    error,
+    data: myData,
+  } = useGQLMyIntegrationsQuery();
 
   const loading = loadingCatalog || loadingMy;
 
@@ -58,9 +61,9 @@ export default function IntegrationsDashboard() {
   const myIntegrations = allIntegrations.filter((it) =>
     myIntegrationNames.includes(it.name),
   );
-  const otherIntegrations = allIntegrations.filter(
-    (it) => !myIntegrationNames.includes(it.name),
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  const otherIntegrations = allIntegrations
+    .filter((it) => !myIntegrationNames.includes(it.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="flex flex-col">

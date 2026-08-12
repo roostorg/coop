@@ -1,7 +1,6 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 
 import { CoopInput } from '../../services/moderationConfigService/index.js';
-
 import { userInputError } from '../utils/errors.js';
 
 export const CoopInputEnumInverted = Object.fromEntries(

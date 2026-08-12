@@ -1,4 +1,4 @@
-import { delay } from "./utils.js";
+import { delay } from './utils.js';
 
 /**
  * Stores/runs a set of timers and can alert callers when all timers
@@ -16,7 +16,7 @@ export default class TimerSet {
     ...args: any[]
   ): NodeJS.Timeout {
     if (this.closed) {
-      throw new Error("TimerSet is closed. New timers cannot be added.");
+      throw new Error('TimerSet is closed. New timers cannot be added.');
     }
 
     const timer = setTimeout(() => {

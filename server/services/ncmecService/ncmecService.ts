@@ -228,6 +228,8 @@ export class NcmecService {
         'contact_person_first_name as contactPersonFirstName',
         'contact_person_last_name as contactPersonLastName',
         'contact_person_phone as contactPersonPhone',
+        'media_review_requirement as mediaReviewRequirement',
+        'min_media_to_review as minMediaToReview',
       ])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
@@ -252,6 +254,8 @@ export class NcmecService {
     contactPersonFirstName: string | null;
     contactPersonLastName: string | null;
     contactPersonPhone: string | null;
+    mediaReviewRequirement: 'ALL' | 'MINIMUM';
+    minMediaToReview: number | null;
   }) {
     await this.pgQuery
       .insertInto('ncmec_reporting.ncmec_org_settings')
@@ -274,6 +278,8 @@ export class NcmecService {
         contact_person_first_name: params.contactPersonFirstName ?? null,
         contact_person_last_name: params.contactPersonLastName ?? null,
         contact_person_phone: params.contactPersonPhone ?? null,
+        media_review_requirement: params.mediaReviewRequirement,
+        min_media_to_review: params.minMediaToReview ?? null,
         actions_to_run_upon_report_creation: null,
         policies_applied_to_actions_run_on_report_creation: null,
       })
@@ -297,6 +303,8 @@ export class NcmecService {
           contact_person_first_name: params.contactPersonFirstName ?? null,
           contact_person_last_name: params.contactPersonLastName ?? null,
           contact_person_phone: params.contactPersonPhone ?? null,
+          media_review_requirement: params.mediaReviewRequirement,
+          min_media_to_review: params.minMediaToReview ?? null,
         }),
       )
       .execute();

@@ -104,6 +104,18 @@ export async function buildSubmitReportParamsFromDecision(
     'profileIcon',
     reportedUserData,
   );
+  const reportedUserIp = getFieldValueForRole(
+    reportedUserItemType.schema,
+    reportedUserItemType.schemaFieldRoles,
+    'ipAddress',
+    reportedUserData,
+  );
+  const reportedUserEmail = getFieldValueForRole(
+    reportedUserItemType.schema,
+    reportedUserItemType.schemaFieldRoles,
+    'email',
+    reportedUserData,
+  );
 
   // Pre-index allMediaItems by (itemId, typeId) so the per-decisionComponent
   // lookup below is O(1) instead of O(n) for every reportedMedia entry. The
@@ -133,20 +145,30 @@ export async function buildSubmitReportParamsFromDecision(
       if (mediaItemType === undefined) {
         throw new Error('Unable to find item type for reported media');
       }
-      // Fall back to "now" when the source row is missing `createdAt`.
-      // This keeps retries submittable for legacy data (predates the field)
-      // better to send the retry timestamp than to permanently block the
-      // report from being submitted to NCMEC at all.
+      const roleCreatedAt = getFieldValueForRole(
+        mediaItemType.schema,
+        mediaItemType.schemaFieldRoles,
+        'createdAt',
+        reportedItem.contentItem.data,
+      );
+      // Fall back to "now" when `createdAt` is missing or unparseable (e.g.
+      // legacy rows that predate the field, or a `createdAt` schema field
+      // role mapped to a non-date column). Better to send the retry
+      // timestamp than to permanently block the report.
       const createdAt =
-        getFieldValueForRole(
-          mediaItemType.schema,
-          mediaItemType.schemaFieldRoles,
-          'createdAt',
-          reportedItem.contentItem.data,
-        ) ?? makeDateString(new Date().toISOString());
+        roleCreatedAt !== undefined && !Number.isNaN(Date.parse(roleCreatedAt))
+          ? roleCreatedAt
+          : makeDateString(new Date().toISOString());
       if (createdAt === undefined) {
         throw new Error('No created at for reported media');
       }
+      const mediaIp = getFieldValueForRole(
+        mediaItemType.schema,
+        mediaItemType.schemaFieldRoles,
+        'ipAddress',
+        reportedItem.contentItem.data,
+      );
+      const hashes = extractHashesForUrl(reportedItem.contentItem.data, it.url);
       return {
         id: it.id,
         typeId: it.typeId,
@@ -154,6 +176,8 @@ export async function buildSubmitReportParamsFromDecision(
         createdAt,
         industryClassification: it.industryClassification,
         fileAnnotations: it.fileAnnotations,
+        ...(mediaIp ? { ipAddress: mediaIp } : {}),
+        ...(hashes ? { hashes } : {}),
       };
     }),
   );
@@ -170,6 +194,8 @@ export async function buildSubmitReportParamsFromDecision(
       typeId: reportedItemTypeId,
       ...(displayName ? { displayName } : {}),
       ...(profilePicUrl ? { profilePicture: profilePicUrl.url } : {}),
+      ...(reportedUserIp ? { ipAddress: reportedUserIp } : {}),
+      ...(reportedUserEmail ? { email: reportedUserEmail } : {}),
     },
     orgId,
     media,
@@ -189,4 +215,49 @@ export async function buildSubmitReportParamsFromDecision(
       : {}),
     ...(jobId !== undefined ? { jobId } : {}),
   };
+}
+
+/** Walk an item's data looking for an image-shaped value (`{ url, hashes }`)
+ * whose `url` matches the target. Returns the `hashes` map (typically
+ * populated by HMA at item-submission time, e.g. `{ md5: '...', pdq: '...' }`)
+ * or undefined when no match is found.
+ *
+ * Recurses into arrays and plain objects so ARRAY-of-IMAGE and MAP-of-IMAGE
+ * containers are covered, not just scalar IMAGE fields. Returns on the first
+ * match — duplicate URLs across fields would only ever yield the same hashes
+ * since HMA is deterministic per URL. */
+export function extractHashesForUrl(
+  data: NormalizedItemData,
+  url: string,
+): Record<string, string> | undefined {
+  const visit = (value: unknown): Record<string, string> | undefined => {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = visit(item);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    if (typeof value !== 'object' || value === null) return undefined;
+    const obj = value as Record<string, unknown>;
+    if (
+      typeof obj.url === 'string' &&
+      obj.url === url &&
+      typeof obj.hashes === 'object' &&
+      obj.hashes !== null
+    ) {
+      const hashes = obj.hashes as Record<string, unknown>;
+      const stringHashes: Record<string, string> = {};
+      for (const [k, v] of Object.entries(hashes)) {
+        if (typeof v === 'string') stringHashes[k] = v;
+      }
+      return Object.keys(stringHashes).length > 0 ? stringHashes : undefined;
+    }
+    for (const inner of Object.values(obj)) {
+      const found = visit(inner);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return visit(data);
 }

@@ -69,9 +69,5 @@ export interface IReportingAnalyticsAdapter {
     input: ReportingRulePassingContentSampleInput,
   ): Promise<ReadonlyArray<ReportingRulePassingContentSample>>;
 
-  getNumTimesReported(
-    orgId: string,
-    itemId: string,
-  ): Promise<number | null>;
+  getNumTimesReported(orgId: string, itemId: string): Promise<number | null>;
 }
-

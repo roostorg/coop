@@ -1,16 +1,16 @@
-import _ from "lodash";
+import _ from 'lodash';
 
 import {
   type AnyParams,
   type AnyValidators,
   type ConsumerDirectives,
-} from "../index.js";
+} from '../index.js';
 import {
   type NormalizedMaxStale,
   type NormalizedProducerResultResource,
-} from "../types/06_Normalization.js";
-import { normalizeMaxStale } from "./normalization.js";
-import { mapTuple } from "./utils.js";
+} from '../types/06_Normalization.js';
+import { normalizeMaxStale } from './normalization.js';
+import { mapTuple } from './utils.js';
 
 const { zipWith } = _;
 
@@ -68,10 +68,10 @@ export function isFresh(it: AnyNormalizedProducerResultResource, at: Date) {
 // could be helpful in fetching an updated ProducerResult that is usable.
 // This was originally a numeric enum, but strings made for way better logs.
 export const enum EntryClassification {
-  Usable = "Usable",
-  UsableWhileRevalidate = "UsableWhileRevalidate",
-  UsableIfError = "UsableIfError",
-  Unusable = "Unusable",
+  Usable = 'Usable',
+  UsableWhileRevalidate = 'UsableWhileRevalidate',
+  UsableIfError = 'UsableIfError',
+  Unusable = 'Unusable',
 }
 
 /**

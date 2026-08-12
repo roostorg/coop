@@ -1,4 +1,4 @@
-import { type SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SendEmailCommand, type SESClient } from '@aws-sdk/client-ses';
 
 import makeSendEmail, {
   CoopEmailAddress,
@@ -7,7 +7,9 @@ import makeSendEmail, {
 } from './sendEmailService.js';
 
 function makeMockClient() {
-  const mockSend = jest.fn().mockResolvedValue({ MessageId: 'test-message-id' });
+  const mockSend = jest
+    .fn()
+    .mockResolvedValue({ MessageId: 'test-message-id' });
   const mockClient = { send: mockSend } as unknown as SESClient;
   return { mockSend, mockClient };
 }
@@ -64,9 +66,7 @@ describe('sendEmailService', () => {
       await sendEmail(msg);
 
       const command = mockSend.mock.calls[0][0];
-      expect(command.input.Source).toBe(
-        `Coop <${CoopEmailAddress.NoReply}>`,
-      );
+      expect(command.input.Source).toBe(`Coop <${CoopEmailAddress.NoReply}>`);
     });
 
     it('should use Body.Text instead of Body.Html for text content', async () => {

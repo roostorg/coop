@@ -1,11 +1,11 @@
-import { EventEmitter } from "events";
-import _ from "lodash";
+import { EventEmitter } from 'events';
+import _ from 'lodash';
 
 import {
   type Entry,
   type NormalizeParamName,
   type NormalizeParamValue,
-} from "./types/06_Normalization.js";
+} from './types/06_Normalization.js';
 import {
   type AnyParams,
   type AnyParamValue,
@@ -15,19 +15,19 @@ import {
   type ProducerResultResource,
   type Store,
   type Vary,
-} from "./types/index.js";
-import { type Bind1 } from "./types/utils.js";
+} from './types/index.js';
+import { type Bind1 } from './types/utils.js';
 import {
   normalizeParams,
   normalizeProducerResultResource,
   normalizeVary,
-} from "./utils/normalization.js";
-import * as entryUtils from "./utils/normalizedProducerResultResourceHelpers.js";
-import { defaultLoggersByComponent } from "./utils/utils.js";
+} from './utils/normalization.js';
+import * as entryUtils from './utils/normalizedProducerResultResourceHelpers.js';
+import { defaultLoggersByComponent } from './utils/utils.js';
 
 const { sortBy, groupBy } = _;
 
-type OnRequestAfterClose = "throw" | "return-nothing";
+type OnRequestAfterClose = 'throw' | 'return-nothing';
 
 /**
  * This class implements a cache using a generalized version of HTTP's
@@ -53,7 +53,7 @@ export default class Cache<
   Params extends AnyParams = AnyParams,
   Id extends string = string,
 > {
-  private readonly logger: Bind1<Logger, "cache">;
+  private readonly logger: Bind1<Logger, 'cache'>;
   public readonly emitter = new EventEmitter();
   private closed = false;
   private readonly onGetAfterClose: OnRequestAfterClose;
@@ -75,9 +75,9 @@ export default class Cache<
     } = {},
   ) {
     const unboundLogger = options.logger ?? defaultLoggersByComponent.cache;
-    this.logger = unboundLogger.bind(null, "cache");
-    this.onGetAfterClose = options.onGetAfterClose ?? "throw";
-    this.onStoreAfterClose = options.onStoreAfterClose ?? "throw";
+    this.logger = unboundLogger.bind(null, 'cache');
+    this.onGetAfterClose = options.onGetAfterClose ?? 'throw';
+    this.onStoreAfterClose = options.onStoreAfterClose ?? 'throw';
     this.normalizeParamName = options.normalizeParamName ?? ((it) => it);
     this.normalizeParamValue =
       options.normalizeParamValue ??
@@ -147,13 +147,13 @@ export default class Cache<
     validatable: Entry<Content, Validators, Params>[];
   }> {
     if (this.closed) {
-      if (this.onGetAfterClose === "throw") {
-        this.logger("trace", "received request when closed and throwing");
-        throw new Error("Store has been closed...");
+      if (this.onGetAfterClose === 'throw') {
+        this.logger('trace', 'received request when closed and throwing');
+        throw new Error('Store has been closed...');
       }
       this.logger(
-        "trace",
-        "received request when closed, so returning no entries",
+        'trace',
+        'received request when closed, so returning no entries',
       );
       return {
         validatable: [],
@@ -164,8 +164,8 @@ export default class Cache<
     const now = new Date();
     const normalizedParams = this.normalizeParams(params);
 
-    this.logger("trace", "received request", { id, params, normalizedParams });
-    this.logger("trace", "requested entries from the store");
+    this.logger('trace', 'received request', { id, params, normalizedParams });
+    this.logger('trace', 'requested entries from the store');
 
     const cacheEntries = await this.dataStore.get(id, normalizedParams);
     const classifiedEntries = groupBy(cacheEntries, (it) =>
@@ -173,8 +173,8 @@ export default class Cache<
     );
 
     this.logger(
-      "trace",
-      "received entries from the store, and classified them",
+      'trace',
+      'received entries from the store, and classified them',
       classifiedEntries,
     );
 
@@ -188,7 +188,7 @@ export default class Cache<
         validatable: [],
       };
 
-      this.logger("trace", "chose/returned this data", res);
+      this.logger('trace', 'chose/returned this data', res);
       return res;
     }
 
@@ -204,7 +204,7 @@ export default class Cache<
         validatable: validatableEntries,
       };
 
-      this.logger("trace", "chose/returned this data", res);
+      this.logger('trace', 'chose/returned this data', res);
       return res;
     }
 
@@ -219,7 +219,7 @@ export default class Cache<
       validatable: validatableEntries,
     };
 
-    this.logger("trace", "chose/returned this data", res);
+    this.logger('trace', 'chose/returned this data', res);
     return res;
   }
 
@@ -232,13 +232,13 @@ export default class Cache<
     data: readonly ProducerResultResource<Content, Validators, Params>[],
   ) {
     if (this.closed) {
-      if (this.onStoreAfterClose === "throw") {
-        this.logger("trace", "received store request when closed and throwing");
-        throw new Error("Store has been closed...");
+      if (this.onStoreAfterClose === 'throw') {
+        this.logger('trace', 'received store request when closed and throwing');
+        throw new Error('Store has been closed...');
       }
       this.logger(
-        "trace",
-        "received store request after throwing and doing nothing",
+        'trace',
+        'received store request after throwing and doing nothing',
       );
       return;
     }
@@ -254,13 +254,13 @@ export default class Cache<
     });
 
     this.logger(
-      "trace",
-      "storing the following entries with (possibly inferred) storeFor times",
+      'trace',
+      'storing the following entries with (possibly inferred) storeFor times',
       entriesWithTimes,
     );
 
     entriesWithTimes.forEach(({ entry, maxStoreForSeconds }) => {
-      this.emitter.emit("store", entry, maxStoreForSeconds);
+      this.emitter.emit('store', entry, maxStoreForSeconds);
     });
 
     return this.dataStore.store(entriesWithTimes);

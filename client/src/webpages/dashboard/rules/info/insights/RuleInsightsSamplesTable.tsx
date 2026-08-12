@@ -764,6 +764,7 @@ export function getStringFromContent(
     case GQLFieldType.Map:
     case GQLFieldType.PolicyId:
     case GQLFieldType.IpAddress:
+    case GQLFieldType.EmailAddress:
       return content.toString();
     case GQLFieldType.Image:
     case GQLFieldType.Video:

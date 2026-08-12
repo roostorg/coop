@@ -1,8 +1,5 @@
 import type { IWarehouseAdapter } from '../IWarehouseAdapter.js';
-import type {
-  WarehouseQueryResult,
-  WarehouseTransactionFn,
-} from '../types.js';
+import type { WarehouseQueryResult, WarehouseTransactionFn } from '../types.js';
 
 export class NoOpWarehouseAdapter implements IWarehouseAdapter {
   readonly name = 'noop-warehouse';

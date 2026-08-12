@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { unzip2 } from '../../utils/fp-helpers.js';
+import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { type UserActionStatistics } from './fetchUserActionStatistics.js';
 import { type UserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
 

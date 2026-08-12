@@ -255,9 +255,12 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
       }
       return (
         <ContentRelatedItemComponent
-          relatedItem={{
-            id: item.itemId,
-            typeId: item.itemTypeId,
+          item={{
+            data: item.itemData,
+            type: {
+              id: item.itemTypeId,
+              baseFields: item.itemTypeFields,
+            },
           }}
           unblurAllMedia={unblurAllMedia}
           title={`${item.itemTypeName}`}

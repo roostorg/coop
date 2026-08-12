@@ -3,8 +3,7 @@ import { uid } from 'uid';
 import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
-import { makeMockedServer } from '../../test/setupMockedServer.js';
-import { makeTestWithFixture } from '../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
   type GQLCreateContentRuleInput,
   type GQLCreateUserRuleInput,
@@ -23,42 +22,28 @@ const minimalConditionSet = {
 };
 
 describe('RuleAPI', () => {
-  const testWithRuleApiFixture = makeTestWithFixture(async () => {
-    const { deps, shutdown } = await makeMockedServer();
-    const { ModerationConfigService } = deps;
-    const { org, cleanup: orgCleanup } = await createOrg(
-      {
-        KyselyPg: deps.KyselyPg,
-        ModerationConfigService,
-        ApiKeyService: deps.ApiKeyService,
-      },
-      uid(),
-    );
-    const { user, cleanup: userCleanup } = await createUser(
-      deps.KyselyPg,
-      org.id,
-    );
-    const { itemTypes, cleanup: itemTypesCleanup } =
-      await createContentItemTypes({
+  const testWithRuleApiFixture = makeTransactionalTestWithFixture(
+    async ({ deps }) => {
+      const { ModerationConfigService } = deps;
+      const { org } = await createOrg(
+        {
+          KyselyPg: deps.KyselyPg,
+          ModerationConfigService,
+          ApiKeyService: deps.ApiKeyService,
+        },
+        uid(),
+      );
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { itemTypes } = await createContentItemTypes({
         moderationConfigService: ModerationConfigService,
         orgId: org.id,
         includeCreator: true,
         extra: {},
       });
 
-    return {
-      deps,
-      org,
-      user,
-      itemTypes,
-      async cleanup() {
-        await itemTypesCleanup();
-        await userCleanup();
-        await orgCleanup();
-        await shutdown();
-      },
-    };
-  });
+      return { org, user, itemTypes };
+    },
+  );
 
   testWithRuleApiFixture(
     'createContentRule + getGraphQLRuleFromId round-trip',
@@ -86,8 +71,6 @@ describe('RuleAPI', () => {
       );
       expect(fetched.id).toBe(rule.id);
       expect(fetched.name).toBe(name);
-
-      await deps.RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
     },
   );
 
@@ -116,8 +99,6 @@ describe('RuleAPI', () => {
       );
       expect(fetched.id).toBe(rule.id);
       expect(fetched.name).toBe(name);
-
-      await deps.RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
     },
   );
 
@@ -156,8 +137,6 @@ describe('RuleAPI', () => {
       );
       expect(plain).not.toBeNull();
       expect(plain!.expirationTime?.getTime()).toBe(future.getTime());
-
-      await deps.RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
     },
   );
 
@@ -199,8 +178,6 @@ describe('RuleAPI', () => {
       const expMs = plain!.expirationTime!.getTime();
       expect(expMs).toBeGreaterThanOrEqual(before);
       expect(expMs).toBeLessThanOrEqual(after + 2000);
-
-      await deps.RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
     },
   );
 
@@ -208,7 +185,7 @@ describe('RuleAPI', () => {
     'duplicate rule name yields RuleNameExistsError',
     async ({ deps, user, org }) => {
       const name = `Dup name ${uid()}`;
-      const first = await deps.RuleAPIDataSource.createUserRule(
+      await deps.RuleAPIDataSource.createUserRule(
         {
           name,
           description: null,
@@ -239,8 +216,6 @@ describe('RuleAPI', () => {
           org.id,
         ),
       ).rejects.toMatchObject({ name: 'RuleNameExistsError' });
-
-      await deps.RuleAPIDataSource.deleteRule({ id: first.id, orgId: org.id });
     },
   );
 
@@ -286,8 +261,6 @@ describe('RuleAPI', () => {
           orgId: org.id,
         }),
       ).rejects.toMatchObject({ name: 'RuleHasRunningBacktestsError' });
-
-      await deps.RuleAPIDataSource.deleteRule({ id: rule.id, orgId: org.id });
     },
   );
 

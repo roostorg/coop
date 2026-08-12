@@ -15,13 +15,13 @@ import {
   GQLDerivedFieldSpec,
   GQLLeafConditionFieldsFragment,
   GQLScalarType,
+  GQLSignal,
   GQLSignalType,
   GQLValueComparator,
   type GQLConditionInput,
 } from '../../../../graphql/generated';
 import { taggedUnionToOneOfInput } from '../../../../graphql/inputHelpers';
 import { locationAreaToLocationAreaInput } from '../../../../models/locationBank';
-import { CoreSignal } from '../../../../models/signal';
 import { safePick } from '../../../../utils/misc';
 import { isValidRegexString } from '../../../../utils/regex';
 import { CoopInput } from '../../types/enums';
@@ -54,7 +54,7 @@ export type RuleFormItemType = Pick<GQLContentType, 'id'> & {
 export function getEligibleSignalsForInput(
   input: SimplifiedConditionInput,
   ruleContentTypes: readonly RuleFormItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
   isAutomatedRule = false,
 ) {
   let eligibleSignals = allSignals;
@@ -480,14 +480,14 @@ export function removeConditionSet(
   conditionSetIndex: number,
 ) {
   let newConditionSet = cloneDeep(conditionSet);
-  
+
   if (hasNestedConditionSets(newConditionSet)) {
     const nestedConditionSets = newConditionSet.conditions;
-    
+
     // Only allow deletion if there are multiple condition sets
     if (nestedConditionSets.length > 1) {
       nestedConditionSets.splice(conditionSetIndex, 1);
-      
+
       // If, after removing this condition set, we now only have one ConditionSet
       // left, then we make it a top-level ConditionSet (rather than a ConditionSet
       // that just contains one ConditionSet within it).
@@ -501,7 +501,7 @@ export function removeConditionSet(
       }
     }
   }
-  
+
   return newConditionSet;
 }
 
@@ -529,7 +529,7 @@ export function ruleHasValidConditions(conditionSet: RuleFormConditionSet) {
 function getTypedLeafConditionFromGQL(
   condition: GQLLeafConditionFieldsFragment,
   selectedContentTypes: readonly RuleFormItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ): RuleFormCondition {
   /** Unfortunately in the RuleFormConfig query, when we query for a
    * derived field spec and fetch different fields based on the
@@ -623,7 +623,7 @@ function getTypedLeafConditionFromGQL(
 export function getTypedConditionSetFromGQL(
   conditionSet: GQLConditionSetFieldsFragment,
   selectedContentTypes: readonly RuleFormItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ): RuleFormConditionSet {
   return {
     ...conditionSet,
@@ -635,7 +635,7 @@ export function getTypedConditionSetFromGQL(
             allSignals,
           )
         : getTypedLeafConditionFromGQL(
-            condition as GQLLeafConditionFieldsFragment,
+            condition,
             selectedContentTypes,
             allSignals,
           ),

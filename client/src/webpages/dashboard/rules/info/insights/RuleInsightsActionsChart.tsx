@@ -1,14 +1,14 @@
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { InvestmentFilled, PieChartAltFilled } from '@/icons';
-import { TriangleAlert } from 'lucide-react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import { BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
+import { format } from 'date-fns';
 import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
-import { format } from 'date-fns';
+import { TriangleAlert } from 'lucide-react';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Bar,
@@ -171,9 +171,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
       );
       return (
         <div className="flex flex-col bg-white rounded-lg shadow text-start">
-          <div className="p-3 text-white rounded-t-lg bg-primary">
-            {label}
-          </div>
+          <div className="p-3 text-white rounded-t-lg bg-primary">{label}</div>
           {data.length > 1 && (
             <div className="flex flex-col">
               <div className="flex items-center px-3 py-2">

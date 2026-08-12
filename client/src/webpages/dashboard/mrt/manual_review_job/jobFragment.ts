@@ -11,7 +11,6 @@ export const JOB_FRAGMENT = gql`
     numTimesReported
     payload {
       ... on ContentManualReviewJobPayload {
-        userScore
         reportHistory {
           reporterId {
             id
@@ -72,7 +71,6 @@ export const JOB_FRAGMENT = gql`
         }
       }
       ... on UserManualReviewJobPayload {
-        userScore
         reportHistory {
           reportId
           reporterId {
@@ -86,6 +84,9 @@ export const JOB_FRAGMENT = gql`
         item {
           ... on ItemBase {
             ...ItemFields
+          }
+          ... on UserItem {
+            userStrikeCount
           }
         }
         itemThreadContentItems {
@@ -187,7 +188,6 @@ export const JOB_FRAGMENT = gql`
         }
       }
       ... on ContentAppealManualReviewJobPayload {
-        userScore
         item {
           ... on ItemBase {
             ...ItemFields
@@ -212,10 +212,12 @@ export const JOB_FRAGMENT = gql`
         }
       }
       ... on UserAppealManualReviewJobPayload {
-        userScore
         item {
           ... on ItemBase {
             ...ItemFields
+          }
+          ... on UserItem {
+            userStrikeCount
           }
         }
         additionalContentItems {

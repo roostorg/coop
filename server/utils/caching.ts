@@ -1,3 +1,5 @@
+import { type ReadonlyDeep } from 'type-fest';
+
 import {
   Cache,
   MemoryStore,
@@ -8,8 +10,6 @@ import {
   type Entry,
   type ProducerDirectives,
 } from '../lib/cache/index.js';
-import { type ReadonlyDeep } from 'type-fest';
-
 import { jsonParse, jsonStringify } from './encoding.js';
 import { type JSON } from './json-schema-types.js';
 

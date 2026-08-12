@@ -37,7 +37,8 @@ export default function NCMECActions(props: {
   setSendReportModalVisible: (visible: boolean) => void;
   setDeselectAndIgnoreModalVisible: (visible: boolean) => void;
   isAnyMediaSelected: boolean;
-  isAllMediaSelected: boolean;
+  canSendReport: boolean;
+  sendDisabledReason: string;
   submitDecision: (input: GQLDecisionSubmission) => void;
   moveToQueueMenuVisible: boolean;
   setMoveToQueueMenuVisible: (visible: boolean) => void;
@@ -48,7 +49,8 @@ export default function NCMECActions(props: {
     setSendReportModalVisible,
     setDeselectAndIgnoreModalVisible,
     isAnyMediaSelected,
-    isAllMediaSelected,
+    canSendReport,
+    sendDisabledReason,
     submitDecision,
     moveToQueueMenuVisible,
     setMoveToQueueMenuVisible,
@@ -78,7 +80,7 @@ export default function NCMECActions(props: {
       if (disableKeyboardShortcuts) {
         return;
       }
-      if (isAllMediaSelected && event.key === 'Enter') {
+      if (canSendReport && event.key === 'Enter') {
         setSendReportModalVisible(true);
       }
     };
@@ -91,7 +93,7 @@ export default function NCMECActions(props: {
       window.removeEventListener('keydown', handleKeyPress);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAllMediaSelected, disableKeyboardShortcuts]);
+  }, [canSendReport, disableKeyboardShortcuts]);
 
   const onMoveToDifferentQueue = useCallback(
     (newQueueId: string) => {
@@ -170,7 +172,7 @@ export default function NCMECActions(props: {
 
   const button = useCallback(
     (decision: NCMECDecisionType | SkipDecisionType) => {
-      const isDisabled = decision === 'Send' && !isAllMediaSelected;
+      const isDisabled = decision === 'Send' && !canSendReport;
       const button = (
         <div
           className={`block relative cursor-pointer p-2 rounded-md font-medium justify-center items-center px-4 h-fit border-none ${
@@ -227,7 +229,7 @@ export default function NCMECActions(props: {
       );
       return isDisabled ? (
         <Tooltip
-          title="Please make a decision on every piece of media in this job before sending a report to NCMEC."
+          title={sendDisabledReason}
           className="relative items-center justify-center block p-2 px-4 font-medium cursor-pointer rounded-md text-slate-300 bg-slate-100 h-fit"
         >
           {button}
@@ -238,7 +240,8 @@ export default function NCMECActions(props: {
     },
     [
       data?.myOrg?.mrtQueues,
-      isAllMediaSelected,
+      canSendReport,
+      sendDisabledReason,
       loading,
       moveToQueueMenuVisible,
       onClick,

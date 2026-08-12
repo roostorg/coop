@@ -21,7 +21,7 @@ export type IntegrationConfig = {
 
 export const INTEGRATION_CONFIGS: IntegrationConfig[] = [
   {
-    name: 'GOOGLE_CONTENT_SAFETY_API' as GQLIntegration,
+    name: 'GOOGLE_CONTENT_SAFETY_API',
     title: 'Google Content Safety API',
     logo: GoogleLogo,
     logoWithBackground: GoogleLogoWithBackground,
@@ -29,15 +29,15 @@ export const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     requiresInfo: true,
   },
   {
-    name: 'OPEN_AI' as GQLIntegration,
-    title: 'OpenAI',
+    name: 'OPEN_AI',
+    title: 'OpenAI Moderation API',
     logo: OpenAILogo,
     logoWithBackground: OpenAILogoWithBackground,
     url: 'https://openai.com/',
     requiresInfo: true,
   },
   {
-    name: 'ZENTROPI' as GQLIntegration,
+    name: 'ZENTROPI',
     title: 'Zentropi',
     logo: ZentropiLogo,
     logoWithBackground: ZentropiLogo,

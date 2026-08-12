@@ -7,14 +7,15 @@ export function logErrorJson(m: { error: unknown; message?: string }) {
   // Serialize error objects properly since they don't have enumerable properties
   const serialized = {
     ...m,
-    error: m.error instanceof Error 
-      ? { 
-          name: m.error.name,
-          message: m.error.message, 
-          stack: m.error.stack,
-          ...(m.error as unknown as Record<string, unknown>)
-        }
-      : m.error
+    error:
+      m.error instanceof Error
+        ? {
+            name: m.error.name,
+            message: m.error.message,
+            stack: m.error.stack,
+            ...(m.error as unknown as Record<string, unknown>),
+          }
+        : m.error,
   };
   console.error(jsonStringify(serialized));
 }

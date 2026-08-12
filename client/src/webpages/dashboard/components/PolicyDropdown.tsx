@@ -65,7 +65,7 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
       treeLine={true}
       maxTagCount={maxTagCount}
       placeholder={
-        placeholder ?? multiple ? 'Select Policies' : 'Select policy'
+        (placeholder ?? multiple) ? 'Select Policies' : 'Select policy'
       }
       dropdownMatchSelectWidth={false}
       value={selectedPolicyIds}

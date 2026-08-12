@@ -1,7 +1,7 @@
 import { type Dependencies } from '../../iocContainer/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { makeBadRequestError } from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { type GetUserScoresOutput } from './UserScoresRoutes.js';
 
 export default function getUserScores({
@@ -31,7 +31,7 @@ export default function getUserScores({
         }),
       );
     }
-    
+
     const { orgId } = req;
 
     const userScore = await getUserScoreEventuallyConsistent(orgId, {

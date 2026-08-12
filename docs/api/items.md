@@ -1,6 +1,6 @@
 # Submit Items API
 
-Send [Items](../user/concepts.md#item) to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured [Proactive Rules](../user/rules.md#proactive-rules).
+Send [Items](../user/concepts.md#item) to Coop for automated rule evaluation. Every time you submit an item, Coop runs it through all your configured [Proactive Rules](../user/automated-enforcement.md#proactive-rules).
 
 Submit items when they are created, edited, reported, or otherwise need to be re-evaluated. You should also submit items retroactively if you configure new rules after launch. To support Coop fetching Items and their attributes on demand, see the [Partial Items API](../api/partial-items.md).
 
@@ -84,7 +84,7 @@ If the `data` object for an item contains an `images` field consisting of an arr
 1. Fetch the image content from the provided URLs.
 2. Compute perceptual hashes for each image.
 3. Check these hashes against all [HMA Matching Banks](../integrations/hma.md) configured for your organization.
-4. Add the resulting HMA signals to the item for evaluation against your [Automated Rules](../user/rules.md).
+4. Add the resulting HMA signals to the item for evaluation against your [Automated Rules](../user/automated-enforcement.md).
 
 ## Notes
 

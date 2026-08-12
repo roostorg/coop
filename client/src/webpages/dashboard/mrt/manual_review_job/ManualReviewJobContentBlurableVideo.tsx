@@ -1,6 +1,6 @@
 import { PlayCircleFilled } from '@ant-design/icons';
 import { useEffect, useRef, useState } from 'react';
-import ReactPlayer from 'react-player/lazy';
+import ReactPlayer from 'react-player';
 
 import CoopModal from '../../components/CoopModal';
 
@@ -72,8 +72,8 @@ export default function ManualReviewJobContentBlurableVideo(props: {
             ? blurStrength
               ? BLUR_LEVELS[blurStrength]
               : !playing
-              ? 'blur-sm'
-              : 'blur-0'
+                ? 'blur-sm'
+                : 'blur-0'
             : 'blur-0'
         }`}
       >

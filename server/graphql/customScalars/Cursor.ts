@@ -9,7 +9,6 @@ import {
   type JsonOf,
 } from '../../utils/encoding.js';
 import { type JSON } from '../../utils/json-schema-types.js';
-
 import { userInputError } from '../utils/errors.js';
 
 /**

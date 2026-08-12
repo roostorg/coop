@@ -1,9 +1,9 @@
 import { ReactNode, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import type { GQLIntegrationMetadata } from '../../../graphql/generated';
 import CoopModal from '../components/CoopModal';
 
+import type { GQLIntegrationMetadata } from '../../../graphql/generated';
 import { INTEGRATION_LOGO_FALLBACKS } from './integrationLogos';
 
 export default function IntegrationCard(props: {
@@ -14,9 +14,7 @@ export default function IntegrationCard(props: {
   const { name, title, docsUrl } = integration;
   // Integrations page uses only the plain logo (logoUrl from logoPath). Do not fall back to logoWithBackgroundUrl.
   const rawLogo =
-    integration.logoUrl ??
-    INTEGRATION_LOGO_FALLBACKS[name]?.logo ??
-    '';
+    integration.logoUrl ?? INTEGRATION_LOGO_FALLBACKS[name]?.logo ?? '';
   // Resolve relative API paths to absolute URL so img loads correctly (e.g. /api/v1/integration-logos/ID).
   const logo =
     typeof rawLogo === 'string' && rawLogo.startsWith('/')

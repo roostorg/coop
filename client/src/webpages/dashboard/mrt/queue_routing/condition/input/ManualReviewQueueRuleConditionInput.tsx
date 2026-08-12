@@ -42,8 +42,7 @@ const COOP_INPUT_DESCRIPTIONS = {
     'Use this to check inspect the user who created this content, ' +
     'rather than inspecting the content itself.',
   [CoopInput.POLICY_ID]: 'The policy that was used to enqueue this job.',
-  [CoopInput.SOURCE]:
-    'The creation source from which this job was enqueued.',
+  [CoopInput.SOURCE]: 'The creation source from which this job was enqueued.',
 };
 
 export default function ManualReviewQueueRuleConditionInput(props: {

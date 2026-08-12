@@ -6,11 +6,10 @@ import * as React from 'react';
 // Note: indeterminate state can be added back once there is a need for it
 // it's been removed due to the need to cast the value to boolean
 // when using this component
-interface CheckboxProps
-  extends Omit<
-    React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
-    'onCheckedChange'
-  > {
+interface CheckboxProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+  'onCheckedChange'
+> {
   onCheckedChange?: (checked: boolean) => void;
 }
 

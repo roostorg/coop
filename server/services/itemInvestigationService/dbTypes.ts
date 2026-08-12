@@ -55,6 +55,7 @@ export type ScyllaItemSubmissionsRow = {
   item_type_schema_field_roles: JsonOf<SchemaFieldRoles>;
   item_type_schema: JsonOf<ItemSchema>;
   item_type_schema_variant: 'original' | 'partial';
+  item_ip_address: string | null;
 };
 
 export type ScyllaTables = {
@@ -65,6 +66,7 @@ export type ScyllaViews = {
   item_submission_by_item_id: ScyllaItemSubmissionsRow;
   item_submission_by_thread_and_time: ScyllaItemSubmissionsRow;
   item_submission_by_creator: ScyllaItemSubmissionsRow;
+  item_submission_by_ip: ScyllaItemSubmissionsRow;
 };
 
 export type ScyllaRelations = ScyllaTables & ScyllaViews;

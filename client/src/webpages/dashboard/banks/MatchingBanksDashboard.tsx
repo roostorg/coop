@@ -56,7 +56,6 @@ export default function MatchingBanksDashboard() {
             ? 'location'
             : 'hash'
       }`}
-
       disabled={!canEditBanks}
       disabledTooltipTitle="To create Matching Banks, you need Admin permissions."
       disabledTooltipPlacement="bottomRight"

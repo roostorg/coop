@@ -1,7 +1,7 @@
 import { Calendar, CalendarProps } from '@/coop-ui/Calendar';
-import { action } from 'storybook/actions';
 import { Meta, StoryFn } from '@storybook/react';
 import * as React from 'react';
+import { action } from 'storybook/actions';
 
 export default {
   title: 'Components/Calendar',

@@ -6,7 +6,7 @@ import {
   type NormalizedVary,
   type NormalizeParamName,
   type NormalizeParamValue,
-} from "../types/06_Normalization.js";
+} from '../types/06_Normalization.js';
 import {
   type AnyParams,
   type AnyParamValue,
@@ -14,7 +14,7 @@ import {
   type ProducerResult,
   type ProducerResultResource,
   type Vary,
-} from "../types/index.js";
+} from '../types/index.js';
 
 export function normalizeProducerResult<
   Content,

@@ -27,6 +27,7 @@ export type UserManagementPg = {
     user_id: string;
     moderator_safety_mute_video: boolean | null;
     moderator_safety_grayscale: boolean | null;
+    moderator_safety_sepia: boolean | null;
     moderator_safety_blur_level: number | null;
     mrt_chart_configurations: MrtChartConfig[] | null;
   };
@@ -41,6 +42,11 @@ export type UserManagementPg = {
       boolean | undefined
     >;
     moderator_safety_grayscale: ColumnType<
+      boolean,
+      boolean | undefined,
+      boolean | undefined
+    >;
+    moderator_safety_sepia: ColumnType<
       boolean,
       boolean | undefined,
       boolean | undefined
@@ -60,11 +66,14 @@ export type UserManagementPg = {
   // Shared definition lives in `services/coreAppTables.ts` so Kysely instances
   // typed on either `UserManagementPg` or `CombinedPg` see the same columns.
   'public.users': CoreAppTablesPg['public.users'];
+  'public.roles': CoreAppTablesPg['public.roles'];
+  'public.role_permissions': CoreAppTablesPg['public.role_permissions'];
   'public.invite_user_tokens': {
     id: GeneratedAlways<string>;
     token: string;
     email: string;
     role: UserRole;
+    role_id: string | null;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
     org_id: string;

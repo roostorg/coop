@@ -6,7 +6,10 @@ import serveIntegrationLogoWithBackground from './serveIntegrationLogoWithBackgr
 export default {
   pathPrefix: '/integration-logos',
   routes: [
-    route.get<undefined>('/:integrationId/with-background', serveIntegrationLogoWithBackground),
+    route.get<undefined>(
+      '/:integrationId/with-background',
+      serveIntegrationLogoWithBackground,
+    ),
     route.get<undefined>('/:integrationId', serveIntegrationLogo),
   ] as ControllerRouteList,
 } satisfies Controller;

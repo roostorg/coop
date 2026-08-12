@@ -1,12 +1,12 @@
-import { type Tagged } from "type-fest";
+import { type Tagged } from 'type-fest';
 
 import type {
   AnyParams,
   AnyParamValue,
   NormalizedParams,
   NormalizedVary,
-} from "../types/index.js";
-import { type JsonOf, jsonStringify } from "./utils.js";
+} from '../types/index.js';
+import { jsonStringify, type JsonOf } from './utils.js';
 
 // Not the secondary cache key, but a canonical list of the _names_ of the
 // params that are used to to generate the secondary cache key. (I.e., the
@@ -17,7 +17,7 @@ export type VaryKeys = readonly string[];
 // by some of the stores (i.e., is part of the public contract).
 export type VariantKey = Tagged<
   JsonOf<(string | null | AnyParamValue)[]>,
-  "VariantKey"
+  'VariantKey'
 >;
 
 // The only difference between VaryEntry and NormalizedVaryEntry is that the

@@ -3,13 +3,18 @@
 // relying on here).
 
 import otel from '@opentelemetry/api';
+import type pg from 'pg';
 import * as superTest from 'supertest';
 
-import getBottle, { type Dependencies } from '../iocContainer/index.js';
+import getBottle, {
+  getPgConnectionParams,
+  type Dependencies,
+} from '../iocContainer/index.js';
 import makeServer from '../server.js';
 import { type IDataWarehouse } from '../storage/dataWarehouse/IDataWarehouse.js';
 import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import SafeTracer from '../utils/SafeTracer.js';
+import { createTransactionalTestDb } from './harness/transactionalPgPool.js';
 
 /**
  * Occassionally, we make a request that's supposed to error, so this function
@@ -28,15 +33,51 @@ export function disableConsoleLogging() {
   /* eslint-enable functional/immutable-data */
 }
 
+/**
+ * Boots the Express app against real Postgres (ClickHouse/analytics mocked),
+ * inside a transaction that `rollback()` discards so tests need no cleanup.
+ * Only Postgres is rolled back. Usually used via
+ * `makeTransactionalTestWithFixture`.
+ */
 export async function makeMockedServer() {
-  const deps = await getBottleContainerWithIOMocks();
-  const { app: server, shutdown } = await makeServer(deps);
+  const tdb = createTransactionalTestDb(getPgConnectionParams());
+  await tdb.begin();
+
+  const deps = await getBottleContainerWithIOMocks({ kyselyPool: tdb.pool });
+  const { app: server, shutdown: shutdownServer } = await makeServer(deps);
   const request = superTest.agent(server);
-  return { deps, server, shutdown, request };
+
+  return {
+    deps,
+    server,
+    request,
+    /** Roll back everything written to Postgres during the test. */
+    rollback: tdb.rollback,
+    async shutdown() {
+      try {
+        await shutdownServer();
+      } finally {
+        await tdb.end();
+      }
+    },
+  };
 }
 
-export async function getBottleContainerWithIOMocks() {
+export type MockedServer = Awaited<ReturnType<typeof makeMockedServer>>;
+
+export async function getBottleContainerWithIOMocks(
+  opts: { kyselyPool?: pg.Pool } = {},
+) {
   const bottle = await getBottle();
+
+  // Optional Postgres pool override (used by the transaction-rollback harness
+  // to route all PG access through a single rolled-back connection). Applied
+  // before the container resolves anything so every service is built on it.
+  if (opts.kyselyPool != null) {
+    const pool = opts.kyselyPool;
+    bottle.factory('KyselyPgPool', () => pool);
+    bottle.factory('KyselyPgReadReplica', (container) => container.KyselyPg);
+  }
 
   // The mutation rule below is a false positive, as we're just doing
   // initial setup on this mock object before exposing it.

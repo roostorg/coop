@@ -11,6 +11,7 @@ import {
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  GQLNcmecMediaReviewRequirement,
   GQLUserPermission,
   useGQLNcmecOrgSettingsQuery,
   useGQLUpdateNcmecOrgSettingsMutation,
@@ -45,6 +46,8 @@ gql`
       contactPersonFirstName
       contactPersonLastName
       contactPersonPhone
+      mediaReviewRequirement
+      minMediaToReview
     }
     myOrg {
       hasNCMECReportingEnabled
@@ -78,6 +81,8 @@ type NcmecSettings = {
   contactPersonFirstName: string;
   contactPersonLastName: string;
   contactPersonPhone: string;
+  mediaReviewRequirement: GQLNcmecMediaReviewRequirement;
+  minMediaToReview: string;
 };
 
 export default function NCMECSettings() {
@@ -97,9 +102,13 @@ export default function NCMECSettings() {
     contactPersonFirstName: '',
     contactPersonLastName: '',
     contactPersonPhone: '',
+    mediaReviewRequirement: GQLNcmecMediaReviewRequirement.All,
+    minMediaToReview: '1',
   });
 
-  const { loading, error, data } = useGQLNcmecOrgSettingsQuery({ errorPolicy: 'all' });
+  const { loading, error, data } = useGQLNcmecOrgSettingsQuery({
+    errorPolicy: 'all',
+  });
 
   const [updateSettings, { loading: isUpdateLoading }] =
     useGQLUpdateNcmecOrgSettingsMutation({
@@ -136,6 +145,10 @@ export default function NCMECSettings() {
         contactPersonLastName:
           data.ncmecOrgSettings.contactPersonLastName ?? '',
         contactPersonPhone: data.ncmecOrgSettings.contactPersonPhone ?? '',
+        mediaReviewRequirement:
+          data.ncmecOrgSettings.mediaReviewRequirement ??
+          GQLNcmecMediaReviewRequirement.All,
+        minMediaToReview: String(data.ncmecOrgSettings.minMediaToReview ?? 1),
       });
     }
   }, [data?.ncmecOrgSettings]);
@@ -145,7 +158,10 @@ export default function NCMECSettings() {
   }
 
   const permissions = data?.me?.permissions;
-  if (!permissions || !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])) {
+  if (
+    !permissions ||
+    !userHasPermissions(permissions, [GQLUserPermission.ManageOrg])
+  ) {
     return <Navigate to="/dashboard/settings" replace />;
   }
 
@@ -184,6 +200,20 @@ export default function NCMECSettings() {
       return;
     }
 
+    const isMinimumPolicy =
+      settings.mediaReviewRequirement ===
+      GQLNcmecMediaReviewRequirement.Minimum;
+    const parsedMinMedia = Number(settings.minMediaToReview);
+    if (
+      isMinimumPolicy &&
+      (!Number.isInteger(parsedMinMedia) || parsedMinMedia < 1)
+    ) {
+      toast.error(
+        'Minimum media to review must be a whole number of at least 1.',
+      );
+      return;
+    }
+
     updateSettings({
       variables: {
         input: {
@@ -205,6 +235,8 @@ export default function NCMECSettings() {
           contactPersonFirstName: settings.contactPersonFirstName || null,
           contactPersonLastName: settings.contactPersonLastName || null,
           contactPersonPhone: settings.contactPersonPhone || null,
+          mediaReviewRequirement: settings.mediaReviewRequirement,
+          minMediaToReview: isMinimumPolicy ? parsedMinMedia : null,
         },
       },
     });
@@ -414,6 +446,79 @@ export default function NCMECSettings() {
               }
               placeholder="Phone"
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label
+              htmlFor="mediaReviewRequirement"
+              className="text-sm font-medium"
+            >
+              Media review requirement
+            </Label>
+            <Select
+              value={settings.mediaReviewRequirement}
+              onValueChange={(value) =>
+                setSettings({
+                  ...settings,
+                  mediaReviewRequirement:
+                    value as GQLNcmecMediaReviewRequirement,
+                })
+              }
+            >
+              <SelectTrigger id="mediaReviewRequirement">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={GQLNcmecMediaReviewRequirement.All}>
+                  Review all media before reporting
+                </SelectItem>
+                <SelectItem value={GQLNcmecMediaReviewRequirement.Minimum}>
+                  Require a minimum number of reviewed media
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Text size="XS" className="text-gray-500">
+              Controls how much media a reviewer must classify before they can
+              send an NCMEC report. &quot;Review all media&quot; requires a
+              decision on every item on the account (which can be hundreds);
+              &quot;minimum&quot; only requires the number below, so reviewers
+              can report the relevant media without classifying everything.
+            </Text>
+            {settings.mediaReviewRequirement ===
+            GQLNcmecMediaReviewRequirement.Minimum ? (
+              <div className="flex flex-col gap-2">
+                <Label
+                  htmlFor="minMediaToReview"
+                  className="text-sm font-medium"
+                >
+                  Minimum media to review{' '}
+                  <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="minMediaToReview"
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={settings.minMediaToReview}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Whole numbers only — fractional thresholds are invalid.
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setSettings({
+                        ...settings,
+                        minMediaToReview: value,
+                      });
+                    }
+                  }}
+                  placeholder="1"
+                />
+                <Text size="XS" className="text-gray-500">
+                  Reviewers must classify at least this many media items (and
+                  report at least one) before they can submit the report.
+                </Text>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-2">

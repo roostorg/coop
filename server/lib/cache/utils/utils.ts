@@ -1,9 +1,9 @@
-import { setTimeout } from "timers/promises";
-import debug from "debug";
-import stringify from "safe-stable-stringify";
-import { type JsonValue, type Tagged } from "type-fest";
+import { setTimeout } from 'timers/promises';
+import debug from 'debug';
+import stringify from 'safe-stable-stringify';
+import { type JsonValue, type Tagged } from 'type-fest';
 
-import { components, type Logger } from "../types/index.js";
+import { components, type Logger } from '../types/index.js';
 
 export const defaultLoggersByComponent = Object.fromEntries(
   components.map(
@@ -114,7 +114,7 @@ export function jsonParse<T extends JsonOf<unknown>>(it: T) {
 }
 
 declare const meta: unique symbol;
-export type JsonOf<T> = Tagged<string, "JSON"> & { readonly [meta]: T };
+export type JsonOf<T> = Tagged<string, 'JSON'> & { readonly [meta]: T };
 
 // Highly incomplete code for interoperating with raw HTTP responses,
 // by doing all the necessary header parsing and age inference.

@@ -49,9 +49,11 @@ export default function RuleInsightsSampleDetailMatchingValues(props: {
   const { loading, error, data } = useGQLMatchingBankNamesQuery({
     skip:
       !type ||
-      ![MatchingValueType.TEXT_BANK, MatchingValueType.LOCATION_BANK, MatchingValueType.IMAGE_BANK].includes(
-        type,
-      ),
+      ![
+        MatchingValueType.TEXT_BANK,
+        MatchingValueType.LOCATION_BANK,
+        MatchingValueType.IMAGE_BANK,
+      ].includes(type),
   });
   const { textBanks, locationBanks, hashBanks } = data?.myOrg?.banks ?? {};
 
@@ -132,7 +134,9 @@ export default function RuleInsightsSampleDetailMatchingValues(props: {
     case MatchingValueType.IMAGE_BANK:
       return staticValue({
         text: matchingValues
-          .imageBankIds!.map((id) => hashBanks?.find((it) => it.id === id)?.name)
+          .imageBankIds!.map(
+            (id) => hashBanks?.find((it) => it.id === id)?.name,
+          )
           .join(', '),
         outcome: condition.result?.outcome,
         matchedValue: condition.result?.matchedValue,

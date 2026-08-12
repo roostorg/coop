@@ -16,6 +16,8 @@ import FormHeader from '../components/FormHeader';
 import NameDescriptionInput from '../components/NameDescriptionInput';
 
 import {
+  GQLMrtClearReportsDisposition,
+  GQLMrtClearReportsScope,
   namedOperations,
   useGQLCreateManualReviewQueueMutation,
   useGQLManualReviewQueueQuery,
@@ -26,6 +28,21 @@ import { titleCaseEnumStringWithArticle } from '../../../utils/string';
 import { optionWithTooltip } from './queue_routing/ManualReviewQueueRuleFormCondition';
 
 const { Option } = Select;
+
+const CLEAR_REPORTS_DISPOSITION_LABELS: Record<
+  GQLMrtClearReportsDisposition,
+  string
+> = {
+  [GQLMrtClearReportsDisposition.AutomaticClose]:
+    'Close them automatically (no action taken)',
+  [GQLMrtClearReportsDisposition.Ignore]: 'Mark them as ignored',
+  [GQLMrtClearReportsDisposition.SameAction]: 'Apply the same action',
+};
+
+const CLEAR_REPORTS_SCOPE_LABELS: Record<GQLMrtClearReportsScope, string> = {
+  [GQLMrtClearReportsScope.CurrentQueue]: 'Only this queue',
+  [GQLMrtClearReportsScope.AllQueues]: 'All queues (except appeals)',
+};
 
 gql`
   query QueueFormData {
@@ -62,6 +79,9 @@ gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        clearReportsDisposition
+        clearReportsScope
+        clearReportsTriggerActionIds
       }
     }
   }
@@ -132,6 +152,12 @@ export default function ManualReviewQueueForm() {
   const [hiddenActionIds, setHiddenActionIds] = useState<string[]>([]);
   const [autoCloseJobs, setAutoCloseJobs] = useState<boolean>(false);
   const [isAppealsQueue, setIsAppealsQueue] = useState<boolean>(false);
+  const [clearReportsDisposition, setClearReportsDisposition] =
+    useState<GQLMrtClearReportsDisposition | null>(null);
+  const [clearReportsScope, setClearReportsScope] =
+    useState<GQLMrtClearReportsScope>(GQLMrtClearReportsScope.CurrentQueue);
+  const [clearReportsTriggerActionIds, setClearReportsTriggerActionIds] =
+    useState<string[]>([]);
   const navigate = useNavigate();
 
   const [
@@ -274,6 +300,13 @@ export default function ManualReviewQueueForm() {
     setHiddenActionIds([...queue.hiddenActionIds]);
     setAutoCloseJobs(queue.autoCloseJobs);
     setIsAppealsQueue(queue.isAppealsQueue);
+    setClearReportsDisposition(queue.clearReportsDisposition ?? null);
+    setClearReportsScope(
+      queue.clearReportsScope ?? GQLMrtClearReportsScope.CurrentQueue,
+    );
+    setClearReportsTriggerActionIds([
+      ...(queue.clearReportsTriggerActionIds ?? []),
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue, queue?.autoCloseJobs]);
 
@@ -295,11 +328,20 @@ export default function ManualReviewQueueForm() {
             hiddenActionIds,
             isAppealsQueue,
             autoCloseJobs,
+            clearReportsDisposition,
+            clearReportsScope,
+            clearReportsTriggerActionIds:
+              clearReportsDisposition == null
+                ? []
+                : clearReportsTriggerActionIds,
           },
         },
       }),
     [
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
       createManualReviewQueue,
       hiddenActionIds,
       isAppealsQueue,
@@ -329,11 +371,20 @@ export default function ManualReviewQueueForm() {
               hiddenActionIds,
             ),
             autoCloseJobs,
+            clearReportsDisposition,
+            clearReportsScope,
+            clearReportsTriggerActionIds:
+              clearReportsDisposition == null
+                ? []
+                : clearReportsTriggerActionIds,
           },
         },
       }),
     [
       autoCloseJobs,
+      clearReportsDisposition,
+      clearReportsScope,
+      clearReportsTriggerActionIds,
       hiddenActionIds,
       id,
       initiallyHiddenActionIds,
@@ -367,6 +418,13 @@ export default function ManualReviewQueueForm() {
   }
 
   const isCreateForm = id == null;
+
+  // The sweep never runs without at least one trigger action, so block this
+  // state to avoid a queue that looks enabled but does nothing.
+  const clearReportsConfigInvalid =
+    !isAppealsQueue &&
+    clearReportsDisposition != null &&
+    clearReportsTriggerActionIds.length === 0;
 
   const divider = () => <div className="mt-5 divider mb-9" />;
   return (
@@ -476,6 +534,88 @@ export default function ManualReviewQueueForm() {
           </div>
         </div>
       )}
+      {!isAppealsQueue && (
+        <div className="mt-8">
+          <div className="font-semibold">Clear Other Reports for a User</div>
+          <div className="mb-2 text-slate-500">
+            When a moderator takes one of the selected actions on a user, Coop
+            can also clear that user's other pending reports. CSAM reports are
+            never cleared.
+          </div>
+          <Select<GQLMrtClearReportsDisposition | 'DISABLED'>
+            className="self-start !min-w-[160px]"
+            dropdownMatchSelectWidth={false}
+            value={clearReportsDisposition ?? 'DISABLED'}
+            onChange={(value) =>
+              setClearReportsDisposition(value === 'DISABLED' ? null : value)
+            }
+          >
+            <Option value="DISABLED" label="Disabled">
+              Disabled
+            </Option>
+            {Object.values(GQLMrtClearReportsDisposition).map((disposition) => (
+              <Option
+                key={disposition}
+                value={disposition}
+                label={CLEAR_REPORTS_DISPOSITION_LABELS[disposition]}
+              >
+                {CLEAR_REPORTS_DISPOSITION_LABELS[disposition]}
+              </Option>
+            ))}
+          </Select>
+          {clearReportsDisposition != null && (
+            <div className="flex flex-col gap-4 mt-4">
+              <div>
+                <div className="mb-2 font-semibold">Trigger Actions</div>
+                <div className="mb-2 text-slate-500">
+                  Taking any of these actions on a user triggers clearing their
+                  other reports.
+                </div>
+                <Select<string[]>
+                  className="self-start !min-w-[160px]"
+                  mode="multiple"
+                  placeholder="Add Trigger Actions"
+                  dropdownMatchSelectWidth={false}
+                  allowClear
+                  showSearch
+                  filterOption={selectFilterByLabelOption}
+                  value={clearReportsTriggerActionIds}
+                  onChange={setClearReportsTriggerActionIds}
+                >
+                  {orderBy(orgActions, ['name']).map((action) => (
+                    <Option
+                      key={action.id}
+                      value={action.id}
+                      label={action.name}
+                    >
+                      {action.name}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <div className="mb-2 font-semibold">Scope</div>
+                <Select<GQLMrtClearReportsScope>
+                  className="self-start !min-w-[160px]"
+                  dropdownMatchSelectWidth={false}
+                  value={clearReportsScope}
+                  onChange={setClearReportsScope}
+                >
+                  {Object.values(GQLMrtClearReportsScope).map((scope) => (
+                    <Option
+                      key={scope}
+                      value={scope}
+                      label={CLEAR_REPORTS_SCOPE_LABELS[scope]}
+                    >
+                      {CLEAR_REPORTS_SCOPE_LABELS[scope]}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {isCreateForm && data?.myOrg?.hasAppealsEnabled ? (
         <div className="mt-8">
           <div className="flex items-center space-x-2">
@@ -493,11 +633,13 @@ export default function ManualReviewQueueForm() {
         <CoopButton
           title={id == null ? 'Create Queue' : 'Save Changes'}
           loading={createMutationLoading || updateMutationLoading}
-          disabled={queueName == null}
+          disabled={queueName == null || clearReportsConfigInvalid}
           disabledTooltipTitle={
             queueName == null
               ? 'Please provide a name for the queue.'
-              : undefined
+              : clearReportsConfigInvalid
+                ? 'Select at least one Trigger Action, or set Clear Other Reports to Disabled.'
+                : undefined
           }
           disabledTooltipPlacement="bottom"
           onClick={id == null ? onCreateQueue : onUpdateQueue}

@@ -2,10 +2,10 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
-import getBottle from '../../../iocContainer/index.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
-import { makeTestWithFixture } from '../../../test/utils.js';
+import createUser from '../../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { toCorrelationId } from '../../../utils/correlationIds.js';
 import { jsonStringify } from '../../../utils/encoding.js';
 import { type NonEmptyString } from '../../../utils/typescript-types.js';
@@ -19,21 +19,21 @@ import { SignalType } from '../../signalsService/index.js';
 import { UserPermission } from '../../userManagementService/index.js';
 
 describe('JobRouting tests', () => {
-  const jobRoutingTestWithFixtures = makeTestWithFixture(async () => {
-    const { container } = await getBottle();
-    const manualReviewToolService = container.ManualReviewToolService;
-    const { org, cleanup: orgCleanup } = await createOrg(
-      {
-        KyselyPg: container.KyselyPg,
-        ModerationConfigService: container.ModerationConfigService,
-        ApiKeyService: container.ApiKeyService,
-      },
-      uid(),
-    );
-    const userId = uid();
-    const { itemTypes, cleanup: itemTypesCleanup } =
-      await createContentItemTypes({
-        moderationConfigService: container.ModerationConfigService,
+  const jobRoutingTestWithFixtures = makeTransactionalTestWithFixture(
+    async ({ deps }) => {
+      const manualReviewToolService = deps.ManualReviewToolService;
+      const { org } = await createOrg(
+        {
+          KyselyPg: deps.KyselyPg,
+          ModerationConfigService: deps.ModerationConfigService,
+          ApiKeyService: deps.ApiKeyService,
+        },
+        uid(),
+      );
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const userId = user.id;
+      const { itemTypes } = await createContentItemTypes({
+        moderationConfigService: deps.ModerationConfigService,
         orgId: org.id,
         extra: {
           fields: [
@@ -46,110 +46,112 @@ describe('JobRouting tests', () => {
           ],
         },
       });
-    const itemType = itemTypes[0];
+      const itemType = itemTypes[0];
 
-    const defaultQueue = await manualReviewToolService.createManualReviewQueue({
-      name: 'Default Queue',
-      description: null,
-      userIds: [userId],
-      hiddenActionIds: [],
-      isAppealsQueue: false,
-      invokedBy: {
-        userId,
-        permissions: [UserPermission.EDIT_MRT_QUEUES],
-        orgId: org.id,
-      },
-    });
-    const anotherQueue = await manualReviewToolService.createManualReviewQueue({
-      name: 'Another Queue',
-      description: null,
-      userIds: [userId],
-      hiddenActionIds: [],
-      isAppealsQueue: false,
-      invokedBy: {
-        userId,
-        permissions: [UserPermission.EDIT_MRT_QUEUES],
-        orgId: org.id,
-      },
-    });
-    const policyQueue = await manualReviewToolService.createManualReviewQueue({
-      name: 'Policy Queue',
-      description: null,
-      userIds: [userId],
-      hiddenActionIds: [],
-      isAppealsQueue: false,
-      invokedBy: {
-        userId,
-        permissions: [UserPermission.EDIT_MRT_QUEUES],
-        orgId: org.id,
-      },
-    });
-    const noPolicyQueue = await manualReviewToolService.createManualReviewQueue(
-      {
-        name: 'No Policy Queue',
-        description: null,
-        userIds: [userId],
-        hiddenActionIds: [],
-        isAppealsQueue: false,
-        invokedBy: {
-          userId,
-          permissions: [UserPermission.EDIT_MRT_QUEUES],
-          orgId: org.id,
+      const defaultQueue =
+        await manualReviewToolService.createManualReviewQueue({
+          name: 'Default Queue',
+          description: null,
+          userIds: [userId],
+          hiddenActionIds: [],
+          isAppealsQueue: false,
+          invokedBy: {
+            userId,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: org.id,
+          },
+        });
+      const anotherQueue =
+        await manualReviewToolService.createManualReviewQueue({
+          name: 'Another Queue',
+          description: null,
+          userIds: [userId],
+          hiddenActionIds: [],
+          isAppealsQueue: false,
+          invokedBy: {
+            userId,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: org.id,
+          },
+        });
+      const policyQueue = await manualReviewToolService.createManualReviewQueue(
+        {
+          name: 'Policy Queue',
+          description: null,
+          userIds: [userId],
+          hiddenActionIds: [],
+          isAppealsQueue: false,
+          invokedBy: {
+            userId,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: org.id,
+          },
         },
-      },
-    );
+      );
+      const noPolicyQueue =
+        await manualReviewToolService.createManualReviewQueue({
+          name: 'No Policy Queue',
+          description: null,
+          userIds: [userId],
+          hiddenActionIds: [],
+          isAppealsQueue: false,
+          invokedBy: {
+            userId,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: org.id,
+          },
+        });
 
-    const rule = await manualReviewToolService.createRoutingRule({
-      orgId: org.id,
-      name: 'Some rule',
-      status: 'LIVE',
-      itemTypeIds: [itemType.id as NonEmptyString],
-      creatorId: '',
-      conditionSet: {
-        conjunction: 'AND',
-        conditions: [
-          {
-            input: {
-              type: 'CONTENT_FIELD',
-              name: 'text',
-              contentTypeId: itemType.id,
-            },
-            signal: {
-              id: jsonStringify({
+      await manualReviewToolService.createRoutingRule({
+        orgId: org.id,
+        name: 'Some rule',
+        status: 'LIVE',
+        itemTypeIds: [itemType.id as NonEmptyString],
+        creatorId: '',
+        conditionSet: {
+          conjunction: 'AND',
+          conditions: [
+            {
+              input: {
+                type: 'CONTENT_FIELD',
+                name: 'text',
+                contentTypeId: itemType.id,
+              },
+              signal: {
+                id: jsonStringify({
+                  type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
+                }),
                 type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
-              }),
-              type: SignalType.TEXT_MATCHING_CONTAINS_TEXT,
+              },
+              matchingValues: { strings: ['test'] },
             },
-            matchingValues: { strings: ['test'] },
-          },
-        ],
-      },
-      destinationQueueId: anotherQueue.id,
-    });
+          ],
+        },
+        destinationQueueId: anotherQueue.id,
+      });
 
-    const policyRule = await manualReviewToolService.createRoutingRule({
-      orgId: org.id,
-      name: 'Policy ID rule',
-      status: 'LIVE',
-      itemTypeIds: [itemType.id as NonEmptyString],
-      creatorId: '',
-      conditionSet: {
-        conjunction: 'OR',
-        conditions: [
-          {
-            input: {
-              type: 'CONTENT_COOP_INPUT',
-              name: 'Relevant Policy',
+      await manualReviewToolService.createRoutingRule({
+        orgId: org.id,
+        name: 'Policy ID rule',
+        status: 'LIVE',
+        itemTypeIds: [itemType.id as NonEmptyString],
+        creatorId: '',
+        conditionSet: {
+          conjunction: 'OR',
+          conditions: [
+            {
+              input: {
+                type: 'CONTENT_COOP_INPUT',
+                name: 'Relevant Policy',
+              },
+              threshold: 'testPolicyId',
+              comparator: 'EQUALS',
             },
-            threshold: 'testPolicyId',
-            comparator: 'EQUALS',
-          },
-        ],
-      },
-      destinationQueueId: policyQueue.id,
-    });
+          ],
+        },
+        destinationQueueId: policyQueue.id,
+      });
 
-    const policyNotProvidedRule =
       await manualReviewToolService.createRoutingRule({
         orgId: org.id,
         name: 'Policy ID not provided rule',
@@ -185,67 +187,39 @@ describe('JobRouting tests', () => {
         destinationQueueId: noPolicyQueue.id,
       });
 
-    const sourceTypeRule = await manualReviewToolService.createRoutingRule({
-      orgId: org.id,
-      name: 'Source Type rule',
-      status: 'LIVE',
-      itemTypeIds: [itemType.id as NonEmptyString],
-      creatorId: '',
-      conditionSet: {
-        conjunction: 'OR',
-        conditions: [
-          {
-            input: {
-              type: 'CONTENT_COOP_INPUT',
-              name: 'Source',
+      await manualReviewToolService.createRoutingRule({
+        orgId: org.id,
+        name: 'Source Type rule',
+        status: 'LIVE',
+        itemTypeIds: [itemType.id as NonEmptyString],
+        creatorId: '',
+        conditionSet: {
+          conjunction: 'OR',
+          conditions: [
+            {
+              input: {
+                type: 'CONTENT_COOP_INPUT',
+                name: 'Source',
+              },
+              threshold: 'post-actions',
+              comparator: 'EQUALS',
             },
-            threshold: 'post-actions',
-            comparator: 'EQUALS',
-          },
-        ],
-      },
-      destinationQueueId: anotherQueue.id,
-    });
+          ],
+        },
+        destinationQueueId: anotherQueue.id,
+      });
 
-    return {
-      manualReviewToolService,
-      org,
-      itemType,
-      defaultQueue,
-      anotherQueue,
-      policyQueue,
-      noPolicyQueue,
-      async cleanup() {
-        await manualReviewToolService.deleteRoutingRule({ id: rule.id });
-        await manualReviewToolService.deleteRoutingRule({ id: policyRule.id });
-        await manualReviewToolService.deleteRoutingRule({
-          id: policyNotProvidedRule.id,
-        });
-        await manualReviewToolService.deleteRoutingRule({
-          id: sourceTypeRule.id,
-        });
-        await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
-          org.id,
-          anotherQueue.id,
-        );
-        await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
-          org.id,
-          policyQueue.id,
-        );
-        await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
-          org.id,
-          defaultQueue.id,
-        );
-        await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
-          org.id,
-          noPolicyQueue.id,
-        );
-        await itemTypesCleanup();
-        await orgCleanup();
-        await container.closeSharedResourcesForShutdown();
-      },
-    };
-  });
+      return {
+        manualReviewToolService,
+        org,
+        itemType,
+        defaultQueue,
+        anotherQueue,
+        policyQueue,
+        noPolicyQueue,
+      };
+    },
+  );
 
   jobRoutingTestWithFixtures(
     'Should enqueue based off of routing rule',
@@ -579,10 +553,9 @@ describe('JobRouting tests', () => {
           orgId: org.id,
           queueId: defaultQueue.id,
         });
-      // Deleting the queue will also delete the routing rule, via cascading
-      // delete. However, the old routing rules will still be in the MRT Service's
-      // cache, meaning that running the rules will now point to a queue that
-      // doesn't exist. In this case, it should fall back to the default.
+      // deleteManualReviewQueueForTestsDO_NOT_USE removes any routing rules that
+      // reference the queue (RESTRICT FK) before deleting it. After deletion,
+      // enqueue should find no matching rules and fall back to the default queue.
       await manualReviewToolService.deleteManualReviewQueueForTestsDO_NOT_USE(
         org.id,
         anotherQueue.id,
@@ -672,7 +645,10 @@ describe('JobRouting tests', () => {
         })
         .then(
           async (result) => {
-            await manualReviewToolService.deleteRoutingRule({ id: result.id });
+            await manualReviewToolService.deleteRoutingRule({
+              id: result.id,
+              orgId: org.id,
+            });
             throw new Error("Promise should've rejected!");
           },
           (_e) => {

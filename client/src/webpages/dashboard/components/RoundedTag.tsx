@@ -4,9 +4,7 @@ export default function RoundedTag(
   props: {
     title: string;
   } & (
-    | { status: GQLRuleStatus }
-    | { environment: GQLRuleEnvironment }
-    | object
+    { status: GQLRuleStatus } | { environment: GQLRuleEnvironment } | object
   ),
 ) {
   const { title } = props;
@@ -56,7 +54,7 @@ export default function RoundedTag(
     <div
       className={`inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-sm font-medium whitespace-nowrap ${colors}`}
     >
-     {title}
+      {title}
     </div>
   );
 }

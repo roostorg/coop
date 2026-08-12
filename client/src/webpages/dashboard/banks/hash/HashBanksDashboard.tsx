@@ -1,13 +1,9 @@
-import React, { useMemo, useState, useCallback } from 'react';
 import { Tag } from 'antd';
-import { MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { 
-  useGQLHashBanksQuery,
-  useGQLDeleteHashBankMutation,
-  namedOperations
-} from '../../../../graphql/generated';
+import { useNavigate } from 'react-router-dom';
+
+import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopModal from '../../components/CoopModal';
 import EmptyDashboard from '../../components/EmptyDashboard';
 import RowMutations, {
@@ -19,7 +15,12 @@ import {
 } from '../../components/table/filters';
 import { stringSort } from '../../components/table/sort';
 import CustomTable from '../../components/table/Table';
-import FullScreenLoading from '../../../../components/common/FullScreenLoading';
+
+import {
+  namedOperations,
+  useGQLDeleteHashBankMutation,
+  useGQLHashBanksQuery,
+} from '../../../../graphql/generated';
 
 const getStatusColor = (enabled_ratio: number) => {
   if (enabled_ratio === 0) return 'red';
@@ -45,19 +46,25 @@ export default function HashBanksDashboard() {
 
   const navigate = useNavigate();
 
-  const editBank = useCallback((id: string, event: MouseEvent) => {
-    // This ensures that the row's onClick isn't called because
-    // the row is the parent component
-    event.stopPropagation();
-    navigate(`/dashboard/rules/banks/form/hash/${id}`);
-  }, [navigate]);
+  const editBank = useCallback(
+    (id: string, event: MouseEvent) => {
+      // This ensures that the row's onClick isn't called because
+      // the row is the parent component
+      event.stopPropagation();
+      navigate(`/dashboard/rules/banks/form/hash/${id}`);
+    },
+    [navigate],
+  );
 
-  const onDeleteBank = useCallback((id: string) => {
-    deleteHashBank({
-      variables: { id },
-      refetchQueries: [namedOperations.Query.HashBanks],
-    });
-  }, [deleteHashBank]);
+  const onDeleteBank = useCallback(
+    (id: string) => {
+      deleteHashBank({
+        variables: { id },
+        refetchQueries: [namedOperations.Query.HashBanks],
+      });
+    },
+    [deleteHashBank],
+  );
 
   const showModal = useCallback((id: string, event: MouseEvent) => {
     // This ensures that the row's onClick isn't called because
@@ -69,15 +76,18 @@ export default function HashBanksDashboard() {
     });
   }, []);
 
-  const mutations = useCallback((id: string) => {
-    return (
-      <RowMutations
-        onEdit={(event: MouseEvent) => editBank(id, event)}
-        onDelete={(event: MouseEvent) => showModal(id, event)}
-        canDelete={true}
-      />
-    );
-  }, [editBank, showModal]);
+  const mutations = useCallback(
+    (id: string) => {
+      return (
+        <RowMutations
+          onEdit={(event: MouseEvent) => editBank(id, event)}
+          onDelete={(event: MouseEvent) => showModal(id, event)}
+          canDelete={true}
+        />
+      );
+    },
+    [editBank, showModal],
+  );
 
   const columns = useMemo(
     () => [

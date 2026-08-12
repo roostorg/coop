@@ -1,4 +1,4 @@
-FROM node:24.14.1-bullseye-slim AS client_base
+FROM node:24.18.0-bullseye-slim AS client_base
 WORKDIR /app
 
 # ARG is used to get the release id into the ENV from the command line, and then
@@ -11,8 +11,7 @@ COPY package*.json .
 RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
-FROM client_base
-
+FROM client_base AS build
 ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 
 # Don't run eslint over the frontend code when building the image, b/c we should
@@ -20,3 +19,9 @@ ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 # before we ever deploy. So no need to do it again here.
 ENV DISABLE_ESLINT_PLUGIN=true
 RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT npm run build
+
+FROM nginx:1.29.1-bookworm AS serve
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

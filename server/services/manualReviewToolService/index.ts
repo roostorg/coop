@@ -7,6 +7,7 @@ import {
 
 export {
   ManualReviewToolService,
+  isReportJob,
   type JobId,
   type ManualReviewJob,
   type ManualReviewJobOrAppeal,

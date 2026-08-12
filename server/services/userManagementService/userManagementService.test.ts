@@ -1,14 +1,16 @@
 import { type Kysely } from 'kysely';
 
 import { makeTestWithFixture } from '../../test/utils.js';
-import UserManagementService from './userManagementService.js';
 import type { UserManagementPg } from './index.js';
+import UserManagementService from './userManagementService.js';
 
 // Mock dependencies
 const mockDb = {
   selectFrom: jest.fn(),
   insertInto: jest.fn(),
+  updateTable: jest.fn(),
   deleteFrom: jest.fn(),
+  transaction: jest.fn(),
 } as unknown as Kysely<UserManagementPg>;
 
 const mockSendEmail = jest.fn();
@@ -201,6 +203,58 @@ describe('UserManagementService', () => {
 
         expect(token).toMatch(/^[a-f0-9]{64}$/);
         expect(mockSendEmail).toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('#resetPasswordForToken', () => {
+    testWithFixtures(
+      'invalidates all sessions for the user after resetting the password',
+      async ({ sut }) => {
+        const userId = 'user-123';
+
+        // Valid, non-expired reset token.
+        const mockSelect = {
+          selectAll: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          executeTakeFirst: jest.fn().mockResolvedValue({
+            hashed_token: 'hashed',
+            user_id: userId,
+            org_id: 'org-456',
+            created_at: new Date(),
+          }),
+        };
+
+        const mockUpdate = {
+          set: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue([]),
+        };
+
+        const mockDelete = {
+          where: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue([]),
+        };
+
+        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+        (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
+        (mockDb.deleteFrom as jest.Mock).mockReturnValue(mockDelete);
+        // Steps 2-4 run inside makeKyselyTransactionWithRetry, which calls
+        // `pgQuery.transaction().execute(cb)`. Run the callback against mockDb.
+        (mockDb.transaction as jest.Mock).mockReturnValue({
+          execute: (cb: (trx: typeof mockDb) => unknown) => cb(mockDb),
+        });
+
+        await sut.resetPasswordForToken({
+          token: 'plaintext-token',
+          newPassword: 'new-password',
+        });
+
+        // The password row is updated...
+        expect(mockDb.updateTable).toHaveBeenCalledWith('public.users');
+        // ...and the user's sessions are deleted so a phished session can't
+        // outlive the reset.
+        expect(mockDb.deleteFrom).toHaveBeenCalledWith('public.session');
       },
     );
   });

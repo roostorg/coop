@@ -6,7 +6,11 @@ import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/dis
 import { expressMiddleware } from '@as-integrations/express5';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
-import { MultiSamlStrategy } from '@node-saml/passport-saml';
+import {
+  MultiSamlStrategy,
+  type Profile,
+  type VerifiedCallback,
+} from '@node-saml/passport-saml';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   ATTR_EXCEPTION_MESSAGE,
@@ -15,21 +19,19 @@ import {
 } from '@opentelemetry/semantic-conventions';
 import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
-import express, { type ErrorRequestHandler } from 'express';
+import express, { type ErrorRequestHandler, type Request } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
 import passport from 'passport';
 
-import { makeLoginUserDoesNotExistError } from './graphql/datasources/userApiErrors.js';
-import {
-  kyselyUserFindByEmail,
-  kyselyUserFindById,
-} from './graphql/datasources/userKyselyPersistence.js';
+import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
+import { getOrgIdFromPath } from './graphql/utils/orgIdFromPath.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
+import { resolveSamlUser } from './graphql/utils/resolveSamlUser.js';
 import { safeDepthLimit } from './graphql/utils/safeDepthLimit.js';
 import { type Dependencies } from './iocContainer/index.js';
 import { safeGetEnvInt } from './iocContainer/utils.js';
@@ -126,10 +128,11 @@ export default async function makeApiServer(deps: Dependencies) {
   /**
    * Passport & User Session Configuration
    */
+  const sessionStoreInstance = new sessionStore({ pool: KyselyPgPool });
   app.use(
     session({
       secret: process.env.SESSION_SECRET!,
-      store: new sessionStore({ pool: KyselyPgPool }),
+      store: sessionStoreInstance,
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -145,14 +148,22 @@ export default async function makeApiServer(deps: Dependencies) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Shared signon/logout verify: bind the user lookup to the org named in the
+  // callback path so an assertion authenticating one org can never resolve a
+  // user from another (GHSA-2v93-383c-9fw2).
+  const verify = async (
+    req: Request,
+    profile: Profile | null,
+    done: VerifiedCallback,
+  ) => resolveSamlUser(KyselyPg, deps.Tracer, req, profile, done);
+
   passport.use(
     new MultiSamlStrategy(
       {
         passReqToCallback: true,
         async getSamlOptions(req, done) {
           // orgId path param should be set in the /saml/* route handlers.
-          const rawOrgId = req.params['orgId'];
-          const orgId = typeof rawOrgId === 'string' ? rawOrgId : undefined;
+          const orgId = getOrgIdFromPath(req);
 
           if (!orgId) {
             return done(
@@ -190,52 +201,8 @@ export default async function makeApiServer(deps: Dependencies) {
           });
         },
       },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
-      async (_req, profile, done) => {
-        try {
-          const user = await kyselyUserFindByEmail(
-            KyselyPg,
-            String(profile?.email),
-          );
-          // we should have already checked for this, but couldn't hurt to check
-          // again
-          if (user == null) {
-            return done(
-              makeLoginUserDoesNotExistError({ shouldErrorSpan: true }),
-            );
-          }
-
-          return done(null, user);
-        } catch (e) {
-          return done(
-            makeInternalServerError('Unknown error during login attempt', {
-              shouldErrorSpan: true,
-            }),
-          );
-        }
-      },
+      verify,
+      verify,
     ),
   );
 
@@ -453,6 +420,7 @@ export default async function makeApiServer(deps: Dependencies) {
       await Promise.all([
         apolloServer.stop(),
         deps.closeSharedResourcesForShutdown(),
+        sessionStoreInstance.close(),
       ]);
     },
   };

@@ -8,6 +8,7 @@ import { truncateAndFormatLargeNumber } from '@/utils/number';
 import { titleCaseEnumString } from '@/utils/string';
 import { getDateRange } from '@/utils/time';
 import { gql } from '@apollo/client';
+import { format } from 'date-fns';
 import flatten from 'lodash/flatten';
 import keys from 'lodash/keys';
 import map from 'lodash/map';
@@ -16,7 +17,6 @@ import sortBy from 'lodash/sortBy';
 import sum from 'lodash/sum';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import { format } from 'date-fns';
 import {
   useCallback,
   useEffect,
@@ -325,7 +325,10 @@ export default function OverviewChart(props: {
 
   const formattedData = countsPerMetricPerTimeUnit?.map((it) => {
     const obj: { [key: string]: string | number } = {
-      ds: format(new Date(parseInt(it.time)), timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd'),
+      ds: format(
+        new Date(parseInt(it.time)),
+        timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd',
+      ),
     };
     obj[getLineNameFromCount(it)] = it.count;
     return obj;
@@ -346,7 +349,10 @@ export default function OverviewChart(props: {
     ...allDatesArray,
   ];
 
-  const groupedData = formattedDataWithAllDates.reduce((result, item) => {
+  type ChartRow = Record<string, string | number>;
+  const groupedData = formattedDataWithAllDates.reduce<
+    Record<string, ChartRow>
+  >((result, item) => {
     const ds = item.ds;
 
     if (!(ds in result)) {
@@ -460,7 +466,10 @@ export default function OverviewChart(props: {
         </div>
       </div>
       <div className="z-10 flex flex-col w-full h-full min-h-[400px] pb-4">
-        {!loading && (finalChartData.length === 0 || uniqueLines.length === 0 || !hasNonZeroData) ? (
+        {!loading &&
+        (finalChartData.length === 0 ||
+          uniqueLines.length === 0 ||
+          !hasNonZeroData) ? (
           emptyChart
         ) : (
           <ResponsiveContainer width="100%" height={400}>

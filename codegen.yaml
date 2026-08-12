@@ -149,6 +149,7 @@ generates:
         ItemTypeSchemaVariantInput: ../graphql/modules/itemType.js#ItemTypeSchemaVariantInputResolverValue
         ReportingInsights: ../graphql/modules/reporting.js#ReportingInsights
         ReportingRule: ../services/reportingService/ReportingRules.js#ReportingRuleWithoutVersion
+        Role: ../graphql/datasources/rolePersistence.js#RoleParent
         RoutingRule: ../services/manualReviewToolService/modules/JobRouting.js#RoutingRuleWithoutVersion
         ManualReviewJobComment: ../services/manualReviewToolService/modules/CommentOperations.js#ManualReviewJobComment
         UserItem: ./types.js#ItemSubmissionForGQL

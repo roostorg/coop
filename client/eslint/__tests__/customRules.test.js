@@ -1,24 +1,30 @@
-const { Linter } = require('eslint');
-const rule = require('../no-casting-in-getFieldValueForRole');
+import tsParser from '@typescript-eslint/parser';
+import { Linter } from 'eslint';
 
-const linter = new Linter();
-linter.defineRule('no-casting-in-getFieldValueForRole', rule);
+import rule from '../no-casting-in-getFieldValueForRole.js';
+
+const linter = new Linter({ configType: 'flat' });
 
 const runLint = (code) => {
-  const messages = linter.verify(code, {
-    rules: {
-      'no-casting-in-getFieldValueForRole': 'error',
+  const messages = linter.verify(code, [
+    {
+      plugins: {
+        local: { rules: { 'no-casting-in-getFieldValueForRole': rule } },
+      },
+      rules: { 'local/no-casting-in-getFieldValueForRole': 'error' },
+      languageOptions: {
+        parser: tsParser,
+        ecmaVersion: 2015,
+        sourceType: 'module',
+      },
     },
-    parserOptions: { ecmaVersion: 2015, sourceType: 'module' },
-  });
+  ]);
   return messages;
 };
 
 describe('no-casting-in-getFieldValueForRole rule', () => {
   it('should pass on valid cases', () => {
-    const validCodes = [
-      `getFieldValueForRole(reportedItem, 'displayName')`,
-    ];
+    const validCodes = [`getFieldValueForRole(reportedItem, 'displayName')`];
 
     validCodes.forEach((code) => {
       expect(runLint(code)).toHaveLength(0);

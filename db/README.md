@@ -6,7 +6,7 @@ A Node.js CLI for running database migrations and seeds.
 
 ```
 npm install
-node --loader ts-node/esm --require dotenv/config index.ts
+node --env-file-if-exists=.env --loader ts-node/esm index.ts
 ```
 
 This displays available commands and arguments.
@@ -18,7 +18,7 @@ Copy `.env.example` and configure your database connection settings. These match
 ## Creating New Migrations
 
 ```shell
-# Generate a new migration file 
+# Generate a new migration file
   node --loader ts-node/esm index.ts generate:migration --db api-server-pg --name "add_users_table"
 ```
 

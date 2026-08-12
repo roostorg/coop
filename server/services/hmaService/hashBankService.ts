@@ -1,8 +1,9 @@
 import { type Kysely } from 'kysely';
+
 import {
-  type HmaServicePg,
-  type HashBank,
   type CreateHashBankInput,
+  type HashBank,
+  type HmaServicePg,
   type UpdateHashBankInput,
 } from './dbTypes.js';
 
@@ -57,7 +58,11 @@ export class HashBankService {
     return results;
   }
 
-  async update(id: number, orgId: string, updates: UpdateHashBankInput): Promise<HashBank> {
+  async update(
+    id: number,
+    orgId: string,
+    updates: UpdateHashBankInput,
+  ): Promise<HashBank> {
     const result = await this.db
       .updateTable('public.hash_banks')
       .set(updates)

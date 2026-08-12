@@ -30,22 +30,22 @@ export default function RuleFormConditionComparator(props: {
   const comparatorTypes = condition.signal?.outputType
     ? outputTypeToComparators(condition.signal.outputType)
     : inputScalarType === GQLScalarType.Number
-    ? [
-        GQLValueComparator.Equals,
-        GQLValueComparator.NotEqualTo,
-        GQLValueComparator.GreaterThan,
-        GQLValueComparator.LessThan,
-        GQLValueComparator.GreaterThanOrEquals,
-        GQLValueComparator.LessThanOrEquals,
-        GQLValueComparator.IsUnavailable,
-        GQLValueComparator.IsNotProvided,
-      ]
-    : [
-        GQLValueComparator.Equals,
-        GQLValueComparator.NotEqualTo,
-        GQLValueComparator.IsUnavailable,
-        GQLValueComparator.IsNotProvided,
-      ];
+      ? [
+          GQLValueComparator.Equals,
+          GQLValueComparator.NotEqualTo,
+          GQLValueComparator.GreaterThan,
+          GQLValueComparator.LessThan,
+          GQLValueComparator.GreaterThanOrEquals,
+          GQLValueComparator.LessThanOrEquals,
+          GQLValueComparator.IsUnavailable,
+          GQLValueComparator.IsNotProvided,
+        ]
+      : [
+          GQLValueComparator.Equals,
+          GQLValueComparator.NotEqualTo,
+          GQLValueComparator.IsUnavailable,
+          GQLValueComparator.IsNotProvided,
+        ];
 
   // If there is only one valid comparator to choose from, we should set
   // the condition.comparator value to that value by default

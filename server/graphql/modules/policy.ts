@@ -9,8 +9,8 @@ import {
   type GQLQueryResolvers,
   type GQLUpdatePolicyResponseResolvers,
 } from '../generated.js';
-import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { unauthenticatedError } from '../utils/errors.js';
+import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const { partition } = _;
 

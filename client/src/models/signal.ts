@@ -1,41 +1,11 @@
 import {
   GQLIntegration,
   GQLScalarType,
-  GQLSignal,
   GQLSignalOutputType,
   GQLSignalType,
   GQLValueComparator,
 } from '../graphql/generated';
 import { assertUnreachable } from '../utils/misc';
-
-/**
- * Legacy-ish type for the core set of keys that signal keys that much of the
- * code currently assumes will be present on fetched signals.
- * @deprecated
- */
-export type CoreSignal = Pick<
-  GQLSignal,
-  | 'id'
-  | 'type'
-  | 'name'
-  | 'description'
-  | 'disabledInfo'
-  | 'shouldPromptForMatchingValues'
-  | 'outputType'
-  | 'eligibleSubcategories'
-  | 'eligibleInputs'
-  | 'subcategory'
-  | 'integration'
-  | 'integrationTitle'
-  | 'integrationLogoUrl'
-  | 'integrationLogoWithBackgroundUrl'
-  | 'pricingStructure'
-  | 'docsUrl'
-  | 'recommendedThresholds'
-  | 'supportedLanguages'
-  | 'args'
-  | 'allowedInAutomatedRules'
->;
 
 /** Signal type is string to support plugin signal types (e.g. RANDOM_SIGNAL_SELECTION). */
 export function receivesRegexInput(type: string) {
@@ -59,6 +29,10 @@ export function integrationForSignalType(type: string) {
     case 'OPEN_AI_HATE_TEXT_MODEL':
     case 'OPEN_AI_HATE_THREATENING_TEXT_MODEL':
     case 'OPEN_AI_SELF_HARM_IMAGE_MODEL':
+    case 'OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL':
+    case 'OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL':
+    case 'OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL':
+    case 'OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL':
     case 'OPEN_AI_SELF_HARM_TEXT_MODEL':
     case 'OPEN_AI_SEXUAL_IMAGE_MODEL':
     case 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL':
@@ -126,6 +100,7 @@ export function outputTypeToComparators(outputType: GQLSignalOutputType) {
     case GQLScalarType.Url:
     case GQLScalarType.String:
     case GQLScalarType.IpAddress:
+    case GQLScalarType.EmailAddress:
       return outputType.__typename === 'EnumSignalOutputType' &&
         outputType.ordered
         ? orderedComparators

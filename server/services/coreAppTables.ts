@@ -31,12 +31,27 @@ export type CoreAppTablesPg = {
     first_name: string;
     last_name: string;
     role: UserRole;
+    role_id: string | null;
     approved_by_admin: boolean;
     rejected_by_admin: boolean;
     created_at: Date;
     updated_at: Date;
     org_id: string;
     login_methods: LoginMethod[];
+  };
+  'public.roles': {
+    id: Generated<string>;
+    org_id: string;
+    key: string;
+    display_name: string;
+    description: string | null;
+    is_system: Generated<boolean>;
+    created_at: Generated<Date>;
+    updated_at: Generated<Date>;
+  };
+  'public.role_permissions': {
+    role_id: string;
+    permission: string;
   };
   'public.location_banks': {
     id: string;

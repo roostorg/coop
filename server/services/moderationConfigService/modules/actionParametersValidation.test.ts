@@ -1,8 +1,8 @@
-import { validateActionParameterValues } from './actionParameterValueValidation.js';
 import {
   parseStoredParameters,
   validateActionParameters,
 } from './actionParametersValidation.js';
+import { validateActionParameterValues } from './actionParameterValueValidation.js';
 
 describe('validateActionParameters', () => {
   it('returns an empty array for null/undefined/empty', () => {
@@ -82,7 +82,12 @@ describe('validateActionParameters', () => {
   });
 
   it('accepts snake_case, kebab-case, and dotted names', () => {
-    for (const name of ['ban_duration', 'ban-duration', 'org.user.id', 'a.b-c_1']) {
+    for (const name of [
+      'ban_duration',
+      'ban-duration',
+      'org.user.id',
+      'a.b-c_1',
+    ]) {
       expect(() =>
         validateActionParameters([
           { name, displayName: 'OK', type: 'STRING', required: false },

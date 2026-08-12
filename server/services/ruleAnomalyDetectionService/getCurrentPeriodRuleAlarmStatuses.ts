@@ -60,14 +60,14 @@ const makeGetCurrentPeriodRuleAlarmStatuses = inject(
             lastPeriodPassRate: !applicableStats.length
               ? undefined
               : applicableStats[0].runs === 0
-              ? 0
-              : applicableStats[0].passes / applicableStats[0].runs,
+                ? 0
+                : applicableStats[0].passes / applicableStats[0].runs,
             secondToLastPeriodPassRate:
               applicableStats.length < 2
                 ? undefined
                 : applicableStats[1].runs === 0
-                ? 0
-                : applicableStats[1].passes / applicableStats[1].runs,
+                  ? 0
+                  : applicableStats[1].passes / applicableStats[1].runs,
           },
         };
       });

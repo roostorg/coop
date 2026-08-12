@@ -4,11 +4,9 @@ import { uid } from 'uid';
 import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
-import { makeMockedServer } from '../../test/setupMockedServer.js';
-import { makeTestWithFixture } from '../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
   kyselyUserAddFavoriteRule,
-  kyselyUserDeleteById,
   kyselyUserFindByEmail,
   kyselyUserFindById,
   kyselyUserFindByIdAndOrg,
@@ -20,10 +18,7 @@ import {
   kyselyUserUpdate,
 } from './userKyselyPersistence.js';
 
-/**
- * Builds a valid `kyselyUserInsert` input with SAML-only login (no password),
- * so we don't need bcrypt in the unit-ish happy paths.
- */
+/** SAML-only `kyselyUserInsert` input — no password keeps bcrypt out of happy paths. */
 function samlUserInput(orgId: string) {
   return {
     id: uid(),
@@ -37,10 +32,15 @@ function samlUserInput(orgId: string) {
   };
 }
 
+const adminRoleSeed = {
+  key: UserRole.ADMIN,
+  display_name: 'Admin',
+  is_system: true,
+} as const;
+
 describe('userKyselyPersistence', () => {
-  const testWithFixture = makeTestWithFixture(async () => {
-    const { deps, shutdown } = await makeMockedServer();
-    const { org, cleanup: orgCleanup } = await createOrg(
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
       {
         KyselyPg: deps.KyselyPg,
         ModerationConfigService: deps.ModerationConfigService,
@@ -48,14 +48,7 @@ describe('userKyselyPersistence', () => {
       },
       uid(),
     );
-    return {
-      deps,
-      org,
-      async cleanup() {
-        await orgCleanup();
-        await shutdown();
-      },
-    };
+    return { org };
   });
 
   describe('kyselyUserInsert', () => {
@@ -67,23 +60,75 @@ describe('userKyselyPersistence', () => {
           db: deps.KyselyPg,
           ...input,
         });
-        try {
-          expect(inserted).toMatchObject({
-            id: input.id,
-            orgId: org.id,
-            email: input.email,
-            firstName: input.firstName,
-            lastName: input.lastName,
-            role: UserRole.ADMIN,
-            loginMethods: ['saml'],
-            password: null,
-            approvedByAdmin: false,
-            rejectedByAdmin: false,
-          });
-          expect(Array.isArray(inserted.getPermissions())).toBe(true);
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        expect(inserted).toMatchObject({
+          id: input.id,
+          orgId: org.id,
+          email: input.email,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          role: UserRole.ADMIN,
+          loginMethods: ['saml'],
+          password: null,
+          approvedByAdmin: false,
+          rejectedByAdmin: false,
+        });
+        // Fixture orgs lack `public.roles` rows, so this hits the fallback.
+        const permissions = inserted.getPermissions();
+        expect(permissions).toContain('MANAGE_ORG');
+        expect(permissions).toContain('MANAGE_ROLES');
+      },
+    );
+
+    testWithFixture(
+      'updating role swaps role_id so getPermissions() reflects the new role',
+      async ({ deps, org }) => {
+        const input = samlUserInput(org.id);
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+          role: UserRole.ANALYST,
+        });
+        expect(updated!.role).toBe(UserRole.ANALYST);
+        const permissions = updated!.getPermissions();
+        expect(permissions).toContain('VIEW_INSIGHTS');
+        expect(permissions).not.toContain('MANAGE_ORG');
+      },
+    );
+
+    testWithFixture(
+      'getPermissions() reads from public.role_permissions when the org has saved them',
+      async ({ deps, org }) => {
+        // Reduced ADMIN set distinguishes DB result from the static fallback.
+        const roleRow = await deps.KyselyPg.insertInto('public.roles')
+          .values({ ...adminRoleSeed, org_id: org.id })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await deps.KyselyPg.insertInto('public.role_permissions')
+          .values({ role_id: roleRow.id, permission: 'MANAGE_ORG' })
+          .execute();
+
+        const input = samlUserInput(org.id);
+        const inserted = await kyselyUserInsert({
+          db: deps.KyselyPg,
+          ...input,
+        });
+        expect(inserted.getPermissions()).toEqual(['MANAGE_ORG']);
+      },
+    );
+
+    testWithFixture(
+      'getPermissions() returns [] (no static fallback) when the role has zero saved permissions',
+      async ({ deps, org }) => {
+        // Regression: empty `role_permissions` is least-privilege; defaults would over-grant.
+        await deps.KyselyPg.insertInto('public.roles')
+          .values({ ...adminRoleSeed, org_id: org.id })
+          .execute();
+
+        const input = samlUserInput(org.id);
+        const inserted = await kyselyUserInsert({
+          db: deps.KyselyPg,
+          ...input,
+        });
+        expect(inserted.getPermissions()).toEqual([]);
       },
     );
 
@@ -102,12 +147,8 @@ describe('userKyselyPersistence', () => {
           loginMethods: ['password'],
           password: 'hashed-password-placeholder',
         });
-        try {
-          expect(row.loginMethods).toEqual(['password']);
-          expect(row.password).toBe('hashed-password-placeholder');
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, id);
-        }
+        expect(row.loginMethods).toEqual(['password']);
+        expect(row.password).toBe('hashed-password-placeholder');
       },
     );
 
@@ -156,23 +197,16 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          const byId = await kyselyUserFindById(deps.KyselyPg, input.id);
-          const byEmail = await kyselyUserFindByEmail(
-            deps.KyselyPg,
-            input.email,
-          );
-          const byIdAndOrg = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
-            id: input.id,
-            orgId: org.id,
-          });
+        const byId = await kyselyUserFindById(deps.KyselyPg, input.id);
+        const byEmail = await kyselyUserFindByEmail(deps.KyselyPg, input.email);
+        const byIdAndOrg = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
+          id: input.id,
+          orgId: org.id,
+        });
 
-          expect(byId).toMatchObject({ id: input.id, email: input.email });
-          expect(byEmail).toMatchObject({ id: input.id });
-          expect(byIdAndOrg).toMatchObject({ id: input.id, orgId: org.id });
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        expect(byId).toMatchObject({ id: input.id, email: input.email });
+        expect(byEmail).toMatchObject({ id: input.id });
+        expect(byIdAndOrg).toMatchObject({ id: input.id, orgId: org.id });
       },
     );
 
@@ -203,15 +237,11 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          const result = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
-            id: input.id,
-            orgId: `different-org-${uid()}`,
-          });
-          expect(result).toBeUndefined();
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        const result = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
+          id: input.id,
+          orgId: `different-org-${uid()}`,
+        });
+        expect(result).toBeUndefined();
       },
     );
 
@@ -222,16 +252,12 @@ describe('userKyselyPersistence', () => {
 
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          const rows = await kyselyUserFindByIds(deps.KyselyPg, [
-            input.id,
-            `missing-${uid()}`,
-          ]);
-          expect(rows).toHaveLength(1);
-          expect(rows[0].id).toBe(input.id);
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        const rows = await kyselyUserFindByIds(deps.KyselyPg, [
+          input.id,
+          `missing-${uid()}`,
+        ]);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].id).toBe(input.id);
       },
     );
 
@@ -242,15 +268,10 @@ describe('userKyselyPersistence', () => {
         const b = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...a });
         await kyselyUserInsert({ db: deps.KyselyPg, ...b });
-        try {
-          const rows = await kyselyUserListByOrg(deps.KyselyPg, org.id);
-          const ids = rows.map((r) => r.id);
-          expect(ids).toEqual(expect.arrayContaining([a.id, b.id]));
-          expect(rows.every((r) => r.orgId === org.id)).toBe(true);
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, a.id);
-          await kyselyUserDeleteById(deps.KyselyPg, b.id);
-        }
+        const rows = await kyselyUserListByOrg(deps.KyselyPg, org.id);
+        const ids = rows.map((r) => r.id);
+        expect(ids).toEqual(expect.arrayContaining([a.id, b.id]));
+        expect(rows.every((r) => r.orgId === org.id)).toBe(true);
       },
     );
   });
@@ -261,15 +282,11 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          await expect(
-            kyselyUserUpdate(deps.KyselyPg, input.id, {
-              email: 'not-an-email',
-            }),
-          ).rejects.toThrow(/kyselyUserUpdate invariant violated: email/);
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        await expect(
+          kyselyUserUpdate(deps.KyselyPg, input.id, {
+            email: 'not-an-email',
+          }),
+        ).rejects.toThrow(/kyselyUserUpdate invariant violated: email/);
       },
     );
 
@@ -294,51 +311,37 @@ describe('userKyselyPersistence', () => {
           password: 'placeholder',
         };
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          const skipped = await kyselyUserUpdate(deps.KyselyPg, input.id, {
-            firstName: null,
-            lastName: null,
-            email: null,
-            role: null,
-          });
-          expect(skipped).toBeDefined();
-          expect(skipped!.firstName).toBe(input.firstName);
-          expect(skipped!.lastName).toBe(input.lastName);
-          expect(skipped!.email).toBe(input.email);
-          expect(skipped!.role).toBe(input.role);
-          expect(skipped!.password).toBe('placeholder');
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        const skipped = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+          firstName: null,
+          lastName: null,
+          email: null,
+          role: null,
+        });
+        expect(skipped).toBeDefined();
+        expect(skipped!.firstName).toBe(input.firstName);
+        expect(skipped!.lastName).toBe(input.lastName);
+        expect(skipped!.email).toBe(input.email);
+        expect(skipped!.role).toBe(input.role);
+        expect(skipped!.password).toBe('placeholder');
       },
     );
 
-    // NB: `kyselyUserUpdate` doesn't expose `loginMethods`, so we can't
-    // *cleanly* clear a password on a password-login user through this helper
-    // (the DB CHECK constraint — and our app-layer `validateUserCreateInput`
-    // mirror of it — requires `password IS NOT NULL ⇔ 'password' ∈ login_methods`).
-    // A SAML user already has `password: null`, so the `password: null` path
-    // is a shape-valid no-op we can verify end-to-end here.
+    // SAML users already have password: null, so `{ password: null }` is a
+    // shape-valid no-op (CHECK constraint requires password ⇔ 'password' ∈ loginMethods).
     testWithFixture(
       'password: null is a valid patch and leaves the column null on a SAML user',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
-            password: null,
-          });
-          expect(updated!.password).toBeNull();
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+          password: null,
+        });
+        expect(updated!.password).toBeNull();
       },
     );
 
-    // And conversely: trying to clear a password on a password-login user
-    // without transitioning `loginMethods` must surface the DB CHECK
-    // constraint. This protects against regressions if we ever loosen
-    // `validateUserUpdatePatch`.
+    // Clearing a password on a password-login user must surface the DB
+    // CHECK constraint if `validateUserUpdatePatch` ever loosens.
     testWithFixture(
       'clearing password on a password-login user violates password_null_when_not_present',
       async ({ deps, org }) => {
@@ -348,13 +351,9 @@ describe('userKyselyPersistence', () => {
           password: 'placeholder',
         };
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          await expect(
-            kyselyUserUpdate(deps.KyselyPg, input.id, { password: null }),
-          ).rejects.toThrow(/password_null_when_not_present/);
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        await expect(
+          kyselyUserUpdate(deps.KyselyPg, input.id, { password: null }),
+        ).rejects.toThrow(/password_null_when_not_present/);
       },
     );
 
@@ -363,31 +362,27 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        try {
-          const beforeRow = await deps.KyselyPg.selectFrom('public.users')
-            .select(['updated_at'])
-            .where('id', '=', input.id)
-            .executeTakeFirstOrThrow();
+        const beforeRow = await deps.KyselyPg.selectFrom('public.users')
+          .select(['updated_at'])
+          .where('id', '=', input.id)
+          .executeTakeFirstOrThrow();
 
-          await new Promise((resolve) => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 5));
 
-          const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
-            firstName: 'Updated',
-            approvedByAdmin: true,
-          });
-          expect(updated!.firstName).toBe('Updated');
-          expect(updated!.approvedByAdmin).toBe(true);
+        const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+          firstName: 'Updated',
+          approvedByAdmin: true,
+        });
+        expect(updated!.firstName).toBe('Updated');
+        expect(updated!.approvedByAdmin).toBe(true);
 
-          const afterRow = await deps.KyselyPg.selectFrom('public.users')
-            .select(['updated_at'])
-            .where('id', '=', input.id)
-            .executeTakeFirstOrThrow();
-          expect(afterRow.updated_at.getTime()).toBeGreaterThan(
-            beforeRow.updated_at.getTime(),
-          );
-        } finally {
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        const afterRow = await deps.KyselyPg.selectFrom('public.users')
+          .select(['updated_at'])
+          .where('id', '=', input.id)
+          .executeTakeFirstOrThrow();
+        expect(afterRow.updated_at.getTime()).toBeGreaterThan(
+          beforeRow.updated_at.getTime(),
+        );
       },
     );
   });
@@ -403,32 +398,22 @@ describe('userKyselyPersistence', () => {
         const rule = await createRule(deps.KyselyPg, org.id, {
           creatorId: input.id,
         });
-        try {
-          expect(
-            await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
-          ).toEqual([]);
+        expect(
+          await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
+        ).toEqual([]);
 
-          await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
-          // Second add must be a no-op (matches Sequelize `addFavoriteRules`).
-          await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
+        await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
+        // Second add must be a no-op (matches Sequelize `addFavoriteRules`).
+        await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
 
-          expect(
-            await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
-          ).toEqual([rule.id]);
+        expect(
+          await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
+        ).toEqual([rule.id]);
 
-          await kyselyUserRemoveFavoriteRule(deps.KyselyPg, input.id, rule.id);
-          expect(
-            await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
-          ).toEqual([]);
-        } finally {
-          await kyselyUserRemoveFavoriteRule(
-            deps.KyselyPg,
-            input.id,
-            rule.id,
-          ).catch(() => undefined);
-          await rule.destroy().catch(() => undefined);
-          await kyselyUserDeleteById(deps.KyselyPg, input.id);
-        }
+        await kyselyUserRemoveFavoriteRule(deps.KyselyPg, input.id, rule.id);
+        expect(
+          await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
+        ).toEqual([]);
       },
     );
   });

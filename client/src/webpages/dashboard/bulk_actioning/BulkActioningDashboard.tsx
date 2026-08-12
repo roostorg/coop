@@ -7,8 +7,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { type JsonObject } from 'type-fest';
 
 import ActionParameterInputs, {
-  type ActionParameterValues,
   findMissingRequiredParameters,
+  type ActionParameterValues,
 } from '../../../components/ActionParameterInputs';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import { selectFilterByLabelOption } from '../components/antDesignUtils';
@@ -314,8 +314,7 @@ export default function BulkActioningDashboard() {
           // issue. See https://github.com/microsoft/TypeScript/issues/17002 for
           // more details.
           const policyId = policyIds satisfies
-            | string
-            | readonly string[] as string;
+            string | readonly string[] as string;
           setSelectedPolicyIds([policyId]);
         }
       }}
@@ -513,7 +512,7 @@ export default function BulkActioningDashboard() {
           </label>
           <Input.TextArea
             id="bulk-actioning-moderator-note"
-            placeholder="Sent to the action's webhook as `actorNote` and persisted to the audit log."
+            placeholder="Add a short note explaining this decision — it will be recorded in the audit log and included in any configured webhook payload."
             rows={2}
             maxLength={5000}
             value={moderatorNote}

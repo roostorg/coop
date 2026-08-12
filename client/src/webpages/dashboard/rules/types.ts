@@ -8,9 +8,9 @@ import {
   GQLLocationAreaInput,
   GQLMatchingValues,
   GQLScalarType,
+  GQLSignal,
   GQLValueComparator,
 } from '../../../graphql/generated';
-import { CoreSignal } from '../../../models/signal';
 import { CoopInput } from '../types/enums';
 import {
   isComparatorTerminal,
@@ -59,8 +59,7 @@ export function getMatchingValuesType(matchingValues: GQLMatchingValues) {
 }
 
 export type ConditionWithResult =
-  | LeafConditionWithResult
-  | ConditionSetWithResult;
+  LeafConditionWithResult | ConditionSetWithResult;
 
 export type ConditionSetWithResult = {
   conditions: [ConditionWithResult, ...ConditionWithResult[]];
@@ -103,8 +102,8 @@ export type RuleFormConditionSet = {
 // The shape used to store each leaf condition in the rule form's state.
 export type RuleFormLeafCondition = {
   input?: SimplifiedConditionInput;
-  eligibleSignals?: CoreSignal[];
-  signal?: CoreSignal;
+  eligibleSignals?: GQLSignal[];
+  signal?: GQLSignal;
   matchingValues?: {
     strings?: readonly string[];
     textBankIds?: readonly string[];

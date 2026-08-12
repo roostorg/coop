@@ -5,10 +5,10 @@ import uniqBy from 'lodash/uniqBy';
 import {
   GQLConditionConjunction,
   GQLScalarType,
+  GQLSignal,
   GQLSignalType,
   GQLValueComparator,
 } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
 import { getDerivedFieldOutputType } from '../../rules/rule_form/condition/input/derivedField';
 import {
   getConditionInputScalarType,
@@ -37,7 +37,7 @@ import { RoutingRuleItemType } from './types';
  */
 export function getNewEligibleInputs(
   selectedItemTypes: readonly RoutingRuleItemType[],
-  allSignals: readonly CoreSignal[],
+  allSignals: readonly GQLSignal[],
 ) {
   const allBaseFields = selectedItemTypes.flatMap((it) => it.baseFields);
   const allDerivedFields = selectedItemTypes.flatMap((it) => it.derivedFields);
@@ -155,7 +155,7 @@ export function updateConditionInput(params: {
   location: ConditionLocation;
   input: SimplifiedConditionInput;
   selectedItemTypes: RoutingRuleItemType[];
-  allSignals: readonly CoreSignal[];
+  allSignals: readonly GQLSignal[];
 }) {
   const {
     currentConditionSet,
@@ -225,12 +225,11 @@ export function updateConditionInput(params: {
   // If the previously selected signal on this condition is no
   // longer compatible with the newly selected input, clear it out,
   // and clear out all subsequent fields in the condition
+  const currentSignal = newConditions[conditionIndex].signal;
   if (
-    newConditions[conditionIndex].signal != null &&
-    // Need to compare IDs instead of objects
-    !allNewSignals
-      .map((s) => s.type)
-      .includes(newConditions[conditionIndex].signal!.type)
+    currentSignal != null &&
+    // Compare by ID: type-based comparison fails for custom signals, which all share GQLSignalType.Custom
+    !allNewSignals.some((s) => s.id === currentSignal.id)
   ) {
     // Clear out all other fields on the Condition
     newConditions[conditionIndex] = {

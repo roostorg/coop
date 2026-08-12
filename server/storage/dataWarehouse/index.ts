@@ -24,4 +24,3 @@ export {
   type IDataWarehouseProvider,
   type DataWarehouseConfig,
 } from './DataWarehouseFactory.js';
-

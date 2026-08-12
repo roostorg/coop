@@ -1,4 +1,3 @@
-
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { type ItemSubmissionForGQL } from '../types.js';
 
@@ -10,8 +9,7 @@ export type UserHistoryForGQL = {
 class InvestigationAPI {
   constructor(
     private readonly itemHistoryQueries: Dependencies['ItemHistoryQueries'],
-  ) {
-  }
+  ) {}
 
   async getItemHistory(opts: {
     itemId: string;

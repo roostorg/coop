@@ -1,6 +1,6 @@
 # Getting Started
 
-Quickly get set up with Coop for the first time for local development or demoing.
+Quickly get set up with Coop for the first time for local development. For testing and demonstration, you may be interested in the [Docker images](docker.md).
 
 > [!NOTE]
 > You may also want to familiarize yourself with Coop's [Basic Concepts](../user/concepts.md) for additional context.
@@ -27,9 +27,9 @@ To get Coop running:
 
    ```
    0.40.4
-   Found '.nvmrc' with version <24.14.1>
-   v24.14.1 is already installed.
-   Now using node v24.14.1 (npm v11.11.0)
+   Found '.nvmrc' with version <24.18.0>
+   v24.18.0 is already installed.
+   Now using node v24.18.0 (npm v11.11.0)
    Docker version 29.4.3, build 055a478
    ```
 

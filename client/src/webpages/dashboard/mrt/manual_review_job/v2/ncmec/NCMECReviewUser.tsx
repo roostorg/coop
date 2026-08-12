@@ -1,8 +1,9 @@
 import { isTypingInEditableElement } from '@/utils/misc';
 import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { ItemIdentifier, TaggedScalar } from '@roostorg/coop-types';
+import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
+import clsx from 'clsx';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
 import uniqWith from 'lodash/uniqWith';
@@ -21,12 +22,15 @@ import {
   GQLNcmecFileAnnotation,
   GQLNcmecIncidentType,
   GQLNcmecIndustryClassification,
+  GQLNcmecMediaReviewRequirement,
   GQLNcmecThreadInput,
   GQLThreadItem,
   useGQLGetMoreInfoForThreadItemsQuery,
+  useGQLNcmecMediaReviewPolicyQuery,
   useGQLPersonalSafetySettingsQuery,
 } from '../../../../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../../../../utils/collections';
+import { inferMediaKindFromUrl } from '../../../../../../utils/contentUrlUtils';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -68,6 +72,15 @@ type NCMECJobPayloadQueryResult = Extract<
 
 export type NCMECMediaQueryResult =
   NCMECJobPayloadQueryResult['allMediaItems'][0];
+
+gql`
+  query NcmecMediaReviewPolicy {
+    myOrg {
+      ncmecMediaReviewRequirement
+      ncmecMinMediaToReview
+    }
+  }
+`;
 
 gql`
   query getMoreInfoForThreadItems($ids: [ItemIdentifierInput!]!) {
@@ -114,6 +127,25 @@ gql`
   }
 `;
 
+// NCMEC covers images and videos only. For the MEDIA scalar the kind isn't
+// implied by the field type, so use the resolved `mediaType` (or infer from URL).
+function toNcmecUrlInfo(tagged: {
+  type: string;
+  value: { url?: string; mediaType?: MediaKind | null };
+}): NCMECUrlInfo | undefined {
+  const url = tagged.value?.url;
+  if (!url) {
+    return undefined;
+  }
+  const kind =
+    tagged.type === 'IMAGE' || tagged.type === 'VIDEO'
+      ? tagged.type
+      : (tagged.value?.mediaType ?? inferMediaKindFromUrl(url));
+  return kind === 'IMAGE' || kind === 'VIDEO'
+    ? { url, mediaType: kind }
+    : undefined;
+}
+
 function getUrlsFromItem(
   item: NCMECMediaQueryResult['contentItem'],
 ): NCMECUrlInfo[] {
@@ -121,24 +153,23 @@ function getUrlsFromItem(
     (it) =>
       it.type === 'IMAGE' ||
       it.type === 'VIDEO' ||
+      it.type === 'MEDIA' ||
       it.container?.valueScalarType === 'IMAGE' ||
-      it.container?.valueScalarType === 'VIDEO',
+      it.container?.valueScalarType === 'VIDEO' ||
+      it.container?.valueScalarType === 'MEDIA',
   );
   return filterNullOrUndefined(
     mediaFields
       .map((field) => {
         const valueOrValues = getFieldValueOrValues(item.data, field) as
-          | TaggedScalar<'IMAGE' | 'VIDEO'>
-          | TaggedScalar<'IMAGE' | 'VIDEO'>[];
+          | TaggedScalar<'IMAGE' | 'VIDEO' | 'MEDIA'>
+          | TaggedScalar<'IMAGE' | 'VIDEO' | 'MEDIA'>[];
         if (valueOrValues === undefined) {
           return undefined;
         }
-        return Array.isArray(valueOrValues)
-          ? valueOrValues.map((it) => ({
-              url: it.value.url,
-              mediaType: it.type,
-            }))
-          : { url: valueOrValues.value.url, mediaType: valueOrValues.type };
+        return (
+          Array.isArray(valueOrValues) ? valueOrValues : [valueOrValues]
+        ).map(toNcmecUrlInfo);
       })
       .flat(),
   );
@@ -153,8 +184,10 @@ export function getMatchedBanksForMediaUrl(
     (it) =>
       it.type === 'IMAGE' ||
       it.type === 'VIDEO' ||
+      it.type === 'MEDIA' ||
       it.container?.valueScalarType === 'IMAGE' ||
-      it.container?.valueScalarType === 'VIDEO',
+      it.container?.valueScalarType === 'VIDEO' ||
+      it.container?.valueScalarType === 'MEDIA',
   );
   for (const field of mediaFields) {
     const valueOrValues = getFieldValueOrValues(item.data, field) as
@@ -357,6 +390,12 @@ export default function NCMECReviewUser(
   const navigate = useNavigate();
 
   const { loading, data } = useGQLPersonalSafetySettingsQuery();
+  const { data: mediaReviewPolicyData } = useGQLNcmecMediaReviewPolicyQuery();
+  const mediaReviewRequirement =
+    mediaReviewPolicyData?.myOrg?.ncmecMediaReviewRequirement ??
+    GQLNcmecMediaReviewRequirement.All;
+  const mediaReviewMinToReview =
+    mediaReviewPolicyData?.myOrg?.ncmecMinMediaToReview ?? 1;
   const noValidMedia = (
     <div className="flex items-start justify-center w-full h-full">
       <div className="flex flex-col items-center justify-center p-12 mt-20 shadow rounded-xl bg-slate-50 text-slate-500">
@@ -408,9 +447,10 @@ export default function NCMECReviewUser(
   }
 
   const {
-    moderatorSafetyBlurLevel,
-    moderatorSafetyGrayscale,
-    moderatorSafetyMuteVideo,
+    moderatorSafetyBlurLevel = 2,
+    moderatorSafetyGrayscale = true,
+    moderatorSafetyMuteVideo = true,
+    moderatorSafetySepia = false,
   } = data?.me?.interfacePreferences ?? {};
 
   // Compares two pieces of media to determine whether they're the same, based
@@ -596,23 +636,29 @@ export default function NCMECReviewUser(
             <div className="overflow-hidden shadow-lg rounded-2xl w-fit">
               {!loading &&
               moderatorSafetyBlurLevel != null &&
-              moderatorSafetyGrayscale != null ? (
+              moderatorSafetyGrayscale != null &&
+              moderatorSafetySepia != null ? (
                 media.urlInfo.mediaType === 'IMAGE' ? (
                   <img
-                    className={`object-scale-down w-64 h-48 rounded-2xl ${
+                    className={clsx(
+                      'object-scale-down w-64 h-48 rounded-2xl',
                       unblurAllMediaInConfirmation
                         ? 'blur-0'
-                        : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength]
-                    } ${moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+                        : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength],
+                      moderatorSafetyGrayscale && 'grayscale',
+                      moderatorSafetySepia && 'sepia',
+                    )}
                     alt=""
                     src={media.urlInfo.url}
                   />
                 ) : (
                   <ManualReviewJobContentBlurableVideo
                     url={media.urlInfo.url}
-                    className={`object-scale-down w-64 h-48 rounded-2xl ${
-                      moderatorSafetyGrayscale ? 'grayscale' : ''
-                    }`}
+                    className={clsx(
+                      'object-scale-down w-64 h-48 rounded-2xl',
+                      moderatorSafetyGrayscale && 'grayscale',
+                      moderatorSafetySepia && 'sepia',
+                    )}
                     options={{
                       shouldBlur:
                         !unblurAllMediaInConfirmation &&
@@ -852,6 +898,33 @@ export default function NCMECReviewUser(
     mediaInDetailViewItem?.__typename === 'ContentItem'
       ? getFieldValueForRole(mediaInDetailViewItem, 'threadId')
       : undefined;
+
+  // "None" counts as reviewed but not reported.
+  const reviewedCount = selectedMedia.length;
+  const reportedCount = selectedMedia.filter(
+    (media) => media.category !== 'None',
+  ).length;
+  // Cap the minimum at the job's media count so it's always achievable.
+  const effectiveMinToReview = Math.min(
+    Math.max(mediaReviewMinToReview, 1),
+    allMediaItemsWithUrls.length,
+  );
+  const reviewThresholdMet =
+    mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
+      ? reviewedCount >= effectiveMinToReview
+      : reviewedCount === allMediaItemsWithUrls.length;
+  // A report can't be empty: require at least one reported item.
+  const canSendReport = reviewThresholdMet && reportedCount > 0;
+  const sendDisabledReason = !reviewThresholdMet
+    ? mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
+      ? `Please review at least ${effectiveMinToReview} ${
+          effectiveMinToReview === 1 ? 'piece' : 'pieces'
+        } of media before sending a report to NCMEC.`
+      : 'Please make a decision on every piece of media in this job before sending a report to NCMEC.'
+    : reportedCount === 0
+      ? 'Select a category for at least one piece of media to include it in the report before sending to NCMEC.'
+      : '';
+
   return (
     <div
       className="flex flex-col items-start outline-none"
@@ -932,9 +1005,8 @@ export default function NCMECReviewUser(
                 setDeselectAndIgnoreModalVisible
               }
               isAnyMediaSelected={selectedMedia.length > 0}
-              isAllMediaSelected={
-                selectedMedia.length === allMediaItemsWithUrls.length
-              }
+              canSendReport={canSendReport}
+              sendDisabledReason={sendDisabledReason}
               submitDecision={props.submitDecision}
               moveToQueueMenuVisible={moveToQueueMenuVisible}
               setMoveToQueueMenuVisible={setMoveToQueueMenuVisible}
@@ -985,13 +1057,11 @@ export default function NCMECReviewUser(
           <NCMECInspectedMedia
             orgId={orgId}
             mediaId={mediaInDetailView}
-            fullNcmecContentItem={
-              allMediaItemsWithUrls.find(
-                (it) =>
-                  it.contentItem.id === mediaInDetailView.itemId &&
-                  it.urlInfo.url === mediaInDetailView.urlInfo.url,
-              )!
-            }
+            fullNcmecContentItem={allMediaItemsWithUrls.find(
+              (it) =>
+                it.contentItem.id === mediaInDetailView.itemId &&
+                it.urlInfo.url === mediaInDetailView.urlInfo.url,
+            )!}
             state={selectedMedia.find((it) =>
               areMediaEqual(it, mediaInDetailView),
             )}

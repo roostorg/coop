@@ -15,9 +15,7 @@ export type ItemTypeSchemaVariant = 'original' | 'partial';
 export { ItemTypeKind };
 
 export type ItemType =
-  | Readonly<UserItemType>
-  | Readonly<ContentItemType>
-  | Readonly<ThreadItemType>;
+  Readonly<UserItemType> | Readonly<ContentItemType> | Readonly<ThreadItemType>;
 
 type ItemTypeBase = {
   id: string;
@@ -53,6 +51,7 @@ export type UserSchemaFieldRoles = {
   createdAt?: string;
   isDeleted?: string;
   ipAddress?: string;
+  email?: string;
 };
 
 export type ThreadSchemaFieldRoles = {
@@ -83,9 +82,7 @@ export type ContentSchemaFieldRoles = {
 );
 
 export type SchemaFieldRoles =
-  | UserSchemaFieldRoles
-  | ThreadSchemaFieldRoles
-  | ContentSchemaFieldRoles;
+  UserSchemaFieldRoles | ThreadSchemaFieldRoles | ContentSchemaFieldRoles;
 
 /**
  * These three fields uniquely identify a particular "incarnation" of a given
@@ -127,6 +124,7 @@ export type FieldRoleToScalarType = {
   backgroundImage: ScalarTypes['IMAGE'];
   isDeleted: ScalarTypes['BOOLEAN'];
   ipAddress: ScalarTypes['IP_ADDRESS'];
+  email: ScalarTypes['EMAIL_ADDRESS'];
 };
 
 export function getPartialSchemaFromOriginal(schema: ItemSchema) {

@@ -1,13 +1,13 @@
-import {
-  type IReportingAnalyticsAdapter,
-  type ReportingRulePassRateInput,
-  type ReportingRulePassRateRow,
-  type ReportingRulePassingContentSample,
-  type ReportingRulePassingContentSampleInput,
-  type ReportsByDayRow,
-} from './IReportingAnalyticsAdapter.js';
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
+import {
+  type IReportingAnalyticsAdapter,
+  type ReportingRulePassingContentSample,
+  type ReportingRulePassingContentSampleInput,
+  type ReportingRulePassRateInput,
+  type ReportingRulePassRateRow,
+  type ReportsByDayRow,
+} from './IReportingAnalyticsAdapter.js';
 
 type ReportsByDayQueryRow = Record<string, unknown> & {
   date: string;
@@ -37,9 +37,7 @@ type ReportingRuleSampleRow = Record<string, unknown> & {
   policy_ids: string[];
 };
 
-export class ClickhouseReportingAnalyticsAdapter
-  implements IReportingAnalyticsAdapter
-{
+export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsAdapter {
   constructor(
     private readonly warehouse: IDataWarehouse,
     private readonly tracer: SafeTracer,
@@ -109,9 +107,7 @@ export class ClickhouseReportingAnalyticsAdapter
     const params: unknown[] = [orgId, ruleId];
 
     if (itemIds && itemIds.length > 0) {
-      conditions.push(
-        `item_id IN (${itemIds.map(() => '?').join(', ')})`,
-      );
+      conditions.push(`item_id IN (${itemIds.map(() => '?').join(', ')})`);
       params.push(...itemIds);
     }
 
@@ -202,4 +198,3 @@ export class ClickhouseReportingAnalyticsAdapter
     return result as readonly T[];
   }
 }
-

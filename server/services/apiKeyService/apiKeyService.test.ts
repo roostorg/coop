@@ -1,7 +1,8 @@
-import { makeTestWithFixture } from '../../test/utils.js';
-import ApiKeyService from './apiKeyService.js';
 import type { Kysely } from 'kysely';
+
+import { makeTestWithFixture } from '../../test/utils.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
+import ApiKeyService from './apiKeyService.js';
 
 // Mock Kysely database
 const mockDb = {
@@ -44,7 +45,7 @@ describe('ApiKeyService', () => {
             created_by: null,
           }),
         };
-        
+
         const mockUpdate = {
           set: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
@@ -147,21 +148,18 @@ describe('ApiKeyService', () => {
       },
     );
 
-    testWithFixtures(
-      'should return null for invalid key',
-      async ({ sut }) => {
-        const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue(undefined),
-        };
+    testWithFixtures('should return null for invalid key', async ({ sut }) => {
+      const mockSelect = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        executeTakeFirst: jest.fn().mockResolvedValue(undefined),
+      };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+      (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
 
-        const result = await sut.validateApiKey('invalid-key');
+      const result = await sut.validateApiKey('invalid-key');
 
-        expect(result).toBeNull();
-      },
-    );
+      expect(result).toBeNull();
+    });
   });
 });

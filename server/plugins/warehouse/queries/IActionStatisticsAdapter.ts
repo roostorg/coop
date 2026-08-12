@@ -3,17 +3,10 @@ import { type ReadonlyDeep } from 'type-fest';
 export type ActionStatisticsTimeDivisionOptions = 'DAY' | 'HOUR';
 
 export type ActionExecutionsGroupByAllowedFields =
-  | 'RULE_ID'
-  | 'ACTION_ID'
-  | 'ITEM_TYPE_ID'
-  | 'ACTION_SOURCE'
-  | 'POLICY_ID';
+  'RULE_ID' | 'ACTION_ID' | 'ITEM_TYPE_ID' | 'ACTION_SOURCE' | 'POLICY_ID';
 
 export type ActionSourceOptions =
-  | 'automated-rule'
-  | 'mrt-decision'
-  | 'manual-action-run'
-  | 'post-actions';
+  'automated-rule' | 'mrt-decision' | 'manual-action-run' | 'post-actions';
 
 export type ActionCountsInput = ReadonlyDeep<{
   orgId: string;
@@ -39,9 +32,7 @@ export interface IActionStatisticsAdapter {
   getActionedSubmissionCountsByTagByDay(
     orgId: string,
     startAt: Date,
-  ): Promise<
-    ReadonlyArray<{ date: string; tag: string; count: number }>
-  >;
+  ): Promise<ReadonlyArray<{ date: string; tag: string; count: number }>>;
 
   getActionedSubmissionCountsByPolicyByDay(
     orgId: string,
@@ -78,21 +69,15 @@ export interface IActionStatisticsAdapter {
 
   getAllActionCountsGroupByPolicy(
     input: ActionCountsInput,
-  ): Promise<
-    ReadonlyArray<{ count: number; policy_id: string; time: string }>
-  >;
+  ): Promise<ReadonlyArray<{ count: number; policy_id: string; time: string }>>;
 
   getAllActionCountsGroupByActionId(
     input: ActionCountsInput,
-  ): Promise<
-    ReadonlyArray<{ count: number; action_id: string; time: string }>
-  >;
+  ): Promise<ReadonlyArray<{ count: number; action_id: string; time: string }>>;
 
   getAllActionCountsGroupBySource(
     input: ActionCountsInput,
-  ): Promise<
-    ReadonlyArray<{ count: number; source: string; time: string }>
-  >;
+  ): Promise<ReadonlyArray<{ count: number; source: string; time: string }>>;
 
   getAllActionCountsGroupByItemTypeId(
     input: ActionCountsInput,
@@ -102,13 +87,9 @@ export interface IActionStatisticsAdapter {
 
   getAllActionCountsGroupByRule(
     input: ActionCountsInput,
-  ): Promise<
-    ReadonlyArray<{ count: number; rule_id: string; time: string }>
-  >;
+  ): Promise<ReadonlyArray<{ count: number; rule_id: string; time: string }>>;
 
-  getAllActionCountsGroupBy(
-    input: ActionCountsInput,
-  ): Promise<
+  getAllActionCountsGroupBy(input: ActionCountsInput): Promise<
     ReadonlyArray<{
       count: number;
       action_id?: string;
@@ -118,4 +99,3 @@ export interface IActionStatisticsAdapter {
     }>
   >;
 }
-

@@ -10,7 +10,7 @@ import { Input, Tooltip } from 'antd';
 import React, { useState } from 'react';
 import { DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
 
-import { CoreSignal } from '../../../../models/signal';
+import { GQLSignal } from '../../../../graphql/generated';
 import {
   getInvalidRegexesInCondition,
   isConditionComplete,
@@ -100,7 +100,7 @@ export default function ManualReviewQueueRoutingRule(props: {
   isEditing: boolean;
   setRuleEditingState: (isEditing: boolean) => void;
   itemTypes: readonly RoutingRuleItemType[];
-  signals: readonly CoreSignal[];
+  signals: readonly GQLSignal[];
   queues: readonly RoutingRuleQueue[];
   isReordering: boolean;
   isLoading: boolean;

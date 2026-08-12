@@ -7,6 +7,10 @@ import {
   type ActionExecutionData,
 } from '../../rule_engine/ActionPublisher.js';
 import {
+  type ActionExecutionMatchingRule,
+  type ActionExecutionPolicy,
+} from '../../storage/dataWarehouse/warehouseSchema.js';
+import {
   fromCorrelationId,
   getSourceType,
   type CorrelationId,
@@ -14,10 +18,6 @@ import {
 import { jsonStringify } from '../../utils/encoding.js';
 import { safePick } from '../../utils/misc.js';
 import { getUtcDateOnlyString } from '../../utils/time.js';
-import {
-  type ActionExecutionMatchingRule,
-  type ActionExecutionPolicy,
-} from '../../storage/dataWarehouse/warehouseSchema.js';
 
 export type ActionExecutionSourceType =
   | 'post-content'

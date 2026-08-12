@@ -1,5 +1,12 @@
 import { DateString } from '@roostorg/coop-types';
-import { addDays, addHours, format, isBefore } from 'date-fns';
+import {
+  addDays,
+  addHours,
+  format,
+  formatDistanceToNow,
+  isBefore,
+  isValid,
+} from 'date-fns';
 
 export enum LookbackLength {
   CUSTOM = 'Custom',
@@ -29,13 +36,44 @@ export function formatDate(date = new Date()): string {
 }
 
 function toDate(date: string | DateString | Date): Date {
-  return date instanceof Date ? date : new Date(date as string);
+  return date instanceof Date ? date : new Date(date);
+}
+
+type MaybeDate = string | DateString | Date | null | undefined;
+
+/**
+ * date-fns `format` throws on an invalid date; this returns `fallback` instead.
+ */
+export function safeFormat(
+  date: MaybeDate,
+  formatStr: string,
+  fallback = 'Unknown',
+): string {
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? format(d, formatStr) : fallback;
+}
+
+/**
+ * date-fns `formatDistanceToNow` throws on an invalid date; this returns
+ * `fallback` instead.
+ */
+export function safeFormatDistanceToNow(
+  date: MaybeDate,
+  fallback = 'Unknown',
+): string {
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? formatDistanceToNow(d, { addSuffix: true }) : fallback;
 }
 
 export function parseDatetimeToReadableStringInUTC(
-  date: string | DateString | Date,
+  date: MaybeDate,
+  fallback = 'Unknown',
 ): string {
+  if (date == null) return fallback;
   const d = toDate(date);
+  if (!isValid(d)) return fallback;
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC',
     month: '2-digit',
@@ -51,15 +89,21 @@ export function parseDatetimeToReadableStringInUTC(
 }
 
 export function parseDatetimeToReadableStringInCurrentTimeZone(
-  date: string | DateString | Date,
+  date: MaybeDate,
+  fallback = 'Unknown',
 ): string {
-  return format(toDate(date), 'MM/dd/yy hh:mm:ss a');
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? format(d, 'MM/dd/yy hh:mm:ss a') : fallback;
 }
 
 export function parseDatetimeToMonthDayYearDateStringInCurrentTimeZone(
-  date: string | DateString | Date,
+  date: MaybeDate,
+  fallback = 'Unknown',
 ): string {
-  return format(toDate(date), 'MMM d, yyyy');
+  if (date == null) return fallback;
+  const d = toDate(date);
+  return isValid(d) ? format(d, 'MMM d, yyyy') : fallback;
 }
 
 export function startOfHourUTC(date: Date): Date {
@@ -100,7 +144,7 @@ export function getDateRange(start: Date, end: Date, interval: 'HOUR' | 'DAY') {
   while (isBefore(currentDate, end)) {
     datesArray.push({
       ds: format(currentDate, formatStr),
-    } as { [key: string]: any });
+    });
     currentDate = advanceFn(currentDate, 1);
   }
 

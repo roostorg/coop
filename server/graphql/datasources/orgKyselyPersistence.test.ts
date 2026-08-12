@@ -2,10 +2,8 @@ import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
-import { makeMockedServer } from '../../test/setupMockedServer.js';
-import { makeTestWithFixture } from '../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
-  kyselyOrgDeleteById,
   kyselyOrgFindByEmail,
   kyselyOrgFindById,
   kyselyOrgFindByName,
@@ -14,9 +12,8 @@ import {
 } from './orgKyselyPersistence.js';
 
 describe('orgKyselyPersistence', () => {
-  const testWithFixture = makeTestWithFixture(async () => {
-    const { deps, shutdown } = await makeMockedServer();
-    const { org, cleanup: orgCleanup } = await createOrg(
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
       {
         KyselyPg: deps.KyselyPg,
         ModerationConfigService: deps.ModerationConfigService,
@@ -24,14 +21,7 @@ describe('orgKyselyPersistence', () => {
       },
       uid(),
     );
-    return {
-      deps,
-      org,
-      async cleanup() {
-        await orgCleanup();
-        await shutdown();
-      },
-    };
+    return { org };
   });
 
   describe('kyselyOrgFindBy*', () => {
@@ -99,19 +89,14 @@ describe('orgKyselyPersistence', () => {
           // apiKeyId intentionally omitted
         });
 
-        try {
-          expect(inserted.id).toBe(id);
+        expect(inserted.id).toBe(id);
 
-          const row = await deps.KyselyPg
-            .selectFrom('public.orgs')
-            .select(['api_key_id', 'on_call_alert_email'])
-            .where('id', '=', id)
-            .executeTakeFirstOrThrow();
-          expect(row.api_key_id).toBeNull();
-          expect(row.on_call_alert_email).toBeNull();
-        } finally {
-          await kyselyOrgDeleteById(deps.KyselyPg, id);
-        }
+        const row = await deps.KyselyPg.selectFrom('public.orgs')
+          .select(['api_key_id', 'on_call_alert_email'])
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow();
+        expect(row.api_key_id).toBeNull();
+        expect(row.on_call_alert_email).toBeNull();
       },
     );
   });
@@ -206,8 +191,7 @@ describe('orgKyselyPersistence', () => {
         const newWebsite = 'https://renamed.example.com';
 
         // Read updated_at directly since it isn't part of GraphQLOrgParent.
-        const beforeRow = await deps.KyselyPg
-          .selectFrom('public.orgs')
+        const beforeRow = await deps.KyselyPg.selectFrom('public.orgs')
           .select(['updated_at'])
           .where('id', '=', org.id)
           .executeTakeFirstOrThrow();
@@ -224,8 +208,7 @@ describe('orgKyselyPersistence', () => {
         expect(updated!.name).toBe(newName);
         expect(updated!.websiteUrl).toBe(newWebsite);
 
-        const afterRow = await deps.KyselyPg
-          .selectFrom('public.orgs')
+        const afterRow = await deps.KyselyPg.selectFrom('public.orgs')
           .select(['updated_at'])
           .where('id', '=', org.id)
           .executeTakeFirstOrThrow();

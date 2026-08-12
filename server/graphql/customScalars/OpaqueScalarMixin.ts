@@ -1,5 +1,6 @@
 import { Kind, type GraphQLScalarType } from 'graphql';
 import jwt from 'jsonwebtoken';
+
 import { userInputError } from '../utils/errors.js';
 
 const parseOpaqueScalarValue =

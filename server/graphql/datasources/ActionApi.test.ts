@@ -11,9 +11,7 @@ type ActionAPICtor = new (
   getItemTypeEventuallyConsistent: jest.Mock,
 ) => InstanceType<typeof ActionAPI>;
 
-function makeApi(overrides?: {
-  action?: Record<string, unknown>;
-}) {
+function makeApi(overrides?: { action?: Record<string, unknown> }) {
   const action = overrides?.action ?? {
     id: 'action-1',
     orgId: 'org-1',

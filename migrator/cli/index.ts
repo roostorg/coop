@@ -1,5 +1,5 @@
-import path from 'path';
 import { glob } from 'node:fs/promises';
+import path from 'path';
 
 import '@total-typescript/ts-reset/array-includes';
 
@@ -166,6 +166,10 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
             choices: ['remaining', 'next', 'only', 'until'],
             default: 'remaining',
           })
+          .positional('name', {
+            describe: 'Name of a specific script, for use with "only"/"until".',
+            type: 'string',
+          })
           .check(({ target, name, db, env }) => {
             const needsSpecificScript = target === 'only' || target === 'until';
             if (!needsSpecificScript && name) {
@@ -245,10 +249,11 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
                   await migrator.up({ step: 1 });
                   break;
                 case 'only':
-                  await migrator.up({ migrations: [name] });
+                  // `name` presence for only/until is guaranteed by the check() above.
+                  await migrator.up({ migrations: [name!] });
                   break;
                 case 'until':
-                  await migrator.up({ to: name });
+                  await migrator.up({ to: name! });
               }
             } finally {
               // Await not return so that any errors from the try aren't swallowed.
@@ -330,18 +335,13 @@ export function makeCli(dbs: { [k: string]: DatabaseConfig<string, any> }) {
       command: 'create',
       describe: 'Creates the databases specified in the ENV vars.',
       builder: (yargs) => {
-        return yargs
-          .option('db', dbOpt)
-          .option('env', {
-            ...envOpt,
-            demand:
-              'Must provide an environment (even though it has no effect; the ' +
-              'connection-related env vars determine which db(s) are cleaned) ' +
-              'to help prevent accidentally deleting prod!',
-          })
-          .check((opts) => {
-            return opts.env !== 'prod';
-          });
+        return yargs.option('db', dbOpt).option('env', {
+          ...envOpt,
+          demand:
+            'Must provide an environment (even though it has no functional ' +
+            'effect; the connection-related env vars determine which db(s) ' +
+            'are created).',
+        });
       },
       handler: async ({ db: optDbs }) => {
         await Promise.all(

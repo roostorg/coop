@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Tooltip as AntTooltip } from 'antd';
+import { format } from 'date-fns';
 import flatten from 'lodash/flatten';
 import keys from 'lodash/keys';
 import map from 'lodash/map';
@@ -21,7 +22,6 @@ import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import { format } from 'date-fns';
 import React, {
   ReactNode,
   useCallback,
@@ -177,10 +177,7 @@ gql`
 `;
 
 export type ManualReviewDashboardInsightsChartMetric =
-  | 'DECISIONS'
-  | 'JOBS'
-  | 'REVIEWED_JOBS'
-  | 'SKIPPED_JOBS';
+  'DECISIONS' | 'JOBS' | 'REVIEWED_JOBS' | 'SKIPPED_JOBS';
 
 export function getEmptyFilterState(
   metric: ManualReviewDashboardInsightsChartMetric,
@@ -223,8 +220,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
   timeWindow: TimeWindow;
   initialChartType: ChartType;
   initialGroupBy:
-    | Array<ManualReviewDashboardInsightsGroupByColumns>
-    | undefined;
+    Array<ManualReviewDashboardInsightsGroupByColumns> | undefined;
   metric: ManualReviewDashboardInsightsChartMetric;
   title?: string;
   isCustomTitle?: boolean;
@@ -698,7 +694,10 @@ export default function ManualReviewDashboardInsightsChart(props: {
 
   const formattedData = countsByDay?.map((it) => {
     const obj: { [key: string]: any } = {
-      ds: format(new Date(parseInt(it.time)), timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd'),
+      ds: format(
+        new Date(parseInt(it.time)),
+        timeDivision === 'HOUR' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd',
+      ),
     };
     obj[getLineNameFromCount(it)] = it.count;
     return obj;
@@ -719,7 +718,10 @@ export default function ManualReviewDashboardInsightsChart(props: {
     ...allDatesArray,
   ];
 
-  const groupedData = formattedDataWithAllDates.reduce((result, item) => {
+  type ChartRow = Record<string, string | number>;
+  const groupedData = formattedDataWithAllDates.reduce<
+    Record<string, ChartRow>
+  >((result, item) => {
     const ds = item.ds;
 
     if (!(ds in result)) {

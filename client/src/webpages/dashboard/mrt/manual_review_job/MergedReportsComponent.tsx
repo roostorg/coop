@@ -12,6 +12,8 @@ import { Link } from 'react-router-dom';
 
 import Table from '../../components/table/Table';
 
+import InvalidateReportsButton from './InvalidateReportsButton';
+
 export default function MergedReportsComponent(props: {
   primaryReportId?: string | null;
   reportHistory: ReadonlyArray<{
@@ -24,13 +26,21 @@ export default function MergedReportsComponent(props: {
       typeId: string;
     } | null;
   }>;
+  // Parent gates this on EDIT_MRT_QUEUES and non-appeal.
+  canInvalidateReports?: boolean;
+  jobId?: string;
+  onInvalidated?: () => Promise<void> | void;
 }) {
-  const { primaryReportId, reportHistory } = props;
-  // The primary report is shown separately above this component. If we know
-  // its reportId, exclude it from the merged list; otherwise fall back to
-  // dropping the first entry (newest, which corresponds to the displayed
-  // primary report after a job merge). Filtering by `reportId` is stable
-  // across reports that happen to share the same `reportedAt` timestamp.
+  const {
+    primaryReportId,
+    reportHistory,
+    canInvalidateReports,
+    jobId,
+    onInvalidated,
+  } = props;
+  // The primary report is rendered separately above this component. Filter
+  // by `reportId` when available (stable across duplicate timestamps);
+  // otherwise drop the newest entry, which corresponds to the primary.
   const otherReports = useMemo(() => {
     if (primaryReportId != null) {
       const matchIdx = reportHistory.findIndex(
@@ -101,52 +111,46 @@ export default function MergedReportsComponent(props: {
     [],
   );
 
-  const tableData = useMemo(
-    () =>
-      reportHistoryWithDisplayInfo.map((report) => {
-        const policy = data?.myOrg?.policies.find(
-          (p) => p.id === report.policyId,
-        );
-        const hasReporter = report.reporterId != null;
-        // Distinguish "no reporter on the report" (e.g. rule-engine, NCMEC,
-        // or other system-generated enqueues) from "we couldn't resolve the
-        // user item" so reviewers don't see a misleading "Unknown".
-        const reportedByLabel = !hasReporter
-          ? 'System'
-          : report.displayInfo?.displayName ??
-            report.reporterId?.id ??
-            'Unknown reporter';
-        const reportedByPrefix =
-          hasReporter && report.displayInfo?.typeName
-            ? `${report.displayInfo.typeName}: `
-            : '';
-        return {
-          reportedBy: (
-            <div>
+  const tableData = useMemo(() => {
+    // One invalidate button per reporter, on their first row.
+    const seenReporters = new Set<string>();
+    return reportHistoryWithDisplayInfo.map((report) => {
+      const policy = data?.myOrg?.policies.find(
+        (p) => p.id === report.policyId,
+      );
+      const hasReporter = report.reporterId != null;
+      const reporterKey = report.reporterId
+        ? `${report.reporterId.typeId}\u241F${report.reporterId.id}`
+        : null;
+      const showInvalidate =
+        canInvalidateReports &&
+        hasReporter &&
+        reporterKey != null &&
+        !seenReporters.has(reporterKey);
+      if (reporterKey != null) {
+        seenReporters.add(reporterKey);
+      }
+      // Distinguish system-generated enqueues (no reporter) from an
+      // unresolvable user-item lookup so reviewers don't see "Unknown".
+      const reportedByLabel = !hasReporter
+        ? 'System'
+        : (report.displayInfo?.displayName ??
+          report.reporterId?.id ??
+          'Unknown reporter');
+      const reportedByPrefix =
+        hasReporter && report.displayInfo?.typeName
+          ? `${report.displayInfo.typeName}: `
+          : '';
+      return {
+        reportedBy: (
+          <div className="flex flex-wrap items-center gap-x-2">
+            <span>
               {reportedByPrefix}
               {reportedByLabel}
-              {hasReporter && report.reporterId ? (
-                <Link
-                  to={`/dashboard/manual_review/investigation?id=${report.reporterId.id}&typeId=${report.reporterId.typeId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button
-                    className="!fill-none !p-0 !pl-1"
-                    size="icon"
-                    variant="link"
-                    endIcon={ExternalLink}
-                    aria-label="Open reporter investigation page"
-                  ></Button>
-                </Link>
-              ) : null}
-            </div>
-          ),
-          reportedFor: policy ? (
-            <div>
-              {policy.name}
+            </span>
+            {hasReporter && report.reporterId ? (
               <Link
-                to={`/dashboard/policies/form/${policy.id}`}
+                to={`/dashboard/manual_review/investigation?id=${report.reporterId.id}&typeId=${report.reporterId.typeId}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -155,21 +159,60 @@ export default function MergedReportsComponent(props: {
                   size="icon"
                   variant="link"
                   endIcon={ExternalLink}
-                  aria-label={`Open policy ${policy.name}`}
+                  aria-label="Open reporter investigation page"
                 ></Button>
               </Link>
-            </div>
-          ) : (
-            '—'
-          ),
-          reason: report.reason?.trim() ? report.reason : '—',
-          reportTime: parseDatetimeToReadableStringInCurrentTimeZone(
-            report.reportedAt,
-          ),
-        };
-      }),
-    [data?.myOrg?.policies, reportHistoryWithDisplayInfo],
-  );
+            ) : null}
+            {showInvalidate && report.reporterId ? (
+              <InvalidateReportsButton
+                reporter={{
+                  id: report.reporterId.id,
+                  typeId: report.reporterId.typeId,
+                }}
+                reporterDisplayName={
+                  typeof report.displayInfo?.displayName === 'string'
+                    ? report.displayInfo.displayName
+                    : undefined
+                }
+                jobId={jobId}
+                onInvalidated={onInvalidated}
+              />
+            ) : null}
+          </div>
+        ),
+        reportedFor: policy ? (
+          <div>
+            {policy.name}
+            <Link
+              to={`/dashboard/policies/form/${policy.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button
+                className="!fill-none !p-0 !pl-1"
+                size="icon"
+                variant="link"
+                endIcon={ExternalLink}
+                aria-label={`Open policy ${policy.name}`}
+              ></Button>
+            </Link>
+          </div>
+        ) : (
+          '—'
+        ),
+        reason: report.reason?.trim() ? report.reason : '—',
+        reportTime: parseDatetimeToReadableStringInCurrentTimeZone(
+          report.reportedAt,
+        ),
+      };
+    });
+  }, [
+    data?.myOrg?.policies,
+    reportHistoryWithDisplayInfo,
+    canInvalidateReports,
+    jobId,
+    onInvalidated,
+  ]);
 
   const otherReportsTable = (
     <Table columns={columns} data={tableData} containerClassName="w-full" />

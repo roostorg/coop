@@ -40,12 +40,10 @@ import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 export type ItemTypeResolversParentType = ItemTypeT | ItemTypeSelector;
 export type ThreadItemTypeResolversParentType =
-  | ThreadItemTypeT
-  | ItemTypeSelector;
+  ThreadItemTypeT | ItemTypeSelector;
 export type UserItemTypeResolversParentType = UserItemTypeT | ItemTypeSelector;
 export type ContentItemTypeResolversParentType =
-  | ContentItemTypeT
-  | ItemTypeSelector;
+  ContentItemTypeT | ItemTypeSelector;
 
 const typeDefs = /* GraphQL */ `
   interface Field {
@@ -203,6 +201,7 @@ const typeDefs = /* GraphQL */ `
     submissionId: ID!
     submissionTime: DateTime
     userScore: Int!
+    userStrikeCount: Int!
   }
 
   type ThreadItem implements ItemBase {
@@ -220,6 +219,7 @@ const typeDefs = /* GraphQL */ `
     backgroundImage: String
     isDeleted: String
     ipAddress: String
+    email: String
   }
 
   type ThreadSchemaFieldRoles {
@@ -283,6 +283,7 @@ const typeDefs = /* GraphQL */ `
     backgroundImage: String
     isDeleted: String
     ipAddress: String
+    email: String
   }
 
   input ThreadSchemaFieldRolesInput {
@@ -544,6 +545,19 @@ const UserItem: GQLUserItemResolvers = {
 
     const { id, type } = userItem;
     return context.services.UserStatisticsService.getUserScore(user.orgId, {
+      id,
+      typeId: type.id,
+    });
+  },
+
+  async userStrikeCount(userItem, __, context) {
+    const user = context.getUser();
+    if (!user) {
+      throw unauthenticatedError('User required.');
+    }
+
+    const { id, type } = userItem;
+    return context.services.UserStrikeService.getUserStrikeValue(user.orgId, {
       id,
       typeId: type.id,
     });
@@ -1066,13 +1080,9 @@ function isValidField(it: GQLFieldInput): it is Field {
 
   // similar idea to the `satisfies` checks above.
   const containerType = it.container?.containerType satisfies
-    | ContainerType
-    | null
-    | undefined;
+    ContainerType | null | undefined;
   const keyScalarType = it.container?.keyScalarType satisfies
-    | ScalarType
-    | null
-    | undefined;
+    ScalarType | null | undefined;
 
   const isValidContainerType =
     containerTypes.includes(type) &&

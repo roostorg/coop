@@ -1,9 +1,9 @@
 import { Kysely, type DatabaseConnection } from 'kysely';
 
-import { safePick } from '../../utils/misc.js';
-import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import { type DataWarehousePublicSchema } from '../../storage/dataWarehouse/warehouseSchema.js';
 import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
+import { safePick } from '../../utils/misc.js';
+import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import ItemHistoryQueries from './ItemHistoryQueries.js';
 
 describe('ItemHistoryQueries', () => {

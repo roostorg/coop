@@ -277,8 +277,8 @@ function makeImplementations(
           labelerVersions: Array.isArray(labelerVersions)
             ? (labelerVersions as ZentropiLabelerVersion[])
             : typeof labelerVersions === 'string'
-            ? jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>)
-            : [],
+              ? jsonParse(labelerVersions as JsonOf<ZentropiLabelerVersion[]>)
+              : [],
         };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
@@ -308,8 +308,8 @@ function makeImplementations(
           labelerVersions: Array.isArray(returnedVersions)
             ? (returnedVersions as ZentropiLabelerVersion[])
             : typeof returnedVersions === 'string'
-            ? jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>)
-            : [],
+              ? jsonParse(returnedVersions as JsonOf<ZentropiLabelerVersion[]>)
+              : [],
         };
       },
       delete: async (orgId: string) => {

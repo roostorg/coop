@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
-import { FlatCompat } from '@eslint/eslintrc';
 import { fixupConfigRules, fixupPluginRules } from '@eslint/compat';
+import { FlatCompat } from '@eslint/eslintrc';
 import functional from 'eslint-plugin-functional';
 
 const require = createRequire(import.meta.url);
@@ -12,13 +12,14 @@ const compat = new FlatCompat({
 
 const functionalPlugin = fixupPluginRules(functional);
 
-const flatConfigs = fixupConfigRules(compat.config(legacyConfig)).map((config) =>
-  config.plugins?.functional
-    ? {
-        ...config,
-        plugins: { ...config.plugins, functional: functionalPlugin },
-      }
-    : config,
+const flatConfigs = fixupConfigRules(compat.config(legacyConfig)).map(
+  (config) =>
+    config.plugins?.functional
+      ? {
+          ...config,
+          plugins: { ...config.plugins, functional: functionalPlugin },
+        }
+      : config,
 );
 
 export default [
@@ -34,6 +35,8 @@ export default [
     ],
   },
   ...flatConfigs.map((config) =>
-    config.files ? config : { ...config, files: ['**/*.ts', '**/*.tsx', '**/*.js'] },
+    config.files
+      ? config
+      : { ...config, files: ['**/*.ts', '**/*.tsx', '**/*.js'] },
   ),
 ];

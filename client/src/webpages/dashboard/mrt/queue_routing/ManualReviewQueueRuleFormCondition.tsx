@@ -1,8 +1,10 @@
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Select, Tooltip } from 'antd';
 
-import { GQLConditionConjunction } from '../../../../graphql/generated';
-import { CoreSignal } from '../../../../models/signal';
+import {
+  GQLConditionConjunction,
+  GQLSignal,
+} from '../../../../graphql/generated';
 import {
   hasNestedConditionSets,
   removeCondition,
@@ -10,9 +12,9 @@ import {
 import {
   ConditionInput,
   ConditionLocation,
+  isConditionSet,
   RuleFormConditionSet,
   RuleFormLeafCondition,
-  isConditionSet,
 } from '../../rules/types';
 import ManualReviewQueueRuleConditionComparator from './condition/comparator/ManualReviewQueueRuleConditionComparator';
 import ManualReviewQueueRuleConditionInput from './condition/input/ManualReviewQueueRuleConditionInput';
@@ -88,7 +90,7 @@ export default function ManualReviewQueueRuleFormCondition(props: {
   parentConditionSet: RuleFormConditionSet;
   eligibleInputs: Map<string, ConditionInput[]>;
   selectedItemTypes: RoutingRuleItemType[];
-  allSignals: readonly CoreSignal[];
+  allSignals: readonly GQLSignal[];
   editing: boolean;
   onUpdateConditionSet: (conditionSet: RuleFormConditionSet) => void;
 }) {
@@ -183,7 +185,7 @@ export default function ManualReviewQueueRuleFormCondition(props: {
         condition={condition}
         location={location}
         editing={editing}
-        onUpdateSignal={(signal: CoreSignal, subcategory?: string) => {
+        onUpdateSignal={(signal: GQLSignal, subcategory?: string) => {
           // Do this manually instead of having a helper function to avoid
           // setting the state multiple times in the case of the signal having a subcategory
           let newConditionSet = updateConditionComponent(
@@ -227,7 +229,9 @@ export default function ManualReviewQueueRuleFormCondition(props: {
             ),
           )
         }
-        allConditions={parentConditionSet.conditions.filter((c): c is RuleFormLeafCondition => !isConditionSet(c))}
+        allConditions={parentConditionSet.conditions.filter(
+          (c): c is RuleFormLeafCondition => !isConditionSet(c),
+        )}
       />
       <ManualReviewQueueRuleConditionComparator
         condition={condition}

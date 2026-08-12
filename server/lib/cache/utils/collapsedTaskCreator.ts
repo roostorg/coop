@@ -1,5 +1,5 @@
-import { type Logger } from "../types/index.js";
-import { defaultLoggersByComponent } from "../utils/utils.js";
+import { type Logger } from '../types/index.js';
+import { defaultLoggersByComponent } from '../utils/utils.js';
 
 /**
  * Imagine you have an function that, when called, kicks off a task, and
@@ -43,23 +43,23 @@ export default function collapsedTaskCreator<Args extends unknown[], Result>(
   // E.g., how to verify that, if JSON.stringify is used, the value is properly
   // stringifyable? Would it be better to just have no default key option?
   key: (args: Args) => any = JSON.stringify.bind(JSON),
-  logger: Logger = defaultLoggersByComponent["collapsed-task-creator"],
+  logger: Logger = defaultLoggersByComponent['collapsed-task-creator'],
 ) {
   // Tuple of [PromiseForTaskResult, taskStartTimestamp].
   const pendingTasks = new Map<any, [Promise<Result>, number]>();
-  const logTrace = logger.bind(null, "collapsed-task-creator", "trace");
+  const logTrace = logger.bind(null, 'collapsed-task-creator', 'trace');
 
   return async (...args: Args) => {
     const taskKey = key(args);
     const res = pendingTasks.get(taskKey);
     const now = Date.now();
-    logTrace("requested = new state for taskKey/args", { args, taskKey });
+    logTrace('requested = new state for taskKey/args', { args, taskKey });
 
     if (!res || now - res[1] > collapseTasksMs) {
       logTrace(
         res
           ? "started new task; there _was_ an in-progress one, but it's too old"
-          : "started new task b/c there was no in-progress task for these args",
+          : 'started new task b/c there was no in-progress task for these args',
         args,
       );
 
@@ -69,7 +69,7 @@ export default function collapsedTaskCreator<Args extends unknown[], Result>(
         // overwritten for taking longer than collapseTasksMs.)
         const pendingValueNow = pendingTasks.get(taskKey);
         if (pendingValueNow && pendingValueNow[0] === taskRes) {
-          logTrace("completed = new state for taskKey/args", { args, taskKey });
+          logTrace('completed = new state for taskKey/args', { args, taskKey });
           pendingTasks.delete(taskKey);
         }
       });
@@ -77,12 +77,12 @@ export default function collapsedTaskCreator<Args extends unknown[], Result>(
       // Save the new task as a pending task. This will be _replacing_
       // an existing pending task for this key if the other was too old.
       pendingTasks.set(taskKey, [taskRes, now]);
-      logTrace("pending = new state for taskKey/args", { args, taskKey });
+      logTrace('pending = new state for taskKey/args', { args, taskKey });
       return taskRes;
     }
 
     logTrace(
-      "reusing result from prior, still-in-progress run of task for args/taskKey",
+      'reusing result from prior, still-in-progress run of task for args/taskKey',
       { args, taskKey },
     );
     return res[0];

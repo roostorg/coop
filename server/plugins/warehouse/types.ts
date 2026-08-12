@@ -7,6 +7,4 @@ export type WarehouseQueryFn = <T = WarehouseQueryResult>(
   params?: readonly unknown[],
 ) => Promise<readonly T[]>;
 
-export type WarehouseTransactionFn<T> = (
-  query: WarehouseQueryFn,
-) => Promise<T>;
+export type WarehouseTransactionFn<T> = (query: WarehouseQueryFn) => Promise<T>;

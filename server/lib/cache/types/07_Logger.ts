@@ -5,7 +5,7 @@
  */
 export type Logger = (
   component: ComponentName,
-  level: "trace" | "debug" | "info" | "warn" | "error" | "fatal",
+  level: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal',
   message: string,
   data?: unknown,
 ) => void;
@@ -13,8 +13,8 @@ export type Logger = (
 // The ids for the different components in our package that can log.
 export type ComponentName = (typeof components)[number];
 export const components = [
-  "cache",
-  "wrap-producer",
-  "collapsed-task-creator",
-  "redis-store",
+  'cache',
+  'wrap-producer',
+  'collapsed-task-creator',
+  'redis-store',
 ] as const;

@@ -5,13 +5,13 @@ import {
   parseStoredParameters,
   validateActionParameterValues,
 } from '../../services/moderationConfigService/index.js';
+import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   fromCorrelationId,
   toCorrelationId,
 } from '../../utils/correlationIds.js';
 import { ErrorType, makeUnauthorizedError } from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
-import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { type SubmitActionInput } from './ActionRoutes.js';
 
 export default function submitAction({
@@ -36,7 +36,7 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
         }),
       );
     }
-    
+
     const { orgId } = req;
 
     const { body } = req;
@@ -105,7 +105,8 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
     let validatedParameters: Record<string, unknown> | undefined;
     try {
       const validated = validateActionParameterValues(spec, parameters ?? null);
-      validatedParameters = Object.keys(validated).length > 0 ? validated : undefined;
+      validatedParameters =
+        Object.keys(validated).length > 0 ? validated : undefined;
     } catch (e) {
       return next(e);
     }

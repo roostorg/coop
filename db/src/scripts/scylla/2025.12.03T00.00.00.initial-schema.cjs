@@ -12,7 +12,7 @@ exports.up = async function ({ context }) {
     'SizeTieredCompactionStrategy',
     'LeveledCompactionStrategy',
     'TimeWindowCompactionStrategy',
-    'IncrementalCompactionStrategy'
+    'IncrementalCompactionStrategy',
   ]);
 
   await query(
@@ -55,9 +55,12 @@ exports.up = async function ({ context }) {
         ? 'repair'
         : 'immediate'
     }' }
-    ${allowedCompactionStrategies.has(process.env.SCYLLA_COMPACTION_STRATEGY ?? '')
-      ? `AND compaction = { 'class': '${process.env.SCYLLA_COMPACTION_STRATEGY}' }`
-      : ''
+    ${
+      allowedCompactionStrategies.has(
+        process.env.SCYLLA_COMPACTION_STRATEGY ?? '',
+      )
+        ? `AND compaction = { 'class': '${process.env.SCYLLA_COMPACTION_STRATEGY}' }`
+        : ''
     };`);
 
   await query(`CREATE MATERIALIZED VIEW IF NOT EXISTS item_submission_by_thread_and_time
@@ -88,15 +91,16 @@ exports.up = async function ({ context }) {
 ) WITH CLUSTERING ORDER BY (created_at DESC)
 		AND compression = {'sstable_compression': 'LZ4Compressor'}
     AND default_time_to_live = 7776000
-    ${allowedCompactionStrategies.has(process.env.SCYLLA_COMPACTION_STRATEGY ?? '')
-      ? `AND compaction = { 'class': '${process.env.SCYLLA_COMPACTION_STRATEGY}' }`
-      : ''
+    ${
+      allowedCompactionStrategies.has(
+        process.env.SCYLLA_COMPACTION_STRATEGY ?? '',
+      )
+        ? `AND compaction = { 'class': '${process.env.SCYLLA_COMPACTION_STRATEGY}' }`
+        : ''
     };`);
   await query(`CREATE INDEX ON user_strikes(org_id)`);
 
-  await query(
-    'CREATE INDEX on item_submission_by_thread(item_identifier);',
-  );
+  await query('CREATE INDEX on item_submission_by_thread(item_identifier);');
 
   await query(`CREATE TABLE IF NOT EXISTS rule_action_execution_times (
 	org_id text,
@@ -106,9 +110,12 @@ exports.up = async function ({ context }) {
 	PRIMARY KEY ((org_id, user_identifier), rule_id)
 ) WITH compression = {'sstable_compression': 'LZ4Compressor'}
     AND default_time_to_live = 7776000
-    ${allowedCompactionStrategies.has(process.env.SCYLLA_COMPACTION_STRATEGY ?? '')
-      ? `AND compaction = { 'class': '${process.env.SCYLLA_COMPACTION_STRATEGY}' }`
-      : ''
+    ${
+      allowedCompactionStrategies.has(
+        process.env.SCYLLA_COMPACTION_STRATEGY ?? '',
+      )
+        ? `AND compaction = { 'class': '${process.env.SCYLLA_COMPACTION_STRATEGY}' }`
+        : ''
     };`);
 };
 

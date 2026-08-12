@@ -4,7 +4,7 @@ Coop tracks moderation activity across two surfaces: the Overview dashboard for 
 
 ## Overview
 
-![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](../images/coop-overview.png)
+![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](../images/overview.png)
 
 The Overview dashboard gives a high-level picture of moderation activity. All metrics can be filtered by an hourly or daily breakdown across a configurable time window. The overview displays:
 
@@ -24,11 +24,13 @@ The Overview dashboard gives a high-level picture of moderation activity. All me
 
 ## Recent Decisions
 
-![Coop's recent decisions page showing a log of all actions taken in Coop and who took the action. There are buttons to refresh the table, download all decisions, and download only the jobs skipped by users](../images/coop-recent-decisions.png)
+![Coop's recent decisions page showing a log of all actions taken in Coop and who took the action. There are buttons to refresh the table, download all decisions, and download only the jobs skipped by users](../images/recent-decisions.png)
 
 Visit **Review Console** → **Recent Decisions** to review every action taken in Coop: who made the decision, on what content, and when. You can click through to the full job from any entry to investigate further or take an additional action.
 
-The log can be downloaded in its entirety, which makes it useful for:
+![Recent Decisions being filtered](../images/recent-decisions-filter.png)
+
+The log can be downloaded in its entirety, or filtered according to decisions, policies, queues, moderators and date ranges and then downloaded. This makes it particularly useful for:
 
 - **Transparency reporting**: export decisions to include in reports to regulators or oversight bodies
 

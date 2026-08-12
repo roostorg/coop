@@ -23,8 +23,12 @@ const logJsonSelector = 'CallExpression[callee.name="logJson"]';
 
 const logErrorJsonSelector = 'CallExpression[callee.name="logErrorJson"]';
 
-const unmanagedSequelizeTransactionSelector =
-  'CallExpression[arguments.length=0] > MemberExpression[property.name="transaction"][object.name!=/pgQuery|kysely|pg/][object.object.type!="ThisExpression"]';
+// Flags bare `db.transaction()` / `db.transaction().execute(cb)` calls. The
+// project convention is to use `makeKyselyTransactionWithRetry` so that
+// transactions automatically retry on Postgres serialization failures (SQLSTATE
+// `40001`). The wrapper file itself is allowlisted via an override below.
+const rawKyselyTransactionSelector =
+  'CallExpression[arguments.length=0] > MemberExpression[property.name="transaction"]';
 
 const badHttpClientsImportSelector =
   'ImportDeclaration[source.value=/^(axios|node-fetch)$/]';
@@ -96,14 +100,12 @@ const restrictedSyntax = [
       'where the contents in the JSON must match `T` when parsed.',
   },
   {
-    selector: unmanagedSequelizeTransactionSelector,
+    selector: rawKyselyTransactionSelector,
     message:
-      'Instead of using an unmanaged Sequelize transactions and having to commit ' +
-      'or rollback the transaction manually, wrap the queries in a callback and pass ' +
-      "it into the transaction function instead. Managed transactions don't require us " +
-      'to thread the transaction through all possibly deeply nested queries which helps ' +
-      'prevent potential bugs. You can find more details here:' +
-      'https://sequelize.org/docs/v6/other-topics/transactions/',
+      'Use `makeKyselyTransactionWithRetry` (from utils/kyselyTransactionWithRetry.js) ' +
+      'instead of calling `kysely.transaction()` directly — it retries on SQLSTATE 40001. ' +
+      'Callbacks must be retry-safe: any non-DB side effects (HTTP, queue publishes, etc.) ' +
+      'must be idempotent or deferred until after commit.',
   },
   {
     selector: badHttpClientsImportSelector,
@@ -281,6 +283,7 @@ const correctnessRules = {
     {
       devDependencies: [
         '**/test/**',
+        '**/e2e/**',
         '**/*.{spec,test}.{ts,tsx,js}',
         '.storybook/**',
         '**/*.stories.tsx',
@@ -292,7 +295,10 @@ const correctnessRules = {
   '@typescript-eslint/no-deprecated': ['warn'],
   // Empty interfaces usually indicate a misunderstanding of TS (i.e., expecting
   // the interface to be nominal rather than structural.)
-  '@typescript-eslint/no-empty-object-type': ['error', { allowObjectTypes: 'always' }],
+  '@typescript-eslint/no-empty-object-type': [
+    'error',
+    { allowObjectTypes: 'always' },
+  ],
   'switch-statement/require-appropriate-default-case': ['error'],
   '@typescript-eslint/restrict-plus-operands': [
     'error',
@@ -657,7 +663,19 @@ module.exports = {
       },
     },
     {
-      files: ['test/**/*.ts', './**/*.{spec,test}.ts'],
+      // The wrapper itself must call `kysely.transaction().execute(...)`.
+      files: ['./utils/kyselyTransactionWithRetry.ts'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          ...restrictedSyntax.filter(
+            (it) => it.selector != rawKyselyTransactionSelector,
+          ),
+        ],
+      },
+    },
+    {
+      files: ['test/**/*.ts', 'e2e/**/*.ts', './**/*.{spec,test}.ts'],
       rules: {
         // Match prior test-only mutation policy: allow `this`, class internals,
         // and `process.env.*`; production code is not in this override.
@@ -676,6 +694,12 @@ module.exports = {
           },
         ],
         'no-console': 'off',
+        'max-lines': 'off',
+        // Allow `typeof import('...')` annotations; needed for E2E tests.
+        '@typescript-eslint/consistent-type-imports': [
+          'error',
+          { prefer: 'type-imports', disallowTypeAnnotations: false },
+        ],
       },
     },
   ],

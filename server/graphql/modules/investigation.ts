@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import { isIP } from 'node:net';
 import { type DateString } from '@roostorg/coop-types';
 import _ from 'lodash';
 
@@ -27,6 +28,10 @@ import { formatItemSubmissionForGQL } from '../types.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
+// Upper bound on how many items an IP reverse-lookup can return in one call, so
+// a caller-supplied `limit` can't trigger an unbounded index scan.
+const MAX_ITEMS_BY_IP_LIMIT = 200;
+
 const typeDefs = /* GraphQL */ `
   type Query {
     itemSubmissions(
@@ -41,6 +46,15 @@ const typeDefs = /* GraphQL */ `
     latestItemsCreatedByWithThread(
       itemIdentifier: ItemIdentifierInput!
     ): [ThreadWithMessages!]!
+
+    # Reverse lookup of every item associated with a given IP address. Powers
+    # the "other items from this IP" investigation view.
+    latestItemsByIpAddress(
+      ipAddress: String!
+      limit: Int
+      oldestReturnedSubmissionDate: DateTime
+      earliestReturnedSubmissionDate: DateTime
+    ): [ItemSubmissions!]!
 
     userHistory(itemIdentifier: ItemIdentifierInput!): UserHistoryResponse!
 
@@ -510,6 +524,58 @@ const Query: GQLQueryResolvers = {
       return {
         latest: formattedItem,
         prior: formattedPriors,
+      };
+    });
+  },
+
+  async latestItemsByIpAddress(
+    _,
+    {
+      ipAddress,
+      limit,
+      oldestReturnedSubmissionDate,
+      earliestReturnedSubmissionDate,
+    },
+    context,
+  ) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Unauthenticated User');
+    }
+
+    // Validate the IP server-side so we never run an index scan on arbitrary
+    // attacker-controlled input. Return an empty result for anything that
+    // isn't a well-formed IPv4/IPv6 address.
+    const normalizedIp = ipAddress.trim();
+    if (!isIP(normalizedIp)) {
+      return [];
+    }
+
+    // Clamp the caller-supplied limit to a sane, bounded range.
+    const validatedLimit =
+      limit == null
+        ? undefined
+        : Math.min(Math.max(Math.trunc(limit), 1), MAX_ITEMS_BY_IP_LIMIT);
+
+    const items = await asyncIterableToArray(
+      context.services.ItemInvestigationService.getItemSubmissionsByIpAddress({
+        orgId: user.orgId,
+        ipAddress: normalizedIp,
+        limit: validatedLimit,
+        oldestReturnedSubmissionDate: oldestReturnedSubmissionDate
+          ? new Date(oldestReturnedSubmissionDate)
+          : undefined,
+        earliestReturnedSubmissionDate: earliestReturnedSubmissionDate
+          ? new Date(earliestReturnedSubmissionDate)
+          : undefined,
+      }),
+    );
+
+    return items.map((contentItems) => {
+      const { latestSubmission, priorSubmissions = [] } = contentItems;
+      return {
+        latest: formatItemSubmissionForGQL(latestSubmission),
+        prior: priorSubmissions.map(formatItemSubmissionForGQL),
       };
     });
   },

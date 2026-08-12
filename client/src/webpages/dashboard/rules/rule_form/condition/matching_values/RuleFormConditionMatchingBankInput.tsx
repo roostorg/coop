@@ -41,7 +41,8 @@ export default function RuleFormConditionMatchingBankInput(props: {
   const isRegexSignal =
     condition.signal?.type && receivesRegexInput(condition.signal.type);
 
-  const { textBankIds, locationBankIds, imageBankIds } = condition.matchingValues ?? {};
+  const { textBankIds, locationBankIds, imageBankIds } =
+    condition.matchingValues ?? {};
   const bankIds = textBankIds ?? locationBankIds ?? imageBankIds ?? [];
 
   const { loading, error, data } = useGQLMatchingBankIdsQuery();

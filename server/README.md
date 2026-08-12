@@ -5,7 +5,7 @@
 - `npm start` will start the server locally in watch mode. Just make sure that Redis and Postgres are running locally, and your `.env` file has the relevant connection settings to reach them.
 - `npm run runWorkerOrJob [workerName] | [jobName]` will run a specific worker or job, which aren't run at all when using `npm run start`. The current set of workers and jobs, and therefore legal arguments for this script, are in the `workers_jobs` directory, besides `index.ts` and `dbTypes.ts`.
 
- ## Tracing/Logging
+## Tracing/Logging
 
 Coop uses distributed tracing (OpenTelemetry) for observability. Direct logging via `console.*` is disabled by lint rules. Instead, attach log messages to spans for better correlation and debugging.
 
@@ -33,12 +33,12 @@ export default inject(
 Sometimes you may want to capture a unit of work in its own span in which case you can use `addActiveSpan`.
 
 ```js
-  return tracer.addActiveSpan(
-    { resource: 'dataWarehouse.query', operation: 'query' },
-    (span) => {
-      // do work
-    }
-  );
+return tracer.addActiveSpan(
+  { resource: 'dataWarehouse.query', operation: 'query' },
+  (span) => {
+    // do work
+  },
+);
 ```
 
 ### Record Exception
@@ -62,4 +62,3 @@ catch (e: unknown) {
   Tracer.logActiveSpanFailedIfAny(e);
 }
 ```
-

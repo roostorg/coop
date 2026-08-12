@@ -1,3 +1,6 @@
+/* eslint-disable max-lines */
+import { type JsonObject } from 'type-fest';
+
 import { parseStoredParameters } from '../../services/moderationConfigService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
@@ -25,6 +28,11 @@ const typeDefs = /* GraphQL */ `
     applyUserStrikes: Boolean
     itemTypes: [ItemType!]!
     parameters: [ActionParameter!]!
+    """
+    Configured parameter values for this action in the context of a rule or
+    strike threshold. Null when resolved outside of a rule context.
+    """
+    configuredParameters: JSONObject
   }
 
   enum ActionParameterType {
@@ -103,6 +111,7 @@ const typeDefs = /* GraphQL */ `
     callbackUrlBody: JSONObject
     applyUserStrikes: Boolean
     parameters: [ActionParameter!]!
+    configuredParameters: JSONObject
     """
     Deprecated alias for \`parameters\` retained for back-compat with the
     initial MRT-only parameter implementation. New consumers should read
@@ -127,6 +136,7 @@ const typeDefs = /* GraphQL */ `
     itemTypes: [ItemType!]!
     applyUserStrikes: Boolean
     parameters: [ActionParameter!]!
+    configuredParameters: JSONObject
   }
 
   type EnqueueToNcmecAction implements ActionBase {
@@ -138,6 +148,7 @@ const typeDefs = /* GraphQL */ `
     itemTypes: [ItemType!]!
     applyUserStrikes: Boolean
     parameters: [ActionParameter!]!
+    configuredParameters: JSONObject
   }
 
   type EnqueueAuthorToMrtAction implements ActionBase {
@@ -149,6 +160,7 @@ const typeDefs = /* GraphQL */ `
     itemTypes: [ItemType!]!
     applyUserStrikes: Boolean!
     parameters: [ActionParameter!]!
+    configuredParameters: JSONObject
   }
 
   union Action =
@@ -307,9 +319,21 @@ function readRawParameters(parent: unknown): unknown {
   );
 }
 
+// Populated by rule.ts resolvers when the action is resolved in a rule context.
+function readConfiguredParameters(parent: unknown): JsonObject | null {
+  if (typeof parent !== 'object' || parent === null) return null;
+  return (
+    (parent as { configuredParameters?: JsonObject }).configuredParameters ??
+    null
+  );
+}
+
 const CustomAction: GQLCustomActionResolvers = {
   parameters(parent) {
     return projectParameters(parent.customMrtApiParams);
+  },
+  configuredParameters(parent) {
+    return readConfiguredParameters(parent);
   },
   customMrtApiParams(parent) {
     return Array.isArray(parent.customMrtApiParams)
@@ -332,6 +356,9 @@ const EnqueueAuthorToMrtAction: GQLEnqueueAuthorToMrtActionResolvers = {
   parameters(parent) {
     return projectParameters(readRawParameters(parent));
   },
+  configuredParameters(parent) {
+    return readConfiguredParameters(parent);
+  },
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -348,6 +375,9 @@ const EnqueueToMrtAction: GQLEnqueueToMrtActionResolvers = {
   parameters(parent) {
     return projectParameters(readRawParameters(parent));
   },
+  configuredParameters(parent) {
+    return readConfiguredParameters(parent);
+  },
   async itemTypes(action, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -363,6 +393,9 @@ const EnqueueToMrtAction: GQLEnqueueToMrtActionResolvers = {
 const EnqueueToNcmecAction: GQLEnqueueToNcmecActionResolvers = {
   parameters(parent) {
     return projectParameters(readRawParameters(parent));
+  },
+  configuredParameters(parent) {
+    return readConfiguredParameters(parent);
   },
   async itemTypes(action, _, context) {
     const user = context.getUser();

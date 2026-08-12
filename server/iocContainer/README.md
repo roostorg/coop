@@ -4,8 +4,8 @@ Coop uses [BottleJS](https://github.com/young-steveo/bottlejs) for dependency in
 
 ## Why Dependency Injection?
 
-- Enables mocking services in tests (required for ESM modules)  
-- Supports runtime injection based on environment or feature flags  
+- Enables mocking services in tests (required for ESM modules)
+- Supports runtime injection based on environment or feature flags
 - Makes dependencies explicit in the source code
 
 ## How It Works

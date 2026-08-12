@@ -2,20 +2,23 @@
   "name": "coop",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "start": "concurrently \"npm run server:start\" \"npm run client:start\" \"npm run generate:watch\" --kill-others",
     "compile": "concurrently \"npm run server:start\" \"BROWSER=none npm run client:start\" \"npm run generate:watch\" --kill-others",
     "client:start": "cd client && npm start",
     "server:start": "cd server && npm start",
     "create-org": "cd server && npm run create-org --",
-    "db:add": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts add",
-    "db:clean": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts clean",
-    "db:update": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts apply",
-    "db:create": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts create",
-    "db:drop": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm --require dotenv/config\" node src/index.ts drop",
+    "db:add": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts add",
+    "db:clean": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts clean",
+    "db:update": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts apply",
+    "db:create": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts create",
+    "db:drop": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts drop",
     "check:prepush": "cd server && npm run check:prepush && cd ../client && npm run check:prepush",
     "typecheck": "cd server && npm run typecheck && cd ../client && npx tsc --noEmit",
-    "format": "prettier --write \"./**/*.{ts,tsx,json}\"",
+    "prettier": "prettier --check \"./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}\"",
+    "prettier:fix": "prettier --write \"./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}\"",
+    "format": "npm run prettier:fix",
     "generate": "graphql-codegen",
     "generate:watch": "graphql-codegen --watch \"server/graphql/**/**.ts\"",
     "prepare": "husky",
@@ -23,8 +26,10 @@
     "up": "docker compose up --detach postgres clickhouse hma scylla redis otel-collector && (open http://localhost:16686 || xdg-open http://localhost:16686)",
     "down": "docker compose down"
   },
-  "dependencies": {
-    "@graphiql/create-fetcher": "^0.1.0",
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "devDependencies": {
     "@graphql-codegen/add": "^6.0.0",
     "@graphql-codegen/cli": "^6.3.1",
     "@graphql-codegen/named-operations-object": "^4.0.1",
@@ -32,21 +37,17 @@
     "@graphql-codegen/typescript-operations": "^5.0.9",
     "@graphql-codegen/typescript-react-apollo": "^4.4.2",
     "@graphql-codegen/typescript-resolvers": "^5.1.8",
-    "concurrently": "^9.2.1"
-  },
-  "engines": {
-    "node": "^24.0.0"
-  },
-  "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "lint-staged": "^16.4.0",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.3",
     "@types/passport": "^1.0.17",
     "@types/validator": "^13.15.10",
+    "concurrently": "^10.0.3",
     "husky": "^9.1.7",
-    "prettier": "^3.8.3",
+    "prettier": "^3.9.6",
+    "@parcel/watcher": "^2.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.0"
   }

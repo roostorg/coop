@@ -5,13 +5,29 @@ import {
   useGQLSetAllUserStrikeThresholdMutation,
   useGQLUpdateUserStrikeTtlMutation,
   useGQLUserStrikeThresholdsQuery,
+  type GQLActionParameter,
+  type GQLSetUserStrikeThresholdInput,
 } from '@/graphql/generated';
 import { gql } from '@apollo/client';
 import { Check, Pencil, PlusIcon, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  findMissingRequiredParameters,
+  type ActionParameterValues,
+} from '@/components/ActionParameterInputs';
+import ActionParametersModal, {
+  defaultValuesForParameters,
+} from '@/components/ActionParametersModal';
 import CoopSelect from '@/components/common/CoopSelect';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+
+// A threshold-selectable action plus its parameter spec (CustomActions only).
+type ThresholdActionOption = {
+  id: string;
+  name: string;
+  parameters: readonly GQLActionParameter[];
+};
 
 gql`
   query UserStrikeThresholds {
@@ -20,6 +36,7 @@ gql`
         id
         threshold
         actions
+        actionParameters
       }
       userStrikeTTL
     }
@@ -44,6 +61,8 @@ type Threshold = {
   id: string;
   threshold: number;
   actions: string[];
+  // Configured parameter values per action: `actionId -> { name -> value }`.
+  actionParameters: Record<string, ActionParameterValues>;
 };
 
 export default function ThresholdsTab() {
@@ -66,11 +85,22 @@ export default function ThresholdsTab() {
     },
   });
 
-  const [setUserStrikeTTL] = useGQLUpdateUserStrikeTtlMutation();
+  const [setUserStrikeTTL] = useGQLUpdateUserStrikeTtlMutation({
+    onCompleted: async () => {
+      await refetchThresholds();
+    },
+  });
 
   const thresholds = data?.myOrg?.userStrikeThresholds;
 
-  const orgActions = actionsData?.myOrg?.actions ?? [];
+  const orgActions: ThresholdActionOption[] = (
+    actionsData?.myOrg?.actions ?? []
+  ).map((action) => ({
+    id: action.id,
+    name: action.name,
+    parameters:
+      action.__typename === 'CustomAction' ? (action.parameters ?? []) : [],
+  }));
 
   if (error || actionsError) {
     throw new Error('Error fetching data');
@@ -90,12 +120,16 @@ export default function ThresholdsTab() {
                     id: t.id,
                     threshold: t.threshold,
                     actions: t.actions.map((a) => a),
+                    actionParameters: (t.actionParameters ?? {}) as Record<
+                      string,
+                      ActionParameterValues
+                    >,
                   };
                 })
                 .sort((a, b) => a.threshold - b.threshold)
             : []
         }
-        orgActions={[...orgActions]}
+        orgActions={orgActions}
         setThresholds={async (thresholds) => {
           await setUserStrikeThresholds({
             variables: {
@@ -104,6 +138,13 @@ export default function ThresholdsTab() {
                   // We don't need to send the ids
                   threshold: t.threshold,
                   actions: t.actions,
+                  // Only persist values for actions still attached to the
+                  // threshold so removing an action drops its config.
+                  actionParameters: Object.fromEntries(
+                    Object.entries(t.actionParameters ?? {}).filter(([id]) =>
+                      t.actions.includes(id),
+                    ),
+                  ) as GQLSetUserStrikeThresholdInput['actionParameters'],
                 })),
               },
             },
@@ -111,6 +152,9 @@ export default function ThresholdsTab() {
         }}
       />
       <StrikeTTLForm
+        // Force remount when orgTTL changes (after a successful save) so the
+        // form's local ttlFormState picks up the refetched value.
+        key={`strikeTTLForm-${data?.myOrg?.userStrikeTTL ?? 90}`}
         orgTTL={data?.myOrg?.userStrikeTTL ?? 90}
         setTTL={async (ttl) => {
           await setUserStrikeTTL({
@@ -127,7 +171,9 @@ export default function ThresholdsTab() {
 }
 function StrikeTTLForm(props: {
   orgTTL: number;
-  setTTL: (ttl: number) => void;
+  // Async — the caller awaits inside the Save handler so the form can wait for
+  // the mutation to round-trip before toggling out of edit mode.
+  setTTL: (ttl: number) => Promise<void>;
 }) {
   const { orgTTL, setTTL } = props;
 
@@ -180,7 +226,7 @@ function StrikeTTLForm(props: {
                 className="!fill-none"
                 startIcon={Check}
                 onClick={async () => {
-                  setTTL(ttlFormState);
+                  await setTTL(ttlFormState);
                   toggleEditing();
                 }}
               >
@@ -196,17 +242,21 @@ function StrikeTTLForm(props: {
           <div className="flex flex-row items-start mt-4 space-x-12 text-slate-700 text-start">
             <div className="flex flex-col mr-12 gap-3">
               <div className="text-sm">User strikes stay on record for</div>
-              <div className="flex flex-row">
+              <div className="flex flex-row items-center gap-2">
                 <Input
                   type="number"
                   disabled={!editingTTL}
-                  style={editingTTL ? { width: '3.5em' } : { width: '5.5em' }}
+                  // Wide enough for 3 digits (max 365) plus the browser's
+                  // number-input spinner controls in the editing state.
+                  style={{ width: '6em' }}
                   min={0}
                   max={365}
                   maxLength={3}
                   placeholder="90"
-                  defaultValue={orgTTL}
-                  value={ttlFormState + `${!editingTTL ? ' days' : ''}`}
+                  // value must be a plain number string for type="number" —
+                  // any trailing non-numeric chars (like " days") cause the
+                  // browser to silently render the placeholder instead.
+                  value={ttlFormState}
                   onChange={(value) => {
                     if (value.target.value === '') {
                       setTTLFormState(0);
@@ -219,6 +269,7 @@ function StrikeTTLForm(props: {
                     }
                   }}
                 />
+                <span className="text-sm">days</span>
               </div>
             </div>
           </div>
@@ -230,7 +281,7 @@ function StrikeTTLForm(props: {
 
 function ThresholdForm(props: {
   thresholdSet: Threshold[];
-  orgActions: { id: string; name: string }[];
+  orgActions: ThresholdActionOption[];
   setThresholds: (thresholds: Threshold[]) => void;
 }) {
   const { thresholdSet, orgActions, setThresholds } = props;
@@ -338,6 +389,7 @@ function ThresholdForm(props: {
                       : thresholdFormState[thresholdFormState.length - 1]
                           .threshold + 1,
                   actions: [],
+                  actionParameters: {},
                 };
                 setThresholdFormState([...thresholdFormState, newThreshold]);
               }}
@@ -356,11 +408,35 @@ function ThresholdForm(props: {
 function EditableThreshold(props: {
   thresholdRule: Threshold;
   editing: boolean;
-  actionOptions: readonly { id: string; name: string }[];
+  actionOptions: readonly ThresholdActionOption[];
   setThreshold: (threshold: Threshold) => void;
   deleteThreshold: (threshold: Threshold) => void;
 }) {
   const { thresholdRule, actionOptions, setThreshold, deleteThreshold } = props;
+
+  // The action whose parameters modal is open, or null when closed.
+  const [editingParamsActionId, setEditingParamsActionId] = useState<
+    string | null
+  >(null);
+
+  // Selected actions that declare parameters — these get an "Edit" affordance.
+  const parameterizedSelected = thresholdRule.actions
+    .map((actionId) => actionOptions.find((a) => a.id === actionId))
+    .filter(
+      (a): a is ThresholdActionOption => a != null && a.parameters.length > 0,
+    );
+
+  const valuesForAction = (
+    action: ThresholdActionOption,
+  ): ActionParameterValues =>
+    thresholdRule.actionParameters[action.id] ??
+    defaultValuesForParameters(action.parameters);
+
+  const editingAction =
+    editingParamsActionId != null
+      ? (parameterizedSelected.find((a) => a.id === editingParamsActionId) ??
+        null)
+      : null;
 
   return (
     <div key={`threshold-input-${thresholdRule.threshold}`}>
@@ -409,11 +485,13 @@ function EditableThreshold(props: {
                 : []
             }
             onDeselect={(e) => {
-              // find the index of e in the thresholdRule.actions array and remove
-              // it
+              // Remove the action and drop any parameter values configured for it.
+              const { [e]: _removed, ...remainingParameters } =
+                thresholdRule.actionParameters;
               setThreshold({
                 ...thresholdRule,
                 actions: thresholdRule.actions.filter((it) => it !== e),
+                actionParameters: remainingParameters,
               });
             }}
             onSelect={(e) => {
@@ -445,6 +523,62 @@ function EditableThreshold(props: {
           </div>
         ) : null}
       </div>
+      {parameterizedSelected.length > 0 ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="text-sm">Action parameters</div>
+          {parameterizedSelected.map((action) => {
+            const missing = findMissingRequiredParameters(
+              action.parameters,
+              valuesForAction(action),
+            );
+            return (
+              <div
+                key={action.id}
+                className="flex items-center gap-3 rounded-md border border-solid border-slate-200 p-2"
+              >
+                <span className="text-sm font-medium">{action.name}</span>
+                {missing.length > 0 ? (
+                  <span className="text-xs text-coop-alert-red">
+                    Missing: {missing.join(', ')}
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-500">Configured</span>
+                )}
+                {props.editing ? (
+                  <button
+                    type="button"
+                    className="ml-auto flex items-center gap-1 text-xs font-medium text-primary"
+                    onClick={() => setEditingParamsActionId(action.id)}
+                  >
+                    <Pencil height={14} width={14} />
+                    Edit
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      {editingAction != null ? (
+        <ActionParametersModal
+          open
+          actionName={editingAction.name}
+          parameters={editingAction.parameters}
+          initialValues={valuesForAction(editingAction)}
+          mode="edit"
+          onSave={(values) => {
+            setThreshold({
+              ...thresholdRule,
+              actionParameters: {
+                ...thresholdRule.actionParameters,
+                [editingAction.id]: values,
+              },
+            });
+            setEditingParamsActionId(null);
+          }}
+          onCancel={() => setEditingParamsActionId(null)}
+        />
+      ) : null}
     </div>
   );
 }

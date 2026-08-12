@@ -7,4 +7,3 @@ export interface IOrgCreationAdapter {
     dateCreated: string,
   ): Promise<void>;
 }
-

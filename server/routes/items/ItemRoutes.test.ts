@@ -1,46 +1,20 @@
 import { faker } from '@faker-js/faker';
-import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
-import { type Dependencies } from '../../iocContainer/index.js';
-import { type ContentItemType } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
-import { makeMockedServer } from '../../test/setupMockedServer.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 
 describe('POST Items', () => {
-  const orgId = uid(),
-    userId = uid();
-  let contentType: ReadonlyDeep<ContentItemType>;
-
-  let request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
-    shutdown: Awaited<ReturnType<typeof makeMockedServer>>['shutdown'],
-    apiKey: Awaited<ReturnType<typeof createOrg>>['apiKey'],
-    orgCleanup: Awaited<ReturnType<typeof createOrg>>['cleanup'],
-    userCleanup: Awaited<ReturnType<typeof createUser>>['cleanup'],
-    ModerationConfigService: Dependencies['ModerationConfigService'],
-    ApiKeyService: Dependencies['ApiKeyService'],
-    analytics: Dependencies['DataWarehouseAnalytics'],
-    KyselyPg: Dependencies['KyselyPg'];
-
-  beforeAll(async () => {
-    ({
-      request,
-      shutdown,
-      deps: {
-        DataWarehouseAnalytics: analytics,
-        ModerationConfigService,
-        ApiKeyService,
-        KyselyPg,
-      },
-    } = await makeMockedServer());
-
-    ({ apiKey, cleanup: orgCleanup } = await createOrg(
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
+    const orgId = uid();
+    const { apiKey } = await createOrg(
       { KyselyPg, ModerationConfigService, ApiKeyService },
       orgId,
-    ));
+    );
 
-    contentType = await ModerationConfigService.createContentType(orgId, {
+    const contentType = await ModerationConfigService.createContentType(orgId, {
       name: 'test',
       description: faker.datatype.string(),
       schema: [
@@ -60,79 +34,67 @@ describe('POST Items', () => {
       schemaFieldRoles: {},
     });
 
-    ({ cleanup: userCleanup } = await createUser(KyselyPg, orgId, {
-      id: userId,
-    }));
+    await createUser(KyselyPg, orgId, { id: uid() });
+
+    return { apiKey, contentType, analytics: deps.DataWarehouseAnalytics };
   });
 
-  afterAll(async () => {
-    await orgCleanup();
-    await ModerationConfigService.deleteItemType({
-      orgId,
-      itemTypeId: contentType.id,
-    });
-    await userCleanup();
-    await shutdown();
-  });
+  testWithFixture(
+    'should return the expected response',
+    async ({ request, apiKey, contentType, analytics }) => {
+      await request
+        .post('/api/v1/items/async')
+        .set('x-api-key', apiKey)
+        .send({
+          items: [
+            {
+              id: uid(),
+              data: { name: 'John Doe' },
+              typeId: contentType.id,
+            },
+          ],
+        })
+        .expect(202)
+        .expect(({ body }) => {
+          expect(body).toMatchInlineSnapshot(`{}`);
+        });
 
-  beforeEach(() => {
-    (analytics.bulkWrite as jest.Mock).mockClear();
-  });
-
-  test('should return the expected response', async () => {
-    await request
-      .post('/api/v1/items/async')
-      .set('x-api-key', apiKey)
-      .send({
-        items: [
-          {
-            id: uid(),
-            data: { name: 'John Doe' },
-            typeId: contentType.id,
-          },
-        ],
-      })
-      .expect(202)
-      .expect(({ body }) => {
-        expect(body).toMatchInlineSnapshot(`{}`);
+      analytics.bulkWrite.mock.calls.forEach(([, , config]) => {
+        expect(config?.batchTimeout ?? undefined).toEqual(undefined);
       });
+    },
+  );
 
-    const bulkWrite = analytics.bulkWrite as jest.MockedFunction<
-      Dependencies['DataWarehouseAnalytics']['bulkWrite']
-    >;
-    bulkWrite.mock.calls.forEach(([, , config]) => {
-      expect(config?.batchTimeout ?? undefined).toEqual(undefined);
-    });
-  });
-
-  test('should return errors for only items that failed to be validated', async () => {
-    const failingUid = uid();
-    const failingUid2 = uid();
-    await request
-      .post('/api/v1/items/async')
-      .set('x-api-key', apiKey)
-      .send({
-        items: [
-          {
-            id: uid(),
-            data: { name: 'John Doe' },
-            typeId: contentType.id,
-          },
-          {
-            id: failingUid,
-            data: { video: 'https://my-dummy-video.com/' },
-            typeId: contentType.id,
-          },
-          {
-            id: failingUid2,
-            data: { video: 'https://second-dummy-video.com/' },
-            typeId: contentType.id,
-          },
-        ],
-      })
-      .expect(400)
-      .expect(({ body }) => {
-        expect(body).toMatchInlineSnapshot(`
+  testWithFixture(
+    'should return errors for only items that failed to be validated',
+    async ({ request, apiKey, contentType, analytics }) => {
+      const failingUid = uid();
+      const failingUid2 = uid();
+      await request
+        .post('/api/v1/items/async')
+        .set('x-api-key', apiKey)
+        .send({
+          items: [
+            {
+              id: uid(),
+              data: { name: 'John Doe' },
+              typeId: contentType.id,
+            },
+            {
+              id: failingUid,
+              data: { video: 'https://my-dummy-video.com/' },
+              typeId: contentType.id,
+            },
+            {
+              id: failingUid2,
+              data: { video: 'https://second-dummy-video.com/' },
+              typeId: contentType.id,
+            },
+          ],
+        })
+        .expect(400)
+        .expect(({ body }) => {
+          expect(body).toMatchInlineSnapshot(`
           {
             "errors": [
               {
@@ -158,13 +120,11 @@ describe('POST Items', () => {
             ],
           }
         `);
-      });
+        });
 
-    const bulkWrite = analytics.bulkWrite as jest.MockedFunction<
-      Dependencies['DataWarehouseAnalytics']['bulkWrite']
-    >;
-    bulkWrite.mock.calls.forEach(([, , config]) => {
-      expect(config?.batchTimeout ?? undefined).toEqual(undefined);
-    });
-  });
+      analytics.bulkWrite.mock.calls.forEach(([, , config]) => {
+        expect(config?.batchTimeout ?? undefined).toEqual(undefined);
+      });
+    },
+  );
 });

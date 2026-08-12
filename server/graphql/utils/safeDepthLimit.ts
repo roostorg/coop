@@ -1,5 +1,5 @@
-import depthLimit from 'graphql-depth-limit';
 import { Kind, type ValidationContext } from 'graphql';
+import depthLimit from 'graphql-depth-limit';
 
 // `graphql-depth-limit@1.1.0` throws when a query references an undefined
 // fragment (it dereferences `undefined.kind`). Swallow so other validation

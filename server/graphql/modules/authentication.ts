@@ -6,8 +6,7 @@ import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 const typeDefs = /* GraphQL */ `
   type Query {
     me: User @publicResolver
-    getSSORedirectUrl(emailAddress: String!): String
-      @publicResolver
+    getSSORedirectUrl(emailAddress: String!): String @publicResolver
   }
 
   type Mutation {
@@ -26,7 +25,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   union LoginResponse =
-      LoginSuccessResponse
+    | LoginSuccessResponse
     | LoginUserDoesNotExistError
     | LoginIncorrectPasswordError
     | LoginSsoRequiredError

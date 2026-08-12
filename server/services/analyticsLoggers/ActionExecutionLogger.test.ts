@@ -1,5 +1,5 @@
-import { type ActionExecutionData } from '../../rule_engine/ActionPublisher.js';
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type ActionExecutionData } from '../../rule_engine/ActionPublisher.js';
 import { type AnalyticsSchema } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
 import { type CorrelationId } from '../../utils/correlationIds.js';
 import { jsonParse, type JsonOf } from '../../utils/encoding.js';
@@ -40,8 +40,7 @@ const baseExecution: ActionExecutionData<CorrelationId<'manual-action-run'>> = {
   },
   matchingRules: undefined,
   ruleEnvironment: undefined,
-  correlationId:
-    'manual-action-run:abc' as CorrelationId<'manual-action-run'>,
+  correlationId: 'manual-action-run:abc' as CorrelationId<'manual-action-run'>,
   policies: [],
 };
 

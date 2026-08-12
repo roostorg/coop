@@ -4,7 +4,6 @@ import {
   tryParseNonEmptyString,
   type NonEmptyString,
 } from '../../utils/typescript-types.js';
-
 import { userInputError } from '../utils/errors.js';
 
 /**

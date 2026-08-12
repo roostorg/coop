@@ -1,6 +1,6 @@
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
 export default function MarkdownTextInput(props: {
   text?: string;
@@ -46,7 +46,9 @@ export default function MarkdownTextInput(props: {
 
   // NB: This is needed because the editor only focuses when the user clicks on
   // the editor content, and not when the user clicks elsewhere in the editor.
-  editorRef.current = editor;
+  useLayoutEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
   const focusEditor = () => {
     if (editorRef.current && !disabled) {
       editorRef.current.commands.focus();

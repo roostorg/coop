@@ -20,10 +20,11 @@ gql`
 
 export default function InvestigationDashboard() {
   const [searchParams] = useSearchParams();
-  const [id, typeId, submissionTime] = [
+  const [id, typeId, submissionTime, ip] = [
     searchParams.get('id') ?? undefined,
     searchParams.get('typeId') ?? undefined,
     searchParams.get('submissionTime') ?? undefined,
+    searchParams.get('ip') ?? undefined,
   ];
 
   return (
@@ -37,9 +38,11 @@ export default function InvestigationDashboard() {
       />
       <div className="mb-4 divider" />
       <ItemInvestigation
+        key={`${id ?? ''}-${typeId ?? ''}-${submissionTime ?? ''}-${ip ?? ''}`}
         itemId={id}
         itemTypeId={typeId}
         submissionTime={submissionTime}
+        ipAddress={ip}
       />
     </div>
   );

@@ -79,17 +79,6 @@ export async function kyselyOrgFindByEmail(
   return row === undefined ? undefined : rowToGraphQLOrgParent(row);
 }
 
-export async function kyselyOrgFindAll(
-  db: OrgsDb,
-): Promise<GraphQLOrgParent[]> {
-  const rows = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .orderBy('name', 'asc')
-    .execute();
-  return rows.map(rowToGraphQLOrgParent);
-}
-
 export async function kyselyOrgInsert(opts: {
   db: OrgsDb;
   id: string;

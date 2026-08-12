@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { dirname, join as pathJoin } from 'path';
 import { fileURLToPath } from 'url';
-
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { wrapMigration, type DatabaseConfig } from '@roostorg/db-migrator';
 import type { UmzugStorage } from 'umzug';
@@ -240,4 +239,3 @@ function splitSqlStatements(sql: string): string[] {
 
   return statements;
 }
-

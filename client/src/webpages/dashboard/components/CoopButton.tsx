@@ -6,12 +6,9 @@ import { Link } from 'react-router-dom';
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
 export type CoopButtonType =
-  | 'primary'
-  | 'secondary'
-  | 'danger'
-  | 'green'
-  | 'link';
+  'primary' | 'secondary' | 'danger' | 'green' | 'link';
 export type CoopButtonFontWeight = 'normal' | 'semibold';
+export type CoopButtonIconStyle = 'fill' | 'stroke';
 
 export default function CoopButton(
   props: {
@@ -27,6 +24,7 @@ export default function CoopButton(
     loading?: boolean;
     fontWeight?: CoopButtonFontWeight;
     iconPosition?: 'left' | 'right';
+    iconStyle?: CoopButtonIconStyle;
   } & (
     | {
         title: string;
@@ -56,6 +54,7 @@ export default function CoopButton(
     loading = false,
     fontWeight = 'semibold',
     iconPosition = 'left',
+    iconStyle = 'fill',
   } = props;
   const size = 'size' in props ? (props.size ?? 'middle') : 'middle';
 
@@ -83,6 +82,11 @@ export default function CoopButton(
         return 'w-8 h-8';
     }
   })();
+
+  const iconColorProps =
+    iconStyle === 'stroke'
+      ? '[fill:none] text-inherit'
+      : 'fill-inherit text-inherit';
 
   const colorProps = (() => {
     switch (type) {
@@ -120,11 +124,11 @@ export default function CoopButton(
       <div className="flex items-center justify-center gap-2">
         {/* See https://stackoverflow.com/a/37414418 for why this is capitalized */}
         {Icon !== undefined && iconPosition === 'left' ? (
-          <Icon className={`${iconSizeProps} fill-inherit text-inherit`} />
+          <Icon className={`${iconSizeProps} ${iconColorProps}`} />
         ) : null}
         {title}
         {Icon !== undefined && iconPosition === 'right' ? (
-          <Icon className={`${iconSizeProps} fill-inherit text-inherit`} />
+          <Icon className={`${iconSizeProps} ${iconColorProps}`} />
         ) : null}
       </div>
     </button>

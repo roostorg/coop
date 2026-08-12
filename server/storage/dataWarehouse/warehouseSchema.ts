@@ -43,7 +43,9 @@ export type {
 // Each table is registered both as `PUBLIC.TABLE_NAME` and just `TABLE_NAME`,
 // so queries can reference it with or without the schema prefix.
 export type DataWarehousePublicSchema = UnprefixedPublicTables & {
-  [K in keyof UnprefixedPublicTables as `PUBLIC.${K}`]: UnprefixedPublicTables[K];
+  [
+    K in keyof UnprefixedPublicTables as `PUBLIC.${K}`
+  ]: UnprefixedPublicTables[K];
 };
 
 /** Convert a warehouse driver date to a standard Date object. */
@@ -109,14 +111,9 @@ export type UnsafeBulkWriteType<
     | ManualReviewToolServiceWarehouseSchema[keyof ManualReviewToolServiceWarehouseSchema]
     | ReportingServiceWarehouseSchema[keyof ReportingServiceWarehouseSchema],
 > = {
-  [K in Exclude<
-    keyof T & string,
-    NullableKeysOf<T>
-  > as Lowercase<K>]: T[K] extends ColumnType<
-    unknown,
-    infer InsertType,
-    unknown
-  >
+  [
+    K in Exclude<keyof T & string, NullableKeysOf<T>> as Lowercase<K>
+  ]: T[K] extends ColumnType<unknown, infer InsertType, unknown>
     ? InsertType
     : T[K];
 } & {
@@ -151,6 +148,7 @@ export type ItemSubmissionsRow = {
   ITEM_TYPE_SCHEMA_FIELD_ROLES: SchemaFieldRoles;
   ITEM_TYPE_ID: string;
   ITEM_TYPE_SCHEMA: JsonOf<ItemSchema>;
+  ITEM_IP_ADDRESS: string;
   TS: ColumnType<WarehouseDate, number, never>;
   DS: ColumnType<FilterableWarehouseDate, string, never>;
 } & (

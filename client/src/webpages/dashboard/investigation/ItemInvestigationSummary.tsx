@@ -13,6 +13,7 @@ import {
   type GQLContentSchemaFieldRoles,
   type GQLThreadItemType,
 } from '../../../graphql/generated';
+import { findFirstIframeUrl } from '../../../utils/contentUrlUtils';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -22,7 +23,6 @@ import type { ItemTypeFieldFieldData } from '../item_types/itemTypeUtils';
 import ItemActionHistory from '../items/ItemActionHistory';
 import IframeContentDisplayComponent from '../mrt/manual_review_job/IframeContentDisplayComponent';
 import FieldsComponent from '../mrt/manual_review_job/v2/ManualReviewJobFieldsComponent';
-import { findFirstIframeUrl } from '../../../utils/contentUrlUtils';
 
 export default function ItemInvestigationSummary(props: {
   item: {
@@ -254,7 +254,9 @@ export default function ItemInvestigationSummary(props: {
           'type' in firstIframeUrl &&
           firstIframeUrl.type === 'URL' ? (
             <div className="w-full">
-              <IframeContentDisplayComponent contentUrl={firstIframeUrl?.value} />
+              <IframeContentDisplayComponent
+                contentUrl={firstIframeUrl?.value}
+              />
             </div>
           ) : null}
           <div className="my-6">

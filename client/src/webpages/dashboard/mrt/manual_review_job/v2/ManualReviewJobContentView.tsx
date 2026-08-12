@@ -11,12 +11,13 @@ import {
   GQLThreadAppealManualReviewJobPayload,
   GQLThreadManualReviewJobPayload,
 } from '../../../../../graphql/generated';
+import { shouldDisplayInIframe } from '../../../../../utils/contentUrlUtils';
 import { getFieldValueForRole } from '../../../../../utils/itemUtils';
+import IframeContentDisplayComponent from '../IframeContentDisplayComponent';
 import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
 } from '../ManualReviewJobReview';
-import IframeContentDisplayComponent from '../IframeContentDisplayComponent';
 import ManualReviewJobContentThreadHistory from './ManualReviewJobContentThreadHistory';
 import FieldsComponent from './ManualReviewJobFieldsComponent';
 import ManualReviewJobRelatedUserComponent from './user/ManualReviewJobRelatedUserComponent';
@@ -95,8 +96,8 @@ export default function ManualReviewJobContentView(props: {
     payload.__typename === 'ContentManualReviewJobPayload'
       ? getFieldValueForRole(payload.item, 'threadId')
       : payload.__typename === 'ThreadManualReviewJobPayload'
-      ? { id: payload.item.id, typeId: payload.item.type.id }
-      : undefined;
+        ? { id: payload.item.id, typeId: payload.item.type.id }
+        : undefined;
 
   const inspectUserModal = (
     <CoopModal
@@ -130,7 +131,7 @@ export default function ManualReviewJobContentView(props: {
   );
 
   return (
-    <div className="flex flex-col overflow-x-scroll">
+    <div className="flex flex-col">
       <div className="flex flex-row items-start py-4 space-x-4">
         {/* Split the data into two columns: non-media fields and media fields*/}
         <div className="max-w-full min-w-[50%] grow">
@@ -145,8 +146,10 @@ export default function ManualReviewJobContentView(props: {
           />
         </div>
       </div>
-      {'url' in payload.item.data ? (
-        <IframeContentDisplayComponent contentUrl={String(payload.item.data.url)} />
+      {'url' in payload.item.data &&
+      typeof payload.item.data.url === 'string' &&
+      shouldDisplayInIframe(payload.item.data.url) ? (
+        <IframeContentDisplayComponent contentUrl={payload.item.data.url} />
       ) : null}
       {!contentThread ? null : (
         <div className="my-6">

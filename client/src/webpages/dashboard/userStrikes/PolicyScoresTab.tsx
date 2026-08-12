@@ -9,6 +9,7 @@ import { Tree, treeFromList, TreeNode } from '@/utils/tree';
 import omit from 'lodash/omit';
 import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import CoopModal from '../components/CoopModal';
 import Table from '../components/table/Table';
@@ -24,6 +25,7 @@ export type Policy = {
 };
 
 export default function PolicyScoresTab() {
+  const navigate = useNavigate();
   const {
     loading,
     error,
@@ -383,6 +385,17 @@ export default function PolicyScoresTab() {
     return <FullScreenLoading />;
   }
 
+  if (!policyList || policyList.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full gap-4 py-16">
+        <div className="text-slate-400">No policies configured</div>
+        <Button onClick={() => navigate('/dashboard/policies/form')}>
+          Create Policy
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-start">
       <div className="flex flex-row items-stretch w-full mt-6">
@@ -458,12 +471,12 @@ function ChildPoliciesTable(props: {
               // will need to account for the whole parent tree
               editingDisabled
                 ? policy?.parent?.value.id
-                  ? updatedPolicyScores[policy?.parent?.value.id]
+                  ? (updatedPolicyScores[policy?.parent?.value.id]
                       ?.userStrikeCount ??
-                    policy?.parent?.value?.userStrikeCount
+                    policy?.parent?.value?.userStrikeCount)
                   : undefined
-                : updatedPolicyScores[policy.value.id]?.userStrikeCount ??
-                  policy.value.userStrikeCount
+                : (updatedPolicyScores[policy.value.id]?.userStrikeCount ??
+                  policy.value.userStrikeCount)
             }
             placeholder="1"
             onChange={(value) => {

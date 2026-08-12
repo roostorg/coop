@@ -46,8 +46,10 @@ export const GeohashArbitrary = fc
     }
   });
 
+// `noInvalidDate: true` keeps fast-check from drawing `Date(NaN)` values,
+// which would make `.toISOString()` throw `RangeError: Invalid time value`.
 export const DateStringArbitrary = fc
-  .date()
+  .date({ noInvalidDate: true })
   .map((date) => makeDateString(date.toISOString())!);
 
 // Id-like fields allow numbers and strings as inputs, but the normalized
@@ -85,6 +87,16 @@ export const IpAddressArbitrary = fc.oneof(
   ),
 );
 
+// RFC 2606 reserved domains for example purposes.
+export const EmailAddressArbitrary = fc.constantFrom(
+  'yuki@example.com',
+  'amara@example.org',
+  'priya@example.net',
+  'mateo@example.com',
+  'aaliyah@example.org',
+  'jian@example.net',
+);
+
 export const ScalarValidValuesArbitraries = {
   [ScalarTypes.AUDIO]: MediaUrlArbitrary,
   [ScalarTypes.BOOLEAN]: fc.boolean(),
@@ -104,6 +116,7 @@ export const ScalarValidValuesArbitraries = {
   [ScalarTypes.RELATED_ITEM]: RelatedItemArbitrary,
   [ScalarTypes.POLICY_ID]: IdLikeArbitrary,
   [ScalarTypes.IP_ADDRESS]: IpAddressArbitrary,
+  [ScalarTypes.EMAIL_ADDRESS]: EmailAddressArbitrary,
 };
 
 export const ScalarFieldArbitrary = fc
@@ -149,18 +162,18 @@ export const MapFieldArbitrary = fc
     fc.string(),
     fc.boolean(),
   )
-  .map<
-    Field<ContainerTypes['MAP']>
-  >(([valueScalarType, keyScalarType, name, required]) => ({
-    name,
-    required,
-    type: ContainerTypes.MAP,
-    container: {
-      containerType: ContainerTypes.MAP,
-      keyScalarType,
-      valueScalarType,
-    },
-  }));
+  .map<Field<ContainerTypes['MAP']>>(
+    ([valueScalarType, keyScalarType, name, required]) => ({
+      name,
+      required,
+      type: ContainerTypes.MAP,
+      container: {
+        containerType: ContainerTypes.MAP,
+        keyScalarType,
+        valueScalarType,
+      },
+    }),
+  );
 
 export const MapFieldWithValueArbitrary = MapFieldArbitrary.chain((field) =>
   fc.tuple(

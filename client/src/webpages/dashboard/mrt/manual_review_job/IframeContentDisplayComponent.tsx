@@ -3,20 +3,19 @@ import { Switch } from '@/coop-ui/Switch';
 import { useGQLPersonalSafetySettingsQuery } from '@/graphql/generated';
 import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import * as React from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
-
-import { type BlurStrength } from './v2/ncmec/NCMECMediaViewer';
 
 export default function IframeContentDisplayComponent(props: {
   contentUrl: string;
 }) {
   const { contentUrl } = props;
 
+  // An empty or unset proxy URL means the content URL is rendered directly in
+  // the iframe rather than routed through a content proxy.
+  const trimmedProxyUrl = import.meta.env.VITE_CONTENT_PROXY_URL?.trim();
   const contentProxyUrl =
-    import.meta.env.VITE_CONTENT_PROXY_URL?.trim() ??
-    (import.meta.env.DEV ? 'http://localhost:4000' : window.location.origin);
+    trimmedProxyUrl && trimmedProxyUrl.length > 0 ? trimmedProxyUrl : undefined;
 
   const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -26,18 +25,21 @@ export default function IframeContentDisplayComponent(props: {
     blur: boolean;
     grayscale: boolean;
     shouldTranslate: boolean;
+    sepia: boolean;
   }>({
     blur: true,
     grayscale: false,
     shouldTranslate: false,
+    sepia: false,
   });
 
-  const { blur, grayscale, shouldTranslate } = state;
+  const { blur, grayscale, shouldTranslate, sepia } = state;
 
   const { loading, data } = useGQLPersonalSafetySettingsQuery();
   const {
-    moderatorSafetyBlurLevel = 2 as BlurStrength,
+    moderatorSafetyBlurLevel = 2,
     moderatorSafetyGrayscale = true,
+    moderatorSafetySepia = false,
   } = data?.me?.interfacePreferences ?? {};
 
   useEffect(() => {
@@ -45,10 +47,19 @@ export default function IframeContentDisplayComponent(props: {
       blur: moderatorSafetyBlurLevel !== 0,
       grayscale: moderatorSafetyGrayscale,
       shouldTranslate: false,
+      sepia: moderatorSafetySepia,
     });
-  }, [moderatorSafetyBlurLevel, moderatorSafetyGrayscale]);
+  }, [
+    moderatorSafetyBlurLevel,
+    moderatorSafetyGrayscale,
+    moderatorSafetySepia,
+  ]);
 
   useEffect(() => {
+    // Translation status messages come from the content proxy. With no proxy
+    // configured there is nothing to listen for.
+    if (!contentProxyUrl) return;
+
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== contentProxyUrl) return;
 
@@ -64,7 +75,10 @@ export default function IframeContentDisplayComponent(props: {
   const handleIframeLoad = useCallback(
     function (elm: HTMLIFrameElement | null) {
       const sendMessage = () => {
-        if (!elm?.contentWindow) return;
+        // The custom controls (blur/grayscale/translate) are implemented by the
+        // content proxy. Without a proxy there is no window to message.
+        if (!elm?.contentWindow || !contentProxyUrl) return;
+        const proxyUrl = contentProxyUrl;
 
         try {
           elm.contentWindow.postMessage(
@@ -73,8 +87,9 @@ export default function IframeContentDisplayComponent(props: {
               blur: blur ? moderatorSafetyBlurLevel : 0,
               grayscale,
               shouldTranslate,
+              sepia,
             },
-            contentProxyUrl,
+            proxyUrl,
           );
 
           if (shouldTranslate) {
@@ -89,8 +104,9 @@ export default function IframeContentDisplayComponent(props: {
                   blur: blur ? moderatorSafetyBlurLevel : 0,
                   grayscale,
                   shouldTranslate,
+                  sepia,
                 },
-                contentProxyUrl,
+                proxyUrl,
               );
             } catch (retryError) {
               setIsTranslating(false);
@@ -112,6 +128,7 @@ export default function IframeContentDisplayComponent(props: {
       shouldTranslate,
       contentProxyUrl,
       isIframeLoading,
+      sepia,
     ],
   );
 
@@ -119,30 +136,38 @@ export default function IframeContentDisplayComponent(props: {
     return <FullScreenLoading />;
   }
 
-  const url = `${contentProxyUrl}/?contentUrl=${encodeURIComponent(contentUrl)}`;
+  // With a proxy configured, hand it the content URL to fetch/transform.
+  // Otherwise, load the content URL directly in the iframe.
+  const url = contentProxyUrl
+    ? `${contentProxyUrl}/?contentUrl=${encodeURIComponent(contentUrl)}`
+    : contentUrl;
 
   return (
     <div className="flex flex-col w-full p-2 isolation-auto">
-      <div className="flex flex-row items-center self-end gap-4 mb-2">
-        <div className="flex items-center space-x-2">
-          {isTranslating && (
-            <LoaderCircle className="h-4 w-4 animate-spin text-indigo-500" />
-          )}
-          <Switch
-            disabled={isIframeLoading}
-            id="translate-to-english"
-            defaultChecked={shouldTranslate}
-            onCheckedChange={(value) => {
-              setState({ ...state, shouldTranslate: value });
-              if (!value) {
-                setIsTranslating(false);
-              }
-            }}
-            checked={shouldTranslate}
-          />
-          <Label htmlFor="translate-to-english">Translate to English</Label>
+      {/* Translation is performed by the content proxy, so only offer it when
+          a proxy is configured. */}
+      {contentProxyUrl && (
+        <div className="flex flex-row items-center self-end gap-4 mb-2">
+          <div className="flex items-center space-x-2">
+            {isTranslating && (
+              <LoaderCircle className="h-4 w-4 animate-spin text-indigo-500" />
+            )}
+            <Switch
+              disabled={isIframeLoading}
+              id="translate-to-english"
+              defaultChecked={shouldTranslate}
+              onCheckedChange={(value) => {
+                setState({ ...state, shouldTranslate: value });
+                if (!value) {
+                  setIsTranslating(false);
+                }
+              }}
+              checked={shouldTranslate}
+            />
+            <Label htmlFor="translate-to-english">Translate to English</Label>
+          </div>
         </div>
-      </div>
+      )}
       <div className="relative w-full min-h-[800px] h-[800px] border border-solid rounded-md overflow-hidden">
         {isIframeLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-white bg-opacity-75">

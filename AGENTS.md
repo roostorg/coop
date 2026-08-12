@@ -51,7 +51,17 @@ npm install
 (cd server && npm install)
 (cd db && npm install)
 
-# Populate .env files for /server and /db, then run migrations
+# Copy .env files for /server, /db, and /client (defaults work for local dev)
+cp server/.env.example server/.env
+cp db/.env.example db/.env
+cp client/.env.example client/.env
+
+# Create databases, then run migrations.
+
+npm run db:create -- --env staging --db api-server-pg
+npm run db:create -- --env staging --db scylla
+npm run db:create -- --env staging --db clickhouse
+
 npm run db:update -- --env staging --db api-server-pg
 npm run db:update -- --env staging --db scylla
 npm run db:update -- --env staging --db clickhouse
@@ -60,7 +70,7 @@ npm run db:update -- --env staging --db clickhouse
 npm run create-org -- \
   --name "Test Org" \
   --email "admin@example.com" \
-  --website "example.com" \
+  --website "https://example.com" \
   --firstName "Admin" \
   --lastName "User" \
   --password "your-password"
@@ -71,7 +81,7 @@ npm run server:start        # Express + GraphQL API
 npm run generate:watch      # (optional) watch GraphQL changes
 ```
 
-Client: http://localhost:3001 · Server: http://localhost:3000
+Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
@@ -92,7 +102,7 @@ Lint / format / type-check (no Docker needed):
 
 ```bash
 npm run lint           # lint all packages
-npm run format         # format all packages
+npm run prettier:fix  # format all packages (alias: npm run format)
 (cd server && npm run lint)
 (cd client && npm run lint)
 ```
@@ -101,7 +111,7 @@ If tests fail with database errors, check migration logs via `docker compose log
 
 ## CI
 
-CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). All PR checks are defined as `docker compose` services so you can reproduce any CI job locally. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
+CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). Most PR checks are defined as `docker compose` services so you can reproduce any CI job locally; the formatting check runs directly via `actions/setup-node`. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
 
 ```bash
 docker compose run --rm codegen-check
@@ -110,12 +120,14 @@ docker compose run --rm backend npm run build
 docker compose run --rm client npm run lint
 docker compose run --rm client npm run build
 docker compose run --rm test
+npm ci && npm run prettier
 ```
 
 Individual checks:
 
 | CI job                                   | Local command                                   |
 | ---------------------------------------- | ----------------------------------------------- |
+| `check_formatting`                       | `npm ci && npm run prettier`                    |
 | `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
 | `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
 | `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
@@ -143,12 +155,13 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
+- When opening a GitHub PR, use the template at [`.github/pull_request_template.md`](.github/pull_request_template.md) but do not actually write anything in the PR description. Let your human operator do that.
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
 ## Code style
 
-- **TypeScript:** ESLint + Prettier (configs in `.eslintrc.cjs` and `.prettierrc` per package). Run `npm run lint` and `npm run format` from root.
+- **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `npm run lint` and `npm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.
@@ -187,6 +200,8 @@ Two things differ from a local dev setup:
 
 ## Human-approval-required actions
 
+Routine local setup and verification commands, including `npm ci` and existing build/test/lint/format/check scripts, do not require approval; the gates below apply to the changes being made, not merely to running commands.
+
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE`).
@@ -195,7 +210,7 @@ Stop and get explicit human approval before:
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
 - Auth, session, or request middleware (under `server/api.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
-- Adding, removing, or upgrading any library or package (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
+- Adding, removing, or upgrading any dependency (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
 - Multi-thousand-line diffs — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 
 ## Commit attribution

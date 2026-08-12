@@ -1,7 +1,6 @@
 import { type GraphQLFieldResolver as Resolver } from 'graphql';
 
 import { type JSON } from '../../utils/json-schema-types.js';
-
 import { userInputError } from './errors.js';
 
 /**
@@ -93,8 +92,8 @@ export function makeConnectionResolver<
   CursorValue extends JSON,
   Node extends object = object,
   Context = unknown,
-  Args extends
-    ConnectionArguments<CursorValue> = ConnectionArguments<CursorValue>,
+  Args extends ConnectionArguments<CursorValue> =
+    ConnectionArguments<CursorValue>,
 >(
   fetcher: (args: {
     size: number;
@@ -137,7 +136,9 @@ export function makeConnectionResolver<
     }
 
     if (pageSize > maxPageSize) {
-      throw userInputError(`Page size must be less than or equal to ${maxPageSize}.`);
+      throw userInputError(
+        `Page size must be less than or equal to ${maxPageSize}.`,
+      );
     }
 
     // Meanwhile, providing both a before and after cursor is also coherent

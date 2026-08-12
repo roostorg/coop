@@ -1,16 +1,15 @@
+import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
 import { SearchOutlined } from '@ant-design/icons';
 import { Input, Select } from 'antd';
 import omit from 'lodash/omit';
 import { useState } from 'react';
 
-import { GQLSignalSubcategory } from '../../../../../graphql/generated';
-import { CoreSignal } from '../../../../../models/signal';
 import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/signalUtils';
 import RuleFormSignalModalNoSearchResults from './RuleFormSignalModalNoSearchResults';
 import { RuleFormSignalModalSubcategory } from './RuleFormSignalModalSubcategory';
 
 export function RuleFormSignalModalSubcategoryGallery(props: {
-  signal: CoreSignal;
+  signal: GQLSignal;
   subcategories: readonly GQLSignalSubcategory[];
   onSelectSubcategoryOption: (option: string) => void;
 }) {

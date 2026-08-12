@@ -2,16 +2,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type Bottle from '@ethanresnick/bottlejs';
 
-import { __throw } from '../utils/misc.js';
 import { jsonStringify } from '../utils/encoding.js';
+import { __throw } from '../utils/misc.js';
 import { type Dependencies as Deps } from './index.js';
 
 const DEPENDENCIES = Symbol();
 type DepName = keyof Deps;
 
 export type Factory<D extends any[], R extends any> =
-  | ((...args: D) => R)
-  | (new (...args: D) => R);
+  ((...args: D) => R) | (new (...args: D) => R);
 
 export type AnnotatedFactory<ServiceType> = Factory<any[], ServiceType> & {
   [DEPENDENCIES]: DepName[];

@@ -42,12 +42,17 @@ export default function ManualReviewQueueRuleConditionMatchingBankInput<
   const isRegexSignal =
     condition.signal?.type && receivesRegexInput(condition.signal.type);
 
-  const { textBankIds, locationBankIds, imageBankIds } = condition.matchingValues ?? {};
+  const { textBankIds, locationBankIds, imageBankIds } =
+    condition.matchingValues ?? {};
   const bankIds = textBankIds ?? locationBankIds ?? imageBankIds ?? [];
 
   const { loading, error, data } = useGQLMatchingBankIdsQuery();
   const { textBanks, locationBanks, hashBanks } = data?.myOrg?.banks ?? {};
-  const allBanks = [textBanks ?? [], locationBanks ?? [], hashBanks ?? []].flat();
+  const allBanks = [
+    textBanks ?? [],
+    locationBanks ?? [],
+    hashBanks ?? [],
+  ].flat();
 
   if (loading) {
     return <ComponentLoading />;

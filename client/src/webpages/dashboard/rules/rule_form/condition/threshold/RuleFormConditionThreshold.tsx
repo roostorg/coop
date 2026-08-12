@@ -157,8 +157,8 @@ export default function RuleFormConditionThreshold(props: {
           {renderBooleanThreshold
             ? booleanThreshold
             : renderSelectThreshold
-            ? selectThreshold([...signalOutputOptions])
-            : defaultThreshold}
+              ? selectThreshold([...signalOutputOptions])
+              : defaultThreshold}
           <div className="invisible pb-1 text-xs font-bold">
             {renderBooleanThreshold ? 'Value' : 'Threshold'}
           </div>

@@ -25,9 +25,7 @@ function makeItemSubmissionBulkWrite(
 
   const loader: DataLoader<ItemSubmissionMessageValue, void> = new DataLoader(
     async (data) =>
-      bulkWrite(queue, data).then(() =>
-        new Array(data.length).fill(undefined),
-      ),
+      bulkWrite(queue, data).then(() => new Array(data.length).fill(undefined)),
     {
       cache: false,
       batch: true,

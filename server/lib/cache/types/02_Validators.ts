@@ -1,4 +1,4 @@
-import { type JSON } from "./utils.js";
+import { type JSON } from './utils.js';
 
 /**
  * Validators are identifiers (like a last-modified date, etag, or row version)
