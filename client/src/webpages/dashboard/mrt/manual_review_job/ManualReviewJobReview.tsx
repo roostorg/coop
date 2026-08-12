@@ -1600,8 +1600,12 @@ function ManualReviewJobReviewImpl(props: {
                 <div className="text-2xl font-bold text-start">
                   Review: {queue.name}
                 </div>
-                <Select dropdownMatchSelectWidth={false} value="Options">
-                  <Option>
+                <Select
+                  dropdownMatchSelectWidth={false}
+                  optionLabelProp="label"
+                  value="Options"
+                >
+                  <Option label="Options" value="Options">
                     <div onClick={() => setUnblurAllMedia(!unblurAllMedia)}>
                       {unblurAllMedia ? 'Blur All Media' : 'Unblur All Media'}
                     </div>
