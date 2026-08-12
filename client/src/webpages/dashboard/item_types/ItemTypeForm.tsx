@@ -531,6 +531,7 @@ export default function ItemTypeForm() {
           <div className="flex flex-col w-48 gap-2">
             <div className="font-semibold">Name</div>
             <Input
+              name="item-type-name"
               placeholder="Name"
               className="w-full rounded-md"
               onChange={(event) => setName(event.target.value)}
@@ -541,6 +542,7 @@ export default function ItemTypeForm() {
           <div className="flex flex-col gap-2 w-96">
             <div className="font-semibold">Description</div>
             <Input
+              name="item-type-description"
               placeholder="Description (optional)"
               className="w-full rounded-md"
               onChange={(event) => setDescription(event.target.value)}

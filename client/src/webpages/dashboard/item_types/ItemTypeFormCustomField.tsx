@@ -95,6 +95,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         <div className="flex flex-col gap-2">
           <div className="font-semibold">Field Name</div>
           <Input
+            name={`item-type-field-${field.index}-name`}
             className="rounded-lg w-36"
             placeholder="Field Name"
             defaultValue={field.name}
