@@ -106,6 +106,7 @@ export default function Table<TData extends Record<string, any>>(
                       return (
                         <th
                           key={header.id}
+                          colSpan={header.colSpan}
                           onClick={header.column.getToggleSortingHandler()}
                           className={`align-center font-bold text-gray-500 text-start text-base !p-0 ${index === 0 ? 'rounded-tl-md' : index === group.headers.length - 1 ? 'rounded-tr-md' : ''}`}
                         >

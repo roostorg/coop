@@ -74,6 +74,33 @@ const filterFor =
     DefaultColumnFilter({ columnProps: props, accessor, placeholder });
 
 describe('Table v7 behavior', () => {
+  it('preserves grouped header spans above leaf headers', () => {
+    const groupedColumns = [
+      {
+        header: 'Details',
+        columns,
+      },
+    ] satisfies TableColumnDef<TableRow>[];
+
+    renderTable(groupedColumns);
+
+    const headerRows = within(screen.getAllByRole('rowgroup')[0]).getAllByRole(
+      'row',
+    );
+    expect(headerRows).toHaveLength(2);
+    expect(
+      within(headerRows[0])
+        .getByRole('columnheader', { name: 'Details' })
+        .getAttribute('colspan'),
+    ).toBe('2');
+    expect(
+      within(headerRows[1]).getByRole('columnheader', { name: /Name/ }),
+    ).toBeTruthy();
+    expect(
+      within(headerRows[1]).getByRole('columnheader', { name: 'Status' }),
+    ).toBeTruthy();
+  });
+
   it('renders accessor values and sorts by raw values only on sortable headers', () => {
     renderTable();
 
