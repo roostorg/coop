@@ -893,6 +893,7 @@ export default function ManualReviewRecentDecisions() {
     <div className="flex items-start gap-2 pb-1">
       <Input
         className="rounded-lg w-[300px]"
+        name="recent-decisions-user-search"
         placeholder="Input a user's ID or username"
         value={userSearchString}
         onChange={(event) => setUserSearchString(event.target.value)}
