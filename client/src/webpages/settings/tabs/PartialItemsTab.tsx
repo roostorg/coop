@@ -5,7 +5,6 @@ import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
   useGQLDeploymentSettingsQuery,
-  useGQLUpdateHasReportingRulesEnabledMutation,
   useGQLUpdatePartialItemsSettingsMutation,
 } from '@/graphql/generated';
 import { isValidUrl, validateJSON } from '@/lib/utils';
@@ -23,7 +22,7 @@ gql`
   }
 `;
 
-export default function OtherTab() {
+export default function PartialItemsTab() {
   const { data, loading, error, refetch } = useGQLDeploymentSettingsQuery({
     fetchPolicy: 'network-only',
     nextFetchPolicy: 'cache-and-network',
@@ -31,7 +30,6 @@ export default function OtherTab() {
 
   const org = data?.myOrg;
 
-  const [reportingEnabled, setReportingEnabled] = useState(false);
   const [partialItemsEndpoint, setPartialItemsEndpoint] = useState('');
   const [partialItemsHeaders, setPartialItemsHeaders] = useState('');
 
@@ -41,7 +39,6 @@ export default function OtherTab() {
 
   useEffect(() => {
     if (org) {
-      setReportingEnabled(org.hasReportingRulesEnabled);
       setPartialItemsEndpoint(org.partialItemsEndpoint ?? '');
       setPartialItemsHeaders(
         org.partialItemsRequestHeaders
@@ -53,7 +50,7 @@ export default function OtherTab() {
 
   const mutationOpts = {
     onCompleted: () => {
-      toast.success('Other settings updated');
+      toast.success('Partial items settings updated');
       refetch();
     },
     onError: (err: Error) => {
@@ -61,9 +58,7 @@ export default function OtherTab() {
     },
   };
 
-  const [updateReporting, { loading: reportingSaveLoading }] =
-    useGQLUpdateHasReportingRulesEnabledMutation(mutationOpts);
-  const [updatePartialItems, { loading: partialItemsSaveLoading }] =
+  const [updatePartialItems, { loading: saveLoading }] =
     useGQLUpdatePartialItemsSettingsMutation(mutationOpts);
 
   if (loading) return <FullScreenLoading />;
@@ -71,20 +66,13 @@ export default function OtherTab() {
 
   const isHeadersValid = validateJSON(partialItemsHeaders);
   const isEndpointValid = isValidUrl(partialItemsEndpoint);
-  const saveLoading = reportingSaveLoading || partialItemsSaveLoading;
 
-  const partialItemsChanged =
+  const hasChanges =
     partialItemsEndpoint !== (org.partialItemsEndpoint ?? '') ||
     partialItemsHeaders !== origPartialItemsHeaders;
 
-  const hasChanges =
-    reportingEnabled !== org.hasReportingRulesEnabled || partialItemsChanged;
-
   const handleSave = () => {
-    if (reportingEnabled !== org.hasReportingRulesEnabled) {
-      updateReporting({ variables: { enabled: reportingEnabled } });
-    }
-    if (partialItemsChanged) {
+    if (hasChanges) {
       updatePartialItems({
         variables: {
           input: {

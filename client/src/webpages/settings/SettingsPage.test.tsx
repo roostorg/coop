@@ -9,7 +9,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import '@testing-library/jest-dom/extend-expect';
@@ -31,12 +31,29 @@ import {
 
 import SettingsPage from './SettingsPage';
 
+// Exposes the router's current query string and how it was last reached, so
+// tests can assert on URL normalization (see the legacy `?tab=` cases).
+function LocationProbe() {
+  const { search } = useLocation();
+  const navigationType = useNavigationType();
+  return (
+    <div
+      data-testid="location-probe"
+      data-search={search}
+      data-navigation-type={navigationType}
+    />
+  );
+}
+
+const locationProbe = () => screen.getByTestId('location-probe');
+
 function renderWithProviders(mocks: MockedResponse[], tab = 'organization') {
   return render(
     <HelmetProvider>
       <TooltipProvider>
         <MockedProvider mocks={mocks}>
           <MemoryRouter initialEntries={[`/dashboard/settings?tab=${tab}`]}>
+            <LocationProbe />
             <SettingsPage />
           </MemoryRouter>
         </MockedProvider>
@@ -183,6 +200,49 @@ describe('SettingsPage', () => {
       ).toHaveAttribute('aria-selected', 'true');
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
+      });
+    });
+
+    it('falls back to organization for an unknown ?tab= value', () => {
+      renderWithProviders([orgSettingsMock], 'not-a-tab');
+      expect(
+        screen.getByRole('tab', { name: /organization/i }),
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('resolves the legacy ?tab=other link to the Partial Items tab', async () => {
+      renderWithProviders([deploymentSettingsMock], 'other');
+      expect(
+        screen.getByRole('tab', { name: /partial items/i }),
+      ).toHaveAttribute('aria-selected', 'true');
+      await waitFor(() => {
+        expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
+      });
+    });
+
+    it('rewrites a legacy ?tab= value in the URL without adding history', async () => {
+      renderWithProviders([deploymentSettingsMock], 'other');
+      await waitFor(() => {
+        expect(locationProbe()).toHaveAttribute(
+          'data-search',
+          '?tab=partial-items',
+        );
+      });
+      // The rewrite replaces the legacy entry rather than pushing onto it, so
+      // the back button doesn't bounce the user back to `?tab=other`.
+      expect(locationProbe()).toHaveAttribute(
+        'data-navigation-type',
+        'REPLACE',
+      );
+    });
+
+    it('preserves unrelated query params when rewriting a legacy tab', async () => {
+      renderWithProviders([deploymentSettingsMock], 'other&highlight=endpoint');
+      await waitFor(() => {
+        expect(locationProbe()).toHaveAttribute(
+          'data-search',
+          '?tab=partial-items&highlight=endpoint',
+        );
       });
     });
   });
