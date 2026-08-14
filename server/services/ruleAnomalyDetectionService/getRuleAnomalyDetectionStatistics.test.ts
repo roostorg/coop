@@ -100,7 +100,7 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= now64(3)
+            WHERE ts_end_exclusive <= now64(3, 'UTC')
             ORDER BY ts_start_inclusive DESC;",
         {},
         [],
