@@ -64,13 +64,9 @@ export function getEndOfDayInTimezone(timezone: string) {
 }
 
 /**
- * ClickHouse returns `DateTime64` values as strings like
- * `"YYYY-MM-DD HH:MM:SS.sss"` with no timezone annotation. Passing that
- * straight to `new Date(...)` interprets it as *local time*, so the parsed
- * instant differs from the stored UTC value by whatever timezone the runtime
- * happens to be in — UTC on production containers, local TZ on a dev
- * machine. Compose the input into a proper ISO string with an explicit `Z`
- * before parsing so the result is always the UTC instant ClickHouse wrote.
+ * ClickHouse returns `DateTime64` as `"YYYY-MM-DD HH:MM:SS.sss"` with no
+ * timezone marker, which `new Date(...)` would parse as local time.
+ * Normalise to an ISO string with an explicit `Z` so it parses as UTC.
  */
 export function parseClickhouseTimestamp(raw: string | number | Date): Date {
   if (raw instanceof Date) return raw;

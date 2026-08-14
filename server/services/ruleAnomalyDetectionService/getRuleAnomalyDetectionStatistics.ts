@@ -41,18 +41,13 @@ const makeGetRuleAnomalyDetectionaStatistics =
     // conditions that need (or are forced) to have multiple bind values, and
     // then flatten below.
     //
-    // NB: we use now64(3), not now(), because the former returns DateTime64(3)
-    // in UTC, matching the column type and giving timezone-stable behaviour
-    // independent of the ClickHouse server's local timezone.
+    // now64 defaults to the server timezone; pass 'UTC' explicitly.
     const [conditions, conditionBindValues] = unzip2<string, string[] | Date>([
       ...(!includePeriodsInProgress
-        ? [['ts_end_exclusive <= now64(3)', [] as string[]] as const]
+        ? [["ts_end_exclusive <= now64(3, 'UTC')", [] as string[]] as const]
         : []),
-      // Wrap the bind in parseDateTime64BestEffort so the warehouse adapter's
-      // Date → ISO-8601 (with `Z` suffix) bind format is parsed against the
-      // DateTime64(3) column. Without it, ClickHouse rejects the implicit
-      // String → DateTime64 conversion ("Cannot convert string … to type
-      // DateTime64(3)").
+      // parseDateTime64BestEffort: ClickHouse rejects the adapter's ISO-8601
+      // bind string when implicitly converting to DateTime64(3).
       ...(startTime
         ? [
             [
@@ -75,10 +70,8 @@ const makeGetRuleAnomalyDetectionaStatistics =
     const conditionString = conditions.join(' AND ');
 
     // Use group by to sum passes + runs across all rule environments.
-    // `JSONLength` is the ClickHouse equivalent of the Snowflake `array_size`
-    // this query was originally written against — `passes_distinct_user_ids`
-    // is stored as a JSON-serialised array String, not a native Array, so we
-    // can't just `length(arr)` it.
+    // JSONLength: passes_distinct_user_ids is a JSON-serialised array String,
+    // not a native Array.
     const results = await dataWarehouse.query(
       `
       SELECT
@@ -97,12 +90,6 @@ const makeGetRuleAnomalyDetectionaStatistics =
 
     return results.map((result) => {
       const row = result as Record<string, unknown>;
-      // ClickHouse returns column names in the case they were written in the
-      // SELECT (lowercase here). The Snowflake-era code expected UPPERCASE
-      // identifiers — without the lowercased access, every field reads back
-      // as `undefined` and the rule-id-keyed grouping in
-      // `getCurrentPeriodRuleAlarmStatuses` collapses to a single
-      // `"undefined"` bucket, masking every rule's true alarm state.
       return {
         ruleId: row.rule_id as string,
         // name is a reminder that JS may trim the precision on the Date here,
@@ -117,10 +104,7 @@ const makeGetRuleAnomalyDetectionaStatistics =
         windowStart: parseClickhouseTimestamp(
           row.ts_start_inclusive as string | number | Date,
         ),
-        // ClickHouse `Int64`/`UInt64` columns (`num_passes`, `num_runs`,
-        // `JSONLength(…)`) come back as JS `BigInt`. The Snowflake-era
-        // downstream code (binomialTest, arithmetic, comparisons against
-        // adequacy thresholds) all assume plain `number`, so coerce here.
+        // Int64/UInt64 columns deserialise as BigInt; downstream math needs number.
         passCount: Number(row.num_passes),
         passingUsersCount: Number(row.num_distinct_users),
         runsCount: Number(row.num_runs),

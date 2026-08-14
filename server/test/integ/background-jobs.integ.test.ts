@@ -59,10 +59,8 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
     );
     orgCleanup = orgFixture.cleanup;
 
-    // Reviewer for the seeded decisions. The materialized view carries the
-    // reviewer_id through unchanged, but `manual_review_decisions.reviewer_id`
-    // is constrained to point at a real coop user — fresh uids would either
-    // skip the join silently or break the constraint when it lands.
+    // Reviewer for the seeded decisions; reviewer_id must reference a real
+    // coop user.
     const userFixture = await createUser(harness.deps.KyselyPg, orgId);
     reviewerId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
@@ -168,9 +166,8 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
     coopUserId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
 
-    // Seed a rule that starts in the OK alarm state. We don't care about its
-    // condition set for the anomaly path; only that it exists in `public.rules`
-    // so the job can match the rule_id it pulls from ClickHouse.
+    // Seed a rule in the OK alarm state; the job only needs it to exist in
+    // `public.rules` to match the rule_id it pulls from ClickHouse.
     ruleId = uid();
     const now = new Date();
     await harness.deps.KyselyPg.insertInto('public.rules')
@@ -191,8 +188,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
         expiration_time: null,
         parent_id: null,
         // Kysely types these as `GeneratedAlways`, but Postgres has no
-        // default for them and rejects nulls. The schema must have been
-        // changed after the Kysely types were generated.
+        // default for them and rejects nulls.
         created_at: now,
         updated_at: now,
       })
@@ -237,14 +233,9 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
       harness.deps;
 
     // Seed 25 historical 1-hour periods with a low distinct-passing-users
-    // rate and 1 current period with a high distinct-passing-users rate.
-    // `getRuleAlarmStatus` uses _distinct passing users_, not raw pass count,
-    // as its `passes` (see the long comment in `getCurrentPeriodRuleAlarmStatuses`
-    // about repeat posters). So the seed has to populate
-    // `passes_distinct_user_ids` with real id arrays for the math to work.
-    //
-    // Picks here clear the data-adequacy bar (>=24 periods, >=4000 runs,
-    // >2 prior passes) and the 25%-above-historical + binomial thresholds.
+    // rate and 1 current period with a high one, sized to clear the
+    // data-adequacy bar (>=24 periods, >=4000 runs, >2 prior passes) and the
+    // 25%-above-historical + binomial thresholds.
     await seedAnomalyStatistics(DataWarehouse, Tracer, {
       orgId,
       ruleId,
@@ -361,13 +352,8 @@ async function seedAnomalyStatistics(
       Array.from({ length: count }).map((_, idx) => `${prefix}-u${idx}`),
     );
 
-  // Current period: ends comfortably before "now" so the query's
-  // `ts_end_exclusive <= now64(3)` filter accepts it. The job's reference
-  // clock is ClickHouse's `now64(3)`, not the Node clock we're computing
-  // against here, so a 1s margin can land the row slightly in the future
-  // when the docker stack and the test process are skewed even a little.
-  // 30s is well past any plausible skew without disturbing the alarm math
-  // (still firmly inside the "one week ago" startTime window).
+  // End the current period 30s before "now": the query filters on
+  // ClickHouse's clock, which can be skewed from the Node clock used here.
   const currentEnd = new Date(now.valueOf() - 30_000);
   const currentStart = new Date(currentEnd.valueOf() - HOUR_MS);
   const currentRow = formatStatsRow({
@@ -384,9 +370,8 @@ async function seedAnomalyStatistics(
     tsEnd: currentEnd,
   });
 
-  // Spread a few distinct users across the first historical periods so the
-  // `priorPasses > 2` data-adequacy check (computed off
-  // `passingUsersCount` = `JSONLength(passes_distinct_user_ids)`) clears.
+  // Spread distinct users across the early periods so the `priorPasses > 2`
+  // data-adequacy check clears.
   const usersBearingPeriods = Math.max(
     opts.historicalDistinctUsersPerPeriod,
     4,
@@ -448,9 +433,7 @@ function formatStatsRow(opts: {
       q(opts.ruleId),
       q(toClickHouseDateTime(opts.ruleVersion)),
       String(opts.numPasses),
-      // passes_distinct_user_ids is a String column carrying a JSON array;
-      // the job's query (`JSONLength(passes_distinct_user_ids)`) treats it
-      // as such.
+      // passes_distinct_user_ids is a String column carrying a JSON array.
       q(opts.passesDistinctUserIds),
       String(opts.numRuns),
       q(toClickHouseDateTime(opts.tsStart)),
