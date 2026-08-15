@@ -34,11 +34,6 @@ export default class ClaimOperations {
     }
   }
 
-  /**
-   * Latest claim for a job (last dequeue). Used as assigned_at on decision.
-   * When userId is set, only that reviewer's claims are considered so
-   * automatic/swept decisions cannot inherit another moderator's pickup.
-   */
   async getLatestClaimedAt(opts: {
     orgId: string;
     jobId: JobId | string;

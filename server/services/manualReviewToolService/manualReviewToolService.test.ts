@@ -1,4 +1,3 @@
- 
 import { sql } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
@@ -15,6 +14,7 @@ import {
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import { UserPermission } from '../userManagementService/index.js';
 import {
   type ManualReviewToolService,
   type NcmecContentItemSubmission,
@@ -366,9 +366,6 @@ describe('Manual Review Tool Service', () => {
           .executeTakeFirst();
 
         expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
-        // Dequeue logs a claim, but auto-close must not copy it onto
-        // assigned_at — otherwise near-instant auto-closes drag handle-time
-        // averages down as if a moderator had completed the review.
         expect(row?.assigned_at).toBeNull();
       },
     );
@@ -1065,6 +1062,20 @@ describe('Manual Review Tool Service', () => {
           throw new Error('expected handle_time');
         }
         expect(handleTimeSeconds).toBeGreaterThanOrEqual(0);
+
+        const recent = await mrtService.getRecentDecisions({
+          orgId,
+          userPermissions: [UserPermission.VIEW_MRT],
+          input: { page: 0 },
+        });
+        const recentDecision = recent.find(
+          (it) => it.jobId === dequeuedJob.job.id,
+        );
+        expect(recentDecision).toBeDefined();
+        expect(recentDecision?.assignedAt).toEqual(claims[0].claimed_at);
+        expect(recentDecision?.jobCreatedAt?.getTime()).toBe(
+          new Date(dequeuedJob.job.createdAt).getTime(),
+        );
       },
     );
 
@@ -1232,8 +1243,6 @@ describe('Manual Review Tool Service', () => {
             reviewerIds: [],
           },
         });
-        // Ungrouped AVG over zero matching rows is a single NULL — not a
-        // near-zero average from the auto-close.
         expect(handleTime).toHaveLength(1);
         expect(handleTime[0].handle_time).toBeNull();
       },
@@ -1272,16 +1281,17 @@ describe('Manual Review Tool Service', () => {
           lockToken: claimed.lockToken,
         });
 
-        const outcome =
-          await mrtService['jobDecisioning'].recordSweptJobDisposition({
-            orgId,
-            queueId,
-            job: claimed.job,
-            disposition: 'AUTOMATIC_CLOSE',
-            triggerCustomActions: [],
-            reviewerId: triggerReviewerId,
-            reviewerEmail,
-          });
+        const outcome = await mrtService[
+          'jobDecisioning'
+        ].recordSweptJobDisposition({
+          orgId,
+          queueId,
+          job: claimed.job,
+          disposition: 'AUTOMATIC_CLOSE',
+          triggerCustomActions: [],
+          reviewerId: triggerReviewerId,
+          reviewerEmail,
+        });
         expect(outcome).toBe('logged');
 
         const decision = await deps.KyselyPg.selectFrom(
@@ -1289,11 +1299,7 @@ describe('Manual Review Tool Service', () => {
         )
           .select(['assigned_at', 'reviewer_id'])
           .where('org_id', '=', orgId)
-          .where(
-            sql<string>`(job_payload->>'id')::text`,
-            '=',
-            claimed.job.id,
-          )
+          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
           .executeTakeFirstOrThrow();
 
         expect(decision.reviewer_id).toBe(triggerReviewerId);
@@ -1336,26 +1342,25 @@ describe('Manual Review Tool Service', () => {
           lockToken: claimed.lockToken,
         });
 
-        // Swept SAME_ACTION attributes the decision to the triggering
-        // moderator, who typically never dequeued this job.
-        const outcome =
-          await mrtService['jobDecisioning'].recordSweptJobDisposition({
-            orgId,
-            queueId,
-            job: claimed.job,
-            disposition: 'SAME_ACTION',
-            triggerCustomActions: [
-              {
-                type: 'CUSTOM_ACTION',
-                actions: [{ id: actionId }],
-                policies: [],
-                itemIds: [itemId],
-                itemTypeId,
-              },
-            ],
-            reviewerId: triggerReviewerId,
-            reviewerEmail,
-          });
+        const outcome = await mrtService[
+          'jobDecisioning'
+        ].recordSweptJobDisposition({
+          orgId,
+          queueId,
+          job: claimed.job,
+          disposition: 'SAME_ACTION',
+          triggerCustomActions: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: actionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          reviewerId: triggerReviewerId,
+          reviewerEmail,
+        });
         expect(outcome).toBe('logged');
 
         const decision = await deps.KyselyPg.selectFrom(
@@ -1363,11 +1368,7 @@ describe('Manual Review Tool Service', () => {
         )
           .select(['assigned_at', 'reviewer_id'])
           .where('org_id', '=', orgId)
-          .where(
-            sql<string>`(job_payload->>'id')::text`,
-            '=',
-            claimed.job.id,
-          )
+          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
           .executeTakeFirstOrThrow();
 
         expect(decision.reviewer_id).toBe(triggerReviewerId);
@@ -1419,24 +1420,25 @@ describe('Manual Review Tool Service', () => {
           .execute();
         expect(claims).toHaveLength(1);
 
-        const outcome =
-          await mrtService['jobDecisioning'].recordSweptJobDisposition({
-            orgId,
-            queueId,
-            job: claimed.job,
-            disposition: 'SAME_ACTION',
-            triggerCustomActions: [
-              {
-                type: 'CUSTOM_ACTION',
-                actions: [{ id: actionId }],
-                policies: [],
-                itemIds: [itemId],
-                itemTypeId,
-              },
-            ],
-            reviewerId: triggerReviewerId,
-            reviewerEmail,
-          });
+        const outcome = await mrtService[
+          'jobDecisioning'
+        ].recordSweptJobDisposition({
+          orgId,
+          queueId,
+          job: claimed.job,
+          disposition: 'SAME_ACTION',
+          triggerCustomActions: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: actionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          reviewerId: triggerReviewerId,
+          reviewerEmail,
+        });
         expect(outcome).toBe('logged');
 
         const decision = await deps.KyselyPg.selectFrom(
@@ -1444,11 +1446,7 @@ describe('Manual Review Tool Service', () => {
         )
           .select(['assigned_at', 'reviewer_id'])
           .where('org_id', '=', orgId)
-          .where(
-            sql<string>`(job_payload->>'id')::text`,
-            '=',
-            claimed.job.id,
-          )
+          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
           .executeTakeFirstOrThrow();
 
         expect(decision.reviewer_id).toBe(triggerReviewerId);
@@ -1472,10 +1470,7 @@ describe('Manual Review Tool Service', () => {
           enqueueSourceInfo: { kind: 'REPORT' },
         });
 
-        const releaseSpy = jest.spyOn(
-          mrtService['queueOps'],
-          'releaseJobLock',
-        );
+        const releaseSpy = jest.spyOn(mrtService['queueOps'], 'releaseJobLock');
         const logClaimSpy = jest
           .spyOn(mrtService['claimOps'], 'logClaim')
           .mockRejectedValueOnce(new Error('claim insert failed'));
@@ -1500,7 +1495,6 @@ describe('Manual Review Tool Service', () => {
         logClaimSpy.mockRestore();
         releaseSpy.mockRestore();
 
-        // Lock must have been released so another reviewer can claim.
         const reclaimed = await mrtService.dequeueNextJob({
           orgId,
           queueId,

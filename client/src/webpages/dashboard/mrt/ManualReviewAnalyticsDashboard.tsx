@@ -45,10 +45,6 @@ gql`
 `;
 
 export default function ManualReviewAnalyticsDashboard() {
-  // Match DateRangePicker's "Last 7 Days" preset (startOfDay 6 days ago →
-  // endOfDay today) so the initial load includes today's decisions. Using
-  // startOfHour(now) as the end previously dropped anything after the top of
-  // the current hour.
   const [timeWindow, setTimeWindow] = useState<TimeWindow>(() => {
     const today = new Date();
     return {
@@ -70,8 +66,6 @@ export default function ManualReviewAnalyticsDashboard() {
   ) => {
     return arr?.filter((elemWithDate) => {
       const time = new Date(elemWithDate.date).getTime();
-      // Inclusive bounds so daily ingestion buckets at midnight on the first
-      // selected day are counted (matches SQL >= / <= used by handle-time).
       return time >= window.start.getTime() && time <= window.end.getTime();
     });
   };

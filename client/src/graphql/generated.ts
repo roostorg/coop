@@ -2150,6 +2150,7 @@ export type GQLManualReviewDecision = {
   readonly id: Scalars['String']['output'];
   readonly itemId?: Maybe<Scalars['String']['output']>;
   readonly itemTypeId?: Maybe<Scalars['String']['output']>;
+  readonly jobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly jobId: Scalars['String']['output'];
   readonly queueId: Scalars['String']['output'];
   readonly relatedActions: ReadonlyArray<GQLManualReviewDecisionComponent>;
@@ -9685,6 +9686,8 @@ export type GQLGetDecidedJobFromJobIdQuery = {
       readonly jobId: string;
       readonly decisionReason?: string | null;
       readonly createdAt: Date | string;
+      readonly assignedAt?: Date | string | null;
+      readonly jobCreatedAt?: Date | string | null;
       readonly decisions: ReadonlyArray<
         | {
             readonly __typename: 'AcceptAppealDecisionComponent';
@@ -10833,6 +10836,8 @@ export type GQLGetRecentDecisionsQuery = {
     readonly itemId?: string | null;
     readonly itemTypeId?: string | null;
     readonly createdAt: Date | string;
+    readonly assignedAt?: Date | string | null;
+    readonly jobCreatedAt?: Date | string | null;
     readonly decisionReason?: string | null;
     readonly decisions: ReadonlyArray<
       | {
@@ -32230,6 +32235,8 @@ export const GQLGetDecidedJobFromJobIdDocument = gql`
           }
         }
         createdAt
+        assignedAt
+        jobCreatedAt
       }
     }
   }
@@ -34193,6 +34200,8 @@ export const GQLGetRecentDecisionsDocument = gql`
         }
       }
       createdAt
+      assignedAt
+      jobCreatedAt
       decisionReason
     }
   }

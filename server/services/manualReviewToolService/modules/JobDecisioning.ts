@@ -542,8 +542,6 @@ export default class JobDecisioning {
         relatedActions: [],
         enqueueSourceInfo: job.enqueueSourceInfo,
         decisionReason,
-        // Swept dispositions are not a pickup→decision by this reviewer for
-        // this job; never inherit a stale prior claim into handle-time metrics.
         recordAssignedAt: false,
       });
     } catch (error) {
@@ -625,10 +623,6 @@ export default class JobDecisioning {
     relatedActions: ManualReviewDecisionRelatedAction[];
     enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
     decisionReason?: string;
-    /**
-     * When false, leave assigned_at NULL even if a prior claim exists
-     * (swept dispositions). Defaults to true for normal submitDecision.
-     */
     recordAssignedAt?: boolean;
   }) {
     const {
@@ -688,9 +682,6 @@ export default class JobDecisioning {
       );
     }
 
-    // Handle time is claim → human decision. Automatic closes and swept
-    // dispositions must leave assigned_at NULL so they are excluded from
-    // averages — they were never "picked up and completed" for this decision.
     const isAutomaticClose = decisionComponents.some(
       (component) => component.type === 'AUTOMATIC_CLOSE',
     );

@@ -1332,10 +1332,6 @@ export class ManualReviewToolService {
     return null;
   }
 
-  /**
-   * Persist a claim after a successful dequeue. If the insert fails, release
-   * the Bull lock so the job is not stuck until lock expiry with no reviewer.
-   */
   async #logClaimOrReleaseLock(opts: {
     orgId: string;
     queueId: string;

@@ -2218,6 +2218,7 @@ export type GQLManualReviewDecision = {
   readonly id: Scalars['String']['output'];
   readonly itemId?: Maybe<Scalars['String']['output']>;
   readonly itemTypeId?: Maybe<Scalars['String']['output']>;
+  readonly jobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly jobId: Scalars['String']['output'];
   readonly queueId: Scalars['String']['output'];
   readonly relatedActions: ReadonlyArray<GQLManualReviewDecisionComponent>;
@@ -10319,6 +10320,11 @@ export type GQLManualReviewDecisionResolvers<
   >;
   itemTypeId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  jobCreatedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
     ParentType,
     ContextType
   >;

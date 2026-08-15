@@ -101,8 +101,6 @@ export type ManualReviewToolServicePg = {
     reviewer_id: string | null;
     org_id: string;
     created_at: GeneratedAlways<Date>;
-    // Last claim time before this decision (null for historical / auto-close
-    // without a human dequeue). Optional on insert so callers can omit it.
     assigned_at: ColumnType<Date | null, Date | null | undefined, Date | null>;
     decision_components: ManualReviewDecisionComponent[];
     related_actions: ManualReviewDecisionRelatedAction[];

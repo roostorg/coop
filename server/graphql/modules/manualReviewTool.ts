@@ -849,6 +849,7 @@ const typeDefs = /* GraphQL */ `
     relatedActions: [ManualReviewDecisionComponent!]!
     createdAt: DateTime!
     assignedAt: DateTime
+    jobCreatedAt: DateTime
     decisionReason: String
   }
 
@@ -2044,9 +2045,7 @@ const Query: GQLQueryResolvers = {
     }
     const result = await context.services.ManualReviewToolService.getHandleTime(
       {
-        groupBy: input.groupBy.map(
-          (it) => it.toLowerCase(),
-        ),
+        groupBy: input.groupBy.map((it) => it.toLowerCase()),
         filterBy: {
           ...input.filterBy,
           startDate: new Date(input.filterBy.startDate),
@@ -2056,8 +2055,6 @@ const Query: GQLQueryResolvers = {
       },
     );
     return result.map((it) => ({
-      // Preserve null when no decisions in the window have assigned_at so the
-      // UI can show empty state instead of a misleading 0-minute average.
       handleTimeSeconds:
         it.handle_time != null ? Math.round(it.handle_time) : null,
       queueId: 'queue_id' in it ? it.queue_id : null,

@@ -185,10 +185,6 @@ export default class DecisionAnalytics {
       .execute();
   }
 
-  /**
-   * Average handle time (seconds): last claim → decision.
-   * Excludes decisions with no assigned_at (historical or auto-close without claim).
-   */
   async getHandleTime(input: HandleTimeInput) {
     const { orgId, groupBy, filterBy } = input;
     const { ref } = this.pgQuery.dynamic;
@@ -312,6 +308,7 @@ export default class DecisionAnalytics {
         ),
         'decision_reason',
         'assigned_at',
+        sql<string | null>`job_payload->>'createdAt'`.as('job_created_at'),
         sql<string>`(job_payload->>'id')::text`.as('job_id'),
       ])
       .where('org_id', '=', orgId)
@@ -441,6 +438,9 @@ export default class DecisionAnalytics {
       })),
       createdAt: decision.created_at,
       assignedAt: decision.assigned_at,
+      jobCreatedAt: decision.job_created_at
+        ? new Date(decision.job_created_at)
+        : null,
       decisionReason: decision.decision_reason,
       jobId: decision.job_id,
     }));
@@ -513,6 +513,7 @@ export default class DecisionAnalytics {
         'created_at',
         'decision_reason',
         'assigned_at',
+        sql<string | null>`job_payload->>'createdAt'`.as('job_created_at'),
         sql<string>`((job_payload->'payload'::text)->'item'::text) -> 'itemId'::text`.as(
           'item_id',
         ),
@@ -568,6 +569,9 @@ export default class DecisionAnalytics {
         })),
         createdAt: decisionWithPayload.created_at,
         assignedAt: decisionWithPayload.assigned_at,
+        jobCreatedAt: decisionWithPayload.job_created_at
+          ? new Date(decisionWithPayload.job_created_at)
+          : null,
         decisionReason: decisionWithPayload.decision_reason,
         jobId: decisionWithPayload.job_id,
       },
