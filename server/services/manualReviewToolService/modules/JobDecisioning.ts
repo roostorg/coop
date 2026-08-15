@@ -687,11 +687,27 @@ export default class JobDecisioning {
     );
     const assignedAt =
       recordAssignedAt && reviewerId != null && !isAutomaticClose
-        ? await this.claimOps.getLatestClaimedAt({
-            orgId,
-            jobId: job.id,
-            userId: reviewerId,
-          })
+        ? await this.claimOps
+            .getLatestClaimedAt({
+              orgId,
+              jobId: job.id,
+              userId: reviewerId,
+            })
+            .catch((error: unknown) => {
+              this.tracer.addSpan(
+                {
+                  resource: 'mrtService',
+                  operation: 'logDecision.getLatestClaimedAt',
+                },
+                (span) => {
+                  span.setAttribute('job.id', job.id);
+                  span.setAttribute('org.id', orgId);
+                  this.tracer.logSpanFailed(span, error);
+                  return null;
+                },
+              );
+              return null;
+            })
         : null;
 
     return this.pgQuery

@@ -50,7 +50,11 @@ export default function ManualReviewDefaultCharts({
   return (
     <div className="flex flex-col gap-4 pb-4">
       {handleTimeError ? (
-        <div className="px-4 py-3 text-sm font-medium text-red-700 bg-red-50 border border-solid rounded border-red-200">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="px-4 py-3 text-sm font-medium text-red-700 bg-red-50 border border-solid rounded border-red-200"
+        >
           Failed to load average handle time. Try refreshing the page or
           adjusting the date range.
         </div>
@@ -108,7 +112,7 @@ export default function ManualReviewDefaultCharts({
           loading={loading}
         />
         <ManualReviewDashboardInsightsCard
-          title="Avg Minutes After Pickup"
+          title="Average Handle Time (min)"
           value={
             averageHandleTimeInWindow != null
               ? Number((averageHandleTimeInWindow / 60).toFixed(2))
@@ -123,6 +127,7 @@ export default function ManualReviewDefaultCharts({
                 )
               : undefined
           }
+          lowerIsBetter
           timeWindow={timeWindow}
           icon={
             <HistoryOutlined className="flex p-2 text-lg rounded-lg bg-coop-lightblue text-coop-blue" />

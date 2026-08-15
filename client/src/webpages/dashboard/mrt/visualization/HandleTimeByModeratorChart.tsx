@@ -121,14 +121,14 @@ export default function HandleTimeByModeratorChart({
 
   const getReviewerNameFromId = (reviewerId: string | null | undefined) => {
     if (!reviewerId) {
-      return 'Other';
+      return 'Unknown';
     }
     const user = orgQueryData?.myOrg?.users.find((it) => it.id === reviewerId);
     if (!user) {
-      return 'Other';
+      return `Unknown (${reviewerId.slice(0, 8)})`;
     }
     const name = `${user.firstName} ${user.lastName}`.trim();
-    return name || 'Other';
+    return name || `Unknown (${reviewerId.slice(0, 8)})`;
   };
 
   const formattedData = handleTime

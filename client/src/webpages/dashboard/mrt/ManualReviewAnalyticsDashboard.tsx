@@ -76,7 +76,9 @@ export default function ManualReviewAnalyticsDashboard() {
         timeWindow.start.getTime() -
           (timeWindow.end.getTime() - timeWindow.start.getTime()),
       ),
-      end: new Date(timeWindow.start),
+      // Inclusive filters on both client and server; end one ms before current
+      // window so period-over-period buckets do not overlap.
+      end: new Date(timeWindow.start.getTime() - 1),
     }),
     [timeWindow],
   );

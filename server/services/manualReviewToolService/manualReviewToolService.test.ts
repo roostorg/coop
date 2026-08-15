@@ -1455,12 +1455,11 @@ describe('Manual Review Tool Service', () => {
     );
 
     testWithQueue(
-      'releases the job lock when claim logging fails after dequeue',
+      'still dequeues when claim logging fails',
       async ({ mrtService, org, queue }) => {
         const orgId = org.id;
         const queueId = queue.id;
         const firstReviewerId = uuidv1();
-        const secondReviewerId = uuidv1();
         const jobPayload = makeDummyMrtJobPayload();
 
         await mrtService['queueOps']['addJob']({
@@ -1475,34 +1474,18 @@ describe('Manual Review Tool Service', () => {
           .spyOn(mrtService['claimOps'], 'logClaim')
           .mockRejectedValueOnce(new Error('claim insert failed'));
 
-        await expect(
-          mrtService.dequeueNextJob({
-            orgId,
-            queueId,
-            userId: firstReviewerId,
-          }),
-        ).rejects.toThrow('claim insert failed');
-
-        expect(releaseSpy).toHaveBeenCalledTimes(1);
-        expect(releaseSpy).toHaveBeenCalledWith({
+        const dequeued = await mrtService.dequeueNextJob({
           orgId,
           queueId,
-          lockToken: firstReviewerId,
-          jobId: expect.any(String),
+          userId: firstReviewerId,
         });
-        const releasedJobId = releaseSpy.mock.calls[0][0].jobId;
+
+        expect(dequeued).not.toBeNull();
+        expect(dequeued?.lockToken).toBe(firstReviewerId);
+        expect(releaseSpy).not.toHaveBeenCalled();
 
         logClaimSpy.mockRestore();
         releaseSpy.mockRestore();
-
-        const reclaimed = await mrtService.dequeueNextJob({
-          orgId,
-          queueId,
-          userId: secondReviewerId,
-        });
-        expect(reclaimed).not.toBeNull();
-        expect(reclaimed?.job.id).toBe(releasedJobId);
-        expect(reclaimed?.lockToken).toBe(secondReviewerId);
       },
     );
   });

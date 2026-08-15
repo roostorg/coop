@@ -35,7 +35,11 @@ import {
   type GQLUserManualReviewJobPayloadResolvers,
 } from '../generated.js';
 import { formatItemSubmissionForGQL } from '../types.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 
@@ -2043,13 +2047,18 @@ const Query: GQLQueryResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
+    const startDate = new Date(input.filterBy.startDate);
+    const endDate = new Date(input.filterBy.endDate);
+    if (startDate.getTime() > endDate.getTime()) {
+      throw userInputError('startDate must not be after endDate');
+    }
     const result = await context.services.ManualReviewToolService.getHandleTime(
       {
         groupBy: input.groupBy.map((it) => it.toLowerCase()),
         filterBy: {
           ...input.filterBy,
-          startDate: new Date(input.filterBy.startDate),
-          endDate: new Date(input.filterBy.endDate),
+          startDate,
+          endDate,
         },
         orgId: user.orgId,
       },

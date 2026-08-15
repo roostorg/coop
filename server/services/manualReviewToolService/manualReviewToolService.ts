@@ -1239,12 +1239,11 @@ export class ManualReviewToolService {
     });
     if (!shouldBeAutoActioned || !job) {
       if (job) {
-        await this.#logClaimOrReleaseLock({
+        await this.#logClaimBestEffort({
           orgId,
           queueId,
           userId,
           jobId: job.job.id,
-          lockToken: job.lockToken,
         });
       }
       return job;
@@ -1263,12 +1262,11 @@ export class ManualReviewToolService {
         })
         .catch(() => null);
       if (!freshItemInfo) {
-        await this.#logClaimOrReleaseLock({
+        await this.#logClaimBestEffort({
           orgId,
           queueId,
           userId,
           jobId: job.job.id,
-          lockToken: job.lockToken,
         });
         return job;
       }
@@ -1296,12 +1294,11 @@ export class ManualReviewToolService {
       // deleted, we should auto-close the job and move on to the next one.
       shouldBeAutoActioned = deletedFieldValue || isDeletedFieldRole;
       if (!shouldBeAutoActioned) {
-        await this.#logClaimOrReleaseLock({
+        await this.#logClaimBestEffort({
           orgId,
           queueId,
           userId,
           jobId: job.job.id,
-          lockToken: job.lockToken,
         });
         return job;
       } else {
@@ -1332,14 +1329,17 @@ export class ManualReviewToolService {
     return null;
   }
 
-  async #logClaimOrReleaseLock(opts: {
+  /**
+   * Claim rows are analytics-only (`assigned_at` is nullable; handle-time
+   * queries skip nulls). Match `job_creations` logging: never block dequeue.
+   */
+  async #logClaimBestEffort(opts: {
     orgId: string;
     queueId: string;
     userId: string;
     jobId: JobId;
-    lockToken: string;
   }) {
-    const { orgId, queueId, userId, jobId, lockToken } = opts;
+    const { orgId, queueId, userId, jobId } = opts;
     try {
       await this.claimOps.logClaim({
         orgId,
@@ -1348,13 +1348,19 @@ export class ManualReviewToolService {
         userId,
       });
     } catch (error) {
-      await this.queueOps.releaseJobLock({
-        orgId,
-        queueId,
-        jobId,
-        lockToken,
-      });
-      throw error;
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'logClaimBestEffort',
+        },
+        (span) => {
+          span.setAttribute('job.id', jobId);
+          span.setAttribute('org.id', orgId);
+          span.setAttribute('queue.id', queueId);
+          this.tracer.logSpanFailed(span, error);
+          return null;
+        },
+      );
     }
   }
 

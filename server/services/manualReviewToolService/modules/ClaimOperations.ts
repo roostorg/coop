@@ -10,7 +10,7 @@ export default class ClaimOperations {
 
   async logClaim(opts: {
     orgId: string;
-    jobId: JobId | string;
+    jobId: JobId;
     queueId: string;
     userId: string;
   }) {
@@ -36,7 +36,7 @@ export default class ClaimOperations {
 
   async getLatestClaimedAt(opts: {
     orgId: string;
-    jobId: JobId | string;
+    jobId: JobId;
     userId?: string;
   }): Promise<Date | null> {
     const { orgId, jobId, userId } = opts;
