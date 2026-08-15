@@ -219,17 +219,17 @@ function RecentUserStrikeActionsTable() {
           values.creatorId && values.creatorTypeId
             ? { id: values.creatorId, typeId: values.creatorTypeId }
             : null;
-        const userId = creatorIdentity?.id ?? values.itemId;
-        const userTypeId = creatorIdentity?.typeId ?? values.itemTypeId;
         return {
-          user: (
+          user: creatorIdentity ? (
             <Link
               className="cursor-pointer shrink-0"
-              to={`/dashboard/manual_review/investigation?id=${userId}&typeId=${userTypeId}`}
+              to={`/dashboard/manual_review/investigation?id=${creatorIdentity.id}&typeId=${creatorIdentity.typeId}`}
               target="_blank"
             >
-              {userId}
+              {creatorIdentity.id}
             </Link>
+          ) : (
+            <span className="text-gray-500">{values.itemId}</span>
           ),
           action: actionsById
             ? (actionsById[values.actionId] ?? 'Unknown')

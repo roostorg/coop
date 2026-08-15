@@ -174,7 +174,7 @@ describe('ClickhouseActionExecutionsAdapter.getRecentUserStrikeActions', () => {
     });
   });
 
-  it('returns null creator fields when columns are missing', async () => {
+  it('returns null creator fields when columns are null', async () => {
     const ts = '2026-06-01T10:00:00.000Z';
     const { adapter } = makeAdapter([
       {
@@ -220,6 +220,31 @@ describe('ClickhouseActionExecutionsAdapter.getRecentUserStrikeActions', () => {
     });
 
     expect(results[0]?.creatorId).toBe('user-5');
+    expect(results[0]?.creatorTypeId).toBeNull();
+  });
+
+  it('normalizes empty-string creator fields to null', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'content-1',
+        item_type_id: 'content-type-A',
+        item_type_kind: 'CONTENT',
+        item_creator_id: '',
+        item_creator_type_id: '',
+        action_id: 'action-ban',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.creatorId).toBeNull();
     expect(results[0]?.creatorTypeId).toBeNull();
   });
 
