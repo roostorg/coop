@@ -185,6 +185,51 @@ export default class DecisionAnalytics {
       .execute();
   }
 
+  /**
+   * Average handle time (seconds): last claim → decision.
+   * Excludes decisions with no assigned_at (historical or auto-close without claim).
+   */
+  async getHandleTime(input: HandleTimeInput) {
+    const { orgId, groupBy, filterBy } = input;
+    const { ref } = this.pgQuery.dynamic;
+    return this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_decisions as decisions')
+      .select(({ fn, val }) =>
+        fn<number | null>('date_part', [
+          val('EPOCH'),
+          fn.avg<number | null>(({ eb, ref }) =>
+            eb('decisions.created_at', '-', ref('decisions.assigned_at')),
+          ),
+        ]).as('handle_time'),
+      )
+      .$if(groupBy.includes('queue_id'), (qb) =>
+        qb.select('decisions.queue_id as queue_id'),
+      )
+      .$if(groupBy.includes('reviewer_id'), (qb) =>
+        qb.select('decisions.reviewer_id as reviewer_id'),
+      )
+      .where((eb) => {
+        return eb.and([
+          eb('decisions.org_id', '=', orgId),
+          eb('decisions.assigned_at', 'is not', null),
+          eb('decisions.created_at', '>=', filterBy.startDate),
+          eb('decisions.created_at', '<=', filterBy.endDate),
+          ...(filterBy.queueIds.length > 0
+            ? [eb('decisions.queue_id', 'in', filterBy.queueIds)]
+            : []),
+          ...(filterBy.reviewerIds.length > 0
+            ? [eb('decisions.reviewer_id', 'in', filterBy.reviewerIds)]
+            : []),
+        ]);
+      })
+      .$if(groupBy.length > 0, (qb) =>
+        qb.groupBy([
+          ...groupBy.map((it) => ref(`decisions.${it as string}`)).flat(),
+        ]),
+      )
+      .execute();
+  }
+
   async getJobCreations(input: JobCreationsInput) {
     const { groupBy, filterBy, orgId, timeDivision, timeZone } = input;
 
@@ -266,6 +311,7 @@ export default class DecisionAnalytics {
           'item_type_id',
         ),
         'decision_reason',
+        'assigned_at',
         sql<string>`(job_payload->>'id')::text`.as('job_id'),
       ])
       .where('org_id', '=', orgId)
@@ -394,6 +440,7 @@ export default class DecisionAnalytics {
         type: 'RELATED_ACTION' as const,
       })),
       createdAt: decision.created_at,
+      assignedAt: decision.assigned_at,
       decisionReason: decision.decision_reason,
       jobId: decision.job_id,
     }));
@@ -465,6 +512,7 @@ export default class DecisionAnalytics {
         'related_actions',
         'created_at',
         'decision_reason',
+        'assigned_at',
         sql<string>`((job_payload->'payload'::text)->'item'::text) -> 'itemId'::text`.as(
           'item_id',
         ),
@@ -519,6 +567,7 @@ export default class DecisionAnalytics {
           type: 'RELATED_ACTION' as const,
         })),
         createdAt: decisionWithPayload.created_at,
+        assignedAt: decisionWithPayload.assigned_at,
         decisionReason: decisionWithPayload.decision_reason,
         jobId: decisionWithPayload.job_id,
       },
@@ -542,6 +591,17 @@ export type TimeToActionInput = ReadonlyDeep<{
   filterBy: {
     itemTypeIds: string[];
     queueIds: string[];
+    startDate: Date;
+    endDate: Date;
+  };
+}>;
+
+export type HandleTimeInput = ReadonlyDeep<{
+  orgId: string;
+  groupBy: Array<'queue_id' | 'reviewer_id'>;
+  filterBy: {
+    queueIds: string[];
+    reviewerIds: string[];
     startDate: Date;
     endDate: Date;
   };

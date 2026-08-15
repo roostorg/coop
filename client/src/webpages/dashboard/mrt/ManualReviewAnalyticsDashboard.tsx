@@ -2,7 +2,7 @@ import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import ManualReviewCustomCharts from '@/webpages/dashboard/mrt/visualization/ManualReviewCustomCharts';
 import ManualReviewDefaultCharts from '@/webpages/dashboard/mrt/visualization/ManualReviewDefaultCharts';
 import { gql } from '@apollo/client';
-import { startOfHour, subDays } from 'date-fns';
+import { endOfDay, startOfDay, subDays } from 'date-fns';
 import sum from 'lodash/sum';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -11,6 +11,7 @@ import DashboardHeader from '../components/DashboardHeader';
 import TabBar from '../components/TabBar';
 
 import {
+  useGQLGetAverageHandleTimeSummaryQuery,
   useGQLGetAverageTimeToReviewQuery,
   useGQLManualReviewMetricsQuery,
 } from '../../../graphql/generated';
@@ -34,12 +35,26 @@ gql`
       queueId
     }
   }
+  query getAverageHandleTimeSummary($input: HandleTimeInput!) {
+    getHandleTime(input: $input) {
+      handleTimeSeconds
+      reviewerId
+      queueId
+    }
+  }
 `;
 
 export default function ManualReviewAnalyticsDashboard() {
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>({
-    start: startOfHour(subDays(new Date(), 7)),
-    end: startOfHour(new Date()),
+  // Match DateRangePicker's "Last 7 Days" preset (startOfDay 6 days ago →
+  // endOfDay today) so the initial load includes today's decisions. Using
+  // startOfHour(now) as the end previously dropped anything after the top of
+  // the current hour.
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>(() => {
+    const today = new Date();
+    return {
+      start: startOfDay(subDays(today, 6)),
+      end: endOfDay(today),
+    };
   });
 
   const [activeTab, setActiveTab] =
@@ -55,7 +70,9 @@ export default function ManualReviewAnalyticsDashboard() {
   ) => {
     return arr?.filter((elemWithDate) => {
       const time = new Date(elemWithDate.date).getTime();
-      return time > window.start.getTime() && time < window.end.getTime();
+      // Inclusive bounds so daily ingestion buckets at midnight on the first
+      // selected day are counted (matches SQL >= / <= used by handle-time).
+      return time >= window.start.getTime() && time <= window.end.getTime();
     });
   };
 
@@ -121,6 +138,48 @@ export default function ManualReviewAnalyticsDashboard() {
   const previousPeriodTimeToAction =
     previousTimeToActionData?.getTimeToAction?.[0].timeToAction ?? 0;
 
+  const {
+    loading: handleTimeLoading,
+    data: handleTimeData,
+    error: handleTimeError,
+  } = useGQLGetAverageHandleTimeSummaryQuery({
+    variables: {
+      input: {
+        groupBy: [],
+        filterBy: {
+          startDate: timeWindow.start,
+          endDate: timeWindow.end,
+          queueIds: [],
+          reviewerIds: [],
+        },
+      },
+    },
+  });
+  const {
+    loading: previousHandleTimeLoading,
+    data: previousHandleTimeData,
+    error: previousHandleTimeError,
+  } = useGQLGetAverageHandleTimeSummaryQuery({
+    variables: {
+      input: {
+        groupBy: [],
+        filterBy: {
+          startDate: previousTimeWindow.start,
+          endDate: previousTimeWindow.end,
+          queueIds: [],
+          reviewerIds: [],
+        },
+      },
+    },
+  });
+
+  const currentPeriodHandleTime =
+    handleTimeData?.getHandleTime?.[0]?.handleTimeSeconds ?? undefined;
+  const previousPeriodHandleTime =
+    previousHandleTimeData?.getHandleTime?.[0]?.handleTimeSeconds ?? undefined;
+  const handleTimeQueryFailed =
+    handleTimeError != null || previousHandleTimeError != null;
+
   return (
     <div>
       <Helmet>
@@ -158,10 +217,21 @@ export default function ManualReviewAnalyticsDashboard() {
         <ManualReviewDefaultCharts
           timeWindow={timeWindow}
           loading={
-            loading ?? timeToActionLoading ?? previousTimeToActionLoading
+            loading ||
+            timeToActionLoading ||
+            previousTimeToActionLoading ||
+            handleTimeLoading ||
+            previousHandleTimeLoading
           }
           averageTimeToReviewInWindow={currentPeriodTimeToAction ?? 0}
           averageTimeToReviewInPreviousWindow={previousPeriodTimeToAction ?? 0}
+          averageHandleTimeInWindow={
+            handleTimeQueryFailed ? undefined : currentPeriodHandleTime
+          }
+          averageHandleTimeInPreviousWindow={
+            handleTimeQueryFailed ? undefined : previousPeriodHandleTime
+          }
+          handleTimeError={handleTimeQueryFailed}
           totalIngestedReportsInWindow={totalIngestedReportsInTimeWindow}
           totalIngestedReportsInPreviousWindow={
             totalIngestedReportsInPreviousWindow

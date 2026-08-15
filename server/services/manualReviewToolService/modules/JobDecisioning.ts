@@ -28,6 +28,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import type ClaimOperations from './ClaimOperations.js';
 import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
@@ -191,6 +192,7 @@ export default class JobDecisioning {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly manualReviewToolSettings: ManualReviewToolSettings,
+    private readonly claimOps: ClaimOperations,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -540,6 +542,9 @@ export default class JobDecisioning {
         relatedActions: [],
         enqueueSourceInfo: job.enqueueSourceInfo,
         decisionReason,
+        // Swept dispositions are not a pickup→decision by this reviewer for
+        // this job; never inherit a stale prior claim into handle-time metrics.
+        recordAssignedAt: false,
       });
     } catch (error) {
       // A concurrent reviewer already decided this job; nothing left to do.
@@ -620,6 +625,11 @@ export default class JobDecisioning {
     relatedActions: ManualReviewDecisionRelatedAction[];
     enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
     decisionReason?: string;
+    /**
+     * When false, leave assigned_at NULL even if a prior claim exists
+     * (swept dispositions). Defaults to true for normal submitDecision.
+     */
+    recordAssignedAt?: boolean;
   }) {
     const {
       id,
@@ -631,6 +641,7 @@ export default class JobDecisioning {
       relatedActions,
       enqueueSourceInfo,
       decisionReason,
+      recordAssignedAt = true,
     } = opts;
 
     const itemType = await this.moderationConfigService.getItemType({
@@ -677,6 +688,21 @@ export default class JobDecisioning {
       );
     }
 
+    // Handle time is claim → human decision. Automatic closes and swept
+    // dispositions must leave assigned_at NULL so they are excluded from
+    // averages — they were never "picked up and completed" for this decision.
+    const isAutomaticClose = decisionComponents.some(
+      (component) => component.type === 'AUTOMATIC_CLOSE',
+    );
+    const assignedAt =
+      recordAssignedAt && reviewerId != null && !isAutomaticClose
+        ? await this.claimOps.getLatestClaimedAt({
+            orgId,
+            jobId: job.id,
+            userId: reviewerId,
+          })
+        : null;
+
     return this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
       .values({
@@ -693,6 +719,7 @@ export default class JobDecisioning {
         enqueue_source_info: enqueueSourceInfo,
         item_created_at: itemCreatedAt,
         decision_reason: decisionReason,
+        assigned_at: assignedAt,
       })
       .execute();
   }

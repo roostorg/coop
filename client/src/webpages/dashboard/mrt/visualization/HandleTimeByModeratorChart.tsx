@@ -4,6 +4,7 @@ import {
   EllipsisOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
+import { gql } from '@apollo/client';
 import { Tooltip as AntTooltip } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -22,54 +23,37 @@ import {
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
-import CoopButton from '../../components/CoopButton';
 
 import {
-  GQLTimeToActionFilterByInput,
-  useGQLGetAverageTimeToReviewLazyQuery,
+  useGQLGetAverageHandleTimeLazyQuery,
   useGQLManualReviewDecisionInsightsOrgInfoQuery,
 } from '../../../../graphql/generated';
 import { safePick } from '../../../../utils/misc';
-import type { TimeDivisionOptions } from '../../overview/Overview';
 import { chartColors } from '../../rules/dashboard/visualization/chartColors';
 import { TimeWindow } from '../../rules/dashboard/visualization/RulesDashboardInsights';
-import { ManualReviewDashboardInsightsGroupByColumns } from './ManualReviewDashboardInsightsGroupBy';
 
-interface TimeToActionByQueueChartProps {
+gql`
+  query getAverageHandleTime($input: HandleTimeInput!) {
+    getHandleTime(input: $input) {
+      handleTimeSeconds
+      reviewerId
+      queueId
+    }
+  }
+`;
+
+interface HandleTimeByModeratorChartProps {
   timeWindow: TimeWindow;
   title?: string;
-  isCustomTitle?: boolean;
-  initialTimeDivision?: TimeDivisionOptions;
-  initialFilterBy?: Partial<GQLTimeToActionFilterByInput>;
-  hideGroupBy?: boolean;
-  hideFilterBy?: boolean;
-  hideTotal?: boolean;
-  hideChartSelection?: boolean;
   hideBorder?: boolean;
   hideOptions?: boolean;
   infoText?: string;
   narrowMode?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
-  onSelectGroupBy?: (
-    groupBy: ManualReviewDashboardInsightsGroupByColumns | undefined,
-  ) => void;
-  onUpdateFilterBy?: (filterBy: GQLTimeToActionFilterByInput) => void;
-  onSelectTimeDivision?: (timeDivision: TimeDivisionOptions) => void;
 }
 
-export function getEmptyFilterState(
-  timeWindow: TimeWindow,
-): GQLTimeToActionFilterByInput {
-  return {
-    itemTypeIds: [],
-    queueIds: [],
-    startDate: timeWindow.start,
-    endDate: timeWindow.end,
-  };
-}
-
-export default function TimeToActionByQueueChart({
+export default function HandleTimeByModeratorChart({
   timeWindow,
   title,
   hideBorder = false,
@@ -78,40 +62,40 @@ export default function TimeToActionByQueueChart({
   narrowMode = false,
   onEdit,
   onDelete,
-}: TimeToActionByQueueChartProps) {
+}: HandleTimeByModeratorChartProps) {
   const [optionsVisible, setOptionsVisible] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);
 
   const [
-    getTimeToReview,
+    getHandleTime,
     {
-      loading: timeToReviewLoading,
-      error: timeToReviewError,
-      data: timeToReviewData,
+      loading: handleTimeLoading,
+      error: handleTimeError,
+      data: handleTimeData,
     },
-  ] = useGQLGetAverageTimeToReviewLazyQuery();
+  ] = useGQLGetAverageHandleTimeLazyQuery();
 
-  const [timeToReview, loading, error] = [
-    timeToReviewData?.getTimeToAction,
-    timeToReviewLoading,
-    timeToReviewError,
+  const [handleTime, loading, error] = [
+    handleTimeData?.getHandleTime,
+    handleTimeLoading,
+    handleTimeError,
   ];
 
   useEffect(() => {
-    getTimeToReview({
+    getHandleTime({
       variables: {
         input: {
-          groupBy: ['QUEUE_ID'],
+          groupBy: ['REVIEWER_ID'],
           filterBy: {
             startDate: timeWindow.start,
             endDate: timeWindow.end,
-            itemTypeIds: [],
             queueIds: [],
+            reviewerIds: [],
           },
         },
       },
     });
-  }, [getTimeToReview, timeWindow]);
+  }, [getHandleTime, timeWindow]);
 
   const { data: orgQueryData } =
     useGQLManualReviewDecisionInsightsOrgInfoQuery();
@@ -135,22 +119,27 @@ export default function TimeToActionByQueueChart({
     };
   }, [optionsVisible]);
 
-  const getQueueNameFromId = (queue_id: string | undefined) => {
-    if (!queue_id) {
+  const getReviewerNameFromId = (reviewerId: string | null | undefined) => {
+    if (!reviewerId) {
       return 'Other';
     }
-    return (
-      orgQueryData?.myOrg?.mrtQueues.find((it) => it.id === queue_id)?.name ??
-      'Other'
-    );
+    const user = orgQueryData?.myOrg?.users.find((it) => it.id === reviewerId);
+    if (!user) {
+      return 'Other';
+    }
+    const name = `${user.firstName} ${user.lastName}`.trim();
+    return name || 'Other';
   };
 
-  const formattedData = timeToReview?.map((it) => ({
-    timeToAction: it.timeToAction
-      ? Number((it.timeToAction / 60 / 60).toFixed(2))
-      : 0,
-    queue: getQueueNameFromId(it.queueId ?? undefined),
-  }));
+  const formattedData = handleTime
+    ?.filter(
+      (it): it is typeof it & { handleTimeSeconds: number } =>
+        it.handleTimeSeconds != null,
+    )
+    .map((it) => ({
+      handleTimeMinutes: Number((it.handleTimeSeconds / 60).toFixed(2)),
+      reviewer: getReviewerNameFromId(it.reviewerId),
+    }));
 
   const renderLegend = ({ payload }: { payload?: Payload[] }) => (
     <div className="flex flex-wrap gap-1 p-1 overflow-auto border border-solid rounded max-h-24 border-slate-200">
@@ -222,11 +211,6 @@ export default function TimeToActionByQueueChart({
       <div className="text-sm text-slate-400">
         No data available for the selected time period.
       </div>
-      <CoopButton
-        title="Reset Filters"
-        onClick={() => getEmptyFilterState(timeWindow)}
-        size="small"
-      />
     </div>
   );
 
@@ -235,8 +219,9 @@ export default function TimeToActionByQueueChart({
     icon: ReactNode,
     onClick?: () => void,
   ) => (
-    <div
-      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-slate-500 font-medium bg-white hover:bg-coop-lightblue-hover"
+    <button
+      type="button"
+      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-slate-500 font-medium bg-white hover:bg-coop-lightblue-hover border-0 w-full"
       onClick={() => {
         onClick?.();
         setOptionsVisible(false);
@@ -244,7 +229,7 @@ export default function TimeToActionByQueueChart({
     >
       {icon}
       {optionTitle}
-    </div>
+    </button>
   );
 
   const optionsMenu = (
@@ -253,17 +238,22 @@ export default function TimeToActionByQueueChart({
         narrowMode ? 'self-center xl:self-start' : 'self-center'
       }`}
     >
-      <div
+      <button
+        type="button"
+        aria-label="Chart options"
+        aria-expanded={optionsVisible}
+        aria-haspopup="menu"
         className={`${
           optionsVisible ? 'bg-slate-100' : ''
-        } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit`}
+        } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit border-0 bg-transparent`}
         onClick={() => setOptionsVisible((prev) => !prev)}
       >
         <EllipsisOutlined className="flex text-2xl" />
-      </div>
+      </button>
       {optionsVisible && (
         <div
           ref={optionsRef}
+          role="menu"
           className="absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200"
         >
           {onEdit && optionButton('Edit', <EditOutlined />, onEdit)}
@@ -319,12 +309,12 @@ export default function TimeToActionByQueueChart({
             ) : (
               <BarChart data={formattedData}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="queue" tickLine={false} />
+                <XAxis dataKey="reviewer" tickLine={false} />
                 <YAxis
                   tickLine={false}
                   stroke="#d4d4d8"
                   label={{
-                    value: `Average Time in Review (hours)`,
+                    value: `Average handle time (minutes)`,
                     style: { textAnchor: 'middle' },
                     angle: -90,
                     position: 'left',
@@ -333,15 +323,15 @@ export default function TimeToActionByQueueChart({
                 />
                 <Legend
                   payload={formattedData?.map((it) => ({
-                    value: it.queue,
+                    value: it.reviewer,
                   }))}
                   content={renderLegend}
                 />
                 <Tooltip content={customTooltip} />
                 <Bar
-                  name={'Hours in Review'}
+                  name={'Minutes after pickup'}
                   type="monotone"
-                  dataKey={'timeToAction'}
+                  dataKey={'handleTimeMinutes'}
                 >
                   {formattedData?.map((_, index) => (
                     <Cell

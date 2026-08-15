@@ -9,6 +9,7 @@ import {
   TimeWindow,
 } from '../../rules/dashboard/visualization/RulesDashboardInsights';
 import ManualReviewDecisionsTable from '../ManualReviewDecisionsTable';
+import HandleTimeByModeratorChart from './HandleTimeByModeratorChart';
 import ManualReviewDashboardInsightsCard from './ManualReviewDashboardInsightsCard';
 import ManualReviewDashboardInsightsChart from './ManualReviewDashboardInsightsChart';
 import TimeToActionByQueueChart from './TimeToActionChart';
@@ -20,6 +21,9 @@ interface ManualReviewDefaultChartsProps {
   totalIngestedReportsInPreviousWindow: number | undefined;
   averageTimeToReviewInWindow: number | undefined;
   averageTimeToReviewInPreviousWindow: number | undefined;
+  averageHandleTimeInWindow: number | undefined;
+  averageHandleTimeInPreviousWindow: number | undefined;
+  handleTimeError?: boolean;
   currentlyOpenJobs: number;
 }
 
@@ -30,6 +34,9 @@ export default function ManualReviewDefaultCharts({
   totalIngestedReportsInPreviousWindow,
   averageTimeToReviewInWindow,
   averageTimeToReviewInPreviousWindow,
+  averageHandleTimeInWindow,
+  averageHandleTimeInPreviousWindow,
+  handleTimeError = false,
   currentlyOpenJobs,
 }: ManualReviewDefaultChartsProps) {
   const getPercentChange = (oldValue: number, newValue: number) => {
@@ -42,7 +49,13 @@ export default function ManualReviewDefaultCharts({
 
   return (
     <div className="flex flex-col gap-4 pb-4">
-      <div className="flex gap-4">
+      {handleTimeError ? (
+        <div className="px-4 py-3 text-sm font-medium text-red-700 bg-red-50 border border-solid rounded border-red-200">
+          Failed to load average handle time. Try refreshing the page or
+          adjusting the date range.
+        </div>
+      ) : null}
+      <div className="flex flex-wrap gap-4">
         <ManualReviewDashboardInsightsCard
           title="Jobs Created"
           value={totalIngestedReportsInWindow}
@@ -91,6 +104,28 @@ export default function ManualReviewDefaultCharts({
           timeWindow={timeWindow}
           icon={
             <HistoryOutlined className="flex p-2 text-lg rounded-lg bg-coop-lightorange text-coop-orange" />
+          }
+          loading={loading}
+        />
+        <ManualReviewDashboardInsightsCard
+          title="Avg Minutes After Pickup"
+          value={
+            averageHandleTimeInWindow != null
+              ? Number((averageHandleTimeInWindow / 60).toFixed(2))
+              : undefined
+          }
+          change={
+            averageHandleTimeInPreviousWindow != null &&
+            averageHandleTimeInWindow != null
+              ? getPercentChange(
+                  averageHandleTimeInPreviousWindow,
+                  averageHandleTimeInWindow,
+                )
+              : undefined
+          }
+          timeWindow={timeWindow}
+          icon={
+            <HistoryOutlined className="flex p-2 text-lg rounded-lg bg-coop-lightblue text-coop-blue" />
           }
           loading={loading}
         />
@@ -194,7 +229,14 @@ export default function ManualReviewDefaultCharts({
           hideGroupBy
           hideTotal
           narrowMode
-          infoText="This chart shows all reviewed jobs per queue."
+          infoText="This chart shows average time from job creation to decision, per queue."
+        />
+        <HandleTimeByModeratorChart
+          timeWindow={timeWindow}
+          title="Average Handle Time By Moderator"
+          hideOptions
+          narrowMode
+          infoText="Average time from when a moderator picks up a job to when they submit a decision. Uses the last claim if a job was skipped or reclaimed."
         />
       </div>
       <ManualReviewDecisionsTable timeWindow={timeWindow} />
