@@ -1,3 +1,10 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
 import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
 import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
@@ -14,19 +21,22 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopBadge, { type BadgeColorVariant } from '../components/CoopBadge';
 import FormHeader from '../components/FormHeader';
-import { stringSort } from '../components/table/sort';
 import Table from '../components/table/Table';
 import UserWithAvatar from '../components/UserWithAvatar';
 
 import {
-  GQLGetRecentDecisionsQuery,
+  GQLGetRecentModerationActivityQuery,
   GQLManualReviewDecision,
+  GQLRecentDecisionsFilterInput,
+  GQLRecentModerationActivityInput,
+  GQLUserPermission,
   useGQLGetDecidedJobFromJobIdQuery,
   useGQLGetDecidedJobLazyQuery,
-  useGQLGetRecentDecisionsLazyQuery,
+  useGQLGetRecentModerationActivityLazyQuery,
   useGQLGetSkipsForRecentDecisionsLazyQuery,
   useGQLOrgLookupDataQuery,
 } from '../../../graphql/generated';
+import { userHasPermissions } from '../../../routing/permissions';
 import { assertUnreachable } from '../../../utils/misc';
 import {
   parseDatetimeToReadableStringInCurrentTimeZone,
@@ -36,10 +46,16 @@ import { jsonParse } from '../../../utils/typescript-types';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
 import { JOB_FRAGMENT } from './manual_review_job/jobFragment';
 import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
+import ManualActionItemsPanel from './ManualActionItemsPanel';
 import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
 import ManualReviewRecentDecisionSummary from './ManualReviewRecentDecisionSummary';
+import {
+  buildActivityCsv,
+  escapeCsvField,
+  type CsvRow,
+} from './moderationActivityCsv';
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
@@ -74,6 +90,10 @@ gql`
   }
 
   query OrgLookupData {
+    me {
+      id
+      permissions
+    }
     myOrg {
       id
       actions {
@@ -98,6 +118,12 @@ gql`
     }
   }
 
+  # This page no longer queries getRecentDecisions directly (it uses
+  # recentModerationActivity below), but the operation stays defined here:
+  # ItemActionHistory.tsx still calls useGQLGetRecentDecisionsQuery, and
+  # graphql-codegen only generates a hook for an operation whose document
+  # text exists somewhere in the client. Removing this would silently break
+  # that unrelated page's codegen output.
   query GetRecentDecisions($input: RecentDecisionsInput!) {
     getRecentDecisions(input: $input) {
       id
@@ -121,12 +147,48 @@ gql`
     }
   }
 
+  # Skips CSV export. This is untouched by the merged-feed cursor paging
+  # above: skips are offset-paged via RecentDecisionsInput { filter, page },
+  # not the activity feed's cursor.
   query getSkipsForRecentDecisions($input: RecentDecisionsInput!) {
     getSkipsForRecentDecisions(input: $input) {
       jobId
       userId
       queueId
       ts
+    }
+  }
+
+  query GetRecentModerationActivity($input: RecentModerationActivityInput!) {
+    recentModerationActivity(input: $input) {
+      nextCursor
+      rows {
+        __typename
+        id
+        ts
+        reviewerId
+        ... on ReviewJobDecisionRow {
+          jobId
+          queueId
+          itemId
+          itemTypeId
+          decisions {
+            ... on ManualReviewDecisionComponentBase {
+              ...ManualReviewDecisionComponentFields
+            }
+          }
+          decisionReason
+        }
+        ... on ManualActionRow {
+          correlationId
+          itemTypeId
+          actionIds
+          policyIds
+          actorNote
+          itemCount
+          failedCount
+        }
+      }
     }
   }
 
@@ -138,11 +200,77 @@ gql`
   }
 `;
 
-type RecentDecision =
-  GQLGetRecentDecisionsQuery['getRecentDecisions'][number]['decisions'][number];
+type ActivityRow =
+  GQLGetRecentModerationActivityQuery['recentModerationActivity']['rows'][number];
+type ReviewJobRow = Extract<
+  ActivityRow,
+  { __typename: 'ReviewJobDecisionRow' }
+>;
+type ManualActionRowData = Extract<
+  ActivityRow,
+  { __typename: 'ManualActionRow' }
+>;
+type RecentDecision = ReviewJobRow['decisions'][number];
+
+/** One row of the merged feed, normalized for the table regardless of which
+ * concrete row type (`ReviewJobDecisionRow` or `ManualActionRow`) it came from. */
+type NormalizedActivityRow = {
+  rowId: string;
+  origin: 'Review Job' | 'Manual Action';
+  ts: ActivityRow['ts'];
+  decisionColorNamePairs: { name: string; colorVariant: BadgeColorVariant }[];
+  policies: string[];
+  reviewer: string;
+  queue: string;
+  reason: string | null | undefined;
+  decision: ReviewJobRow | undefined;
+  action: ManualActionRowData | undefined;
+};
+
+/**
+ * The side panel shows exactly one thing at a time — a decision or a manual
+ * action, never both. Modeling the selection as a single discriminated union
+ * (rather than two independent `useState`s) makes that invariant structural:
+ * setting one always replaces the other, so there's no separate "clear the
+ * other one" call to remember at each call site.
+ */
+type ActivitySelection =
+  | { kind: 'decision'; decision: GQLManualReviewDecision }
+  | { kind: 'action'; action: ManualActionRowData };
+
+/**
+ * The decision-detail side panel and the `getDecidedJob` lookup both predate
+ * the merged feed and still expect a `ManualReviewDecision`-shaped object.
+ * `ReviewJobDecisionRow.id` is the same underlying decision id `getRecentDecisions`
+ * used to return (see `mapDecisionRow` server-side), so this mapping is safe.
+ * `relatedActions` has no equivalent on the row — the merged feed never
+ * fetched it — so it's always empty here.
+ */
+function toManualReviewDecision(row: ReviewJobRow): GQLManualReviewDecision {
+  return {
+    __typename: 'ManualReviewDecision',
+    id: row.id,
+    jobId: row.jobId ?? '',
+    itemId: row.itemId,
+    itemTypeId: row.itemTypeId,
+    queueId: row.queueId ?? '',
+    reviewerId: row.reviewerId,
+    // `ManualReviewDecisionComponentFields` (reused verbatim from the old
+    // GetRecentDecisions query) selects fewer fields per component than the
+    // full schema type declares — e.g. it doesn't fetch `actionIds` on an
+    // accept/reject appeal component. `ManualReviewRecentDecisionSummary`
+    // only ever reads the fields the fragment does select, so this narrowing
+    // is safe; TS can't see that without a cast.
+    decisions: row.decisions as unknown as GQLManualReviewDecision['decisions'],
+    relatedActions: [],
+    createdAt: row.ts,
+    decisionReason: row.decisionReason,
+  };
+}
 
 // Column visibility configuration
 type ColumnId =
+  | 'origin'
   | 'decisionTime'
   | 'decisions'
   | 'policies'
@@ -153,6 +281,7 @@ type ColumnId =
 const COLUMN_VISIBILITY_STORAGE_KEY = 'mrt-recent-decisions-column-visibility';
 
 const defaultColumnVisibility: Record<ColumnId, boolean> = {
+  origin: true,
   decisionTime: true,
   decisions: true,
   decisionReason: true,
@@ -162,6 +291,7 @@ const defaultColumnVisibility: Record<ColumnId, boolean> = {
 };
 
 const columnLabels: Record<ColumnId, string> = {
+  origin: 'Origin',
   decisionTime: 'Decision Time',
   decisions: 'Decisions',
   decisionReason: 'Decision Reason',
@@ -172,31 +302,85 @@ const columnLabels: Record<ColumnId, string> = {
 
 const DECISION_REASON_PREVIEW_LENGTH = 50;
 
-// Escape a value for a CSV field per RFC 4180: wrap in double quotes and double
-// any embedded quotes so free-form text (e.g. decision reasons containing
-// quotes or newlines) doesn't corrupt the output. Also neutralize spreadsheet
-// formula prefixes (=, +, -, @) so a cell can't be interpreted as a formula.
-const toCsvField = (value: unknown): string => {
-  let str = String(value ?? '');
-  if (/^[=+\-@]/.test(str)) {
-    str = `'${str}`;
-  }
-  return `"${str.replace(/"/g, '""')}"`;
+// Runaway guard for both CSV exports: stop paging after this many requests
+// even if the server keeps returning more (e.g. `nextCursor` never goes
+// null, or the offset loop never runs dry).
+const CSV_MAX_PAGES = 100;
+
+// Feed view: which rows `recentModerationActivity` returns. Persisted so a
+// moderator's preference survives a reload.
+type FeedView = 'ALL' | 'DECISIONS' | 'ACTIONS';
+
+const FEED_VIEW_STORAGE_KEY = 'mrt-recent-decisions-feed-view';
+
+/**
+ * Mirrors `MERGED_VIEW_WINDOW_MS` in `ModerationActivityFeed` — the server
+ * bounds how far back a page scans ClickHouse for manual actions. Stated in
+ * the UI because a feed that has run out of window looks exactly like one that
+ * has run out of data. Keep the two in step.
+ */
+const MANUAL_ACTION_WINDOW_DAYS = 30;
+
+const feedViewLabels: Record<FeedView, string> = {
+  ALL: 'All',
+  DECISIONS: 'Decisions',
+  ACTIONS: 'Actions',
 };
+
+/**
+ * Filters only a decision can satisfy. A manual action has no queue and no
+ * decision type, so leaving `Show` on `All` while these are active would leave
+ * the control claiming something the table isn't doing.
+ */
+const isDecisionOnlyFilter = (input: RecentDecisionsFilterInput) =>
+  (input.queueIds?.length ?? 0) > 0 || (input.decisions?.length ?? 0) > 0;
 
 export default function ManualReviewRecentDecisions() {
   const [searchParams] = useSearchParams();
   const [decisionId] = [searchParams.get('decisionId') ?? undefined];
   const [jobId] = [searchParams.get('jobId') ?? undefined];
-  const [selectedDecision, setSelectedDecision] = useState<
-    GQLManualReviewDecision | undefined
-  >(undefined);
+  const [correlationId] = [searchParams.get('correlationId') ?? undefined];
+  const [selection, setSelection] = useState<ActivitySelection | undefined>(
+    undefined,
+  );
+  // Convenience views onto `selection` — kept as plain `const`s (not
+  // separate state) so the "only one selected at a time" invariant lives in
+  // the `ActivitySelection` type rather than needing to be maintained by
+  // hand at every call site that used to clear a second variable.
+  const selectedDecision =
+    selection?.kind === 'decision' ? selection.decision : undefined;
+  const selectedAction =
+    selection?.kind === 'action' ? selection.action : undefined;
   const [userSearchString, setUserSearchString] = useState<string | undefined>(
     searchParams.get('reviewerId') ?? undefined,
   );
   const [unsavedFilterValue, setUnsavedFilterValue] = useState<
     RecentDecisionsFilterInput | undefined
   >(undefined);
+
+  // The `Show` control's value as the user last chose it. Kept separate from
+  // `effectiveView` (below) so a decisions-only filter can force the view
+  // without discarding what the user picked — clearing the filter restores it.
+  const [chosenView, setChosenView] = useState<FeedView>(() => {
+    try {
+      const stored = localStorage.getItem(FEED_VIEW_STORAGE_KEY);
+      return stored === 'DECISIONS' || stored === 'ACTIONS' || stored === 'ALL'
+        ? stored
+        : 'ALL';
+    } catch (e) {
+      // localStorage unavailable (e.g. private browsing); default is fine.
+      return 'ALL';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FEED_VIEW_STORAGE_KEY, chosenView);
+    } catch (e) {
+      // localStorage unavailable (e.g. private browsing); the in-memory
+      // choice still works for the rest of the session.
+    }
+  }, [chosenView]);
 
   // Column visibility state
   const [columnVisibility, setColumnVisibility] = useState<
@@ -262,31 +446,55 @@ export default function ManualReviewRecentDecisions() {
     fetchPolicy: 'cache-and-network',
   });
 
+  // Manual actions are only ever taken from Investigation or Bulk Actioning,
+  // so the server gates them on VIEW_INVESTIGATION. EXTERNAL_MODERATOR — the
+  // read-only role for external moderation partners — is the only role without
+  // it. Mirror the gate here so such a reviewer gets the decisions-only page
+  // they had before this feature, rather than a Show control whose other two
+  // options silently return nothing.
+  // Permissive until permissions actually load, so the common case never
+  // changes the query variables mid-flight and refetches. The server enforces
+  // this gate regardless; this is only about not offering dead controls.
+  const loadedPermissions = orgLookupData?.me?.permissions;
+  const canViewManualActions =
+    loadedPermissions == null ||
+    userHasPermissions(loadedPermissions, [
+      GQLUserPermission.ViewInvestigation,
+    ]);
+
+  // A queue or decision-type filter can only ever match a review-job
+  // decision — a manual action has neither — so applying either forces the
+  // view to Decisions rather than silently rendering only decisions while
+  // the control still reads "All".
+  const decisionsOnly = isDecisionOnlyFilter(unsavedFilterValue ?? {});
+  const effectiveView: FeedView =
+    decisionsOnly || !canViewManualActions ? 'DECISIONS' : chosenView;
+
   const { data: decidedJobFromJobIdData } = useGQLGetDecidedJobFromJobIdQuery({
     variables: { id: jobId! },
     skip: !jobId,
     onCompleted: (data) => {
       if (data.getDecidedJobFromJobId) {
-        setSelectedDecision(
-          data.getDecidedJobFromJobId.decision as GQLManualReviewDecision,
-        );
+        setSelection({
+          kind: 'decision',
+          decision: data.getDecidedJobFromJobId
+            .decision as GQLManualReviewDecision,
+        });
       }
     },
   });
 
   const [
-    getRecentDecisions,
-    {
-      loading: allDecisionsLoading,
-      error: allDecisionsError,
-      data: allDecisionsData,
-    },
-  ] = useGQLGetRecentDecisionsLazyQuery();
+    getModerationActivity,
+    { loading: activityLoading, error: activityError, data: activityData },
+  ] = useGQLGetRecentModerationActivityLazyQuery();
 
+  // Separate lazy-query instances from `getModerationActivity` above so a CSV
+  // export's paging loop doesn't clobber the table's own query state (loading
+  // flag, cached data) while it runs.
+  const [getActivityForDownload] = useGQLGetRecentModerationActivityLazyQuery();
   const [getSkipsForRecentDecisions] =
     useGQLGetSkipsForRecentDecisionsLazyQuery();
-
-  const [getRecentDecisionsForDownload] = useGQLGetRecentDecisionsLazyQuery();
 
   // Confusingly, getDecidedJob is used to get the job associated with a decision
   // whereas getDecidedJobFromJobId is used to get the decision associated with a job
@@ -301,74 +509,249 @@ export default function ManualReviewRecentDecisions() {
 
   const navigate = useNavigate();
 
-  const [page, setPage] = useState(0);
+  // Cursor paging: the server returns the page already ordered, and
+  // `nextCursor` (null at the end of the feed) is all we need to advance.
+  // `cursorStack` remembers each page's starting cursor so "Previous" can
+  // step back through pages already seen without re-deriving an offset.
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+
+  // CSV export loading flags — separate from `activityLoading` (the table's
+  // own query) since a download's paging loop runs on its own lazy-query
+  // instance and shouldn't make the table look like it's refetching.
+  const [downloadingActivity, setDownloadingActivity] = useState(false);
+  const [downloadingSkips, setDownloadingSkips] = useState(false);
+
+  // Shared by both the cursor-paged activity feed and the offset-paged skips
+  // CSV below — the two queries take different paging shapes but the same
+  // filter fields, so this is the one place that maps the filter UI's value
+  // to the GraphQL decision-filter shape.
+  const buildFilterInput = useCallback(
+    (input: RecentDecisionsFilterInput) => {
+      const decisionOrActions = input.decisions?.map((it) => jsonParse(it));
+      return {
+        userSearchString,
+        policyIds: input.policyIds,
+        reviewerIds: input.reviewerIds,
+        queueIds: input.queueIds,
+        startTime: input.dateRange?.startDate,
+        endTime: input.dateRange?.endDate,
+        decisions: decisionOrActions?.map((it) => {
+          switch (it.type) {
+            case 'CUSTOM_ACTION':
+              return {
+                userOrRelatedActionDecision: {
+                  actionIds: [it.actionId],
+                },
+              };
+            case 'IGNORE':
+              return {
+                ignoreDecision: {
+                  _: true,
+                },
+              };
+            case 'AUTOMATIC_CLOSE':
+              return {
+                automaticClose: {
+                  _: true,
+                },
+              };
+            case 'REJECT_APPEAL':
+              return {
+                rejectAppealDecision: {
+                  _: true,
+                },
+              };
+            case 'ACCEPT_APPEAL':
+              return {
+                acceptAppealDecision: {
+                  _: true,
+                },
+              };
+            case 'SUBMIT_NCMEC_REPORT':
+              return {
+                submitNcmecReportDecision: {
+                  _: true,
+                },
+              };
+            case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE':
+              return {
+                transformJobAndRecreateInQueueDecision: {
+                  _: true,
+                },
+              };
+            default:
+              assertUnreachable(it);
+          }
+        }),
+      };
+    },
+    [userSearchString],
+  );
+
+  const buildActivityInput = useCallback(
+    (
+      input: RecentDecisionsFilterInput,
+      cursorArg: string | undefined,
+      view: FeedView,
+    ): GQLRecentModerationActivityInput => ({
+      cursor: cursorArg,
+      view,
+      ...buildFilterInput(input),
+    }),
+    [buildFilterInput],
+  );
+
+  // Skips CSV input: same filter fields as the activity feed, offset-paged
+  // instead of cursor-paged (see `getSkipsForRecentDecisions` above — its
+  // schema is untouched and still takes `{ filter, page }`).
+  const buildSkipsInput = useCallback(
+    (
+      input: RecentDecisionsFilterInput,
+      page: number,
+    ): { filter: GQLRecentDecisionsFilterInput; page: number } => ({
+      filter: buildFilterInput(input),
+      page,
+    }),
+    [buildFilterInput],
+  );
+
   // Handle clicking the page left icon
   const handlePrevious = () => {
-    setPage((prevOffset) => Math.max(0, prevOffset - 1));
-    getRecentDecisions({
+    const previous = cursorStack[cursorStack.length - 1];
+    // Same re-entry guard as `handleNext` — a double-click would pop twice
+    // while only one fetch lands.
+    if (previous === undefined || activityLoading) {
+      return;
+    }
+    const previousCursor = previous === '' ? undefined : previous;
+    setCursorStack((stack) => stack.slice(0, -1));
+    setCursor(previousCursor);
+    setSelection(undefined);
+    getModerationActivity({
       fetchPolicy: 'network-only',
       variables: {
-        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+        input: buildActivityInput(
+          unsavedFilterValue ?? {},
+          previousCursor,
+          effectiveView,
+        ),
       },
     });
   };
 
   // Handle clicking the page right icon
   const handleNext = () => {
-    setPage((prevOffset) => prevOffset + 1);
-    getRecentDecisions({
+    const next = activityData?.recentModerationActivity.nextCursor ?? undefined;
+    // `activityLoading` is the re-entry guard. Without it a double-click read
+    // the same `nextCursor` twice and pushed twice onto `cursorStack`, so the
+    // page counter ran ahead of the content permanently — content on page 2
+    // labelled "Page 3", and Previous never resynced.
+    if (!next || activityLoading) {
+      return;
+    }
+    setCursorStack((stack) => [...stack, cursor ?? '']);
+    setCursor(next);
+    setSelection(undefined);
+    getModerationActivity({
       fetchPolicy: 'network-only',
       variables: {
-        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+        input: buildActivityInput(
+          unsavedFilterValue ?? {},
+          next,
+          effectiveView,
+        ),
       },
     });
   };
 
   useEffect(() => {
+    const activeRow = activityData?.recentModerationActivity.rows.find(
+      (it): it is ReviewJobRow =>
+        it.__typename === 'ReviewJobDecisionRow' && it.id === decisionId,
+    );
     const decision =
-      allDecisionsData?.getRecentDecisions.find((it) => it.id === decisionId) ??
+      (activeRow && toManualReviewDecision(activeRow)) ??
       (decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision?.id ===
       decisionId
         ? decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision
         : undefined);
     if (decision) {
-      setSelectedDecision(decision as GQLManualReviewDecision);
+      setSelection({
+        kind: 'decision',
+        decision: decision as GQLManualReviewDecision,
+      });
     }
   }, [
-    allDecisionsData?.getRecentDecisions,
+    activityData?.recentModerationActivity.rows,
     decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision,
     decisionId,
     jobId,
   ]);
 
+  // Deep-link restore for a manual action, mirroring the decision restore
+  // above — but with one gap: a decision can be restored even when it isn't
+  // on the currently loaded feed page, because `getDecidedJobFromJobId`
+  // looks it up directly. There is no equivalent lookup-by-correlationId
+  // query for manual actions, so this can only restore a selection whose row
+  // is present in `activityData` (i.e. still on the loaded page) — a link
+  // shared while looking at that page still works; a link to an older run
+  // that has since paged out of view does not. Adding that lookup would mean
+  // a new backend query, which is out of scope here.
   useEffect(() => {
-    if (selectedDecision) {
+    if (!correlationId) {
+      return;
+    }
+    const activeActionRow = activityData?.recentModerationActivity.rows.find(
+      (it): it is ManualActionRowData =>
+        it.__typename === 'ManualActionRow' &&
+        it.correlationId === correlationId,
+    );
+    if (activeActionRow) {
+      setSelection({ kind: 'action', action: activeActionRow });
+    }
+  }, [activityData?.recentModerationActivity.rows, correlationId]);
+
+  useEffect(() => {
+    if (selection?.kind === 'decision') {
       getDecidedJob({
-        variables: { id: selectedDecision.id },
+        variables: { id: selection.decision.id },
       });
       navigate(
-        `/dashboard/manual_review/recent/?decisionId=${selectedDecision.id}&jobId=${selectedDecision.jobId}`,
+        `/dashboard/manual_review/recent/?decisionId=${selection.decision.id}&jobId=${selection.decision.jobId}`,
+        {
+          replace: true,
+        },
+      );
+    } else if (selection?.kind === 'action') {
+      navigate(
+        `/dashboard/manual_review/recent/?correlationId=${selection.action.correlationId}`,
         {
           replace: true,
         },
       );
     }
-  }, [
-    getDecidedJob,
-    selectedDecision,
-    navigate,
-    decidedJobData?.getDecidedJob,
-  ]);
+  }, [getDecidedJob, selection, navigate, decidedJobData?.getDecidedJob]);
 
   const columns = useMemo(
     () =>
       filterNullOrUndefined([
+        columnVisibility.origin
+          ? {
+              Header: 'Origin',
+              accessor: 'origin',
+              canSort: false,
+            }
+          : undefined,
         columnVisibility.decisionTime
           ? {
               Header: 'Decision Time',
-              accessor: 'decisionTime',
-              sortDescFirst: true,
-              sortType: stringSort,
+              accessor: 'ts',
+              // The server returns each page already ordered by (ts, kind, id)
+              // descending across both stores. A client-side sort could only
+              // reorder the hundred rows currently loaded, which reads as a
+              // global sort and is not one.
+              canSort: false,
             }
           : undefined,
         columnVisibility.decisions
@@ -403,7 +786,9 @@ export default function ManualReviewRecentDecisions() {
           ? {
               Header: 'Queue',
               accessor: 'queue',
-              canSort: true,
+              // Same reason as Decision Time — and this column renders JSX, so
+              // a comparator would be sorting React elements, not queue names.
+              canSort: false,
             }
           : undefined,
       ]),
@@ -528,121 +913,202 @@ export default function ManualReviewRecentDecisions() {
     [getPolicyName],
   );
 
-  const dataValues = useMemo(() => {
-    if (!allDecisionsData || !orgLookupData?.myOrg) {
+  // A manual action has no decision components of its own — it's just a set
+  // of actions applied directly. Badge them the same way a decision's custom
+  // actions are badged (`UserOrRelatedActionDecisionComponent`, above) so the
+  // merged Decisions column reads consistently regardless of a row's origin.
+  const getActionColorNamePairs = useCallback(
+    (
+      actionIds: readonly string[],
+    ): { name: string; colorVariant: BadgeColorVariant }[] =>
+      actionIds.map((actionId) => ({
+        name: getActionName(actionId),
+        colorVariant: 'soft-red',
+      })),
+    [getActionName],
+  );
+
+  // Normalizes one merged-feed row into the flat, string-only shape the CSV
+  // export writes out. Kept separate from `NormalizedActivityRow` (used by
+  // the table) since the CSV needs raw item/failed counts rather than the
+  // table's pre-rendered JSX.
+  const toCsvRow = useCallback(
+    (row: ActivityRow): CsvRow => {
+      if (row.__typename === 'ManualActionRow') {
+        return {
+          origin: 'Manual Action',
+          outcome: getActionColorNamePairs(row.actionIds).map(
+            ({ name }) => name,
+          ),
+          policies: row.policyIds.map((id) => getPolicyName(id)),
+          reviewer: getReviewerName(row.reviewerId),
+          queue: '',
+          time: parseDatetimeToReadableStringInUTC(new Date(row.ts)),
+          reason: row.actorNote ?? null,
+          itemCount: row.itemCount,
+          failedCount: row.failedCount,
+          link: '',
+        };
+      }
+      return {
+        origin: 'Review Job',
+        outcome: row.decisions.flatMap((it) =>
+          getDecisionColorNamePairs(it, false).map(({ name }) => name),
+        ),
+        policies: row.decisions.flatMap((it) => getPoliciesFromDecision(it)),
+        reviewer: getReviewerName(row.reviewerId),
+        queue: row.queueId ? getQueueName(row.queueId) : '',
+        time: parseDatetimeToReadableStringInUTC(new Date(row.ts)),
+        reason: row.decisionReason ?? null,
+        itemCount: null,
+        failedCount: null,
+        link: `${HOST_URL}/dashboard/manual_review/recent?jobId=${row.jobId ?? ''}`,
+      };
+    },
+    [
+      getActionColorNamePairs,
+      getDecisionColorNamePairs,
+      getPoliciesFromDecision,
+      getPolicyName,
+      getQueueName,
+      getReviewerName,
+    ],
+  );
+
+  const tableRows: NormalizedActivityRow[] | undefined = useMemo(() => {
+    if (!activityData || !orgLookupData?.myOrg) {
       return undefined;
     }
-    const fetchedDecision =
-      decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision;
-    const allDecisions = [
-      ...allDecisionsData.getRecentDecisions,
-      ...(fetchedDecision &&
-      !allDecisionsData.getRecentDecisions.some(
-        (decision) => decision.id === fetchedDecision.id,
-      )
-        ? [fetchedDecision]
-        : []),
-    ];
-
-    return allDecisions.map((decisionData) => {
-      const isSelected = selectedDecision?.id === decisionData.id;
-      return {
-        ...decisionData,
-        decisions: decisionData.decisions
-          .map((decision) =>
-            getDecisionColorNamePairs(decision, isSelected).map(
-              ({ name }) => name,
-            ),
-          )
-          .flat(),
-        decisionColorNamePairs: decisionData.decisions
-          .map((decision) => getDecisionColorNamePairs(decision, isSelected))
-          .flat(),
-        policies: decisionData.decisions.flatMap((decision) =>
-          getPoliciesFromDecision(decision),
-        ),
-        reviewer: getReviewerName(decisionData.reviewerId),
-        queue: getQueueName(decisionData.queueId),
-        decisionTime: decisionData.createdAt,
-        originalDecisionData: decisionData,
-        decisionReason: decisionData.decisionReason,
-      };
-    });
+    return activityData.recentModerationActivity.rows.map(
+      (row): NormalizedActivityRow => {
+        if (row.__typename === 'ManualActionRow') {
+          return {
+            rowId: row.id,
+            origin: 'Manual Action',
+            ts: row.ts,
+            decisionColorNamePairs: getActionColorNamePairs(row.actionIds),
+            policies: row.policyIds.map((id) => getPolicyName(id)),
+            reviewer: getReviewerName(row.reviewerId),
+            queue: '',
+            reason: row.actorNote,
+            decision: undefined,
+            action: row,
+          };
+        }
+        return {
+          rowId: row.id,
+          origin: 'Review Job',
+          ts: row.ts,
+          decisionColorNamePairs: row.decisions.flatMap((it) =>
+            getDecisionColorNamePairs(it, false),
+          ),
+          policies: row.decisions.flatMap((it) => getPoliciesFromDecision(it)),
+          reviewer: getReviewerName(row.reviewerId),
+          queue: row.queueId ? getQueueName(row.queueId) : '',
+          reason: row.decisionReason,
+          decision: row,
+          action: undefined,
+        };
+      },
+    );
   }, [
-    allDecisionsData,
+    activityData,
     orgLookupData?.myOrg,
-    decidedJobFromJobIdData?.getDecidedJobFromJobId?.decision,
+    getActionColorNamePairs,
     getDecisionColorNamePairs,
     getPoliciesFromDecision,
+    getPolicyName,
     getQueueName,
     getReviewerName,
-    selectedDecision?.id,
   ]);
 
+  // No client-side sort: the server returns the page already ordered.
   const tableData = useMemo(() => {
-    if (!dataValues) {
+    if (!tableRows) {
       return undefined;
     }
-    return (
-      dataValues
-        .map((value) => {
-          return {
-            decisions: (
-              <div className="flex flex-wrap gap-1">
-                {value.decisionColorNamePairs.map(
-                  ({ name, colorVariant }, index) => (
-                    <CoopBadge
-                      key={index}
-                      colorVariant={colorVariant}
-                      label={name}
-                      shapeVariant="pill"
-                    />
-                  ),
-                )}
-              </div>
-            ),
-            policies: (
-              <div className="max-w-[220px] whitespace-normal break-words">
-                {value.policies.join(', ')}
-              </div>
-            ),
-            reviewer: <UserWithAvatar name={value.reviewer} />,
-            queue: <div>{value.queue}</div>,
-            decisionTime: (
-              <div>
-                {parseDatetimeToReadableStringInCurrentTimeZone(
-                  new Date(value.decisionTime),
-                )}
-              </div>
-            ),
-            decisionReason: value.decisionReason ? (
-              <Tooltip title={value.decisionReason}>
-                <div className="max-w-xs truncate">
-                  {value.decisionReason.length > DECISION_REASON_PREVIEW_LENGTH
-                    ? `${value.decisionReason.slice(
-                        0,
-                        DECISION_REASON_PREVIEW_LENGTH,
-                      )}…`
-                    : value.decisionReason}
-                </div>
-              </Tooltip>
-            ) : (
-              <div className="text-slate-400">—</div>
-            ),
-            values: value,
-          };
-        })
-        // Sort in reverse-chronological order
-        .sort(
-          (a, b) =>
-            new Date(b.values.decisionTime).valueOf() -
-            new Date(a.values.decisionTime).valueOf(),
-        )
-    );
-  }, [dataValues]);
+    return tableRows.map((row) => ({
+      origin: (
+        <div className="flex flex-col gap-0.5 whitespace-nowrap">
+          <CoopBadge
+            colorVariant={
+              row.origin === 'Review Job' ? 'soft-blue' : 'soft-gray'
+            }
+            label={row.origin}
+            shapeVariant="pill"
+          />
+          {row.action && row.action.itemCount > 1 ? (
+            <button
+              type="button"
+              className="w-fit cursor-pointer text-xs text-slate-400 underline decoration-dotted hover:text-slate-600"
+              onClick={(event) => {
+                // Selecting the action opens the side panel, the same slot a
+                // selected decision uses — not something that should also
+                // fire the row's own `onClick` (which would select the same
+                // thing a second time via the enclosing `<tr onClick>`).
+                event.stopPropagation();
+                if (row.action) {
+                  setSelection({ kind: 'action', action: row.action });
+                }
+              }}
+            >
+              {row.action.itemCount} items
+            </button>
+          ) : null}
+          {row.action && row.action.failedCount > 0 ? (
+            <span className="text-xs font-medium text-coop-alert-red">
+              {row.action.failedCount} of {row.action.itemCount} failed
+            </span>
+          ) : null}
+        </div>
+      ),
+      decisions: (
+        <div className="flex flex-wrap gap-1">
+          {row.decisionColorNamePairs.map(({ name, colorVariant }, index) => (
+            <CoopBadge
+              key={index}
+              colorVariant={colorVariant}
+              label={name}
+              shapeVariant="pill"
+            />
+          ))}
+        </div>
+      ),
+      policies: (
+        <div className="max-w-[220px] whitespace-normal break-words">
+          {row.policies.join(', ')}
+        </div>
+      ),
+      reviewer: <UserWithAvatar name={row.reviewer} />,
+      queue: <div>{row.queue}</div>,
+      decisionTime: (
+        <div>
+          {parseDatetimeToReadableStringInCurrentTimeZone(new Date(row.ts))}
+        </div>
+      ),
+      decisionReason: row.reason ? (
+        <Tooltip title={row.reason}>
+          <div className="max-w-xs truncate">
+            {row.reason.length > DECISION_REASON_PREVIEW_LENGTH
+              ? `${row.reason.slice(0, DECISION_REASON_PREVIEW_LENGTH)}…`
+              : row.reason}
+          </div>
+        </Tooltip>
+      ) : (
+        <div className="text-slate-400">—</div>
+      ),
+      values: row,
+    }));
+  }, [tableRows]);
 
-  if (allDecisionsError || allDecisionsError || decidedJobError) {
-    throw allDecisionsError ?? allDecisionsError ?? decidedJobError!;
+  // Only a feed failure is fatal — without it there is no page. A
+  // `getDecidedJob` failure concerns one selected row, and the panel below
+  // renders an inline message for it. Throwing here ran during render and so
+  // took the whole page to the error boundary, making that inline handler
+  // unreachable: one decision whose item type had been deleted turned the
+  // entire log into "Something Went Wrong".
+  if (activityError) {
+    throw activityError;
   }
 
   const refreshButton = (
@@ -650,221 +1116,172 @@ export default function ManualReviewRecentDecisions() {
       icon={<RedoOutlined className="self-center" />}
       className="!inline-flex"
       onClick={async () =>
-        getRecentDecisions({
+        getModerationActivity({
           fetchPolicy: 'network-only',
           variables: {
-            input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+            input: buildActivityInput(
+              unsavedFilterValue ?? {},
+              cursor,
+              effectiveView,
+            ),
           },
         })
       }
-      loading={allDecisionsLoading || allDecisionsLoading}
+      loading={activityLoading}
     >
       Refresh Table
     </Button>
   );
 
+  // Activity export: pages the same cursor-paged query the table uses, via
+  // its own lazy-query instance (`getActivityForDownload`), looping until
+  // `nextCursor` is null. Capped at `CSV_MAX_PAGES` as a runaway guard.
   const downloadButton = (
     <Button
       className="rounded"
+      loading={downloadingActivity}
       onClick={async () => {
-        const decisions: GQLGetRecentDecisionsQuery[] = [];
-        for (let i = 0; i < 100; i++) {
-          const result = await getRecentDecisionsForDownload({
-            variables: {
-              input: getRecentDecisionsInput(
-                unsavedFilterValue ?? {},
-                page + i,
-              ),
-            },
-          });
-          if (result.data) {
-            decisions.push(result.data);
+        setDownloadingActivity(true);
+        try {
+          const collected: CsvRow[] = [];
+          let downloadCursor: string | undefined;
+
+          for (let page = 0; page < CSV_MAX_PAGES; page++) {
+            const result = await getActivityForDownload({
+              variables: {
+                input: buildActivityInput(
+                  unsavedFilterValue ?? {},
+                  downloadCursor,
+                  effectiveView,
+                ),
+              },
+            });
+            const feed = result.data?.recentModerationActivity;
+            if (!feed) {
+              break;
+            }
+            collected.push(...feed.rows.map(toCsvRow));
+            if (!feed.nextCursor) {
+              break;
+            }
+            downloadCursor = feed.nextCursor;
           }
+
+          const includeActions = effectiveView !== 'DECISIONS';
+          const blob = new Blob([buildActivityCsv(collected, includeActions)], {
+            type: 'text/csv',
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = includeActions
+            ? 'moderation-activity.csv'
+            : 'decisions.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+        } finally {
+          setDownloadingActivity(false);
         }
-        const allDecisions = decisions.flatMap((it) => it.getRecentDecisions);
-        const allDecisionsCsv = allDecisions.map((decision) => {
-          const decisions = decision.decisions.flatMap((it) =>
-            getDecisionColorNamePairs(it, false).map(({ name }) => name),
-          );
-          const policies = decision.decisions.flatMap((decision) =>
-            getPoliciesFromDecision(decision),
-          );
-
-          return {
-            jobId: decision.jobId,
-            queue: getQueueName(decision.queueId),
-            reviewer: getReviewerName(decision.reviewerId),
-            decisions,
-            createdAt: parseDatetimeToReadableStringInUTC(
-              new Date(decision.createdAt),
-            ),
-            policies,
-            decisionReason: decision.decisionReason ?? '',
-          };
-        });
-        // Define the CSV headers
-        const headers = [
-          'Decisions',
-          'Policies',
-          'Reviewer',
-          'Queue',
-          'Decision Time',
-          'Decision Reason',
-          'Link',
-        ];
-
-        // Map the data to CSV rows
-        const rows = allDecisionsCsv.map((item) => [
-          JSON.stringify(item.decisions),
-          JSON.stringify(item.policies), // Convert array/object to JSON string if necessary
-          item.reviewer,
-          item.queue,
-          item.createdAt,
-          item.decisionReason,
-          `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
-        ]);
-
-        // Combine the headers and rows into a CSV string
-        const csvContent = [headers, ...rows]
-          .map((row) => row.map(toCsvField).join(',')) // RFC 4180: quote fields and escape embedded quotes
-          .join('\n');
-
-        // Create a Blob from the CSV content
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-
-        // Create a temporary link to download the Blob
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'decisions.csv'; // Set the desired file name
-        a.click();
-
-        // Clean up
-        URL.revokeObjectURL(url);
       }}
-      loading={allDecisionsLoading || allDecisionsLoading}
     >
       Download
     </Button>
   );
 
+  // Skips export: `getSkipsForRecentDecisions` is untouched in the schema
+  // and still takes `{ filter, page }` — an offset, not the activity feed's
+  // cursor. It shares filters with the activity feed, not a paging
+  // position, so this loop is entirely separate from the one above.
   const downloadSkips = (
     <Button
       className="rounded"
+      loading={downloadingSkips}
       onClick={async () => {
-        const result = await getSkipsForRecentDecisions({
-          variables: {
-            input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
-          },
-        });
+        setDownloadingSkips(true);
+        try {
+          const collected: {
+            reviewer: string;
+            queue: string;
+            time: string;
+            link: string;
+          }[] = [];
+          // `SkipOperations.getSkippedJobsForRecentDecisions` (server-side)
+          // ignores `page` entirely today and always returns the full
+          // matching set in one call, so a page-index loop alone would never
+          // terminate on "empty" and would append the same rows repeatedly.
+          // Track which skips have already been collected and stop once a
+          // page adds nothing new — correct against today's unpaginated
+          // resolver, and still correct if it's paginated for real later.
+          const seenSkipKeys = new Set<string>();
 
-        const skips = result.data?.getSkipsForRecentDecisions;
+          for (let page = 0; page < CSV_MAX_PAGES; page++) {
+            const result = await getSkipsForRecentDecisions({
+              variables: {
+                input: buildSkipsInput(unsavedFilterValue ?? {}, page),
+              },
+            });
+            const skips = result.data?.getSkipsForRecentDecisions;
+            if (!skips || skips.length === 0) {
+              break;
+            }
+            const newSkips = skips.filter((skip) => {
+              const key = `${skip.jobId}:${skip.userId}:${skip.ts}`;
+              if (seenSkipKeys.has(key)) {
+                return false;
+              }
+              seenSkipKeys.add(key);
+              return true;
+            });
+            if (newSkips.length === 0) {
+              break;
+            }
+            collected.push(
+              ...newSkips.map((skip) => ({
+                reviewer: getReviewerName(skip.userId),
+                queue: getQueueName(skip.queueId),
+                time: parseDatetimeToReadableStringInUTC(new Date(skip.ts)),
+                link: `${HOST_URL}/dashboard/manual_review/recent?jobId=${skip.jobId}`,
+              })),
+            );
+          }
 
-        if (skips === undefined) {
-          return;
+          const headers = ['Reviewer', 'Queue', 'Decision Time', 'Link'];
+          const csvContent = [
+            headers,
+            ...collected.map((row) => [
+              row.reviewer,
+              row.queue,
+              row.time,
+              row.link,
+            ]),
+          ]
+            .map((row) => row.map(escapeCsvField).join(','))
+            .join('\n');
+
+          const blob = new Blob([csvContent], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'skips.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+        } finally {
+          setDownloadingSkips(false);
         }
-        const rows = skips.map((skip) => {
-          return [
-            getReviewerName(skip.userId),
-            getQueueName(skip.queueId),
-            parseDatetimeToReadableStringInUTC(new Date(skip.ts)),
-            `${HOST_URL}/dashboard/manual_review/recent?jobId=${skip.jobId}`,
-          ];
-        });
-        // Define the CSV headers
-        const headers = ['Reviewer', 'Queue', 'Decision Time', 'Link'];
-
-        // Combine the headers and rows into a CSV string
-        const csvContent = [headers, ...rows]
-          .map((row) => row.map(toCsvField).join(',')) // RFC 4180: quote fields and escape embedded quotes
-          .join('\n');
-
-        // Create a Blob from the CSV content
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-
-        // Create a temporary link to download the Blob
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'skips.csv'; // Set the desired file name
-        a.click();
-
-        // Clean up
-        URL.revokeObjectURL(url);
       }}
     >
       Download Skips
     </Button>
   );
 
-  const getRecentDecisionsInput = useCallback(
-    (input: RecentDecisionsFilterInput, page: number) => {
-      const decisionOrActions = input.decisions?.map((it) => jsonParse(it));
-      const filter = {
-        userSearchString,
-        policyIds: input.policyIds,
-        reviewerIds: input.reviewerIds,
-        queueIds: input.queueIds,
-        startTime: input.dateRange?.startDate,
-        endTime: input.dateRange?.endDate,
-
-        decisions: decisionOrActions?.map((it) => {
-          switch (it.type) {
-            case 'CUSTOM_ACTION':
-              return {
-                userOrRelatedActionDecision: {
-                  actionIds: [it.actionId],
-                },
-              };
-            case 'IGNORE':
-              return {
-                ignoreDecision: {
-                  _: true,
-                },
-              };
-            case 'AUTOMATIC_CLOSE':
-              return {
-                automaticClose: {
-                  _: true,
-                },
-              };
-            case 'REJECT_APPEAL':
-              return {
-                rejectAppealDecision: {
-                  _: true,
-                },
-              };
-            case 'ACCEPT_APPEAL':
-              return {
-                acceptAppealDecision: {
-                  _: true,
-                },
-              };
-            case 'SUBMIT_NCMEC_REPORT':
-              return {
-                submitNcmecReportDecision: {
-                  _: true,
-                },
-              };
-            case 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE':
-              return {
-                transformJobAndRecreateInQueueDecision: {
-                  _: true,
-                },
-              };
-            default:
-              assertUnreachable(it);
-          }
-        }),
-      };
-      return { filter, page };
-    },
-    [userSearchString],
-  );
   useEffect(() => {
-    getRecentDecisions({
+    getModerationActivity({
       variables: {
-        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+        input: buildActivityInput(
+          unsavedFilterValue ?? {},
+          cursor,
+          effectiveView,
+        ),
       },
     });
     // NB: We only want to run this once, so we intentionally do not include
@@ -874,10 +1291,16 @@ export default function ManualReviewRecentDecisions() {
 
   const searchForUser = () => {
     if (userSearchString) {
-      setSelectedDecision(undefined);
-      getRecentDecisions({
+      setSelection(undefined);
+      setCursor(undefined);
+      setCursorStack([]);
+      getModerationActivity({
         variables: {
-          input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+          input: buildActivityInput(
+            unsavedFilterValue ?? {},
+            undefined,
+            effectiveView,
+          ),
         },
       });
       navigate(
@@ -975,15 +1398,101 @@ export default function ManualReviewRecentDecisions() {
     </div>
   );
 
+  // A cursor from one view is meaningless in another (it points into a
+  // different underlying dataset), so switching the feed view resets paging
+  // the same way applying a filter does.
+  const handleViewChange = (nextView: FeedView) => {
+    setChosenView(nextView);
+    setSelection(undefined);
+    setCursor(undefined);
+    setCursorStack([]);
+    getModerationActivity({
+      variables: {
+        input: buildActivityInput(
+          unsavedFilterValue ?? {},
+          undefined,
+          nextView,
+        ),
+      },
+    });
+  };
+
+  // Without VIEW_INVESTIGATION every option but Decisions returns nothing, so
+  // offer no control at all rather than two dead choices.
+  const showControl = !canViewManualActions ? null : (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor="mrt-recent-decisions-feed-view"
+          className="font-semibold text-slate-500 whitespace-nowrap"
+        >
+          Show
+        </label>
+        <Select
+          value={effectiveView}
+          disabled={decisionsOnly}
+          onValueChange={(value) => handleViewChange(value as FeedView)}
+        >
+          <SelectTrigger
+            id="mrt-recent-decisions-feed-view"
+            size="small"
+            className="w-32"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(feedViewLabels) as FeedView[]).map((view) => (
+              <SelectItem key={view} value={view}>
+                {feedViewLabels[view]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {decisionsOnly ? (
+        <div className="text-xs text-slate-400">
+          Manual actions have no queue, so this filter shows decisions only.
+        </div>
+      ) : null}
+      {effectiveView !== 'DECISIONS' ? (
+        <>
+          {/*
+            Without this, a feed that has simply run out of window is
+            indistinguishable from one that has run out of data: paging back
+            past the window returns no more manual actions and no "has more"
+            signal, which reads as "nobody bulk-actioned anything that month".
+            Queue decisions have no such bound.
+          */}
+          <div className="text-xs text-slate-400">
+            Manual actions cover the last {MANUAL_ACTION_WINDOW_DAYS} days. Set
+            a start date to look further back.
+          </div>
+          <div className="text-xs text-slate-400">
+            Manual actions are not filtered by child-safety permissions.
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+
   const filter = (
     <ManualReviewRecentDecisionsFilter
       input={unsavedFilterValue ?? {}}
       onSave={(input) => {
-        setPage(0);
-        setSelectedDecision(undefined);
+        setSelection(undefined);
         setUnsavedFilterValue(input);
-        getRecentDecisions({
-          variables: { input: getRecentDecisionsInput(input, page) },
+        setCursor(undefined);
+        setCursorStack([]);
+        // `chosenView` state hasn't updated yet (we didn't change it here),
+        // so re-derive the view for *this* filter directly from `input`
+        // rather than reading the (stale, pre-update) `effectiveView`.
+        const viewForFilter: FeedView = isDecisionOnlyFilter(input)
+          ? 'DECISIONS'
+          : chosenView;
+        getModerationActivity({
+          variables: {
+            input: buildActivityInput(input, undefined, viewForFilter),
+          },
         });
         navigate(`/dashboard/manual_review/recent/`, {
           replace: true,
@@ -1003,56 +1512,63 @@ export default function ManualReviewRecentDecisions() {
       </Helmet>
       <FormHeader
         title="Recent Decisions"
-        subtitle="This is a list of all the most recent moderator decisions, in reverse chronological order with the most recent decision first, and the least recent decision last. You can search for decisions about a given user by entering that user's ID or username."
+        subtitle="This is a list of all the most recent moderator decisions and manual actions, in reverse chronological order with the most recent activity first, and the least recent activity last. You can search for activity about a given user by entering that user's ID or username."
       />
-      {selectedDecision ? userSearchAndRefresh : null}
-      {allDecisionsLoading || !tableData ? (
+      {selection ? userSearchAndRefresh : null}
+      {activityLoading || !tableData ? (
         <ComponentLoading />
       ) : (
         <div className="flex w-full">
-          <div className={selectedDecision ? undefined : 'w-full min-w-0'}>
+          <div className={selection ? undefined : 'w-full min-w-0'}>
             <Table
               columns={columns}
               // @ts-ignore
               data={tableData}
               alwaysShowScrollbar
-              containerClassName={selectedDecision ? undefined : 'w-full'}
-              onSelectRow={(rowData) =>
-                setSelectedDecision(
-                  rowData.original.values.originalDecisionData,
-                )
+              containerClassName={selection ? undefined : 'w-full'}
+              onSelectRow={(rowData) => {
+                const values = rowData.original.values as NormalizedActivityRow;
+                if (values.decision) {
+                  setSelection({
+                    kind: 'decision',
+                    decision: toManualReviewDecision(values.decision),
+                  });
+                } else if (values.action) {
+                  setSelection({ kind: 'action', action: values.action });
+                }
+              }}
+              topLeftComponent={selection ? null : tableControls}
+              topRightComponent={
+                <div className="flex items-start gap-4 pb-8">
+                  {showControl}
+                  {filter}
+                </div>
               }
-              topLeftComponent={selectedDecision ? null : tableControls}
-              topRightComponent={<div className="pb-8">{filter}</div>}
-              isCollapsed={selectedDecision != null}
+              isCollapsed={selection != null}
               collapsedColumnTitle="Decisions"
               renderCollapsedCell={(row) => {
-                const values = row.original.values as {
-                  decisionColorNamePairs: { name: string; colors: string }[];
-                  reviewerId: string;
-                  createdAt: string | Date;
-                };
+                const values = row.original.values as NormalizedActivityRow;
 
                 return (
                   <div className="flex flex-col gap-0.5">
                     <div className="flex flex-wrap gap-1">
                       {values.decisionColorNamePairs.map(
-                        ({ name, colors }, index) => (
-                          <div
+                        ({ name, colorVariant }, index) => (
+                          <CoopBadge
                             key={index}
-                            className={`flex px-2 py-0.5 rounded font-medium text-xs ${colors}`}
-                          >
-                            {name}
-                          </div>
+                            colorVariant={colorVariant}
+                            label={name}
+                            shapeVariant="pill"
+                          />
                         ),
                       )}
                     </div>
                     <div className="text-xs font-medium text-slate-500">
-                      {getReviewerName(values.reviewerId)}
+                      {values.reviewer}
                     </div>
                     <div className="text-xs text-slate-400 whitespace-nowrap">
                       {parseDatetimeToReadableStringInCurrentTimeZone(
-                        values.createdAt,
+                        new Date(values.ts),
                       )}
                     </div>
                   </div>
@@ -1060,17 +1576,35 @@ export default function ManualReviewRecentDecisions() {
               }}
             />
 
-            {decidedJobLoading || selectedDecision ? null : (
+            {decidedJobLoading || selection ? null : (
+              // Buttons rather than bare `<svg onClick>`: these need a
+              // disabled state at the ends of the feed (a click that does
+              // nothing is indistinguishable from one that failed), and they
+              // were previously unreachable by keyboard and unnamed for
+              // assistive tech.
               <div className="flex justify-between w-full mb-10">
-                <ChevronLeft
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                <button
+                  type="button"
+                  aria-label="Previous page"
+                  disabled={cursorStack.length === 0 || activityLoading}
                   onClick={() => handlePrevious()}
-                />
-                <span>Page {page + 1}</span>
-                <ChevronRight
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="bg-transparent border-none cursor-pointer disabled:cursor-default disabled:opacity-40"
+                >
+                  <ChevronLeft className="font-bold w-7 fill-slate-500" />
+                </button>
+                <span>Page {cursorStack.length + 1}</span>
+                <button
+                  type="button"
+                  aria-label="Next page"
+                  disabled={
+                    !activityData?.recentModerationActivity.nextCursor ||
+                    activityLoading
+                  }
                   onClick={() => handleNext()}
-                />
+                  className="bg-transparent border-none cursor-pointer disabled:cursor-default disabled:opacity-40"
+                >
+                  <ChevronRight className="font-bold w-7 fill-slate-500" />
+                </button>
               </div>
             )}
           </div>
@@ -1084,7 +1618,7 @@ export default function ManualReviewRecentDecisions() {
                 selectedDecision={selectedDecision}
                 showCloseButton={true}
                 closeButtonOnClick={() => {
-                  setSelectedDecision(undefined);
+                  setSelection(undefined);
                   navigate(`/dashboard/manual_review/recent/`, {
                     replace: true,
                   });
@@ -1118,6 +1652,23 @@ export default function ManualReviewRecentDecisions() {
                   />
                 </div>
               ) : null}
+            </div>
+          ) : selectedAction ? (
+            <div className="flex flex-col items-start w-full h-full p-3 mb-4 ml-3 border border-r-0 border-solid rounded border-slate-200">
+              <ManualActionItemsPanel
+                correlationId={selectedAction.correlationId}
+                occurredAt={selectedAction.ts}
+                actionNames={getActionColorNamePairs(
+                  selectedAction.actionIds,
+                ).map(({ name }) => name)}
+                reviewerName={getReviewerName(selectedAction.reviewerId)}
+                onClose={() => {
+                  setSelection(undefined);
+                  navigate(`/dashboard/manual_review/recent/`, {
+                    replace: true,
+                  });
+                }}
+              />
             </div>
           ) : null}
         </div>
