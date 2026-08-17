@@ -20384,6 +20384,182 @@ export type GQLReportingRuleInsightsPriorVersionSamplesQuery = {
   } | null;
 };
 
+export type GQLGetFullReportingResultForRuleQueryVariables = Exact<{
+  input: GQLGetFullResultForItemInput;
+}>;
+
+export type GQLGetFullReportingResultForRuleQuery = {
+  readonly __typename: 'Query';
+  readonly getFullReportingRuleResultForItem:
+    | { readonly __typename: 'NotFoundError'; readonly title: string }
+    | {
+        readonly __typename: 'ReportingRuleExecutionResult';
+        readonly result?: {
+          readonly __typename: 'ConditionSetWithResult';
+          readonly conjunction?: GQLConditionConjunction | null;
+          readonly conditions: ReadonlyArray<
+            | {
+                readonly __typename: 'ConditionSetWithResult';
+                readonly conjunction?: GQLConditionConjunction | null;
+                readonly conditions: ReadonlyArray<
+                  | { readonly __typename: 'ConditionSetWithResult' }
+                  | {
+                      readonly __typename: 'LeafConditionWithResult';
+                      readonly comparator?: GQLValueComparator | null;
+                      readonly threshold?: string | number | null;
+                      readonly input: {
+                        readonly __typename: 'ConditionInputField';
+                        readonly type: GQLConditionInputInputType;
+                        readonly name?: string | null;
+                        readonly contentTypeId?: string | null;
+                        readonly spec?: {
+                          readonly __typename: 'DerivedFieldSpec';
+                          readonly derivationType: GQLDerivedFieldDerivationType;
+                        } | null;
+                      };
+                      readonly signal?: {
+                        readonly __typename: 'Signal';
+                        readonly id: string;
+                        readonly type: string;
+                        readonly name: string;
+                        readonly subcategory?: string | null;
+                        readonly args?: {
+                          readonly __typename: 'AggregationSignalArgs';
+                        } | null;
+                      } | null;
+                      readonly matchingValues?: {
+                        readonly __typename: 'MatchingValues';
+                        readonly strings?: ReadonlyArray<string> | null;
+                        readonly textBankIds?: ReadonlyArray<string> | null;
+                        readonly locationBankIds?: ReadonlyArray<string> | null;
+                        readonly imageBankIds?: ReadonlyArray<string> | null;
+                        readonly locations?: ReadonlyArray<{
+                          readonly __typename: 'LocationArea';
+                          readonly id: string;
+                          readonly name?: string | null;
+                          readonly geometry: {
+                            readonly __typename: 'LocationGeometry';
+                            readonly radius: number;
+                            readonly center: {
+                              readonly __typename: 'LatLng';
+                              readonly lat: number;
+                              readonly lng: number;
+                            };
+                          };
+                          readonly bounds?: {
+                            readonly __typename: 'PlaceBounds';
+                            readonly northeastCorner: {
+                              readonly __typename: 'LatLng';
+                              readonly lat: number;
+                              readonly lng: number;
+                            };
+                            readonly southwestCorner: {
+                              readonly __typename: 'LatLng';
+                              readonly lat: number;
+                              readonly lng: number;
+                            };
+                          } | null;
+                          readonly googlePlaceInfo?: {
+                            readonly __typename: 'GooglePlaceLocationInfo';
+                            readonly id: string;
+                          } | null;
+                        }> | null;
+                      } | null;
+                      readonly result?: {
+                        readonly __typename: 'ConditionResult';
+                        readonly outcome: GQLConditionOutcome;
+                        readonly score?: string | null;
+                        readonly matchedValue?: string | null;
+                      } | null;
+                    }
+                >;
+                readonly result?: {
+                  readonly __typename: 'ConditionResult';
+                  readonly outcome: GQLConditionOutcome;
+                  readonly score?: string | null;
+                  readonly matchedValue?: string | null;
+                } | null;
+              }
+            | {
+                readonly __typename: 'LeafConditionWithResult';
+                readonly comparator?: GQLValueComparator | null;
+                readonly threshold?: string | number | null;
+                readonly input: {
+                  readonly __typename: 'ConditionInputField';
+                  readonly type: GQLConditionInputInputType;
+                  readonly name?: string | null;
+                  readonly contentTypeId?: string | null;
+                  readonly spec?: {
+                    readonly __typename: 'DerivedFieldSpec';
+                    readonly derivationType: GQLDerivedFieldDerivationType;
+                  } | null;
+                };
+                readonly signal?: {
+                  readonly __typename: 'Signal';
+                  readonly id: string;
+                  readonly type: string;
+                  readonly name: string;
+                  readonly subcategory?: string | null;
+                  readonly args?: {
+                    readonly __typename: 'AggregationSignalArgs';
+                  } | null;
+                } | null;
+                readonly matchingValues?: {
+                  readonly __typename: 'MatchingValues';
+                  readonly strings?: ReadonlyArray<string> | null;
+                  readonly textBankIds?: ReadonlyArray<string> | null;
+                  readonly locationBankIds?: ReadonlyArray<string> | null;
+                  readonly imageBankIds?: ReadonlyArray<string> | null;
+                  readonly locations?: ReadonlyArray<{
+                    readonly __typename: 'LocationArea';
+                    readonly id: string;
+                    readonly name?: string | null;
+                    readonly geometry: {
+                      readonly __typename: 'LocationGeometry';
+                      readonly radius: number;
+                      readonly center: {
+                        readonly __typename: 'LatLng';
+                        readonly lat: number;
+                        readonly lng: number;
+                      };
+                    };
+                    readonly bounds?: {
+                      readonly __typename: 'PlaceBounds';
+                      readonly northeastCorner: {
+                        readonly __typename: 'LatLng';
+                        readonly lat: number;
+                        readonly lng: number;
+                      };
+                      readonly southwestCorner: {
+                        readonly __typename: 'LatLng';
+                        readonly lat: number;
+                        readonly lng: number;
+                      };
+                    } | null;
+                    readonly googlePlaceInfo?: {
+                      readonly __typename: 'GooglePlaceLocationInfo';
+                      readonly id: string;
+                    } | null;
+                  }> | null;
+                } | null;
+                readonly result?: {
+                  readonly __typename: 'ConditionResult';
+                  readonly outcome: GQLConditionOutcome;
+                  readonly score?: string | null;
+                  readonly matchedValue?: string | null;
+                } | null;
+              }
+          >;
+          readonly result?: {
+            readonly __typename: 'ConditionResult';
+            readonly outcome: GQLConditionOutcome;
+            readonly score?: string | null;
+            readonly matchedValue?: string | null;
+          } | null;
+        } | null;
+      };
+};
+
 export type GQLRulePassRateAnalyticsQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
@@ -41079,6 +41255,119 @@ export type GQLReportingRuleInsightsPriorVersionSamplesQueryResult =
     GQLReportingRuleInsightsPriorVersionSamplesQuery,
     GQLReportingRuleInsightsPriorVersionSamplesQueryVariables
   >;
+export const GQLGetFullReportingResultForRuleDocument = gql`
+  query GetFullReportingResultForRule($input: GetFullResultForItemInput!) {
+    getFullReportingRuleResultForItem(input: $input) {
+      ... on ReportingRuleExecutionResult {
+        result {
+          ...SampleRuleExecutionResultConditionResultFields
+        }
+      }
+      ... on NotFoundError {
+        title
+      }
+    }
+  }
+  ${GQLSampleRuleExecutionResultConditionResultFieldsFragmentDoc}
+`;
+
+/**
+ * __useGQLGetFullReportingResultForRuleQuery__
+ *
+ * To run a query within a React component, call `useGQLGetFullReportingResultForRuleQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetFullReportingResultForRuleQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetFullReportingResultForRuleQuery({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLGetFullReportingResultForRuleQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLGetFullReportingResultForRuleQuery,
+    GQLGetFullReportingResultForRuleQueryVariables
+  > &
+    (
+      | {
+          variables: GQLGetFullReportingResultForRuleQueryVariables;
+          skip?: boolean;
+        }
+      | { skip: boolean }
+    ),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetFullReportingResultForRuleQuery,
+    GQLGetFullReportingResultForRuleQueryVariables
+  >(GQLGetFullReportingResultForRuleDocument, options);
+}
+export function useGQLGetFullReportingResultForRuleLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetFullReportingResultForRuleQuery,
+    GQLGetFullReportingResultForRuleQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetFullReportingResultForRuleQuery,
+    GQLGetFullReportingResultForRuleQueryVariables
+  >(GQLGetFullReportingResultForRuleDocument, options);
+}
+// @ts-ignore
+export function useGQLGetFullReportingResultForRuleSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetFullReportingResultForRuleQuery,
+    GQLGetFullReportingResultForRuleQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetFullReportingResultForRuleQuery,
+  GQLGetFullReportingResultForRuleQueryVariables
+>;
+export function useGQLGetFullReportingResultForRuleSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetFullReportingResultForRuleQuery,
+        GQLGetFullReportingResultForRuleQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetFullReportingResultForRuleQuery | undefined,
+  GQLGetFullReportingResultForRuleQueryVariables
+>;
+export function useGQLGetFullReportingResultForRuleSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetFullReportingResultForRuleQuery,
+        GQLGetFullReportingResultForRuleQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetFullReportingResultForRuleQuery,
+    GQLGetFullReportingResultForRuleQueryVariables
+  >(GQLGetFullReportingResultForRuleDocument, options);
+}
+export type GQLGetFullReportingResultForRuleQueryHookResult = ReturnType<
+  typeof useGQLGetFullReportingResultForRuleQuery
+>;
+export type GQLGetFullReportingResultForRuleLazyQueryHookResult = ReturnType<
+  typeof useGQLGetFullReportingResultForRuleLazyQuery
+>;
+export type GQLGetFullReportingResultForRuleSuspenseQueryHookResult =
+  ReturnType<typeof useGQLGetFullReportingResultForRuleSuspenseQuery>;
+export type GQLGetFullReportingResultForRuleQueryResult = Apollo.QueryResult<
+  GQLGetFullReportingResultForRuleQuery,
+  GQLGetFullReportingResultForRuleQueryVariables
+>;
 export const GQLRulePassRateAnalyticsDocument = gql`
   query RulePassRateAnalytics($id: ID!) {
     rule(id: $id) {
@@ -45445,6 +45734,7 @@ export const namedOperations = {
       'ReportingRuleInsightsCurrentVersionSamples',
     ReportingRuleInsightsPriorVersionSamples:
       'ReportingRuleInsightsPriorVersionSamples',
+    GetFullReportingResultForRule: 'GetFullReportingResultForRule',
     RulePassRateAnalytics: 'RulePassRateAnalytics',
     RuleInsightsTableAllSignals: 'RuleInsightsTableAllSignals',
     RuleInsightsCurrentVersionSamples: 'RuleInsightsCurrentVersionSamples',
