@@ -73,7 +73,7 @@ const filterFor =
   (accessor: string, placeholder: string) => (props: ColumnProps) =>
     DefaultColumnFilter({ columnProps: props, accessor, placeholder });
 
-describe('Table v7 behavior', () => {
+describe('Table behavior', () => {
   it('preserves grouped header spans above leaf headers', () => {
     const groupedColumns = [
       {
