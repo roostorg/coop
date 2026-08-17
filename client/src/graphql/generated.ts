@@ -3794,6 +3794,8 @@ export type GQLRecentManualReviewUserOrRelatedActionDecision = {
 export type GQLRecentUserStrikeActions = {
   readonly __typename: 'RecentUserStrikeActions';
   readonly actionId: Scalars['String']['output'];
+  readonly creatorId?: Maybe<Scalars['String']['output']>;
+  readonly creatorTypeId?: Maybe<Scalars['String']['output']>;
   readonly itemId: Scalars['String']['output'];
   readonly itemTypeId: Scalars['String']['output'];
   readonly source: Scalars['String']['output'];
@@ -24668,6 +24670,8 @@ export type GQLRecentUserStrikeActionsQuery = {
     readonly __typename: 'RecentUserStrikeActions';
     readonly itemId: string;
     readonly itemTypeId: string;
+    readonly creatorId?: string | null;
+    readonly creatorTypeId?: string | null;
     readonly actionId: string;
     readonly source: string;
     readonly time: Date | string;
@@ -42472,6 +42476,8 @@ export const GQLRecentUserStrikeActionsDocument = gql`
     recentUserStrikeActions(input: $input) {
       itemId
       itemTypeId
+      creatorId
+      creatorTypeId
       actionId
       source
       time

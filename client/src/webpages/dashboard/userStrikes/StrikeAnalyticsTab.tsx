@@ -26,6 +26,8 @@ gql`
     recentUserStrikeActions(input: $input) {
       itemId
       itemTypeId
+      creatorId
+      creatorTypeId
       actionId
       source
       time
@@ -213,15 +215,21 @@ function RecentUserStrikeActionsTable() {
       ?.slice()
       ?.sort((a, b) => (a.time > b.time ? -1 : a.time < b.time ? 1 : 0))
       .map((values) => {
+        const creatorIdentity =
+          values.creatorId && values.creatorTypeId
+            ? { id: values.creatorId, typeId: values.creatorTypeId }
+            : null;
         return {
-          user: (
+          user: creatorIdentity ? (
             <Link
               className="cursor-pointer shrink-0"
-              to={`/dashboard/manual_review/investigation?id=${values.itemId}&typeId=${values.itemTypeId}`}
+              to={`/dashboard/manual_review/investigation?id=${creatorIdentity.id}&typeId=${creatorIdentity.typeId}`}
               target="_blank"
             >
-              {values.itemId}
+              {creatorIdentity.id}
             </Link>
+          ) : (
+            <span className="text-gray-500">{values.itemId}</span>
           ),
           action: actionsById
             ? (actionsById[values.actionId] ?? 'Unknown')

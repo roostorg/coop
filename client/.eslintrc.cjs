@@ -29,7 +29,7 @@ module.exports = {
   ignorePatterns: [
     '.eslintrc.cjs',
     'eslint',
-    'tailwind.config.js',
+    'tailwind.config.mjs',
     '*.stories.tsx',
     'vite.config.ts',
     'vite-env.d.ts',
