@@ -1,8 +1,19 @@
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
-import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
-import { SIX_MONTHS_MS } from '../../../utils/time.js';
+import { MONTH_MS, SIX_MONTHS_MS } from '../../../utils/time.js';
 import { formatClickhouseQuery } from '../utils/clickhouseSql.js';
+import {
+  deriveActionScanWindow,
+  formatWarehouseDateTime,
+  parseWarehouseDateTime,
+  toDsString,
+} from '../utils/warehouseDateTime.js';
+import {
+  type ClickhouseActionExecutionRow,
+  type ClickhouseManualActionItemRow,
+  type ClickhouseModeratorActionGroupRow,
+} from './clickhouseActionExecutionRows.js';
+import { extractIds, parseJsonIdArray } from './clickhouseJsonIdArray.js';
 import {
   type ContentCreatorIdentityInput,
   type ContentCreatorIdentityRecord,
@@ -11,24 +22,28 @@ import {
   type InferredUserIdentityRecord,
   type ItemActionHistoryInput,
   type ItemActionHistoryRecord,
+  type ManualActionItemsInput,
+  type ManualActionItemsResult,
+  type ModeratorActionGroupRecord,
+  type RecentModeratorActionsInput,
   type UserStrikeActionRecord,
   type UserStrikeActionsInput,
 } from './IActionExecutionsAdapter.js';
 
-interface ClickhouseActionExecutionRow {
-  ts: string;
-  item_id: string | null;
-  item_type_id: string | null;
-  item_type_kind: string;
-  item_creator_id: string | null;
-  item_creator_type_id: string | null;
-  actor_id: string | null;
-  job_id: string | null;
-  policies?: string | null;
-  rules?: string | null;
-  action_id: string;
-  action_source?: string;
-}
+/**
+ * `action_source` values written by the moderator-facing action UIs. Bulk
+ * Actioning and Investigation both publish under `manual-action-run` (see
+ * `ActionApi.bulkExecuteActions`).
+ *
+ * This allowlist — not `job_id IS NULL` — is what separates moderator work from
+ * automation. Rule-driven and user-strike executions also carry a null
+ * `job_id`, and `actor_id IS NOT NULL` would still admit the programmatic
+ * `/action` API route, which sets an actor whenever a user is attached.
+ */
+const MODERATOR_ACTION_SOURCES = ['manual-action-run'];
+
+/** How far back a single page of the moderator action feed may scan. */
+const DEFAULT_ACTION_FEED_LOOKBACK_MS = 3 * MONTH_MS;
 
 export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapter {
   constructor(
@@ -84,10 +99,202 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         jobId: row.job_id ?? null,
         userId: row.item_creator_id ?? null,
         userTypeId: row.item_creator_type_id ?? null,
-        policies: this.extractIds(this.parseJsonArray(row.policies)),
-        ruleIds: this.extractIds(this.parseJsonArray(row.rules)),
+        policies: extractIds(parseJsonIdArray(row.policies)),
+        ruleIds: extractIds(parseJsonIdArray(row.rules)),
         occurredAt: new Date(row.ts),
       }));
+  }
+
+  async getRecentModeratorActions(
+    input: RecentModeratorActionsInput,
+  ): Promise<ReadonlyArray<ModeratorActionGroupRecord>> {
+    const {
+      orgId,
+      cursor,
+      after,
+      before,
+      limit,
+      actorIds,
+      policyIds,
+      itemId,
+      lookbackWindowMs = DEFAULT_ACTION_FEED_LOOKBACK_MS,
+    } = input;
+
+    const { start: lookbackStart, end: upperBound } = deriveActionScanWindow({
+      cursorTs: cursor?.ts,
+      after,
+      before,
+      lookbackWindowMs,
+    });
+
+    // `ds` bounds the partition scan only. The cursor and `after` are applied
+    // in HAVING, against the complete group.
+    //
+    // Each bound carries a day of slack so it never truncates a group we
+    // intend to keep whole. A group whose max(ts) sits just past the cursor
+    // day may still have earlier rows filed under the cursor's own ds day, so
+    // the upper bound reaches one day past it. Symmetrically, a group whose
+    // rows start just before the lookback/`after` floor may have later rows
+    // on the floor's own ds day, so the lower bound reaches one day before it.
+    const conditions = [
+      'org_id = ?',
+      'ds >= toDate(?) - 1',
+      'ds <= toDate(?) + 1',
+      `action_source IN (${MODERATOR_ACTION_SOURCES.map(() => '?').join(', ')})`,
+    ];
+    const params: unknown[] = [
+      orgId,
+      toDsString(lookbackStart),
+      toDsString(upperBound),
+      ...MODERATOR_ACTION_SOURCES,
+    ];
+
+    if (actorIds && actorIds.length > 0) {
+      conditions.push(`actor_id IN (${actorIds.map(() => '?').join(', ')})`);
+      params.push(...actorIds);
+    }
+    if (policyIds && policyIds.length > 0) {
+      // `policies` is a JSON array of objects; `policy_ids` exists on the table
+      // but ActionExecutionLogger never populates it, so extract from the JSON.
+      conditions.push(
+        `hasAny(arrayMap(p -> JSONExtractString(p, 'id'), JSONExtractArrayRaw(policies)), ?)`,
+      );
+      params.push([...policyIds]);
+    }
+
+    const having: string[] = [];
+    if (cursor) {
+      having.push('(max(ts), correlation_id) < (?, ?)');
+      params.push(formatWarehouseDateTime(cursor.ts), cursor.correlationId);
+    }
+    if (after) {
+      having.push('max(ts) >= ?');
+      params.push(formatWarehouseDateTime(after));
+    }
+    if (before) {
+      having.push('max(ts) <= ?');
+      params.push(formatWarehouseDateTime(before));
+    }
+    if (itemId) {
+      having.push('has(groupUniqArray(item_id), ?)');
+      params.push(itemId);
+    }
+
+    // Grouping by correlation_id collapses the one-row-per-(item, action) fan
+    // out into a single record per moderator operation. Without it, a bulk
+    // submit of 500 ids with 2 actions contributes 1,000 rows and buries every
+    // other entry in the merged feed.
+    const sql = `
+      SELECT
+        correlation_id,
+        -- Deliberately not aliased to "ts". ClickHouse would resolve a ts
+        -- bound against this aggregate and reject the query with
+        -- ILLEGAL_AGGREGATION. (Placeholders are substituted across the whole
+        -- string, so never put one in a comment either.)
+        max(ts) AS last_ts,
+        any(actor_id) AS actor_id,
+        any(item_type_id) AS item_type_id,
+        any(actor_note) AS actor_note,
+        any(policies) AS policies,
+        groupUniqArray(action_id) AS action_ids,
+        uniqExact(item_id) AS item_count,
+        uniqExactIf(item_id, failed = 1) AS failed_count
+      FROM analytics.ACTION_EXECUTIONS
+      WHERE ${conditions.join('\n        AND ')}
+      GROUP BY correlation_id
+      ${having.length > 0 ? `HAVING ${having.join('\n        AND ')}` : ''}
+      ORDER BY last_ts DESC, correlation_id DESC
+      LIMIT ${Number(limit)}
+    `;
+
+    const rows = await this.query<ClickhouseModeratorActionGroupRow>(
+      sql,
+      params,
+    );
+
+    return rows.map<ModeratorActionGroupRecord>((row) => ({
+      correlationId: row.correlation_id,
+      actorId: row.actor_id ?? null,
+      itemTypeId: row.item_type_id ?? null,
+      actionIds: row.action_ids ?? [],
+      policyIds: extractIds(parseJsonIdArray(row.policies)),
+      actorNote: row.actor_note ?? null,
+      itemCount: Number(row.item_count) || 0,
+      failedCount: Number(row.failed_count) || 0,
+      occurredAt: parseWarehouseDateTime(row.last_ts),
+    }));
+  }
+
+  async getManualActionItems(
+    input: ManualActionItemsInput,
+  ): Promise<ManualActionItemsResult> {
+    const {
+      orgId,
+      correlationId,
+      occurredAt,
+      limit,
+      offset,
+      lookbackWindowMs = DEFAULT_ACTION_FEED_LOOKBACK_MS,
+    } = input;
+
+    // The `ds` bounds must span at least as much as the feed query's window,
+    // or a row and its own detail panel disagree. The feed groups a run over
+    // the whole lookback window; bounding this to `occurredAt ± 1 day` made an
+    // 8-item run render as "8 items / 1 of 8 failed" in the row and "3 items,
+    // no failures" in the panel — the audit log silently dropping the failures
+    // it exists to record. `occurredAt` is `max(ts)`, so reach backwards by
+    // the window and forwards by a day.
+    const windowStart = new Date(
+      occurredAt.valueOf() - Math.max(1, lookbackWindowMs),
+    );
+
+    // One row per (item, action); an item appears once per action applied.
+    // Group so the caller sees items, and treat an item as failed if any of
+    // its executions failed.
+    //
+    // `correlation_id` alone is not enough: mrt-decision, post-items,
+    // submit-report, and user-strike-action-execution runs are also grouped
+    // under a correlation id, and their item lists must not be resolvable
+    // here (mrt-decision's in particular is what the NCMEC permission gate
+    // exists to hide). The same allowlist the feed query uses keeps this to
+    // moderator-initiated runs only.
+    const sql = `
+      SELECT
+        item_id,
+        any(item_type_id) AS item_type_id,
+        max(failed) AS failed,
+        count() OVER () AS total_count
+      FROM (
+        SELECT item_id, item_type_id, failed
+        FROM analytics.ACTION_EXECUTIONS
+        WHERE org_id = ?
+          AND ds >= toDate(?)
+          AND ds <= toDate(?) + 1
+          AND correlation_id = ?
+          AND item_id IS NOT NULL
+          AND action_source IN (${MODERATOR_ACTION_SOURCES.map(() => '?').join(', ')})
+      )
+      GROUP BY item_id
+      ORDER BY item_id ASC
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `;
+
+    const rows = await this.query<ClickhouseManualActionItemRow>(sql, [
+      orgId,
+      toDsString(windowStart),
+      toDsString(occurredAt),
+      correlationId,
+      ...MODERATOR_ACTION_SOURCES,
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        itemId: row.item_id,
+        itemTypeId: row.item_type_id ?? null,
+        failed: Number(row.failed) === 1,
+      })),
+      totalCount: Number(rows[0]?.total_count ?? 0) || 0,
+    };
   }
 
   async getRecentUserStrikeActions(
@@ -265,40 +472,6 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
       creatorTypeId: row.item_creator_type_id,
       lastSeenAt: new Date(row.ts),
     };
-  }
-
-  private parseJsonArray(
-    jsonString: string | null | undefined,
-  ): Array<{ id: string }> | null {
-    if (!jsonString || jsonString === '[]') {
-      return null;
-    }
-    try {
-      const parsed = jsonParse(jsonString as JsonOf<unknown>);
-      if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (item): item is { id: string } =>
-            typeof item === 'object' &&
-            item !== null &&
-            'id' in item &&
-            typeof item.id === 'string',
-        );
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  private extractIds(
-    values: Array<{ id: string }> | null | undefined,
-  ): readonly string[] {
-    if (!values) {
-      return [];
-    }
-    return values
-      .map((entry) => entry.id)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
   }
 
   private async query<T>(
