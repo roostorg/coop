@@ -26,6 +26,9 @@ export type FilterRendererProps<TData extends TableData = TableData> = {
   onSave: () => void;
 };
 type TableColumnMeta = {
+  // Use TypeScript's bivariance pattern to accept filter renderers
+  // typed for a table's specific row shape.
+  // https://stackoverflow.com/a/52668133
   filter?: {
     bivarianceHack(props: FilterRendererProps): ReactNode;
   }['bivarianceHack'];

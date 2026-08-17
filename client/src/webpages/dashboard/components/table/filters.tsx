@@ -25,33 +25,70 @@ const raw = (row: FacetedRow, id: string) =>
 
 export function getFilterTypes() {
   return {
-    text: (row: FacetedRow, id: string, value: any) =>
-      value == null ||
-      value.length === 0 ||
-      (raw(row, id) != null &&
-        String(raw(row, id))
-          .toLowerCase()
-          .includes(String(value).toLowerCase())),
-    includes: (row: FacetedRow, id: string, value: any) =>
-      value == null ||
-      (Array.isArray(value) && value.length === 0) ||
-      (raw(row, id) != null &&
-        (Array.isArray(raw(row, id))
-          ? intersection(value, raw(row, id)).length > 0
-          : value.includes(raw(row, id)))),
-    range: (row: FacetedRow, id: string, value: any) =>
-      value == null ||
-      ((!value[0] || value[0] <= raw(row, id)) &&
-        (!value[1] || value[1] >= raw(row, id))),
-    dateRange: (row: FacetedRow, id: string, value: any) => {
-      if (value == null) return true;
-      const start = value[0]?.format('YYYY-MM-DD');
-      const end = value[1]?.format('YYYY-MM-DD');
-      return (!start || start <= raw(row, id)) && (!end || end >= raw(row, id));
+    // Match case-insensitive substrings against the raw column value.
+    text: (row: FacetedRow, id: string, filterValue: any) => {
+      if (filterValue == null || filterValue.length === 0) {
+        return true;
+      }
+      const rowValue = raw(row, id);
+      if (rowValue == null) {
+        return false;
+      }
+      return String(rowValue)
+        .toLowerCase()
+        .includes(String(filterValue).toLowerCase());
+    },
+    // Allow filtering on options in a predetermined list.
+    includes: (row: FacetedRow, id: string, filterValue: any) => {
+      if (
+        filterValue == null ||
+        (Array.isArray(filterValue) && filterValue.length === 0)
+      ) {
+        return true;
+      }
+      const rowValue = raw(row, id);
+      if (rowValue == null) {
+        return false;
+      }
+      if (Array.isArray(rowValue)) {
+        return intersection(filterValue, rowValue).length > 0;
+      }
+      return filterValue.includes(rowValue);
+    },
+    range: (row: FacetedRow, id: string, filterValue: any) => {
+      if (filterValue == null) {
+        return true;
+      }
+      const start = filterValue[0];
+      const end = filterValue[1];
+      const rowValue = raw(row, id);
+      if (start && start > rowValue) {
+        return false;
+      }
+      if (end && end < rowValue) {
+        return false;
+      }
+      return true;
+    },
+    dateRange: (row: FacetedRow, id: string, filterValue: any) => {
+      if (filterValue == null) {
+        return true;
+      }
+      const start = filterValue[0]?.format('YYYY-MM-DD');
+      const end = filterValue[1]?.format('YYYY-MM-DD');
+      const rowValue = raw(row, id);
+      if (start && start > rowValue) {
+        return false;
+      }
+      if (end && end < rowValue) {
+        return false;
+      }
+      return true;
     },
   };
 }
 function onClickFilter(event: MouseEvent) {
+  // Prevent clicks inside filter controls from sorting the column.
   event.stopPropagation();
 }
 export function DefaultColumnFilter({ columnProps, placeholder }: FilterProps) {
@@ -129,6 +166,7 @@ export function NumberRangeColumnFilter({ columnProps }: FilterProps) {
 }
 export function DateRangeColumnFilter({ columnProps }: FilterProps) {
   return (
+    // RangePicker does not forward onClick, so intercept it on a wrapper.
     <div onClick={onClickFilter}>
       <RangePicker
         className="!min-w-[250px]"
