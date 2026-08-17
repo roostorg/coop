@@ -23,6 +23,11 @@ export type FilterProps = {
 const raw = (row: FacetedRow, id: string) =>
   (row.original as RawRow).values[id];
 
+function onClickFilter(event: MouseEvent) {
+  // Prevent clicks inside filter controls from sorting the column.
+  event.stopPropagation();
+}
+
 export function getFilterTypes() {
   return {
     // Match case-insensitive substrings against the raw column value.
@@ -87,46 +92,53 @@ export function getFilterTypes() {
     },
   };
 }
-function onClickFilter(event: MouseEvent) {
-  // Prevent clicks inside filter controls from sorting the column.
-  event.stopPropagation();
-}
-export function DefaultColumnFilter({ columnProps, placeholder }: FilterProps) {
+
+// Define a default UI for filtering
+export function DefaultColumnFilter(props: FilterProps) {
+  const { columnProps, placeholder } = props;
   const { unsavedFilterValue, setUnsavedFilterValue, onSave } = columnProps;
   return (
     <Input
       value={unsavedFilterValue || ''}
       placeholder={placeholder}
       onChange={(e) => setUnsavedFilterValue(e.target.value || undefined)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && unsavedFilterValue?.length) onSave();
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && unsavedFilterValue?.length) {
+          onSave();
+        }
       }}
       onClick={onClickFilter}
     />
   );
 }
-export function SelectColumnFilter({
-  columnProps,
-  accessor,
-  placeholder,
-}: FilterProps) {
-  const options = uniq(
-    columnProps.preFilteredRows.flatMap(
-      (row) => (row.original as RawRow).values[accessor],
-    ),
-  );
+
+// This is a custom filter UI for selecting
+// a unique option from a list
+export function SelectColumnFilter(props: FilterProps) {
+  const { columnProps, accessor, placeholder } = props;
+  const { unsavedFilterValue, setUnsavedFilterValue, preFilteredRows } =
+    columnProps;
+  // Calculate the options for filtering
+  // using the preFilteredRows
+  const options: (string[] | string)[] = [];
+  preFilteredRows.forEach((row) => {
+    options.push((row.original as RawRow).values[accessor]);
+  });
+  const uniqueOptions = uniq(options.flat());
+
+  // Render a multi-select box
   return (
     <Select
       mode="multiple"
       placeholder={placeholder}
-      value={columnProps.unsavedFilterValue}
-      onChange={(value) =>
-        columnProps.setUnsavedFilterValue(value || undefined)
-      }
+      value={unsavedFilterValue}
+      onChange={(value) => {
+        setUnsavedFilterValue(value || undefined);
+      }}
       onClick={onClickFilter}
       dropdownMatchSelectWidth={false}
     >
-      {options.map((option, i) => (
+      {uniqueOptions.map((option, i) => (
         <Option key={i} value={option}>
           {option}
         </Option>
@@ -134,47 +146,72 @@ export function SelectColumnFilter({
     </Select>
   );
 }
-export function NumberRangeColumnFilter({ columnProps }: FilterProps) {
-  const set = columnProps.setUnsavedFilterValue;
+
+export function NumberRangeColumnFilter(props: FilterProps) {
+  const { columnProps } = props;
+  const { setUnsavedFilterValue } = columnProps;
+
   return (
     <div className="flex items-center gap-2">
       <Input
         className="!w-14"
-        onChange={(e) =>
-          set((old: any[] = []) => [
-            e.target.value ? parseFloat(e.target.value) : undefined,
-            old[1],
-          ])
-        }
+        onChange={(e) => {
+          if (!e.target.value) {
+            setUnsavedFilterValue((old: any[] = []) => {
+              return [undefined, old[1]];
+            });
+            return;
+          }
+          const val = parseFloat(e.target.value);
+          if (!isNaN(val)) {
+            setUnsavedFilterValue((old: any[] = []) => {
+              return [val, old[1]];
+            });
+          }
+        }}
         onClick={onClickFilter}
         placeholder="min"
       />
       to
       <Input
         className="!w-14"
-        onChange={(e) =>
-          set((old: any[] = []) => [
-            old[0],
-            e.target.value ? parseFloat(e.target.value) : undefined,
-          ])
-        }
+        onChange={(e) => {
+          if (!e.target.value) {
+            setUnsavedFilterValue((old: any[] = []) => {
+              return [old[0], undefined];
+            });
+            return;
+          }
+          const val = parseFloat(e.target.value);
+          if (!isNaN(val)) {
+            setUnsavedFilterValue((old: any[] = []) => {
+              return [old[0], val];
+            });
+          }
+        }}
         onClick={onClickFilter}
         placeholder="max"
       />
     </div>
   );
 }
-export function DateRangeColumnFilter({ columnProps }: FilterProps) {
+
+export function DateRangeColumnFilter(props: FilterProps) {
+  const { columnProps } = props;
+  const { unsavedFilterValue, setUnsavedFilterValue } = columnProps;
+
+  // RangePicker does not forward onClick, so intercept it on a wrapper.
   return (
-    // RangePicker does not forward onClick, so intercept it on a wrapper.
     <div onClick={onClickFilter}>
       <RangePicker
         className="!min-w-[250px]"
         placeholder={['Start', 'End']}
-        value={columnProps.unsavedFilterValue}
+        value={unsavedFilterValue}
         format="YYYY-MM-DD"
         showTime={{ format: 'hh:mm a' }}
-        onChange={(value: any) => columnProps.setUnsavedFilterValue(value)}
+        onChange={(value: any) => {
+          setUnsavedFilterValue(value);
+        }}
       />
     </div>
   );
