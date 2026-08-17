@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react(), svgr(), tsconfigPaths()],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, './src'),
       // Redirect `recharts-scale/es6/getNiceTickValues` through our wrapper so

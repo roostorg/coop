@@ -316,6 +316,7 @@ const typeDefs = /* GraphQL */ `
     role: UserRole!
     orgId: String!
     samlEnabled: Boolean!
+    oidcEnabled: Boolean!
   }
 
   type InviteUserTokenSuccessResponse {
@@ -354,12 +355,12 @@ const typeDefs = /* GraphQL */ `
   enum LoginMethod {
     PASSWORD
     SAML
+    OIDC
   }
 
   input SignUpInput {
     email: String!
     password: String
-    loginMethod: LoginMethod!
     firstName: String!
     lastName: String!
     orgId: String!

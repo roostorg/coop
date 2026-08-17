@@ -17,6 +17,7 @@ const mockSendEmail = jest.fn();
 
 const mockConfigService = {
   uiUrl: 'http://localhost:3000',
+  apiUrl: 'http://localhost:8080',
 };
 
 describe('UserManagementService', () => {

@@ -1,9 +1,10 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Label } from '@/coop-ui/Label';
+import { toast } from '@/coop-ui/Toast';
 import { useGQLGetSsoRedirectUrlLazyQuery } from '@/graphql/generated';
 import { gql } from '@apollo/client';
 import { Input } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 
@@ -11,10 +12,14 @@ import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
 
 import LogoBlack from '../../images/LogoBlack.png';
+import { redirectToSsoUrl } from './ssoRedirect';
 
 gql`
   query GetSSORedirectUrl($emailAddress: String!) {
-    getSSORedirectUrl(emailAddress: $emailAddress)
+    getSSORedirectUrl(emailAddress: $emailAddress) {
+      url
+      method
+    }
   }
 `;
 
@@ -27,6 +32,20 @@ export default function LoginSSO() {
   const [errorModalVisible, setErrorModalVisible] = useState(false);
 
   const [getSSORedirectUrl, { loading }] = useGQLGetSsoRedirectUrlLazyQuery();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+    if (error === 'access_denied') {
+      toast.error('SSO login was cancelled. Please try again.');
+    } else if (error) {
+      const detail = errorDescription ? `: ${errorDescription}` : '';
+      toast.error(
+        `SSO login failed${detail}. Please try again or contact your administrator.`,
+      );
+    }
+  }, []);
   const errorModal = (
     <CoopModal
       title={'SSO Unavailable'}
@@ -81,9 +100,12 @@ export default function LoginSSO() {
               getSSORedirectUrl({
                 variables: { emailAddress: email! },
                 onCompleted: (data) => {
-                  const redirectUrl = data.getSSORedirectUrl;
-                  if (redirectUrl) {
-                    window.location.href = redirectUrl;
+                  const redirectInfo = data.getSSORedirectUrl;
+                  if (redirectInfo) {
+                    redirectToSsoUrl(
+                      redirectInfo.url,
+                      redirectInfo.method as 'GET' | 'POST',
+                    );
                   }
                 },
                 onError: (_error) => {

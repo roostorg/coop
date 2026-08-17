@@ -700,7 +700,10 @@ const ContentRule: GQLContentRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return rule.getCreator();
+    return context.dataSources.userAPI.getGraphQLUserFromId({
+      id: rule.creatorId,
+      orgId: user.orgId,
+    });
   },
   async itemTypes(rule, _, { services, getUser }) {
     const user = getUser();
@@ -767,7 +770,10 @@ const UserRule: GQLUserRuleResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return rule.getCreator();
+    return context.dataSources.userAPI.getGraphQLUserFromId({
+      id: rule.creatorId,
+      orgId: user.orgId,
+    });
   },
   async actions(rule, _, context) {
     const user = context.getUser();

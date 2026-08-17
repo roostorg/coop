@@ -6,6 +6,6 @@ export type SSOServicePg = {
   orgs: { id: string };
   org_settings: Pick<
     OrgSettingsPg['public.org_settings'],
-    'saml_enabled' | 'org_id'
+    'saml_enabled' | 'oidc_enabled' | 'org_id'
   >;
 };

@@ -51,6 +51,18 @@ export async function verifyEmailPasswordCredentials(
       });
     }
 
+    const oidcSettings = await deps.orgSettingsService.getOidcSettings(
+      user.orgId,
+    );
+
+    if (oidcSettings?.oidc_enabled) {
+      throw makeLoginSsoRequiredError({
+        detail:
+          'OIDC is enabled for this organization. Password login is disabled.',
+        shouldErrorSpan: true,
+      });
+    }
+
     if (!user.loginMethods.includes('password')) {
       throw makeLoginIncorrectPasswordError({
         detail: 'Password is not set for user.',
