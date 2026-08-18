@@ -404,6 +404,7 @@ export default function ManualReviewRecentDecisions() {
               header: 'Queue',
               accessorKey: 'queue',
               enableSorting: true,
+              sortFn: stringSort,
             }
           : undefined,
       ]),
