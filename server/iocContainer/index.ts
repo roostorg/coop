@@ -131,6 +131,7 @@ import {
   // owned by the MRT service)
   // eslint-disable-next-line import/no-restricted-paths
 } from '../services/manualReviewToolService/manualReviewToolQueries.js';
+import { ModerationActivityFeed } from '../services/moderationActivityFeed/index.js';
 import {
   ModerationConfigService,
   type Action,
@@ -371,6 +372,7 @@ export interface Dependencies {
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
   ItemInvestigationService: ItemInvestigationService;
+  ModerationActivityFeed: ModerationActivityFeed;
   DerivedFieldsService: DerivedFieldsService;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   UserStatisticsService: any; // TODO: Fix circular reference with Dependencies
@@ -1485,6 +1487,13 @@ export default async function getBottle() {
         _input: ManualReviewJobInput | ManualReviewAppealJobInput,
         _queueId: string,
       ) {},
+    );
+  });
+
+  bottle.factory('ModerationActivityFeed', (container) => {
+    return new ModerationActivityFeed(
+      container.ManualReviewToolService,
+      container.ItemInvestigationService,
     );
   });
 
