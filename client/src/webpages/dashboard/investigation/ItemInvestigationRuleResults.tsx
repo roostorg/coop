@@ -15,11 +15,7 @@ import {
   DefaultColumnFilter,
   SelectColumnFilter,
 } from '../components/table/filters';
-import {
-  conditionOutcomeSort,
-  ruleStatusSort,
-  stringSort,
-} from '../components/table/sort';
+import { stringSort } from '../components/table/sort';
 import Table from '../components/table/Table';
 
 import {
@@ -104,7 +100,7 @@ export default function ItemInvestigationRuleResults(props: {
             accessor: 'result',
           }),
         filter: 'includes',
-        sortType: conditionOutcomeSort,
+        sortType: stringSort,
       },
       {
         Header: 'Status',
@@ -115,7 +111,7 @@ export default function ItemInvestigationRuleResults(props: {
             accessor: 'status',
           }),
         filter: 'includes',
-        sortType: ruleStatusSort,
+        sortType: stringSort,
       },
       {
         Header: 'Policies',
@@ -166,6 +162,10 @@ export default function ItemInvestigationRuleResults(props: {
         const outcome = ruleResult.passed
           ? GQLConditionOutcome.Passed
           : ruleResult.result?.result?.outcome;
+        const actionNames =
+          rules
+            ?.find((it) => ruleResult.ruleId === it.id)
+            ?.actions?.map((action) => action.name) ?? [];
         return {
           rule: ruleResult.ruleName,
           result: (
@@ -204,11 +204,9 @@ export default function ItemInvestigationRuleResults(props: {
           ),
           actions: (
             <div className="w-48 mr-10 grid gap-y-1">
-              {rules
-                ?.find((it) => ruleResult.ruleId === it.id)
-                ?.actions?.map((action, i) => (
-                  <InvestigationTag title={action.name} key={i} />
-                ))}
+              {actionNames.map((actionName, i) => (
+                <InvestigationTag title={actionName} key={i} />
+              ))}
             </div>
           ),
           edit: (
@@ -227,6 +225,16 @@ export default function ItemInvestigationRuleResults(props: {
             </div>
           ),
           ruleExecutionResult: ruleResult.result,
+          values: {
+            rule: ruleResult.ruleName,
+            result: capitalize(
+              lowerCase(outcome ?? GQLConditionOutcome.Inapplicable),
+            ),
+            status: capitalize(lowerCase(ruleResult.environment)),
+            policies: ruleResult.policies,
+            tags: ruleResult.tags,
+            actions: actionNames,
+          },
         };
       }),
     [ruleExecutionsHistory, navigate, rules],
