@@ -73,7 +73,7 @@ export default function StrikeEnabledActionsTab() {
       },
       {
         header: '',
-        accessorKey: 'CustomAction', // accessor is the "key" in the data
+        accessorKey: 'customAction', // accessor is the "key" in the data
         enableSorting: false,
       },
     ],
