@@ -15,6 +15,7 @@ import { typeDefs as investigationTypeDefs } from './modules/investigation.js';
 import { typeDefs as itemTypeTypeDefs } from './modules/itemType.js';
 import { typeDefs as locationBankTypeDefs } from './modules/locationBank.js';
 import { typeDefs as manualReviewToolTypeDefs } from './modules/manualReviewTool.js';
+import { typeDefs as moderationActivityTypeDefs } from './modules/moderationActivity.js';
 import { typeDefs as ncmecTypeDefs } from './modules/ncmec.js';
 import { typeDefs as orgTypeDefs } from './modules/org.js';
 import { typeDefs as policyTypeDefs } from './modules/policy.js';
@@ -497,6 +498,7 @@ export default mergeTypeDefs([
   itemTypeTypeDefs,
   locationBankTypeDefs,
   manualReviewToolTypeDefs,
+  moderationActivityTypeDefs,
   ncmecTypeDefs,
   orgTypeDefs,
   policyTypeDefs,
