@@ -1,7 +1,7 @@
 import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
 import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
 import { flexRender, useTable } from '@tanstack/react-table';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { features, TableColumnDef, TableData, TableRow } from './tableFeatures';
@@ -52,11 +52,12 @@ export default function Table<TData extends Record<string, any>>(
   } = 'isCollapsed' in props ? props : {};
 
   const rowsAreSelectable = onSelectRow !== undefined;
+  const tableData = useMemo(() => [...data], [data]);
 
   const table = useTable({
     features,
     columns,
-    data: [...data],
+    data: tableData,
     defaultColumn: {
       cell: ({ getValue }) => getValue() as ReactNode,
     },
