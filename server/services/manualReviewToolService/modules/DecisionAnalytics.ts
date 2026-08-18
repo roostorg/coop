@@ -9,7 +9,11 @@ import {
   type ManualReviewJob,
   type ManualReviewJobEnqueueSource,
 } from '../manualReviewToolService.js';
-import { type ManualReviewDecisionType } from './JobDecisioning.js';
+import {
+  type ManualReviewDecisionComponent,
+  type ManualReviewDecisionRelatedAction,
+  type ManualReviewDecisionType,
+} from './JobDecisioning.js';
 
 export type RecentDecisionsFilterInput = {
   userSearchString?: string;
@@ -233,7 +237,14 @@ export default class DecisionAnalytics {
       .execute();
   }
 
-  async getRecentDecisions(opts: {
+  /**
+   * Shared query body for `getRecentDecisions` and
+   * `getDecisionsForActivityFeed`: the select list, every filter predicate,
+   * the `userSearchString` branch, and the NCMEC permission gate. Stops
+   * short of `orderBy`/`limit`/`offset` so each caller applies its own
+   * paging.
+   */
+  private buildRecentDecisionsQuery(opts: {
     userPermissions: UserPermission[];
     orgId: string;
     input: RecentDecisionsFilterInput;
@@ -247,156 +258,192 @@ export default class DecisionAnalytics {
       queueIds,
       startTime,
       endTime,
-      page,
     } = input;
-    const limit = 100;
-    const decisions = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .select([
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'decision_components',
-        'related_actions',
-        'created_at',
-        sql<string>`((job_payload->'payload'::text)->'item'::text) -> 'itemId'::text`.as(
-          'item_id',
-        ),
-        sql<string>`(((job_payload->'payload'::text)->'item'::text) -> 'itemTypeIdentifier'::text) ->> 'id'::text`.as(
-          'item_type_id',
-        ),
-        'decision_reason',
-        sql<string>`(job_payload->>'id')::text`.as('job_id'),
-      ])
-      .where('org_id', '=', orgId)
-      .where(({ eb, selectFrom }) => {
-        return eb.and([
-          ...(startTime ? [eb('created_at', '>=', new Date(startTime))] : []),
-          ...(endTime ? [eb('created_at', '<=', new Date(endTime))] : []),
-          ...(queueIds && queueIds.length > 0
-            ? [eb('queue_id', 'in', queueIds)]
-            : []),
-          ...(reviewerIds && reviewerIds.length > 0
-            ? [eb('reviewer_id', 'in', reviewerIds)]
-            : []),
-          ...(policyIds
-            ? [
-                eb.exists(
-                  selectFrom(
-                    sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-                      'decision_component',
-                    ),
-                  )
-                    .selectAll()
-                    .where(
-                      eb.or(
-                        policyIds.map((policyId) =>
-                          eb(
-                            sql<string>`decision_component->>'policies'`,
-                            'like',
-                            `%"${policyId}"%`,
+    return (
+      this.pgQuery
+        .selectFrom('manual_review_tool.manual_review_decisions')
+        .select([
+          'id',
+          'queue_id',
+          'reviewer_id',
+          'decision_components',
+          'related_actions',
+          'created_at',
+          sql<string>`((job_payload->'payload'::text)->'item'::text) -> 'itemId'::text`.as(
+            'item_id',
+          ),
+          sql<string>`(((job_payload->'payload'::text)->'item'::text) -> 'itemTypeIdentifier'::text) ->> 'id'::text`.as(
+            'item_type_id',
+          ),
+          'decision_reason',
+          sql<string>`(job_payload->>'id')::text`.as('job_id'),
+        ])
+        .where('org_id', '=', orgId)
+        .where(({ eb, selectFrom }) => {
+          return eb.and([
+            ...(startTime ? [eb('created_at', '>=', new Date(startTime))] : []),
+            ...(endTime ? [eb('created_at', '<=', new Date(endTime))] : []),
+            ...(queueIds && queueIds.length > 0
+              ? [eb('queue_id', 'in', queueIds)]
+              : []),
+            ...(reviewerIds && reviewerIds.length > 0
+              ? [eb('reviewer_id', 'in', reviewerIds)]
+              : []),
+            ...(policyIds
+              ? [
+                  eb.exists(
+                    selectFrom(
+                      sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
+                        'decision_component',
+                      ),
+                    )
+                      .selectAll()
+                      .where(
+                        eb.or(
+                          policyIds.map((policyId) =>
+                            eb(
+                              sql<string>`decision_component->>'policies'`,
+                              'like',
+                              `%"${policyId}"%`,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ),
-              ]
-            : []),
-          ...(decisionsFilter
-            ? [
-                eb.or(
-                  decisionsFilter.flatMap((it) => [
-                    eb.exists(
-                      selectFrom(
-                        sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-                          'decision_component',
-                        ),
-                      )
-                        .selectAll()
-                        .where(
-                          sql<string>`decision_component->>'type'`,
-                          '=',
-                          it.type,
+                  ),
+                ]
+              : []),
+            ...(decisionsFilter
+              ? [
+                  eb.or(
+                    decisionsFilter.flatMap((it) => [
+                      eb.exists(
+                        selectFrom(
+                          sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
+                            'decision_component',
+                          ),
                         )
-                        .$if(it.actionIds !== undefined, (qb) =>
-                          qb.where(
-                            eb.or(
-                              it.actionIds!.map((actionId) =>
-                                eb(
-                                  sql<string>`decision_component->>'actions'`,
-                                  'like',
-                                  `%"${actionId}"%`,
+                          .selectAll()
+                          .where(
+                            sql<string>`decision_component->>'type'`,
+                            '=',
+                            it.type,
+                          )
+                          .$if(it.actionIds !== undefined, (qb) =>
+                            qb.where(
+                              eb.or(
+                                it.actionIds!.map((actionId) =>
+                                  eb(
+                                    sql<string>`decision_component->>'actions'`,
+                                    'like',
+                                    `%"${actionId}"%`,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ),
-                  ]),
-                ),
-              ]
-            : []),
-        ]);
-      })
-      .$if(userSearchString !== undefined, (qb) =>
-        // See https://stackoverflow.com/a/55607847
-        qb.where(({ and, eb, val }) =>
-          and([
-            eb('created_at', '>', val(new Date(Date.now() - 3 * MONTH_MS))),
-            eb(
-              sql<string>`(manual_review_tool.manual_review_decisions.job_payload->'payload'->'item'->>'itemId')`,
-              '=',
-              // Above, the 'itemId' field is of type jsonb, so we cast it to a string using ::text, but that
-              // cast will leave quotes around the resulting string because it's just stringifying what it thinks
-              // is a jsonb object. The easiest way to handle this is to just add quotes around the userSearchString
-              // to match the quotes in the value above.
-              val(`${userSearchString}`),
-            ),
-          ]),
-        ),
-      )
-      // If the user doesn't have the VIEW_CHILD_SAFETY_DATA permission, filter out decisions on
-      // all NCMEC jobs
-      .$if(
-        !userPermissions.includes(UserPermission.VIEW_CHILD_SAFETY_DATA),
-        (qb) =>
-          qb.where(({ eb, val }) =>
-            eb(
-              sql<string>`(job_payload->'payload'->'kind')::text`,
-              '!=',
-              val('"NCMEC"'),
-            ),
+                      ),
+                    ]),
+                  ),
+                ]
+              : []),
+          ]);
+        })
+        .$if(userSearchString !== undefined, (qb) =>
+          // See https://stackoverflow.com/a/55607847
+          qb.where(({ and, eb, val }) =>
+            and([
+              eb('created_at', '>', val(new Date(Date.now() - 3 * MONTH_MS))),
+              eb(
+                sql<string>`(manual_review_tool.manual_review_decisions.job_payload->'payload'->'item'->>'itemId')`,
+                '=',
+                // Above, the 'itemId' field is of type jsonb, so we cast it to a string using ::text, but that
+                // cast will leave quotes around the resulting string because it's just stringifying what it thinks
+                // is a jsonb object. The easiest way to handle this is to just add quotes around the userSearchString
+                // to match the quotes in the value above.
+                val(`${userSearchString}`),
+              ),
+            ]),
           ),
-      )
+        )
+        // If the user doesn't have the VIEW_CHILD_SAFETY_DATA permission, filter out decisions on
+        // all NCMEC jobs
+        .$if(
+          !userPermissions.includes(UserPermission.VIEW_CHILD_SAFETY_DATA),
+          (qb) =>
+            qb.where(({ eb, val }) =>
+              eb(
+                sql<string>`(job_payload->'payload'->'kind')::text`,
+                '!=',
+                val('"NCMEC"'),
+              ),
+            ),
+        )
+    );
+  }
+
+  async getRecentDecisions(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: RecentDecisionsFilterInput;
+  }) {
+    const { userPermissions, orgId, input } = opts;
+    const { page } = input;
+    const limit = 100;
+    const decisions = await this.buildRecentDecisionsQuery({
+      userPermissions,
+      orgId,
+      input,
+    })
       .orderBy('created_at', 'desc')
       .limit(limit)
       .offset(page * limit)
       .execute();
-    return decisions.map((decision) => ({
-      id: decision.id,
-      itemId: decision.item_id,
-      itemTypeId: decision.item_type_id,
-      queueId: decision.queue_id,
-      reviewerId: decision.reviewer_id,
-      decisions: decision.decision_components.map((it) => {
-        if (it.type !== 'CUSTOM_ACTION') {
-          return it;
-        }
-        return {
-          ...it,
-          actionIds: it.actions.map((it) => it.id),
-          policyIds: it.policies.map((it) => it.id),
-          itemTypeId: it.itemTypeId,
-        };
-      }),
-      relatedActions: decision.related_actions.map((action) => ({
-        ...action,
-        type: 'RELATED_ACTION' as const,
-      })),
-      createdAt: decision.created_at,
-      decisionReason: decision.decision_reason,
-      jobId: decision.job_id,
-    }));
+    return decisions.map(mapDecisionRow);
+  }
+
+  /**
+   * Cursor-paged twin of `getRecentDecisions`, for the merged activity feed.
+   *
+   * Kept separate rather than folded into `getRecentDecisions`: that query is
+   * offset-paged and consumed elsewhere, and changing its contract would
+   * break callers this feature has no reason to touch.
+   *
+   * Ordering is `(created_at, id)` descending. The id leg makes each row's
+   * position unique so the merged feed's cursor is exact — a
+   * `created_at`-only bound would drop or repeat decisions sharing an
+   * instant.
+   */
+  async getDecisionsForActivityFeed(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: RecentDecisionsFilterInput;
+    // The DECISIONS side of a per-store cursor. The caller must never pass
+    // the actions side's id here: `id` is uuid, and a non-uuid string raises
+    // 22P02 invalid input syntax for type uuid.
+    cursor?: { ts: Date; id: string };
+    limit: number;
+  }) {
+    const { userPermissions, orgId, input, cursor, limit } = opts;
+    const decisions = await this.buildRecentDecisionsQuery({
+      userPermissions,
+      orgId,
+      input,
+    })
+      .$if(cursor !== undefined, (qb) =>
+        qb.where(
+          sql`(created_at, id)`,
+          '<',
+          // `id` is uuid. The cast is load-bearing: without it Postgres
+          // infers the bind type from the column and a non-uuid string
+          // raises 22P02.
+          sql`(${cursor!.ts}, ${cursor!.id}::uuid)`,
+        ),
+      )
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(limit)
+      .execute();
+    return decisions.map(mapDecisionRow);
   }
 
   async getResolvedJobCounts(input: JobCountsInput) {
@@ -524,6 +571,57 @@ export default class DecisionAnalytics {
       },
     };
   }
+}
+
+/**
+ * Row shape shared by `getRecentDecisions` and `getDecisionsForActivityFeed`,
+ * as selected by `DecisionAnalytics['buildRecentDecisionsQuery']`.
+ */
+type RecentDecisionRow = {
+  id: string;
+  item_id: string;
+  item_type_id: string;
+  queue_id: string;
+  reviewer_id: string | null;
+  decision_components: ManualReviewDecisionComponent[];
+  related_actions: ManualReviewDecisionRelatedAction[];
+  created_at: Date;
+  decision_reason: string | null;
+  job_id: string;
+};
+
+/**
+ * Projects a raw `manual_review_decisions` row into the shape both
+ * `getRecentDecisions` and `getDecisionsForActivityFeed` return. Moved
+ * verbatim out of `getRecentDecisions` — do not alter any field here without
+ * updating both callers' consumers.
+ */
+function mapDecisionRow(decision: RecentDecisionRow) {
+  return {
+    id: decision.id,
+    itemId: decision.item_id,
+    itemTypeId: decision.item_type_id,
+    queueId: decision.queue_id,
+    reviewerId: decision.reviewer_id,
+    decisions: decision.decision_components.map((it) => {
+      if (it.type !== 'CUSTOM_ACTION') {
+        return it;
+      }
+      return {
+        ...it,
+        actionIds: it.actions.map((it) => it.id),
+        policyIds: it.policies.map((it) => it.id),
+        itemTypeId: it.itemTypeId,
+      };
+    }),
+    relatedActions: decision.related_actions.map((action) => ({
+      ...action,
+      type: 'RELATED_ACTION' as const,
+    })),
+    createdAt: decision.created_at,
+    decisionReason: decision.decision_reason,
+    jobId: decision.job_id,
+  };
 }
 
 /**
