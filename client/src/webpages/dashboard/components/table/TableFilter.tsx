@@ -72,10 +72,17 @@ export default function TableFilter<TData extends TableData>(props: {
   };
 
   const onSave = () => {
+    const missingColumnIds: string[] = [];
     for (const [columnId, value] of Object.entries(unsavedFilterValues)) {
-      filterColumns
-        .find((column) => column.id === columnId)!
-        .setFilterValue(value);
+      const column = filterColumns.find((column) => column.id === columnId);
+      if (!column) {
+        missingColumnIds.push(columnId);
+        continue;
+      }
+      column.setFilterValue(value);
+    }
+    if (missingColumnIds.length > 0) {
+      setUnsavedFilterValues(omit(unsavedFilterValues, missingColumnIds));
     }
     setMenuVisible(false);
   };
@@ -92,9 +99,10 @@ export default function TableFilter<TData extends TableData>(props: {
 
   const removeFilter = (columnId: string) => {
     setUnsavedFilterValues(omit(unsavedFilterValues, columnId));
-    filterColumns
-      .find((column) => column.id === columnId)!
-      .setFilterValue(undefined);
+    const column = filterColumns.find((column) => column.id === columnId);
+    if (column) {
+      column.setFilterValue(undefined);
+    }
   };
 
   const activeFilters = filterColumns.filter((column) =>

@@ -349,6 +349,54 @@ describe('Table behavior', () => {
     expectAllRowsVisible();
   });
 
+  it('prunes staged filters when their columns are removed', () => {
+    const nameColumn = {
+      ...columns[0],
+      meta: { filter: filterFor('name', 'Filter names') },
+      filterFn: 'text',
+    } satisfies TableColumnDef<TableRow>;
+    const statusColumn = {
+      ...columns[1],
+      meta: { filter: filterFor('status', 'Filter statuses') },
+      filterFn: 'text',
+    } satisfies TableColumnDef<TableRow>;
+    const { rerender } = renderTable([nameColumn, statusColumn]);
+
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    const filterMenu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute');
+    expect(filterMenu).not.toBeNull();
+    fireEvent.click(within(filterMenu!).getByText('Name'));
+    fireEvent.change(screen.getByPlaceholderText('Filter names'), {
+      target: { value: 'alp' },
+    });
+
+    rerender(
+      <MemoryRouter>
+        <Table columns={[statusColumn]} data={data} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    rerender(
+      <MemoryRouter>
+        <Table columns={[nameColumn, statusColumn]} data={data} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    const restoredFilterMenu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute');
+    expect(restoredFilterMenu).not.toBeNull();
+    if (!screen.queryByPlaceholderText('Filter names')) {
+      fireEvent.click(within(restoredFilterMenu!).getByText('Name'));
+    }
+    expect(
+      (screen.getByPlaceholderText('Filter names') as HTMLInputElement).value,
+    ).toBe('');
+  });
+
   it('renders links and selects a clicked row using its raw data', () => {
     const onSelectRow = vi.fn();
     renderTable(columns, {
