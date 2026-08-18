@@ -549,4 +549,52 @@ describe('Table behavior', () => {
     expect(screen.getByText('Boundary score')).toBeTruthy();
     expect(screen.getByText('High score')).toBeTruthy();
   });
+
+  it('applies zero-valued lower and upper numeric range bounds', () => {
+    type NumericRow = {
+      score: ReactNode;
+      values: { score: number };
+    };
+    const numericData: NumericRow[] = [
+      { score: <span>Negative score</span>, values: { score: -1 } },
+      { score: <span>Zero score</span>, values: { score: 0 } },
+      { score: <span>Positive score</span>, values: { score: 1 } },
+    ];
+    const numericColumns = [
+      {
+        header: 'Score',
+        accessorKey: 'score',
+        cell: ({ getValue }): ReactNode => getValue<ReactNode>(),
+        meta: {
+          filter: (props: ColumnProps<NumericRow>) =>
+            NumberRangeColumnFilter({
+              columnProps: props,
+              accessor: 'score',
+            }),
+        },
+        filterFn: 'range',
+      },
+    ] satisfies TableColumnDef<NumericRow>[];
+    render(
+      <MemoryRouter>
+        <Table columns={numericColumns} data={numericData} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    const filterMenu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute')!;
+    fireEvent.click(within(filterMenu).getByText('Score'));
+    fireEvent.change(screen.getByPlaceholderText('min'), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('max'), {
+      target: { value: '0' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.queryByText('Negative score')).toBeNull();
+    expect(screen.getByText('Zero score')).toBeTruthy();
+    expect(screen.queryByText('Positive score')).toBeNull();
+  });
 });
