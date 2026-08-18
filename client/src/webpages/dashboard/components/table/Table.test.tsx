@@ -393,7 +393,7 @@ describe('Table behavior', () => {
       fireEvent.click(within(restoredFilterMenu!).getByText('Name'));
     }
     expect(
-      (screen.getByPlaceholderText('Filter names') as HTMLInputElement).value,
+      screen.getByPlaceholderText<HTMLInputElement>('Filter names').value,
     ).toBe('');
   });
 
