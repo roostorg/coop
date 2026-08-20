@@ -1537,6 +1537,7 @@ export type GQLIntegrationConfig = {
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
   readonly modelCard: GQLModelCard;
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -9732,6 +9733,11 @@ export type GQLIntegrationConfigResolvers<
   modelCard?: Resolver<GQLResolversTypes['ModelCard'], ParentType, ContextType>;
   modelCardLearnMoreUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
     ParentType,
     ContextType
   >;

@@ -1466,6 +1466,7 @@ export type GQLIntegrationConfig = {
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
   readonly modelCard: GQLModelCard;
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -6869,6 +6870,31 @@ export type GQLIntegrationConfigQuery = {
               }> | null;
             }> | null;
           };
+          readonly modelCards: ReadonlyArray<{
+            readonly __typename: 'ModelCard';
+            readonly modelName: string;
+            readonly version: string;
+            readonly releaseDate?: string | null;
+            readonly sections?: ReadonlyArray<{
+              readonly __typename: 'ModelCardSection';
+              readonly id: string;
+              readonly title: string;
+              readonly subsections?: ReadonlyArray<{
+                readonly __typename: 'ModelCardSubsection';
+                readonly title: string;
+                readonly fields: ReadonlyArray<{
+                  readonly __typename: 'ModelCardField';
+                  readonly label: string;
+                  readonly value: string;
+                }>;
+              }> | null;
+              readonly fields?: ReadonlyArray<{
+                readonly __typename: 'ModelCardField';
+                readonly label: string;
+                readonly value: string;
+              }> | null;
+            }> | null;
+          }>;
           readonly apiCredential:
             | {
                 readonly __typename: 'GoogleContentSafetyApiIntegrationApiCredential';
@@ -6890,7 +6916,6 @@ export type GQLIntegrationConfigQuery = {
                   readonly id: string;
                   readonly label: string;
                   readonly labelerId?: string | null;
-                  readonly model?: GQLZentropiModel | null;
                 }>;
               };
         } | null;
@@ -30965,6 +30990,26 @@ export const GQLIntegrationConfigDocument = gql`
               }
             }
           }
+          modelCards {
+            modelName
+            version
+            releaseDate
+            sections {
+              id
+              title
+              subsections {
+                title
+                fields {
+                  label
+                  value
+                }
+              }
+              fields {
+                label
+                value
+              }
+            }
+          }
           modelCardLearnMoreUrl
           apiCredential {
             ... on GoogleContentSafetyApiIntegrationApiCredential {
@@ -30979,7 +31024,6 @@ export const GQLIntegrationConfigDocument = gql`
                 id
                 label
                 labelerId
-                model
               }
             }
             ... on PluginIntegrationApiCredential {

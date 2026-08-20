@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router';
@@ -18,6 +19,7 @@ import {
   useGQLSetIntegrationConfigMutation,
   useGQLSetPluginIntegrationConfigMutation,
   type GQLGoogleContentSafetyApiIntegrationApiCredential,
+  type GQLModelCard,
   type GQLOpenAiIntegrationApiCredential,
   type GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
@@ -113,6 +115,26 @@ gql`
               }
             }
           }
+          modelCards {
+            modelName
+            version
+            releaseDate
+            sections {
+              id
+              title
+              subsections {
+                title
+                fields {
+                  label
+                  value
+                }
+              }
+              fields {
+                label
+                value
+              }
+            }
+          }
           modelCardLearnMoreUrl
           apiCredential {
             ... on GoogleContentSafetyApiIntegrationApiCredential {
@@ -127,7 +149,6 @@ gql`
                 id
                 label
                 labelerId
-                model
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -162,7 +183,10 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
       };
     }
     case 'OPEN_AI': {
-      return { __typename: 'OpenAiIntegrationApiCredential', apiKey: '' };
+      return {
+        __typename: 'OpenAiIntegrationApiCredential',
+        apiKey: '',
+      };
     }
     case 'ZENTROPI': {
       return {
@@ -201,6 +225,51 @@ function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
   } catch {
     return INVALID_JSON;
   }
+}
+
+/**
+ * One model of an integration, rendered as a collapsible row. Collapsed it
+ * shows the model name, version, and release date; expanded it reveals that
+ * model's model card. Integrations with several models stack one row per
+ * model.
+ */
+function ModelAccordionRow({
+  title,
+  card,
+  defaultOpen = false,
+}: {
+  title: string;
+  card: GQLModelCard;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="overflow-hidden bg-white border border-solid rounded-2xl border-slate-200">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center w-full gap-3 px-5 py-4 text-left bg-transparent border-none cursor-pointer hover:bg-slate-50"
+        aria-expanded={open}
+      >
+        <span className="text-base font-bold text-zinc-900">{title}</span>
+        <span className="flex items-center gap-3 text-sm text-zinc-500">
+          <span>{card.version}</span>
+          {card.releaseDate != null && <span>{card.releaseDate}</span>}
+        </span>
+        <span className="flex-1" />
+        {open ? (
+          <ChevronDown className="shrink-0 text-zinc-400" size={18} />
+        ) : (
+          <ChevronRight className="shrink-0 text-zinc-400" size={18} />
+        )}
+      </button>
+      {open && (
+        <div className="px-5 pb-2 border-t border-solid border-slate-200">
+          <ModelCardView card={card} hideHeader />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function IntegrationConfigForm() {
@@ -532,8 +601,16 @@ export default function IntegrationConfigForm() {
   };
 
   const apiModelCard = response?.config?.modelCard;
+  const apiModelCards = response?.config?.modelCards;
+  const modelCards =
+    apiModelCards != null && apiModelCards.length > 0
+      ? apiModelCards
+      : apiModelCard != null
+        ? [apiModelCard]
+        : [];
+  const primaryModelCard = modelCards[0];
   const apiModelCardLearnMoreUrl = response?.config?.modelCardLearnMoreUrl;
-  const hasModelCard = apiModelCard != null;
+  const hasModelCard = primaryModelCard != null;
 
   return (
     <div className="flex flex-col text-start">
@@ -554,10 +631,17 @@ export default function IntegrationConfigForm() {
         )}
       </div>
 
-      {hasModelCard && apiModelCard ? (
+      {primaryModelCard != null ? (
         <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl">
-          <div className="flex-1 min-w-0">
-            <ModelCardView card={apiModelCard} />
+          <div className="flex flex-col flex-1 min-w-0 gap-3.5">
+            {modelCards.map((card, index) => (
+              <ModelAccordionRow
+                key={index}
+                title={`${formattedName}: ${card.modelName}`}
+                card={card}
+                defaultOpen={index === 0}
+              />
+            ))}
           </div>
           <div className="flex flex-col lg:w-96 shrink-0">
             {apiModelCardLearnMoreUrl != null && (

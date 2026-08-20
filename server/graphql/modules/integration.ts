@@ -101,6 +101,7 @@ const typeDefs = /* GraphQL */ `
     name: String!
     apiCredential: IntegrationApiCredential!
     modelCard: ModelCard!
+    modelCards: [ModelCard!]!
     modelCardLearnMoreUrl: String
     title: String!
     docsUrl: String!

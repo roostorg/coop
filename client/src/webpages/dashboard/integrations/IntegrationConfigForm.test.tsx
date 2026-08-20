@@ -57,6 +57,15 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
           releaseDate: null,
           sections: [],
         },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE',
+            version: '1',
+            releaseDate: null,
+            sections: [],
+          },
+        ],
         modelCardLearnMoreUrl: null,
         apiCredential: {
           __typename: 'ZentropiIntegrationApiCredential',
@@ -270,6 +279,15 @@ function renderPluginForm(
           releaseDate: null,
           sections: [],
         },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'Pigeon',
+            version: '1',
+            releaseDate: null,
+            sections: [],
+          },
+        ],
         modelCardLearnMoreUrl: null,
         apiCredential: {
           __typename: 'PluginIntegrationApiCredential',

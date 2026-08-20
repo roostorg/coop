@@ -21,6 +21,7 @@ export type TIntegrationConfigWithMetadata = Readonly<{
   name: string;
   apiCredential: Readonly<Record<string, unknown>>;
   modelCard: ModelCard;
+  modelCards: readonly ModelCard[];
   modelCardLearnMoreUrl?: string;
   title: string;
   docsUrl: string;
@@ -52,6 +53,7 @@ function mergeManifest(
     name: integrationId,
     apiCredential: { ...apiCredential, name: integrationId },
     modelCard: manifest.modelCard,
+    modelCards: manifest.modelCards ?? [manifest.modelCard],
     modelCardLearnMoreUrl: manifest.modelCardLearnMoreUrl,
     title: manifest.title,
     docsUrl: manifest.docsUrl,

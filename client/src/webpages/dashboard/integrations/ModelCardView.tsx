@@ -8,7 +8,7 @@ import type {
   GQLModelCardSubsection,
 } from '../../../graphql/generated';
 
-type ModelCardViewProps = { card: GQLModelCard };
+type ModelCardViewProps = { card: GQLModelCard; hideHeader?: boolean };
 
 /**
  * Renders a single label-value row. Linkifies URLs in value.
@@ -100,19 +100,24 @@ function ModelCardSectionBlock({
   );
 }
 
-export default function ModelCardView({ card }: ModelCardViewProps) {
+export default function ModelCardView({
+  card,
+  hideHeader = false,
+}: ModelCardViewProps) {
   const sections = card.sections ?? [];
   return (
     <div className="flex flex-col">
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-lg font-semibold text-zinc-900">
-          {card.modelName}
-        </span>
-        <span className="text-sm text-zinc-600">{card.version}</span>
-        {card.releaseDate != null && (
-          <span className="text-sm text-zinc-500">{card.releaseDate}</span>
-        )}
-      </div>
+      {!hideHeader && (
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="text-lg font-semibold text-zinc-900">
+            {card.modelName}
+          </span>
+          <span className="text-sm text-zinc-600">{card.version}</span>
+          {card.releaseDate != null && (
+            <span className="text-sm text-zinc-500">{card.releaseDate}</span>
+          )}
+        </div>
+      )}
       <div className="flex flex-col">
         {sections.map((section) => (
           <ModelCardSectionBlock
