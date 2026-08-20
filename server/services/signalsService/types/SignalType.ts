@@ -16,7 +16,6 @@ export type BuiltInSignalType = keyof typeof BuiltInSignalType;
 export type SignalType = keyof typeof SignalType;
 
 export const InternalSignalType = makeEnumLike([
-  'GOOGLE_CLOUD_TRANSLATE_MODEL',
   'OPEN_AI_WHISPER_TRANSCRIPTION',
 ]);
 
@@ -119,7 +118,6 @@ export function integrationForSignalType(type: SignalType | string) {
     case 'AGGREGATION':
     case 'CUSTOM':
     case 'GEO_CONTAINED_WITHIN':
-    case 'GOOGLE_CLOUD_TRANSLATE_MODEL':
     case 'IMAGE_EXACT_MATCH':
     case 'IMAGE_SIMILARITY_SCORE':
     case 'IMAGE_SIMILARITY_DOES_NOT_MATCH':

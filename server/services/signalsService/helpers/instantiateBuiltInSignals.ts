@@ -22,7 +22,6 @@ import TextMatchingContainsTextSignal from '../signals/text_matching/TextMatchin
 import TextMatchingNotContainsRegexSignal from '../signals/text_matching/TextMatchingNotContainsRegexSignal.js';
 import TextMatchingNotContainsTextSignal from '../signals/text_matching/TextMatchingNotContainsTextSignal.js';
 import GoogleContentSafetyImageSignal from '../signals/third_party_signals/google/content_safety/GoogleContentSafetyImageSignal.js';
-import GoogleCloudTranslationAPISignal from '../signals/third_party_signals/google/GoogleCloudTranslationAPISignal.js';
 import OpenAiGraphicViolenceImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceImageSignal.js';
 import OpenAiGraphicViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceTextSignal.js';
 import OpenAiHateTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.js';
@@ -167,8 +166,6 @@ export function instantiateBuiltInSignals(
     [SignalType.USER_SCORE]: new UserScoreSignal(
       getUserScoreEventuallyConsistent,
     ),
-    [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]:
-      new GoogleCloudTranslationAPISignal(),
     [SignalType.AGGREGATION]: new AggregationSignal(aggregationsService),
     [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
       credentialGetters.ZENTROPI,
