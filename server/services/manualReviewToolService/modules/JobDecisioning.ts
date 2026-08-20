@@ -182,6 +182,14 @@ export type OnRecordDecisionInput = {
   suppressUserReportSweep?: boolean;
 };
 
+export const NCMEC_ESCALATION_SKIP_WARNING =
+  'NCMEC escalation was skipped: this user already has a submitted NCMEC report.';
+
+export const NCMEC_ESCALATION_SKIP_UNKNOWN_WARNING =
+  'Could not check whether this user already has a submitted NCMEC report, so ' +
+  'the escalation may be skipped. Confirm the report was created before ' +
+  'treating this user as escalated.';
+
 export default class JobDecisioning {
   constructor(
     private readonly queueOps: QueueOperations,
@@ -539,13 +547,13 @@ export default class JobDecisioning {
           return null;
         },
       );
-      return false;
+      return 'unknown' as const;
     });
-    return hasExistingReport
-      ? [
-          'NCMEC escalation was skipped: this user already has a submitted NCMEC report.',
-        ]
-      : [];
+
+    if (hasExistingReport === 'unknown') {
+      return [NCMEC_ESCALATION_SKIP_UNKNOWN_WARNING];
+    }
+    return hasExistingReport ? [NCMEC_ESCALATION_SKIP_WARNING] : [];
   }
 
   /**
