@@ -65,6 +65,7 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
+import { type JobSortType } from './JobPriority.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -75,6 +76,7 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
+  jobSortType: JobSortType;
   // Null disposition disables "clear other reports for this user" (issue #650).
   clearReportsDisposition: ClearReportsDisposition | null;
   clearReportsScope: ClearReportsScope;
@@ -89,6 +91,7 @@ const PgQueueSelection = [
   'created_at as createdAt',
   'is_appeals_queue as isAppealsQueue',
   'auto_close_jobs as autoCloseJobs',
+  'job_sort_type as jobSortType',
   'clear_reports_disposition as clearReportsDisposition',
   'clear_reports_scope as clearReportsScope',
 ] as const;
@@ -248,6 +251,7 @@ export default class QueueOperations {
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -260,11 +264,16 @@ export default class QueueOperations {
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType: requestedJobSortType = 'FIFO',
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
     } = input;
     const { orgId } = invokedBy;
+
+    // Appeal jobs are never enqueued with a priority, so appeals queues are
+    // always FIFO no matter what the caller asks for.
+    const jobSortType = isAppealsQueue ? 'FIFO' : requestedJobSortType;
 
     if (!invokedBy.permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
       throw makeUnauthorizedError(
@@ -303,6 +312,7 @@ export default class QueueOperations {
               description: replaceEmptyStringWithNull(description),
               is_appeals_queue: isAppealsQueue ?? false,
               auto_close_jobs: autoCloseJobs ?? false,
+              job_sort_type: jobSortType,
               clear_reports_disposition: clearReportsDisposition ?? null,
               clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
             },
@@ -351,6 +361,7 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     // When provided, replaces the queue's full set of trigger actions.
@@ -365,6 +376,7 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -389,6 +401,7 @@ export default class QueueOperations {
               name,
               description: replaceEmptyStringWithNull(description),
               auto_close_jobs: autoCloseJobs,
+              job_sort_type: jobSortType,
               // null disables the feature and must survive removeUndefinedKeys.
               clear_reports_disposition: clearReportsDisposition,
               clear_reports_scope: clearReportsScope,
@@ -666,6 +679,7 @@ export default class QueueOperations {
         'queues.created_at as createdAt',
         'queues.is_appeals_queue as isAppealsQueue',
         'queues.auto_close_jobs as autoCloseJobs',
+        'queues.job_sort_type as jobSortType',
         'queues.clear_reports_disposition as clearReportsDisposition',
         'queues.clear_reports_scope as clearReportsScope',
       ])
@@ -839,9 +853,16 @@ export default class QueueOperations {
       payload: ManualReviewJobPayload;
     };
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo;
+    priority?: number;
   }) {
-    const { orgId, queueId, jobPayload, reenqueuedFrom, enqueueSourceInfo } =
-      opts;
+    const {
+      orgId,
+      queueId,
+      jobPayload,
+      reenqueuedFrom,
+      enqueueSourceInfo,
+      priority,
+    } = opts;
     const { payload, policyIds } = jobPayload;
 
     const queue = await this.#getBullQueue(orgId, queueId);
@@ -864,7 +885,7 @@ export default class QueueOperations {
         reenqueuedFrom,
         enqueueSourceInfo,
       },
-      { removeOnComplete: true, jobId: bullJobId },
+      { removeOnComplete: true, jobId: bullJobId, priority },
     );
 
     // Again, because new job data comes in in the non-legacy format, it's safe
@@ -982,8 +1003,10 @@ export default class QueueOperations {
     queueId: string;
     jobId: JobId;
     data: ManualReviewJob;
+    // When set, re-stamps the job's BullMQ priority alongside the data update.
+    priority?: number;
   }) {
-    const { orgId, queueId, jobId, data } = opts;
+    const { orgId, queueId, jobId, data, priority } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
     const { bullId } = parseExternalId(jobId);
     const job = await queue.getJob(bullId);
@@ -993,6 +1016,9 @@ export default class QueueOperations {
     if (!job || job.data.id !== jobId) {
       return undefined;
     }
+    if (priority != null) {
+      await job.changePriority({ priority });
+    }
     await job.updateData(data);
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
@@ -1001,9 +1027,87 @@ export default class QueueOperations {
   }
 
   /**
-   * Yields every undecided job on a queue (waiting, delayed, or active) for
-   * bounded admin sweeps such as reporter invalidation. Includes `active`
-   * jobs so sweeps can update what a reviewer currently has dequeued;
+   * Gives every pending job on a queue a fresh priority, e.g. after the
+   * queue's sort mode changes. Calls `getPriority` once per job.
+   *
+   * Works in two passes. Changing a job's priority reorders the same list
+   * we'd be paging through, which can skip jobs or process them twice — so
+   * first collect every job's (id, createdAt, itemId) into a snapshot (tiny
+   * tuples, cheap to hold even for huge queues), then walk the snapshot and
+   * update each job by id.
+   *
+   * `getPriorities` receives every pending item id at once and returns a
+   * priority per item id. Resolving priorities in bulk keeps a re-sort to a
+   * single data warehouse query instead of one per job.
+   *
+   * The snapshot is walked oldest-first. Jobs given equal priority dequeue
+   * in the order we updated them, not the order they originally arrived —
+   * so updating oldest-first is what keeps FIFO order intact.
+   *
+   * Pass 2 re-fetches each job by id. That's a second Redis round-trip per
+   * job, but BullMQ's `changePriority` is a method on `Job`, so the only way
+   * to avoid it is to hold every job's full payload in memory for the whole
+   * sweep — worse for exactly the large queues this batching protects.
+   */
+  async recomputePrioritiesForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    getPriorities: (
+      itemIds: readonly string[],
+    ) => Promise<ReadonlyMap<string, number>>;
+  }) {
+    const { orgId, queueId, getPriorities } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const batchSize = 200;
+
+    const pending: Array<{
+      bullId: string;
+      createdAtMs: number;
+      itemId: string;
+    }> = [];
+    let start = 0;
+    while (true) {
+      // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
+      // 'waiting'.
+      const jobs = await queue.getJobs(
+        ['waiting', 'prioritized', 'delayed', 'active'],
+        start,
+        start + batchSize - 1,
+      );
+      if (jobs.length === 0) break;
+      for (const job of jobs) {
+        if (job?.id != null) {
+          pending.push({
+            bullId: job.id,
+            createdAtMs: new Date(job.data.createdAt).getTime(),
+            itemId: (job.data as ManualReviewJob).payload.item.itemId,
+          });
+        }
+      }
+      if (jobs.length < batchSize) break;
+      start += batchSize;
+    }
+
+    pending.sort((a, b) => a.createdAtMs - b.createdAtMs);
+
+    const priorities = await getPriorities(pending.map((it) => it.itemId));
+
+    for (const { bullId, itemId } of pending) {
+      const priority = priorities.get(itemId);
+      // No priority resolved for this item — leave the job's current one
+      // alone rather than guessing.
+      if (priority == null) continue;
+      const bullJob = await queue.getJob(bullId);
+      // Dequeued or removed since the snapshot — nothing to re-stamp.
+      if (!bullJob) continue;
+      await bullJob.changePriority({ priority });
+    }
+  }
+
+  /**
+   * Yields every undecided job on a queue (waiting, prioritized, delayed, or
+   * active) for bounded admin sweeps such as reporter invalidation. Includes
+   * `active` jobs so sweeps can update what a reviewer currently has dequeued;
    * excludes terminal states (completed/failed). `maxJobs` caps a single
    * sweep so it can't pin Redis indefinitely.
    *
@@ -1031,7 +1135,7 @@ export default class QueueOperations {
     while (snapshotIds.length < maxJobs) {
       const end = start + batchSize - 1;
       const legacyJobs = await queue.getJobs(
-        ['waiting', 'delayed', 'active'],
+        ['waiting', 'prioritized', 'delayed', 'active'],
         start,
         end,
       );

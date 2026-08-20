@@ -22,6 +22,8 @@ export default function Table(
     /** Force the horizontal scrollbar to always render. Opt-in because tables
      * that always fit the viewport would otherwise show an unnecessary scrollbar. */
     alwaysShowScrollbar?: boolean;
+    /** Columns to sort by on first render, e.g. [{ id: 'name', desc: false }]. */
+    initialSortBy?: Array<{ id: string; desc: boolean }>;
   } & (
     | {
         isCollapsed?: boolean;
@@ -42,6 +44,7 @@ export default function Table(
     disableFilter,
     containerClassName,
     alwaysShowScrollbar,
+    initialSortBy,
   } = props;
   const {
     isCollapsed = undefined,
@@ -54,8 +57,18 @@ export default function Table(
   const filterTypes = useMemo(getFilterTypes, []);
 
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    /* @ts-ignore */
-    useTable({ columns, data, filterTypes }, useFilters, useSortBy);
+    useTable(
+      {
+        columns,
+        data,
+        filterTypes,
+        // @ts-expect-error react-table v7's TableState typings don't include
+        // the sortBy state contributed by the useSortBy plugin.
+        initialState: { sortBy: initialSortBy ?? [] },
+      },
+      useFilters,
+      useSortBy,
+    );
 
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
