@@ -10,7 +10,6 @@ import GeoContainedWithinSignal from '../signals/GeoContainedWithinSignal.js';
 import ImageExactMatchSignal from '../signals/ImageExactMatchSignal.js';
 import ImageSimilarityDoesNotMatchSignal from '../signals/ImageSimilarityDoesNotMatch.js';
 import ImageSimilarityMatchSignal from '../signals/ImageSimilarityMatch.js';
-import ImageSimilarityScoreSignal from '../signals/ImageSimilarityScoreSignal.js';
 import {
   type SignalBase,
   type SignalInputType,
@@ -78,7 +77,6 @@ export function instantiateBuiltInSignals(
       new TextMatchingContainsVariantSignal(),
     [SignalType.TEXT_SIMILARITY_SCORE]: new TextSimilarityScoreSignal(),
     [SignalType.IMAGE_EXACT_MATCH]: new ImageExactMatchSignal(),
-    [SignalType.IMAGE_SIMILARITY_SCORE]: new ImageSimilarityScoreSignal(),
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]:
       new ImageSimilarityDoesNotMatchSignal(hmaService),
     [SignalType.IMAGE_SIMILARITY_MATCH]: new ImageSimilarityMatchSignal(
