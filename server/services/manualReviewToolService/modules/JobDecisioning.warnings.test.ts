@@ -15,10 +15,11 @@ import {
 } from '../../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type NcmecReportingServicePg } from '../../ncmecService/dbTypes.js';
-import { type ManualReviewDecisionComponent } from './JobDecisioning.js';
-
-const EXPECTED_WARNING =
-  'NCMEC escalation was skipped: this user already has a submitted NCMEC report.';
+import {
+  NCMEC_ESCALATION_SKIP_UNKNOWN_WARNING,
+  NCMEC_ESCALATION_SKIP_WARNING,
+  type ManualReviewDecisionComponent,
+} from './JobDecisioning.js';
 
 const testWithFixture = () =>
   makeTestWithFixture(async () => {
@@ -133,10 +134,30 @@ const testWithFixture = () =>
         })
         .execute();
 
+    // Swapping the injected dependency is the only seam for making the
+    // prior-report read reject.
+    const withFailingReportLookup = async <T>(fn: () => Promise<T>) => {
+      const jobDecisioning = mrtService['jobDecisioning'] as unknown as {
+        getUserHasExistingNcmecReport: () => Promise<boolean>;
+      };
+      const original = jobDecisioning.getUserHasExistingNcmecReport;
+      // eslint-disable-next-line functional/immutable-data
+      jobDecisioning.getUserHasExistingNcmecReport = async () => {
+        throw new Error('simulated ncmec_reports lookup failure');
+      };
+      try {
+        return await fn();
+      } finally {
+        // eslint-disable-next-line functional/immutable-data
+        jobDecisioning.getUserHasExistingNcmecReport = original;
+      }
+    };
+
     return {
       addFreshJob,
       decideNextJob,
       insertNcmecReport,
+      withFailingReportLookup,
       cleanup: async () => {
         await ncmecPg
           .deleteFrom('ncmec_reporting.ncmec_reports')
@@ -166,7 +187,22 @@ describe('JobDecisioning NCMEC escalation skip warnings', () => {
         { type: 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE', newJobKind: 'NCMEC' },
       ]);
 
-      expect(result.warnings).toEqual([EXPECTED_WARNING]);
+      expect(result.warnings).toEqual([NCMEC_ESCALATION_SKIP_WARNING]);
+    },
+  );
+
+  testWithFixture()(
+    'warns that the check could not run when the prior-report lookup fails',
+    async ({ addFreshJob, decideNextJob, withFailingReportLookup }) => {
+      await addFreshJob();
+
+      const result = await withFailingReportLookup(async () =>
+        decideNextJob([
+          { type: 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE', newJobKind: 'NCMEC' },
+        ]),
+      );
+
+      expect(result.warnings).toEqual([NCMEC_ESCALATION_SKIP_UNKNOWN_WARNING]);
     },
   );
 
