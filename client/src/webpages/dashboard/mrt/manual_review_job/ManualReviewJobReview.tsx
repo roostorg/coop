@@ -875,6 +875,7 @@ function ManualReviewJobReviewImpl(props: {
     if (closedJob) {
       return (
         <NCMECReviewUser
+          key={jobId}
           orgId={org.id}
           payload={payload}
           isActionable={false}
@@ -893,6 +894,7 @@ function ManualReviewJobReviewImpl(props: {
       return (
         <div>
           <NCMECReviewUser
+            key={jobId}
             orgId={org.id}
             payload={payload}
             isActionable={true}
