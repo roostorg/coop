@@ -15,6 +15,7 @@ import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
   b64UrlDecode,
   b64UrlEncode,
+  jsonStringify,
   type B64UrlOf,
 } from '../../../utils/encoding.js';
 import {
@@ -23,7 +24,10 @@ import {
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
-import { isUniqueViolationError } from '../../../utils/kysely.js';
+import {
+  isForeignKeyViolationError,
+  isUniqueViolationError,
+} from '../../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
@@ -61,6 +65,11 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
+import {
+  userIdentifierFromItem,
+  type JobSortType,
+  type UserIdentifier,
+} from './JobPriority.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -71,7 +80,7 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
-  jobSortType: string;
+  jobSortType: JobSortType;
   // Null disposition disables "clear other reports for this user" (issue #650).
   clearReportsDisposition: ClearReportsDisposition | null;
   clearReportsScope: ClearReportsScope;
@@ -107,7 +116,8 @@ export type QueueOperationsErrorType =
   | 'DeleteAllJobsUnauthorizedError'
   | 'QueueDoesNotExistError'
   | 'UnableToDeleteDefaultQueueError'
-  | 'AccessibleQueueNotInOrgError';
+  | 'AccessibleQueueNotInOrgError'
+  | 'QueueHasDependentRoutingRulesError';
 
 // Compound identifier for a queue. orgId is needed for security, but also
 // because queues are/will be actually sharded across redis instances for
@@ -164,6 +174,7 @@ export default class QueueOperations {
     private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     redis: RedisConnection,
+    private readonly tracer: Dependencies['Tracer'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
@@ -244,7 +255,7 @@ export default class QueueOperations {
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
-    jobSortType?: string;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -257,12 +268,16 @@ export default class QueueOperations {
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
-      jobSortType = 'FIFO',
+      jobSortType: requestedJobSortType = 'FIFO',
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
     } = input;
     const { orgId } = invokedBy;
+
+    // Appeal jobs are never enqueued with a priority, so appeals queues are
+    // always FIFO no matter what the caller asks for.
+    const jobSortType = isAppealsQueue ? 'FIFO' : requestedJobSortType;
 
     if (!invokedBy.permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
       throw makeUnauthorizedError(
@@ -350,7 +365,7 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
-    jobSortType?: string;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     // When provided, replaces the queue's full set of trigger actions.
@@ -448,10 +463,9 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
-    await queue.obliterate({ force: true });
-
-    const numDeletedRows = await this.transactionWithRetry(
-      async (transaction) => {
+    let numDeletedRows: bigint;
+    try {
+      numDeletedRows = await this.transactionWithRetry(async (transaction) => {
         // Delete the queue scoped by org first. If it doesn't belong to the
         // caller's org, no rows are touched and we bail before deleting any
         // join rows. `users_and_accessible_queues` has no `org_id` column,
@@ -473,8 +487,55 @@ export default class QueueOperations {
           .execute();
 
         return queueDelete.numDeletedRows;
-      },
-    );
+      });
+    } catch (e) {
+      const constraint = (e as { constraint?: string }).constraint;
+      if (
+        isForeignKeyViolationError(e) &&
+        (constraint === 'routing_rules_destination_queue_id_fkey' ||
+          constraint === 'appeals_routing_rules_destination_queue_id_fkey')
+      ) {
+        // routing_rules and appeals_routing_rules have RESTRICT FKs to this
+        // queue. Query for their names so the error message is actionable.
+        const [routingRules, appealsRoutingRules] = await Promise.all([
+          this.pgQuery
+            .selectFrom('manual_review_tool.routing_rules')
+            .select(['name'])
+            .where('destination_queue_id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .execute(),
+          this.pgQuery
+            .selectFrom('manual_review_tool.appeals_routing_rules')
+            .select(['name'])
+            .where('destination_queue_id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .execute(),
+        ]);
+        const ruleNames = [
+          ...routingRules.map((r) => r.name),
+          ...appealsRoutingRules.map((r) => r.name),
+        ];
+        throw makeQueueHasDependentRoutingRulesError(ruleNames, {
+          shouldErrorSpan: false,
+        });
+      }
+      throw e;
+    }
+
+    if (numDeletedRows === 1n) {
+      try {
+        await queue.obliterate({ force: true });
+      } catch (e) {
+        // The DB row is already gone at this point, so a retry would see
+        // numDeletedRows === 0n and skip obliterate() entirely, silently
+        // leaving orphaned Bull/Redis data behind. Best-effort cleanup:
+        // surface the failure to the active tracing span (mirrors the
+        // pattern used elsewhere, e.g. `UserApi.logout`) so ops can run
+        // `server/bin/recover-mrt-queue.ts`, but still report success since
+        // the DB delete itself succeeded.
+        this.tracer.logActiveSpanFailedIfAny(e);
+      }
+    }
 
     return numDeletedRows === 1n;
   }
@@ -489,8 +550,23 @@ export default class QueueOperations {
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
+    //
+    // routing_rules and appeals_routing_rules have RESTRICT FKs to this queue,
+    // so we must delete any referencing rules before deleting the queue.
     const numDeletedRows = await this.transactionWithRetry(
       async (transaction) => {
+        await transaction
+          .deleteFrom('manual_review_tool.routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .execute();
+
+        await transaction
+          .deleteFrom('manual_review_tool.appeals_routing_rules')
+          .where('destination_queue_id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .execute();
+
         const queueDelete = await transaction
           .deleteFrom('manual_review_tool.manual_review_queues')
           .where('id', '=', queueId)
@@ -960,24 +1036,40 @@ export default class QueueOperations {
    *
    * Works in two passes. Changing a job's priority reorders the same list
    * we'd be paging through, which can skip jobs or process them twice — so
-   * first collect every job's (id, createdAt) into a snapshot (tiny tuples,
-   * cheap to hold even for huge queues), then walk the snapshot and update
-   * each job by id.
+   * first collect every job's (id, createdAt, itemId) into a snapshot (tiny
+   * tuples, cheap to hold even for huge queues), then walk the snapshot and
+   * update each job by id.
+   *
+   * `getPriorities` receives every pending item id at once and returns a
+   * priority per item id. Resolving priorities in bulk keeps a re-sort to a
+   * single data warehouse query instead of one per job.
    *
    * The snapshot is walked oldest-first. Jobs given equal priority dequeue
    * in the order we updated them, not the order they originally arrived —
    * so updating oldest-first is what keeps FIFO order intact.
+   *
+   * Pass 2 re-fetches each job by id. That's a second Redis round-trip per
+   * job, but BullMQ's `changePriority` is a method on `Job`, so the only way
+   * to avoid it is to hold every job's full payload in memory for the whole
+   * sweep — worse for exactly the large queues this batching protects.
    */
   async recomputePrioritiesForQueue(opts: {
     orgId: string;
     queueId: string;
-    getPriority: (job: ManualReviewJob) => Promise<number>;
+    getPriorities: (
+      items: ReadonlyArray<{ itemId: string; user: UserIdentifier }>,
+    ) => Promise<ReadonlyMap<string, number>>;
   }) {
-    const { orgId, queueId, getPriority } = opts;
+    const { orgId, queueId, getPriorities } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
     const batchSize = 200;
 
-    const pending: Array<{ bullId: string; createdAtMs: number }> = [];
+    const pending: Array<{
+      bullId: string;
+      createdAtMs: number;
+      itemId: string;
+      user: UserIdentifier;
+    }> = [];
     let start = 0;
     while (true) {
       // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
@@ -990,9 +1082,12 @@ export default class QueueOperations {
       if (jobs.length === 0) break;
       for (const job of jobs) {
         if (job?.id != null) {
+          const item = (job.data as ManualReviewJob).payload.item;
           pending.push({
             bullId: job.id,
             createdAtMs: new Date(job.data.createdAt).getTime(),
+            itemId: item.itemId,
+            user: userIdentifierFromItem(item),
           });
         }
       }
@@ -1002,11 +1097,18 @@ export default class QueueOperations {
 
     pending.sort((a, b) => a.createdAtMs - b.createdAtMs);
 
-    for (const { bullId } of pending) {
+    const priorities = await getPriorities(
+      pending.map(({ itemId, user }) => ({ itemId, user })),
+    );
+
+    for (const { bullId, itemId } of pending) {
+      const priority = priorities.get(itemId);
+      // No priority resolved for this item — leave the job's current one
+      // alone rather than guessing.
+      if (priority == null) continue;
       const bullJob = await queue.getJob(bullId);
       // Dequeued or removed since the snapshot — nothing to re-stamp.
       if (!bullJob) continue;
-      const priority = await getPriority(bullJob.data as ManualReviewJob);
       await bullJob.changePriority({ priority });
     }
   }
@@ -1667,12 +1769,14 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job
-    // BullMQ maintains FIFO order within each state, so we only need to compare
-    // the first job from each state to find the oldest overall
+    // Get the first waiting job and first delayed job. getWaiting/getDelayed
+    // return jobs oldest-first, so we only need to compare the first job from
+    // each state to find the oldest overall. NB: the equivalent
+    // queue.getJobs([state], 0, 0) defaults to descending order and would
+    // return the *newest* job instead.
     const [waitingJobs, delayedJobs] = await Promise.all([
-      queue.getJobs(['waiting'], 0, 0),
-      queue.getJobs(['delayed'], 0, 0),
+      queue.getWaiting(0, 0),
+      queue.getDelayed(0, 0),
     ]);
 
     // If no jobs exist in either state, return null
@@ -2121,5 +2225,21 @@ export const makeManualReviewQueueNameExistsError = (data: ErrorInstanceData) =>
     title:
       'A manual review queue with that name already exists in this organization.',
     name: 'ManualReviewQueueNameExistsError',
+    ...data,
+  });
+
+export const makeQueueHasDependentRoutingRulesError = (
+  ruleNames: string[],
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.Conflict],
+    title:
+      ruleNames.length > 0
+        ? `This queue cannot be deleted because it is used by the following routing rules:\n${ruleNames.join(', ')}\nUpdate or delete those rules first.`
+        : 'This queue cannot be deleted because it is still referenced by one or more routing rules. Update or delete those rules first.',
+    detail: ruleNames.length > 0 ? jsonStringify(ruleNames) : undefined,
+    name: 'QueueHasDependentRoutingRulesError',
     ...data,
   });

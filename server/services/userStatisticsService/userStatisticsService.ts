@@ -78,6 +78,46 @@ export function internalMakeUserStatisticsService(
       return score as UserScore;
     },
 
+    /**
+     * Scores for many users in one query, keyed by `"${typeId}\x00${id}"`.
+     * Users with no cached score are absent from the map (callers treat them
+     * as `initialUserScore`). Used by the queue priority sweep, where a
+     * per-user lookup would be an N+1 against the replica.
+     */
+    async getUserScoresForUsers(opts: {
+      orgId: string;
+      users: readonly ItemIdentifier[];
+    }): Promise<ReadonlyMap<string, UserScore>> {
+      const result = new Map<string, UserScore>();
+      const CHUNK = 500;
+      for (let i = 0; i < opts.users.length; i += CHUNK) {
+        const chunk = opts.users.slice(i, i + CHUNK);
+        if (chunk.length === 0) continue;
+        const rows = await pgQueryReplica
+          .selectFrom('user_statistics_service.user_scores')
+          .select(['user_type_id', 'user_id', 'score'])
+          .where('org_id', '=', opts.orgId)
+          .where((eb) =>
+            eb.or(
+              chunk.map((user) =>
+                eb.and([
+                  eb('user_type_id', '=', user.typeId),
+                  eb('user_id', '=', user.id),
+                ]),
+              ),
+            ),
+          )
+          .execute();
+        for (const row of rows) {
+          result.set(
+            `${row.user_type_id}\x00${row.user_id}`,
+            row.score as UserScore,
+          );
+        }
+      }
+      return result;
+    },
+
     async handleUsersWithChangedScores(
       _consumerId: string,
       _cb: (

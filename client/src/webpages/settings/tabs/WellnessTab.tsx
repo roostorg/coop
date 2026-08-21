@@ -1,13 +1,29 @@
 import { Button } from '@/coop-ui/Button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  namedOperations,
   useGQLOrgDefaultSafetySettingsQuery,
   useGQLSetOrgDefaultSafetySettingsMutation,
 } from '@/graphql/generated';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
+import {
+  colorSchemeClassName,
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '@/models/safetySettings';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 
@@ -28,6 +44,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -47,6 +64,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function WellnessTab() {
@@ -54,6 +72,7 @@ export default function WellnessTab() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
 
   const { loading, error, data } = useGQLOrgDefaultSafetySettingsQuery({
@@ -64,6 +83,9 @@ export default function WellnessTab() {
 
   const [saveSafetySettings, { loading: isSaving }] =
     useGQLSetOrgDefaultSafetySettingsMutation({
+      // The mutation returns no data, so refetch to update the cached
+      // baseline that hasChanges compares against.
+      refetchQueries: [namedOperations.Query.OrgDefaultSafetySettings],
       onCompleted: () => {
         toast.success('Default wellness settings saved!');
       },
@@ -80,11 +102,13 @@ export default function WellnessTab() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = defaultInterfacePreferences;
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [defaultInterfacePreferences]);
 
@@ -99,7 +123,8 @@ export default function WellnessTab() {
     safetySettings.moderatorSafetyGrayscale !==
       serverPrefs.moderatorSafetyGrayscale ||
     safetySettings.moderatorSafetyMuteVideo !==
-      serverPrefs.moderatorSafetyMuteVideo;
+      serverPrefs.moderatorSafetyMuteVideo ||
+    safetySettings.moderatorSafetySepia !== serverPrefs.moderatorSafetySepia;
 
   return (
     <div className="flex flex-col gap-8">
@@ -139,17 +164,30 @@ export default function WellnessTab() {
             </div>
             <div className="flex gap-12 mt-2 items-center">
               <Text className="text-base" weight="medium">
-                Greyscale
+                Color Scheme
               </Text>
-              <Switch
-                checked={safetySettings.moderatorSafetyGrayscale}
-                onCheckedChange={(value) =>
+              <Select
+                value={colorSchemeFromPreferences(safetySettings)}
+                onValueChange={(value) =>
                   setSafetySettings({
                     ...safetySettings,
-                    moderatorSafetyGrayscale: value,
+                    ...preferencesFromColorScheme(
+                      value as ModeratorSafetyColorScheme,
+                    ),
                   })
                 }
-              />
+              >
+                <SelectTrigger size="small" className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                    <SelectItem value={scheme} key={scheme}>
+                      {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-12 mt-2 items-center">
               <Text className="text-base" weight="medium">
@@ -169,7 +207,7 @@ export default function WellnessTab() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${colorSchemeClassName(colorSchemeFromPreferences(safetySettings))}`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

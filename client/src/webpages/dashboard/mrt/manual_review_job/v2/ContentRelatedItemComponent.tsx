@@ -1,103 +1,18 @@
-import { useGQLGetRelatedItemsQuery } from '@/graphql/generated';
+import { GQLContentItem } from '@/graphql/generated';
 import { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { gql } from '@apollo/client';
-import { ItemIdentifier } from '@roostorg/coop-types';
 
 import FieldsComponent from './ManualReviewJobFieldsComponent';
 
-gql`
-  query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
-    latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
-      ... on UserItem {
-        id
-        submissionId
-        submissionTime
-        data
-        type {
-          id
-          name
-          baseFields {
-            name
-            type
-            required
-            container {
-              containerType
-              keyScalarType
-              valueScalarType
-            }
-          }
-          schemaFieldRoles {
-            displayName
-            createdAt
-            profileIcon
-            backgroundImage
-          }
-        }
-      }
-      ... on ContentItem {
-        id
-        submissionId
-        submissionTime
-        data
-        type {
-          id
-          name
-          baseFields {
-            name
-            type
-            required
-            container {
-              containerType
-              keyScalarType
-              valueScalarType
-            }
-          }
-          schemaFieldRoles {
-            displayName
-          }
-        }
-      }
-      ... on ThreadItem {
-        id
-        submissionId
-        submissionTime
-        data
-        type {
-          id
-          name
-          baseFields {
-            name
-            type
-            required
-            container {
-              containerType
-              keyScalarType
-              valueScalarType
-            }
-          }
-          schemaFieldRoles {
-            displayName
-          }
-        }
-      }
-    }
-  }
-`;
+type LoadedContentItem = Pick<GQLContentItem, 'data'> & {
+  type: Pick<GQLContentItem['type'], 'id' | 'baseFields'>;
+};
+
 export default function ContentRelatedItemComponent(props: {
-  relatedItem: ItemIdentifier;
+  item: LoadedContentItem;
   unblurAllMedia: boolean;
   title: string;
 }) {
-  const { relatedItem, unblurAllMedia } = props;
-  const { data, error } = useGQLGetRelatedItemsQuery({
-    variables: {
-      itemIdentifiers: [relatedItem],
-    },
-  });
-  if (!data || error) {
-    return null;
-  }
-  const item = data.latestItemSubmissions[0];
+  const { item, unblurAllMedia } = props;
 
   const fieldData = item.type.baseFields.map(
     (

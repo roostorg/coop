@@ -299,8 +299,7 @@ export type GQLAddFavoriteRuleSuccessResponse = {
 };
 
 export type GQLAddManualReviewJobCommentResponse =
-  | GQLAddManualReviewJobCommentSuccessResponse
-  | GQLNotFoundError;
+  GQLAddManualReviewJobCommentSuccessResponse | GQLNotFoundError;
 
 export type GQLAddManualReviewJobCommentSuccessResponse = {
   readonly __typename?: 'AddManualReviewJobCommentSuccessResponse';
@@ -484,8 +483,7 @@ export type GQLChangePasswordInput = {
 };
 
 export type GQLChangePasswordResponse =
-  | GQLChangePasswordError
-  | GQLChangePasswordSuccessResponse;
+  GQLChangePasswordError | GQLChangePasswordSuccessResponse;
 
 export type GQLChangePasswordSuccessResponse = {
   readonly __typename?: 'ChangePasswordSuccessResponse';
@@ -594,8 +592,7 @@ export type GQLConditionSetWithResult = {
 };
 
 export type GQLConditionWithResult =
-  | GQLConditionSetWithResult
-  | GQLLeafConditionWithResult;
+  GQLConditionSetWithResult | GQLLeafConditionWithResult;
 
 export type GQLContainer = {
   readonly __typename?: 'Container';
@@ -831,8 +828,7 @@ export type GQLCreateContentRuleInput = {
 };
 
 export type GQLCreateContentRuleResponse =
-  | GQLMutateContentRuleSuccessResponse
-  | GQLRuleNameExistsError;
+  GQLMutateContentRuleSuccessResponse | GQLRuleNameExistsError;
 
 export type GQLCreateHashBankInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
@@ -882,8 +878,7 @@ export type GQLCreateReportingRuleInput = {
 };
 
 export type GQLCreateReportingRuleResponse =
-  | GQLMutateReportingRuleSuccessResponse
-  | GQLReportingRuleNameExistsError;
+  GQLMutateReportingRuleSuccessResponse | GQLReportingRuleNameExistsError;
 
 export type GQLCreateRoutingRuleInput = {
   readonly conditionSet: GQLConditionSetInput;
@@ -941,8 +936,7 @@ export type GQLCreateUserRuleInput = {
 };
 
 export type GQLCreateUserRuleResponse =
-  | GQLMutateUserRuleSuccessResponse
-  | GQLRuleNameExistsError;
+  GQLMutateUserRuleSuccessResponse | GQLRuleNameExistsError;
 
 export type GQLCustomAction = GQLActionBase & {
   readonly __typename?: 'CustomAction';
@@ -1060,8 +1054,7 @@ export const GQLDecisionsCountGroupBy = {
 export type GQLDecisionsCountGroupBy =
   (typeof GQLDecisionsCountGroupBy)[keyof typeof GQLDecisionsCountGroupBy];
 export type GQLDeleteAllJobsFromQueueResponse =
-  | GQLDeleteAllJobsFromQueueSuccessResponse
-  | GQLDeleteAllJobsUnauthorizedError;
+  GQLDeleteAllJobsFromQueueSuccessResponse | GQLDeleteAllJobsUnauthorizedError;
 
 export type GQLDeleteAllJobsFromQueueSuccessResponse = {
   readonly __typename?: 'DeleteAllJobsFromQueueSuccessResponse';
@@ -1079,8 +1072,7 @@ export type GQLDeleteAllJobsUnauthorizedError = GQLError & {
 };
 
 export type GQLDeleteItemTypeResponse =
-  | GQLCannotDeleteDefaultUserError
-  | GQLDeleteItemTypeSuccessResponse;
+  GQLCannotDeleteDefaultUserError | GQLDeleteItemTypeSuccessResponse;
 
 export type GQLDeleteItemTypeSuccessResponse = {
   readonly __typename?: 'DeleteItemTypeSuccessResponse';
@@ -1394,8 +1386,7 @@ export type GQLGetDecisionCountsTableInput = {
 };
 
 export type GQLGetFullReportingRuleResultForItemResponse =
-  | GQLNotFoundError
-  | GQLReportingRuleExecutionResult;
+  GQLNotFoundError | GQLReportingRuleExecutionResult;
 
 export type GQLGetFullResultForItemInput = {
   readonly date?: InputMaybe<Scalars['String']['input']>;
@@ -1405,8 +1396,7 @@ export type GQLGetFullResultForItemInput = {
 };
 
 export type GQLGetFullResultForItemResponse =
-  | GQLNotFoundError
-  | GQLRuleExecutionResult;
+  GQLNotFoundError | GQLRuleExecutionResult;
 
 export type GQLGetJobCreationCountInput = {
   readonly filterBy: GQLJobCreationFilterByInput;
@@ -1698,9 +1688,7 @@ export type GQLItemSubmissions = {
 };
 
 export type GQLItemType =
-  | GQLContentItemType
-  | GQLThreadItemType
-  | GQLUserItemType;
+  GQLContentItemType | GQLThreadItemType | GQLUserItemType;
 
 export type GQLItemTypeBase = {
   readonly baseFields: ReadonlyArray<GQLBaseField>;
@@ -2213,8 +2201,7 @@ export const GQLManualReviewChartMetric = {
 export type GQLManualReviewChartMetric =
   (typeof GQLManualReviewChartMetric)[keyof typeof GQLManualReviewChartMetric];
 export type GQLManualReviewChartSettings =
-  | GQLGetDecisionCountSettings
-  | GQLGetJobCreationCountSettings;
+  GQLGetDecisionCountSettings | GQLGetJobCreationCountSettings;
 
 export type GQLManualReviewChartSettingsInput = {
   readonly decisionCountSettings?: InputMaybe<GQLDecisionCountSettingsInput>;
@@ -2442,6 +2429,7 @@ export type GQLModeratorSafetySettingsInput = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['input'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['input'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['input'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['input'];
 };
 
 export const GQLMrtClearReportsDisposition = {
@@ -2476,8 +2464,7 @@ export const GQLMutateActionError = {
 export type GQLMutateActionError =
   (typeof GQLMutateActionError)[keyof typeof GQLMutateActionError];
 export type GQLMutateActionResponse =
-  | GQLActionNameExistsError
-  | GQLMutateActionSuccessResponse;
+  GQLActionNameExistsError | GQLMutateActionSuccessResponse;
 
 export type GQLMutateActionSuccessResponse = {
   readonly __typename?: 'MutateActionSuccessResponse';
@@ -2491,8 +2478,7 @@ export type GQLMutateBankResponse = {
 };
 
 export type GQLMutateContentItemTypeResponse =
-  | GQLItemTypeNameAlreadyExistsError
-  | GQLMutateContentTypeSuccessResponse;
+  GQLItemTypeNameAlreadyExistsError | GQLMutateContentTypeSuccessResponse;
 
 export type GQLMutateContentRuleSuccessResponse = {
   readonly __typename?: 'MutateContentRuleSuccessResponse';
@@ -2505,8 +2491,7 @@ export type GQLMutateContentTypeSuccessResponse = {
 };
 
 export type GQLMutateHashBankResponse =
-  | GQLMatchingBankNameExistsError
-  | GQLMutateHashBankSuccessResponse;
+  GQLMatchingBankNameExistsError | GQLMutateHashBankSuccessResponse;
 
 export type GQLMutateHashBankSuccessResponse = {
   readonly __typename?: 'MutateHashBankSuccessResponse';
@@ -2515,8 +2500,7 @@ export type GQLMutateHashBankSuccessResponse = {
 };
 
 export type GQLMutateLocationBankResponse =
-  | GQLLocationBankNameExistsError
-  | GQLMutateLocationBankSuccessResponse;
+  GQLLocationBankNameExistsError | GQLMutateLocationBankSuccessResponse;
 
 export type GQLMutateLocationBankSuccessResponse = {
   readonly __typename?: 'MutateLocationBankSuccessResponse';
@@ -2544,8 +2528,7 @@ export type GQLMutateRoutingRulesOrderSuccessResponse = {
 };
 
 export type GQLMutateThreadItemTypeResponse =
-  | GQLItemTypeNameAlreadyExistsError
-  | GQLMutateThreadTypeSuccessResponse;
+  GQLItemTypeNameAlreadyExistsError | GQLMutateThreadTypeSuccessResponse;
 
 export type GQLMutateThreadTypeSuccessResponse = {
   readonly __typename?: 'MutateThreadTypeSuccessResponse';
@@ -2553,8 +2536,7 @@ export type GQLMutateThreadTypeSuccessResponse = {
 };
 
 export type GQLMutateUserItemTypeResponse =
-  | GQLItemTypeNameAlreadyExistsError
-  | GQLMutateUserTypeSuccessResponse;
+  GQLItemTypeNameAlreadyExistsError | GQLMutateUserTypeSuccessResponse;
 
 export type GQLMutateUserRuleSuccessResponse = {
   readonly __typename?: 'MutateUserRuleSuccessResponse';
@@ -3961,8 +3943,7 @@ export type GQLRemoveAccessibleQueuesToUserInput = {
 };
 
 export type GQLRemoveAccessibleQueuesToUserResponse =
-  | GQLMutateAccessibleQueuesForUserSuccessResponse
-  | GQLNotFoundError;
+  GQLMutateAccessibleQueuesForUserSuccessResponse | GQLNotFoundError;
 
 export type GQLRemoveFavoriteMrtQueueSuccessResponse = {
   readonly __typename?: 'RemoveFavoriteMRTQueueSuccessResponse';
@@ -4155,8 +4136,7 @@ export type GQLRotateApiKeyInput = {
 };
 
 export type GQLRotateApiKeyResponse =
-  | GQLRotateApiKeyError
-  | GQLRotateApiKeySuccessResponse;
+  GQLRotateApiKeyError | GQLRotateApiKeySuccessResponse;
 
 export type GQLRotateApiKeySuccessResponse = {
   readonly __typename?: 'RotateApiKeySuccessResponse';
@@ -4175,8 +4155,7 @@ export type GQLRotateWebhookSigningKeyError = GQLError & {
 };
 
 export type GQLRotateWebhookSigningKeyResponse =
-  | GQLRotateWebhookSigningKeyError
-  | GQLRotateWebhookSigningKeySuccessResponse;
+  GQLRotateWebhookSigningKeyError | GQLRotateWebhookSigningKeySuccessResponse;
 
 export type GQLRotateWebhookSigningKeySuccessResponse = {
   readonly __typename?: 'RotateWebhookSigningKeySuccessResponse';
@@ -4459,8 +4438,7 @@ export type GQLSignUpInput = {
 };
 
 export type GQLSignUpResponse =
-  | GQLSignUpSuccessResponse
-  | GQLSignUpUserExistsError;
+  GQLSignUpSuccessResponse | GQLSignUpUserExistsError;
 
 export type GQLSignUpSuccessResponse = {
   readonly __typename?: 'SignUpSuccessResponse';
@@ -4538,8 +4516,7 @@ export const GQLSignalInputType = {
 export type GQLSignalInputType =
   (typeof GQLSignalInputType)[keyof typeof GQLSignalInputType];
 export type GQLSignalOutputType =
-  | GQLEnumSignalOutputType
-  | GQLScalarSignalOutputType;
+  GQLEnumSignalOutputType | GQLScalarSignalOutputType;
 
 export type GQLSignalPricingStructure = {
   readonly __typename?: 'SignalPricingStructure';
@@ -4587,6 +4564,12 @@ export const GQLSignalType = {
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
   OpenAiHateThreateningTextModel: 'OPEN_AI_HATE_THREATENING_TEXT_MODEL',
   OpenAiSelfHarmImageModel: 'OPEN_AI_SELF_HARM_IMAGE_MODEL',
+  OpenAiSelfHarmInstructionsImageModel:
+    'OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL',
+  OpenAiSelfHarmInstructionsTextModel:
+    'OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL',
+  OpenAiSelfHarmIntentImageModel: 'OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL',
+  OpenAiSelfHarmIntentTextModel: 'OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL',
   OpenAiSelfHarmTextModel: 'OPEN_AI_SELF_HARM_TEXT_MODEL',
   OpenAiSexualImageModel: 'OPEN_AI_SEXUAL_IMAGE_MODEL',
   OpenAiSexualMinorsTextModel: 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL',
@@ -5161,6 +5144,7 @@ export type GQLUserInterfacePreferences = {
   readonly moderatorSafetyBlurLevel: Scalars['Int']['output'];
   readonly moderatorSafetyGrayscale: Scalars['Boolean']['output'];
   readonly moderatorSafetyMuteVideo: Scalars['Boolean']['output'];
+  readonly moderatorSafetySepia: Scalars['Boolean']['output'];
   readonly mrtChartConfigurations: ReadonlyArray<GQLManualReviewChartSettings>;
 };
 
@@ -5518,8 +5502,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
       })
     | GQLNotFoundError;
   ChangePasswordResponse:
-    | GQLChangePasswordError
-    | GQLChangePasswordSuccessResponse;
+    GQLChangePasswordError | GQLChangePasswordSuccessResponse;
   Condition: ConditionSet | LeafCondition;
   ConditionWithResult: ConditionSetWithResult | LeafConditionWithResult;
   CreateContentRuleResponse:
@@ -5552,8 +5535,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | GQLDeleteAllJobsFromQueueSuccessResponse
     | GQLDeleteAllJobsUnauthorizedError;
   DeleteItemTypeResponse:
-    | GQLCannotDeleteDefaultUserError
-    | GQLDeleteItemTypeSuccessResponse;
+    GQLCannotDeleteDefaultUserError | GQLDeleteItemTypeSuccessResponse;
   DequeueManualReviewJobResponse: Omit<
     GQLDequeueManualReviewJobSuccessResponse,
     'job'
@@ -5608,8 +5590,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | (Omit<GQLLoginSuccessResponse, 'user'> & { user: _RefType['User'] })
     | GQLLoginUserDoesNotExistError;
   ManualReviewChartSettings:
-    | GQLGetDecisionCountSettings
-    | GQLGetJobCreationCountSettings;
+    GQLGetDecisionCountSettings | GQLGetJobCreationCountSettings;
   ManualReviewDecisionComponent:
     | GQLAcceptAppealDecisionComponent
     | GQLAutomaticCloseDecisionComponent
@@ -5672,8 +5653,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
         items: ReadonlyArray<_RefType['Item']>;
       });
   RemoveAccessibleQueuesToUserResponse:
-    | GQLMutateAccessibleQueuesForUserSuccessResponse
-    | GQLNotFoundError;
+    GQLMutateAccessibleQueuesForUserSuccessResponse | GQLNotFoundError;
   RemoveFavoriteRuleResponse: GQLRemoveFavoriteRuleSuccessResponse;
   ReorderRoutingRulesResponse: Omit<
     GQLMutateRoutingRulesOrderSuccessResponse,
@@ -5681,8 +5661,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
   > & { data: ReadonlyArray<_RefType['RoutingRule']> };
   RotateApiKeyResponse: GQLRotateApiKeyError | GQLRotateApiKeySuccessResponse;
   RotateWebhookSigningKeyResponse:
-    | GQLRotateWebhookSigningKeyError
-    | GQLRotateWebhookSigningKeySuccessResponse;
+    GQLRotateWebhookSigningKeyError | GQLRotateWebhookSigningKeySuccessResponse;
   RunRetroactionResponse: GQLRunRetroactionSuccessResponse;
   SchemaFieldRoles:
     | GQLContentSchemaFieldRoles
@@ -14826,6 +14805,11 @@ export type GQLUserInterfacePreferencesResolvers<
     ContextType
   >;
   moderatorSafetyMuteVideo?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  moderatorSafetySepia?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
     ContextType

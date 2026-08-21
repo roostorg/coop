@@ -34,8 +34,7 @@ import ReportingRules, {
 
 export type ReporterKind = 'rule' | 'user';
 export type Reporter =
-  | { kind: 'rule'; id: string }
-  | { kind: 'user'; typeId: string; id: string };
+  { kind: 'rule'; id: string } | { kind: 'user'; typeId: string; id: string };
 
 export type Appealer = { typeId: string; id: string };
 
@@ -377,6 +376,17 @@ function makeReportingService(
     async getNumTimesReported(opts: { orgId: string; itemId: string }) {
       const { orgId, itemId } = opts;
       return reportingAnalyticsAdapter.getNumTimesReported(orgId, itemId);
+    },
+
+    async getNumTimesReportedForItems(opts: {
+      orgId: string;
+      itemIds: readonly string[];
+    }) {
+      const { orgId, itemIds } = opts;
+      return reportingAnalyticsAdapter.getNumTimesReportedForItems(
+        orgId,
+        itemIds,
+      );
     },
   };
 }

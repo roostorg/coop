@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { StarFilled, TapFilled } from '@/icons';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
 import Star from '@/icons/lni/Web and Technology/star.svg?react';
@@ -6,7 +7,15 @@ import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import Input from 'antd/lib/input';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Info } from 'lucide-react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -208,8 +217,29 @@ export default function ManualReviewQueuesDashboard() {
     fetchPolicy: 'no-cache',
     pollInterval: 5000,
   });
+  const [deleteError, setDeleteError] = useState<{
+    message: string;
+    ruleNames: string[];
+  } | null>(null);
   const [deleteReviewQueue] = useGQLDeleteManualReviewQueueMutation({
-    onError: () => {},
+    onError: (error) => {
+      const gqlError = error.graphQLErrors[0];
+      const message = gqlError?.message ?? 'Failed to delete queue.';
+      const rawDetail = gqlError?.extensions?.['detail'];
+      let ruleNames: string[] = [];
+      if (typeof rawDetail === 'string') {
+        try {
+          const parsed: unknown = JSON.parse(rawDetail);
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((n): n is string => typeof n === 'string')
+          ) {
+            ruleNames = parsed;
+          }
+        } catch {}
+      }
+      setDeleteError({ message, ruleNames });
+    },
     onCompleted: async () => refetch(),
   });
   const [addFavoriteMRTQueue] = useGQLAddFavoriteMrtQueueMutation({
@@ -443,6 +473,41 @@ export default function ManualReviewQueuesDashboard() {
     </CoopModal>
   );
 
+  const deleteErrorModal = (
+    <CoopModal
+      title="Could Not Delete Queue"
+      visible={deleteError !== null}
+      footer={[
+        {
+          title: 'OK',
+          onClick: () => setDeleteError(null),
+          type: 'primary',
+        },
+      ]}
+      onClose={() => setDeleteError(null)}
+    >
+      {deleteError?.ruleNames && deleteError.ruleNames.length > 0 ? (
+        <div className="space-y-2">
+          <p>
+            This queue cannot be deleted because it is used by the following
+            routing rules:
+          </p>
+          <p className="pl-4">
+            {deleteError.ruleNames.map((name, i) => (
+              <Fragment key={i}>
+                {i > 0 && ', '}
+                <Link to="/dashboard/manual_review/routing">{name}</Link>
+              </Fragment>
+            ))}
+          </p>
+          <p>Update or delete those rules first.</p>
+        </div>
+      ) : (
+        <p>{deleteError?.message}</p>
+      )}
+    </CoopModal>
+  );
+
   const onDeleteReviewQueue = (id: string) => {
     deleteReviewQueue({
       variables: { id },
@@ -610,6 +675,15 @@ export default function ManualReviewQueuesDashboard() {
                       : jobSortType === 'WEIGHTED'
                         ? 'Custom (weighted)'
                         : 'First in, first out',
+                  // Jobs on a sorted queue live in BullMQ's prioritized set,
+                  // which is ordered by priority rather than arrival, so
+                  // there's no cheap way to find the oldest one. Flag it so
+                  // the column can explain itself instead of showing a bare
+                  // "N/A" that looks like the queue is empty.
+                  oldestAgeUnavailable:
+                    pendingJobCount > 0 &&
+                    jobSortType !== 'FIFO' &&
+                    oldestJobCreatedAt == null,
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [
@@ -770,12 +844,26 @@ export default function ManualReviewQueuesDashboard() {
               </div>
             ),
             description: <div>{values.description}</div>,
-            oldestTaskAge: (
+            oldestTaskAge: values.oldestAgeUnavailable ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger
+                  aria-label="Why is this unavailable?"
+                  className="flex items-center justify-between w-full text-gray-500 cursor-help"
+                >
+                  —
+                  <Info className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Not tracked for queues with a custom sort order.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
               <div className={getAgeColorClass(values.oldestJobCreatedAt)}>
                 {formatTimeAgo(values.oldestJobCreatedAt)}
               </div>
             ),
             pendingJobCount: <div>{values.pendingJobCount}</div>,
+            jobSortType: <div>{values.jobSortType}</div>,
             startReviewing: (
               <div className="ContentTypesDashboard-type-name">
                 {values.startReviewing}
@@ -929,6 +1017,7 @@ export default function ManualReviewQueuesDashboard() {
         />
       }
       {deleteModal}
+      {deleteErrorModal}
       {deleteAllJobsModal}
     </div>
   );

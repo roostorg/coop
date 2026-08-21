@@ -11,8 +11,8 @@ import {
   type NormalizedItemData,
 } from '../../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
-import { toBullPriority } from './JobPriority.js';
 import { itemIdToBullJobId } from './QueueOperations.js';
 
 describe('QueueOperations job priorities', () => {
@@ -44,6 +44,7 @@ describe('QueueOperations job priorities', () => {
         org,
         queue,
         user,
+        redis: container.IORedis,
         mrtService: container.ManualReviewToolService,
         cleanup: async () => {
           await queuesCleanup();
@@ -54,6 +55,104 @@ describe('QueueOperations job priorities', () => {
         },
       };
     });
+
+  testWithQueue()(
+    'a sort-mode change bumps the version and releases the lock when done',
+    async ({ org, queue, user, redis, mrtService }) => {
+      // The lock is what makes the sweep safe across server instances, so the
+      // observable contract is: the change is recorded (version bumps) and the
+      // lock is not left held once the sweep finishes.
+      const lockKey = `{${org.id}}:mrt-recompute-lock:${queue.id}`;
+      const versionKey = `{${org.id}}:mrt-recompute-version:${queue.id}`;
+
+      expect(await redis.get(versionKey)).toBeNull();
+
+      await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        jobSortType: 'NUM_REPORTS',
+      });
+
+      // Bumped before the mutation returns, so a sweep already running on
+      // another instance is guaranteed to see it.
+      expect(Number(await redis.get(versionKey))).toBeGreaterThan(0);
+
+      await mrtService.awaitPendingPriorityRecomputes();
+
+      // A lock left held would block every future sweep for this queue until
+      // the TTL expired.
+      expect(await redis.get(lockKey)).toBeNull();
+    },
+  );
+
+  testWithQueue()(
+    'a sweep is skipped when another instance already holds the lock',
+    async ({ org, queue, user, redis, mrtService }) => {
+      // Stand in for another server instance mid-sweep by taking the lock out
+      // from under this one. The mutation must still succeed and must not
+      // block waiting for it.
+      const lockKey = `{${org.id}}:mrt-recompute-lock:${queue.id}`;
+      await redis.set(lockKey, 'held-by-another-instance', 'PX', 10_000);
+
+      const updated = await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        jobSortType: 'NUM_REPORTS',
+      });
+      await mrtService.awaitPendingPriorityRecomputes();
+
+      expect(updated.jobSortType).toBe('NUM_REPORTS');
+      // Ours backed off rather than stealing or clobbering the other holder.
+      expect(await redis.get(lockKey)).toBe('held-by-another-instance');
+
+      await redis.del(lockKey);
+    },
+  );
+
+  testWithQueue()(
+    'an appeals queue stays FIFO even when a sort mode is requested',
+    async ({ org, user, mrtService }) => {
+      // Appeal jobs are enqueued without a priority, so a sort mode on an
+      // appeals queue would be a saved setting that never takes effect.
+      const invokedBy = {
+        userId: user.id,
+        permissions: [UserPermission.EDIT_MRT_QUEUES],
+        orgId: org.id,
+      };
+
+      const appealsQueue = await mrtService.createManualReviewQueue({
+        name: `appeals-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        hiddenActionIds: [],
+        isAppealsQueue: true,
+        jobSortType: 'NUM_REPORTS',
+        invokedBy,
+      });
+      expect(appealsQueue.jobSortType).toBe('FIFO');
+
+      const updated = await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: appealsQueue.id,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        jobSortType: 'NUM_REPORTS',
+      });
+      expect(updated.jobSortType).toBe('FIFO');
+
+      await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
+        org.id,
+        appealsQueue.id,
+      );
+    },
+  );
 
   // A DEFAULT-kind job payload, parameterized only by item type and item id.
   const makePayloadFor =
@@ -107,8 +206,13 @@ describe('QueueOperations job priorities', () => {
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriority: async (job) =>
-          job.payload.item.itemId === 'item-A' ? 2000 : 1000,
+        getPriorities: async (items) =>
+          new Map(
+            items.map(({ itemId }) => [
+              itemId,
+              itemId === 'item-A' ? 2000 : 1000,
+            ]),
+          ),
       });
 
       const first = await queueOps.dequeueNextJobWithLock({
@@ -210,13 +314,14 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      // Re-stamp every job with FIFO's constant priority. Ties must resolve
-      // to arrival order, which is exactly what a NUM_REPORTS -> FIFO switch
-      // relies on.
+      // Demote every job to priority 0, which is what a NUM_REPORTS -> FIFO
+      // switch does: BullMQ moves them out of `prioritized` and back into the
+      // `wait` list, where they must come back out in arrival order.
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriority: async () => toBullPriority(0),
+        getPriorities: async (items) =>
+          new Map(items.map(({ itemId }) => [itemId, 0])),
       });
 
       let dequeued: string[] = [];
@@ -229,6 +334,44 @@ describe('QueueOperations job priorities', () => {
         dequeued = [...dequeued, next?.job.payload.item.itemId ?? '(none)'];
       }
       expect(dequeued).toEqual(arrivalOrder);
+    },
+  );
+
+  testWithQueue()(
+    'a FIFO queue leaves its jobs in the wait list, not the prioritized set',
+    async ({ org, queue, mrtService }) => {
+      // Regression test. Stamping FIFO jobs with a priority (even a constant
+      // one) routes them into BullMQ's `prioritized` sorted set, which empties
+      // the `wait` list for every queue in the org — including ones that never
+      // opted into a sort mode. `getOldestJobCreatedAt` only reads `wait`, so
+      // the queues dashboard silently loses its "oldest job" value.
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      // No `priority` argument at all: this is what the FIFO enqueue path does.
+      for (const itemId of ['item-A', 'item-B']) {
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          jobPayload: { policyIds: [], payload: payloadFor(itemId) },
+        });
+      }
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      expect(await bullQueue.getJobCountByTypes('prioritized')).toBe(0);
+      expect(await bullQueue.getJobCountByTypes('waiting')).toBe(2);
+
+      // The dashboard's "oldest job" value has to survive.
+      const oldest = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+      expect(oldest).not.toBeNull();
     },
   );
 });

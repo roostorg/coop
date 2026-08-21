@@ -109,8 +109,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
         ) {
           try {
             const images = itemSubmission.itemSubmission.data.images as (
-              | string
-              | { url: string; [key: string]: unknown }
+              string | { url: string; [key: string]: unknown }
             )[];
 
             // Get all hash banks for this org once

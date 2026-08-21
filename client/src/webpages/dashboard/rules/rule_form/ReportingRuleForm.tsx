@@ -476,8 +476,8 @@ export default function RuleForm() {
     dispatch({
       type: ReportingRuleFormReducerActionType.UpdateItemTypes,
       payload: {
-        selectedItemTypes: selectedTypeIDs.map(
-          (id) => allItemTypes.find((itemType) => itemType.id === id)!,
+        selectedItemTypes: selectedTypeIDs.map((id) =>
+          allItemTypes.find((itemType) => itemType.id === id)!,
         ),
         allActions,
         allSignals: allSignals satisfies readonly GQLSignal[],
