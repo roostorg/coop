@@ -23,6 +23,11 @@
     "create-org": "node --env-file-if-exists=.env --loader ts-node/esm bin/create-org-and-user.ts",
     "get-invite": "node --env-file-if-exists=.env --loader ts-node/esm bin/get-invite-token.ts",
     "recover-mrt-queue": "node --env-file-if-exists=.env --loader ts-node/esm bin/recover-mrt-queue.ts",
+    "atproto:setup": "node --env-file-if-exists=.env --loader ts-node/esm bin/atproto-setup.ts",
+    "atproto:demo": "node --loader ts-node/esm bin/atproto-demo.mts",
+    "atproto:proxy": "node --loader ts-node/esm bin/atproto-proxy.mts",
+    "export-text-bank": "node --env-file-if-exists=.env --loader ts-node/esm bin/export-text-bank.ts",
+    "import-text-bank": "node --env-file-if-exists=.env --loader ts-node/esm bin/import-text-bank.ts",
     "knip": "knip"
   },
   "author": "Roostorg",
