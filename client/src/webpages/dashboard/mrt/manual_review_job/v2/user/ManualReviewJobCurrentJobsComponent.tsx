@@ -50,6 +50,7 @@ export default function ManualReviewCurrentJobsComponent(props: {
         header: 'Queue',
         accessorKey: 'queue',
         enableSorting: true,
+        sortFn: stringSort,
       },
       {
         header: 'Created At',
