@@ -105,7 +105,7 @@ export class NcmecService {
     return this.ncmecReporting.getNcmecMessages(orgId, userId, reportedMedia);
   }
 
-  async getUserHasExistingNcmeReport(params: {
+  async getUserHasExistingNcmecReport(params: {
     orgId: string;
     userId: string;
     userItemTypeId: string;

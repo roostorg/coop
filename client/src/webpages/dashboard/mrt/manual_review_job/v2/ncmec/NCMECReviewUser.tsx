@@ -1,5 +1,5 @@
 import { isTypingInEditableElement } from '@/utils/misc';
-import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { BulbOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import CopyTextComponent from '../../../../../../components/common/CopyTextComponent';
 import CoopModal from '../../../../components/CoopModal';
 import FormHeader from '../../../../components/FormHeader';
-import CoopButton from '@/webpages/dashboard/components/CoopButton';
 import TabBar from '@/webpages/dashboard/components/TabBar';
 
 import {
@@ -403,58 +402,11 @@ export default function NCMECReviewUser(
     GQLNcmecMediaReviewRequirement.All;
   const mediaReviewMinToReview =
     mediaReviewPolicyData?.myOrg?.ncmecMinMediaToReview ?? 1;
-  const noValidMedia = (
-    <div className="flex items-start justify-center w-full h-full">
-      <div className="flex flex-col items-center justify-center p-12 mt-20 shadow rounded-xl bg-slate-50 text-slate-500">
-        <div className="pb-3 text-slate-200 text-8xl">
-          <ExclamationCircleOutlined />
-        </div>
-        <div className="text-2xl max-w-[400px] pb-2">
-          Could not find any valid media or messages
-        </div>
-        <CopyTextComponent
-          value={erroredMedia.map((it) => it.id).join(',')}
-          displayValue={`${erroredMedia.length} video${
-            erroredMedia.length === 1 ? '' : 's'
-          } or image${
-            erroredMedia.length === 1 ? '' : 's'
-          } failed to load. Click here to copy a list of the IDs that failed to load.`}
-          isError={true}
-        />
-        {isActionable ? (
-          <div className="pt-2">
-            <CoopButton
-              title="Next Job"
-              onClick={() => {
-                setDeselectAndIgnoreModalVisible(false);
-                props.submitDecision({ ignore: {} });
-              }}
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-
   const reportedMessageCount = selectedThreadsWithMessages.reduce(
     (sum, thread) => sum + thread.reportedContent.length,
     0,
   );
   const isTextOnlyJob = allMediaItemsWithUrls.length === 0;
-
-  if (allMediaItemsWithUrls.length > 0 && mediaInDetailView === undefined) {
-    setMediaInDetailView({
-      itemId: allMediaItemsWithUrls[0].contentItem.id,
-      urlInfo: allMediaItemsWithUrls[0].urlInfo,
-      itemTypeId: allMediaItemsWithUrls[0].contentItem.type.id,
-    });
-  }
-  // Media was reported but none of it could be loaded — nothing to review.
-  // (A genuinely media-less job falls through to the tabbed UI, defaulting to
-  // the Messages tab.)
-  if (allMediaItemsWithUrls.length === 0 && erroredMedia.length > 0) {
-    return noValidMedia;
-  }
 
   const {
     moderatorSafetyBlurLevel = 2,
@@ -630,6 +582,8 @@ export default function NCMECReviewUser(
           urlInfo: newMedia[0].urlInfo,
           itemTypeId: newMedia[0].contentItem.type.id,
         });
+      } else {
+        setSelectedTab('MESSAGES');
       }
 
       return newMedia;
@@ -1168,13 +1122,28 @@ export default function NCMECReviewUser(
           No media in this report.
         </div>
       ) : (
-        <NCMECPreviousMessages
-          userIdentifier={{ id: item.id, typeId: item.type.id }}
-          isActionable={isActionable}
-          setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
-          selectedThreadsWithMessages={selectedThreadsWithMessages}
-          reportedMessages={payload.reportedMessages}
-        />
+        <div className="flex flex-col w-full">
+          {erroredMedia.length > 0 ? (
+            <div className="self-start py-2">
+              <CopyTextComponent
+                value={erroredMedia.map((it) => it.id).join(',')}
+                displayValue={`${erroredMedia.length} video${
+                  erroredMedia.length === 1 ? '' : 's'
+                } or image${
+                  erroredMedia.length === 1 ? '' : 's'
+                } failed to load. Click here to copy a list of the IDs that failed to load.`}
+                isError={true}
+              />
+            </div>
+          ) : undefined}
+          <NCMECPreviousMessages
+            userIdentifier={{ id: item.id, typeId: item.type.id }}
+            isActionable={isActionable}
+            setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
+            selectedThreadsWithMessages={selectedThreadsWithMessages}
+            reportedMessages={payload.reportedMessages}
+          />
+        </div>
       )}
       {sendReportModal}
       {deselectAndIgnoreReportModal}

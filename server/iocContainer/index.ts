@@ -1488,7 +1488,7 @@ export default async function getBottle() {
       // Resolved lazily off the container because NcmecService itself depends
       // on ManualReviewToolService.
       async (params) =>
-        container.NcmecService.getUserHasExistingNcmeReport(params),
+        container.NcmecService.getUserHasExistingNcmecReport(params),
     );
   });
 
