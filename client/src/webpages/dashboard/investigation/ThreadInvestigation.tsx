@@ -156,7 +156,7 @@ export default function ThreadInvestigation(props: {
   >[];
   allPolicies: readonly { id: string; name: string }[];
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;

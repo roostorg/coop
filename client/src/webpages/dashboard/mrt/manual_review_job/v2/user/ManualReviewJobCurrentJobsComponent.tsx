@@ -47,15 +47,15 @@ export default function ManualReviewCurrentJobsComponent(props: {
   const columns = useMemo(
     () => [
       {
-        Header: 'Queue',
-        accessor: 'queue',
-        canSort: true,
+        header: 'Queue',
+        accessorKey: 'queue',
+        enableSorting: true,
       },
       {
-        Header: 'Created At',
-        accessor: 'createdAt',
+        header: 'Created At',
+        accessorKey: 'createdAt',
         sortDescFirst: true,
-        sortType: stringSort,
+        sortFn: stringSort,
       },
     ],
     [],

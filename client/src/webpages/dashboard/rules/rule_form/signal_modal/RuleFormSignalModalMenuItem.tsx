@@ -12,7 +12,7 @@ export function vendorName(signal: GQLSignal) {
     return 'Custom';
   }
   if (!signal.integration) {
-    return 'Coop';
+    return 'ROOST';
   }
   if (signal.integrationTitle) {
     return signal.integrationTitle;

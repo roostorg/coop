@@ -326,106 +326,118 @@ export default function NcmecReportsDashboard() {
       filterNullOrUndefined([
         columnVisibility.date
           ? {
-              Header: 'Date',
-              accessor: 'date',
-              sortType: stringSort,
+              header: 'Date',
+              accessorKey: 'date',
+              sortFn: stringSort,
               sortDescFirst: true,
-              Filter: (props: ColumnProps) =>
-                DateRangeColumnFilter({
-                  columnProps: props,
-                  accessor: 'date',
-                  placeholder: '',
-                }),
-              filter: 'dateRange',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DateRangeColumnFilter({
+                    columnProps: props,
+                    accessor: 'date',
+                    placeholder: '',
+                  }),
+              },
+              filterFn: 'dateRange' as const,
             }
           : undefined,
         columnVisibility.reviewer
           ? {
-              Header: 'Reviewer',
-              accessor: 'reviewer',
-              filter: 'includes',
-              sortType: stringSort,
-              Filter: (props: ColumnProps) =>
-                SelectColumnFilter({
-                  columnProps: props,
-                  accessor: 'reviewer',
-                }),
+              header: 'Reviewer',
+              accessorKey: 'reviewer',
+              filterFn: 'includes' as const,
+              sortFn: stringSort,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  SelectColumnFilter({
+                    columnProps: props,
+                    accessor: 'reviewer',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.status
           ? {
               // Cell renders the colored Tag from row.status; the filter
               // reads the plain string from row.original.values.status.
-              Header: 'Status',
-              accessor: 'status',
-              filter: 'includes',
-              sortType: stringSort,
-              Filter: (props: ColumnProps) =>
-                SelectColumnFilter({
-                  columnProps: props,
-                  accessor: 'status',
-                }),
+              header: 'Status',
+              accessorKey: 'status',
+              filterFn: 'includes' as const,
+              sortFn: stringSort,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  SelectColumnFilter({
+                    columnProps: props,
+                    accessor: 'status',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.reportId
           ? {
-              Header: 'Report ID',
-              accessor: 'reportId',
-              filter: 'text',
-              canSort: false,
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'reportId',
-                  placeholder: 'Report ID',
-                }),
+              header: 'Report ID',
+              accessorKey: 'reportId',
+              filterFn: 'text' as const,
+              enableSorting: false,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'reportId',
+                    placeholder: 'Report ID',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.userId
           ? {
-              Header: 'User ID',
-              accessor: 'userId',
-              filter: 'text',
-              canSort: false,
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'userId',
-                  placeholder: 'User ID',
-                }),
+              header: 'User ID',
+              accessorKey: 'userId',
+              filterFn: 'text' as const,
+              enableSorting: false,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'userId',
+                    placeholder: 'User ID',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.userItemType
           ? {
-              Header: 'User Item Type',
-              accessor: 'userItemType',
-              filter: 'text',
-              canSort: false,
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'userItemType',
-                  placeholder: 'User Type',
-                }),
+              header: 'User Item Type',
+              accessorKey: 'userItemType',
+              filterFn: 'text' as const,
+              enableSorting: false,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'userItemType',
+                    placeholder: 'User Type',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.reportedMedia
-          ? { Header: 'Reported Media', accessor: 'reportedMedia' }
+          ? { header: 'Reported Media', accessorKey: 'reportedMedia' }
           : undefined,
         columnVisibility.additionalFiles
-          ? { Header: 'Additional Files', accessor: 'additionalFiles' }
+          ? { header: 'Additional Files', accessorKey: 'additionalFiles' }
           : undefined,
         columnVisibility.reportedMessages
-          ? { Header: 'Reported Messages', accessor: 'reportedMessages' }
+          ? { header: 'Reported Messages', accessorKey: 'reportedMessages' }
           : undefined,
         columnVisibility.isTest
-          ? { Header: 'Test Report', accessor: 'isTest' }
+          ? { header: 'Test Report', accessorKey: 'isTest' }
           : undefined,
         columnVisibility.lastError
-          ? { Header: 'Last Error', accessor: 'lastError' }
+          ? { header: 'Last Error', accessorKey: 'lastError' }
           : undefined,
         columnVisibility.action
-          ? { Header: 'Action', accessor: 'action' }
+          ? { header: 'Action', accessorKey: 'action' }
           : undefined,
       ]),
     [columnVisibility],
