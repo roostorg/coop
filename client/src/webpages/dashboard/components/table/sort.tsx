@@ -1,5 +1,3 @@
-import capitalize from 'lodash/capitalize';
-
 import {
   GQLConditionOutcome,
   GQLReportingRuleStatus,
@@ -90,7 +88,6 @@ function enumSort<TData extends RowWithValues>(
   if (s1 === s2) {
     return 0;
   }
-  precedence = precedence.map((val) => capitalize(val.toLowerCase()));
   return precedence.indexOf(s1) > precedence.indexOf(s2) ? 1 : -1;
 }
 
