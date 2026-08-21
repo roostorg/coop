@@ -370,10 +370,10 @@ export default function ManualReviewRecentDecisions() {
       filterNullOrUndefined([
         columnVisibility.decisionTime
           ? {
-              Header: 'Decision Time',
-              accessor: 'decisionTime',
+              header: 'Decision Time',
+              accessorKey: 'decisionTime',
               sortDescFirst: true,
-              sortType: stringSort,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.claimedAt
@@ -386,37 +386,37 @@ export default function ManualReviewRecentDecisions() {
           : undefined,
         columnVisibility.decisions
           ? {
-              Header: 'Decisions',
-              accessor: 'decisions',
-              canSort: false,
+              header: 'Decisions',
+              accessorKey: 'decisions',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.decisionReason
           ? {
-              Header: 'Decision Reason',
-              accessor: 'decisionReason',
-              canSort: false,
+              header: 'Decision Reason',
+              accessorKey: 'decisionReason',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.policies
           ? {
-              Header: 'Policies',
-              accessor: 'policies',
-              canSort: false,
+              header: 'Policies',
+              accessorKey: 'policies',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.reviewer
           ? {
-              Header: 'Reviewer',
-              accessor: 'reviewer',
-              canSort: false,
+              header: 'Reviewer',
+              accessorKey: 'reviewer',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.queue
           ? {
-              Header: 'Queue',
-              accessor: 'queue',
-              canSort: true,
+              header: 'Queue',
+              accessorKey: 'queue',
+              enableSorting: true,
             }
           : undefined,
       ]),
@@ -1071,13 +1071,13 @@ export default function ManualReviewRecentDecisions() {
           <div className={selectedDecision ? undefined : 'w-full min-w-0'}>
             <Table
               columns={columns}
-              // @ts-ignore
               data={tableData}
               alwaysShowScrollbar
               containerClassName={selectedDecision ? undefined : 'w-full'}
               onSelectRow={(rowData) =>
                 setSelectedDecision(
-                  rowData.original.values.originalDecisionData,
+                  rowData.original.values
+                    .originalDecisionData as GQLManualReviewDecision,
                 )
               }
               topLeftComponent={selectedDecision ? null : tableControls}
@@ -1086,7 +1086,10 @@ export default function ManualReviewRecentDecisions() {
               collapsedColumnTitle="Decisions"
               renderCollapsedCell={(row) => {
                 const values = row.original.values as {
-                  decisionColorNamePairs: { name: string; colors: string }[];
+                  decisionColorNamePairs: {
+                    name: string;
+                    colorVariant: BadgeColorVariant;
+                  }[];
                   reviewerId: string;
                   createdAt: string | Date;
                 };
@@ -1095,13 +1098,13 @@ export default function ManualReviewRecentDecisions() {
                   <div className="flex flex-col gap-0.5">
                     <div className="flex flex-wrap gap-1">
                       {values.decisionColorNamePairs.map(
-                        ({ name, colors }, index) => (
-                          <div
+                        ({ name, colorVariant }, index) => (
+                          <CoopBadge
                             key={index}
-                            className={`flex px-2 py-0.5 rounded font-medium text-xs ${colors}`}
-                          >
-                            {name}
-                          </div>
+                            colorVariant={colorVariant}
+                            label={name}
+                            shapeVariant="pill"
+                          />
                         ),
                       )}
                     </div>

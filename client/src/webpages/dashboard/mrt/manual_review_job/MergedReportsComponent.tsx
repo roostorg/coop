@@ -103,10 +103,10 @@ export default function MergedReportsComponent(props: {
 
   const columns = useMemo(
     () => [
-      { Header: 'Reported By', accessor: 'reportedBy' },
-      { Header: 'Reported For', accessor: 'reportedFor' },
-      { Header: 'Reason', accessor: 'reason' },
-      { Header: 'Report Time', accessor: 'reportTime' },
+      { header: 'Reported By', accessorKey: 'reportedBy' },
+      { header: 'Reported For', accessorKey: 'reportedFor' },
+      { header: 'Reason', accessorKey: 'reason' },
+      { header: 'Report Time', accessorKey: 'reportTime' },
     ],
     [],
   );

@@ -32,7 +32,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
           .replace(/_/g, ' ')
           .toLowerCase()
           .replace(/^([a-z])|\s+([a-z])/g, (m) => m.toUpperCase())
-      : 'Coop');
+      : 'ROOST');
   // Signals use the logo-with-background variant.
   const rawLogoSrc =
     signal.integrationLogoWithBackgroundUrl ??
@@ -76,17 +76,23 @@ export default function RuleFormSignalModalSignalDetailView(props: {
           },
         ]
       : []),
-    {
-      label: 'Pricing Structure',
-      value: (() => {
-        switch (signal.pricingStructure.type) {
-          case GQLSignalPricingStructureType.Free:
-            return 'Free';
-          case GQLSignalPricingStructureType.Subscription:
-            return 'Subscription';
-        }
-      })(),
-    },
+    // Pricing only applies to third-party integrations; built-in signals
+    // ship with Coop and showing "Free" for them is noise.
+    ...(signal.integration != null
+      ? [
+          {
+            label: 'Pricing Structure',
+            value: (() => {
+              switch (signal.pricingStructure.type) {
+                case GQLSignalPricingStructureType.Free:
+                  return 'Free';
+                case GQLSignalPricingStructureType.Subscription:
+                  return 'Subscription';
+              }
+            })(),
+          },
+        ]
+      : []),
 
     ...(signal.supportedLanguages.__typename === 'Languages' &&
     !signal.supportedLanguages.languages.length
