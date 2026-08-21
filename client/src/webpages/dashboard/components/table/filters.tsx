@@ -67,10 +67,10 @@ export function getFilterTypes() {
       const start = filterValue[0];
       const end = filterValue[1];
       const rowValue = raw(row, id);
-      if (start && start > rowValue) {
+      if (start != null && start > rowValue) {
         return false;
       }
-      if (end && end < rowValue) {
+      if (end != null && end < rowValue) {
         return false;
       }
       return true;
