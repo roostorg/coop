@@ -7,10 +7,8 @@ import { type UserScore } from '../../userStatisticsService/userStatisticsServic
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
 import GeoContainedWithinSignal from '../signals/GeoContainedWithinSignal.js';
-import ImageExactMatchSignal from '../signals/ImageExactMatchSignal.js';
 import ImageSimilarityDoesNotMatchSignal from '../signals/ImageSimilarityDoesNotMatch.js';
 import ImageSimilarityMatchSignal from '../signals/ImageSimilarityMatch.js';
-import ImageSimilarityScoreSignal from '../signals/ImageSimilarityScoreSignal.js';
 import {
   type SignalBase,
   type SignalInputType,
@@ -76,8 +74,6 @@ export function instantiateBuiltInSignals(
     [SignalType.TEXT_MATCHING_CONTAINS_VARIANT]:
       new TextMatchingContainsVariantSignal(),
     [SignalType.TEXT_SIMILARITY_SCORE]: new TextSimilarityScoreSignal(),
-    [SignalType.IMAGE_EXACT_MATCH]: new ImageExactMatchSignal(),
-    [SignalType.IMAGE_SIMILARITY_SCORE]: new ImageSimilarityScoreSignal(),
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]:
       new ImageSimilarityDoesNotMatchSignal(hmaService),
     [SignalType.IMAGE_SIMILARITY_MATCH]: new ImageSimilarityMatchSignal(
