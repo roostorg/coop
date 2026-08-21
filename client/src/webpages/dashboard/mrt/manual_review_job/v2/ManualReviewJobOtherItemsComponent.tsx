@@ -43,7 +43,7 @@ export function ManualReviewJobOtherItemsComponent(props: {
   allPolicies: readonly { id: string; name: string }[];
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   reporterIdentifier?: ItemIdentifier;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;

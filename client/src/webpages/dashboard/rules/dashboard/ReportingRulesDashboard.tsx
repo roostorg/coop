@@ -5,7 +5,6 @@ import lowerCase from 'lodash/lowerCase';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import { Column, Row } from 'react-table';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';
@@ -25,7 +24,7 @@ import {
   reportingRuleStatusSort,
   stringSort,
 } from '../../components/table/sort';
-import Table from '../../components/table/Table';
+import Table, { TableRow } from '../../components/table/Table';
 import TruncatedListTableCell from '../../components/table/TruncatedListTableCell';
 import TruncatedTextTableCell from '../../components/table/TruncatedTextTableCell';
 import UserWithAvatar from '../../components/UserWithAvatar';
@@ -144,10 +143,6 @@ export default function ReportingRulesDashboard() {
 
   const navigate = useNavigate();
 
-  const rowLinkTo = (row: Row<any>) => {
-    return `info/${row.original.values.id}`;
-  };
-
   const permissions = rulesQueryParams.data?.me?.permissions;
   const canEditLiveRules = userHasPermissions(permissions, [
     GQLUserPermission.MutateLiveRules,
@@ -209,69 +204,78 @@ export default function ReportingRulesDashboard() {
   );
 
   const columns = useMemo(
-    () =>
-      [
-        {
-          Header: 'Rule',
-          accessor: 'name',
-          Filter: (props: ColumnProps) =>
+    () => [
+      {
+        header: 'Rule',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
             DefaultColumnFilter({
               columnProps: props,
               accessor: 'name',
             }),
-          filter: 'text',
-          sortType: stringSort,
         },
-        {
-          Header: 'Owner',
-          accessor: 'owner',
-          Filter: (props: ColumnProps) =>
+        filterFn: 'text' as const,
+        sortFn: stringSort,
+      },
+      {
+        header: 'Owner',
+        accessorKey: 'owner',
+        meta: {
+          filter: (props: ColumnProps) =>
             SelectColumnFilter({
               columnProps: props,
               accessor: 'owner',
             }),
-          filter: 'includes',
-          canSort: false,
         },
-        {
-          Header: 'Status',
-          accessor: 'status',
-          Filter: (props: ColumnProps) =>
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
+        header: 'Status',
+        accessorKey: 'status',
+        meta: {
+          filter: (props: ColumnProps) =>
             SelectColumnFilter({
               columnProps: props,
               accessor: 'status',
             }),
-          filter: 'includes',
-          sortType: reportingRuleStatusSort,
         },
-        {
-          Header: 'Policies',
-          accessor: 'policies',
-          Filter: (props: ColumnProps) =>
+        filterFn: 'includes' as const,
+        sortFn: reportingRuleStatusSort,
+      },
+      {
+        header: 'Policies',
+        accessorKey: 'policies',
+        meta: {
+          filter: (props: ColumnProps) =>
             SelectColumnFilter({
               columnProps: props,
               accessor: 'policies',
             }),
-          filter: 'includes',
-          canSort: false,
         },
-        {
-          Header: 'Item Types',
-          accessor: 'itemTypes',
-          Filter: (props: ColumnProps) =>
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
+        header: 'Item Types',
+        accessorKey: 'itemTypes',
+        meta: {
+          filter: (props: ColumnProps) =>
             SelectColumnFilter({
               columnProps: props,
               accessor: 'itemTypes',
             }),
-          filter: 'includes',
-          canSort: false,
         },
-        {
-          Header: '',
-          accessor: 'mutations',
-          canSort: false,
-        },
-      ] as (Column<object> & { canSort?: boolean })[],
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
+        header: '',
+        accessorKey: 'mutations',
+        enableSorting: false,
+      },
+    ],
     [],
   );
 
@@ -329,6 +333,10 @@ export default function ReportingRulesDashboard() {
         }),
     [mutations, dataValues],
   );
+
+  const rowLinkTo = (row: TableRow<(typeof tableData)[number]>) => {
+    return `info/${row.original.values.id}`;
+  };
 
   if (rulesQueryParams.error) {
     throw rulesQueryParams.error;
