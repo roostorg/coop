@@ -22,7 +22,7 @@
     "@opentelemetry/sdk-node": "^0.221.0",
     "@opentelemetry/sdk-trace-base": "^2.8.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
-    "@opentelemetry/winston-transport": "^0.30.0"
+    "@opentelemetry/winston-transport": "^0.31.0"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
