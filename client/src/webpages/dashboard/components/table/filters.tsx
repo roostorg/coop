@@ -2,101 +2,93 @@ import { DatePicker, Input, Select } from 'antd';
 import intersection from 'lodash/intersection';
 import uniq from 'lodash/uniq';
 import { MouseEvent } from 'react';
-import { Row, UseFiltersColumnProps } from 'react-table';
+
+import type {
+  FacetedRow,
+  FilterRendererProps,
+  TableData,
+} from './tableFeatures';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+type RawRow = { values: Record<string, any> };
 
-export type ColumnProps = UseFiltersColumnProps<object> & {
-  setUnsavedFilterValue: (value: any) => void;
-  unsavedFilterValue: any;
-  onSave: () => void;
-};
-
+export type ColumnProps<TData extends TableData = TableData> =
+  FilterRendererProps<TData>;
 export type FilterProps = {
   columnProps: ColumnProps;
   accessor: string;
   placeholder?: string;
 };
+const raw = (row: FacetedRow, id: string) =>
+  (row.original as RawRow).values[id];
 
 function onClickFilter(event: MouseEvent) {
-  // This ensures that clicking the filter doesn't trigger a
-  // 'sort column' event
+  // Prevent clicks inside filter controls from sorting the column.
   event.stopPropagation();
 }
 
 export function getFilterTypes() {
   return {
-    // Override the default text filter to use "startWith"
-    text: (rows: Row<any>[], id: string, filterValue: any) => {
+    // Match case-insensitive substrings against the raw column value.
+    text: (row: FacetedRow, id: string, filterValue: any) => {
       if (filterValue == null || filterValue.length === 0) {
-        return rows;
+        return true;
       }
-      return rows.filter((row) => {
-        const rowValue = row.original.values[id[0]];
-        return rowValue != null
-          ? String(rowValue)
-              .toLowerCase()
-              .includes(String(filterValue).toLowerCase())
-          : false;
-      });
+      const rowValue = raw(row, id);
+      if (rowValue == null) {
+        return false;
+      }
+      return String(rowValue)
+        .toLowerCase()
+        .includes(String(filterValue).toLowerCase());
     },
-    // Allow for filtering on options in a predetermined list
-    includes: (rows: Row<any>[], id: string, filterValue: any) => {
+    // Allow filtering on options in a predetermined list.
+    includes: (row: FacetedRow, id: string, filterValue: any) => {
       if (
         filterValue == null ||
         (Array.isArray(filterValue) && filterValue.length === 0)
       ) {
-        return rows;
+        return true;
       }
-      return rows.filter((row) => {
-        const rowValue = row.original.values[id[0]];
-        if (rowValue == null) {
-          return false;
-        }
-        if (Array.isArray(rowValue)) {
-          return intersection(filterValue, rowValue).length > 0;
-        }
-        return filterValue.includes(rowValue);
-      });
+      const rowValue = raw(row, id);
+      if (rowValue == null) {
+        return false;
+      }
+      if (Array.isArray(rowValue)) {
+        return intersection(filterValue, rowValue).length > 0;
+      }
+      return filterValue.includes(rowValue);
     },
-    range: (rows: Row<any>[], id: string, filterValue: any) => {
+    range: (row: FacetedRow, id: string, filterValue: any) => {
       if (filterValue == null) {
-        return rows;
+        return true;
       }
       const start = filterValue[0];
       const end = filterValue[1];
-      return rows.filter((row) => {
-        if (start && start > row.original.values[id[0]]) {
-          return false;
-        }
-        if (end && end < row.original.values[id[0]]) {
-          return false;
-        }
-        return true;
-      });
+      const rowValue = raw(row, id);
+      if (start && start > rowValue) {
+        return false;
+      }
+      if (end && end < rowValue) {
+        return false;
+      }
+      return true;
     },
-    dateRange: (rows: Row<any>[], id: string, filterValue: any) => {
+    dateRange: (row: FacetedRow, id: string, filterValue: any) => {
       if (filterValue == null) {
-        return rows;
-      }
-      let start = filterValue[0];
-      let end = filterValue[1];
-      if (start) {
-        start = start.format('YYYY-MM-DD');
-      }
-      if (end) {
-        end = end.format('YYYY-MM-DD');
-      }
-      return rows.filter((row) => {
-        if (start && start > row.original.values[id[0]]) {
-          return false;
-        }
-        if (end && end < row.original.values[id[0]]) {
-          return false;
-        }
         return true;
-      });
+      }
+      const start = filterValue[0]?.format('YYYY-MM-DD');
+      const end = filterValue[1]?.format('YYYY-MM-DD');
+      const rowValue = raw(row, id);
+      if (start && start > rowValue) {
+        return false;
+      }
+      if (end && end < rowValue) {
+        return false;
+      }
+      return true;
     },
   };
 }
@@ -130,7 +122,7 @@ export function SelectColumnFilter(props: FilterProps) {
   // using the preFilteredRows
   const options: (string[] | string)[] = [];
   preFilteredRows.forEach((row) => {
-    options.push((row.original as any).values[accessor]);
+    options.push((row.original as RawRow).values[accessor]);
   });
   const uniqueOptions = uniq(options.flat());
 
@@ -165,14 +157,14 @@ export function NumberRangeColumnFilter(props: FilterProps) {
         className="!w-14"
         onChange={(e) => {
           if (!e.target.value) {
-            setUnsavedFilterValue((old = []) => {
+            setUnsavedFilterValue((old: any[] = []) => {
               return [undefined, old[1]];
             });
             return;
           }
           const val = parseFloat(e.target.value);
           if (!isNaN(val)) {
-            setUnsavedFilterValue((old = []) => {
+            setUnsavedFilterValue((old: any[] = []) => {
               return [val, old[1]];
             });
           }
@@ -185,14 +177,14 @@ export function NumberRangeColumnFilter(props: FilterProps) {
         className="!w-14"
         onChange={(e) => {
           if (!e.target.value) {
-            setUnsavedFilterValue((old = []) => {
+            setUnsavedFilterValue((old: any[] = []) => {
               return [old[0], undefined];
             });
             return;
           }
           const val = parseFloat(e.target.value);
           if (!isNaN(val)) {
-            setUnsavedFilterValue((old = []) => {
+            setUnsavedFilterValue((old: any[] = []) => {
               return [old[0], val];
             });
           }
@@ -208,7 +200,7 @@ export function DateRangeColumnFilter(props: FilterProps) {
   const { columnProps } = props;
   const { unsavedFilterValue, setUnsavedFilterValue } = columnProps;
 
-  // We wrap this in a div because RangePicker's onClick doesn't work
+  // RangePicker does not forward onClick, so intercept it on a wrapper.
   return (
     <div onClick={onClickFilter}>
       <RangePicker

@@ -6,9 +6,8 @@ import { assertUnreachable } from '@/utils/misc';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client/core';
 import { useState } from 'react';
-import type { Column } from 'react-table';
 
-import Table from '../components/table/Table';
+import Table, { TableColumnDef } from '../components/table/Table';
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 
 import type { TimeWindow } from '../rules/dashboard/visualization/RulesDashboardInsights';
@@ -150,52 +149,58 @@ export default function ManualReviewDecisionsTable(props: {
   );
 
   const columns = data?.getDecisionsTable
-    .reduce<Column<object>[]>(
+    .reduce<
+      (TableColumnDef<{
+        [key: string]: string | number;
+        groupedByKey: string;
+        name: string;
+      }> & { accessorKey: string; header: string })[]
+    >(
       (acc, { action_id, type }) => {
         if (action_id !== null && action_id !== undefined) {
           const action = data?.myOrg?.actions.find((a) => a.id === action_id);
           if (
             action === undefined ||
-            acc.find((it) => it.Header === action.name)
+            acc.find((it) => it.header === action.name)
           ) {
             return acc;
           }
-          acc.push({ accessor: action_id, Header: action.name });
+          acc.push({ accessorKey: action_id, header: action.name });
         }
         // These should be caught in the previous if with the action
         if (type === 'CUSTOM_ACTION' || type === 'RELATED_ACTION') {
           return acc;
         }
         const title = getReadableNameFromDecisionType(type);
-        if (!acc.find((it) => it.Header === title)) {
+        if (!acc.find((it) => it.header === title)) {
           acc.push({
-            accessor: type,
-            Header: getReadableNameFromDecisionType(type),
+            accessorKey: type,
+            header: getReadableNameFromDecisionType(type),
           });
         }
         return acc;
       },
-      [{ accessor: 'name', Header: 'Name' }],
+      [{ accessorKey: 'name', header: 'Name' }],
     )
     .sort((a, b) => {
-      if (typeof a.Header !== 'string') {
+      if (typeof a.header !== 'string') {
         return -1;
       }
-      if (typeof b.Header !== 'string') {
+      if (typeof b.header !== 'string') {
         return 1;
       }
-      return a.Header === 'Name'
+      return a.header === 'Name'
         ? -1
-        : b.Header === 'Name'
+        : b.header === 'Name'
           ? 1
-          : a.Header.localeCompare(b.Header);
+          : a.header.localeCompare(b.header);
     });
 
   const filledInData = columns
     ? groupedByKey?.map((it) => {
         const obj = { ...it };
         columns.forEach((col) => {
-          const accessor = col.accessor as string;
+          const accessor = col.accessorKey;
           if (obj[accessor] === undefined) {
             obj[accessor] = 0;
           }

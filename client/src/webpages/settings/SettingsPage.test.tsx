@@ -255,9 +255,11 @@ describe('SettingsPage', () => {
       expect(
         screen.getByDisplayValue('https://example.com'),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /save changes/i }),
-      ).toBeDisabled();
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
     });
 
     it('enables save when a field changes, disables for invalid input', async () => {
