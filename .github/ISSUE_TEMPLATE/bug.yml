@@ -6,7 +6,7 @@ body:
     attributes:
       value: >
         Thanks for taking the time to report a bug in Coop! **Please provide as
-        much detail as you can** so we can properly confirm, triage, and
+        much detail as you can below** so we can properly confirm, triage, and
         ultimately fix your bug.
 
   - type: textarea
@@ -49,7 +49,9 @@ body:
     attributes:
       label: Relevant logs/errors
       description: >
-        Please paste any relevant log output or error messages.
+        Please paste any relevant log output or error messages. **Redact sensitive
+        information** such as passwords, API keys, tokens, and personal data before
+        submitting.
       render: shell
     validations:
       required: false
@@ -75,6 +77,7 @@ body:
         [acceptable use policies](https://docs.github.com/en/site-policy/acceptable-use-policies).
     validations:
       required: false
+      accept: '.png,.jpg,.jpeg,.gif,.svg,.webp'
 
   - type: checkboxes
     id: checklist

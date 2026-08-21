@@ -430,19 +430,19 @@ function ChildPoliciesTable(props: {
   const columns = useMemo(
     () => [
       {
-        Header: 'Sub-Policy',
-        accessor: 'name',
-        canSort: false,
+        header: 'Sub-Policy',
+        accessorKey: 'name',
+        enableSorting: false,
       },
       {
-        Header: 'User Strike Score',
-        accessor: 'userStrikeCount', // accessor is the "key" in the data
-        canSort: false,
+        header: 'User Strike Score',
+        accessorKey: 'userStrikeCount', // accessor is the "key" in the data
+        enableSorting: false,
       },
       {
-        Header: 'Apply to sub-policies',
-        accessor: 'applyUserStrikeCountConfigToChildren', // accessor is the "key" in the data
-        canSort: false,
+        header: 'Apply to sub-policies',
+        accessorKey: 'applyUserStrikeCountConfigToChildren', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],

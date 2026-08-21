@@ -1116,7 +1116,6 @@ export type GQLDerivedFieldCoopInputSourceInput = {
 };
 
 export const GQLDerivedFieldDerivationType = {
-  EnglishTranslation: 'ENGLISH_TRANSLATION',
   VideoTranscription: 'VIDEO_TRANSCRIPTION',
 } as const;
 
@@ -3862,6 +3861,8 @@ export type GQLRecentManualReviewUserOrRelatedActionDecision = {
 export type GQLRecentUserStrikeActions = {
   readonly __typename?: 'RecentUserStrikeActions';
   readonly actionId: Scalars['String']['output'];
+  readonly creatorId?: Maybe<Scalars['String']['output']>;
+  readonly creatorTypeId?: Maybe<Scalars['String']['output']>;
   readonly itemId: Scalars['String']['output'];
   readonly itemTypeId: Scalars['String']['output'];
   readonly source: Scalars['String']['output'];
@@ -4509,10 +4510,8 @@ export const GQLSignalType = {
   Custom: 'CUSTOM',
   GeoContainedWithin: 'GEO_CONTAINED_WITHIN',
   GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
-  ImageExactMatch: 'IMAGE_EXACT_MATCH',
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
-  ImageSimilarityScore: 'IMAGE_SIMILARITY_SCORE',
   OpenAiGraphicViolenceImageModel: 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL',
   OpenAiGraphicViolenceTextModel: 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
@@ -12862,6 +12861,16 @@ export type GQLRecentUserStrikeActionsResolvers<
     GQLResolversParentTypes['RecentUserStrikeActions'],
 > = {
   actionId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  creatorId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  creatorTypeId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   itemId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   itemTypeId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   source?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;

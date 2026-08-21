@@ -50,6 +50,8 @@ const typeDefs = /* GraphQL */ `
     itemId: String!
     actionId: String!
     source: String!
+    creatorId: String
+    creatorTypeId: String
   }
 
   input StartAndEndDateFilterByInput {
