@@ -103,6 +103,8 @@ gql`
           }
         }
         createdAt
+        assignedAt
+        jobCreatedAt
       }
     }
   }

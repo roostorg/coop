@@ -1440,6 +1440,32 @@ export type GQLGooglePlaceLocationInfo = {
   readonly id: Scalars['ID']['output'];
 };
 
+export type GQLHandleTime = {
+  readonly __typename?: 'HandleTime';
+  readonly handleTimeSeconds?: Maybe<Scalars['Int']['output']>;
+  readonly queueId?: Maybe<Scalars['String']['output']>;
+  readonly reviewerId?: Maybe<Scalars['String']['output']>;
+};
+
+export type GQLHandleTimeFilterByInput = {
+  readonly endDate: Scalars['DateTime']['input'];
+  readonly queueIds: ReadonlyArray<Scalars['String']['input']>;
+  readonly reviewerIds: ReadonlyArray<Scalars['String']['input']>;
+  readonly startDate: Scalars['DateTime']['input'];
+};
+
+export const GQLHandleTimeGroupByColumns = {
+  QueueId: 'QUEUE_ID',
+  ReviewerId: 'REVIEWER_ID',
+} as const;
+
+export type GQLHandleTimeGroupByColumns =
+  (typeof GQLHandleTimeGroupByColumns)[keyof typeof GQLHandleTimeGroupByColumns];
+export type GQLHandleTimeInput = {
+  readonly filterBy: GQLHandleTimeFilterByInput;
+  readonly groupBy: ReadonlyArray<GQLHandleTimeGroupByColumns>;
+};
+
 export type GQLHashBank = {
   readonly __typename?: 'HashBank';
   readonly description?: Maybe<Scalars['String']['output']>;
@@ -2184,12 +2210,14 @@ export type GQLManualReviewChartSettingsInput = {
 
 export type GQLManualReviewDecision = {
   readonly __typename?: 'ManualReviewDecision';
+  readonly assignedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly createdAt: Scalars['DateTime']['output'];
   readonly decisionReason?: Maybe<Scalars['String']['output']>;
   readonly decisions: ReadonlyArray<GQLManualReviewDecisionComponent>;
   readonly id: Scalars['String']['output'];
   readonly itemId?: Maybe<Scalars['String']['output']>;
   readonly itemTypeId?: Maybe<Scalars['String']['output']>;
+  readonly jobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly jobId: Scalars['String']['output'];
   readonly queueId: Scalars['String']['output'];
   readonly relatedActions: ReadonlyArray<GQLManualReviewDecisionComponent>;
@@ -3515,6 +3543,7 @@ export type GQLQuery = {
   readonly getExistingJobsForItem: ReadonlyArray<GQLManualReviewExistingJob>;
   readonly getFullReportingRuleResultForItem: GQLGetFullReportingRuleResultForItemResponse;
   readonly getFullRuleResultForItem: GQLGetFullResultForItemResponse;
+  readonly getHandleTime?: Maybe<ReadonlyArray<GQLHandleTime>>;
   readonly getJobCreationCounts: ReadonlyArray<GQLJobCreationCount>;
   readonly getRecentDecisions: ReadonlyArray<GQLManualReviewDecision>;
   readonly getResolvedJobCounts: ReadonlyArray<GQLResolvedJobCount>;
@@ -3612,6 +3641,10 @@ export type GQLQueryGetFullReportingRuleResultForItemArgs = {
 
 export type GQLQueryGetFullRuleResultForItemArgs = {
   input: GQLGetFullResultForItemInput;
+};
+
+export type GQLQueryGetHandleTimeArgs = {
+  input: GQLHandleTimeInput;
 };
 
 export type GQLQueryGetJobCreationCountsArgs = {
@@ -6000,6 +6033,10 @@ export type GQLResolversTypes = {
   GoogleContentSafetyApiIntegrationApiCredential: ResolverTypeWrapper<GQLGoogleContentSafetyApiIntegrationApiCredential>;
   GoogleContentSafetyApiIntegrationApiCredentialInput: GQLGoogleContentSafetyApiIntegrationApiCredentialInput;
   GooglePlaceLocationInfo: ResolverTypeWrapper<GQLGooglePlaceLocationInfo>;
+  HandleTime: ResolverTypeWrapper<GQLHandleTime>;
+  HandleTimeFilterByInput: GQLHandleTimeFilterByInput;
+  HandleTimeGroupByColumns: GQLHandleTimeGroupByColumns;
+  HandleTimeInput: GQLHandleTimeInput;
   HashBank: ResolverTypeWrapper<HashBank>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   IgnoreDecisionComponent: ResolverTypeWrapper<GQLIgnoreDecisionComponent>;
@@ -6796,6 +6833,9 @@ export type GQLResolversParentTypes = {
   GoogleContentSafetyApiIntegrationApiCredential: GQLGoogleContentSafetyApiIntegrationApiCredential;
   GoogleContentSafetyApiIntegrationApiCredentialInput: GQLGoogleContentSafetyApiIntegrationApiCredentialInput;
   GooglePlaceLocationInfo: GQLGooglePlaceLocationInfo;
+  HandleTime: GQLHandleTime;
+  HandleTimeFilterByInput: GQLHandleTimeFilterByInput;
+  HandleTimeInput: GQLHandleTimeInput;
   HashBank: HashBank;
   ID: Scalars['ID']['output'];
   IgnoreDecisionComponent: GQLIgnoreDecisionComponent;
@@ -9222,6 +9262,28 @@ export type GQLGooglePlaceLocationInfoResolvers<
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
 };
 
+export type GQLHandleTimeResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['HandleTime'] =
+    GQLResolversParentTypes['HandleTime'],
+> = {
+  handleTimeSeconds?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  queueId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  reviewerId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLHashBankResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['HashBank'] =
@@ -10233,6 +10295,11 @@ export type GQLManualReviewDecisionResolvers<
   ParentType extends GQLResolversParentTypes['ManualReviewDecision'] =
     GQLResolversParentTypes['ManualReviewDecision'],
 > = {
+  assignedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
+    ParentType,
+    ContextType
+  >;
   createdAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   decisionReason?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -10252,6 +10319,11 @@ export type GQLManualReviewDecisionResolvers<
   >;
   itemTypeId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  jobCreatedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
     ParentType,
     ContextType
   >;
@@ -12523,6 +12595,12 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQueryGetFullRuleResultForItemArgs, 'input'>
+  >;
+  getHandleTime?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['HandleTime']>>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLQueryGetHandleTimeArgs, 'input'>
   >;
   getJobCreationCounts?: Resolver<
     ReadonlyArray<GQLResolversTypes['JobCreationCount']>,
@@ -15172,6 +15250,7 @@ export type GQLResolvers<ContextType = Context> = {
   GetJobCreationCountSettings?: GQLGetJobCreationCountSettingsResolvers<ContextType>;
   GoogleContentSafetyApiIntegrationApiCredential?: GQLGoogleContentSafetyApiIntegrationApiCredentialResolvers<ContextType>;
   GooglePlaceLocationInfo?: GQLGooglePlaceLocationInfoResolvers<ContextType>;
+  HandleTime?: GQLHandleTimeResolvers<ContextType>;
   HashBank?: GQLHashBankResolvers<ContextType>;
   IgnoreDecisionComponent?: GQLIgnoreDecisionComponentResolvers<ContextType>;
   IntegrationApiCredential?: GQLIntegrationApiCredentialResolvers<ContextType>;

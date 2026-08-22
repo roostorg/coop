@@ -28,6 +28,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import type ClaimOperations from './ClaimOperations.js';
 import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
@@ -191,6 +192,7 @@ export default class JobDecisioning {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly manualReviewToolSettings: ManualReviewToolSettings,
+    private readonly claimOps: ClaimOperations,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -540,6 +542,7 @@ export default class JobDecisioning {
         relatedActions: [],
         enqueueSourceInfo: job.enqueueSourceInfo,
         decisionReason,
+        recordAssignedAt: false,
       });
     } catch (error) {
       // A concurrent reviewer already decided this job; nothing left to do.
@@ -620,6 +623,7 @@ export default class JobDecisioning {
     relatedActions: ManualReviewDecisionRelatedAction[];
     enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
     decisionReason?: string;
+    recordAssignedAt?: boolean;
   }) {
     const {
       id,
@@ -631,6 +635,7 @@ export default class JobDecisioning {
       relatedActions,
       enqueueSourceInfo,
       decisionReason,
+      recordAssignedAt = true,
     } = opts;
 
     const itemType = await this.moderationConfigService.getItemType({
@@ -677,6 +682,34 @@ export default class JobDecisioning {
       );
     }
 
+    const isAutomaticClose = decisionComponents.some(
+      (component) => component.type === 'AUTOMATIC_CLOSE',
+    );
+    const assignedAt =
+      recordAssignedAt && reviewerId != null && !isAutomaticClose
+        ? await this.claimOps
+            .getLatestClaimedAt({
+              orgId,
+              jobId: job.id,
+              userId: reviewerId,
+            })
+            .catch((error: unknown) => {
+              this.tracer.addSpan(
+                {
+                  resource: 'mrtService',
+                  operation: 'logDecision.getLatestClaimedAt',
+                },
+                (span) => {
+                  span.setAttribute('job.id', job.id);
+                  span.setAttribute('org.id', orgId);
+                  this.tracer.logSpanFailed(span, error);
+                  return null;
+                },
+              );
+              return null;
+            })
+        : null;
+
     return this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
       .values({
@@ -693,6 +726,7 @@ export default class JobDecisioning {
         enqueue_source_info: enqueueSourceInfo,
         item_created_at: itemCreatedAt,
         decision_reason: decisionReason,
+        assigned_at: assignedAt,
       })
       .execute();
   }
