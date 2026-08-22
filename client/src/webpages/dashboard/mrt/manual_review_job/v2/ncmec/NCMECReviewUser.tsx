@@ -275,17 +275,11 @@ export default function NCMECReviewUser(
     .flat()
     .sort((a, b) => {
       // Put confirmed CSAM first, then the reported item, then everything else
-      if (a.isConfirmedCSAM) {
-        return -1;
+      if (a.isConfirmedCSAM !== b.isConfirmedCSAM) {
+        return a.isConfirmedCSAM ? -1 : 1;
       }
-      if (b.isConfirmedCSAM) {
-        return 1;
-      }
-      if (a.isReported) {
-        return -1;
-      }
-      if (b.isReported) {
-        return 1;
+      if (a.isReported !== b.isReported) {
+        return a.isReported ? -1 : 1;
       }
       return 0;
     });
@@ -1023,6 +1017,7 @@ export default function NCMECReviewUser(
             { label: 'Messages', value: 'MESSAGES' },
           ]}
           initialSelectedTab={selectedTab}
+          currentSelectedTab={selectedTab}
           onTabClick={setSelectedTab}
         />
       ) : undefined}

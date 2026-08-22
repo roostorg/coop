@@ -33,7 +33,11 @@ const messageType = {
 
 const userItem = {
   itemId: 'user-1',
-  itemTypeIdentifier: { id: 'user-type', version: '1', schemaVariant: 'original' },
+  itemTypeIdentifier: {
+    id: 'user-type',
+    version: '1',
+    schemaVariant: 'original',
+  },
   data: { name: 'Suspect', avatar: 'https://example.com/a.png' },
   submissionId: 'sub-user',
   submissionTime: new Date('2026-01-01T00:00:00Z'),
@@ -41,7 +45,11 @@ const userItem = {
 
 const messageItem = {
   itemId: 'msg-1',
-  itemTypeIdentifier: { id: 'msg-type', version: '1', schemaVariant: 'original' },
+  itemTypeIdentifier: {
+    id: 'msg-type',
+    version: '1',
+    schemaVariant: 'original',
+  },
   data: {
     text: 'hello',
     attachment: 'https://example.com/img.png',
@@ -97,7 +105,9 @@ function enqueuedPayload(enqueueSpy: jest.Mock): Record<string, unknown> {
 describe('NcmecEnqueueToMrt reportedMessages in the job payload', () => {
   it('records the reported content item as a reported message', async () => {
     const enqueueSpy = jest.fn(async () => undefined);
-    const result = await makeEnqueue(enqueueSpy).enqueueForHumanReviewIfApplicable({
+    const result = await makeEnqueue(
+      enqueueSpy,
+    ).enqueueForHumanReviewIfApplicable({
       orgId: 'org-1',
       createdAt: new Date('2026-01-02T00:00:00Z'),
       item: messageItem,
@@ -116,7 +126,9 @@ describe('NcmecEnqueueToMrt reportedMessages in the job payload', () => {
 
   it('omits reportedMessages when the reported item is the user themself', async () => {
     const enqueueSpy = jest.fn(async () => undefined);
-    const result = await makeEnqueue(enqueueSpy).enqueueForHumanReviewIfApplicable({
+    const result = await makeEnqueue(
+      enqueueSpy,
+    ).enqueueForHumanReviewIfApplicable({
       orgId: 'org-1',
       createdAt: new Date('2026-01-02T00:00:00Z'),
       item: userItem,
