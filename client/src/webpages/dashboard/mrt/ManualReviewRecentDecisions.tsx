@@ -378,10 +378,10 @@ export default function ManualReviewRecentDecisions() {
           : undefined,
         columnVisibility.claimedAt
           ? {
-              Header: 'Claimed At',
-              accessor: 'claimedAt',
+              header: 'Claimed At',
+              accessorKey: 'claimedAt',
               sortDescFirst: true,
-              sortType: stringSort,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.decisions
