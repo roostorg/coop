@@ -1,3 +1,4 @@
+import { toast } from '@/coop-ui/Toast';
 import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
 import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
 import { userHasPermissions } from '@/routing/permissions';
@@ -183,6 +184,7 @@ gql`
     submitManualReviewDecision(input: $input) {
       ... on SubmitDecisionSuccessResponse {
         success
+        warnings
       }
       ... on JobHasAlreadyBeenSubmittedError {
         title
@@ -515,6 +517,9 @@ function ManualReviewJobReviewImpl(props: {
       onCompleted: async (response) => {
         switch (response.submitManualReviewDecision.__typename) {
           case 'SubmitDecisionSuccessResponse': {
+            response.submitManualReviewDecision.warnings.forEach((warning) =>
+              toast.warning(warning),
+            );
             resetState();
             await getNextJob();
             break;
@@ -870,6 +875,7 @@ function ManualReviewJobReviewImpl(props: {
     if (closedJob) {
       return (
         <NCMECReviewUser
+          key={jobId}
           orgId={org.id}
           payload={payload}
           isActionable={false}
@@ -888,6 +894,7 @@ function ManualReviewJobReviewImpl(props: {
       return (
         <div>
           <NCMECReviewUser
+            key={jobId}
             orgId={org.id}
             payload={payload}
             isActionable={true}

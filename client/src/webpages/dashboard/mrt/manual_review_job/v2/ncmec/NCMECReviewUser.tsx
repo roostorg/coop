@@ -1,5 +1,5 @@
 import { isTypingInEditableElement } from '@/utils/misc';
-import { BulbOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { BulbOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import CopyTextComponent from '../../../../../../components/common/CopyTextComponent';
 import CoopModal from '../../../../components/CoopModal';
 import FormHeader from '../../../../components/FormHeader';
-import CoopButton from '@/webpages/dashboard/components/CoopButton';
 import TabBar from '@/webpages/dashboard/components/TabBar';
 
 import {
@@ -265,32 +264,31 @@ export default function NCMECReviewUser(
   );
 
   const [erroredMedia, setErroredMedia] = useState<ItemIdentifier[]>([]);
-  const [selectedTab, setSelectedTab] = useState<'MEDIA' | 'MESSAGES'>('MEDIA');
+  // Flatten media items to their playable URLs, sorted so confirmed CSAM and
+  // the reported item come first. Computed once so the default tab and the
+  // "text-only" checks below agree: a media item that yields zero URLs must
+  // count as no media, not send the reviewer to an empty Media tab.
+  const initialMediaItemsWithUrls = uniqueMediaItems
+    .map((it) =>
+      getUrlsFromItem(it.contentItem).map((urlInfo) => ({ ...it, urlInfo })),
+    )
+    .flat()
+    .sort((a, b) => {
+      // Put confirmed CSAM first, then the reported item, then everything else
+      if (a.isConfirmedCSAM !== b.isConfirmedCSAM) {
+        return a.isConfirmedCSAM ? -1 : 1;
+      }
+      if (a.isReported !== b.isReported) {
+        return a.isReported ? -1 : 1;
+      }
+      return 0;
+    });
+  const [selectedTab, setSelectedTab] = useState<'MEDIA' | 'MESSAGES'>(
+    initialMediaItemsWithUrls.length === 0 ? 'MESSAGES' : 'MEDIA',
+  );
   const [allMediaItemsWithUrls, setAllMediaItemsWithUrls] = useState<
     ((typeof uniqueMediaItems)[number] & { urlInfo: NCMECUrlInfo })[]
-  >(
-    uniqueMediaItems
-      .map((it) =>
-        getUrlsFromItem(it.contentItem).map((urlInfo) => ({ ...it, urlInfo })),
-      )
-      .flat()
-      .sort((a, b) => {
-        // Put confirmed CSAM first, then the reported item, then everything else
-        if (a.isConfirmedCSAM) {
-          return -1;
-        }
-        if (b.isConfirmedCSAM) {
-          return 1;
-        }
-        if (a.isReported) {
-          return -1;
-        }
-        if (b.isReported) {
-          return 1;
-        }
-        return 0;
-      }),
-  );
+  >(initialMediaItemsWithUrls);
   const { data: threadInfo, loading: threadLoading } =
     useGQLGetMoreInfoForThreadItemsQuery({
       variables: {
@@ -364,7 +362,9 @@ export default function NCMECReviewUser(
   const [selectedThreadsWithMessages, setSelectedThreadsWithMessages] =
     useState<GQLNcmecThreadInput[]>([]);
   const [incidentType, setIncidentType] = useState<GQLNcmecIncidentType>(
-    GQLNcmecIncidentType.ChildPornography,
+    allMediaItemsWithUrls.length === 0
+      ? GQLNcmecIncidentType.OnlineEnticementOfChildren
+      : GQLNcmecIncidentType.ChildPornography,
   );
   const [escalateToHighPriority, setEscalateToHighPriority] = useState('');
   const [escalateChecked, setEscalateChecked] = useState(false);
@@ -396,55 +396,11 @@ export default function NCMECReviewUser(
     GQLNcmecMediaReviewRequirement.All;
   const mediaReviewMinToReview =
     mediaReviewPolicyData?.myOrg?.ncmecMinMediaToReview ?? 1;
-  const noValidMedia = (
-    <div className="flex items-start justify-center w-full h-full">
-      <div className="flex flex-col items-center justify-center p-12 mt-20 shadow rounded-xl bg-slate-50 text-slate-500">
-        <div className="pb-3 text-slate-200 text-8xl">
-          <ExclamationCircleOutlined />
-        </div>
-        <div className="text-2xl max-w-[400px] pb-2">
-          Could not find any valid media
-        </div>
-        <CopyTextComponent
-          value={erroredMedia.map((it) => it.id).join(',')}
-          displayValue={`${erroredMedia.length} video${
-            erroredMedia.length === 1 ? '' : 's'
-          } or image${
-            erroredMedia.length === 1 ? '' : 's'
-          } failed to load. Click here to copy a list of the IDs that failed to load.`}
-          isError={true}
-        />
-        {isActionable ? (
-          <div className="pt-2">
-            <CoopButton
-              title="Next Job"
-              onClick={() => {
-                setDeselectAndIgnoreModalVisible(false);
-                props.submitDecision({ ignore: {} });
-              }}
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
+  const reportedMessageCount = selectedThreadsWithMessages.reduce(
+    (sum, thread) => sum + thread.reportedContent.length,
+    0,
   );
-
-  // If allMediaItemsWithUrls is empty, assume that there's nothing left to
-  // review and set an error that submits an ignore.
-  if (allMediaItemsWithUrls.length === 0) {
-    return noValidMedia;
-  }
-
-  if (mediaInDetailView === undefined) {
-    setMediaInDetailView({
-      itemId: allMediaItemsWithUrls[0].contentItem.id,
-      urlInfo: allMediaItemsWithUrls[0].urlInfo,
-      itemTypeId: allMediaItemsWithUrls[0].contentItem.type.id,
-    });
-  }
-  if (mediaInDetailView === undefined) {
-    return noValidMedia;
-  }
+  const isTextOnlyJob = allMediaItemsWithUrls.length === 0;
 
   const {
     moderatorSafetyBlurLevel = 2,
@@ -553,6 +509,7 @@ export default function NCMECReviewUser(
   };
 
   const goToNextMedia = () => {
+    if (!mediaInDetailView) return;
     const index = allMediaItemsWithUrls.findIndex(
       (it) =>
         it.contentItem.id === mediaInDetailView.itemId &&
@@ -568,6 +525,7 @@ export default function NCMECReviewUser(
   };
 
   const goToPreviousMedia = () => {
+    if (!mediaInDetailView) return;
     const index = allMediaItemsWithUrls.findIndex(
       (it) =>
         it.contentItem.id === mediaInDetailView.itemId &&
@@ -589,8 +547,8 @@ export default function NCMECReviewUser(
   // the user can't play it
   const onMediaError = (mediaId: NCMECMediaIdentifier) => {
     if (
-      mediaInDetailView.itemId === mediaId.itemId &&
-      mediaInDetailView.itemTypeId === mediaId.itemTypeId
+      mediaInDetailView?.itemId === mediaId.itemId &&
+      mediaInDetailView?.itemTypeId === mediaId.itemTypeId
     ) {
       goToNextMedia();
     }
@@ -618,6 +576,8 @@ export default function NCMECReviewUser(
           urlInfo: newMedia[0].urlInfo,
           itemTypeId: newMedia[0].contentItem.type.id,
         });
+      } else {
+        setSelectedTab('MESSAGES');
       }
 
       return newMedia;
@@ -778,8 +738,11 @@ export default function NCMECReviewUser(
 
         <div className="!my-4 divider" />
         <div className="flex flex-col gap-2">
-          <div className="text-base font-bold">Incident Type Category</div>
+          <label htmlFor="ncmecIncidentType" className="text-base font-bold">
+            Incident Type Category
+          </label>
           <select
+            id="ncmecIncidentType"
             value={incidentType}
             onChange={(e) =>
               setIncidentType(e.target.value as GQLNcmecIncidentType)
@@ -890,8 +853,8 @@ export default function NCMECReviewUser(
 
   const mediaInDetailViewItem = allMediaItemsWithUrls.find(
     (it) =>
-      it.contentItem.id === mediaInDetailView.itemId &&
-      it.urlInfo.url === mediaInDetailView.urlInfo.url,
+      it.contentItem.id === mediaInDetailView?.itemId &&
+      it.urlInfo.url === mediaInDetailView?.urlInfo.url,
   )?.contentItem;
 
   const mediaInDetailViewThread =
@@ -913,16 +876,17 @@ export default function NCMECReviewUser(
     mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
       ? reviewedCount >= effectiveMinToReview
       : reviewedCount === allMediaItemsWithUrls.length;
-  // A report can't be empty: require at least one reported item.
-  const canSendReport = reviewThresholdMet && reportedCount > 0;
+  // A report can't be empty: require at least one reported item (media or message).
+  const canSendReport =
+    reviewThresholdMet && (reportedCount > 0 || reportedMessageCount > 0);
   const sendDisabledReason = !reviewThresholdMet
     ? mediaReviewRequirement === GQLNcmecMediaReviewRequirement.Minimum
       ? `Please review at least ${effectiveMinToReview} ${
           effectiveMinToReview === 1 ? 'piece' : 'pieces'
         } of media before sending a report to NCMEC.`
       : 'Please make a decision on every piece of media in this job before sending a report to NCMEC.'
-    : reportedCount === 0
-      ? 'Select a category for at least one piece of media to include it in the report before sending to NCMEC.'
+    : reportedCount === 0 && reportedMessageCount === 0
+      ? 'Select a category for at least one piece of media, or select reported messages, before sending to NCMEC.'
       : '';
 
   return (
@@ -1019,10 +983,14 @@ export default function NCMECReviewUser(
               }
             />
             <div className="flex flex-col gap-2 px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-              <label className="text-sm font-semibold text-slate-700">
+              <label
+                htmlFor="ncmecIncidentTypePage"
+                className="text-sm font-semibold text-slate-700"
+              >
                 Incident Type Category
               </label>
               <select
+                id="ncmecIncidentTypePage"
                 value={incidentType}
                 onChange={(e) =>
                   setIncidentType(e.target.value as GQLNcmecIncidentType)
@@ -1042,17 +1010,18 @@ export default function NCMECReviewUser(
           </div>
         ) : null}
       </div>
-      {showMessages ? (
+      {showMessages || isTextOnlyJob ? (
         <TabBar
           tabs={[
             { label: 'Media', value: 'MEDIA' },
             { label: 'Messages', value: 'MESSAGES' },
           ]}
-          initialSelectedTab={'MEDIA'}
+          initialSelectedTab={selectedTab}
+          currentSelectedTab={selectedTab}
           onTabClick={setSelectedTab}
         />
       ) : undefined}
-      {selectedTab === 'MEDIA' ? (
+      {selectedTab === 'MEDIA' && mediaInDetailView ? (
         <div ref={inspectedMediaRef} className="flex flex-col w-full">
           <NCMECInspectedMedia
             orgId={orgId}
@@ -1142,17 +1111,37 @@ export default function NCMECReviewUser(
             shouldBlurAll={shouldBlurAll}
             onMediaError={onMediaError}
           />
-          {sendReportModal}
-          {deselectAndIgnoreReportModal}
+        </div>
+      ) : selectedTab === 'MEDIA' ? (
+        <div className="w-full p-8 text-center text-slate-500">
+          No media in this report.
         </div>
       ) : (
-        <NCMECPreviousMessages
-          userIdentifier={{ id: item.id, typeId: item.type.id }}
-          isActionable={isActionable}
-          setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
-          selectedThreadsWithMessages={selectedThreadsWithMessages}
-        />
+        <div className="flex flex-col w-full">
+          {erroredMedia.length > 0 ? (
+            <div className="self-start py-2">
+              <CopyTextComponent
+                value={erroredMedia.map((it) => it.id).join(',')}
+                displayValue={`${erroredMedia.length} video${
+                  erroredMedia.length === 1 ? '' : 's'
+                } or image${
+                  erroredMedia.length === 1 ? '' : 's'
+                } failed to load. Click here to copy a list of the IDs that failed to load.`}
+                isError={true}
+              />
+            </div>
+          ) : undefined}
+          <NCMECPreviousMessages
+            userIdentifier={{ id: item.id, typeId: item.type.id }}
+            isActionable={isActionable}
+            setSelectedThreadsWithMessages={setSelectedThreadsWithMessages}
+            selectedThreadsWithMessages={selectedThreadsWithMessages}
+            reportedMessages={payload.reportedMessages}
+          />
+        </div>
       )}
+      {sendReportModal}
+      {deselectAndIgnoreReportModal}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 

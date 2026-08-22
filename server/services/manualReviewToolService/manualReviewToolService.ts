@@ -207,6 +207,9 @@ export type NcmecManualReviewJobPayload = {
   kind: 'NCMEC';
   item: ItemSubmissionWithTypeIdentifier; // the user being reviewed
   allMediaItems: NcmecContentItemSubmission[]; // all the user's media from the last 30 days
+  // Content item(s) that triggered the report (when the reported item was
+  // content, not the user). Empty for account-level reports.
+  reportedMessages?: ItemIdentifier[];
   userScore?: UserScore;
   enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
   reportHistory: ReportHistory;
@@ -319,6 +322,11 @@ export class ManualReviewToolService {
       input: ManualReviewJobInput | ManualReviewAppealJobInput,
       queueId: string,
     ) => Promise<void>,
+    readonly getUserHasExistingNcmecReport: (params: {
+      orgId: string;
+      userId: string;
+      userItemTypeId: string;
+    }) => Promise<boolean>,
   ) {
     this.queueOps = new QueueOperations(
       pgQuery,
@@ -354,6 +362,7 @@ export class ManualReviewToolService {
       moderationConfigService,
       this.tracer,
       this.manualReviewToolSettings,
+      getUserHasExistingNcmecReport,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
