@@ -22,7 +22,6 @@ import cors from 'cors';
 import express, { type ErrorRequestHandler, type Request } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
-import helmet from 'helmet';
 import passport from 'passport';
 
 import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
@@ -47,6 +46,7 @@ import {
   sanitizeError,
   type SerializableError,
 } from './utils/errors.js';
+import { helmet } from './utils/helmet.js';
 import { safePick } from './utils/misc.js';
 import {
   isNonEmptyArray,
