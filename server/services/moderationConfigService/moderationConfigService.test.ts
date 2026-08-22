@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { faker } from '@faker-js/faker';
 import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
