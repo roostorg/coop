@@ -50,8 +50,12 @@ const makeGetCurrentPeriodRuleAlarmStatuses = inject(
         // model, we represent the number of passes _not_ as the number of times
         // that the rule passed in a period, but rather as the number of
         // distinct users that caused the rule to pass in that period.
+        const minVersion = minVersionsByRule[ruleId];
         const applicableStats = passStats
-          .filter((it) => it.approxRuleVersion >= minVersionsByRule[ruleId])
+          .filter(
+            (it) =>
+              minVersion === undefined || it.approxRuleVersion >= minVersion,
+          )
           .map((it) => ({ passes: it.passingUsersCount, runs: it.runsCount }));
 
         return {
