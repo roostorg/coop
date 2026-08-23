@@ -135,7 +135,7 @@ describe('RuleHistory Service', () => {
         new Date('2026-08-15T00:00:00.000Z'),
       );
 
-      expect(res.map((row) => row.id).sort()).toEqual(['new-rule', 'old-seed']);
+      expect(res.map((row) => row.id)).toEqual(['old-seed', 'new-rule']);
     });
   });
 });

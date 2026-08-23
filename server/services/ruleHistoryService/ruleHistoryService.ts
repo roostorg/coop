@@ -142,8 +142,8 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
   // "Version in effect at startDate, plus later versions" is per rule. The
   // raw list is every rule concatenated; applying the neighbor check globally
   // drops a rule whose next *row* belongs to a different, older rule.
-  return Object.values(_.groupBy(allVersions, (it) => it.id)).flatMap(
-    (versions) => {
+  return Object.values(_.groupBy(allVersions, (it) => it.id))
+    .flatMap((versions) => {
       const ordered = [...versions].sort(
         (a, b) => a.approxVersion.getTime() - b.approxVersion.getTime(),
       );
@@ -151,8 +151,8 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
         (_, i) =>
           i === ordered.length - 1 || ordered[i + 1].approxVersion > startDate,
       );
-    },
-  );
+    })
+    .sort((a, b) => a.approxVersion.getTime() - b.approxVersion.getTime());
 }
 
 /**
