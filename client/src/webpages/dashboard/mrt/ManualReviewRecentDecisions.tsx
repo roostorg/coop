@@ -40,6 +40,10 @@ import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
 import ManualReviewRecentDecisionSummary from './ManualReviewRecentDecisionSummary';
+import {
+  getDecisionTimingFields,
+  RECENT_DECISIONS_CSV_HEADERS,
+} from './mrtAnalyticsUtils';
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
@@ -732,40 +736,13 @@ export default function ManualReviewRecentDecisions() {
                   new Date(decision.jobCreatedAt),
                 )
               : '',
-            handleTimeSeconds:
-              decision.assignedAt != null
-                ? Math.round(
-                    (new Date(decision.createdAt).getTime() -
-                      new Date(decision.assignedAt).getTime()) /
-                      1000,
-                  )
-                : '',
-            waitTimeSeconds:
-              decision.assignedAt != null && decision.jobCreatedAt != null
-                ? Math.round(
-                    (new Date(decision.assignedAt).getTime() -
-                      new Date(decision.jobCreatedAt).getTime()) /
-                      1000,
-                  )
-                : '',
+            ...getDecisionTimingFields(decision),
             policies,
             decisionReason: decision.decisionReason ?? '',
           };
         });
         // Define the CSV headers
-        const headers = [
-          'Decisions',
-          'Policies',
-          'Reviewer',
-          'Queue',
-          'Job Created At',
-          'Claimed At',
-          'Decision Time',
-          'Wait Time (sec)',
-          'Handle Time (sec)',
-          'Decision Reason',
-          'Link',
-        ];
+        const headers = [...RECENT_DECISIONS_CSV_HEADERS];
 
         // Map the data to CSV rows
         const rows = allDecisionsCsv.map((item) => [

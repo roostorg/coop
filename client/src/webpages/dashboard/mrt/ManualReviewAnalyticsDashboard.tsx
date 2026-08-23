@@ -16,6 +16,10 @@ import {
   useGQLManualReviewMetricsQuery,
 } from '../../../graphql/generated';
 import { TimeWindow } from '../rules/dashboard/visualization/RulesDashboardInsights';
+import {
+  filterCountsInTimeWindow,
+  getPreviousInclusiveTimeWindow,
+} from './mrtAnalyticsUtils';
 
 type ManualReviewAnalyticsDashboardTab = 'home' | 'custom';
 
@@ -58,33 +62,13 @@ export default function ManualReviewAnalyticsDashboard() {
 
   const { loading, data } = useGQLManualReviewMetricsQuery();
 
-  const getDataInTimeWindow = <
-    T extends { readonly date: string | Date; count: number },
-  >(
-    arr: readonly T[] | null | undefined,
-    window: TimeWindow,
-  ) => {
-    return arr?.filter((elemWithDate) => {
-      const time = new Date(elemWithDate.date).getTime();
-      return time >= window.start.getTime() && time <= window.end.getTime();
-    });
-  };
-
   const previousTimeWindow = useMemo(
-    () => ({
-      start: new Date(
-        timeWindow.start.getTime() -
-          (timeWindow.end.getTime() - timeWindow.start.getTime()),
-      ),
-      // Inclusive filters on both client and server; end one ms before current
-      // window so period-over-period buckets do not overlap.
-      end: new Date(timeWindow.start.getTime() - 1),
-    }),
+    () => getPreviousInclusiveTimeWindow(timeWindow),
     [timeWindow],
   );
 
   const getTotalIngestedReportsInTimeWindow = (window: TimeWindow) => {
-    const ingestedReportsInWindow = getDataInTimeWindow(
+    const ingestedReportsInWindow = filterCountsInTimeWindow(
       data?.reportingInsights.totalIngestedReportsByDay,
       window,
     );

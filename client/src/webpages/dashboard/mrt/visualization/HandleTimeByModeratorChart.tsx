@@ -82,7 +82,7 @@ export default function HandleTimeByModeratorChart({
   ];
 
   useEffect(() => {
-    getHandleTime({
+    void getHandleTime({
       variables: {
         input: {
           groupBy: ['REVIEWER_ID'],
@@ -94,6 +94,8 @@ export default function HandleTimeByModeratorChart({
           },
         },
       },
+    }).catch(() => {
+      // Apollo already surfaces the error on the hook.
     });
   }, [getHandleTime, timeWindow]);
 
@@ -131,15 +133,16 @@ export default function HandleTimeByModeratorChart({
     return name || `Unknown (${reviewerId.slice(0, 8)})`;
   };
 
-  const formattedData = handleTime
-    ?.filter(
-      (it): it is typeof it & { handleTimeSeconds: number } =>
-        it.handleTimeSeconds != null,
-    )
-    .map((it) => ({
-      handleTimeMinutes: Number((it.handleTimeSeconds / 60).toFixed(2)),
-      reviewer: getReviewerNameFromId(it.reviewerId),
-    }));
+  const formattedData =
+    handleTime
+      ?.filter(
+        (it): it is typeof it & { handleTimeSeconds: number } =>
+          it.handleTimeSeconds != null,
+      )
+      .map((it) => ({
+        handleTimeMinutes: Number((it.handleTimeSeconds / 60).toFixed(2)),
+        reviewer: getReviewerNameFromId(it.reviewerId),
+      })) ?? [];
 
   const renderLegend = ({ payload }: { payload?: Payload[] }) => (
     <div className="flex flex-wrap gap-1 p-1 overflow-auto border border-solid rounded max-h-24 border-slate-200">
