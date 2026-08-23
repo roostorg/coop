@@ -28,8 +28,14 @@ describe('getCurrentPeriodRuleAlarmStatuses', () => {
       async () => [],
     );
 
-    await expect(getStatuses()).resolves.toMatchObject({
-      [ruleId]: { status: RuleAlarmStatus.INSUFFICIENT_DATA },
+    await expect(getStatuses()).resolves.toEqual({
+      [ruleId]: {
+        status: RuleAlarmStatus.INSUFFICIENT_DATA,
+        meta: {
+          lastPeriodPassRate: undefined,
+          secondToLastPeriodPassRate: undefined,
+        },
+      },
     });
   });
 });
