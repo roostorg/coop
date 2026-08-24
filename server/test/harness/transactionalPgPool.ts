@@ -195,6 +195,8 @@ export function createTransactionalTestDb(
   };
 
   const pool = {
+    Client: pg.Client,
+    options: config,
     async connect() {
       return facadeClient;
     },

@@ -11,7 +11,7 @@ import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
 import { DynamicPool } from 'node-worker-threads-pool';
-import type pg from 'pg';
+import pg from 'pg';
 import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
@@ -566,6 +566,7 @@ export default async function getBottle() {
     (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
+          controlClient: pg.Client,
           pool: container.KyselyPgPool,
           cursor: Cursor,
         }),
@@ -578,6 +579,7 @@ export default async function getBottle() {
     () =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
+          controlClient: pg.Client,
           pool: createPgPool({
             ...getPgMasterConnectionInfo(),
             max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
