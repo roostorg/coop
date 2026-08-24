@@ -512,10 +512,10 @@ export default function ManualReviewQueueForm() {
       />
       <div className="flex flex-col items-start mt-6">
         <div className="font-semibold">Manage Access</div>
-        <div className="mb-2 text-primary">
-          Add individual reviewers or a whole role. Everyone with a selected
-          role can review this queue; Admins and Moderator Managers can already
-          see every queue. You can view each user's role on the{' '}
+        <div className="mb-2 text-slate-500">
+          Grant access to individual reviewers or by role. Everyone with a
+          selected role can review this queue; Admins and Moderator Managers
+          already see every queue. You can view each user's role on the{' '}
           <Link to="/dashboard/settings/users">Users</Link> page.
         </div>
         <Select<string[]>
