@@ -4,6 +4,7 @@
 
 ## Review Console
 
+- Fixed hovering a blurred video not lifting blur the way images already do; the player now unblurs on hover without requiring play (#524)
 - Fixed a "Job submission failed" error that prevented reviewers from clearing jobs whose item had an unparseable `Created At` value; the decision now records instead of failing (#913)
 - Fixed a "Something Went Wrong" page when opening a job or queue whose `Created At` value was unparseable; the affected date now shows `Unknown` instead of blanking the view (#916)
 - Fixed "Oldest Task Age" on the MRT queues dashboard showing the newest job's age instead of the oldest (#909)

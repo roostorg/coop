@@ -65,7 +65,10 @@ export default function ManualReviewJobContentBlurableVideo(props: {
   });
 
   return (
-    <div className={`${className} relative rounded-lg shadow h-fit`} ref={ref}>
+    <div
+      className={`${className} relative rounded-lg shadow h-fit group`}
+      ref={ref}
+    >
       <div
         className={`shadow ${
           shouldBlur
@@ -75,7 +78,7 @@ export default function ManualReviewJobContentBlurableVideo(props: {
                 ? 'blur-sm'
                 : 'blur-0'
             : 'blur-0'
-        }`}
+        } group-hover:blur-none`}
       >
         <ReactPlayer
           style={{ display: 'flex', maxWidth, maxHeight }}
