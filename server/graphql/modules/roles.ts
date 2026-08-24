@@ -122,7 +122,8 @@ function requireRoleVisibility(context: Context) {
   const perms = user.getPermissions();
   if (
     !perms.includes(UserPermission.MANAGE_ROLES) &&
-    !perms.includes(UserPermission.MANAGE_USERS)
+    !perms.includes(UserPermission.MANAGE_USERS) &&
+    !perms.includes(UserPermission.EDIT_MRT_QUEUES)
   ) {
     throw forbiddenError(
       'User does not have permission to view roles in this organization',
