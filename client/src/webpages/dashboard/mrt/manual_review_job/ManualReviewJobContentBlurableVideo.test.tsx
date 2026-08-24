@@ -3,7 +3,7 @@ import React from 'react';
 
 import '@testing-library/jest-dom/extend-expect';
 
-import ManualReviewJobContentBlurableVideo from './ManualReviewJobContentBlurableVideo';
+import ManualReviewJobContentBlurableVideo from '@/webpages/dashboard/mrt/manual_review_job/ManualReviewJobContentBlurableVideo';
 
 vi.mock('react-player', () => ({
   default: function MockPlayer() {
