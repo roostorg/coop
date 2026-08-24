@@ -246,6 +246,7 @@ export default class QueueOperations {
     name: string;
     description: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     hiddenActionIds: readonly string[];
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
@@ -258,6 +259,7 @@ export default class QueueOperations {
       name,
       description,
       userIds,
+      roleIds,
       hiddenActionIds,
       invokedBy,
       isAppealsQueue,
@@ -279,6 +281,8 @@ export default class QueueOperations {
     // queue must belong to the caller's org. The queue itself is always
     // created in the caller's org (orgId from the invoker).
     await assertUsersInOrg(this.pgQuery, { orgId, userIds });
+    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+    const uniqueRoleIds = [...new Set(roleIds)];
 
     try {
       return await this.transactionWithRetry(async (transaction) => {
@@ -321,6 +325,18 @@ export default class QueueOperations {
           )
           .executeTakeFirstOrThrow();
 
+        if (uniqueRoleIds.length > 0) {
+          await transaction
+            .insertInto('manual_review_tool.roles_and_accessible_queues')
+            .values(
+              uniqueRoleIds.map((roleId) => ({
+                queue_id: queue.id,
+                role_id: roleId,
+              })),
+            )
+            .execute();
+        }
+
         await this.updateHiddenActionsForQueue({
           transaction,
           queueId: queue.id,
@@ -350,6 +366,7 @@ export default class QueueOperations {
     name?: string;
     description?: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
@@ -364,6 +381,7 @@ export default class QueueOperations {
       name,
       description,
       userIds,
+      roleIds,
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
@@ -381,25 +399,34 @@ export default class QueueOperations {
       userIds,
       queueIds: [queueId],
     });
+    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+
+    const queueMetadataUpdate = removeUndefinedKeys({
+      name,
+      description: replaceEmptyStringWithNull(description),
+      auto_close_jobs: autoCloseJobs,
+      // null disables the feature and must survive removeUndefinedKeys.
+      clear_reports_disposition: clearReportsDisposition,
+      clear_reports_scope: clearReportsScope,
+    });
 
     return this.transactionWithRetry(async (transaction) => {
+      const updatedQueueQuery =
+        Object.keys(queueMetadataUpdate).length > 0
+          ? transaction
+              .updateTable('manual_review_tool.manual_review_queues')
+              .set(queueMetadataUpdate)
+              .where('id', '=', queueId)
+              .where('org_id', '=', orgId)
+              .returning(PgQueueSelection)
+          : transaction
+              .selectFrom('manual_review_tool.manual_review_queues')
+              .select(PgQueueSelection)
+              .where('id', '=', queueId)
+              .where('org_id', '=', orgId);
+
       const [updatedQueue, _, __] = await Promise.all([
-        transaction
-          .updateTable('manual_review_tool.manual_review_queues')
-          .set(
-            removeUndefinedKeys({
-              name,
-              description: replaceEmptyStringWithNull(description),
-              auto_close_jobs: autoCloseJobs,
-              // null disables the feature and must survive removeUndefinedKeys.
-              clear_reports_disposition: clearReportsDisposition,
-              clear_reports_scope: clearReportsScope,
-            }),
-          )
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .returning(PgQueueSelection)
-          .executeTakeFirstOrThrow(),
+        updatedQueueQuery.executeTakeFirstOrThrow(),
         transaction
           .insertInto('manual_review_tool.users_and_accessible_queues')
           .values(
@@ -416,6 +443,29 @@ export default class QueueOperations {
           .where('user_id', 'not in', userIds)
           .executeTakeFirstOrThrow(),
       ]);
+
+      if (roleIds.length > 0) {
+        await transaction
+          .insertInto('manual_review_tool.roles_and_accessible_queues')
+          .values(
+            roleIds.map((roleId) => ({
+              queue_id: queueId,
+              role_id: roleId,
+            })),
+          )
+          .onConflict((oc) => oc.doNothing())
+          .execute();
+        await transaction
+          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .where('role_id', 'not in', roleIds)
+          .execute();
+      } else {
+        await transaction
+          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .execute();
+      }
 
       await this.updateHiddenActionsForQueue({
         transaction,
@@ -619,16 +669,38 @@ export default class QueueOperations {
       .where('org_id', '=', orgId)
       .$if(queueIds != null, (query) => query.where('id', 'in', queueIds ?? []))
       .$if(!bypassQueuePermissions, (query) =>
-        query.where(
-          'id',
-          'in',
-          this.pgQuery
-            .selectFrom('manual_review_tool.users_and_accessible_queues')
-            .select('queue_id')
-            .where('user_id', '=', userId),
+        query.where((eb) =>
+          eb.or([
+            eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
+            eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
+          ]),
         ),
       )
       .execute();
+  }
+
+  // A queue is accessible when the reviewer is individually assigned to it, or
+  // when their role is assigned to it (see `roleAccessibleQueueIds`).
+  private individuallyAccessibleQueueIds(userId: string) {
+    return this.pgQuery
+      .selectFrom('manual_review_tool.users_and_accessible_queues')
+      .select('queue_id')
+      .where('user_id', '=', userId);
+  }
+
+  private roleAccessibleQueueIds(userId: string, orgId: string) {
+    return this.pgQuery
+      .selectFrom('manual_review_tool.roles_and_accessible_queues')
+      .select('queue_id')
+      .where(
+        'role_id',
+        '=',
+        this.pgQuery
+          .selectFrom('public.users')
+          .select('role_id')
+          .where('id', '=', userId)
+          .where('org_id', '=', orgId),
+      );
   }
 
   async getQueueForOrg(opts: {
@@ -642,13 +714,11 @@ export default class QueueOperations {
       .select(PgQueueSelection)
       .where('org_id', '=', orgId)
       .where('id', '=', queueId)
-      .where(
-        'id',
-        'in',
-        this.pgQuery
-          .selectFrom('manual_review_tool.users_and_accessible_queues')
-          .select('queue_id')
-          .where('user_id', '=', userId),
+      .where((eb) =>
+        eb.or([
+          eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
+          eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
+        ]),
       )
       .executeTakeFirst();
   }
@@ -743,6 +813,24 @@ export default class QueueOperations {
           .where('org_id', '=', orgId),
       )
       .execute();
+  }
+
+  async getAssignedRoleIdsForQueue(opts: { orgId: string; queueId: string }) {
+    const { orgId, queueId } = opts;
+    const rows = await this.pgQuery
+      .selectFrom('manual_review_tool.roles_and_accessible_queues')
+      .select(['role_id as roleId'])
+      .where('queue_id', '=', queueId)
+      .where(
+        'queue_id',
+        'in',
+        this.pgQuery
+          .selectFrom('manual_review_tool.manual_review_queues')
+          .select('id')
+          .where('org_id', '=', orgId),
+      )
+      .execute();
+    return rows.map((it) => it.roleId);
   }
 
   async addAccessibleQueuesForUser(opts: {
@@ -2069,6 +2157,26 @@ async function assertUsersInOrg(
     .where('id', 'in', userIds)
     .execute();
   if (inOrgUsers.length !== new Set(userIds).size) {
+    throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
+  }
+}
+
+/** Rejects before any write if a target role does not belong to the caller's org. */
+async function assertRolesInOrg(
+  db: Kysely<ManualReviewToolServicePg>,
+  opts: { orgId: string; roleIds: readonly string[] },
+) {
+  const { orgId, roleIds } = opts;
+  if (roleIds.length === 0) {
+    return;
+  }
+  const inOrgRoles = await db
+    .selectFrom('public.roles')
+    .select('id')
+    .where('org_id', '=', orgId)
+    .where('id', 'in', roleIds)
+    .execute();
+  if (inOrgRoles.length !== new Set(roleIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
 }

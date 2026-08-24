@@ -13,6 +13,7 @@ export default async function (opts: {
     name,
     description: null,
     userIds: [userId],
+    roleIds: [],
     hiddenActionIds: [],
     isAppealsQueue: false,
     invokedBy: {
