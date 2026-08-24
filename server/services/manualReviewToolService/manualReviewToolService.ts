@@ -908,6 +908,7 @@ export class ManualReviewToolService {
     name: string;
     description: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     hiddenActionIds: readonly string[];
     invokedBy: Invoker;
     isAppealsQueue: boolean;
@@ -925,6 +926,7 @@ export class ManualReviewToolService {
     name?: string;
     description?: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
@@ -1249,6 +1251,13 @@ export class ManualReviewToolService {
     const { orgId, queueId } = opts;
 
     return this.queueOps.getUsersWhoCanSeeQueue({ orgId, queueId });
+  }
+
+  async getAssignedRoleIdsForQueue(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<string[]> {
+    return this.queueOps.getAssignedRoleIdsForQueue(opts);
   }
 
   async getDecisionTimeToAction(input: TimeToActionInput) {

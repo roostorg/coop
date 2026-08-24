@@ -80,6 +80,8 @@ const typeDefs = /* GraphQL */ `
     pendingJobCount: Int!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
+    "Roles whose members can review this queue, in addition to explicitly assigned reviewers."
+    assignedRoleIds: [ID!]!
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
@@ -434,6 +436,7 @@ const typeDefs = /* GraphQL */ `
     name: String!
     description: String
     userIds: [ID!]!
+    roleIds: [ID!]!
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
@@ -447,6 +450,7 @@ const typeDefs = /* GraphQL */ `
     name: String
     description: String
     userIds: [ID!]!
+    roleIds: [ID!]!
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
@@ -1838,6 +1842,16 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     ).map((it) => it.userId);
     return context.dataSources.userAPI.getGraphQLUsersFromIds(userIds);
   },
+  async assignedRoleIds(queue, _, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('User required.');
+    }
+    return context.services.ManualReviewToolService.getAssignedRoleIdsForQueue({
+      queueId: queue.id,
+      orgId: user.orgId,
+    });
+  },
   async hiddenActionIds(queue, _, context) {
     const user = await assertQueueIsReviewable(queue, context);
     const { orgId } = user;
@@ -2524,6 +2538,7 @@ const Mutation: GQLMutationResolvers = {
       name,
       description,
       userIds,
+      roleIds,
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
@@ -2540,6 +2555,7 @@ const Mutation: GQLMutationResolvers = {
           description: description ?? null,
           name,
           userIds: userIdsWithCurrentUser,
+          roleIds,
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,
@@ -2581,6 +2597,7 @@ const Mutation: GQLMutationResolvers = {
       name,
       description,
       userIds,
+      roleIds,
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
@@ -2598,6 +2615,7 @@ const Mutation: GQLMutationResolvers = {
           // Include the user who's creating the queue as having permission to see
           // the queue
           userIds: [...userIds, user.id],
+          roleIds,
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
