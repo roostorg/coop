@@ -9,7 +9,7 @@ import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import makeDummyMrtJobPayload from '../../../test/fixtureHelpers/makeDummyMrtJobPayload.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
-import { UserPermission } from '../../userManagementService/index.js';
+import { UserPermission, UserRole } from '../../userManagementService/index.js';
 import {
   bullJobIdtoExternalJobId,
   itemIdToBullJobId,
@@ -392,6 +392,7 @@ describe('QueueOperations', () => {
           name: 'attacker-queue',
           description: null,
           userIds: [victim.user.id],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -412,6 +413,7 @@ describe('QueueOperations', () => {
           orgId: attacker.org.id,
           queueId: attacker.queue.id,
           userIds: [attacker.user.id, victim.user.id],
+          roleIds: [],
           actionIdsToHide: [],
           actionIdsToUnhide: [],
         }),
@@ -423,6 +425,237 @@ describe('QueueOperations', () => {
         userId: attacker.user.id,
       });
       expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
+    },
+  );
+
+  // A queue creator holds EDIT_MRT_QUEUES; the reviewer is a plain Moderator
+  // who is never added to the queue individually, so any access they get comes
+  // solely from a role assignment.
+  const testWithRoleAssignableQueue = () =>
+    makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org } = await createOrg(
+        {
+          KyselyPg: deps.KyselyPg,
+          ModerationConfigService: deps.ModerationConfigService,
+          ApiKeyService: deps.ApiKeyService,
+        },
+        uid(),
+      );
+      const { user: creator } = await createUser(deps.KyselyPg, org.id, {
+        role: UserRole.ADMIN,
+      });
+      const { user: moderator } = await createUser(deps.KyselyPg, org.id, {
+        role: UserRole.MODERATOR,
+      });
+      return {
+        org,
+        creator,
+        moderator,
+        apiKeyService: deps.ApiKeyService,
+        moderationConfigService: deps.ModerationConfigService,
+        kyselyPg: deps.KyselyPg,
+        mrtService: deps.ManualReviewToolService,
+      };
+    });
+
+  const reviewerInvoker = (userId: string, orgId: string) => ({
+    userId,
+    permissions: [UserPermission.VIEW_MRT],
+    orgId,
+  });
+
+  const getRoleId = async (
+    db: QueueFixtureRole['kyselyPg'],
+    orgId: string,
+    role: UserRole,
+  ) =>
+    db
+      .selectFrom('public.roles')
+      .select('id')
+      .where('org_id', '=', orgId)
+      .where('key', '=', role)
+      .executeTakeFirstOrThrow()
+      .then((row) => row.id);
+
+  const createQueueWithRoles = async (
+    mrtService: QueueFixtureRole['mrtService'],
+    org: QueueFixtureRole['org'],
+    creator: QueueFixtureRole['creator'],
+    roleIds: string[],
+  ) =>
+    mrtService.createManualReviewQueue({
+      name: `role-queue-${uid()}`,
+      description: null,
+      userIds: [creator.id],
+      roleIds,
+      hiddenActionIds: [],
+      isAppealsQueue: false,
+      invokedBy: {
+        userId: creator.id,
+        permissions: [UserPermission.EDIT_MRT_QUEUES],
+        orgId: org.id,
+      },
+    });
+
+  type QueueFixtureRole = Parameters<
+    Parameters<ReturnType<typeof testWithRoleAssignableQueue>>[1]
+  >[0];
+
+  testWithRoleAssignableQueue()(
+    'a role assigned to a queue grants its members reviewer access',
+    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const queue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: reviewerInvoker(moderator.id, org.id),
+      });
+      expect(reviewable.map((q) => q.id)).toContain(queue.id);
+    },
+  );
+
+  testWithRoleAssignableQueue()(
+    'a repeated role assignment creates the queue with one assignment and grants access',
+    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const queue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+        roleId,
+      ]);
+
+      expect(
+        await mrtService.getAssignedRoleIdsForQueue({
+          orgId: org.id,
+          queueId: queue.id,
+        }),
+      ).toEqual([roleId]);
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: reviewerInvoker(moderator.id, org.id),
+      });
+      expect(reviewable.map((q) => q.id)).toContain(queue.id);
+    },
+  );
+
+  testWithRoleAssignableQueue()(
+    'a queue with no assigned roles is not reviewable by an unassigned moderator',
+    async ({ org, creator, moderator, mrtService }) => {
+      const queue = await createQueueWithRoles(mrtService, org, creator, []);
+
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: reviewerInvoker(moderator.id, org.id),
+      });
+      expect(reviewable.map((q) => q.id)).not.toContain(queue.id);
+    },
+  );
+
+  testWithRoleAssignableQueue()(
+    'getQueueForOrg returns a role-accessible queue for a moderator',
+    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const queue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+
+      const fetched = await mrtService.getQueueForOrg({
+        orgId: org.id,
+        userId: moderator.id,
+        queueId: queue.id,
+      });
+      expect(fetched?.id).toBe(queue.id);
+    },
+  );
+
+  testWithRoleAssignableQueue()(
+    'removing an assigned role revokes access and updates assigned roles',
+    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const queue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+      expect(
+        await mrtService.getAssignedRoleIdsForQueue({
+          orgId: org.id,
+          queueId: queue.id,
+        }),
+      ).toEqual([roleId]);
+
+      await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        userIds: [creator.id],
+        roleIds: [],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+      });
+
+      expect(
+        await mrtService.getAssignedRoleIdsForQueue({
+          orgId: org.id,
+          queueId: queue.id,
+        }),
+      ).toEqual([]);
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: reviewerInvoker(moderator.id, org.id),
+      });
+      expect(reviewable.map((q) => q.id)).not.toContain(queue.id);
+    },
+  );
+
+  testWithRoleAssignableQueue()(
+    'a role from another organization is rejected without changing queue access',
+    async ({
+      org,
+      creator,
+      moderator,
+      mrtService,
+      kyselyPg,
+      moderationConfigService,
+      apiKeyService,
+    }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const queue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+      const { org: otherOrg } = await createOrg(
+        {
+          KyselyPg: kyselyPg,
+          ModerationConfigService: moderationConfigService,
+          ApiKeyService: apiKeyService,
+        },
+        uid(),
+      );
+      await createUser(kyselyPg, otherOrg.id, { role: UserRole.MODERATOR });
+      const otherRoleId = await getRoleId(
+        kyselyPg,
+        otherOrg.id,
+        UserRole.MODERATOR,
+      );
+
+      await expect(
+        mrtService.updateManualReviewQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          userIds: [creator.id],
+          roleIds: [otherRoleId],
+          actionIdsToHide: [],
+          actionIdsToUnhide: [],
+        }),
+      ).rejects.toThrow();
+      expect(
+        await mrtService.getAssignedRoleIdsForQueue({
+          orgId: org.id,
+          queueId: queue.id,
+        }),
+      ).toEqual([roleId]);
+      expect(
+        (
+          await mrtService.getReviewableQueuesForUser({
+            invoker: reviewerInvoker(moderator.id, org.id),
+          })
+        ).map((q) => q.id),
+      ).toContain(queue.id);
     },
   );
 
@@ -443,6 +676,7 @@ describe('QueueOperations', () => {
       name: `delete-test-queue-${uid()}`,
       description: null,
       userIds: [user.id],
+      roleIds: [],
       hiddenActionIds: [],
       isAppealsQueue: false,
       invokedBy: {
