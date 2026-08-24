@@ -53,6 +53,7 @@ describe('JobRouting tests', () => {
           name: 'Default Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -66,6 +67,7 @@ describe('JobRouting tests', () => {
           name: 'Another Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -79,6 +81,7 @@ describe('JobRouting tests', () => {
           name: 'Policy Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -93,6 +96,7 @@ describe('JobRouting tests', () => {
           name: 'No Policy Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {

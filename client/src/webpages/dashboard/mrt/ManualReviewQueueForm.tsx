@@ -47,6 +47,10 @@ const CLEAR_REPORTS_SCOPE_LABELS: Record<GQLMrtClearReportsScope, string> = {
 
 gql`
   query QueueFormData {
+    rolesForOrg {
+      id
+      displayName
+    }
     myOrg {
       hasAppealsEnabled
       hasPartialItemsEndpoint
@@ -77,6 +81,7 @@ gql`
         explicitlyAssignedReviewers {
           id
         }
+        assignedRoleIds
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
@@ -151,6 +156,7 @@ export default function ManualReviewQueueForm() {
   const [moderatorsWithAccess, setModeratorsWithAccess] = useState<string[]>(
     [],
   );
+  const [rolesWithAccess, setRolesWithAccess] = useState<string[]>([]);
   const [hiddenActionIds, setHiddenActionIds] = useState<string[]>([]);
   const [autoCloseJobs, setAutoCloseJobs] = useState<boolean>(false);
   const [jobSortType, setJobSortType] = useState<GQLJobSortType>('FIFO');
@@ -254,6 +260,7 @@ export default function ManualReviewQueueForm() {
     [data?.myOrg?.users],
   );
   const orgActions = data?.myOrg?.actions ?? [];
+  const orgRoles = data?.rolesForOrg ?? [];
 
   const userIdsWhoCanReviewEveryQueue = useMemo(
     () => (data?.myOrg?.usersWhoCanReviewEveryQueue ?? []).map((it) => it.id),
@@ -311,6 +318,7 @@ export default function ManualReviewQueueForm() {
 
     setQueueName(queue.name);
     setQueueDescription(queue.description ?? undefined);
+    setRolesWithAccess([...queue.assignedRoleIds]);
     setHiddenActionIds([...queue.hiddenActionIds]);
     setAutoCloseJobs(queue.autoCloseJobs);
     setJobSortType(queue.jobSortType);
@@ -346,6 +354,7 @@ export default function ManualReviewQueueForm() {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             description: queueDescription || null,
             userIds: moderatorsWithAccess,
+            roleIds: rolesWithAccess,
             hiddenActionIds,
             isAppealsQueue,
             autoCloseJobs,
@@ -371,6 +380,7 @@ export default function ManualReviewQueueForm() {
       moderatorsWithAccess,
       queueDescription,
       queueName,
+      rolesWithAccess,
     ],
   );
 
@@ -385,6 +395,7 @@ export default function ManualReviewQueueForm() {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             description: queueDescription || null,
             userIds: moderatorsWithAccess,
+            roleIds: rolesWithAccess,
             actionIdsToHide: difference(
               hiddenActionIds,
               initiallyHiddenActionIds,
@@ -416,6 +427,7 @@ export default function ManualReviewQueueForm() {
       moderatorsWithAccess,
       queueDescription,
       queueName,
+      rolesWithAccess,
       updateManualReviewQueue,
     ],
   );
@@ -514,6 +526,29 @@ export default function ManualReviewQueueForm() {
               isInOptionGroup: false,
             });
           })}
+        </Select>
+        <div className="mt-4 font-semibold">Roles with Access</div>
+        <div className="mb-2 text-slate-500">
+          Everyone with a selected role can review this queue, so you don't have
+          to add them one by one. Admins and Moderator Managers already have
+          access to every queue.
+        </div>
+        <Select<string[]>
+          className="self-start !min-w-[160px]"
+          mode="multiple"
+          placeholder="Add Roles"
+          dropdownMatchSelectWidth={false}
+          allowClear
+          showSearch
+          filterOption={selectFilterByLabelOption}
+          value={rolesWithAccess}
+          onChange={setRolesWithAccess}
+        >
+          {orgRoles.map((role) => (
+            <Option key={role.id} value={role.id} label={role.displayName}>
+              {role.displayName}
+            </Option>
+          ))}
         </Select>
         {orgActions.length > 0 && (
           <div className="mt-8">

@@ -862,6 +862,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly isAppealsQueue: Scalars['Boolean']['input'];
   readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name: Scalars['String']['input'];
+  readonly roleIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
 
@@ -2348,6 +2349,8 @@ export type GQLManualReviewJobWithDecisions = {
 
 export type GQLManualReviewQueue = {
   readonly __typename?: 'ManualReviewQueue';
+  /** Roles whose members can review this queue, in addition to explicitly assigned reviewers. */
+  readonly assignedRoleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly autoCloseJobs: Scalars['Boolean']['output'];
   readonly clearReportsDisposition?: Maybe<GQLMrtClearReportsDisposition>;
   readonly clearReportsScope: GQLMrtClearReportsScope;
@@ -4996,6 +4999,7 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly id: Scalars['ID']['input'];
   readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
+  readonly roleIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
 
@@ -10634,6 +10638,11 @@ export type GQLManualReviewQueueResolvers<
   ParentType extends GQLResolversParentTypes['ManualReviewQueue'] =
     GQLResolversParentTypes['ManualReviewQueue'],
 > = {
+  assignedRoleIds?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ID']>,
+    ParentType,
+    ContextType
+  >;
   autoCloseJobs?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
