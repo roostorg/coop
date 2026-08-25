@@ -3396,6 +3396,11 @@ export type GQLPartialItemsSuccessResponse = {
   readonly items: ReadonlyArray<GQLItem>;
 };
 
+export type GQLPasswordRequirements = {
+  readonly __typename?: 'PasswordRequirements';
+  readonly minLength: Scalars['Int']['output'];
+};
+
 export type GQLPendingInvite = {
   readonly __typename?: 'PendingInvite';
   readonly createdAt: Scalars['DateTime']['output'];
@@ -3551,6 +3556,7 @@ export type GQLQuery = {
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
+  readonly passwordRequirements: GQLPasswordRequirements;
   /** Server-owned grouping + ordering for the role-editor UI. Gated on MANAGE_ROLES. */
   readonly permissionGroups: ReadonlyArray<GQLPermissionGroup>;
   readonly policy?: Maybe<GQLPolicy>;
@@ -6309,6 +6315,7 @@ export type GQLResolversTypes = {
       items: ReadonlyArray<GQLResolversTypes['Item']>;
     }
   >;
+  PasswordRequirements: ResolverTypeWrapper<GQLPasswordRequirements>;
   PendingInvite: ResolverTypeWrapper<GQLPendingInvite>;
   PermissionGroup: ResolverTypeWrapper<GQLPermissionGroup>;
   PermissionGroupItem: ResolverTypeWrapper<GQLPermissionGroupItem>;
@@ -7015,6 +7022,7 @@ export type GQLResolversParentTypes = {
   PartialItemsSuccessResponse: Omit<GQLPartialItemsSuccessResponse, 'items'> & {
     items: ReadonlyArray<GQLResolversParentTypes['Item']>;
   };
+  PasswordRequirements: GQLPasswordRequirements;
   PendingInvite: GQLPendingInvite;
   PermissionGroup: GQLPermissionGroup;
   PermissionGroupItem: GQLPermissionGroupItem;
@@ -12250,6 +12258,14 @@ export type GQLPartialItemsSuccessResponseResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLPasswordRequirementsResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['PasswordRequirements'] =
+    GQLResolversParentTypes['PasswordRequirements'],
+> = {
+  minLength?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type GQLPendingInviteResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['PendingInvite'] =
@@ -12724,6 +12740,11 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQueryPartialItemsArgs, 'input'>
+  >;
+  passwordRequirements?: Resolver<
+    GQLResolversTypes['PasswordRequirements'],
+    ParentType,
+    ContextType
   >;
   permissionGroups?: Resolver<
     ReadonlyArray<GQLResolversTypes['PermissionGroup']>,
@@ -15287,6 +15308,7 @@ export type GQLResolvers<ContextType = Context> = {
   PartialItemsMissingEndpointError?: GQLPartialItemsMissingEndpointErrorResolvers<ContextType>;
   PartialItemsResponse?: GQLPartialItemsResponseResolvers<ContextType>;
   PartialItemsSuccessResponse?: GQLPartialItemsSuccessResponseResolvers<ContextType>;
+  PasswordRequirements?: GQLPasswordRequirementsResolvers<ContextType>;
   PendingInvite?: GQLPendingInviteResolvers<ContextType>;
   PermissionGroup?: GQLPermissionGroupResolvers<ContextType>;
   PermissionGroupItem?: GQLPermissionGroupItemResolvers<ContextType>;
