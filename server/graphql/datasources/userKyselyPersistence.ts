@@ -3,7 +3,6 @@ import { sql, type Kysely } from 'kysely';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
-  getPermissionsForRole,
   type UserPermission,
   type UserRole,
 } from '../../services/userManagementService/index.js';
@@ -12,22 +11,20 @@ import {
   validateUserUpdatePatch,
 } from './userValidation.js';
 
-// Resolves `(orgId, role)` to the matching `public.roles.id` so writes to
-// `public.users` / `public.invite_user_tokens` keep `role_id` in sync with
-// the legacy `role` varchar. Returns `null` for orgs without seeded role
-// rows; the read fallback handles them.
+// Resolves `(orgId, role)` to the matching `public.roles.id` for the
+// authoritative `public.users.role_id` assignment.
 async function lookupSystemRoleIdForUserRow(
   db: UsersDb,
   opts: { orgId: string; role: UserRole },
-): Promise<string | null> {
+): Promise<string> {
   const row = await db
     .selectFrom('public.roles')
     .select('id')
     .where('org_id', '=', opts.orgId)
     .where('key', '=', opts.role)
     .where('is_system', '=', true)
-    .executeTakeFirst();
-  return row?.id ?? null;
+    .executeTakeFirstOrThrow();
+  return row.id;
 }
 
 /**
@@ -73,7 +70,7 @@ type UserRow = {
   created_at: Date;
   updated_at: Date;
   org_id: string;
-  permissions: UserPermission[] | null;
+  permissions: UserPermission[];
 };
 
 // `public.users.login_methods` is a `login_method_enum[]`. Node-postgres ships
@@ -91,21 +88,16 @@ const loginMethodsAsTextArray = sql<LoginMethod[]>`login_methods::text[]`.as(
 // to avoid a follow-up round-trip. Correlated subquery (rather than LEFT
 // JOIN) preserves the existing INSERT/UPDATE...RETURNING shape, which a
 // JOIN would break by forcing GROUP BY across every selected column.
-//
-// NULL when `role_id` is unset (orgs not yet migrated to DB-backed roles
-// fall back to `UserPermissionsForRole` defaults). An explicitly empty
-// array means the role exists but has no permissions, which is a valid
-// least-privilege state we MUST honor — falling back to defaults there
-// would silently over-grant permissions.
-const permissionsArray = sql<UserPermission[] | null>`(
-  CASE
-    WHEN public.users.role_id IS NULL THEN NULL
-    ELSE (
-      SELECT COALESCE(array_agg(rp.permission), ARRAY[]::varchar[])
-      FROM public.role_permissions rp
-      WHERE rp.role_id = public.users.role_id
-    )
-  END
+const roleKey = sql<UserRole>`(
+  SELECT public.roles.key
+  FROM public.roles
+  WHERE public.roles.id = public.users.role_id
+)`.as('role');
+
+const permissionsArray = sql<UserPermission[]>`(
+  SELECT COALESCE(array_agg(rp.permission), ARRAY[]::varchar[])
+  FROM public.role_permissions rp
+  WHERE rp.role_id = public.users.role_id
 )`.as('permissions');
 
 const USER_COLUMNS = [
@@ -114,7 +106,6 @@ const USER_COLUMNS = [
   'password',
   'first_name',
   'last_name',
-  'role',
   'approved_by_admin',
   'rejected_by_admin',
   'created_at',
@@ -123,10 +114,7 @@ const USER_COLUMNS = [
 ] as const;
 
 function rowToGraphQLUserParent(row: UserRow): GraphQLUserParent {
-  // DB-backed permissions when the org has them (including an explicit
-  // empty set, which means "least privilege" and must NOT escalate to
-  // defaults). Only fall back when there's no role_id at all.
-  const permissions = row.permissions ?? getPermissionsForRole(row.role);
+  const permissions = row.permissions;
   return {
     id: row.id,
     email: row.email,
@@ -153,6 +141,7 @@ export async function kyselyUserFindById(
   const row = await db
     .selectFrom('public.users')
     .select(USER_COLUMNS)
+    .select(roleKey)
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('id', '=', id)
@@ -167,6 +156,7 @@ export async function kyselyUserFindByIdAndOrg(
   const row = await db
     .selectFrom('public.users')
     .select(USER_COLUMNS)
+    .select(roleKey)
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('id', '=', opts.id)
@@ -182,6 +172,7 @@ export async function kyselyUserFindByEmail(
   const row = await db
     .selectFrom('public.users')
     .select(USER_COLUMNS)
+    .select(roleKey)
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('email', '=', email)
@@ -196,6 +187,7 @@ export async function kyselyUserFindByEmailAndOrg(
   const row = await db
     .selectFrom('public.users')
     .select(USER_COLUMNS)
+    .select(roleKey)
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('email', '=', opts.email)
@@ -214,6 +206,7 @@ export async function kyselyUserFindByIds(
   const rows = await db
     .selectFrom('public.users')
     .select(USER_COLUMNS)
+    .select(roleKey)
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('id', 'in', ids)
@@ -228,6 +221,7 @@ export async function kyselyUserListByOrg(
   const rows = await db
     .selectFrom('public.users')
     .select(USER_COLUMNS)
+    .select(roleKey)
     .select(loginMethodsAsTextArray)
     .select(permissionsArray)
     .where('org_id', '=', orgId)
@@ -279,7 +273,6 @@ export async function kyselyUserInsert(opts: {
       password: opts.password,
       first_name: opts.firstName,
       last_name: opts.lastName,
-      role: opts.role,
       role_id: roleId,
       approved_by_admin: opts.approvedByAdmin ?? false,
       rejected_by_admin: opts.rejectedByAdmin ?? false,
@@ -288,6 +281,7 @@ export async function kyselyUserInsert(opts: {
       updated_at: now,
     })
     .returning(USER_COLUMNS)
+    .returning(roleKey)
     .returning(loginMethodsAsTextArray)
     .returning(permissionsArray)
     .executeTakeFirstOrThrow();
@@ -320,8 +314,7 @@ export async function kyselyUserUpdate(
     email?: string;
     first_name?: string;
     last_name?: string;
-    role?: UserRole;
-    role_id?: string | null;
+    role_id?: string;
     password?: string | null;
     approved_by_admin?: boolean;
     rejected_by_admin?: boolean;
@@ -338,7 +331,6 @@ export async function kyselyUserUpdate(
     update.last_name = patch.lastName;
   }
   if (patch.role != null) {
-    update.role = patch.role;
     // Resolve the role's org via the user row first; the patch doesn't
     // carry orgId, and roles are scoped per org.
     const userOrg = await db
@@ -369,6 +361,7 @@ export async function kyselyUserUpdate(
     .set(update)
     .where('id', '=', userId)
     .returning(USER_COLUMNS)
+    .returning(roleKey)
     .returning(loginMethodsAsTextArray)
     .returning(permissionsArray)
     .executeTakeFirst();
