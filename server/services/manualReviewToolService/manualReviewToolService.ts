@@ -1183,6 +1183,16 @@ export class ManualReviewToolService {
     return this.decisionAnalytics.getRecentDecisions(opts);
   }
 
+  async getDecisionsForActivityFeed(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: RecentDecisionsFilterInput;
+    cursor?: { ts: Date; id: string };
+    limit: number;
+  }) {
+    return this.decisionAnalytics.getDecisionsForActivityFeed(opts);
+  }
+
   async getSkippedJobsForRecentDecisions(opts: {
     orgId: string;
     input: Omit<RecentDecisionsFilterInput, 'page' | 'startTime' | 'endTime'>;
