@@ -8,6 +8,7 @@ import {
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { seedSystemRolesForOrg } from './rolePersistence.js';
+import { kyselyUserInsert } from './userKyselyPersistence.js';
 
 describe('seedSystemRolesForOrg', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
@@ -39,6 +40,39 @@ describe('seedSystemRolesForOrg', () => {
       expect(roles.map(({ key }) => key).sort()).toEqual(
         Object.values(UserRole).sort(),
       );
+    },
+  );
+
+  testWithFixture(
+    'links a subsequently inserted admin user to the persisted admin role',
+    async ({ deps, org }) => {
+      await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+      const userId = uid();
+      await kyselyUserInsert({
+        db: deps.KyselyPg,
+        id: userId,
+        orgId: org.id,
+        email: `${uid()}@example.com`,
+        firstName: 'Org',
+        lastName: 'Admin',
+        role: UserRole.ADMIN,
+        password: null,
+        loginMethods: ['saml'],
+        approvedByAdmin: true,
+      });
+
+      const user = await deps.KyselyPg.selectFrom('public.users')
+        .select('role_id')
+        .where('id', '=', userId)
+        .executeTakeFirstOrThrow();
+      const adminRole = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .executeTakeFirstOrThrow();
+
+      expect(user.role_id).not.toBeNull();
+      expect(user.role_id).toBe(adminRole.id);
     },
   );
 
