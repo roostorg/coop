@@ -13,6 +13,42 @@ import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWit
 
 type RolesKysely = Kysely<CombinedPg>;
 
+/** Inserts any missing system roles and their initial permissions for an org. */
+export async function seedSystemRolesForOrg(
+  kysely: RolesKysely,
+  orgId: string,
+): Promise<void> {
+  await makeKyselyTransactionWithRetry(kysely)(async (tx) => {
+    const insertedRoles = await tx
+      .insertInto('public.roles')
+      .values(
+        Object.values(UserRole).map((roleKey) => ({
+          org_id: orgId,
+          key: roleKey,
+          display_name: SystemRoleDefaults[roleKey].displayName,
+          description: SystemRoleDefaults[roleKey].description,
+          is_system: true,
+        })),
+      )
+      .onConflict((oc) => oc.columns(['org_id', 'key']).doNothing())
+      .returning(['id', 'key'])
+      .execute();
+
+    const permissions = insertedRoles.flatMap(({ id, key }) =>
+      getPermissionsForRole(key).map((permission) => ({
+        role_id: id,
+        permission,
+      })),
+    );
+    if (permissions.length > 0) {
+      await tx
+        .insertInto('public.role_permissions')
+        .values(permissions)
+        .execute();
+    }
+  });
+}
+
 /**
  * GraphQL `Role` parent shape returned to the role-editor UI. `id` is the
  * `public.roles.id` UUID when the org has a persisted row, otherwise `null`
