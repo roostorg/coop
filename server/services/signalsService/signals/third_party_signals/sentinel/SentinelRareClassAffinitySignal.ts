@@ -3,29 +3,82 @@ import { ScalarTypes } from '@roostorg/coop-types';
 import { makeSignalPermanentError } from '../../../../../utils/errors.js';
 import { type ItemInvestigationService } from '../../../../itemInvestigationService/index.js';
 import { type ItemSubmission } from '../../../../itemProcessingService/index.js';
+import { type FetchHTTP } from '../../../../networkingService/index.js';
 import {
+  makeSentinelService,
   SentinelServiceError,
-  type SentinelService,
 } from '../../../../sentinelService/index.js';
 import { SignalPricingStructure } from '../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../SignalBase.js';
 
-const SENTINEL_DOCS_URL = 'https://github.com/UMass-Rescue/Sentinel';
+const SENTINEL_DOCS_URL = 'https://github.com/Roblox/sentinel';
 
 /**
- * How many prior thread items to include in Sentinel scoring.
- * More context improves recall for pattern detection but adds latency.
+ * How many prior thread items to include in Sentinel scoring, when the org
+ * hasn't configured a `threadContextWindowMinutes` override. More context
+ * improves recall for pattern detection but adds latency.
  */
 const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
+
+/**
+ * Per-org Sentinel configuration. Stored as opaque JSON via the generic
+ * `integration_configs` table — SENTINEL is deliberately not a
+ * `ConfigurableIntegration` (see signalAuthService.ts), since none of these
+ * fields are secret credentials. Presence of a saved config (even `{}`)
+ * means the org has enabled this integration from the dashboard; individual
+ * fields fall back to deployment-wide defaults when left unset.
+ */
+type SentinelOrgConfig = {
+  apiUrl?: string;
+  topK?: number;
+  minScoreToConsider?: number;
+  threadContextWindowMinutes?: number;
+};
+
+/** Cached getter for an org's raw Sentinel config, keyed by orgId. */
+type GetSentinelConfig = (
+  orgId: string,
+) => Promise<Record<string, unknown> | undefined>;
+
+function parseSentinelConfig(
+  raw: Record<string, unknown> | undefined,
+): SentinelOrgConfig | undefined {
+  if (raw == null) {
+    return undefined;
+  }
+  const config: SentinelOrgConfig = {};
+  if (typeof raw.apiUrl === 'string' && raw.apiUrl.trim() !== '') {
+    config.apiUrl = raw.apiUrl.trim();
+  }
+  if (typeof raw.topK === 'number' && Number.isFinite(raw.topK)) {
+    config.topK = raw.topK;
+  }
+  if (
+    typeof raw.minScoreToConsider === 'number' &&
+    Number.isFinite(raw.minScoreToConsider)
+  ) {
+    config.minScoreToConsider = raw.minScoreToConsider;
+  }
+  if (
+    typeof raw.threadContextWindowMinutes === 'number' &&
+    Number.isFinite(raw.threadContextWindowMinutes)
+  ) {
+    config.threadContextWindowMinutes = raw.threadContextWindowMinutes;
+  }
+  return config;
+}
 
 export default class SentinelRareClassAffinitySignal extends SignalBase<
   ScalarTypes['STRING'],
   { scalarType: ScalarTypes['NUMBER'] }
 > {
   constructor(
-    private readonly sentinelService: SentinelService,
+    private readonly getSentinelConfig: GetSentinelConfig,
+    private readonly fetchHTTP: FetchHTTP,
     private readonly itemInvestigationService: ItemInvestigationService,
+    /** Adopter-level fallback (from SENTINEL_API_URL). Org config, when set, overrides it. */
+    private readonly defaultApiUrl?: string,
   ) {
     super();
   }
@@ -92,9 +145,28 @@ It compares submitted content against labeled positive (rare/harmful) and negati
     return true;
   }
 
-  override async getDisabledInfo(_orgId: string) {
+  override async getDisabledInfo(orgId: string) {
+    const config = parseSentinelConfig(await this.getSentinelConfig(orgId));
+    if (config == null) {
+      return {
+        disabled: true as const,
+        disabledMessage:
+          'Sentinel is not enabled for this organization. Add it from the Integrations page to use this signal.',
+      };
+    }
+
+    const apiUrl = config.apiUrl ?? this.defaultApiUrl;
+    if (apiUrl == null) {
+      return {
+        disabled: true as const,
+        disabledMessage:
+          'No Sentinel API URL is configured. Set one on the Integrations page.',
+      };
+    }
+
     try {
-      const health = await this.sentinelService.healthCheck();
+      const sentinelService = makeSentinelService(this.fetchHTTP, apiUrl);
+      const health = await sentinelService.healthCheck();
       if (health.status !== 'ok' && health.status !== 'healthy') {
         return {
           disabled: true as const,
@@ -103,7 +175,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
         };
       }
 
-      const banksStatus = await this.sentinelService.getBanksStatus();
+      const banksStatus = await sentinelService.getBanksStatus();
       if (!banksStatus.loaded) {
         return {
           disabled: true as const,
@@ -132,6 +204,24 @@ It compares submitted content against labeled positive (rare/harmful) and negati
     >,
   ) {
     const { value, orgId, runtimeArgs } = input;
+    const config =
+      parseSentinelConfig(await this.getSentinelConfig(orgId)) ?? {};
+    const apiUrl = config.apiUrl ?? this.defaultApiUrl;
+
+    if (apiUrl == null) {
+      // Permanent: without a configured (or default) URL, this signal can
+      // never run for this org, and retrying yields the same failure.
+      return {
+        type: 'ERROR' as const,
+        score: makeSignalPermanentError('Sentinel is not configured', {
+          detail:
+            'No Sentinel API URL is configured for this organization or as a deployment default (SENTINEL_API_URL).',
+          shouldErrorSpan: false,
+        }),
+      };
+    }
+
+    const sentinelService = makeSentinelService(this.fetchHTTP, apiUrl);
 
     // The primary text to score is always the signal input value.
     const primaryText = String(value.value);
@@ -147,6 +237,13 @@ It compares submitted content against labeled positive (rare/harmful) and negati
             orgId,
             threadId: runtimeArgs.threadIdentifier,
             limit: DEFAULT_THREAD_CONTEXT_LIMIT,
+            ...(config.threadContextWindowMinutes != null
+              ? {
+                  oldestReturnedSubmissionDate: new Date(
+                    Date.now() - config.threadContextWindowMinutes * 60_000,
+                  ),
+                }
+              : {}),
           });
 
         // `submitContent.ts` writes the current submission to the thread's
@@ -179,7 +276,11 @@ It compares submitted content against labeled positive (rare/harmful) and negati
     }
 
     try {
-      const response = await this.sentinelService.scoreTexts({ texts });
+      const response = await sentinelService.scoreTexts({
+        texts,
+        top_k: config.topK,
+        min_score_to_consider: config.minScoreToConsider,
+      });
       return {
         outputType: { scalarType: ScalarTypes.NUMBER },
         score: response.rare_class_affinity_score,

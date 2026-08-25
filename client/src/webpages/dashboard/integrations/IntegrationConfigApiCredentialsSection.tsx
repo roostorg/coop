@@ -317,6 +317,62 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     );
   };
 
+  // Sentinel stores its (non-secret) settings via the same generic
+  // PluginIntegrationApiCredential JSON blob as external plugins (see
+  // SentinelRareClassAffinitySignal.ts), but needs its own known field set
+  // rather than the generic key/value editor above.
+  const SENTINEL_FIELD_LABELS: Record<string, string> = {
+    apiUrl:
+      'Sentinel API URL (optional — falls back to the deployment default)',
+    topK: 'Top K (nearest neighbors to consider)',
+    minScoreToConsider: 'Minimum score to consider (0–1)',
+    threadContextWindowMinutes: 'Thread context window (minutes)',
+  };
+  const SENTINEL_NUMERIC_FIELDS = new Set([
+    'topK',
+    'minScoreToConsider',
+    'threadContextWindowMinutes',
+  ]);
+
+  const renderSentinelCredential = (pluginCredential: {
+    __typename: 'PluginIntegrationApiCredential';
+    credential: Record<string, unknown>;
+  }) => {
+    const credential = pluginCredential.credential ?? {};
+    return (
+      <div className="flex flex-col gap-4">
+        {Object.entries(SENTINEL_FIELD_LABELS).map(([key, label]) => (
+          <div key={key} className={`flex flex-col ${inputWidthClass}`}>
+            <div className="mb-1">{label}</div>
+            <Input
+              value={credential[key] == null ? '' : String(credential[key])}
+              onChange={(event) => {
+                const raw = event.target.value;
+                let next: Record<string, unknown>;
+                if (raw.trim() === '') {
+                  const { [key]: _removed, ...rest } = credential;
+                  next = rest;
+                } else if (SENTINEL_NUMERIC_FIELDS.has(key)) {
+                  const parsed = Number(raw);
+                  next = Number.isNaN(parsed)
+                    ? credential
+                    : { ...credential, [key]: parsed };
+                } else {
+                  next = { ...credential, [key]: raw };
+                }
+                setApiCredential({
+                  __typename: 'PluginIntegrationApiCredential',
+                  credential:
+                    next as import('../../../graphql/generated').Scalars['JSONObject'],
+                });
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const projectKeysInput = () => {
     switch (apiCredential.__typename) {
       case 'GoogleContentSafetyApiIntegrationApiCredential':
@@ -326,7 +382,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
       case 'ZentropiIntegrationApiCredential':
         return renderZentropiCredential(apiCredential);
       case 'PluginIntegrationApiCredential':
-        return renderPluginCredential(apiCredential);
+        return props.name === 'SENTINEL'
+          ? renderSentinelCredential(apiCredential)
+          : renderPluginCredential(apiCredential);
       default:
         throw new Error('Integration not implemented yet');
     }

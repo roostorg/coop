@@ -5,7 +5,6 @@ import type { HmaService } from '../../hmaService/index.js';
 import type { ItemInvestigationService } from '../../itemInvestigationService/index.js';
 import type { GetPoliciesByIdEventuallyConsistent } from '../../manualReviewToolService/manualReviewToolQueries.js';
 import { type FetchHTTP } from '../../networkingService/index.js';
-import { makeSentinelService } from '../../sentinelService/index.js';
 import { type UserScore } from '../../userStatisticsService/userStatisticsService.js';
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
@@ -171,8 +170,10 @@ export function instantiateBuiltInSignals(
     [SignalType.AGGREGATION]: new AggregationSignal(aggregationsService),
     [SignalType.SENTINEL_RARE_CLASS_AFFINITY]:
       new SentinelRareClassAffinitySignal(
-        makeSentinelService(fetchHTTP, process.env.SENTINEL_API_URL),
+        credentialGetters.getForIntegrationId('SENTINEL'),
+        fetchHTTP,
         itemInvestigationService,
+        process.env.SENTINEL_API_URL,
       ),
     [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
       credentialGetters.ZENTROPI,
