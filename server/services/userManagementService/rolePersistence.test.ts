@@ -137,6 +137,7 @@ describe('UserManagementService role persistence', () => {
         .where('org_id', '=', org.id)
         .where('key', '=', UserRole.ADMIN)
         .executeTakeFirstOrThrow();
+      const now = new Date();
       await deps.KyselyPg.insertInto('public.users')
         .values({
           id: userId,
@@ -149,6 +150,8 @@ describe('UserManagementService role persistence', () => {
           password: null,
           approved_by_admin: true,
           rejected_by_admin: false,
+          created_at: now,
+          updated_at: now,
         })
         .execute();
 
@@ -191,6 +194,7 @@ describe('UserManagementService role persistence', () => {
         .where('org_id', '=', org.id)
         .where('key', '=', UserRole.ADMIN)
         .executeTakeFirstOrThrow();
+      const now = new Date();
       await deps.KyselyPg.insertInto('public.users')
         .values({
           id: userId,
@@ -203,6 +207,8 @@ describe('UserManagementService role persistence', () => {
           password: null,
           approved_by_admin: true,
           rejected_by_admin: false,
+          created_at: now,
+          updated_at: now,
         })
         .execute();
       await deps.KyselyPg.deleteFrom('public.role_permissions')

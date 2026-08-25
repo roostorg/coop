@@ -226,7 +226,7 @@ describe('role persistence', () => {
         });
       await insertUser(UserRole.ADMIN, true, false);
       await insertUser(UserRole.MODERATOR, false, false);
-      await insertUser(UserRole.VIEWER, true, true);
+      await insertUser(UserRole.EXTERNAL_MODERATOR, true, true);
 
       const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
 
@@ -236,9 +236,9 @@ describe('role persistence', () => {
       expect(
         roles.find(({ key }) => key === UserRole.MODERATOR)?.userCount,
       ).toBe(0);
-      expect(roles.find(({ key }) => key === UserRole.VIEWER)?.userCount).toBe(
-        0,
-      );
+      expect(
+        roles.find(({ key }) => key === UserRole.EXTERNAL_MODERATOR)?.userCount,
+      ).toBe(0);
     },
   );
 
