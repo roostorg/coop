@@ -4,6 +4,7 @@ import { uid } from 'uid';
 import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { seedSystemRolesForOrg } from './rolePersistence.js';
 import {
   kyselyUserFindByEmailAndOrg,
   kyselyUserInsert,
@@ -32,6 +33,7 @@ describe('kyselyUserFindByEmailAndOrg', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 
