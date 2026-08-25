@@ -2,6 +2,7 @@
 import {
   getScalarType,
   ScalarTypes,
+  type ItemIdentifier,
   type ScalarType,
   type TaggedScalar,
 } from '@roostorg/coop-types';
@@ -198,7 +199,12 @@ export async function runLeafCondition(
               : undefined,
             args: signal.args,
             runtimeArgs: isFullSubmission(ruleInput)
-              ? await getSignalRuntimeArgs(evaluationContext, ruleInput, signal)
+              ? await getSignalRuntimeArgs(
+                  evaluationContext,
+                  ruleInput,
+                  signal,
+                  conditionInput,
+                )
               : undefined,
           });
         }),
@@ -561,6 +567,7 @@ async function getSignalRuntimeArgs(
   evaluationContext: RuleEvaluationContext,
   itemSubmission: ItemSubmission,
   conditionSignalInfo: ReadonlyDeep<ConditionSignalInfo>,
+  conditionInput: ReadonlyDeep<ConditionInput>,
 ) {
   if (conditionSignalInfo.type === 'AGGREGATION') {
     const args = conditionSignalInfo.args;
@@ -572,6 +579,28 @@ async function getSignalRuntimeArgs(
       );
     }
   }
+
+  if (conditionSignalInfo.type === 'SENTINEL_RARE_CLASS_AFFINITY') {
+    // Extract the thread item identifier from the content schema's threadId
+    // role — this lets Sentinel score the content in its conversational context.
+    const threadIdentifier: ItemIdentifier | undefined =
+      itemSubmission.itemType.kind === 'CONTENT'
+        ? (getFieldValueForRole(
+            itemSubmission.itemType.schema,
+            itemSubmission.itemType.schemaFieldRoles,
+            'threadId',
+            itemSubmission.data,
+          ) ?? undefined)
+        : undefined;
+
+    // The field name the condition is evaluating is the most relevant text to
+    // score. If the condition input is a CONTENT_FIELD, use that field name.
+    const contentTextFieldName: string | undefined =
+      conditionInput.type === 'CONTENT_FIELD' ? conditionInput.name : undefined;
+
+    return { threadIdentifier, contentTextFieldName };
+  }
+
   return undefined;
 }
 

@@ -2,7 +2,10 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 
 import type { AggregationsService } from '../../aggregationsService/index.js';
 import type { HmaService } from '../../hmaService/index.js';
+import type { ItemInvestigationService } from '../../itemInvestigationService/index.js';
 import type { GetPoliciesByIdEventuallyConsistent } from '../../manualReviewToolService/manualReviewToolQueries.js';
+import { type FetchHTTP } from '../../networkingService/index.js';
+import { makeSentinelService } from '../../sentinelService/index.js';
 import { type UserScore } from '../../userStatisticsService/userStatisticsService.js';
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
@@ -36,6 +39,7 @@ import OpenAiSexualTextSignal from '../signals/third_party_signals/open_ai/moder
 import OpenAiViolenceImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiViolenceImageSignal.js';
 import OpenAiViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiViolenceTextSignal.js';
 import OpenAiWhisperTranscriptionSignal from '../signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.js';
+import SentinelRareClassAffinitySignal from '../signals/third_party_signals/sentinel/SentinelRareClassAffinitySignal.js';
 import ZentropiLabelerSignal from '../signals/third_party_signals/zentropi/ZentropiLabelerSignal.js';
 import UserScoreSignal from '../signals/UserScoreSignal.js';
 import UserStrikesSignal from '../signals/UserStrikesSignal.js';
@@ -54,6 +58,8 @@ export function instantiateBuiltInSignals(
   userStrikeService: UserStrikeService,
   _getPoliciesByIdEventuallyConsistent: GetPoliciesByIdEventuallyConsistent,
   hmaService: HmaService,
+  itemInvestigationService: ItemInvestigationService,
+  fetchHTTP: FetchHTTP,
 ) {
   const {
     googleContentSafetyFetcher: getGoogleContentSafetyScores,
@@ -163,6 +169,11 @@ export function instantiateBuiltInSignals(
       getUserScoreEventuallyConsistent,
     ),
     [SignalType.AGGREGATION]: new AggregationSignal(aggregationsService),
+    [SignalType.SENTINEL_RARE_CLASS_AFFINITY]:
+      new SentinelRareClassAffinitySignal(
+        makeSentinelService(fetchHTTP, process.env.SENTINEL_API_URL),
+        itemInvestigationService,
+      ),
     [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
       credentialGetters.ZENTROPI,
       getZentropiScores,
