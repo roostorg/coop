@@ -32,7 +32,7 @@ import {
   sanitizeError,
   type SerializableError,
 } from '../../utils/errors.js';
-import { safeGet, safePick, sleep } from '../../utils/misc.js';
+import { safeGet, safePick, sleep, withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import { coerceStringThreadId } from './coerceStringThreadId.js';
@@ -47,6 +47,7 @@ export default function submitContent({
   Tracer,
   ModerationConfigService,
   Meter,
+  ItemInvestigationService,
 }: // @ts-ignore
 Dependencies): RequestHandlerWithBodies<
   EvaluateContentInputCamelCase,
@@ -192,6 +193,37 @@ Dependencies): RequestHandlerWithBodies<
     // then keep executing other code
     if (shouldReturnImmediately) {
       res.status(202).end();
+    }
+
+    // Write to Scylla before running rules so that thread-aware signals
+    // (e.g. Sentinel) can read prior messages in the thread when scoring.
+    // This is best-effort: failures are swallowed so they never block rule execution.
+    const insertWithRetries = Tracer.traced(
+      {
+        resource: 'SubmitContent',
+        operation: 'ItemInvestigationService.insertItem',
+      },
+      withRetries(
+        {
+          maxRetries: 1,
+          initialTimeMsBetweenRetries: 50,
+          maxTimeMsBetweenRetries: 200,
+        },
+        ItemInvestigationService.insertItem.bind(ItemInvestigationService),
+      ),
+    );
+    try {
+      await insertWithRetries({
+        requestId,
+        orgId,
+        itemSubmission: {
+          ...itemSubmissionOrError.itemSubmission,
+          submissionTime:
+            itemSubmissionOrError.itemSubmission.submissionTime ?? new Date(),
+        },
+      });
+    } catch {
+      // Swallow insert errors; rules can still run without thread context.
     }
 
     // Run rules
