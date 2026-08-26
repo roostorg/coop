@@ -7,6 +7,7 @@
 import {
   CompiledQuery,
   DefaultQueryCompiler,
+  type AbortableOperationOptions,
   type DatabaseConnection,
   type Dialect,
   type Driver,
@@ -113,8 +114,13 @@ class WarehouseDialectForTests implements Dialect {
   }
 }
 
+export type WarehouseExecute = (
+  compiledQuery: CompiledQuery,
+  options?: AbortableOperationOptions,
+) => Promise<QueryResult<unknown>>;
+
 export function makeMockWarehouseDialect(
-  executeMockFn: MockedFn<(it: CompiledQuery) => Promise<QueryResult<unknown>>>,
+  executeMockFn: MockedFn<WarehouseExecute>,
 ) {
   async function* emptyStream(): AsyncIterableIterator<never> {
     throw new Error('not supported');

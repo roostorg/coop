@@ -17,11 +17,7 @@ import {
   DefaultColumnFilter,
   SelectColumnFilter,
 } from '../dashboard/components/table/filters';
-import {
-  boolSort,
-  stringSort,
-  userRoleSort,
-} from '../dashboard/components/table/sort';
+import { stringSort, userRoleSort } from '../dashboard/components/table/sort';
 import Table from '../dashboard/components/table/Table';
 import UserWithAvatar from '../dashboard/components/UserWithAvatar';
 
@@ -367,7 +363,7 @@ export default function ManageUsers() {
             }),
         },
         filterFn: 'includes' as const,
-        sortFn: boolSort,
+        sortFn: stringSort,
       },
       {
         header: 'Date Created',

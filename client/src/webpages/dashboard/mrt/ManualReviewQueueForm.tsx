@@ -246,13 +246,17 @@ export default function ManualReviewQueueForm() {
     skip: id == null,
   });
 
-  const orgUsers = data?.myOrg?.users ?? [];
+  const orgUsers = useMemo(
+    () => data?.myOrg?.users ?? [],
+    [data?.myOrg?.users],
+  );
   const orgActions = data?.myOrg?.actions ?? [];
-  const usersWhoCanReviewEveryQueue =
-    data?.myOrg?.usersWhoCanReviewEveryQueue ?? [];
 
-  const usersWithExplicitQueuePermission =
-    queueQueryParams.data?.manualReviewQueue?.explicitlyAssignedReviewers ?? [];
+  const userIdsWhoCanReviewEveryQueue = useMemo(
+    () => (data?.myOrg?.usersWhoCanReviewEveryQueue ?? []).map((it) => it.id),
+    [data?.myOrg?.usersWhoCanReviewEveryQueue],
+  );
+
   const queue = queueQueryParams.data?.manualReviewQueue;
   const initiallyHiddenActionIds = useMemo(
     () => queueQueryParams.data?.manualReviewQueue?.hiddenActionIds ?? [],
@@ -261,33 +265,41 @@ export default function ManualReviewQueueForm() {
   const queueQueryLoading = queueQueryParams.loading;
   const queueQueryError = queueQueryParams.error;
 
-  const userIdsWithPermission = usersWithExplicitQueuePermission.map(
-    (it) => it.id,
-  );
-  const userIdsWhoCanReviewEveryQueue = usersWhoCanReviewEveryQueue.map(
-    (it) => it.id,
-  );
-  const sortedUsers = orgUsers
-    .filter(
-      (it) =>
-        userIdsWithPermission.includes(it.id) ||
-        userIdsWhoCanReviewEveryQueue.includes(it.id),
-    )
-    .sort((a, b) => {
-      if (
-        userIdsWhoCanReviewEveryQueue.includes(a.id) &&
-        !userIdsWhoCanReviewEveryQueue.includes(b.id)
-      ) {
-        return 1;
-      } else if (
-        !userIdsWhoCanReviewEveryQueue.includes(a.id) &&
-        userIdsWhoCanReviewEveryQueue.includes(b.id)
-      ) {
-        return -1;
-      } else {
-        return a.firstName.localeCompare(b.firstName);
-      }
-    });
+  const sortedUsers = useMemo(() => {
+    const usersWithExplicitQueuePermission =
+      queueQueryParams.data?.manualReviewQueue?.explicitlyAssignedReviewers ??
+      [];
+
+    const userIdsWithPermission = usersWithExplicitQueuePermission.map(
+      (it) => it.id,
+    );
+
+    return orgUsers
+      .filter(
+        (it) =>
+          userIdsWithPermission.includes(it.id) ||
+          userIdsWhoCanReviewEveryQueue.includes(it.id),
+      )
+      .sort((a, b) => {
+        if (
+          userIdsWhoCanReviewEveryQueue.includes(a.id) &&
+          !userIdsWhoCanReviewEveryQueue.includes(b.id)
+        ) {
+          return 1;
+        } else if (
+          !userIdsWhoCanReviewEveryQueue.includes(a.id) &&
+          userIdsWhoCanReviewEveryQueue.includes(b.id)
+        ) {
+          return -1;
+        } else {
+          return a.firstName.localeCompare(b.firstName);
+        }
+      });
+  }, [
+    orgUsers,
+    queueQueryParams.data?.manualReviewQueue?.explicitlyAssignedReviewers,
+    userIdsWhoCanReviewEveryQueue,
+  ]);
 
   useEffect(() => {
     if (!queue) {
@@ -296,7 +308,6 @@ export default function ManualReviewQueueForm() {
 
     setQueueName(queue.name);
     setQueueDescription(queue.description ?? undefined);
-    setModeratorsWithAccess(sortedUsers.map((it) => it.id));
     setHiddenActionIds([...queue.hiddenActionIds]);
     setAutoCloseJobs(queue.autoCloseJobs);
     setIsAppealsQueue(queue.isAppealsQueue);
@@ -307,8 +318,11 @@ export default function ManualReviewQueueForm() {
     setClearReportsTriggerActionIds([
       ...(queue.clearReportsTriggerActionIds ?? []),
     ]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue, queue?.autoCloseJobs]);
+
+  useEffect(() => {
+    setModeratorsWithAccess(sortedUsers.map((it) => it.id));
+  }, [sortedUsers]);
 
   if (queueQueryError || error) {
     // eslint-disable-next-line @typescript-eslint/only-throw-error
