@@ -6,35 +6,28 @@
  * writing) and a parallel-branch PR would conflict. Once both land we
  * can collapse the two files together.
  *
- * Pins today's known-lossy contract for #649:
+ * Verifies #649 path 1: the re-throw-and-retry contract.
  *
- *   `ItemProcessingWorker` wraps the Scylla insert in a try/catch that
- *   silently swallows write errors (`// swallow error for now if an
- *   item fails to make it into scylla`). So a Scylla outage during item
- *   processing means the BullMQ job completes "successfully," the
- *   worker moves on to log to ClickHouse, and the row never lands in
+ *   `ItemProcessingWorker` surfaces Scylla insert errors instead of
+ *   swallowing them, and item-submission jobs carry BullMQ `attempts` +
+ *   exponential backoff. So a Scylla outage during item processing no
+ *   longer drops the row: the failing attempt re-throws, BullMQ retries
+ *   the job, and once the driver reconnects the insert lands in
  *   `item_submission_by_thread`.
  *
  * The test asserts:
  *
- *   1. The API still claims 202 (we never told the client there was a
- *      problem).
- *   2. The worker still reaches `CONTENT_API_REQUESTS` in ClickHouse
- *      (the swallow let it continue past the insert).
+ *   1. The API still claims 202 while Scylla is down (the job is
+ *      enqueued to BullMQ, which is backed by Redis — still up).
+ *   2. After Scylla is restored, the row eventually lands in
+ *      `item_submission_by_thread` (the retry succeeded).
  *
- * We deliberately don't assert "row absent in Scylla" after restore.
- * The in-harness Cassandra driver doesn't recover cleanly within a
- * reasonable window after a Scylla container restart (stale
- * connections, prepared-statement re-prepare); a direct query there
- * ends up testing the driver's reconnect timing rather than the
- * worker's behaviour. The CH row landing in assertion 2 is sufficient
- * proof of the contract — it can only get written if the worker
- * reached past the swallowed insert.
- *
- * #649 tracks the decision about whether to escalate from this
- * swallow-and-continue contract to a re-throw-and-retry one. The
- * desired assertion at that point flips to "row lands in Scylla after
- * recovery" (same shape as the Redis-recovery test in phase 1).
+ * The recovery poll tolerates transient Cassandra errors thrown during
+ * the driver's post-restart reconnect. `wait.ts`'s `waitForItemInScylla`
+ * surfaces query errors by design, so we retry it until the row appears
+ * or the outer deadline passes — a mid-reconnect throw just means "not
+ * landed yet", which sidesteps the driver-reconnect-timing problem that
+ * blocked asserting Scylla state directly.
  *
  * MUST run with `--runInBand`: same docker-compose-is-shared-state
  * caveat as `outage.integ.test.ts`. See #648 for the suite-level fix.
@@ -58,7 +51,7 @@ import {
   makeIntegrationServer,
   type IntegrationServer,
 } from './setupIntegrationServer.js';
-import { waitForItemInClickHouse } from './wait.js';
+import { waitForItemInScylla } from './wait.js';
 
 describe('Scylla outage (integration)', () => {
   const orgId = uid();
@@ -147,30 +140,33 @@ describe('Scylla outage (integration)', () => {
   }, 60_000);
 
   // ---------------------------------------------------------------------------
-  // KNOWN-LOSSY CONTRACT pinned by this test — tracking issue: #649.
+  // RE-THROW-AND-RETRY CONTRACT pinned by this test — implements #649 path 1.
   //
-  // Today's `ItemProcessingWorker` swallows Scylla insert errors:
+  // `ItemProcessingWorker` now surfaces Scylla insert errors instead of
+  // swallowing them, and the item-submission jobs carry BullMQ `attempts` +
+  // exponential backoff. So a Scylla outage during processing no longer drops
+  // the `item_submission_by_thread` row: the failing attempt re-throws, BullMQ
+  // retries the job with backoff, and once the Cassandra driver reconnects the
+  // insert succeeds. No data loss as long as Scylla recovers within the retry
+  // window.
   //
-  //   try {
-  //     await insertWithRetries({ ... });
-  //   } catch (e) {
-  //     // swallow error for now if an item fails to make it into scylla
-  //   }
+  // This test asserts:
+  //   1. The API still returns 202 while Scylla is down (the job is enqueued to
+  //      BullMQ, which is backed by Redis — still up).
+  //   2. After Scylla is restored, the row eventually lands in
+  //      `item_submission_by_thread` (the retry succeeded).
   //
-  // So a Scylla outage during the worker's processing window drops the
-  // row in `item_submission_by_thread` without retry. The job completes
-  // "successfully," the worker logs to ClickHouse, the API has long
-  // since returned 202 to the client. Nothing surfaces the loss.
-  //
-  // This test pins that contract: API still 202, ClickHouse row still
-  // lands. When #649 flips the worker to re-throw-and-retry, a third
-  // assertion is added: row lands in Scylla after recovery (same shape
-  // as the Redis recovery test in `outage.integ.test.ts`).
+  // The recovery poll tolerates transient Cassandra errors thrown during the
+  // driver's post-restart reconnect: `wait.ts`'s `waitForItemInScylla` surfaces
+  // query errors by design, so we retry it until the row appears or the outer
+  // deadline passes — a mid-reconnect throw just means "not landed yet".
   // ---------------------------------------------------------------------------
-  test('Scylla stopped: API claims 202, ClickHouse row lands, Scylla row is dropped — known-lossy contract (#649)', async () => {
+  test('Scylla recovers: item is retried and lands in Scylla after restore (#649 path 1)', async () => {
     if (!harness) throw new Error('harness was not initialized');
     const itemId = uid();
 
+    // Submit while Scylla is down. The API still accepts (202): the job goes
+    // onto the BullMQ queue, and the worker's insert will fail-and-retry.
     await withServiceDown('scylla', async () => {
       const res = await harness!.request
         .post('/api/v1/items/async')
@@ -181,35 +177,25 @@ describe('Scylla outage (integration)', () => {
           ],
         });
       expect(res.status).toBe(202);
-
-      // Gate on `CONTENT_API_REQUESTS` (logged after Scylla insert + rule
-      // eval in `ItemProcessingWorker`). Its presence proves the worker
-      // got past the insert — i.e. the swallow happened and execution
-      // continued. If the worker were re-throwing on insert failure
-      // instead, this wait would time out.
-      const chRow = await waitForItemInClickHouse(harness!.deps, {
-        orgId,
-        itemIdentifier: { id: itemId, typeId: itemTypeId },
-        timeoutMs: 30_000,
-      });
-      expect(chRow).toBeDefined();
     });
 
-    // We deliberately don't assert "row absent in Scylla" after restore.
-    // The in-harness Cassandra driver doesn't recover cleanly within a
-    // reasonable test window after a Scylla container restart (stale
-    // connections, prepared-statement re-prepare, etc.), so a direct
-    // `Scylla.select` here ends up testing the driver's reconnect timing
-    // rather than the worker's behaviour. The CONTENT_API_REQUESTS row
-    // landing above is sufficient proof of the contract — it can only
-    // get written if the worker reached past the swallowed insert.
-    //
-    // DESIRED (#649 path 1): when the worker is changed to re-throw on
-    // insert failure, the new assertion becomes "row eventually lands in
-    // Scylla once BullMQ retries the job after recovery" — same shape as
-    // the Redis-recovery test in outage.integ.test.ts. At that point the
-    // driver-recovery-timing problem either goes away (because we'd be
-    // polling for presence, which tolerates transient errors as just
-    // "not yet") or gets solved alongside.
+    // Scylla is restored now (withServiceDown restored it on exit). BullMQ
+    // retries the job; once the driver reconnects, the insert lands the row.
+    const recoveryDeadline = Date.now() + 90_000;
+    let scyllaRow: unknown;
+    for (;;) {
+      try {
+        scyllaRow = await waitForItemInScylla(harness.deps, {
+          orgId,
+          itemIdentifier: { id: itemId, typeId: itemTypeId },
+          timeoutMs: 5_000,
+        });
+        break;
+      } catch (e) {
+        if (Date.now() >= recoveryDeadline) throw e;
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
+    }
+    expect(scyllaRow).toBeDefined();
   }, 120_000);
 });
