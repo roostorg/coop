@@ -120,16 +120,16 @@ export default inject(
                     return;
                   }
 
-                  try {
-                    await insertWithRetries({
-                      requestId: metadata.requestId,
-                      orgId: metadata.orgId,
-                      itemSubmission,
-                    });
-                  } catch (e: unknown) {
-                    // swallow error for now if an item fails to make it into
-                    // scylla; it shouldn't prevent processing
-                  }
+                  // Surface Scylla insert failures instead of swallowing
+                  // them: item_submission_by_thread is critical data, so a
+                  // Scylla outage must move the job to BullMQ's retry queue
+                  // rather than silently drop the row. The error propagates to
+                  // the outer catch, which re-throws for BullMQ to retry (#649).
+                  await insertWithRetries({
+                    requestId: metadata.requestId,
+                    orgId: metadata.orgId,
+                    itemSubmission,
+                  });
 
                   await ruleEngine.runEnabledRules(
                     itemSubmission,

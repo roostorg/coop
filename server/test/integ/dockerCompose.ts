@@ -76,7 +76,6 @@ export async function withServiceDown<T>(
     try {
       await startService(svc);
     } catch (restoreErr) {
-       
       console.error(
         `[outage] failed to restart ${svc} after test; subsequent tests may be affected`,
         restoreErr,
@@ -100,7 +99,6 @@ export async function withServicePaused<T>(
     try {
       await unpauseService(svc);
     } catch (restoreErr) {
-       
       console.error(
         `[outage] failed to unpause ${svc} after test; subsequent tests may be affected`,
         restoreErr,

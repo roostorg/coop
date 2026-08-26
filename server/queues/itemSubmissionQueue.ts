@@ -9,6 +9,14 @@ import { sleep } from '../utils/misc.js';
 export const ITEM_SUBMISSION_QUEUE_NAME = 'item-submission';
 export const ITEM_SUBMISSION_DLQ_NAME = 'item-submission-dlq';
 
+// Retry item-submission jobs on transient processing failures (e.g. a Scylla
+// or Postgres outage) instead of failing after a single attempt, so a row
+// isn't dropped while a dependency is briefly down. Exponential backoff spans
+// roughly 2s + 4s + 8s + 16s across the retries; a job that still can't
+// process lands in BullMQ's failed set. See #649.
+const ITEM_SUBMISSION_JOB_ATTEMPTS = 5;
+const ITEM_SUBMISSION_BACKOFF_MS = 2000;
+
 type RedisConnection = IORedis.Redis | Cluster;
 
 /**
@@ -88,6 +96,13 @@ async function bulkWrite(
     data.map((msg) => ({
       name: 'item-submission',
       data: msg,
+      opts: {
+        attempts: ITEM_SUBMISSION_JOB_ATTEMPTS,
+        backoff: {
+          type: 'exponential',
+          delay: ITEM_SUBMISSION_BACKOFF_MS,
+        },
+      },
     })),
   );
 }
