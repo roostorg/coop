@@ -238,3 +238,82 @@ npm run recover-mrt-queue -- \
 - Report history is best-effort: only inbound `submitReport` rows that made
   it into `REPORTING_SERVICE.REPORTS` are restored. Rule-driven enqueues
   (`ENQUEUE_TO_MRT`) never had a report history to begin with.
+
+---
+
+## twitternow-setup.ts
+
+Creates (or updates) the twitter.now item types needed by the twitter.now
+demo connector. Run this once after `npm run create-org` to register the item
+types, then pass the printed item type IDs to `npm run twitternow:demo`.
+
+**Create mode** (first run):
+
+```sh
+cd server && npm run twitternow:setup -- --org-id <orgId>
+```
+
+**Update mode** (to add new fields to an existing org's item types):
+
+```sh
+cd server && npm run twitternow:setup -- --org-id <orgId> --post-type-id <id> --user-type-id <id> --thread-type-id <id>
+```
+
+The script prints a **twitter.now Post item type ID**, a **twitter.now User
+item type ID**, and a **twitter.now Thread item type ID** — copy all three
+for use with `twitternow:demo`. The Thread type is a `THREAD`-kind item type
+keyed by a conversation's root post id; Coop requires it wherever a Post's
+`parent` (reply) field is set, so posts and their reply chains show up
+threaded in the review UI instead of as disconnected items.
+
+## twitternow-demo.mts
+
+Feed a local Coop instance with real content from the public [twitter.now](https://twitter.now/)
+API.
+
+1. Create the twitter.now item types (run once after `npm run create-org`):
+
+   ```sh
+   cd server && npm run twitternow:setup -- --org-id <orgId>
+   ```
+
+   Copy the **Post**, **User**, and **Thread** item type IDs from the
+   output.
+
+2. Start the connector (in a separate terminal):
+
+   ```sh
+   npm run twitternow:demo -- \
+     --api-key <apiKey> \
+     --post-type-id <postTypeId> \
+     --user-type-id <userTypeId> \
+     --thread-type-id <threadTypeId>
+   ```
+
+Posts from twitter.now will appear as submitted items, with authors submitted
+as User items once each and enriched with bio/location/website from
+`/api/user-profile/{userId}` (an undocumented but public endpoint found by
+grepping the app.twitter.now frontend bundle for `/api/` route strings — same
+technique used to find the replies endpoint below). Omit `--user-type-id` to
+skip user submission and profile enrichment entirely.
+
+Unlike the AT Protocol demo, twitter.now has no push/firehose endpoint — only
+a cursor-paginated REST feed — so this script polls the latest page on an
+interval (`--poll-interval-ms`, default 15000) instead of holding a streaming
+connection open. Pass `--limit <n>` to adjust how many posts are fetched per
+poll (default: 20) and `--rate-limit <n>` to cap item submissions per minute
+(default: 100). Use `--dry-run` to preview submissions without sending them.
+
+Replies are threaded: every post is submitted with a `thread` field pointing
+at a Thread item keyed by its conversation's root post id (twitter.now's
+`conversationId`), and a reply's `parent` field additionally links back to
+its immediate parent Post item — the same threading model Coop's review UI
+expects. Both fields require `--thread-type-id`; without it, posts submit
+fine but without thread/parent linking. The main feed only surfaces recent
+activity, so on each newly-seen post the script also fetches its direct
+replies via `/api/posts/{id}/replies` (one page, one level deep — not
+recursive) to backfill threads that would otherwise be missed. Pass
+`--max-replies-per-post <n>` to adjust how many are fetched per post
+(default: 20).
+
+See `twitternow-demo.mts` for the full list of options.

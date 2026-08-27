@@ -23,6 +23,8 @@
     "create-org": "node --env-file-if-exists=.env --loader ts-node/esm bin/create-org-and-user.ts",
     "get-invite": "node --env-file-if-exists=.env --loader ts-node/esm bin/get-invite-token.ts",
     "recover-mrt-queue": "node --env-file-if-exists=.env --loader ts-node/esm bin/recover-mrt-queue.ts",
+    "twitternow:setup": "node --env-file-if-exists=.env --loader ts-node/esm bin/twitternow-setup.ts",
+    "twitternow:demo": "node --loader ts-node/esm bin/twitternow-demo.mts",
     "knip": "knip"
   },
   "author": "Roostorg",
