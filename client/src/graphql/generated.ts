@@ -200,6 +200,14 @@ export type GQLActionStatisticsInput = {
   readonly timeZone: Scalars['String']['input'];
 };
 
+export const GQLActivityView = {
+  Actions: 'ACTIONS',
+  All: 'ALL',
+  Decisions: 'DECISIONS',
+} as const;
+
+export type GQLActivityView =
+  (typeof GQLActivityView)[keyof typeof GQLActivityView];
 export type GQLAddAccessibleQueuesToUserInput = {
   readonly queueIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly userId: Scalars['ID']['input'];
@@ -2094,6 +2102,47 @@ export const GQLLookbackVersion = {
 
 export type GQLLookbackVersion =
   (typeof GQLLookbackVersion)[keyof typeof GQLLookbackVersion];
+export type GQLManualActionItem = {
+  readonly __typename: 'ManualActionItem';
+  readonly failed: Scalars['Boolean']['output'];
+  readonly itemId: Scalars['ID']['output'];
+  readonly itemTypeId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type GQLManualActionItemsInput = {
+  readonly correlationId: Scalars['ID']['input'];
+  /** Defaults to 100, capped at 500. */
+  readonly limit?: InputMaybe<Scalars['Int']['input']>;
+  /** max(ts) of the operation, from its feed row. Bounds the partition scan. */
+  readonly occurredAt: Scalars['DateTime']['input'];
+};
+
+export type GQLManualActionItemsPage = {
+  readonly __typename: 'ManualActionItemsPage';
+  readonly items: ReadonlyArray<GQLManualActionItem>;
+  readonly totalCount: Scalars['Int']['output'];
+};
+
+/**
+ * One operation a moderator ran outside a review job, from Bulk Actioning or
+ * Investigation. These produce no manual review decision, so they are otherwise
+ * invisible outside the actioned item's own history. A bulk run writes one
+ * execution per item per action; this collapses those into a single row.
+ */
+export type GQLManualActionRow = GQLModerationActivityRow & {
+  readonly __typename: 'ManualActionRow';
+  readonly actionIds: ReadonlyArray<Scalars['ID']['output']>;
+  readonly actorNote?: Maybe<Scalars['String']['output']>;
+  readonly correlationId: Scalars['ID']['output'];
+  readonly failedCount: Scalars['Int']['output'];
+  readonly id: Scalars['ID']['output'];
+  readonly itemCount: Scalars['Int']['output'];
+  readonly itemTypeId?: Maybe<Scalars['ID']['output']>;
+  readonly policyIds: ReadonlyArray<Scalars['ID']['output']>;
+  readonly reviewerId?: Maybe<Scalars['ID']['output']>;
+  readonly ts: Scalars['DateTime']['output'];
+};
+
 export type GQLManualReviewChartConfigurationsInput = {
   readonly chartConfigurations: ReadonlyArray<GQLManualReviewChartSettingsInput>;
 };
@@ -2327,6 +2376,20 @@ export type GQLModelCardSubsection = {
   readonly __typename: 'ModelCardSubsection';
   readonly fields: ReadonlyArray<GQLModelCardField>;
   readonly title: Scalars['String']['output'];
+};
+
+export type GQLModerationActivityPage = {
+  readonly __typename: 'ModerationActivityPage';
+  /** Null means the end of the feed. */
+  readonly nextCursor?: Maybe<Scalars['Cursor']['output']>;
+  readonly rows: ReadonlyArray<GQLModerationActivityRow>;
+};
+
+/** Fields every row in the merged activity feed carries, regardless of kind. */
+export type GQLModerationActivityRow = {
+  readonly id: Scalars['ID']['output'];
+  readonly reviewerId?: Maybe<Scalars['ID']['output']>;
+  readonly ts: Scalars['DateTime']['output'];
 };
 
 export type GQLModeratorSafetySettingsInput = {
@@ -3476,6 +3539,7 @@ export type GQLQuery = {
   readonly latestItemsCreatedBy: ReadonlyArray<GQLItemSubmissions>;
   readonly latestItemsCreatedByWithThread: ReadonlyArray<GQLThreadWithMessages>;
   readonly locationBank?: Maybe<GQLLocationBank>;
+  readonly manualActionItems: GQLManualActionItemsPage;
   readonly manualReviewQueue?: Maybe<GQLManualReviewQueue>;
   readonly me?: Maybe<GQLUser>;
   readonly myOrg?: Maybe<GQLOrg>;
@@ -3487,6 +3551,7 @@ export type GQLQuery = {
   /** Server-owned grouping + ordering for the role-editor UI. Gated on MANAGE_ROLES. */
   readonly permissionGroups: ReadonlyArray<GQLPermissionGroup>;
   readonly policy?: Maybe<GQLPolicy>;
+  readonly recentModerationActivity: GQLModerationActivityPage;
   readonly recentUserStrikeActions: ReadonlyArray<GQLRecentUserStrikeActions>;
   readonly reportingInsights: GQLReportingInsights;
   readonly reportingRule?: Maybe<GQLReportingRule>;
@@ -3653,6 +3718,10 @@ export type GQLQueryLocationBankArgs = {
   id: Scalars['ID']['input'];
 };
 
+export type GQLQueryManualActionItemsArgs = {
+  input: GQLManualActionItemsInput;
+};
+
 export type GQLQueryManualReviewQueueArgs = {
   id: Scalars['ID']['input'];
 };
@@ -3676,6 +3745,10 @@ export type GQLQueryPartialItemsArgs = {
 
 export type GQLQueryPolicyArgs = {
   id: Scalars['ID']['input'];
+};
+
+export type GQLQueryRecentModerationActivityArgs = {
+  input: GQLRecentModerationActivityInput;
 };
 
 export type GQLQueryRecentUserStrikeActionsArgs = {
@@ -3789,6 +3862,23 @@ export type GQLRecentManualReviewTransformJobAndRecreateInQueueDecision = {
 
 export type GQLRecentManualReviewUserOrRelatedActionDecision = {
   readonly actionIds: ReadonlyArray<Scalars['ID']['input']>;
+};
+
+export type GQLRecentModerationActivityInput = {
+  /** Opaque cursor from a previous page. Absent for the newest page. */
+  readonly cursor?: InputMaybe<Scalars['Cursor']['input']>;
+  readonly decisions?: InputMaybe<
+    ReadonlyArray<GQLRecentManualReviewDecisionType>
+  >;
+  readonly endTime?: InputMaybe<Scalars['DateTime']['input']>;
+  /** Rows per page. Defaults to 100, capped at 200. */
+  readonly limit?: InputMaybe<Scalars['Int']['input']>;
+  readonly policyIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly queueIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly reviewerIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  readonly startTime?: InputMaybe<Scalars['DateTime']['input']>;
+  readonly userSearchString?: InputMaybe<Scalars['String']['input']>;
+  readonly view?: InputMaybe<GQLActivityView>;
 };
 
 export type GQLRecentUserStrikeActions = {
@@ -4000,6 +4090,19 @@ export type GQLRetryNcmecSubmissionResponse = {
    */
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly success: Scalars['Boolean']['output'];
+};
+
+export type GQLReviewJobDecisionRow = GQLModerationActivityRow & {
+  readonly __typename: 'ReviewJobDecisionRow';
+  readonly decisionReason?: Maybe<Scalars['String']['output']>;
+  readonly decisions: ReadonlyArray<GQLManualReviewDecisionComponent>;
+  readonly id: Scalars['ID']['output'];
+  readonly itemId?: Maybe<Scalars['ID']['output']>;
+  readonly itemTypeId?: Maybe<Scalars['ID']['output']>;
+  readonly jobId?: Maybe<Scalars['String']['output']>;
+  readonly queueId?: Maybe<Scalars['ID']['output']>;
+  readonly reviewerId?: Maybe<Scalars['ID']['output']>;
+  readonly ts: Scalars['DateTime']['output'];
 };
 
 export type GQLRole = {
