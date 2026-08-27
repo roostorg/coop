@@ -439,6 +439,7 @@ function makeGqlServices(deps: Dependencies) {
       'getItemTypeEventuallyConsistent',
       'getEnabledRulesForItemTypeEventuallyConsistent',
       'ItemInvestigationService',
+      'ModerationActivityFeed',
       'ModerationConfigService',
       'ManualReviewToolService',
       'HMAHashBankService',

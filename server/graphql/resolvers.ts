@@ -25,6 +25,7 @@ import { resolvers as investigationResolvers } from './modules/investigation.js'
 import { resolvers as itemTypeResolvers } from './modules/itemType.js';
 import { resolvers as locationBankResolvers } from './modules/locationBank.js';
 import { resolvers as manualReviewToolResolvers } from './modules/manualReviewTool.js';
+import { resolvers as moderationActivityResolvers } from './modules/moderationActivity.js';
 import { resolvers as ncmecResolvers } from './modules/ncmec.js';
 import { resolvers as orgResolvers } from './modules/org.js';
 import { resolvers as policyResolvers } from './modules/policy.js';
@@ -279,6 +280,7 @@ export default mergeResolvers([
   locationBankResolvers,
   manualReviewToolResolvers,
   hashBankResolvers,
+  moderationActivityResolvers,
   ncmecResolvers,
   orgResolvers,
   policyResolvers,
