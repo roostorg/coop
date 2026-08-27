@@ -1,10 +1,13 @@
-import { Kysely, type DatabaseConnection } from 'kysely';
+import { Kysely } from 'kysely';
 
 import {
   makeMockPgDialect,
   type MockPgExecute,
 } from '../../test/stubs/KyselyPg.js';
-import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
+import {
+  makeMockWarehouseDialect,
+  type WarehouseExecute,
+} from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { type UserStatisticsServiceWarehouse } from './dbTypes.js';
 import { type makeFetchUserActionStatistics } from './fetchUserActionStatistics.js';
 import { type makeFetchUserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
@@ -16,7 +19,7 @@ describe('UserStatisticsService', () => {
 
     test('is a no-op without warehouse change streams', async () => {
       const warehouseMock = jest
-        .fn<DatabaseConnection['executeQuery']>()
+        .fn<WarehouseExecute>()
         .mockImplementation(async (_query) => {
           return { rows: [] };
         });

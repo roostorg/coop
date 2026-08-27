@@ -3,7 +3,11 @@ export {
   default as makeUserManagementService,
   type UserManagementService,
 } from './userManagementService.js';
-export { hashPassword, passwordMatchesHash } from './utils.js';
+export {
+  hashPassword,
+  passwordMatchesHash,
+  passwordNeedsRehash,
+} from './utils.js';
 export { deleteSessionsForUser } from './sessionPersistence.js';
 export {
   Invoker,

@@ -103,6 +103,8 @@ gql`
           }
         }
         createdAt
+        assignedAt
+        jobCreatedAt
       }
     }
   }
@@ -179,30 +181,30 @@ export default function ItemActionHistory(props: {
   const columns = useMemo(
     () => [
       {
-        Header: 'Actions',
-        accessor: 'actions',
-        canSort: false,
+        header: 'Actions',
+        accessorKey: 'actions',
+        enableSorting: false,
       },
       {
-        Header: 'Policies',
-        accessor: 'policies',
-        canSort: false,
+        header: 'Policies',
+        accessorKey: 'policies',
+        enableSorting: false,
       },
       {
-        Header: 'Decision Time',
-        accessor: 'ts',
+        header: 'Decision Time',
+        accessorKey: 'ts',
         sortDescFirst: true,
-        sortType: stringSort,
+        sortFn: stringSort,
       },
       {
-        Header: 'Actor',
-        accessor: 'actor',
-        canSort: false,
+        header: 'Actor',
+        accessorKey: 'actor',
+        enableSorting: false,
       },
       {
-        Header: 'Source(s)',
-        accessor: 'source',
-        canSort: false,
+        header: 'Source(s)',
+        accessorKey: 'source',
+        enableSorting: false,
       },
     ],
     [],

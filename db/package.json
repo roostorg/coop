@@ -21,8 +21,8 @@
     "@clickhouse/client": "^1.23.1",
     "@roostorg/db-migrator": "^1.1.1",
     "cassandra-driver": "^4.9.0",
-    "kysely": "^0.29.4",
-    "pg": "^8.22.0",
+    "kysely": "^0.29.5",
+    "pg": "^8.23.0",
     "sequelize": "^6.37.8",
     "ts-node": "^10.9.2",
     "umzug": "^3.8.3"
@@ -33,7 +33,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.10.2",
+    "@types/pg": "^8.23.1",
     "knip": "^6.26.0",
     "typescript": "^6.0.3"
   }

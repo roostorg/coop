@@ -275,7 +275,7 @@ export default function TimeToActionByQueueChart({
 
   return (
     <div
-      className={`flex flex-col rounded-lg p-6 ${
+      className={`flex flex-col rounded-lg p-6 bg-white ${
         narrowMode ? 'flex flex-col justify-between grow' : 'w-full'
       } ${hideBorder ? '' : 'border border-solid border-slate-200'}`}
     >

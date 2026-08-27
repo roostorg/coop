@@ -1,6 +1,3 @@
-import capitalize from 'lodash/capitalize';
-import { IdType, Row } from 'react-table';
-
 import {
   GQLConditionOutcome,
   GQLReportingRuleStatus,
@@ -8,16 +5,17 @@ import {
   GQLUserPenaltySeverity,
   GQLUserRole,
 } from '../../../../graphql/generated';
+import { TableRow } from './tableFeatures';
 
 interface RowWithValues extends Object {
   values: { [key: string]: any };
 }
+type Row<TData extends RowWithValues> = TableRow<TData>;
 
-export function stringSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  _desc?: boolean,
+export function stringSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -33,11 +31,10 @@ export function stringSort(
   return 0;
 }
 
-export function integerSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  _desc?: boolean,
+export function integerSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   // the values come formatted with commas, so we remove all
   // comma characters before doing any parsing or comparison
@@ -46,11 +43,10 @@ export function integerSort(
   return s1 > s2 ? 1 : s2 > s1 ? -1 : 0;
 }
 
-export function boolSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  _desc?: boolean,
+export function boolSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
@@ -81,26 +77,24 @@ export function boolSort(
  * @param columnId - the ID (aka the accessor prop) of the column we're sorting
  * @returns - -1, 0, or 1 corresponding to the standard sorting return value
  */
-function enumSort(
+function enumSort<TData extends RowWithValues>(
   precedence: any[],
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   const s1 = rowA.original.values[columnId];
   const s2 = rowB.original.values[columnId];
   if (s1 === s2) {
     return 0;
   }
-  precedence = precedence.map((val) => capitalize(val.toLowerCase()));
   return precedence.indexOf(s1) > precedence.indexOf(s2) ? 1 : -1;
 }
 
-export function ruleStatusSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+export function ruleStatusSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -115,11 +109,10 @@ export function ruleStatusSort(
   );
 }
 
-export function reportingRuleStatusSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+export function reportingRuleStatusSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -134,11 +127,10 @@ export function reportingRuleStatusSort(
   );
 }
 
-export function userRoleSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+export function userRoleSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   return enumSort(
     [GQLUserRole.Admin, GQLUserRole.RulesManager, GQLUserRole.Analyst],
@@ -148,11 +140,10 @@ export function userRoleSort(
   );
 }
 
-export function conditionOutcomeSort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+export function conditionOutcomeSort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -167,11 +158,10 @@ export function conditionOutcomeSort(
   );
 }
 
-export function userPenaltySeveritySort(
-  rowA: Row<RowWithValues>,
-  rowB: Row<RowWithValues>,
-  columnId: IdType<RowWithValues>,
-  __?: boolean,
+export function userPenaltySeveritySort<TData extends RowWithValues>(
+  rowA: Row<TData>,
+  rowB: Row<TData>,
+  columnId: string,
 ) {
   return enumSort(
     [
@@ -188,19 +178,18 @@ export function userPenaltySeveritySort(
 }
 
 /**
- * Creates a date sort function that sorts by a raw date field from the original row data
- * @param dateKey - the key to access the raw date value from rowA.original/rowB.original
+ * Creates a date sort function that sorts by a raw date field from the row values
+ * @param dateKey - the key to access the raw date value from rowA.original.values/rowB.original.values
  * @returns a sort function compatible with react-table
  */
 export function dateSort(dateKey: string) {
-  return (
-    rowA: Row<RowWithValues>,
-    rowB: Row<RowWithValues>,
-    _columnId: IdType<RowWithValues>,
-    _desc?: boolean,
+  return <TData extends RowWithValues>(
+    rowA: Row<TData>,
+    rowB: Row<TData>,
+    _columnId: string,
   ) => {
-    const a = (rowA.original as unknown as Record<string, unknown>)[dateKey];
-    const b = (rowB.original as unknown as Record<string, unknown>)[dateKey];
+    const a = rowA.original.values[dateKey];
+    const b = rowB.original.values[dateKey];
 
     // Handle null/undefined - push to bottom
     if (!a && !b) return 0;
