@@ -3356,6 +3356,11 @@ export type GQLPartialItemsSuccessResponse = {
   readonly items: ReadonlyArray<GQLItem>;
 };
 
+export type GQLPasswordRequirements = {
+  readonly __typename: 'PasswordRequirements';
+  readonly minLength: Scalars['Int']['output'];
+};
+
 export type GQLPendingInvite = {
   readonly __typename: 'PendingInvite';
   readonly createdAt: Scalars['DateTime']['output'];
@@ -3512,6 +3517,7 @@ export type GQLQuery = {
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
+  readonly passwordRequirements: GQLPasswordRequirements;
   /** Server-owned grouping + ordering for the role-editor UI. Gated on MANAGE_ROLES. */
   readonly permissionGroups: ReadonlyArray<GQLPermissionGroup>;
   readonly policy?: Maybe<GQLPolicy>;
@@ -5527,6 +5533,18 @@ export type GQLUpdateExchangeCredentialsMutationVariables = Exact<{
 export type GQLUpdateExchangeCredentialsMutation = {
   readonly __typename: 'Mutation';
   readonly updateExchangeCredentials: boolean;
+};
+
+export type GQLPasswordRequirementsQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLPasswordRequirementsQuery = {
+  readonly __typename: 'Query';
+  readonly passwordRequirements: {
+    readonly __typename: 'PasswordRequirements';
+    readonly minLength: number;
+  };
 };
 
 export type GQLUserAndOrgQueryVariables = Exact<{ [key: string]: never }>;
@@ -27257,6 +27275,104 @@ export type GQLUpdateExchangeCredentialsMutationOptions =
     GQLUpdateExchangeCredentialsMutation,
     GQLUpdateExchangeCredentialsMutationVariables
   >;
+export const GQLPasswordRequirementsDocument = gql`
+  query PasswordRequirements {
+    passwordRequirements {
+      minLength
+    }
+  }
+`;
+
+/**
+ * __useGQLPasswordRequirementsQuery__
+ *
+ * To run a query within a React component, call `useGQLPasswordRequirementsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLPasswordRequirementsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLPasswordRequirementsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLPasswordRequirementsQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLPasswordRequirementsQuery,
+    GQLPasswordRequirementsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLPasswordRequirementsQuery,
+    GQLPasswordRequirementsQueryVariables
+  >(GQLPasswordRequirementsDocument, options);
+}
+export function useGQLPasswordRequirementsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLPasswordRequirementsQuery,
+    GQLPasswordRequirementsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLPasswordRequirementsQuery,
+    GQLPasswordRequirementsQueryVariables
+  >(GQLPasswordRequirementsDocument, options);
+}
+// @ts-ignore
+export function useGQLPasswordRequirementsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLPasswordRequirementsQuery,
+    GQLPasswordRequirementsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLPasswordRequirementsQuery,
+  GQLPasswordRequirementsQueryVariables
+>;
+export function useGQLPasswordRequirementsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLPasswordRequirementsQuery,
+        GQLPasswordRequirementsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLPasswordRequirementsQuery | undefined,
+  GQLPasswordRequirementsQueryVariables
+>;
+export function useGQLPasswordRequirementsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLPasswordRequirementsQuery,
+        GQLPasswordRequirementsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLPasswordRequirementsQuery,
+    GQLPasswordRequirementsQueryVariables
+  >(GQLPasswordRequirementsDocument, options);
+}
+export type GQLPasswordRequirementsQueryHookResult = ReturnType<
+  typeof useGQLPasswordRequirementsQuery
+>;
+export type GQLPasswordRequirementsLazyQueryHookResult = ReturnType<
+  typeof useGQLPasswordRequirementsLazyQuery
+>;
+export type GQLPasswordRequirementsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLPasswordRequirementsSuspenseQuery
+>;
+export type GQLPasswordRequirementsQueryResult = Apollo.QueryResult<
+  GQLPasswordRequirementsQuery,
+  GQLPasswordRequirementsQueryVariables
+>;
 export const GQLUserAndOrgDocument = gql`
   query UserAndOrg {
     me {
@@ -45625,6 +45741,7 @@ export const namedOperations = {
     HashBankById: 'HashBankById',
     ExchangeApis: 'ExchangeApis',
     ExchangeApiSchema: 'ExchangeApiSchema',
+    PasswordRequirements: 'PasswordRequirements',
     UserAndOrg: 'UserAndOrg',
     LoggedInUserForRoute: 'LoggedInUserForRoute',
     PermissionGatedRouteLoggedInUser: 'PermissionGatedRouteLoggedInUser',

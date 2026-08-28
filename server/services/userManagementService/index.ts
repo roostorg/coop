@@ -1,4 +1,5 @@
 export { UserManagementPg } from './dbTypes.js';
+export { MIN_PASSWORD_LENGTH } from './constants.js';
 export {
   default as makeUserManagementService,
   type UserManagementService,
