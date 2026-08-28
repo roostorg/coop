@@ -84,7 +84,7 @@
     "stream-to-async-iterator": "^1.0.0",
     "stream-to-blob": "^2.0.1",
     "ts-pattern": "^5.0.5",
-    "type-fest": "4.3.2",
+    "type-fest": "4.41.0",
     "uid": "^2.0.1",
     "undici": "^7.24.0",
     "unhomoglyph": "^1.0.6",
