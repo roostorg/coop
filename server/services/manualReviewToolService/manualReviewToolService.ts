@@ -37,10 +37,12 @@ import {
   type ManualReviewToolServicePg,
 } from './dbTypes.js';
 import AppealsJobRouting from './modules/AppealsJobRouting.js';
+import ClaimOperations from './modules/ClaimOperations.js';
 import CommentOperations from './modules/CommentOperations.js';
 import DecisionAnalytics, {
   type DecisionCountsInput,
   type DecisionCountsTableInput,
+  type HandleTimeInput,
   type JobCountsInput,
   type JobCreationsInput,
   type RecentDecisionsFilterInput,
@@ -300,6 +302,7 @@ export class ManualReviewToolService {
   private readonly manualReviewToolSettings: ManualReviewToolSettings;
   private readonly commentOps: CommentOperations;
   private readonly skipOps: SkipOperations;
+  private readonly claimOps: ClaimOperations;
   private readonly reporterInvalidation: ReporterInvalidation;
   private readonly userReportSweep: UserReportSweep;
 
@@ -346,6 +349,7 @@ export class ManualReviewToolService {
       //routingRuleExecutionLogger,
     );
     this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
+    this.claimOps = new ClaimOperations(pgQuery);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
       pgQuery,
@@ -354,6 +358,7 @@ export class ManualReviewToolService {
       moderationConfigService,
       this.tracer,
       this.manualReviewToolSettings,
+      this.claimOps,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
@@ -1155,6 +1160,10 @@ export class ManualReviewToolService {
     return this.decisionAnalytics.getTimeToAction(input);
   }
 
+  async getHandleTime(input: HandleTimeInput) {
+    return this.decisionAnalytics.getHandleTime(input);
+  }
+
   async getDecisionCounts(input: DecisionCountsInput) {
     return this.decisionAnalytics.getDecisionCounts(input);
   }
@@ -1229,6 +1238,14 @@ export class ManualReviewToolService {
       lockToken: userId,
     });
     if (!shouldBeAutoActioned || !job) {
+      if (job) {
+        await this.#logClaimBestEffort({
+          orgId,
+          queueId,
+          userId,
+          jobId: job.job.id,
+        });
+      }
       return job;
     }
 
@@ -1245,6 +1262,12 @@ export class ManualReviewToolService {
         })
         .catch(() => null);
       if (!freshItemInfo) {
+        await this.#logClaimBestEffort({
+          orgId,
+          queueId,
+          userId,
+          jobId: job.job.id,
+        });
         return job;
       }
 
@@ -1271,6 +1294,12 @@ export class ManualReviewToolService {
       // deleted, we should auto-close the job and move on to the next one.
       shouldBeAutoActioned = deletedFieldValue || isDeletedFieldRole;
       if (!shouldBeAutoActioned) {
+        await this.#logClaimBestEffort({
+          orgId,
+          queueId,
+          userId,
+          jobId: job.job.id,
+        });
         return job;
       } else {
         await this.submitDecision({
@@ -1298,6 +1327,41 @@ export class ManualReviewToolService {
       }
     }
     return null;
+  }
+
+  /**
+   * Claim rows are analytics-only (`assigned_at` is nullable; handle-time
+   * queries skip nulls). Match `job_creations` logging: never block dequeue.
+   */
+  async #logClaimBestEffort(opts: {
+    orgId: string;
+    queueId: string;
+    userId: string;
+    jobId: JobId;
+  }) {
+    const { orgId, queueId, userId, jobId } = opts;
+    try {
+      await this.claimOps.logClaim({
+        orgId,
+        queueId,
+        jobId,
+        userId,
+      });
+    } catch (error) {
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'logClaimBestEffort',
+        },
+        (span) => {
+          span.setAttribute('job.id', jobId);
+          span.setAttribute('org.id', orgId);
+          span.setAttribute('queue.id', queueId);
+          this.tracer.logSpanFailed(span, error);
+          return null;
+        },
+      );
+    }
   }
 
   async deleteAllJobsFromQueue(opts: {

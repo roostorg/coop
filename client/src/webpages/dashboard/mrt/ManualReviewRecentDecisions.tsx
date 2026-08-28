@@ -40,6 +40,10 @@ import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
 import ManualReviewRecentDecisionSummary from './ManualReviewRecentDecisionSummary';
+import {
+  getDecisionTimingFields,
+  RECENT_DECISIONS_CSV_HEADERS,
+} from './mrtAnalyticsUtils';
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
@@ -117,6 +121,8 @@ gql`
         }
       }
       createdAt
+      assignedAt
+      jobCreatedAt
       decisionReason
     }
   }
@@ -144,6 +150,7 @@ type RecentDecision =
 // Column visibility configuration
 type ColumnId =
   | 'decisionTime'
+  | 'claimedAt'
   | 'decisions'
   | 'policies'
   | 'reviewer'
@@ -154,6 +161,7 @@ const COLUMN_VISIBILITY_STORAGE_KEY = 'mrt-recent-decisions-column-visibility';
 
 const defaultColumnVisibility: Record<ColumnId, boolean> = {
   decisionTime: true,
+  claimedAt: true,
   decisions: true,
   decisionReason: true,
   policies: true,
@@ -163,6 +171,7 @@ const defaultColumnVisibility: Record<ColumnId, boolean> = {
 
 const columnLabels: Record<ColumnId, string> = {
   decisionTime: 'Decision Time',
+  claimedAt: 'Claimed At',
   decisions: 'Decisions',
   decisionReason: 'Decision Reason',
   policies: 'Policies',
@@ -371,6 +380,14 @@ export default function ManualReviewRecentDecisions() {
               sortFn: stringSort,
             }
           : undefined,
+        columnVisibility.claimedAt
+          ? {
+              header: 'Claimed At',
+              accessorKey: 'claimedAt',
+              sortDescFirst: true,
+              sortFn: stringSort,
+            }
+          : undefined,
         columnVisibility.decisions
           ? {
               header: 'Decisions',
@@ -564,6 +581,8 @@ export default function ManualReviewRecentDecisions() {
         reviewer: getReviewerName(decisionData.reviewerId),
         queue: getQueueName(decisionData.queueId),
         decisionTime: decisionData.createdAt,
+        claimedAt: decisionData.assignedAt ?? null,
+        jobCreatedAt: decisionData.jobCreatedAt ?? null,
         originalDecisionData: decisionData,
         decisionReason: decisionData.decisionReason,
       };
@@ -614,6 +633,15 @@ export default function ManualReviewRecentDecisions() {
                   new Date(value.decisionTime),
                 )}
               </div>
+            ),
+            claimedAt: value.claimedAt ? (
+              <div>
+                {parseDatetimeToReadableStringInCurrentTimeZone(
+                  new Date(value.claimedAt),
+                )}
+              </div>
+            ) : (
+              <div className="text-slate-400">—</div>
             ),
             decisionReason: value.decisionReason ? (
               <Tooltip title={value.decisionReason}>
@@ -698,20 +726,23 @@ export default function ManualReviewRecentDecisions() {
             createdAt: parseDatetimeToReadableStringInUTC(
               new Date(decision.createdAt),
             ),
+            assignedAt: decision.assignedAt
+              ? parseDatetimeToReadableStringInUTC(
+                  new Date(decision.assignedAt),
+                )
+              : '',
+            jobCreatedAt: decision.jobCreatedAt
+              ? parseDatetimeToReadableStringInUTC(
+                  new Date(decision.jobCreatedAt),
+                )
+              : '',
+            ...getDecisionTimingFields(decision),
             policies,
             decisionReason: decision.decisionReason ?? '',
           };
         });
         // Define the CSV headers
-        const headers = [
-          'Decisions',
-          'Policies',
-          'Reviewer',
-          'Queue',
-          'Decision Time',
-          'Decision Reason',
-          'Link',
-        ];
+        const headers = [...RECENT_DECISIONS_CSV_HEADERS];
 
         // Map the data to CSV rows
         const rows = allDecisionsCsv.map((item) => [
@@ -719,7 +750,11 @@ export default function ManualReviewRecentDecisions() {
           JSON.stringify(item.policies), // Convert array/object to JSON string if necessary
           item.reviewer,
           item.queue,
+          item.jobCreatedAt,
+          item.assignedAt,
           item.createdAt,
+          item.waitTimeSeconds,
+          item.handleTimeSeconds,
           item.decisionReason,
           `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
         ]);
