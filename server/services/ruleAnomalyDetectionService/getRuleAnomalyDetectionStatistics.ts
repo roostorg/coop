@@ -1,6 +1,7 @@
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { unzip2 } from '../../utils/fp-helpers.js';
+import { parseClickhouseTimestamp } from '../../utils/time.js';
 
 const makeGetRuleAnomalyDetectionaStatistics =
   (
@@ -40,13 +41,21 @@ const makeGetRuleAnomalyDetectionaStatistics =
     // conditions that need (or are forced) to have multiple bind values, and
     // then flatten below.
     //
-    // NB: we use sysdate(), not current_timestamp() because the former gives a
-    // UTC time, which is what we need (current_timestamp() is server-local time).
+    // now64 defaults to the server timezone; pass 'UTC' explicitly.
     const [conditions, conditionBindValues] = unzip2<string, string[] | Date>([
       ...(!includePeriodsInProgress
-        ? [['ts_end_exclusive <= SYSDATE()', [] as string[]] as const]
+        ? [["ts_end_exclusive <= now64(3, 'UTC')", [] as string[]] as const]
         : []),
-      ...(startTime ? [['ts_start_inclusive >= ?', startTime] as const] : []),
+      // parseDateTime64BestEffort: ClickHouse rejects the adapter's ISO-8601
+      // bind string when implicitly converting to DateTime64(3).
+      ...(startTime
+        ? [
+            [
+              'ts_start_inclusive >= parseDateTime64BestEffort(?)',
+              startTime,
+            ] as const,
+          ]
+        : []),
       ...(ruleIds
         ? [
             [
@@ -61,6 +70,8 @@ const makeGetRuleAnomalyDetectionaStatistics =
     const conditionString = conditions.join(' AND ');
 
     // Use group by to sum passes + runs across all rule environments.
+    // JSONLength: passes_distinct_user_ids is a JSON-serialised array String,
+    // not a native Array.
     const results = await dataWarehouse.query(
       `
       SELECT
@@ -68,7 +79,7 @@ const makeGetRuleAnomalyDetectionaStatistics =
         rule_version,
         num_passes,
         num_runs,
-        array_size(passes_distinct_user_ids) as num_distinct_users,
+        JSONLength(passes_distinct_user_ids) as num_distinct_users,
         ts_start_inclusive
       FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
       ${conditionString.length ? `WHERE ${conditionString}` : ''}
@@ -80,18 +91,23 @@ const makeGetRuleAnomalyDetectionaStatistics =
     return results.map((result) => {
       const row = result as Record<string, unknown>;
       return {
-        ruleId: row.RULE_ID as string,
+        ruleId: row.rule_id as string,
         // name is a reminder that JS may trim the precision on the Date here,
         // but that should be ok for our purposes.
-        approxRuleVersion: new Date(row.RULE_VERSION as string | number | Date),
+        approxRuleVersion: parseClickhouseTimestamp(
+          row.rule_version as string | number | Date,
+        ),
         // nb: the warehouse returned value for a timestamp is a JS Date, but with
         // some extra methods attached to it. These methods include toString, so
         // we cast back to a proper Date to avoid the string representation
         // changing (e.g., when serializing to JSON).
-        windowStart: new Date(row.TS_START_INCLUSIVE as string | number | Date),
-        passCount: row.NUM_PASSES as number,
-        passingUsersCount: row.NUM_DISTINCT_USERS as number,
-        runsCount: row.NUM_RUNS as number,
+        windowStart: parseClickhouseTimestamp(
+          row.ts_start_inclusive as string | number | Date,
+        ),
+        // Int64/UInt64 columns deserialise as BigInt; downstream math needs number.
+        passCount: Number(row.num_passes),
+        passingUsersCount: Number(row.num_distinct_users),
+        runsCount: Number(row.num_runs),
       };
     });
   };

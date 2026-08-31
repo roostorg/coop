@@ -47,7 +47,11 @@ Redis connection settings, external API keys for integrations, session secrets, 
 
 ### `client/.env`
 
-Settings for Vite, content proxying, and generating sourcemaps.
+Settings for Vite and generating sourcemaps.
+
+The content URL pattern (`VITE_CONTENT_URL_PATTERN`) determines which content URLs (if any) are rendered in an iframe versus just as links in review jobs. Domains in this list (e.g. `example.com`) match exact domains and subdomains, while substrings (e.g. `foo`) are substring-matched against content URL hostnames for backward compatibility.
+
+The content proxy URL (`VITE_CONTENT_PROXY_URL`) is optional and unset by default; without it, content matching the content URL pattern is loaded directly in an iframe. Implementing a content proxy enables you to implement wellness features that can't be applied to an iframe otherwise.
 
 ## Docker services
 

@@ -1,6 +1,6 @@
 import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import { Tooltip } from 'antd';
-import { useState } from 'react';
+import { ReactElement, useState } from 'react';
 
 const DEFAULT_TOOLTIP_TEXT = 'Copy to clipboard';
 
@@ -12,11 +12,11 @@ export default function CopyTextComponent(props: {
   value: string;
   // If value being copied to the clipboard is different from what you'd like
   // to display to the user, set this value
-  displayValue?: string | JSX.Element;
+  displayValue?: string | ReactElement;
   // Tooltip text to display when the user hovers over the text
   initialTooltipText?: string;
   // Optional footer items to display below the text
-  footerItems?: JSX.Element[];
+  footerItems?: ReactElement[];
   isError?: boolean;
   wrapText?: boolean;
 }) {

@@ -167,6 +167,14 @@ export default function ManualReviewRecentDecisionSummary(props: {
             {parseDatetimeToReadableStringInCurrentTimeZone(
               selectedDecision.createdAt,
             )}
+            {selectedDecision.assignedAt ? (
+              <div className="font-normal">
+                Claimed{' '}
+                {parseDatetimeToReadableStringInCurrentTimeZone(
+                  selectedDecision.assignedAt,
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="flex gap-8">

@@ -8,7 +8,6 @@ import { type SignalType } from './SignalType.js';
 export type SignalArgsByType = Satisfies<
   {
     [SignalType.AGGREGATION]: { aggregationClause: AggregationClause };
-    [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]: undefined;
     [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]: undefined;
     [SignalType.OPEN_AI_WHISPER_TRANSCRIPTION]: undefined;
     [SignalType.TEXT_MATCHING_CONTAINS_TEXT]: undefined;
@@ -17,8 +16,6 @@ export type SignalArgsByType = Satisfies<
     [SignalType.TEXT_MATCHING_NOT_CONTAINS_REGEX]: undefined;
     [SignalType.TEXT_MATCHING_CONTAINS_VARIANT]: undefined;
     [SignalType.TEXT_SIMILARITY_SCORE]: undefined;
-    [SignalType.IMAGE_EXACT_MATCH]: undefined;
-    [SignalType.IMAGE_SIMILARITY_SCORE]: undefined;
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]: undefined;
     [SignalType.IMAGE_SIMILARITY_MATCH]: undefined;
     [SignalType.GEO_CONTAINED_WITHIN]: undefined;
@@ -50,7 +47,6 @@ export type SignalArgs = SignalArgsByType[keyof SignalArgsByType];
 export type RuntimeSignalArgsByType = Satisfies<
   {
     [SignalType.AGGREGATION]: AggregationRuntimeArgsForItem;
-    [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]: undefined;
     [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]: undefined;
     [SignalType.OPEN_AI_WHISPER_TRANSCRIPTION]: undefined;
     [SignalType.TEXT_MATCHING_CONTAINS_TEXT]: undefined;
@@ -59,8 +55,6 @@ export type RuntimeSignalArgsByType = Satisfies<
     [SignalType.TEXT_MATCHING_NOT_CONTAINS_REGEX]: undefined;
     [SignalType.TEXT_MATCHING_CONTAINS_VARIANT]: undefined;
     [SignalType.TEXT_SIMILARITY_SCORE]: undefined;
-    [SignalType.IMAGE_EXACT_MATCH]: undefined;
-    [SignalType.IMAGE_SIMILARITY_SCORE]: undefined;
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]: undefined;
     [SignalType.IMAGE_SIMILARITY_MATCH]: undefined;
     [SignalType.GEO_CONTAINED_WITHIN]: undefined;

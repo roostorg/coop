@@ -9,7 +9,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import '@testing-library/jest-dom/extend-expect';
@@ -19,6 +19,7 @@ import {
   GQLOrgDefaultSafetySettingsDocument,
   GQLOrgSettingsDocument,
   GQLSetOrgDefaultSafetySettingsDocument,
+  GQLUpdateAllowMultiplePoliciesPerActionDocument,
   GQLUpdateAppealSettingsDocument,
   GQLUpdateHasAppealsEnabledDocument,
   GQLUpdateIgnoreCallbackUrlDocument,
@@ -26,10 +27,25 @@ import {
   GQLUpdatePartialItemsSettingsDocument,
   GQLUpdateRequiresPolicyForDecisionsDocument,
   GQLUpdateSsoCredentialsDocument,
-  GQLUpdateUserStrikeTtlDocument,
 } from '@/graphql/generated';
 
 import SettingsPage from './SettingsPage';
+
+// Exposes the router's current query string and how it was last reached, so
+// tests can assert on URL normalization (see the legacy `?tab=` cases).
+function LocationProbe() {
+  const { search } = useLocation();
+  const navigationType = useNavigationType();
+  return (
+    <div
+      data-testid="location-probe"
+      data-search={search}
+      data-navigation-type={navigationType}
+    />
+  );
+}
+
+const locationProbe = () => screen.getByTestId('location-probe');
 
 function renderWithProviders(mocks: MockedResponse[], tab = 'organization') {
   return render(
@@ -37,6 +53,7 @@ function renderWithProviders(mocks: MockedResponse[], tab = 'organization') {
       <TooltipProvider>
         <MockedProvider mocks={mocks}>
           <MemoryRouter initialEntries={[`/dashboard/settings?tab=${tab}`]}>
+            <LocationProbe />
             <SettingsPage />
           </MemoryRouter>
         </MockedProvider>
@@ -161,7 +178,9 @@ describe('SettingsPage', () => {
       expect(
         screen.getByRole('tab', { name: /wellness/i }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /other/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /partial items/i }),
+      ).toBeInTheDocument();
     });
 
     it('switches tabs on click', () => {
@@ -183,6 +202,49 @@ describe('SettingsPage', () => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
       });
     });
+
+    it('falls back to organization for an unknown ?tab= value', () => {
+      renderWithProviders([orgSettingsMock], 'not-a-tab');
+      expect(
+        screen.getByRole('tab', { name: /organization/i }),
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('resolves the legacy ?tab=other link to the Partial Items tab', async () => {
+      renderWithProviders([deploymentSettingsMock], 'other');
+      expect(
+        screen.getByRole('tab', { name: /partial items/i }),
+      ).toHaveAttribute('aria-selected', 'true');
+      await waitFor(() => {
+        expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
+      });
+    });
+
+    it('rewrites a legacy ?tab= value in the URL without adding history', async () => {
+      renderWithProviders([deploymentSettingsMock], 'other');
+      await waitFor(() => {
+        expect(locationProbe()).toHaveAttribute(
+          'data-search',
+          '?tab=partial-items',
+        );
+      });
+      // The rewrite replaces the legacy entry rather than pushing onto it, so
+      // the back button doesn't bounce the user back to `?tab=other`.
+      expect(locationProbe()).toHaveAttribute(
+        'data-navigation-type',
+        'REPLACE',
+      );
+    });
+
+    it('preserves unrelated query params when rewriting a legacy tab', async () => {
+      renderWithProviders([deploymentSettingsMock], 'other&highlight=endpoint');
+      await waitFor(() => {
+        expect(locationProbe()).toHaveAttribute(
+          'data-search',
+          '?tab=partial-items&highlight=endpoint',
+        );
+      });
+    });
   });
 
   describe('Organization tab', () => {
@@ -193,9 +255,11 @@ describe('SettingsPage', () => {
       expect(
         screen.getByDisplayValue('https://example.com'),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /save changes/i }),
-      ).toBeDisabled();
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /save changes/i }),
+        ).toBeDisabled();
+      });
     });
 
     it('enables save when a field changes, disables for invalid input', async () => {
@@ -449,12 +513,16 @@ describe('SettingsPage', () => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
         expect(screen.getByText('Webhooks')).toBeInTheDocument();
+        expect(
+          screen.getByText('Multiple Policies Per Action'),
+        ).toBeInTheDocument();
       });
     });
 
     it('reflects initial toggle states from server data', async () => {
       const mock = makeDeploymentMock({
         requiresPolicyForDecisionsInMrt: true,
+        allowMultiplePoliciesPerAction: true,
         requiresDecisionReasonInMrt: true,
         requiresDecisionReasonOnIgnoreInMrt: true,
         hideSkipButtonForNonAdmins: true,
@@ -494,6 +562,40 @@ describe('SettingsPage', () => {
       });
 
       userEvent.click(screen.getAllByRole('switch')[0]);
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(mutationFn).toHaveBeenCalled();
+      });
+    });
+
+    it('calls multiple policies per action mutation on save', async () => {
+      const mutationFn = vi.fn(() => ({
+        data: { updateAllowMultiplePoliciesPerAction: true },
+      }));
+
+      renderWithProviders(
+        [
+          deploymentSettingsMock,
+          {
+            request: {
+              query: GQLUpdateAllowMultiplePoliciesPerActionDocument,
+              variables: { enabled: true },
+            },
+            newData: mutationFn,
+          },
+        ],
+        'review-console',
+      );
+      await waitFor(() => {
+        expect(
+          screen.getByText('Multiple Policies Per Action'),
+        ).toBeInTheDocument();
+      });
+
+      // Second switch in the Moderator Requirements list, directly after
+      // "Require Policy for Decisions".
+      userEvent.click(screen.getAllByRole('switch')[1]);
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
@@ -611,15 +713,10 @@ describe('SettingsPage', () => {
     });
   });
 
-  describe('Other tab', () => {
-    it('shows toggles, strike TTL, and partial items', async () => {
-      renderWithProviders([deploymentSettingsMock], 'other');
+  describe('Partial Items tab', () => {
+    it('shows only partial items settings', async () => {
+      renderWithProviders([deploymentSettingsMock], 'partial-items');
       await waitFor(() => {
-        expect(
-          screen.getByText('Multiple Policies Per Action'),
-        ).toBeInTheDocument();
-        expect(screen.getByText('User Strike TTL (Days)')).toBeInTheDocument();
-        expect(screen.getByDisplayValue('90')).toBeInTheDocument();
         expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();
         expect(
           screen.getByText('Partial Items Request Headers'),
@@ -630,42 +727,6 @@ describe('SettingsPage', () => {
       expect(
         screen.queryByText('Enable Reporting Rules'),
       ).not.toBeInTheDocument();
-    });
-
-    it('calls strike TTL mutation on save', async () => {
-      const mutationFn = vi.fn(() => ({
-        data: {
-          updateUserStrikeTTL: {
-            __typename: 'UpdateUserStrikeTtlSuccessResponse',
-          },
-        },
-      }));
-
-      renderWithProviders(
-        [
-          deploymentSettingsMock,
-          {
-            request: {
-              query: GQLUpdateUserStrikeTtlDocument,
-              variables: { input: { ttlDays: 30 } },
-            },
-            newData: mutationFn,
-          },
-        ],
-        'other',
-      );
-      await waitFor(() => {
-        expect(screen.getByDisplayValue('90')).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByDisplayValue('90'), {
-        target: { value: '30' },
-      });
-      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
-
-      await waitFor(() => {
-        expect(mutationFn).toHaveBeenCalled();
-      });
     });
 
     it('calls partial items mutation on save', async () => {
@@ -689,7 +750,7 @@ describe('SettingsPage', () => {
             newData: mutationFn,
           },
         ],
-        'other',
+        'partial-items',
       );
       await waitFor(() => {
         expect(screen.getByText('Partial Items Endpoint')).toBeInTheDocument();

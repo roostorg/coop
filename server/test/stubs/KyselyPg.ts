@@ -16,6 +16,7 @@ export type MockPgExecute = MockedFn<
 export function makeMockPgDialect(executeMockFn: MockPgExecute) {
   return new PostgresDialect({
     pool: {
+      options: {},
       async connect() {
         function query(cursor: PostgresCursor<unknown>): never;
         function query(

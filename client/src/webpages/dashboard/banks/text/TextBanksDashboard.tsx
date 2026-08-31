@@ -112,42 +112,48 @@ export default function TextBanksDashboard() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Name',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Description',
-        accessor: 'description',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'description',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Description',
+        accessorKey: 'description',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'description',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Type',
-        accessor: 'type',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'type',
-          }),
-        filter: 'includes',
-        canSort: false,
+        header: 'Type',
+        accessorKey: 'type',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'type',
+            }),
+        },
+        filterFn: 'includes' as const,
+        enableSorting: false,
       },
       {
-        Header: '',
-        accessor: 'mutations', // accessor is the "key" in the data
-        canSort: false,
+        header: '',
+        accessorKey: 'mutations', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],
