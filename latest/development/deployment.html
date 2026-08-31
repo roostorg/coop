@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-41844fd6.js";
+            window.path_to_searchindex_js = "../searchindex-92d1b43c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -217,7 +217,7 @@
 <p>Child safety reporting is optional, but if you are using NCMEC reporting you must configure the org settings in Coop and set <code>NCMEC_ENV=production</code> on the server only when your deployment has been approved for live reporting. See <a href="../integrations/ncmec.html#test-vs-production-submissions">NCMEC CyberTipline</a>.</p>
 </li>
 <li>
-<p>Client-side integrations such as Google Places and custom docs/content proxy URLs are optional and can be left unset if you do not use those capabilities.</p>
+<p>Client-side integrations such as Google Places and custom docs URLs are optional and can be left unset if you do not use those capabilities. See <a href="#content-proxy">Content Proxy</a> below for <code>VITE_CONTENT_PROXY_URL</code>.</p>
 </li>
 <li>
 <p>Third-party integration keys in <code>server/.env.example</code> are generally optional unless you are enabling the corresponding integration.</p>
@@ -282,6 +282,26 @@
 <p>In your Okta app under <strong>Assignments</strong>, assign users or groups to your app.</p>
 </li>
 </ol>
+<h2 id="content-proxy"><a class="header" href="#content-proxy">Content Proxy</a></h2>
+<p>Coop can optionally route item content URLs through a <strong>content proxy</strong>: a service you host that fetches a content URL and serves it back inside the review iframe, so it can control presentation and apply wellness features (since the review UI cannot otherwise style or control content from a cross-origin iframe).</p>
+<p>Set <code>VITE_CONTENT_PROXY_URL</code> to your proxy’s base URL to enable it. Left unset (the default), matching content just loads directly in the iframe.</p>
+<p>Coop does not ship a reference proxy implementation, so you’ll need to deploy your own implementation.</p>
+<h3 id="load-content"><a class="header" href="#load-content">Load content</a></h3>
+<p>Coop loads your proxy at:</p>
+<pre><code>&lt;VITE_CONTENT_PROXY_URL&gt;/?contentUrl=&lt;url-encoded content URL&gt;
+</code></pre>
+<p>Your service should fetch and serve back the given <code>contentUrl</code>’s content.</p>
+<h3 id="wellness-features"><a class="header" href="#wellness-features">Wellness features</a></h3>
+<p>After the iframe loads, and whenever a reviewer changes their overlay settings, Coop posts a message to your proxy’s page:</p>
+<pre><code class="language-json">{
+  "type": "customControl",
+  "blur": 0,
+  "grayscale": false,
+  "shouldTranslate": false,
+  "sepia": false
+}
+</code></pre>
+<p><code>blur</code> ranges from <code>0</code> (none) to <code>6</code> (strongest); <code>grayscale</code> and <code>sepia</code> are simple on/off filters. Your proxy’s page should listen for this message and apply the requested effects to the content it’s displaying.</p>
 <h2 id="historical-reference"><a class="header" href="#historical-reference">Historical reference</a></h2>
 <p>For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available in the <a href="https://github.com/roostorg/coop/tree/0.1/.devops"><code>0.1</code> tag</a>. That infrastructure code may have drifted from the current application architecture and is no longer maintained, but may serve as a reference for your own deployment.</p>
 <style>
