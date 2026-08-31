@@ -1,6 +1,7 @@
 import { type Kysely } from 'kysely';
 
 import { makeTestWithFixture } from '../../test/utils.js';
+import { MIN_PASSWORD_LENGTH } from './constants.js';
 import type { UserManagementPg } from './index.js';
 import UserManagementService from './userManagementService.js';
 
@@ -255,6 +256,41 @@ describe('UserManagementService', () => {
         // ...and the user's sessions are deleted so a phished session can't
         // outlive the reset.
         expect(mockDb.deleteFrom).toHaveBeenCalledWith('public.session');
+      },
+    );
+
+    testWithFixtures(
+      'rejects a password shorter than the minimum length',
+      async ({ sut }) => {
+        const mockSelect = {
+          selectAll: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          executeTakeFirst: jest.fn().mockResolvedValue({
+            hashed_token: 'hashed',
+            user_id: 'user-123',
+            org_id: 'org-456',
+            created_at: new Date(),
+          }),
+        };
+
+        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+
+        const tooShortPassword = 'a'.repeat(MIN_PASSWORD_LENGTH - 1);
+
+        await expect(
+          sut.resetPasswordForToken({
+            token: 'plaintext-token',
+            newPassword: tooShortPassword,
+          }),
+        ).rejects.toThrow(
+          expect.objectContaining({
+            message: expect.stringContaining(
+              `at least ${MIN_PASSWORD_LENGTH} characters`,
+            ),
+          }),
+        );
+
+        expect(mockDb.updateTable).not.toHaveBeenCalled();
       },
     );
   });

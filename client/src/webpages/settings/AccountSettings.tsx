@@ -33,6 +33,7 @@ import {
   useGQLAccountSettingsQuery,
   useGQLChangePasswordMutation,
   useGQLDeleteUserMutation,
+  useGQLPasswordRequirementsQuery,
   useGQLPersonalSafetySettingsQuery,
   useGQLSetModeratorSafetySettingsMutation,
   useGQLUpdateAccountInfoMutation,
@@ -46,6 +47,7 @@ import {
   preferencesFromColorScheme,
   type ModeratorSafetyColorScheme,
 } from '../../models/safetySettings';
+import { DEFAULT_MIN_PASSWORD_LENGTH } from '../../utils/password';
 import {
   BLUR_LEVELS,
   type BlurStrength,
@@ -222,6 +224,11 @@ export default function AccountSettings() {
     error: accountSettingsError,
   } = useGQLAccountSettingsQuery();
 
+  const { data: passwordRequirementsData } = useGQLPasswordRequirementsQuery();
+  const minPasswordLength =
+    passwordRequirementsData?.passwordRequirements.minLength ??
+    DEFAULT_MIN_PASSWORD_LENGTH;
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -378,9 +385,9 @@ export default function AccountSettings() {
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (newPassword.length < minPasswordLength) {
       toast.error('Password Too Short', {
-        description: 'Password must be at least 8 characters long.',
+        description: `Password must be at least ${minPasswordLength} characters long.`,
       });
       return;
     }
@@ -393,7 +400,13 @@ export default function AccountSettings() {
         },
       },
     });
-  }, [currentPassword, newPassword, confirmNewPassword, changePassword]);
+  }, [
+    currentPassword,
+    newPassword,
+    confirmNewPassword,
+    changePassword,
+    minPasswordLength,
+  ]);
 
   const moderatorSafetyBlurValue = useMemo(
     () => [safetySettings.moderatorSafetyBlurLevel],
@@ -478,7 +491,7 @@ export default function AccountSettings() {
           </DialogHeader>
           <DialogDescription>
             Enter your current password and choose a new password. Your new
-            password must be at least 8 characters long.
+            password must be at least {minPasswordLength} characters long.
           </DialogDescription>
           <div className="flex flex-col gap-4 p-4">
             <div>

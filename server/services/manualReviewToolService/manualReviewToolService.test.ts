@@ -1,4 +1,4 @@
-/* eslint-disable max-lines */
+import { sql } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
@@ -14,6 +14,7 @@ import {
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import { UserPermission } from '../userManagementService/index.js';
 import {
   type ManualReviewToolService,
   type NcmecContentItemSubmission,
@@ -361,10 +362,11 @@ describe('Manual Review Tool Service', () => {
           .selectFrom('manual_review_tool.manual_review_decisions')
           .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
           .where('org_id', '=', orgId)
-          .select(['reviewer_id'])
+          .select(['reviewer_id', 'assigned_at'])
           .executeTakeFirst();
 
         expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
+        expect(row?.assigned_at).toBeNull();
       },
     );
   });
@@ -960,6 +962,530 @@ describe('Manual Review Tool Service', () => {
           false,
         );
         expect(await mrtService.getRequiresDecisionReason(orgId)).toBe(false);
+      },
+    );
+  });
+
+  describe('job claims and assigned_at', () => {
+    testWithQueue(
+      'records a claim on dequeue and copies latest claim onto the decision',
+      async ({ mrtService, org, queue, actionId, deps }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const reviewerId = uuidv1();
+        const reviewerEmail = 'claim-test@example.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: reviewerId,
+        });
+        if (!dequeuedJob) {
+          throw new Error('expected a dequeued job');
+        }
+
+        const claims = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.job_claims',
+        )
+          .selectAll()
+          .where('org_id', '=', orgId)
+          .where('job_id', '=', dequeuedJob.job.id)
+          .execute();
+        expect(claims).toHaveLength(1);
+        expect(claims[0].user_id).toBe(reviewerId);
+
+        await mrtService.submitDecision({
+          queueId,
+          reportHistory: [],
+          jobId: dequeuedJob.job.id,
+          lockToken: dequeuedJob.lockToken,
+          decisionComponents: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: actionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          relatedActions: [],
+          reviewerId,
+          reviewerEmail,
+          orgId,
+        });
+
+        const decision = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.manual_review_decisions',
+        )
+          .select(['assigned_at', 'created_at', 'reviewer_id'])
+          .where('org_id', '=', orgId)
+          .where(
+            sql<string>`(job_payload->>'id')::text`,
+            '=',
+            dequeuedJob.job.id,
+          )
+          .executeTakeFirstOrThrow();
+
+        expect(decision.reviewer_id).toBe(reviewerId);
+        expect(decision.assigned_at).toEqual(claims[0].claimed_at);
+        if (decision.assigned_at == null) {
+          throw new Error('expected assigned_at');
+        }
+        expect(decision.created_at.getTime()).toBeGreaterThanOrEqual(
+          decision.assigned_at.getTime(),
+        );
+
+        const handleTime = await mrtService.getHandleTime({
+          orgId,
+          groupBy: ['reviewer_id'],
+          filterBy: {
+            startDate: new Date(Date.now() - 60_000),
+            endDate: new Date(Date.now() + 60_000),
+            queueIds: [],
+            reviewerIds: [reviewerId],
+          },
+        });
+        expect(handleTime).toHaveLength(1);
+        expect(handleTime[0].reviewer_id).toBe(reviewerId);
+        const handleTimeSeconds = handleTime[0].handle_time;
+        if (handleTimeSeconds == null) {
+          throw new Error('expected handle_time');
+        }
+        expect(handleTimeSeconds).toBeGreaterThanOrEqual(0);
+
+        const recent = await mrtService.getRecentDecisions({
+          orgId,
+          userPermissions: [UserPermission.VIEW_MRT],
+          input: { page: 0 },
+        });
+        const recentDecision = recent.find(
+          (it) => it.jobId === dequeuedJob.job.id,
+        );
+        expect(recentDecision).toBeDefined();
+        expect(recentDecision?.assignedAt).toEqual(claims[0].claimed_at);
+        expect(recentDecision?.jobCreatedAt?.getTime()).toBe(
+          new Date(dequeuedJob.job.createdAt).getTime(),
+        );
+      },
+    );
+
+    testWithQueue(
+      'uses the latest claim after a job is released and reclaimed',
+      async ({ mrtService, org, queue, actionId, deps }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const firstReviewerId = uuidv1();
+        const secondReviewerId = uuidv1();
+        const reviewerEmail = 'reclaim-test@example.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const firstClaim = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: firstReviewerId,
+        });
+        if (!firstClaim) {
+          throw new Error('expected first claim');
+        }
+
+        await mrtService.releaseJobLock({
+          orgId,
+          queueId,
+          jobId: firstClaim.job.id,
+          lockToken: firstClaim.lockToken,
+        });
+
+        const secondClaim = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: secondReviewerId,
+        });
+        if (!secondClaim) {
+          throw new Error('expected second claim');
+        }
+        expect(secondClaim.job.id).toBe(firstClaim.job.id);
+
+        const claims = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.job_claims',
+        )
+          .selectAll()
+          .where('org_id', '=', orgId)
+          .where('job_id', '=', firstClaim.job.id)
+          .orderBy('claimed_at', 'asc')
+          .execute();
+        expect(claims).toHaveLength(2);
+        expect(claims[0].user_id).toBe(firstReviewerId);
+        expect(claims[1].user_id).toBe(secondReviewerId);
+
+        await mrtService.submitDecision({
+          queueId,
+          reportHistory: [],
+          jobId: secondClaim.job.id,
+          lockToken: secondClaim.lockToken,
+          decisionComponents: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: actionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          relatedActions: [],
+          reviewerId: secondReviewerId,
+          reviewerEmail,
+          orgId,
+        });
+
+        const decision = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.manual_review_decisions',
+        )
+          .select(['assigned_at'])
+          .where('org_id', '=', orgId)
+          .where(
+            sql<string>`(job_payload->>'id')::text`,
+            '=',
+            secondClaim.job.id,
+          )
+          .executeTakeFirstOrThrow();
+
+        expect(decision.assigned_at).toEqual(claims[1].claimed_at);
+      },
+    );
+
+    testWithQueue(
+      'leaves assigned_at null on AUTOMATIC_CLOSE even after a human claim',
+      async ({ mrtService, org, queue, deps }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const claimerId = uuidv1();
+        const jobPayload = makeDummyMrtJobPayload();
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: claimerId,
+        });
+        if (!dequeuedJob) {
+          throw new Error('expected a dequeued job');
+        }
+
+        const claims = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.job_claims',
+        )
+          .selectAll()
+          .where('org_id', '=', orgId)
+          .where('job_id', '=', dequeuedJob.job.id)
+          .execute();
+        expect(claims).toHaveLength(1);
+
+        await mrtService.submitDecision({
+          queueId,
+          reportHistory: [],
+          jobId: dequeuedJob.job.id,
+          lockToken: dequeuedJob.lockToken,
+          relatedActions: [],
+          orgId,
+          automaticCloseDecision: {
+            type: 'AUTOMATIC_CLOSE',
+            reason: 'ITEM_DELETED_BEFORE_REVIEW',
+          },
+        });
+
+        const decision = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.manual_review_decisions',
+        )
+          .select(['assigned_at', 'reviewer_id'])
+          .where('org_id', '=', orgId)
+          .where(
+            sql<string>`(job_payload->>'id')::text`,
+            '=',
+            dequeuedJob.job.id,
+          )
+          .executeTakeFirstOrThrow();
+
+        expect(decision.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
+        expect(decision.assigned_at).toBeNull();
+
+        const handleTime = await mrtService.getHandleTime({
+          orgId,
+          groupBy: [],
+          filterBy: {
+            startDate: new Date(Date.now() - 60_000),
+            endDate: new Date(Date.now() + 60_000),
+            queueIds: [],
+            reviewerIds: [],
+          },
+        });
+        expect(handleTime).toHaveLength(1);
+        expect(handleTime[0].handle_time).toBeNull();
+      },
+    );
+
+    testWithQueue(
+      'leaves assigned_at null for swept AUTOMATIC_CLOSE despite a prior claim',
+      async ({ mrtService, org, queue, deps }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const claimerId = uuidv1();
+        const triggerReviewerId = uuidv1();
+        const reviewerEmail = 'sweep-auto-close@example.com';
+        const jobPayload = makeDummyMrtJobPayload();
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const claimed = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: claimerId,
+        });
+        if (!claimed) {
+          throw new Error('expected a claimed job');
+        }
+
+        await mrtService.releaseJobLock({
+          orgId,
+          queueId,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+        });
+
+        const outcome = await mrtService[
+          'jobDecisioning'
+        ].recordSweptJobDisposition({
+          orgId,
+          queueId,
+          job: claimed.job,
+          disposition: 'AUTOMATIC_CLOSE',
+          triggerCustomActions: [],
+          reviewerId: triggerReviewerId,
+          reviewerEmail,
+        });
+        expect(outcome).toBe('logged');
+
+        const decision = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.manual_review_decisions',
+        )
+          .select(['assigned_at', 'reviewer_id'])
+          .where('org_id', '=', orgId)
+          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
+          .executeTakeFirstOrThrow();
+
+        expect(decision.reviewer_id).toBe(triggerReviewerId);
+        expect(decision.assigned_at).toBeNull();
+      },
+    );
+
+    testWithQueue(
+      'leaves assigned_at null when the deciding reviewer never claimed the job',
+      async ({ mrtService, org, queue, actionId, deps }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const claimerId = uuidv1();
+        const triggerReviewerId = uuidv1();
+        const reviewerEmail = 'sweep-like-test@example.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const claimed = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: claimerId,
+        });
+        if (!claimed) {
+          throw new Error('expected a claimed job');
+        }
+
+        await mrtService.releaseJobLock({
+          orgId,
+          queueId,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+        });
+
+        const outcome = await mrtService[
+          'jobDecisioning'
+        ].recordSweptJobDisposition({
+          orgId,
+          queueId,
+          job: claimed.job,
+          disposition: 'SAME_ACTION',
+          triggerCustomActions: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: actionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          reviewerId: triggerReviewerId,
+          reviewerEmail,
+        });
+        expect(outcome).toBe('logged');
+
+        const decision = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.manual_review_decisions',
+        )
+          .select(['assigned_at', 'reviewer_id'])
+          .where('org_id', '=', orgId)
+          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
+          .executeTakeFirstOrThrow();
+
+        expect(decision.reviewer_id).toBe(triggerReviewerId);
+        expect(decision.assigned_at).toBeNull();
+      },
+    );
+
+    testWithQueue(
+      'leaves assigned_at null on swept SAME_ACTION even if the trigger reviewer previously claimed the job',
+      async ({ mrtService, org, queue, actionId, deps }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const triggerReviewerId = uuidv1();
+        const reviewerEmail = 'stale-claim-sweep@example.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const claimed = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: triggerReviewerId,
+        });
+        if (!claimed) {
+          throw new Error('expected a claimed job');
+        }
+
+        await mrtService.releaseJobLock({
+          orgId,
+          queueId,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+        });
+
+        const claims = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.job_claims',
+        )
+          .selectAll()
+          .where('org_id', '=', orgId)
+          .where('job_id', '=', claimed.job.id)
+          .where('user_id', '=', triggerReviewerId)
+          .execute();
+        expect(claims).toHaveLength(1);
+
+        const outcome = await mrtService[
+          'jobDecisioning'
+        ].recordSweptJobDisposition({
+          orgId,
+          queueId,
+          job: claimed.job,
+          disposition: 'SAME_ACTION',
+          triggerCustomActions: [
+            {
+              type: 'CUSTOM_ACTION',
+              actions: [{ id: actionId }],
+              policies: [],
+              itemIds: [itemId],
+              itemTypeId,
+            },
+          ],
+          reviewerId: triggerReviewerId,
+          reviewerEmail,
+        });
+        expect(outcome).toBe('logged');
+
+        const decision = await deps.KyselyPg.selectFrom(
+          'manual_review_tool.manual_review_decisions',
+        )
+          .select(['assigned_at', 'reviewer_id'])
+          .where('org_id', '=', orgId)
+          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
+          .executeTakeFirstOrThrow();
+
+        expect(decision.reviewer_id).toBe(triggerReviewerId);
+        expect(decision.assigned_at).toBeNull();
+      },
+    );
+
+    testWithQueue(
+      'still dequeues when claim logging fails',
+      async ({ mrtService, org, queue }) => {
+        const orgId = org.id;
+        const queueId = queue.id;
+        const firstReviewerId = uuidv1();
+        const jobPayload = makeDummyMrtJobPayload();
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId,
+          queueId,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const releaseSpy = jest.spyOn(mrtService['queueOps'], 'releaseJobLock');
+        const logClaimSpy = jest
+          .spyOn(mrtService['claimOps'], 'logClaim')
+          .mockRejectedValueOnce(new Error('claim insert failed'));
+
+        const dequeued = await mrtService.dequeueNextJob({
+          orgId,
+          queueId,
+          userId: firstReviewerId,
+        });
+
+        expect(dequeued).not.toBeNull();
+        expect(dequeued?.lockToken).toBe(firstReviewerId);
+        expect(releaseSpy).not.toHaveBeenCalled();
+
+        logClaimSpy.mockRestore();
+        releaseSpy.mockRestore();
       },
     );
   });

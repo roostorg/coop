@@ -2,7 +2,7 @@
 import ReviewConsoleIcon from '@/icons/lni/User/review-console.svg?react';
 import { gql } from '@apollo/client';
 import { Building2, Gavel, Heart, KeyRound, Settings2 } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 
@@ -10,7 +10,7 @@ import DashboardHeader from '../dashboard/components/DashboardHeader';
 
 import AppealsTab from './tabs/AppealsTab';
 import OrganizationTab from './tabs/OrganizationTab';
-import OtherTab from './tabs/OtherTab';
+import PartialItemsTab from './tabs/PartialItemsTab';
 import ReviewConsoleTab from './tabs/ReviewConsoleTab';
 import SSOTab from './tabs/SSOTab';
 import WellnessTab from './tabs/WellnessTab';
@@ -79,7 +79,12 @@ gql`
 `;
 
 type Tab =
-  'organization' | 'sso' | 'appeals' | 'review-console' | 'wellness' | 'other';
+  | 'organization'
+  | 'sso'
+  | 'appeals'
+  | 'review-console'
+  | 'wellness'
+  | 'partial-items';
 
 const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -95,16 +100,47 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
     icon: <ReviewConsoleIcon className="w-4.5 h-4.5" />,
   },
   { value: 'wellness', label: 'Wellness', icon: <Heart size={16} /> },
-  { value: 'other', label: 'Other', icon: <Settings2 size={16} /> },
+  {
+    value: 'partial-items',
+    label: 'Partial Items',
+    icon: <Settings2 size={16} />,
+  },
 ];
+
+// Tab values that have been renamed. Old links (bookmarks, docs, shared URLs)
+// still land on the right tab instead of silently falling back to Organization.
+const LEGACY_TAB_ALIASES: Record<string, Tab | undefined> = {
+  other: 'partial-items',
+};
+
+const isTab = (value: string): value is Tab =>
+  TABS.some((tab) => tab.value === value);
 
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') as Tab | null;
+  const tabParam = searchParams.get('tab');
+  const aliasedTab = tabParam ? LEGACY_TAB_ALIASES[tabParam] : undefined;
+  const resolvedTab = aliasedTab ?? tabParam;
   const activeTab: Tab =
-    tabParam && TABS.some((t) => t.value === tabParam)
-      ? tabParam
-      : 'organization';
+    resolvedTab && isTab(resolvedTab) ? resolvedTab : 'organization';
+
+  // Rewrite a legacy `?tab=` value to its current one in place, so that
+  // anything saved from here on — a re-bookmark, a copied link — carries the
+  // new URL rather than propagating the old one. `replace` keeps the
+  // normalization out of the back-button history.
+  useEffect(() => {
+    if (!aliasedTab) {
+      return;
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', aliasedTab);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [aliasedTab, setSearchParams]);
 
   const handleTabChange = useCallback(
     (tab: Tab) => {
@@ -149,7 +185,7 @@ export default function SettingsPage() {
         {activeTab === 'appeals' && <AppealsTab />}
         {activeTab === 'review-console' && <ReviewConsoleTab />}
         {activeTab === 'wellness' && <WellnessTab />}
-        {activeTab === 'other' && <OtherTab />}
+        {activeTab === 'partial-items' && <PartialItemsTab />}
       </div>
     </>
   );

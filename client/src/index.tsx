@@ -13,7 +13,6 @@ import { KeyFieldsContext } from '@apollo/client/cache/inmemory/policies';
 import { RetryLink } from '@apollo/client/link/retry';
 import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
-import { QueryClient, QueryClientProvider } from 'react-query';
 import stringify from 'safe-stable-stringify';
 
 import FrontendTracer from './FrontendTracer';
@@ -144,21 +143,17 @@ const client = new ApolloClient({
   }),
 });
 
-const queryClient = new QueryClient();
-
 // Pasted from https://react.dev/blog/2022/03/08/react-18-upgrade-guide#updates-to-client-rendering-apis
 const root = createRoot(document.getElementById('root')!);
 root.render(
-  <QueryClientProvider client={queryClient}>
-    <HelmetProvider>
-      <ApolloProvider client={client}>
-        <TooltipProvider>
-          <App />
-          <Toast position="bottom-right" />
-        </TooltipProvider>
-      </ApolloProvider>
-    </HelmetProvider>
-  </QueryClientProvider>,
+  <HelmetProvider>
+    <ApolloProvider client={client}>
+      <TooltipProvider>
+        <App />
+        <Toast position="bottom-right" />
+      </TooltipProvider>
+    </ApolloProvider>
+  </HelmetProvider>,
 );
 
 // If you want to start measuring performance in your app, pass a function
