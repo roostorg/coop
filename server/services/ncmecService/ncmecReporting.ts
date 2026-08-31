@@ -535,7 +535,7 @@ export function latestEvidenceTimestamp(
   if (rawTimestamps.length === 0) {
     throw new Error('Report has neither media nor messages');
   }
-  // updated to allow a lenient approach to timestamps. If none parse, throw an
+  // allow a lenient approach to timestamps. If none parse, throw an
   // error and surface the bad data via the validation error path
   const evidenceTimestampsMs = rawTimestamps
     .map((raw) => (raw instanceof Date ? raw.getTime() : Date.parse(raw)))
