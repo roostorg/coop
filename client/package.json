@@ -63,7 +63,7 @@
     "react-dom": "19.2.8",
     "react-helmet-async": "^3.0.0",
     "react-player": "^2.10.1",
-    "react-router-dom": "^6.30.4",
+    "react-router-dom": "^6.30.5",
     "react-syntax-highlighter": "^16.1.0",
     "recharts": "^2.15.4",
     "safe-stable-stringify": "^2.4.2",
