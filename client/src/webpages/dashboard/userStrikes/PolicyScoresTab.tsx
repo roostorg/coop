@@ -341,6 +341,7 @@ export default function PolicyScoresTab() {
                     editingChildrenDisabled ||
                     !editingPolicies.includes(policy.value.id)
                   }
+                  scoresInheritedFromParent={editingChildrenDisabled}
                   updatedPolicyScores={updatedPolicyScores}
                   setUpdatedPolicyScores={setUpdatedPolicyScores}
                 />
@@ -416,6 +417,7 @@ function ChildPoliciesTable(props: {
     parent: TreeNode<Policy> | undefined;
   }[];
   editingDisabled: boolean;
+  scoresInheritedFromParent: boolean;
   updatedPolicyScores: Record<string, Policy>;
   setUpdatedPolicyScores: (
     value: React.SetStateAction<Record<string, Policy>>,
@@ -424,6 +426,7 @@ function ChildPoliciesTable(props: {
   const {
     policies,
     editingDisabled,
+    scoresInheritedFromParent,
     updatedPolicyScores,
     setUpdatedPolicyScores,
   } = props;
@@ -469,7 +472,7 @@ function ChildPoliciesTable(props: {
               // policy's original value
               // TODO: if we want to support 3-levels of policies this logic
               // will need to account for the whole parent tree
-              editingDisabled
+              scoresInheritedFromParent
                 ? policy?.parent?.value.id
                   ? (updatedPolicyScores[policy?.parent?.value.id]
                       ?.userStrikeCount ??
@@ -523,6 +526,12 @@ function ChildPoliciesTable(props: {
         ) : null,
       };
     });
-  }, [editingDisabled, updatedPolicyScores, policies, setUpdatedPolicyScores]);
+  }, [
+    editingDisabled,
+    scoresInheritedFromParent,
+    updatedPolicyScores,
+    policies,
+    setUpdatedPolicyScores,
+  ]);
   return <Table columns={columns} data={tableData} disableFilter={true} />;
 }

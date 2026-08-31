@@ -221,7 +221,7 @@ export default function ManualReviewDefaultCharts({
           timeWindow={timeWindow}
           initialChartType={ChartType.LINE}
           metric="SKIPPED_JOBS"
-          initialGroupBy={['REVIEWER_ID']}
+          initialGroupBy={['QUEUE_ID']}
           title="Skipped Jobs By Queue"
           hideGroupBy
           hideTotal
