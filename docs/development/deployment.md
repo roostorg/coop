@@ -82,7 +82,7 @@ To set it up:
 
 ## Content Proxy
 
-Coop can optionally route item content URLs through a **content proxy**: a service you host that fetches a content URL and serves it back inside the review iframe, so it can control presentation and apply wellness features server-side (since the review UI cannot otherwise style or control content from a cross-origin iframe).
+Coop can optionally route item content URLs through a **content proxy**: a service you host that fetches a content URL and serves it back inside the review iframe, so it can control presentation and apply wellness features (since the review UI cannot otherwise style or control content from a cross-origin iframe).
 
 Set `VITE_CONTENT_PROXY_URL` to your proxy's base URL to enable it. Left unset (the default), matching content just loads directly in the iframe.
 
