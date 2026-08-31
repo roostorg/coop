@@ -2411,12 +2411,15 @@ const Mutation: GQLMutationResolvers = {
       clearReportsScope,
       clearReportsTriggerActionIds,
     } = params.input;
+
+    // createManualReviewQueue expects userIds to be unique so as to not violate the DB primary key for users_and_accessible_queues
+    const userIdsWithCurrentUser = Array.from(new Set([...userIds, user.id]));
     try {
       const queue =
         await context.services.ManualReviewToolService.createManualReviewQueue({
           description: description ?? null,
           name,
-          userIds: [...userIds, user.id],
+          userIds: userIdsWithCurrentUser,
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,

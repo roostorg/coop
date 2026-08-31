@@ -321,8 +321,11 @@ export default function ManualReviewQueueForm() {
   }, [queue, queue?.autoCloseJobs]);
 
   useEffect(() => {
+    if (!queue) {
+      return;
+    }
     setModeratorsWithAccess(sortedUsers.map((it) => it.id));
-  }, [sortedUsers]);
+  }, [queue, sortedUsers]);
 
   if (queueQueryError || error) {
     // eslint-disable-next-line @typescript-eslint/only-throw-error
