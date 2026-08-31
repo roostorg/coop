@@ -24,6 +24,8 @@ interface ManualReviewDashboardInsightsCardBaseProps {
 
 interface ManualReviewDashboardInsightsCardWithChangeProps extends ManualReviewDashboardInsightsCardBaseProps {
   change: number | undefined;
+  /** When true, a negative `change` is an improvement (green). */
+  lowerIsBetter?: boolean;
 }
 
 interface ManualReviewDashboardInsightsCardWithLinkProps extends ManualReviewDashboardInsightsCardBaseProps {
@@ -126,7 +128,11 @@ const ManualReviewDashboardInsightsCard = (
                   className={`${
                     props.change === 0
                       ? 'text-slate-600 bg-slate-100'
-                      : props.change < 0
+                      : (
+                            props.lowerIsBetter
+                              ? props.change > 0
+                              : props.change < 0
+                          )
                         ? 'text-red-600 bg-red-100'
                         : 'text-green-600 bg-green-100'
                   } p-1 rounded text-sm font-semibold flex items-center`}

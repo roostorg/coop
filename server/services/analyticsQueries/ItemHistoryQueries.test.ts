@@ -1,7 +1,10 @@
-import { Kysely, type DatabaseConnection } from 'kysely';
+import { Kysely } from 'kysely';
 
 import { type DataWarehousePublicSchema } from '../../storage/dataWarehouse/warehouseSchema.js';
-import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
+import {
+  makeMockWarehouseDialect,
+  type WarehouseExecute,
+} from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { safePick } from '../../utils/misc.js';
 import { getUtcDateOnlyString, WEEK_MS } from '../../utils/time.js';
 import ItemHistoryQueries from './ItemHistoryQueries.js';
@@ -9,9 +12,9 @@ import ItemHistoryQueries from './ItemHistoryQueries.js';
 describe('ItemHistoryQueries', () => {
   test('should issue a proper query', async () => {
     // Arrange
-    const warehouseMock = jest.fn<DatabaseConnection['executeQuery']>(
-      async (_it) => ({ rows: [] }),
-    );
+    const warehouseMock = jest.fn<WarehouseExecute>(async (_it) => ({
+      rows: [],
+    }));
     const dialect = makeMockWarehouseDialect(warehouseMock);
     const kysely = new Kysely<DataWarehousePublicSchema>({ dialect });
     const dialectMock = {

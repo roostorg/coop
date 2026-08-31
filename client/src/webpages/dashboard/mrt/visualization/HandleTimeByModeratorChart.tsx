@@ -1,0 +1,353 @@
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EllipsisOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
+import { gql } from '@apollo/client';
+import { Tooltip as AntTooltip } from 'antd';
+import orderBy from 'lodash/orderBy';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  TooltipProps,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Payload } from 'recharts/types/component/DefaultLegendContent';
+
+import ComponentLoading from '../../../../components/common/ComponentLoading';
+
+import {
+  useGQLGetAverageHandleTimeLazyQuery,
+  useGQLManualReviewDecisionInsightsOrgInfoQuery,
+} from '../../../../graphql/generated';
+import { safePick } from '../../../../utils/misc';
+import { chartColors } from '../../rules/dashboard/visualization/chartColors';
+import { TimeWindow } from '../../rules/dashboard/visualization/RulesDashboardInsights';
+
+gql`
+  query getAverageHandleTime($input: HandleTimeInput!) {
+    getHandleTime(input: $input) {
+      handleTimeSeconds
+      reviewerId
+      queueId
+    }
+  }
+`;
+
+interface HandleTimeByModeratorChartProps {
+  timeWindow: TimeWindow;
+  title?: string;
+  hideBorder?: boolean;
+  hideOptions?: boolean;
+  infoText?: string;
+  narrowMode?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}
+
+export default function HandleTimeByModeratorChart({
+  timeWindow,
+  title,
+  hideBorder = false,
+  hideOptions = false,
+  infoText,
+  narrowMode = false,
+  onEdit,
+  onDelete,
+}: HandleTimeByModeratorChartProps) {
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+
+  const [
+    getHandleTime,
+    {
+      loading: handleTimeLoading,
+      error: handleTimeError,
+      data: handleTimeData,
+    },
+  ] = useGQLGetAverageHandleTimeLazyQuery();
+
+  const [handleTime, loading, error] = [
+    handleTimeData?.getHandleTime,
+    handleTimeLoading,
+    handleTimeError,
+  ];
+
+  useEffect(() => {
+    void getHandleTime({
+      variables: {
+        input: {
+          groupBy: ['REVIEWER_ID'],
+          filterBy: {
+            startDate: timeWindow.start,
+            endDate: timeWindow.end,
+            queueIds: [],
+            reviewerIds: [],
+          },
+        },
+      },
+    }).catch(() => {
+      // Apollo already surfaces the error on the hook.
+    });
+  }, [getHandleTime, timeWindow]);
+
+  const { data: orgQueryData } =
+    useGQLManualReviewDecisionInsightsOrgInfoQuery();
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        optionsRef.current &&
+        !optionsRef.current.contains(event.target as Node)
+      ) {
+        setOptionsVisible(false);
+      }
+    };
+
+    if (optionsVisible) {
+      document.addEventListener('click', handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [optionsVisible]);
+
+  const getReviewerNameFromId = (reviewerId: string | null | undefined) => {
+    if (!reviewerId) {
+      return 'Unknown';
+    }
+    const user = orgQueryData?.myOrg?.users.find((it) => it.id === reviewerId);
+    if (!user) {
+      return `Unknown (${reviewerId.slice(0, 8)})`;
+    }
+    const name = `${user.firstName} ${user.lastName}`.trim();
+    return name || `Unknown (${reviewerId.slice(0, 8)})`;
+  };
+
+  const formattedData =
+    handleTime
+      ?.filter(
+        (it): it is typeof it & { handleTimeSeconds: number } =>
+          it.handleTimeSeconds != null,
+      )
+      .map((it) => ({
+        handleTimeMinutes: Number((it.handleTimeSeconds / 60).toFixed(2)),
+        reviewer: getReviewerNameFromId(it.reviewerId),
+      })) ?? [];
+
+  const renderLegend = ({ payload }: { payload?: Payload[] }) => (
+    <div className="flex flex-wrap gap-1 p-1 overflow-auto border border-solid rounded max-h-24 border-slate-200">
+      {payload
+        ?.filter((entry) => entry.type !== 'none')
+        .map((entry, index) => (
+          <div
+            key={index}
+            className="flex font-semibold cursor-pointer text-zinc-500 hover:opacity-70 items-center gap-1.5 text-start"
+          >
+            <div
+              style={{
+                backgroundColor: chartColors[index % chartColors.length],
+              }}
+              className="flex rounded-full h-4 w-4"
+            />
+            {entry.value}
+          </div>
+        ))}
+    </div>
+  );
+
+  if (error) {
+    return <div>Error fetching metrics for chart</div>;
+  }
+
+  const customTooltip = ({
+    active,
+    payload,
+    label,
+  }: TooltipProps<number, string>) => {
+    if (active && payload?.length) {
+      const data = orderBy(
+        payload
+          .filter((it) => it.type !== 'none')
+          .map((it) => safePick(it, ['name', 'value'])),
+        'value',
+        'desc',
+      );
+      return (
+        <div className="flex flex-col max-w-sm overflow-x-scroll bg-white rounded-lg shadow text-start">
+          <div className="p-3 text-white rounded-tl-lg rounded-tr-lg bg-primary">
+            {label}
+          </div>
+          <table className="w-full m-2">
+            <tbody>
+              {data.map((it, i) =>
+                it.value && it.value > 0 ? (
+                  <tr key={i}>
+                    <td className="pr-1 font-semibold text-primary text-end">
+                      {it.value?.toLocaleString()}
+                    </td>
+                    <td className="pl-1 font-medium text-slate-700">
+                      {it.name}
+                    </td>
+                  </tr>
+                ) : null,
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const emptyChart = (
+    <div className="flex flex-col items-center justify-center h-full gap-3 p-6 bg-indigo-100 rounded">
+      <div className="text-sm text-slate-400">
+        No data available for the selected time period.
+      </div>
+    </div>
+  );
+
+  const optionButton = (
+    optionTitle: string,
+    icon: ReactNode,
+    onClick?: () => void,
+  ) => (
+    <button
+      type="button"
+      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-slate-500 font-medium bg-white hover:bg-coop-lightblue-hover border-0 w-full"
+      onClick={() => {
+        onClick?.();
+        setOptionsVisible(false);
+      }}
+    >
+      {icon}
+      {optionTitle}
+    </button>
+  );
+
+  const optionsMenu = (
+    <div
+      className={`relative inline-block self-center pl-2 ${
+        narrowMode ? 'self-center xl:self-start' : 'self-center'
+      }`}
+    >
+      <button
+        type="button"
+        aria-label="Chart options"
+        aria-expanded={optionsVisible}
+        aria-haspopup="menu"
+        className={`${
+          optionsVisible ? 'bg-slate-100' : ''
+        } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit border-0 bg-transparent`}
+        onClick={() => setOptionsVisible((prev) => !prev)}
+      >
+        <EllipsisOutlined className="flex text-2xl" />
+      </button>
+      {optionsVisible && (
+        <div
+          ref={optionsRef}
+          role="menu"
+          className="absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200"
+        >
+          {onEdit && optionButton('Edit', <EditOutlined />, onEdit)}
+          {onDelete && optionButton('Delete', <DeleteOutlined />, onDelete)}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      className={`flex flex-col rounded-lg p-6 bg-white ${
+        narrowMode ? 'flex flex-col justify-between grow' : 'w-full'
+      } ${hideBorder ? '' : 'border border-solid border-slate-200'}`}
+    >
+      <div className="flex pb-6">
+        <div
+          className={`flex justify-between gap-2 grow ${
+            narrowMode ? 'flex-row xl:flex-col' : 'flex-row'
+          }`}
+        >
+          {title && (
+            <div className="flex flex-col text-start">
+              <div className="pb-2 text-base font-medium text-slate-500">
+                {title}
+                {infoText && (
+                  <AntTooltip
+                    title={infoText}
+                    placement="topRight"
+                    color="white"
+                  >
+                    <InfoCircleOutlined className="pl-2 w-fit h-fit text-slate-300" />
+                  </AntTooltip>
+                )}
+              </div>
+            </div>
+          )}
+          <div
+            className={`flex flex-wrap gap-4 ${
+              narrowMode ? 'justify-end xl:justify-start' : 'justify-end'
+            }`}
+          />
+        </div>
+        {!hideOptions && optionsMenu}
+      </div>
+      <div className="z-10 flex flex-col w-full h-full min-h-[400px] pb-4">
+        {!loading && formattedData?.length === 0 ? (
+          emptyChart
+        ) : (
+          <ResponsiveContainer width="100%" height={400}>
+            {loading ? (
+              <ComponentLoading />
+            ) : (
+              <BarChart data={formattedData}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="reviewer" tickLine={false} />
+                <YAxis
+                  tickLine={false}
+                  stroke="#d4d4d8"
+                  label={{
+                    value: `Average handle time (minutes)`,
+                    style: { textAnchor: 'middle' },
+                    angle: -90,
+                    position: 'left',
+                    offset: 0,
+                  }}
+                />
+                <Legend
+                  payload={formattedData?.map((it) => ({
+                    value: it.reviewer,
+                  }))}
+                  content={renderLegend}
+                />
+                <Tooltip content={customTooltip} />
+                <Bar
+                  name={'Minutes after pickup'}
+                  type="monotone"
+                  dataKey={'handleTimeMinutes'}
+                >
+                  {formattedData?.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={chartColors[index % chartColors.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}

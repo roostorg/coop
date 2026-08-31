@@ -6,9 +6,9 @@ import {
   UpOutlined,
 } from '@ant-design/icons';
 import { gql } from '@apollo/client';
+import { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import { Input, Tooltip } from 'antd';
 import React, { useState } from 'react';
-import { DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
 
 import { GQLSignal } from '../../../../graphql/generated';
 import {
@@ -31,7 +31,7 @@ gql`
 `;
 
 const IconButton = (props: {
-  icon: JSX.Element;
+  icon: React.JSX.Element;
   disabled?: boolean;
   onClick?: () => void;
 }) => {
