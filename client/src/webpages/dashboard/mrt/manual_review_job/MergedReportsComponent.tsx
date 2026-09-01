@@ -223,7 +223,7 @@ export default function MergedReportsComponent(props: {
         ) : (
           '—'
         ),
-        reason: report.reason?.trim() ? report.reason : '—',
+        reason,
         reportTime: parseDatetimeToReadableStringInCurrentTimeZone(
           report.reportedAt,
         ),
