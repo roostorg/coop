@@ -248,7 +248,7 @@ describe('UserManagementService', () => {
 
         await sut.resetPasswordForToken({
           token: 'plaintext-token',
-          newPassword: 'new-password',
+          newPassword: 'a'.repeat(MIN_PASSWORD_LENGTH),
         });
 
         // The password row is updated...

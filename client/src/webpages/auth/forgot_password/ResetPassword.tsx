@@ -56,24 +56,56 @@ export default function ResetPassword() {
     return <Navigate to="/login" />;
   }
 
+  const isPasswordTooShort =
+    newPassword != null &&
+    newPassword.length > 0 &&
+    newPassword.length < minPasswordLength;
+
   const newPasswordInput = (
-    <Input.Password
-      className="rounded-lg"
-      placeholder={`Enter new password (min ${minPasswordLength} characters)`}
-      value={newPassword}
-      onChange={(event) => {
-        setNewPassword(event.target.value);
-      }}
-    />
+    <>
+      <Input.Password
+        className="rounded-lg"
+        placeholder={`Enter new password (min ${minPasswordLength} characters)`}
+        value={newPassword}
+        status={isPasswordTooShort ? 'error' : undefined}
+        aria-invalid={isPasswordTooShort}
+        aria-describedby={isPasswordTooShort ? 'newPassword-error' : undefined}
+        onChange={(event) => {
+          setNewPassword(event.target.value);
+        }}
+      />
+      {isPasswordTooShort && (
+        <div id="newPassword-error" className="w-full text-xs text-red-600">
+          Password must be at least {minPasswordLength} characters long.
+        </div>
+      )}
+    </>
   );
 
+  const doPasswordsMismatch =
+    confirmPassword != null &&
+    confirmPassword.length > 0 &&
+    newPassword !== confirmPassword;
+
   const confirmPasswordInput = (
-    <Input.Password
-      className="rounded-lg"
-      placeholder="Confirm new password"
-      value={confirmPassword}
-      onChange={(event) => setConfirmPassword(event.target.value)}
-    />
+    <>
+      <Input.Password
+        className="rounded-lg"
+        placeholder="Confirm new password"
+        value={confirmPassword}
+        status={doPasswordsMismatch ? 'error' : undefined}
+        aria-invalid={doPasswordsMismatch}
+        aria-describedby={
+          doPasswordsMismatch ? 'confirmPassword-error' : undefined
+        }
+        onChange={(event) => setConfirmPassword(event.target.value)}
+      />
+      {doPasswordsMismatch && (
+        <div id="confirmPassword-error" className="w-full text-xs text-red-600">
+          Passwords do not match.
+        </div>
+      )}
+    </>
   );
 
   const submitButton = (
@@ -82,6 +114,12 @@ export default function ResetPassword() {
       type="primary"
       htmlType="submit"
       loading={resetPasswordLoading}
+      disabled={
+        !newPassword ||
+        !confirmPassword ||
+        isPasswordTooShort ||
+        doPasswordsMismatch
+      }
       onClick={async () => {
         if (newPassword !== confirmPassword) {
           setErrorMessage('Passwords do not match.');

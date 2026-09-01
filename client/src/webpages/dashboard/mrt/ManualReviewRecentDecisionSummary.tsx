@@ -5,7 +5,7 @@ import {
 } from '@/graphql/generated';
 import { parseDatetimeToReadableStringInCurrentTimeZone } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { useCallback } from 'react';
+import { Fragment, useCallback } from 'react';
 
 import CloseButton from '@/components/common/CloseButton';
 import ComponentLoading from '@/components/common/ComponentLoading';
@@ -197,16 +197,16 @@ export default function ManualReviewRecentDecisionSummary(props: {
           <div className="flex flex-col gap-2">
             <div className="flex flex-col text-slate-500">
               <div className="font-bold text-slate-700">Primary Decision</div>
-              {selectedDecision.decisions.map((decision) =>
-                actionPoliciesPair(decision),
-              )}
+              {selectedDecision.decisions.map((decision, index) => (
+                <Fragment key={index}>{actionPoliciesPair(decision)}</Fragment>
+              ))}
             </div>
             {selectedDecision.relatedActions.length > 0 ? (
               <div className="flex flex-col text-slate-500">
                 <div className="font-bold text-slate-700">Related Actions</div>
-                {selectedDecision.relatedActions.map((action) =>
-                  actionPoliciesPair(action),
-                )}
+                {selectedDecision.relatedActions.map((action, index) => (
+                  <Fragment key={index}>{actionPoliciesPair(action)}</Fragment>
+                ))}
               </div>
             ) : null}
           </div>

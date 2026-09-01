@@ -463,8 +463,18 @@ export default function AccountSettings() {
   const hasPasswordLogin =
     accountSettingsData?.me?.loginMethods?.includes('password') ?? false;
 
+  const isNewPasswordTooShort =
+    Boolean(newPassword) && newPassword.length < minPasswordLength;
+
+  const doNewPasswordsMismatch =
+    Boolean(confirmNewPassword) && newPassword !== confirmNewPassword;
+
   const isChangePasswordButtonDisabled =
-    !currentPassword || !newPassword || !confirmNewPassword;
+    !currentPassword ||
+    !newPassword ||
+    !confirmNewPassword ||
+    isNewPasswordTooShort ||
+    doNewPasswordsMismatch;
 
   return (
     <>
@@ -512,7 +522,19 @@ export default function AccountSettings() {
                 value={newPassword}
                 onChange={handleNewPasswordChange}
                 placeholder="Enter your new password"
+                aria-invalid={isNewPasswordTooShort}
+                aria-describedby={
+                  isNewPasswordTooShort ? 'newPassword-error' : undefined
+                }
               />
+              {isNewPasswordTooShort && (
+                <div
+                  id="newPassword-error"
+                  className="text-xs text-red-600 mt-1"
+                >
+                  Password must be at least {minPasswordLength} characters long.
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
@@ -522,7 +544,21 @@ export default function AccountSettings() {
                 value={confirmNewPassword}
                 onChange={handleConfirmNewPasswordChange}
                 placeholder="Confirm your new password"
+                aria-invalid={doNewPasswordsMismatch}
+                aria-describedby={
+                  doNewPasswordsMismatch
+                    ? 'confirmNewPassword-error'
+                    : undefined
+                }
               />
+              {doNewPasswordsMismatch && (
+                <div
+                  id="confirmNewPassword-error"
+                  className="text-xs text-red-600 mt-1"
+                >
+                  Passwords do not match.
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
