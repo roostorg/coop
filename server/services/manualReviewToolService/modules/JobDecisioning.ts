@@ -183,6 +183,9 @@ export type OnRecordDecisionInput = {
   suppressUserReportSweep?: boolean;
 };
 
+export const NCMEC_ESCALATION_SKIP_WARNING =
+  'NCMEC escalation was skipped: this user already has a submitted NCMEC report.';
+
 export default class JobDecisioning {
   constructor(
     private readonly queueOps: QueueOperations,
@@ -193,6 +196,11 @@ export default class JobDecisioning {
     private readonly tracer: Dependencies['Tracer'],
     private readonly manualReviewToolSettings: ManualReviewToolSettings,
     private readonly claimOps: ClaimOperations,
+    private readonly getUserHasExistingNcmecReport: (params: {
+      orgId: string;
+      userId: string;
+      userItemTypeId: string;
+    }) => Promise<boolean>,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -486,6 +494,46 @@ export default class JobDecisioning {
     if (error) {
       throw error;
     }
+
+    return {
+      warnings:
+        newDecisionStored && automaticCloseDecision === undefined
+          ? await this.#ncmecEscalationSkipWarnings({ decisionComponents, job })
+          : [],
+    };
+  }
+
+  /**
+   * The NCMEC re-enqueue for a TRANSFORM_JOB_AND_RECREATE_IN_QUEUE decision
+   * runs asynchronously via onRecordDecision, and it silently no-ops when the
+   * reviewed user already has a submitted NCMEC report (see
+   * NcmecEnqueueToMrt.enqueueForHumanReviewIfApplicable). Predict that skip
+   * here, with the same check the enqueue path performs, so the reviewer is
+   * told on the decision response instead of believing the escalation went
+   * through.
+   */
+  async #ncmecEscalationSkipWarnings(opts: {
+    decisionComponents: ManualReviewDecisionComponent[];
+    job: {
+      orgId: string;
+      payload: { item: { itemId: string; itemTypeIdentifier: { id: string } } };
+    };
+  }): Promise<string[]> {
+    const escalatesToNcmec = opts.decisionComponents.some(
+      (it) =>
+        it.type === 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE' &&
+        it.newJobKind === 'NCMEC',
+    );
+    if (!escalatesToNcmec) {
+      return [];
+    }
+    const hasExistingReport = await this.getUserHasExistingNcmecReport({
+      orgId: opts.job.orgId,
+      userId: opts.job.payload.item.itemId,
+      userItemTypeId: opts.job.payload.item.itemTypeIdentifier.id,
+    });
+
+    return hasExistingReport ? [NCMEC_ESCALATION_SKIP_WARNING] : [];
   }
 
   /**
