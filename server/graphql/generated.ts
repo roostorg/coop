@@ -1857,9 +1857,28 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobPriorityProperty = {
+  NumReports: 'numReports',
+  UserScore: 'userScore',
+} as const;
+
+export type GQLJobPriorityProperty =
+  (typeof GQLJobPriorityProperty)[keyof typeof GQLJobPriorityProperty];
+export type GQLJobPriorityWeight = {
+  readonly __typename?: 'JobPriorityWeight';
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['output'];
+};
+
+export type GQLJobPriorityWeightInput = {
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['input'];
+};
+
 export const GQLJobSortType = {
   Fifo: 'FIFO',
   NumReports: 'NUM_REPORTS',
+  Weighted: 'WEIGHTED',
 } as const;
 
 export type GQLJobSortType =
@@ -2636,6 +2655,7 @@ export type GQLMutation = {
   readonly sendPasswordReset: Scalars['Boolean']['output'];
   readonly setAllUserStrikeThresholds: GQLSetAllUserStrikeThresholdsSuccessResponse;
   readonly setIntegrationConfig: GQLSetIntegrationConfigResponse;
+  readonly setJobPriorityWeights: GQLSetJobPriorityWeightsResponse;
   readonly setModeratorSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
   readonly setMrtChartConfigurationSettings?: Maybe<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   readonly setOrgDefaultSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
@@ -2895,6 +2915,10 @@ export type GQLMutationSetAllUserStrikeThresholdsArgs = {
 
 export type GQLMutationSetIntegrationConfigArgs = {
   input: GQLSetIntegrationConfigInput;
+};
+
+export type GQLMutationSetJobPriorityWeightsArgs = {
+  input: GQLSetJobPriorityWeightsInput;
 };
 
 export type GQLMutationSetModeratorSafetySettingsArgs = {
@@ -3347,6 +3371,7 @@ export type GQLOrg = {
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
+  readonly jobPriorityWeights: ReadonlyArray<GQLJobPriorityWeight>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
   /**
@@ -4414,6 +4439,18 @@ export type GQLSetIntegrationConfigResponse =
 export type GQLSetIntegrationConfigSuccessResponse = {
   readonly __typename?: 'SetIntegrationConfigSuccessResponse';
   readonly config: GQLIntegrationConfig;
+};
+
+export type GQLSetJobPriorityWeightsInput = {
+  readonly weights: ReadonlyArray<GQLJobPriorityWeightInput>;
+};
+
+export type GQLSetJobPriorityWeightsResponse =
+  GQLSetJobPriorityWeightsSuccessResponse;
+
+export type GQLSetJobPriorityWeightsSuccessResponse = {
+  readonly __typename?: 'SetJobPriorityWeightsSuccessResponse';
+  readonly _?: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type GQLSetModeratorSafetySettingsSuccessResponse = {
@@ -5686,6 +5723,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | (Omit<GQLSetIntegrationConfigSuccessResponse, 'config'> & {
         config: _RefType['IntegrationConfig'];
       });
+  SetJobPriorityWeightsResponse: GQLSetJobPriorityWeightsSuccessResponse;
   SignUpResponse:
     | (Omit<GQLSignUpSuccessResponse, 'data'> & {
         data?: Maybe<_RefType['User']>;
@@ -6153,6 +6191,9 @@ export type GQLResolversTypes = {
   JobCreationSettingsInput: GQLJobCreationSettingsInput;
   JobCreationSourceOptions: GQLJobCreationSourceOptions;
   JobHasAlreadyBeenSubmittedError: ResolverTypeWrapper<GQLJobHasAlreadyBeenSubmittedError>;
+  JobPriorityProperty: GQLJobPriorityProperty;
+  JobPriorityWeight: ResolverTypeWrapper<GQLJobPriorityWeight>;
+  JobPriorityWeightInput: GQLJobPriorityWeightInput;
   JobSortType: GQLJobSortType;
   Language: GQLLanguage;
   Languages: ResolverTypeWrapper<GQLLanguages>;
@@ -6515,6 +6556,11 @@ export type GQLResolversTypes = {
       config: GQLResolversTypes['IntegrationConfig'];
     }
   >;
+  SetJobPriorityWeightsInput: GQLSetJobPriorityWeightsInput;
+  SetJobPriorityWeightsResponse: ResolverTypeWrapper<
+    GQLResolversUnionTypes<GQLResolversTypes>['SetJobPriorityWeightsResponse']
+  >;
+  SetJobPriorityWeightsSuccessResponse: ResolverTypeWrapper<GQLSetJobPriorityWeightsSuccessResponse>;
   SetModeratorSafetySettingsSuccessResponse: ResolverTypeWrapper<GQLSetModeratorSafetySettingsSuccessResponse>;
   SetMrtChartConfigurationSettingsSuccessResponse: ResolverTypeWrapper<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   SetPluginIntegrationConfigInput: GQLSetPluginIntegrationConfigInput;
@@ -6928,6 +6974,8 @@ export type GQLResolversParentTypes = {
   JobCreationFilterByInput: GQLJobCreationFilterByInput;
   JobCreationSettingsInput: GQLJobCreationSettingsInput;
   JobHasAlreadyBeenSubmittedError: GQLJobHasAlreadyBeenSubmittedError;
+  JobPriorityWeight: GQLJobPriorityWeight;
+  JobPriorityWeightInput: GQLJobPriorityWeightInput;
   Languages: GQLLanguages;
   LatLng: GQLLatLng;
   LatLngInput: GQLLatLngInput;
@@ -7202,6 +7250,9 @@ export type GQLResolversParentTypes = {
     GQLSetIntegrationConfigSuccessResponse,
     'config'
   > & { config: GQLResolversParentTypes['IntegrationConfig'] };
+  SetJobPriorityWeightsInput: GQLSetJobPriorityWeightsInput;
+  SetJobPriorityWeightsResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['SetJobPriorityWeightsResponse'];
+  SetJobPriorityWeightsSuccessResponse: GQLSetJobPriorityWeightsSuccessResponse;
   SetModeratorSafetySettingsSuccessResponse: GQLSetModeratorSafetySettingsSuccessResponse;
   SetMrtChartConfigurationSettingsSuccessResponse: GQLSetMrtChartConfigurationSettingsSuccessResponse;
   SetPluginIntegrationConfigInput: GQLSetPluginIntegrationConfigInput;
@@ -10024,6 +10075,19 @@ export type GQLJobHasAlreadyBeenSubmittedErrorResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLJobPriorityWeightResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['JobPriorityWeight'] =
+    GQLResolversParentTypes['JobPriorityWeight'],
+> = {
+  property?: Resolver<
+    GQLResolversTypes['JobPriorityProperty'],
+    ParentType,
+    ContextType
+  >;
+  weight?: Resolver<GQLResolversTypes['Float'], ParentType, ContextType>;
+};
+
 export type GQLLanguagesResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['Languages'] =
@@ -11422,6 +11486,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationSetIntegrationConfigArgs, 'input'>
   >;
+  setJobPriorityWeights?: Resolver<
+    GQLResolversTypes['SetJobPriorityWeightsResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationSetJobPriorityWeightsArgs, 'input'>
+  >;
   setModeratorSafetySettings?: Resolver<
     Maybe<GQLResolversTypes['SetModeratorSafetySettingsSuccessResponse']>,
     ParentType,
@@ -12106,6 +12176,11 @@ export type GQLOrgResolvers<
   isDemoOrg?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   itemTypes?: Resolver<
     ReadonlyArray<GQLResolversTypes['ItemType']>,
+    ParentType,
+    ContextType
+  >;
+  jobPriorityWeights?: Resolver<
+    ReadonlyArray<GQLResolversTypes['JobPriorityWeight']>,
     ParentType,
     ContextType
   >;
@@ -13878,6 +13953,28 @@ export type GQLSetIntegrationConfigSuccessResponseResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLSetJobPriorityWeightsResponseResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['SetJobPriorityWeightsResponse'] =
+    GQLResolversParentTypes['SetJobPriorityWeightsResponse'],
+> = {
+  __resolveType: TypeResolveFn<
+    'SetJobPriorityWeightsSuccessResponse',
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLSetJobPriorityWeightsSuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['SetJobPriorityWeightsSuccessResponse'] =
+    GQLResolversParentTypes['SetJobPriorityWeightsSuccessResponse'],
+> = {
+  _?: Resolver<Maybe<GQLResolversTypes['Boolean']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLSetModeratorSafetySettingsSuccessResponseResolvers<
   ContextType = Context,
   ParentType extends
@@ -15350,6 +15447,7 @@ export type GQLResolvers<ContextType = Context> = {
   JobCreationCount?: GQLJobCreationCountResolvers<ContextType>;
   JobCreationFilterBy?: GQLJobCreationFilterByResolvers<ContextType>;
   JobHasAlreadyBeenSubmittedError?: GQLJobHasAlreadyBeenSubmittedErrorResolvers<ContextType>;
+  JobPriorityWeight?: GQLJobPriorityWeightResolvers<ContextType>;
   Languages?: GQLLanguagesResolvers<ContextType>;
   LatLng?: GQLLatLngResolvers<ContextType>;
   LeafCondition?: GQLLeafConditionResolvers<ContextType>;
@@ -15488,6 +15586,8 @@ export type GQLResolvers<ContextType = Context> = {
   SetAllUserStrikeThresholdsSuccessResponse?: GQLSetAllUserStrikeThresholdsSuccessResponseResolvers<ContextType>;
   SetIntegrationConfigResponse?: GQLSetIntegrationConfigResponseResolvers<ContextType>;
   SetIntegrationConfigSuccessResponse?: GQLSetIntegrationConfigSuccessResponseResolvers<ContextType>;
+  SetJobPriorityWeightsResponse?: GQLSetJobPriorityWeightsResponseResolvers<ContextType>;
+  SetJobPriorityWeightsSuccessResponse?: GQLSetJobPriorityWeightsSuccessResponseResolvers<ContextType>;
   SetModeratorSafetySettingsSuccessResponse?: GQLSetModeratorSafetySettingsSuccessResponseResolvers<ContextType>;
   SetMrtChartConfigurationSettingsSuccessResponse?: GQLSetMrtChartConfigurationSettingsSuccessResponseResolvers<ContextType>;
   SignUpResponse?: GQLSignUpResponseResolvers<ContextType>;

@@ -65,7 +65,11 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
-import { type JobSortType } from './JobPriority.js';
+import {
+  userIdentifierFromItem,
+  type JobSortType,
+  type UserIdentifier,
+} from './JobPriority.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -1134,7 +1138,7 @@ export default class QueueOperations {
     orgId: string;
     queueId: string;
     getPriorities: (
-      itemIds: readonly string[],
+      items: ReadonlyArray<{ itemId: string; user: UserIdentifier }>,
     ) => Promise<ReadonlyMap<string, number>>;
     shouldContinue?: () => boolean;
   }): Promise<{ aborted: boolean; snapshotStable: boolean }> {
@@ -1147,6 +1151,7 @@ export default class QueueOperations {
       enqueuedAtMs: number;
       dataCreatedAtMs: number;
       itemId: string;
+      user: UserIdentifier;
     }> = [];
     const seen = new Set<string>();
     // Offset paging while reviewers dequeue can skip jobs, because removing
@@ -1193,6 +1198,7 @@ export default class QueueOperations {
                 : dataCreatedAtMs,
             dataCreatedAtMs,
             itemId,
+            user: userIdentifierFromItem(item),
           });
         }
         if (jobs.length < batchSize) break;
@@ -1210,7 +1216,9 @@ export default class QueueOperations {
         a.dataCreatedAtMs - b.dataCreatedAtMs,
     );
 
-    const priorities = await getPriorities(pending.map((it) => it.itemId));
+    const priorities = await getPriorities(
+      pending.map(({ itemId, user }) => ({ itemId, user })),
+    );
 
     for (const { bullId, itemId } of pending) {
       if (!shouldContinue()) {
