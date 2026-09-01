@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
+import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd';
 import { notification } from 'antd';
 import { useEffect, useState } from 'react';
-import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import { Helmet } from 'react-helmet-async';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';

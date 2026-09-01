@@ -12,7 +12,6 @@ import uniq from 'lodash/uniq';
 import { useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
 import { Link } from 'react-router-dom';
-import { Row } from 'react-table';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../../components/common/CopyTextComponent';
@@ -24,7 +23,7 @@ import {
   SelectColumnFilter,
 } from '../../../components/table/filters';
 import { ruleStatusSort, stringSort } from '../../../components/table/sort';
-import Table from '../../../components/table/Table';
+import Table, { TableRow } from '../../../components/table/Table';
 
 import {
   GQLField,
@@ -400,17 +399,19 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
     );
 
     return distinctSignalNames.map((signalName) => ({
-      Header: signalName,
-      accessor: signalName,
-      Filter: (props: ColumnProps) =>
-        NumberRangeColumnFilter({
-          columnProps: props,
-          accessor: signalName,
-          placeholder: '',
-        }),
-      filter: 'between',
+      header: signalName,
+      accessorKey: signalName,
+      meta: {
+        filter: (props: ColumnProps) =>
+          NumberRangeColumnFilter({
+            columnProps: props,
+            accessor: signalName,
+            placeholder: '',
+          }),
+      },
+      filterFn: 'range' as const,
       sortDescFirst: true,
-      sortType: stringSort,
+      sortFn: stringSort,
     }));
   }, [allSignals, samples]);
 
@@ -455,65 +456,71 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
   const columns = useMemo(() => {
     return [
       {
-        Header: 'Timestamp',
-        accessor: 'time',
-        Filter: (props: ColumnProps) =>
-          DateRangeColumnFilter({
-            columnProps: props,
-            accessor: 'date',
-            placeholder: '',
-          }),
-        filter: 'dateRange',
+        header: 'Timestamp',
+        accessorKey: 'time',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DateRangeColumnFilter({
+              columnProps: props,
+              accessor: 'date',
+              placeholder: '',
+            }),
+        },
+        filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortType: stringSort,
+        sortFn: stringSort,
       },
       {
-        Header: 'Status',
-        accessor: 'status',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'status',
-            placeholder: 'Live',
-          }),
-        filter: 'includes',
-        sortType: ruleStatusSort,
+        header: 'Status',
+        accessorKey: 'status',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'status',
+              placeholder: 'Live',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: ruleStatusSort,
       },
       {
-        Header: 'Content',
-        accessor: 'content',
-        canSort: false,
+        header: 'Content',
+        accessorKey: 'content',
+        enableSorting: false,
       },
       {
-        Header: 'Item Type',
-        accessor: 'itemTypeName',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'itemTypeName',
-          }),
-        filter: 'includes',
-        sortType: stringSort,
+        header: 'Item Type',
+        accessorKey: 'itemTypeName',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'itemTypeName',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'ID',
-        accessor: 'id', // accessor is the "key" in the data
-        canSort: false,
+        header: 'ID',
+        accessorKey: 'id', // accessor is the "key" in the data
+        enableSorting: false,
       },
       {
-        Header: 'User ID',
-        accessor: 'userId',
-        canSort: false,
+        header: 'User ID',
+        accessorKey: 'userId',
+        enableSorting: false,
       },
       ...extraColumns,
     ];
   }, [extraColumns]);
   const tableData = useMemo(
     () =>
-      dataValues?.map((values) => {
+      (dataValues ?? []).flatMap((values) => {
         const parsedContent = JSON.parse(values.content);
         if (itemTypeFields == null) {
-          return <ComponentLoading key={values.id} />;
+          return [];
         }
         const fields = itemTypeFields[values.itemTypeName];
         if (!fields || fields.length === 0) {
@@ -563,56 +570,62 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
             }),
         );
 
-        return {
-          id: (
-            <CopyTextComponent
-              value={values.id}
-              displayValue={<div className="flex min-w-24">{values.id}</div>}
-            />
-          ),
-          itemTypeName: <RoundedTag title={values.itemTypeName} />,
-          userId: (
-            <Link
-              to={`/dashboard/manual_review/investigation?id=${values.userId}&typeId=${values.userTypeId}`}
-              onClick={(event) => event.stopPropagation()}
-              target="_blank"
-            >
-              {values.userId}
-            </Link>
-          ),
-          content: (
-            <CopyTextComponent
-              value={formattedContent.filter((it) => it.length > 0).join('\n')}
-              displayValue={
-                <div className="flex flex-col items-start">{content}</div>
-              }
-              footerItems={videoUrls.map((videoUrl) => (
-                <RuleInsightsSamplesPlayVideoButton
-                  key={videoUrl}
-                  onClick={() => {
-                    setVideoPlayerUrl(videoUrl);
-                  }}
-                />
-              ))}
-            />
-          ),
-          time: <div className="flex min-w-[180px]">{values.time}</div>,
-          status: (
-            <div className="flex items-center">
-              <RoundedTag
-                title={capitalize(values.status)}
-                status={values.status}
+        return [
+          {
+            id: (
+              <CopyTextComponent
+                value={values.id}
+                displayValue={<div className="flex min-w-24">{values.id}</div>}
               />
-            </div>
-          ),
-          values,
-          ...Object.fromEntries(
-            extraColumns.map((it) => [
-              it.accessor,
-              (values as any)[it.accessor],
-            ]),
-          ),
-        };
+            ),
+            itemTypeName: <RoundedTag title={values.itemTypeName} />,
+            userId: (
+              <Link
+                to={`/dashboard/manual_review/investigation?id=${values.userId}&typeId=${values.userTypeId}`}
+                onClick={(event) => event.stopPropagation()}
+                target="_blank"
+              >
+                {values.userId}
+              </Link>
+            ),
+            content: (
+              <CopyTextComponent
+                value={formattedContent
+                  .filter((it) => it.length > 0)
+                  .join('\n')}
+                displayValue={
+                  <div className="flex flex-col items-start">{content}</div>
+                }
+                footerItems={videoUrls.map((videoUrl) => (
+                  <RuleInsightsSamplesPlayVideoButton
+                    key={videoUrl}
+                    onClick={() => {
+                      setVideoPlayerUrl(videoUrl);
+                    }}
+                  />
+                ))}
+              />
+            ),
+            time: <div className="flex min-w-[180px]">{values.time}</div>,
+            status: (
+              <div className="flex items-center">
+                <RoundedTag
+                  title={capitalize(values.status)}
+                  status={values.status}
+                />
+              </div>
+            ),
+            values,
+            ...Object.fromEntries(
+              extraColumns.map((it) => [
+                it.accessorKey,
+                Object.entries(values).find(
+                  ([key]) => key === it.accessorKey,
+                )?.[1],
+              ]),
+            ),
+          },
+        ];
       }),
     [dataValues, itemTypeFields, extraColumns],
   );
@@ -621,11 +634,11 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
     throw error ?? priorRuleVersionError ?? signalsError!;
   }
 
-  const onSelectRow = (row: Row<any>) => {
+  const onSelectRow = (row: TableRow<(typeof tableData)[number]>) => {
     setDetailViewData({
       visible: true,
       item: (() => {
-        const rowData = dataValues![row.index];
+        const rowData = row.original.values;
         return {
           identifier: { id: rowData.id, typeId: rowData.itemTypeId },
           date: rowData.time,
@@ -703,9 +716,8 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
         <div className="flex w-full">
           <div className="w-full rounded-[5px] border-solid border-0 border-b border-[#f0f0f0] max-h-[1500px] overflow-scroll scrollbar-hide">
             <Table
-              // @ts-ignore
               columns={columns}
-              data={tableData!}
+              data={tableData}
               onSelectRow={onSelectRow}
               containerClassName="w-full"
             />

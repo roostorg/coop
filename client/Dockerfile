@@ -1,4 +1,4 @@
-FROM node:24.18.0-bullseye-slim AS client_base
+FROM node:24.20.0-bullseye-slim AS client_base
 WORKDIR /app
 
 # ARG is used to get the release id into the ENV from the command line, and then
@@ -22,6 +22,8 @@ RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDP
 
 FROM nginx:1.29.1-bookworm AS serve
 COPY --from=build /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+ENV NGINX_ENVSUBST_FILTER=NGINX_
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

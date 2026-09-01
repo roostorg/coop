@@ -20,7 +20,10 @@ be done on staging; etc.)? If so, please note them here.
 _Only check items that apply to this PR; leave the rest unchecked._
 
 - [ ] **If you changed anything user-facing** (i.e. user interface or APIs):
-  Did you update the CHANGELOG.md and related docs?
+  Did you update related docs?
+
+- [ ] **If the change is notable** (refer to [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) conventions):
+  Did you update CHANGELOG.md?
 
 - [ ] **If you changed `server/models/**/{ContentTypeModel,ActionModel,RuleModel,PolicyModel}.ts`:**
   Did you update the corresponding history tables and their triggers?

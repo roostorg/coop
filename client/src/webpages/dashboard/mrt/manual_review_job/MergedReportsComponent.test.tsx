@@ -1,5 +1,5 @@
 import { MockedProvider } from '@apollo/client/testing';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -88,7 +88,7 @@ describe('MergedReportsComponent invalidation actions', () => {
   it('renders an invalidate button on every non-primary report row when the viewer has permission', () => {
     renderMerged(true);
     // Expand the table; collapsed by default.
-    screen.getByRole('button', { name: /show/i }).click();
+    fireEvent.click(screen.getByRole('button', { name: /show/i }));
     const buttons = screen.getAllByRole('button', {
       name: /invalidate all reports/i,
     });
@@ -97,7 +97,7 @@ describe('MergedReportsComponent invalidation actions', () => {
 
   it('renders no invalidate buttons when the viewer lacks permission', () => {
     renderMerged(false);
-    screen.getByRole('button', { name: /show/i }).click();
+    fireEvent.click(screen.getByRole('button', { name: /show/i }));
     expect(
       screen.queryByRole('button', { name: /invalidate all reports/i }),
     ).not.toBeInTheDocument();

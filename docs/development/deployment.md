@@ -35,7 +35,7 @@ Many other settings are only required if you are enabling specific features or c
 
 - Child safety reporting is optional, but if you are using NCMEC reporting you must configure the org settings in Coop and set `NCMEC_ENV=production` on the server only when your deployment has been approved for live reporting. See [NCMEC CyberTipline](../integrations/ncmec.md#test-vs-production-submissions).
 
-- Client-side integrations such as Google Places and custom docs/content proxy URLs are optional and can be left unset if you do not use those capabilities.
+- Client-side integrations such as Google Places and custom docs URLs are optional and can be left unset if you do not use those capabilities. See [Content Proxy](#content-proxy) below for `VITE_CONTENT_PROXY_URL`.
 
 - Third-party integration keys in `server/.env.example` are generally optional unless you are enabling the corresponding integration.
 
@@ -79,6 +79,40 @@ To set it up:
 4. Copy the contents of the XML file. In Coop, go to **Settings** → **SSO** and paste the XML into the **Identity Provider Metadata** field.
 5. On the same page, enter `email` in the **Attributes** section.
 6. In your Okta app under **Assignments**, assign users or groups to your app.
+
+## Content Proxy
+
+Coop can optionally route item content URLs through a **content proxy**: a service you host that fetches a content URL and serves it back inside the review iframe, so it can control presentation and apply wellness features (since the review UI cannot otherwise style or control content from a cross-origin iframe).
+
+Set `VITE_CONTENT_PROXY_URL` to your proxy's base URL to enable it. Left unset (the default), matching content just loads directly in the iframe.
+
+Coop does not ship a reference proxy implementation, so you'll need to deploy your own implementation.
+
+### Load content
+
+Coop loads your proxy at:
+
+```
+<VITE_CONTENT_PROXY_URL>/?contentUrl=<url-encoded content URL>
+```
+
+Your service should fetch and serve back the given `contentUrl`'s content.
+
+### Wellness features
+
+After the iframe loads, and whenever a reviewer changes their overlay settings, Coop posts a message to your proxy's page:
+
+```json
+{
+  "type": "customControl",
+  "blur": 0,
+  "grayscale": false,
+  "shouldTranslate": false,
+  "sepia": false
+}
+```
+
+`blur` ranges from `0` (none) to `6` (strongest); `grayscale` and `sepia` are simple on/off filters. Your proxy's page should listen for this message and apply the requested effects to the content it's displaying.
 
 ## Historical reference
 

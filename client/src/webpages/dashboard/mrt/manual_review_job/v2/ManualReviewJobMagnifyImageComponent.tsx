@@ -1,6 +1,6 @@
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Popover } from 'antd';
-import { useContext, useMemo } from 'react';
+import { ReactElement, useContext, useMemo } from 'react';
 
 import { useGQLGetMoreInfoForPartialItemsQuery } from '../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../utils/itemUtils';
@@ -26,11 +26,11 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
   // Optional sublabel to display under the label in the base component
   sublabel?: string;
   // Fallback in case the image url is invalid or fails to load
-  fallbackComponent: JSX.Element;
+  fallbackComponent: ReactElement;
   // Additional image urls to show in a row with the base image when hovering
   magnifiedUrls?: string[];
   // This is an optional component to display under the row of images when hovering
-  footerComponent?: JSX.Element;
+  footerComponent?: ReactElement;
   // color in some circumstances (like MRT)
   labelTruncationType?: 'truncate' | 'wrap';
 }) {

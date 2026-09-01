@@ -538,87 +538,93 @@ export default function ManualReviewQueuesDashboard() {
       filterNullOrUndefined([
         columnVisibility.favoriteQueues
           ? {
-              Header: '',
-              accessor: 'favoriteQueues',
-              canSort: false,
+              header: '',
+              accessorKey: 'favoriteQueues',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.id
           ? {
-              Header: 'ID',
-              accessor: 'id',
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'id',
-                  placeholder: 'Queue ID',
-                }),
-              filter: 'text',
-              sortType: stringSort,
+              header: 'ID',
+              accessorKey: 'id',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'id',
+                    placeholder: 'Queue ID',
+                  }),
+              },
+              filterFn: 'text' as const,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.name
           ? {
-              Header: 'Name',
-              accessor: 'name',
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'name',
-                  placeholder: 'My Queue',
-                }),
-              filter: 'text',
-              sortType: stringSort,
+              header: 'Name',
+              accessorKey: 'name',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'name',
+                    placeholder: 'My Queue',
+                  }),
+              },
+              filterFn: 'text' as const,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.description
           ? {
-              Header: 'Description',
-              accessor: 'description',
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'description',
-                }),
-              filter: 'text',
-              sortType: stringSort,
+              header: 'Description',
+              accessorKey: 'description',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'description',
+                  }),
+              },
+              filterFn: 'text' as const,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.oldestTaskAge
           ? {
-              Header: 'Oldest Task Age',
-              accessor: 'oldestTaskAge',
-              sortType: dateSort('oldestJobCreatedAt'),
+              header: 'Oldest Task Age',
+              accessorKey: 'oldestTaskAge',
+              sortFn: dateSort('oldestJobCreatedAt'),
             }
           : undefined,
         columnVisibility.pendingJobCount
           ? {
-              Header: 'Pending Jobs',
-              accessor: 'pendingJobCount',
-              sortType: integerSort,
+              header: 'Pending Jobs',
+              accessorKey: 'pendingJobCount',
+              sortFn: integerSort,
             }
           : undefined,
         columnVisibility.startReviewing
           ? {
-              Header: '',
-              accessor: 'startReviewing',
-              canSort: false,
+              header: '',
+              accessorKey: 'startReviewing',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.mutations
           ? {
-              Header: '',
-              accessor: 'mutations',
-              canSort: false,
+              header: '',
+              accessorKey: 'mutations',
+              enableSorting: false,
             }
           : undefined,
         userHasPermissions(data?.me?.permissions, [
           GQLUserPermission.ManageOrg,
         ]) && columnVisibility.deleteJobs
           ? {
-              Header: '',
-              accessor: 'deleteJobs',
-              canSort: false,
+              header: '',
+              accessorKey: 'deleteJobs',
+              enableSorting: false,
             }
           : undefined,
         previewJobsViewEnabled &&
@@ -627,9 +633,9 @@ export default function ManualReviewQueuesDashboard() {
         ]) &&
         columnVisibility.previewJobs
           ? {
-              Header: '',
-              accessor: 'previewJobs',
-              canSort: false,
+              header: '',
+              accessorKey: 'previewJobs',
+              enableSorting: false,
             }
           : undefined,
       ]),

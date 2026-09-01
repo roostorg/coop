@@ -15,6 +15,8 @@ export interface UserStrikeActionRecord {
   actionId: string;
   itemId: string;
   itemTypeId: string;
+  creatorId: string | null;
+  creatorTypeId: string | null;
   source: string;
   occurredAt: Date;
 }

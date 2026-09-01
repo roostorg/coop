@@ -93,7 +93,16 @@ services:
     ports:
       - '9042:9042'
     healthcheck:
-      test: ['CMD-SHELL', 'nodetool status || exit 1']
+      # nodetool status only confirms gossip is up, not that the CQL port
+      # (9042) is accepting and completing queries yet — that gap lets
+      # dependents (e.g. db:create/db:update via cassandra-driver) connect
+      # before Scylla is actually ready, causing timeouts even though
+      # Compose reports the container healthy.
+      test:
+        [
+          'CMD-SHELL',
+          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+        ]
       interval: 5s
       timeout: 5s
       retries: 28

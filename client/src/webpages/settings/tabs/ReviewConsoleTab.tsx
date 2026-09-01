@@ -5,6 +5,7 @@ import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
   useGQLDeploymentSettingsQuery,
+  useGQLUpdateAllowMultiplePoliciesPerActionMutation,
   useGQLUpdateHideSkipButtonForNonAdminsMutation,
   useGQLUpdateIgnoreCallbackUrlMutation,
   useGQLUpdatePreviewJobsViewEnabledMutation,
@@ -26,6 +27,7 @@ export default function ReviewConsoleTab() {
   const org = data?.myOrg;
 
   const [requirePolicy, setRequirePolicy] = useState(false);
+  const [multiPolicy, setMultiPolicy] = useState(false);
   const [requireReason, setRequireReason] = useState(false);
   const [requireReasonOnIgnore, setRequireReasonOnIgnore] = useState(false);
   const [hideSkip, setHideSkip] = useState(false);
@@ -35,6 +37,7 @@ export default function ReviewConsoleTab() {
   useEffect(() => {
     if (org) {
       setRequirePolicy(org.requiresPolicyForDecisionsInMrt);
+      setMultiPolicy(org.allowMultiplePoliciesPerAction);
       setRequireReason(org.requiresDecisionReasonInMrt);
       setRequireReasonOnIgnore(org.requiresDecisionReasonOnIgnoreInMrt);
       setHideSkip(org.hideSkipButtonForNonAdmins);
@@ -55,6 +58,8 @@ export default function ReviewConsoleTab() {
 
   const [updateRequirePolicy, { loading: requirePolicyLoading }] =
     useGQLUpdateRequiresPolicyForDecisionsMutation(mutationOpts);
+  const [updateMultiPolicyMutation, { loading: multiPolicyLoading }] =
+    useGQLUpdateAllowMultiplePoliciesPerActionMutation(mutationOpts);
   const [updateRequireReason, { loading: requireReasonLoading }] =
     useGQLUpdateRequiresDecisionReasonMutation(mutationOpts);
   const [
@@ -72,6 +77,7 @@ export default function ReviewConsoleTab() {
 
   const saveLoading =
     requirePolicyLoading ||
+    multiPolicyLoading ||
     requireReasonLoading ||
     requireReasonOnIgnoreLoading ||
     hideSkipLoading ||
@@ -80,6 +86,7 @@ export default function ReviewConsoleTab() {
 
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||
+    multiPolicy !== org.allowMultiplePoliciesPerAction ||
     requireReason !== org.requiresDecisionReasonInMrt ||
     requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
@@ -89,6 +96,9 @@ export default function ReviewConsoleTab() {
   const handleSave = () => {
     if (requirePolicy !== org.requiresPolicyForDecisionsInMrt) {
       updateRequirePolicy({ variables: { enabled: requirePolicy } });
+    }
+    if (multiPolicy !== org.allowMultiplePoliciesPerAction) {
+      updateMultiPolicyMutation({ variables: { enabled: multiPolicy } });
     }
     if (requireReason !== org.requiresDecisionReasonInMrt) {
       updateRequireReason({ variables: { enabled: requireReason } });
@@ -143,6 +153,17 @@ export default function ReviewConsoleTab() {
               checked={requirePolicy}
               onCheckedChange={setRequirePolicy}
             />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Text size="SM" weight="medium">
+                Multiple Policies Per Action
+              </Text>
+              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                Allows job decisions to reference multiple policies
+              </Text>
+            </div>
+            <Switch checked={multiPolicy} onCheckedChange={setMultiPolicy} />
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
