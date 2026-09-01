@@ -36,6 +36,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  Curve,
   Legend,
   Line,
   Pie,
@@ -1136,7 +1137,18 @@ export default function ManualReviewDashboardInsightsChart(props: {
         cy="50%"
         outerRadius={80}
         fill={PRIMARY_COLOR}
-        label
+        label={({ value }) => (value === 0 ? <></> : value)}
+        labelLine={(props) =>
+          props.value === 0 ? (
+            <></>
+          ) : (
+            <Curve
+              {...props}
+              type="linear"
+              className="recharts-pie-label-line"
+            />
+          )
+        }
       >
         {pieChartData.map((_, index) => (
           <Cell
