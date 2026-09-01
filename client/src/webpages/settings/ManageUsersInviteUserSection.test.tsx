@@ -35,7 +35,6 @@ const rolesMock: MockedResponse = {
           displayName: 'Admin',
           description: '',
           isSystem: true,
-          isFallback: false,
           permissions: [],
           userCount: 1,
         },
