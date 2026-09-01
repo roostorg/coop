@@ -185,11 +185,6 @@ export type OnRecordDecisionInput = {
 export const NCMEC_ESCALATION_SKIP_WARNING =
   'NCMEC escalation was skipped: this user already has a submitted NCMEC report.';
 
-export const NCMEC_ESCALATION_SKIP_UNKNOWN_WARNING =
-  'Could not check whether this user already has a submitted NCMEC report, so ' +
-  'the escalation may be skipped. Confirm the report was created before ' +
-  'treating this user as escalated.';
-
 export default class JobDecisioning {
   constructor(
     private readonly queueOps: QueueOperations,
@@ -534,25 +529,8 @@ export default class JobDecisioning {
       orgId: opts.job.orgId,
       userId: opts.job.payload.item.itemId,
       userItemTypeId: opts.job.payload.item.itemTypeIdentifier.id,
-    }).catch((error) => {
-      this.tracer.addSpan(
-        {
-          resource: 'mrtService',
-          operation: 'ncmecEscalationSkipWarnings',
-        },
-        (span) => {
-          span.setAttribute('org.id', opts.job.orgId);
-          span.setAttribute('item.id', opts.job.payload.item.itemId);
-          this.tracer.logSpanFailed(span, error);
-          return null;
-        },
-      );
-      return 'unknown' as const;
     });
 
-    if (hasExistingReport === 'unknown') {
-      return [NCMEC_ESCALATION_SKIP_UNKNOWN_WARNING];
-    }
     return hasExistingReport ? [NCMEC_ESCALATION_SKIP_WARNING] : [];
   }
 
