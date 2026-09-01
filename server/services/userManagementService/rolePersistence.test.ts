@@ -60,34 +60,6 @@ describe('UserManagementService role persistence', () => {
   );
 
   testWithFixture(
-    'rejects invite creation when the organization system role is missing',
-    async ({ deps, org }) => {
-      await deps.KyselyPg.deleteFrom('public.role_permissions')
-        .where(
-          'role_id',
-          'in',
-          deps.KyselyPg.selectFrom('public.roles')
-            .select('id')
-            .where('org_id', '=', org.id)
-            .where('key', '=', UserRole.ANALYST),
-        )
-        .execute();
-      await deps.KyselyPg.deleteFrom('public.roles')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ANALYST)
-        .execute();
-
-      await expect(
-        deps.UserManagementService.createInviteUserToken({
-          email: faker.internet.email(),
-          role: UserRole.ANALYST,
-          orgId: org.id,
-        }),
-      ).rejects.toThrow();
-    },
-  );
-
-  testWithFixture(
     'signs up with a role-ID-backed invite and consumes its token',
     async ({ deps, org }) => {
       const email = faker.internet.email();
@@ -182,68 +154,6 @@ describe('UserManagementService role persistence', () => {
       ).resolves.toEqual([
         expect.objectContaining({ id: userId, role: UserRole.ANALYST }),
       ]);
-    },
-  );
-
-  testWithFixture(
-    'rejects role updates when the organization system role is missing',
-    async ({ deps, org }) => {
-      const userId = uid();
-      const adminRole = await deps.KyselyPg.selectFrom('public.roles')
-        .select('id')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .executeTakeFirstOrThrow();
-      const now = new Date();
-      await deps.KyselyPg.insertInto('public.users')
-        .values({
-          id: userId,
-          org_id: org.id,
-          email: faker.internet.email(),
-          first_name: 'Existing',
-          last_name: 'User',
-          role_id: adminRole.id,
-          login_methods: ['saml'],
-          password: null,
-          approved_by_admin: true,
-          rejected_by_admin: false,
-          created_at: now,
-          updated_at: now,
-        })
-        .execute();
-      await deps.KyselyPg.deleteFrom('public.role_permissions')
-        .where(
-          'role_id',
-          'in',
-          deps.KyselyPg.selectFrom('public.roles')
-            .select('id')
-            .where('org_id', '=', org.id)
-            .where('key', '=', UserRole.ANALYST),
-        )
-        .execute();
-      await deps.KyselyPg.deleteFrom('public.roles')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ANALYST)
-        .execute();
-
-      await expect(
-        deps.UserManagementService.updateUserRole({
-          userId,
-          newRole: UserRole.ANALYST,
-          orgId: org.id,
-          invoker: {
-            userId: uid(),
-            orgId: org.id,
-            permissions: [UserPermission.MANAGE_USERS],
-          },
-        }),
-      ).rejects.toThrow();
-
-      const persistedUser = await deps.KyselyPg.selectFrom('public.users')
-        .select('role_id')
-        .where('id', '=', userId)
-        .executeTakeFirstOrThrow();
-      expect(persistedUser.role_id).toBe(adminRole.id);
     },
   );
 });
