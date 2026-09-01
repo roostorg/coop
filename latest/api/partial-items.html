@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-92d1b43c.js";
+            window.path_to_searchindex_js = "../searchindex-7265a05a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -181,11 +181,7 @@
 <h2 id="setting-up-your-endpoint"><a class="header" href="#setting-up-your-endpoint">Setting up your endpoint</a></h2>
 <p>To use this API, your platform must provide a Partial Items API endpoint that can receive POST requests from Coop. When Coop needs to get information about a particular item from your platform, it sends a POST request to the endpoint with the requested item’s unique ID.</p>
 <p>To verify that an incoming request actually came from Coop, check the <code>Coop-Signature</code> header. See <a href="../development/api-auth.html#verifying-incoming-requests-from-coop">API Keys &amp; Authentication</a> for the signature verification algorithm and a code example.</p>
-<blockquote class="blockquote-tag blockquote-tag-important">
-<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
-<p><strong>It is not yet possible to configure this from the Coop UI</strong>, so you’ll have to manage it in code. See <a href="https://github.com/roostorg/coop/issues/378">roostorg/coop#378</a> for details.</p>
-</blockquote>
-<p>You’ll need to update your Coop instance’s code with the endpoint URL and any required headers (including any additional authentication, such as an API key) so it can make the HTTP requests.</p>
+<p>You can configure the Partial Items API endpoint URL and any required headers (including any additional authentication, such as an API key) under <a href="../user/administration.html#partial-items">Settings</a>.</p>
 <h2 id="rest-api-example"><a class="header" href="#rest-api-example">REST API example</a></h2>
 <p>Here’s an example of a POST request that Coop would send to this endpoint:</p>
 <pre><code class="language-sh">curl --request POST \
