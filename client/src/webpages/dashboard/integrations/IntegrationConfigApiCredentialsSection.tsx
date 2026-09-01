@@ -1,5 +1,6 @@
 import { Button, Input, Select } from 'antd';
 import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
@@ -334,6 +335,12 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     'threadContextWindowMinutes',
   ]);
 
+  // Raw text currently being typed into numeric fields, so e.g. "0." isn't
+  // clobbered mid-edit by re-rendering with `String(credential[key])`.
+  const [sentinelDrafts, setSentinelDrafts] = useState<Record<string, string>>(
+    {},
+  );
+
   const renderSentinelCredential = (pluginCredential: {
     __typename: 'PluginIntegrationApiCredential';
     credential: Record<string, unknown>;
@@ -345,9 +352,14 @@ export default function IntegrationConfigApiCredentialsSection(props: {
           <div key={key} className={`flex flex-col ${inputWidthClass}`}>
             <div className="mb-1">{label}</div>
             <Input
-              value={credential[key] == null ? '' : String(credential[key])}
+              value={
+                sentinelDrafts[key] ??
+                (credential[key] == null ? '' : String(credential[key]))
+              }
               onChange={(event) => {
                 const raw = event.target.value;
+                setSentinelDrafts((prev) => ({ ...prev, [key]: raw }));
+
                 let next: Record<string, unknown>;
                 if (raw.trim() === '') {
                   const { [key]: _removed, ...rest } = credential;
@@ -365,6 +377,12 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                   credential:
                     next as import('../../../graphql/generated').Scalars['JSONObject'],
                 });
+              }}
+              onBlur={() => {
+                // Snap back to the canonical (parsed/committed) formatting
+                // once the user is done typing, e.g. "0.10" -> "0.1".
+                const { [key]: _removed, ...rest } = sentinelDrafts;
+                setSentinelDrafts(rest);
               }}
             />
           </div>
