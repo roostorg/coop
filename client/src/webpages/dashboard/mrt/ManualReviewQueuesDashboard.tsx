@@ -672,7 +672,9 @@ export default function ManualReviewQueuesDashboard() {
                   jobSortType:
                     jobSortType === 'NUM_REPORTS'
                       ? 'Most reported first'
-                      : 'First in, first out',
+                      : jobSortType === 'WEIGHTED'
+                        ? 'Custom (weighted)'
+                        : 'First in, first out',
                   // Jobs on a sorted queue live in BullMQ's prioritized set,
                   // which is ordered by priority rather than arrival, so
                   // there's no cheap way to find the oldest one. Flag it so

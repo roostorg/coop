@@ -65,7 +65,11 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
-import { type JobSortType } from './JobPriority.js';
+import {
+  userIdentifierFromItem,
+  type JobSortType,
+  type UserIdentifier,
+} from './JobPriority.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -1053,7 +1057,7 @@ export default class QueueOperations {
     orgId: string;
     queueId: string;
     getPriorities: (
-      itemIds: readonly string[],
+      items: ReadonlyArray<{ itemId: string; user: UserIdentifier }>,
     ) => Promise<ReadonlyMap<string, number>>;
   }) {
     const { orgId, queueId, getPriorities } = opts;
@@ -1064,6 +1068,7 @@ export default class QueueOperations {
       bullId: string;
       createdAtMs: number;
       itemId: string;
+      user: UserIdentifier;
     }> = [];
     let start = 0;
     while (true) {
@@ -1077,10 +1082,12 @@ export default class QueueOperations {
       if (jobs.length === 0) break;
       for (const job of jobs) {
         if (job?.id != null) {
+          const item = (job.data as ManualReviewJob).payload.item;
           pending.push({
             bullId: job.id,
             createdAtMs: new Date(job.data.createdAt).getTime(),
-            itemId: (job.data as ManualReviewJob).payload.item.itemId,
+            itemId: item.itemId,
+            user: userIdentifierFromItem(item),
           });
         }
       }
@@ -1090,7 +1097,9 @@ export default class QueueOperations {
 
     pending.sort((a, b) => a.createdAtMs - b.createdAtMs);
 
-    const priorities = await getPriorities(pending.map((it) => it.itemId));
+    const priorities = await getPriorities(
+      pending.map(({ itemId, user }) => ({ itemId, user })),
+    );
 
     for (const { bullId, itemId } of pending) {
       const priority = priorities.get(itemId);
