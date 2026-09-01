@@ -1,4 +1,4 @@
-import safeStableStringify from 'safe-stable-stringify';
+import { stringify as safeStableStringify } from 'safe-stable-stringify';
 
 function escapeString(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");

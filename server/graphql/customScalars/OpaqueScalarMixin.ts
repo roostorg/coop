@@ -45,7 +45,9 @@ export default <T extends object>(
 > => ({
   serialize(value) {
     return jwt.sign(value as T, jwtSigningKey, {
-      expiresIn: jwtExpiresIn,
+      // @types/jsonwebtoken@9 brands expiresIn as the `ms` StringValue template
+      // type; a plain string is valid at runtime, so cast to the option's type.
+      expiresIn: jwtExpiresIn as jwt.SignOptions['expiresIn'],
     });
   },
   parseValue: parseOpaqueScalarValue<T>(jwtSigningKey),

@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 

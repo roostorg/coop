@@ -1,4 +1,4 @@
-import stringify from 'safe-stable-stringify';
+import { stringify } from 'safe-stable-stringify';
 import { type Opaque } from 'type-fest';
 
 import { type JSON } from './json-schema-types.js';

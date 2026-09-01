@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import stringify from 'safe-stable-stringify';
+import { stringify } from 'safe-stable-stringify';
 
 import {
   getDerivedFieldValue,
