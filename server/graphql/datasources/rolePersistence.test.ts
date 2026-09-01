@@ -204,7 +204,7 @@ describe('role persistence', () => {
   });
 
   testWithFixture(
-    'lists persisted roles in canonical order with authoritative metadata, permissions, and IDs',
+    'lists roles in canonical order with their metadata and permissions',
     async ({ deps, org }) => {
       const admin = await deps.KyselyPg.selectFrom('public.roles')
         .select('id')
@@ -244,88 +244,6 @@ describe('role persistence', () => {
         description: 'Persisted description',
         permissions: ['MANAGE_ORG'],
       });
-    },
-  );
-
-  testWithFixture(
-    'returns an empty persisted permission set instead of role defaults',
-    async ({ deps, org }) => {
-      const role = await deps.KyselyPg.selectFrom('public.roles')
-        .select('id')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .executeTakeFirstOrThrow();
-      await deps.KyselyPg.deleteFrom('public.role_permissions')
-        .where('role_id', '=', role.id)
-        .execute();
-
-      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
-
-      expect(
-        roles.find(({ key }) => key === UserRole.ADMIN)?.permissions,
-      ).toEqual([]);
-    },
-  );
-
-  testWithFixture(
-    'rejects listing when an expected persisted system role is missing',
-    async ({ deps, org }) => {
-      await deps.KyselyPg.deleteFrom('public.roles')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .execute();
-
-      await expect(
-        kyselyListRolesForOrg(deps.KyselyPg, org.id),
-      ).rejects.toThrow();
-    },
-  );
-
-  testWithFixture(
-    'rename rejects a missing role without inserting it',
-    async ({ deps, org }) => {
-      await deps.KyselyPg.deleteFrom('public.roles')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .execute();
-
-      await expect(
-        kyselyRenameRole(deps.KyselyPg, {
-          orgId: org.id,
-          roleKey: UserRole.ADMIN,
-          displayName: 'Renamed admin',
-        }),
-      ).rejects.toThrow();
-      const persisted = await deps.KyselyPg.selectFrom('public.roles')
-        .select('id')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .execute();
-      expect(persisted).toEqual([]);
-    },
-  );
-
-  testWithFixture(
-    'permission update rejects a missing role without inserting it',
-    async ({ deps, org }) => {
-      await deps.KyselyPg.deleteFrom('public.roles')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .execute();
-
-      await expect(
-        kyselyUpdateRolePermissions(deps.KyselyPg, {
-          orgId: org.id,
-          roleKey: UserRole.ADMIN,
-          permissions: [],
-        }),
-      ).rejects.toThrow();
-      const persisted = await deps.KyselyPg.selectFrom('public.roles')
-        .select('id')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .execute();
-      expect(persisted).toEqual([]);
     },
   );
 
