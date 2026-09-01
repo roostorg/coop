@@ -204,6 +204,132 @@ describe('role persistence', () => {
   });
 
   testWithFixture(
+    'lists persisted roles in canonical order with authoritative metadata, permissions, and IDs',
+    async ({ deps, org }) => {
+      const admin = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .executeTakeFirstOrThrow();
+      await deps.KyselyPg.updateTable('public.roles')
+        .set({
+          display_name: 'Persisted administrator',
+          description: 'Persisted description',
+        })
+        .where('id', '=', admin.id)
+        .execute();
+      await deps.KyselyPg.deleteFrom('public.role_permissions')
+        .where('role_id', '=', admin.id)
+        .execute();
+      await deps.KyselyPg.insertInto('public.role_permissions')
+        .values({ role_id: admin.id, permission: 'MANAGE_ORG' })
+        .execute();
+      await deps.KyselyPg.insertInto('public.roles')
+        .values({
+          org_id: org.id,
+          key: 'UNKNOWN_ROLE',
+          display_name: 'Unknown role',
+          description: null,
+          is_system: true,
+        })
+        .execute();
+
+      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
+
+      expect(roles.map(({ key }) => key)).toEqual(Object.values(UserRole));
+      expect(roles.every(({ id }) => typeof id === 'string')).toBe(true);
+      expect(roles.find(({ key }) => key === UserRole.ADMIN)).toMatchObject({
+        id: admin.id,
+        displayName: 'Persisted administrator',
+        description: 'Persisted description',
+        permissions: ['MANAGE_ORG'],
+      });
+    },
+  );
+
+  testWithFixture(
+    'returns an empty persisted permission set instead of role defaults',
+    async ({ deps, org }) => {
+      const role = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .executeTakeFirstOrThrow();
+      await deps.KyselyPg.deleteFrom('public.role_permissions')
+        .where('role_id', '=', role.id)
+        .execute();
+
+      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
+
+      expect(
+        roles.find(({ key }) => key === UserRole.ADMIN)?.permissions,
+      ).toEqual([]);
+    },
+  );
+
+  testWithFixture(
+    'rejects listing when an expected persisted system role is missing',
+    async ({ deps, org }) => {
+      await deps.KyselyPg.deleteFrom('public.roles')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .execute();
+
+      await expect(
+        kyselyListRolesForOrg(deps.KyselyPg, org.id),
+      ).rejects.toThrow();
+    },
+  );
+
+  testWithFixture(
+    'rename rejects a missing role without inserting it',
+    async ({ deps, org }) => {
+      await deps.KyselyPg.deleteFrom('public.roles')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .execute();
+
+      await expect(
+        kyselyRenameRole(deps.KyselyPg, {
+          orgId: org.id,
+          roleKey: UserRole.ADMIN,
+          displayName: 'Renamed admin',
+        }),
+      ).rejects.toThrow();
+      const persisted = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .execute();
+      expect(persisted).toEqual([]);
+    },
+  );
+
+  testWithFixture(
+    'permission update rejects a missing role without inserting it',
+    async ({ deps, org }) => {
+      await deps.KyselyPg.deleteFrom('public.roles')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .execute();
+
+      await expect(
+        kyselyUpdateRolePermissions(deps.KyselyPg, {
+          orgId: org.id,
+          roleKey: UserRole.ADMIN,
+          permissions: [],
+        }),
+      ).rejects.toThrow();
+      const persisted = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .execute();
+      expect(persisted).toEqual([]);
+    },
+  );
+
+  testWithFixture(
     'counts only approved, non-rejected users by their persisted role ID',
     async ({ deps, org }) => {
       const insertUser = async (
@@ -269,6 +395,7 @@ describe('role persistence', () => {
         .values({
           token: uid(),
           email: `${uid()}@example.com`,
+          role: UserRole.ADMIN,
           role_id: adminRole.id,
           org_id: org.id,
         })

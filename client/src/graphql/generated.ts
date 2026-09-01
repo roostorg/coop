@@ -4047,10 +4047,8 @@ export type GQLRole = {
   readonly __typename: 'Role';
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
-  readonly id?: Maybe<Scalars['ID']['output']>;
-  /** True when permissions/metadata come from the static fallback rather than public.roles. */
-  readonly isFallback: Scalars['Boolean']['output'];
+  /** Persisted public.roles.id. */
+  readonly id: Scalars['ID']['output'];
   readonly isSystem: Scalars['Boolean']['output'];
   /** Stable role identifier (matches UserRole). */
   readonly key: GQLUserRole;
@@ -24909,12 +24907,11 @@ export type GQLRolesForOrgQuery = {
   readonly __typename: 'Query';
   readonly rolesForOrg: ReadonlyArray<{
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   }>;
@@ -25110,12 +25107,11 @@ export type GQLUpdateRolePermissionsMutation = {
   readonly __typename: 'Mutation';
   readonly updateRolePermissions: {
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   };
@@ -25129,12 +25125,11 @@ export type GQLRenameRoleMutation = {
   readonly __typename: 'Mutation';
   readonly renameRole: {
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   };
@@ -43636,7 +43631,6 @@ export const GQLRolesForOrgDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44579,7 +44573,6 @@ export const GQLUpdateRolePermissionsDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44637,7 +44630,6 @@ export const GQLRenameRoleDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
