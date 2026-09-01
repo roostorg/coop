@@ -313,7 +313,6 @@ describe('role persistence', () => {
         .values({
           token: uid(),
           email: `${uid()}@example.com`,
-          role: UserRole.ADMIN,
           role_id: adminRole.id,
           org_id: org.id,
         })
