@@ -154,7 +154,7 @@ const ManualReviewDashboardInsightsCard = (
                 to={props.link}
               >
                 {props.linkTitle}
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4 pl-2" />
               </Link>
             ) : null}
           </div>

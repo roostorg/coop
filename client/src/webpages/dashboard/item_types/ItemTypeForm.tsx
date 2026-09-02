@@ -1,10 +1,10 @@
-import { PlusOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import invert from 'lodash/invert';
 import pickBy from 'lodash/pickBy';
+import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -594,7 +594,7 @@ export default function ItemTypeForm() {
               ])
             }
           >
-            <PlusOutlined />
+            <Plus className="w-4 h-4" />
             Add Field
           </Button>
           <div className="flex flex-row gap-16">

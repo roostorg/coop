@@ -1,5 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
-import type { SVGProps } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -14,7 +14,7 @@ export default function DashboardMenuButton(props: {
   // Menu Items can be have sub items. This represents the level of the
   // item (top level = 0, sub items = 1, sub-sub items = 2, etc).
   level: number;
-  icon?: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+  icon?: LucideIcon;
   collapsed: boolean;
   highlighted: boolean;
 }) {
@@ -52,7 +52,7 @@ export default function DashboardMenuButton(props: {
       {Icon ? (
         <Icon
           style={{ width: '20px', height: '20px' }}
-          className="fill-black"
+          className="text-black"
         />
       ) : null}
       {collapsed ? null : (

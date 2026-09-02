@@ -1,4 +1,4 @@
-import { CaretRightFilled } from '@ant-design/icons';
+import { Play } from 'lucide-react';
 
 export function RuleInsightsSamplesPlayVideoButton(props: {
   onClick: () => void;
@@ -15,7 +15,7 @@ export function RuleInsightsSamplesPlayVideoButton(props: {
     >
       Play Video
       <div style={{ paddingTop: '2px' }}>
-        <CaretRightFilled />
+        <Play className="w-4 h-4" fill="currentColor" />
       </div>
     </div>
   );

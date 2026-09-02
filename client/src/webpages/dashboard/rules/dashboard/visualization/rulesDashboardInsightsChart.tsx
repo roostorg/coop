@@ -6,8 +6,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/coop-ui/Select';
-import { TapFilled } from '@/icons';
-import Download from '@/icons/lni/Web and Technology/download.svg?react';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import type { TimeDivisionOptions } from '@/webpages/dashboard/overview/Overview';
 import { format } from 'date-fns';
@@ -19,6 +17,7 @@ import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
+import { Download, MousePointerClick as TapFilled } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
 import {

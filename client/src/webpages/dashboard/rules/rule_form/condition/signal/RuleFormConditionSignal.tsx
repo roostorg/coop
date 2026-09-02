@@ -1,6 +1,6 @@
 import { GQLSignal } from '@/graphql/generated';
-import { DownOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
@@ -71,7 +71,7 @@ export default function RuleFormConditionSignal(props: {
           }
         >
           {condition.signal?.name ?? 'Select Signal'}{' '}
-          <DownOutlined className="!text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
+          <ChevronDown className="w-3 h-3 !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
         </Button>
         <div className="invisible pb-1 text-xs font-bold">Signal</div>
       </div>

@@ -1,7 +1,7 @@
-import { AuditOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
+import { Scale } from 'lucide-react';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -389,7 +389,7 @@ export default function ReportingRulesDashboard() {
       buttonLinkPath="form"
       buttonTitle="Create Report Rule"
       dashboardName="Report Rules"
-      icon={<AuditOutlined />}
+      icon={<Scale className="w-24 h-24" />}
     />
   );
 

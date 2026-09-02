@@ -1,12 +1,14 @@
-import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
-import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
-import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { HOST_URL } from '@/lib/config';
 import { filterNullOrUndefined } from '@/utils/collections';
-import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Checkbox, Input, Tooltip } from 'antd';
+import {
+  ChevronLeft,
+  ChevronRight,
+  XCircle as CrossCircle,
+  LayoutGrid as GridAlt,
+  RotateCw,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -675,7 +677,7 @@ export default function ManualReviewRecentDecisions() {
 
   const refreshButton = (
     <Button
-      icon={<RedoOutlined className="self-center" />}
+      icon={<RotateCw className="w-4 h-4 self-center" />}
       className="!inline-flex"
       onClick={async () =>
         getRecentDecisions({
@@ -1101,12 +1103,12 @@ export default function ManualReviewRecentDecisions() {
             {decidedJobLoading || selectedDecision ? null : (
               <div className="flex justify-between w-full mb-10">
                 <ChevronLeft
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="font-bold cursor-pointer w-7 text-slate-500"
                   onClick={() => handlePrevious()}
                 />
                 <span>Page {page + 1}</span>
                 <ChevronRight
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="font-bold cursor-pointer w-7 text-slate-500"
                   onClick={() => handleNext()}
                 />
               </div>

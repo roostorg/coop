@@ -1,6 +1,8 @@
-import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
-import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
 import { flexRender, useTable } from '@tanstack/react-table';
+import {
+  ArrowUpNarrowWide as SortAmountAsc,
+  ArrowDownWideNarrow as SortAmountDsc,
+} from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -130,11 +132,11 @@ export default function Table<TData extends Record<string, any>>(
                                 )}
                             {header.column.getCanSort() ? (
                               sorted === 'desc' ? (
-                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" />
+                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 text-primary rounded-full" />
                               ) : sorted === 'asc' ? (
-                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full scale-y-[-1]" />
+                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 text-primary rounded-full scale-y-[-1]" />
                               ) : (
-                                <SortAmountDsc className="w-4 rounded-full fill-gray-500" />
+                                <SortAmountDsc className="w-4 rounded-full text-gray-500" />
                               )
                             ) : null}
                           </div>

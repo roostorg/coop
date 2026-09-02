@@ -1,5 +1,4 @@
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import CloseButton from '@/components/common/CloseButton';
@@ -135,12 +134,12 @@ export default function ManualReviewDashboardInsightsGroupBy(props: {
               the groupByMenuVisible state.
            */}
           <ChevronUp
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${
+            className={`ml-2 w-3 text-slate-400 flex items-center ${
               groupByMenuVisible ? 'visible' : 'hidden'
             }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${
+            className={`ml-2 w-3 text-slate-400 flex items-center ${
               groupByMenuVisible ? 'hidden' : 'visible'
             }`}
           />

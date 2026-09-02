@@ -1,14 +1,10 @@
-import {
-  DatabaseOutlined,
-  DownloadOutlined,
-  LinkOutlined,
-} from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import type { ItemIdentifier } from '@roostorg/coop-types';
 import { Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import omit from 'lodash/omit';
 import uniq from 'lodash/uniq';
+import { Database, Download, Link as LucideLink } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
 import { Link } from 'react-router-dom';
@@ -560,7 +556,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
                       <span className="mr-1 text-blue-500 cursor-pointer">
                         See Image
                       </span>
-                      <LinkOutlined />
+                      <LucideLink className="w-4 h-4" />
                     </a>
                   ) : (
                     val
@@ -663,7 +659,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
 
   const noSamples = (
     <RuleInsightsEmptyCard
-      icon={<DatabaseOutlined />}
+      icon={<Database className="w-4 h-4" />}
       title="No Samples"
       subtitle="Your rule has not matched any content yet. As soon as it does, you'll see a sample of that content here."
     />
@@ -700,9 +696,7 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
               enclosingCharacter={`"`}
               target="_blank"
             >
-              <DownloadOutlined
-                style={{ color: '#1890ff', paddingRight: '8px' }}
-              />
+              <Download className="w-4 h-4 text-[#1890ff] pr-2" />
               Download CSV
             </CSVLink>
           ) : null}

@@ -1,11 +1,11 @@
-import {
-  FlowChartAltFilled,
-  FriendsFilled,
-  GraphAlt1Filled,
-  SparklesFilled,
-} from '@/icons';
 import { gql } from '@apollo/client';
 import compact from 'lodash/compact';
+import {
+  GitBranch as FlowChartAltFilled,
+  Users as FriendsFilled,
+  BarChart2 as GraphAlt1Filled,
+  Sparkles as SparklesFilled,
+} from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {

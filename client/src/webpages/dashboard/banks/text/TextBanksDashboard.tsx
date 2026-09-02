@@ -1,6 +1,6 @@
-import { PlayCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import capitalize from 'lodash/capitalize';
+import { Type } from 'lucide-react';
 import { MouseEvent, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -240,7 +240,7 @@ export default function TextBanksDashboard() {
       buttonLinkPath="form/text"
       buttonTitle="Create Text Banks"
       dashboardName="Text Banks"
-      icon={<PlayCircleOutlined />}
+      icon={<Type className="w-24 h-24" />}
       buttonDisabled={!canEditTextBanks}
     />
   );

@@ -1,9 +1,7 @@
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
-import { FilterOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
+import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import CloseButton from '@/components/common/CloseButton';
@@ -112,8 +110,8 @@ export default function TableFilter<TData extends TableData>(props: {
               : 'text-white bg-[#71717a] border-none focus:text-white focus:bg-[#71717a] focus:border-none hover:text-white hover:bg-[#a1a1aa] hover:border-none'
           }`}
           icon={
-            <FilterOutlined
-              className={`font-semibold ${
+            <Filter
+              className={`w-4 h-4 font-semibold ${
                 activeFilters.length === 0 ? 'text-[#71717a]' : 'text-white'
               }`}
             />
@@ -173,9 +171,9 @@ export default function TableFilter<TData extends TableData>(props: {
                       {label}
                     </div>
                     {expanded ? (
-                      <ChevronUp className="w-3 font-bold fill-slate-400" />
+                      <ChevronUp className="w-3 font-bold text-slate-400" />
                     ) : (
-                      <ChevronDown className="w-3 font-bold fill-slate-400" />
+                      <ChevronDown className="w-3 font-bold text-slate-400" />
                     )}
                   </div>
                   {expanded && (

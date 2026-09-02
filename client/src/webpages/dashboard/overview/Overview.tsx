@@ -11,18 +11,18 @@ import {
   useGQLDashboardOrgQuery,
   useGQLIsWarehouseAvailableQuery,
 } from '@/graphql/generated';
-import {
-  FileExclamationFilled,
-  FlowChartAltFilled,
-  PieChartAlt1Filled,
-  TapFilled,
-  UsersFilled,
-} from '@/icons';
 import { LookbackLength } from '@/utils/time';
 import { gql } from '@apollo/client';
 import { makeEnumLike } from '@roostorg/coop-types';
 import { startOfHour, subDays } from 'date-fns';
-import { TriangleAlert } from 'lucide-react';
+import {
+  FileWarning as FileExclamationFilled,
+  GitBranch as FlowChartAltFilled,
+  PieChart as PieChartAlt1Filled,
+  MousePointerClick as TapFilled,
+  TriangleAlert,
+  Users as UsersFilled,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 

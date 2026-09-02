@@ -1,5 +1,5 @@
-import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
 import { Tooltip } from 'antd';
+import { Copy as CopyAlt } from 'lucide-react';
 import { ReactElement, useState } from 'react';
 
 const DEFAULT_TOOLTIP_TEXT = 'Copy to clipboard';
@@ -68,7 +68,7 @@ export default function CopyTextComponent(props: {
           <CopyAlt
             className={`flex w-4 h-4 min-w-fit ${
               displayValue && displayValue !== '' ? 'ml-1' : ''
-            } ${isError ? 'fill-red-400' : 'fill-slate-400'}`}
+            } ${isError ? 'text-red-400' : 'text-slate-400'}`}
           />
         </div>
       </Tooltip>

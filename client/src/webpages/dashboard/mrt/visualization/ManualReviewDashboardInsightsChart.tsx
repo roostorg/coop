@@ -1,16 +1,10 @@
-import { truncateAndFormatLargeNumber } from '@/utils/number';
 import {
-  BarChartOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  EditOutlined,
-  EllipsisOutlined,
-  InfoCircleOutlined,
-  LineChartOutlined,
-  PieChartOutlined,
-} from '@ant-design/icons';
+  Tooltip as AntTooltip,
+  TooltipContent as AntTooltipContent,
+  TooltipTrigger as AntTooltipTrigger,
+} from '@/coop-ui/Tooltip';
+import { truncateAndFormatLargeNumber } from '@/utils/number';
 import { gql } from '@apollo/client';
-import { Tooltip as AntTooltip } from 'antd';
 import { format } from 'date-fns';
 import flatten from 'lodash/flatten';
 import keys from 'lodash/keys';
@@ -22,6 +16,16 @@ import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
+import {
+  BarChart3,
+  Download,
+  Info,
+  LineChart,
+  MoreHorizontal,
+  Pencil,
+  PieChart as PieChartIcon,
+  Trash2,
+} from 'lucide-react';
 import React, {
   ReactNode,
   useCallback,
@@ -1169,11 +1173,19 @@ export default function ManualReviewDashboardInsightsChart(props: {
     <div className="flex items-center">
       {chartTypeButton(
         ChartType.LINE,
-        <LineChartOutlined />,
+        <LineChart className="w-4 h-4" />,
         'rounded-l-full border-r-0',
       )}
-      {chartTypeButton(ChartType.BAR, <BarChartOutlined />, 'border-r-0')}
-      {chartTypeButton(ChartType.PIE, <PieChartOutlined />, 'rounded-r-full')}
+      {chartTypeButton(
+        ChartType.BAR,
+        <BarChart3 className="w-4 h-4" />,
+        'border-r-0',
+      )}
+      {chartTypeButton(
+        ChartType.PIE,
+        <PieChartIcon className="w-4 h-4" />,
+        'rounded-r-full',
+      )}
     </div>
   );
 
@@ -1244,14 +1256,16 @@ export default function ManualReviewDashboardInsightsChart(props: {
           setOptionsVisible((prev) => !prev);
         }}
       >
-        <EllipsisOutlined className="flex text-2xl" />
+        <MoreHorizontal className="w-6 h-6 flex" />
       </div>
       <div
         className={`absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200 ${
           optionsVisible ? 'visible' : 'hidden'
         }`}
       >
-        {onEdit ? optionButton('Edit', <EditOutlined />, onEdit) : null}
+        {onEdit
+          ? optionButton('Edit', <Pencil className="w-4 h-4" />, onEdit)
+          : null}
         <CSVLink
           id="CSVLink"
           data={finalChartData}
@@ -1259,9 +1273,11 @@ export default function ManualReviewDashboardInsightsChart(props: {
           enclosingCharacter={`"`}
           target="_blank"
         >
-          {optionButton('Download', <DownloadOutlined />)}
+          {optionButton('Download', <Download className="w-4 h-4" />)}
         </CSVLink>
-        {onDelete ? optionButton('Delete', <DeleteOutlined />, onDelete) : null}
+        {onDelete
+          ? optionButton('Delete', <Trash2 className="w-4 h-4" />, onDelete)
+          : null}
       </div>
     </div>
   );
@@ -1291,12 +1307,13 @@ export default function ManualReviewDashboardInsightsChart(props: {
                       .join(', ')}`
                   : null}
                 {infoText ? (
-                  <AntTooltip
-                    title={infoText}
-                    placement="topRight"
-                    color="white"
-                  >
-                    <InfoCircleOutlined className="pl-2 w-fit h-fit text-slate-300" />
+                  <AntTooltip>
+                    <AntTooltipTrigger asChild>
+                      <Info className="w-4 h-4 pl-2 text-slate-300" />
+                    </AntTooltipTrigger>
+                    <AntTooltipContent side="top" align="end">
+                      {infoText}
+                    </AntTooltipContent>
                   </AntTooltip>
                 ) : null}
               </div>

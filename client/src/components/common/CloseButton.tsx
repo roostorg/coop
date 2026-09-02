@@ -1,4 +1,4 @@
-import { CloseFilled } from '@/icons';
+import { X } from 'lucide-react';
 
 export default function CloseButton(props: {
   onClose: ((event: React.MouseEvent<HTMLElement>) => void) | (() => void);
@@ -7,7 +7,7 @@ export default function CloseButton(props: {
   const { onClose, customWidth } = props;
   return (
     <div className="flex w-fit h-fit" onClick={onClose}>
-      <CloseFilled
+      <X
         className={`rounded-full bg-slate-400/70 hover:bg-slate-400/50 p-1 cursor-pointer text-slate-200 ${
           customWidth ?? 'w-4'
         }`}

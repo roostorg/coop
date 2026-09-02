@@ -1,5 +1,4 @@
 import { isTypingInEditableElement } from '@/utils/misc';
-import { BulbOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
@@ -7,6 +6,7 @@ import clsx from 'clsx';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
 import uniqWith from 'lodash/uniqWith';
+import { Lightbulb } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -943,7 +943,7 @@ export default function NCMECReviewUser(
       />
       <div className="flex items-center justify-between w-full gap-8 mb-2">
         <div className="text-start text-slate-500 font-medium w-fit bg-slate-100 rounded-md p-1.5 flex items-center">
-          <BulbOutlined className="pr-2 text-xl" />
+          <Lightbulb className="w-5 h-5 pr-2" />
           <div className="flex flex-col">
             <div className="text-sm pb-0.5 font-semibold">
               Keyboard shortcuts:

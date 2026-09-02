@@ -1,12 +1,7 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  EllipsisOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Tooltip as AntTooltip } from 'antd';
 import orderBy from 'lodash/orderBy';
+import { Info, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Bar,
@@ -251,7 +246,7 @@ export default function HandleTimeByModeratorChart({
         } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit border-0 bg-transparent`}
         onClick={() => setOptionsVisible((prev) => !prev)}
       >
-        <EllipsisOutlined className="flex text-2xl" />
+        <MoreHorizontal className="flex w-6 h-6" />
       </button>
       {optionsVisible && (
         <div
@@ -259,8 +254,10 @@ export default function HandleTimeByModeratorChart({
           role="menu"
           className="absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200"
         >
-          {onEdit && optionButton('Edit', <EditOutlined />, onEdit)}
-          {onDelete && optionButton('Delete', <DeleteOutlined />, onDelete)}
+          {onEdit &&
+            optionButton('Edit', <Pencil className="w-4 h-4" />, onEdit)}
+          {onDelete &&
+            optionButton('Delete', <Trash2 className="w-4 h-4" />, onDelete)}
         </div>
       )}
     </div>
@@ -288,7 +285,7 @@ export default function HandleTimeByModeratorChart({
                     placement="topRight"
                     color="white"
                   >
-                    <InfoCircleOutlined className="pl-2 w-fit h-fit text-slate-300" />
+                    <Info className="pl-2 w-4 h-4 text-slate-300" />
                   </AntTooltip>
                 )}
               </div>

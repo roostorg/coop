@@ -1,4 +1,5 @@
 import { Tag } from 'antd';
+import { Hash } from 'lucide-react';
 import React, { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -211,7 +212,7 @@ export default function HashBanksDashboard() {
       buttonLinkPath="form/hash"
       buttonTitle="Create Hash Banks"
       dashboardName="Hash Banks"
-      icon={<div>🔍</div>}
+      icon={<Hash className="w-24 h-24" />}
     />
   );
 

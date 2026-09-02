@@ -1,7 +1,7 @@
 import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
-import { SearchOutlined } from '@ant-design/icons';
 import { Input, Select } from 'antd';
 import omit from 'lodash/omit';
+import { Search } from 'lucide-react';
 import { useState } from 'react';
 
 import { rebuildSubcategoryTreeFromGraphQLResponse } from '../../../../../utils/signalUtils';
@@ -68,7 +68,7 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
       <Input
         className="max-w-xs mb-2 rounded-lg"
         placeholder="Search"
-        prefix={<SearchOutlined className="site-form-item-icon" />}
+        prefix={<Search className="w-4 h-4" />}
         allowClear
         onChange={(event) =>
           setSearchTerm(event.target.value.toLocaleLowerCase())
