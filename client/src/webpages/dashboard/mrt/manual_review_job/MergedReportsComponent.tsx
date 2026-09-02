@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { dateSort, stringSort } from '../../components/table/sort';
 import Table from '../../components/table/Table';
 
 import InvalidateReportsButton from './InvalidateReportsButton';
@@ -103,10 +104,30 @@ export default function MergedReportsComponent(props: {
 
   const columns = useMemo(
     () => [
-      { header: 'Reported By', accessorKey: 'reportedBy' },
-      { header: 'Reported For', accessorKey: 'reportedFor' },
-      { header: 'Reason', accessorKey: 'reason' },
-      { header: 'Report Time', accessorKey: 'reportTime' },
+      {
+        header: 'Reported By',
+        accessorKey: 'reportedBy',
+        sortFn: stringSort,
+        sortDescFirst: false,
+      },
+      {
+        header: 'Reported For',
+        accessorKey: 'reportedFor',
+        sortFn: stringSort,
+        sortDescFirst: false,
+      },
+      {
+        header: 'Reason',
+        accessorKey: 'reason',
+        sortFn: stringSort,
+        sortDescFirst: false,
+      },
+      {
+        header: 'Report Time',
+        accessorKey: 'reportTime',
+        sortFn: dateSort('reportTime'),
+        sortDescFirst: false,
+      },
     ],
     [],
   );
@@ -141,6 +162,8 @@ export default function MergedReportsComponent(props: {
         hasReporter && report.displayInfo?.typeName
           ? `${report.displayInfo.typeName}: `
           : '';
+      const reportedFor = policy?.name ?? '—';
+      const reason = report.reason?.trim() || '—';
       return {
         reportedBy: (
           <div className="flex flex-wrap items-center gap-x-2">
@@ -200,10 +223,16 @@ export default function MergedReportsComponent(props: {
         ) : (
           '—'
         ),
-        reason: report.reason?.trim() ? report.reason : '—',
+        reason,
         reportTime: parseDatetimeToReadableStringInCurrentTimeZone(
           report.reportedAt,
         ),
+        values: {
+          reportedBy: `${reportedByPrefix}${reportedByLabel}`,
+          reportedFor,
+          reason,
+          reportTime: report.reportedAt,
+        },
       };
     });
   }, [

@@ -162,24 +162,23 @@ export default class NcmecEnqueueToMrt {
       // Pre-preservation call failed (expected for test/local environments)
     }
 
-    const allMediaItems = await this.#getAllMediaForUser(
-      input.orgId,
-      userSubmission,
+    const reportedItemIdentifier =
       userSubmission.itemId !== input.item.itemId ||
-        userSubmission.itemType.id !== input.item.itemTypeIdentifier.id
+      userSubmission.itemType.id !== input.item.itemTypeIdentifier.id
         ? {
             id: input.item.itemId,
             typeId: input.item.itemTypeIdentifier.id,
           }
-        : undefined,
+        : undefined;
+
+    const allMediaItems = await this.#getAllMediaForUser(
+      input.orgId,
+      userSubmission,
+      reportedItemIdentifier,
       // Pass the originally reported item so we can use it as fallback
       input.item,
       reportedItemType,
     );
-
-    if (allMediaItems.length === 0) {
-      return { status: 'SKIPPED' };
-    }
 
     // TODO: Write this to a data warehouse table and enqueue based off of a job instead
     await this.manualReviewToolService.enqueue(
@@ -199,6 +198,9 @@ export default class NcmecEnqueueToMrt {
             userSubmission,
           ),
           allMediaItems,
+          ...(reportedItemIdentifier
+            ? { reportedMessages: [reportedItemIdentifier] }
+            : {}),
           reportHistory: [],
         },
         correlationId: input.correlationId,

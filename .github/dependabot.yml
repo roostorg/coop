@@ -128,6 +128,12 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+      - dependency-name: 'jest-light-runner'
+        versions: ['>=0.6.0 <1.0.0']
+      - dependency-name: 'type-fest'
+        versions: ['>4.3.2 <5.0.0']
+      - dependency-name: 'typescript'
+        versions: ['>=5.0.0 <6.0.0']
     groups:
       server-prod-security:
         dependency-type: 'production'

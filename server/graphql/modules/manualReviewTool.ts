@@ -218,6 +218,7 @@ const typeDefs = /* GraphQL */ `
     item: UserItem!
     userScore: Int
     allMediaItems: [NcmecContentItem!]!
+    reportedMessages: [ItemIdentifier!]!
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo
   }
 
@@ -317,6 +318,10 @@ const typeDefs = /* GraphQL */ `
 
   type SubmitDecisionSuccessResponse {
     success: Boolean!
+    """
+    Non-blocking, reviewer-facing notices about the decision (e.g. an NCMEC escalation that was skipped because the user was already reported). Surfaced as toasts.
+    """
+    warnings: [String!]!
   }
 
   type JobHasAlreadyBeenSubmittedError implements Error {
@@ -1652,6 +1657,12 @@ const ThreadAppealManualReviewJobPayload: GQLThreadAppealManualReviewJobPayloadR
   };
 
 const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
+  reportedMessages(it) {
+    return (it.reportedMessages ?? []).map((id) => ({
+      id: id.id,
+      typeId: id.typeId,
+    }));
+  },
   async item(it, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -2363,20 +2374,21 @@ const Mutation: GQLMutationResolvers = {
         policyId: report.policyId === null ? undefined : report.policyId,
       }));
 
-      await context.services.ManualReviewToolService.submitDecision({
-        reportHistory: [...reportHistoryNoNullFields],
-        queueId,
-        jobId,
-        lockToken,
-        decisionComponents: decisionPayloads,
-        relatedActions: [...relatedItemActions],
-        reviewerId: userId,
-        reviewerEmail: userEmail,
-        orgId,
-        decisionReason: decisionReason ?? undefined,
-      });
+      const { warnings } =
+        await context.services.ManualReviewToolService.submitDecision({
+          reportHistory: [...reportHistoryNoNullFields],
+          queueId,
+          jobId,
+          lockToken,
+          decisionComponents: decisionPayloads,
+          relatedActions: [...relatedItemActions],
+          reviewerId: userId,
+          reviewerEmail: userEmail,
+          orgId,
+          decisionReason: decisionReason ?? undefined,
+        });
       return gqlSuccessResult(
-        { success: true },
+        { success: true, warnings },
         'SubmitDecisionSuccessResponse',
       );
     } catch (e: unknown) {
