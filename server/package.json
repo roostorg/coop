@@ -97,7 +97,7 @@
     "@eslint/compat": "^2.0.3",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.4",
-    "@faker-js/faker": "^7.5.0",
+    "@faker-js/faker": "^10.5.0",
     "@playwright/test": "^1.61.0",
     "@types/bcryptjs": "^2.4.2",
     "@types/connect-pg-simple": "^7.0.0",
