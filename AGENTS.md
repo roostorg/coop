@@ -159,6 +159,19 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
+## Changelog
+
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+
+- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
+- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
+- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
+- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`, adding `, closes [#456](...)` where it applies.
+- Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
+- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
+
 ## Code style
 
 - **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `npm run lint` and `npm run prettier:fix` from root.
@@ -230,3 +243,4 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 - Commit `.env`, credentials, or API keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.
+- Edit a released version's section in `CHANGELOG.md` — add to `## [Unreleased]` instead.
