@@ -3,7 +3,7 @@ import { Button } from 'antd';
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';
@@ -181,6 +181,19 @@ export default function LocationBankForm() {
     });
 
   const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+
+  const onCloseModal = () => {
+    const succeeded =
+      createMutationParams.data?.createLocationBank.__typename ===
+        'MutateLocationBankSuccessResponse' ||
+      updateMutationParams.data?.updateLocationBank.__typename ===
+        'MutateLocationBankSuccessResponse';
+    setModalInfo(undefined);
+    if (succeeded) {
+      navigate(-1);
+    }
+  };
 
   const bankQueryParams = useGQLLocationBankQuery({
     // not-null assertion is safe b/c, per skip below, id is defined
@@ -324,11 +337,11 @@ export default function LocationBankForm() {
     <CoopModal
       title={modalInfo?.title}
       visible={modalInfo != null}
-      onClose={() => setModalInfo(undefined)}
+      onClose={onCloseModal}
       footer={[
         {
           title: modalInfo?.buttonText ?? '',
-          onClick: () => setModalInfo(undefined),
+          onClick: onCloseModal,
           type: 'primary',
         },
       ]}
