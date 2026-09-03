@@ -267,7 +267,7 @@ export default function ManualReviewJobRelatedUserComponent(props: {
               }
               label={userName}
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
               }
             />
             {isReporter ? (

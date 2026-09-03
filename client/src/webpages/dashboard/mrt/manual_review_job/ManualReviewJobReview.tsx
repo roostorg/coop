@@ -1348,8 +1348,8 @@ function ManualReviewJobReviewImpl(props: {
       trigger={['click']}
     >
       <Button className="flex flex-row bottom-0 w-2/3 !px-2 mb-2 hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]">
-        <div className="flex flex-row">
-          <Sidebar1 className="w-3.5 mr-2" /> View Policy
+        <div className="flex flex-row items-center">
+          <Sidebar1 className="w-3.5 h-3.5 mr-2" /> View Policy
         </div>
       </Button>
     </Dropdown>
@@ -1363,8 +1363,8 @@ function ManualReviewJobReviewImpl(props: {
         onClick={skipToNextJob}
         disabled={pendingJobCount === 0}
       >
-        <div className="flex flex-row">
-          Skip <AngleDoubleRight className="w-3.5 ml-2" />
+        <div className="flex flex-row items-center">
+          Skip <AngleDoubleRight className="w-3.5 h-3.5 ml-2" />
         </div>
       </Button>
     );

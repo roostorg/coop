@@ -114,7 +114,7 @@ function ThreadMessageItem(props: {
                   : undefined
               }
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
               }
               itemIdentifier={{ id: message.id, typeId: message.type.id }}
             />

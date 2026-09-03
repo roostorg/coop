@@ -70,7 +70,7 @@ export default function ManualReviewDefaultCharts({
           }
           timeWindow={timeWindow}
           icon={
-            <AreaChart className="w-5 h-5 flex p-2 text-lg rounded-lg bg-coop-lightpurple text-coop-purple" />
+            <AreaChart className="w-9 h-9 flex p-2 text-lg rounded-lg bg-coop-lightpurple text-coop-purple" />
           }
           loading={loading}
         />
@@ -79,7 +79,7 @@ export default function ManualReviewDefaultCharts({
           value={currentlyOpenJobs}
           timeWindow={timeWindow}
           icon={
-            <Flag className="w-5 h-5 flex p-2 text-lg rounded-lg bg-coop-lightred text-coop-red" />
+            <Flag className="w-9 h-9 flex p-2 text-lg rounded-lg bg-coop-lightred text-coop-red" />
           }
           loading={loading}
           link={'/dashboard/manual_review/queues'}
@@ -103,7 +103,7 @@ export default function ManualReviewDefaultCharts({
           }
           timeWindow={timeWindow}
           icon={
-            <History className="w-5 h-5 flex p-2 text-lg rounded-lg bg-coop-lightorange text-coop-orange" />
+            <History className="w-9 h-9 flex p-2 text-lg rounded-lg bg-coop-lightorange text-coop-orange" />
           }
           loading={loading}
         />
@@ -126,7 +126,7 @@ export default function ManualReviewDefaultCharts({
           lowerIsBetter
           timeWindow={timeWindow}
           icon={
-            <History className="w-5 h-5 flex p-2 text-lg rounded-lg bg-coop-lightblue text-coop-blue" />
+            <History className="w-9 h-9 flex p-2 text-lg rounded-lg bg-coop-lightblue text-coop-blue" />
           }
           loading={loading}
         />

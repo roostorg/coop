@@ -31,7 +31,9 @@ export default function ManualReviewJobUserVerticalComponent(props: {
           imageUrl={profilePicUrl?.url}
           itemIdentifier={{ id: user.id, typeId: user.type.id }}
           label={displayName ? `${displayName} (${user.id})` : user.id}
-          fallbackComponent={<UserAlt4 className="p-3 text-slate-500 w-11" />}
+          fallbackComponent={
+            <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+          }
         />
         <Button
           className="rounded-md"

@@ -356,7 +356,7 @@ export default function NCMECInspectedMedia(props: {
               label={displayName ? `${displayName} (${user.id})` : user.id}
               labelTruncationType="wrap"
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
               }
               magnifiedUrls={backgroundImageUrl ? [backgroundImageUrl.url] : []}
             />

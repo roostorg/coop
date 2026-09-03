@@ -40,7 +40,9 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
           imageUrl={iconUrl}
           label={label}
           sublabel={sublabel}
-          fallbackComponent={<UserAlt4 className="p-3 text-slate-500 w-11" />}
+          fallbackComponent={
+            <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+          }
           labelTruncationType="wrap"
         />
         {onEditParameters && (

@@ -2041,6 +2041,7 @@ export default function RuleForm() {
             />
             <CoopButton
               icon={CopyAlt}
+              iconStyle="stroke"
               onClick={() => {
                 navigate(`/dashboard/rules/proactive/form?duplicate_id=${id}`);
                 navigate(0);
@@ -2051,6 +2052,7 @@ export default function RuleForm() {
             />
             <CoopButton
               icon={TrashCan}
+              iconStyle="stroke"
               onClick={() =>
                 dispatch({
                   type: RuleFormReducerActionType.ShowModal,

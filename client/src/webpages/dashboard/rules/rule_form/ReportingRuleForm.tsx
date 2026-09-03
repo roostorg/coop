@@ -1145,6 +1145,7 @@ export default function RuleForm() {
             />
             <CoopButton
               icon={CopyAlt}
+              iconStyle="stroke"
               onClick={() => {
                 navigate(`/dashboard/rules/report/form?duplicate_id=${id}`);
                 // See https://github.com/roostorg/coop/pull/3803#discussion_r1643632962
@@ -1156,6 +1157,7 @@ export default function RuleForm() {
             />
             <CoopButton
               icon={TrashCan}
+              iconStyle="stroke"
               onClick={() =>
                 dispatch({
                   type: ReportingRuleFormReducerActionType.ShowModal,

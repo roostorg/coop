@@ -171,9 +171,9 @@ export default function TableFilter<TData extends TableData>(props: {
                       {label}
                     </div>
                     {expanded ? (
-                      <ChevronUp className="w-3 font-bold text-slate-400" />
+                      <ChevronUp className="w-3 h-3 text-slate-400" />
                     ) : (
-                      <ChevronDown className="w-3 font-bold text-slate-400" />
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
                     )}
                   </div>
                   {expanded && (

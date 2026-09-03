@@ -65,7 +65,7 @@ export default function NCMECThreadItemComponent(props: {
               imageUrl={profileImage?.url}
               magnifiedUrls={backgroundImage ? [backgroundImage.url] : []}
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
               }
             />
           </span>
@@ -84,10 +84,7 @@ export default function NCMECThreadItemComponent(props: {
                 {isReported ? (
                   <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red">
                     Reported
-                    <AlertTriangle
-                      className="w-4 h-4 flex items-center justify-center"
-                      fill="currentColor"
-                    />
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
                   </div>
                 ) : null}
               </div>

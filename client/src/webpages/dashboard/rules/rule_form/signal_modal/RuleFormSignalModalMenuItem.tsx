@@ -87,11 +87,11 @@ export default function RuleFormSignalModalMenuItem(props: {
       <div className="flex-1" />
       <div className="flex h-px my-4 bg-slate-300" />
       <div className="flex flex-row items-center justify-between">
-        <div className="overflow-hidden text-sm text-gray-400 text-ellipsis line-clamp-2">
+        <div className="min-w-0 overflow-hidden text-sm text-gray-400 text-ellipsis line-clamp-2">
           {signal.description}
         </div>
         <ChevronRight
-          className="w-4 h-4 p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300 box-content"
+          className="w-5 h-5 p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300 box-content shrink-0"
           onClick={(event) => {
             event.stopPropagation();
             infoButtonTapped();

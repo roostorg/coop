@@ -76,15 +76,11 @@ export function outcomeIcon(outcome?: GQLConditionOutcome) {
     case GQLConditionOutcome.Passed:
       return <Flag className="w-4 h-4 text-red-800" fill="currentColor" />;
     case GQLConditionOutcome.Failed:
-      return (
-        <CheckCircle className="w-4 h-4 text-teal-800" fill="currentColor" />
-      );
+      return <CheckCircle className="w-4 h-4 text-teal-800" />;
     case GQLConditionOutcome.Inapplicable:
     case GQLConditionOutcome.Errored:
     case undefined:
-      return (
-        <MinusCircle className="w-4 h-4 text-zinc-500" fill="currentColor" />
-      );
+      return <MinusCircle className="w-4 h-4 text-zinc-500" />;
   }
 }
 

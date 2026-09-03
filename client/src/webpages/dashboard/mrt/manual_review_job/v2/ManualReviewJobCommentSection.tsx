@@ -111,11 +111,14 @@ function ManualReviewJobComment(props: {
         </div>
       </div>
       {currentUserId === comment.author?.id && (
-        <Button
-          className="self-start w-6 h-6 text-red-600 border-none"
-          icon={<Trash2 className="w-3 h-3" />}
+        <button
+          type="button"
+          aria-label="Delete comment"
+          className="flex items-center justify-center flex-none w-6 h-6 p-0 bg-transparent border-none rounded cursor-pointer text-red-600 hover:bg-red-50"
           onClick={onDelete}
-        />
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       )}
     </div>
   );

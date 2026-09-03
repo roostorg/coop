@@ -132,11 +132,11 @@ export default function Table<TData extends Record<string, any>>(
                                 )}
                             {header.column.getCanSort() ? (
                               sorted === 'desc' ? (
-                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 text-primary rounded-full" />
+                                <SortAmountDsc className="bg-[#40ace920] w-6 h-6 p-1 text-primary rounded-full" />
                               ) : sorted === 'asc' ? (
-                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 text-primary rounded-full scale-y-[-1]" />
+                                <SortAmountAsc className="bg-[#40ace920] w-6 h-6 p-1 text-primary rounded-full" />
                               ) : (
-                                <SortAmountDsc className="w-4 rounded-full text-gray-500" />
+                                <SortAmountDsc className="w-4 h-4 rounded-full text-gray-500" />
                               )
                             ) : null}
                           </div>

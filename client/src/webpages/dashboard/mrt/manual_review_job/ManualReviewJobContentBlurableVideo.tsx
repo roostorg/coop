@@ -113,7 +113,10 @@ export default function ManualReviewJobContentBlurableVideo(props: {
             }
           }}
         >
-          <CirclePlay className="w-9 h-9 text-white" fill="currentColor" />
+          <CirclePlay
+            className="w-12 h-12 text-white drop-shadow-lg"
+            strokeWidth={1.5}
+          />
         </div>
       )}
       <CoopModal

@@ -169,7 +169,9 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
             imageUrl={profilePicUrl?.url}
             magnifiedUrls={backgroundImageUrl ? [backgroundImageUrl.url] : []}
             label={displayName}
-            fallbackComponent={<UserAlt4 className="p-3 text-slate-500 w-11" />}
+            fallbackComponent={
+              <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+            }
           />
           {isReported ? (
             <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red h-fit">
