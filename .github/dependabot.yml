@@ -27,6 +27,15 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+    groups:
+      docker-images:
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+      docker-images-security:
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
 
   # Enable version updates for npm
   - package-ecosystem: 'npm'

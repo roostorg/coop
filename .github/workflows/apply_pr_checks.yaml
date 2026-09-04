@@ -72,6 +72,9 @@ jobs:
       - name: Check formatting
         run: npm run prettier
 
+      - name: Check Node version parity
+        run: npm run check:node-version
+
   check_generated_graphql:
     timeout-minutes: 4
     needs: [changes]
