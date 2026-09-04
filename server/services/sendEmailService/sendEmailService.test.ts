@@ -2,6 +2,7 @@ import { SendEmailCommand, type SESClient } from '@aws-sdk/client-ses';
 
 import makeSendEmail, {
   CoopEmailAddress,
+  makeSendEmailViaConsole,
   makeSendEmailViaSendGrid,
   type Message,
 } from './sendEmailService.js';
@@ -120,7 +121,7 @@ describe('sendEmailService', () => {
         text: 'Hello',
       };
 
-      await expect(sendEmail(msg)).resolves.not.toThrow();
+      await expect(sendEmail(msg)).resolves.toBe(false);
     });
 
     it('should log the error when SES fails', async () => {
@@ -152,6 +153,56 @@ describe('sendEmailService', () => {
     it('should create a function when given an API key', () => {
       const sendEmail = makeSendEmailViaSendGrid('SG.test-key');
       expect(typeof sendEmail).toBe('function');
+    });
+  });
+
+  describe('console backend', () => {
+    it('prints the email and reports successful delivery', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      const sendEmail = makeSendEmailViaConsole();
+      const msg: Message = {
+        to: 'test_user@example.com',
+        from: CoopEmailAddress.NoReply,
+        subject: 'Test Subject',
+        text: 'Test body',
+      };
+
+      await expect(sendEmail(msg)).resolves.toBe(true);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Email sent via console transport:',
+        msg,
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('is selected explicitly through EMAIL_TRANSPORT', async () => {
+      const previousTransport = process.env.EMAIL_TRANSPORT;
+      process.env.EMAIL_TRANSPORT = 'console';
+      const consoleSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      try {
+        const sendEmail = makeSendEmail();
+        await expect(
+          sendEmail({
+            to: 'test_user@example.com',
+            from: CoopEmailAddress.NoReply,
+            subject: 'Test Subject',
+            text: 'Test body',
+          }),
+        ).resolves.toBe(true);
+        expect(consoleSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        if (previousTransport === undefined) {
+          delete process.env.EMAIL_TRANSPORT;
+        } else {
+          process.env.EMAIL_TRANSPORT = previousTransport;
+        }
+        consoleSpy.mockRestore();
+      }
     });
   });
 
