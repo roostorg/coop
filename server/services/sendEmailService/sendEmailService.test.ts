@@ -161,21 +161,24 @@ describe('sendEmailService', () => {
       const consoleSpy = jest
         .spyOn(console, 'log')
         .mockImplementation(() => {});
-      const sendEmail = makeSendEmailViaConsole();
-      const msg: Message = {
-        to: 'test_user@example.com',
-        from: CoopEmailAddress.NoReply,
-        subject: 'Test Subject',
-        text: 'Test body',
-      };
 
-      await expect(sendEmail(msg)).resolves.toBe(true);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Email sent via console transport:',
-        msg,
-      );
-      consoleSpy.mockRestore();
-    });
+      try {
+        const sendEmail = makeSendEmailViaConsole();
+        const msg: Message = {
+          to: 'test_user@example.com',
+          from: CoopEmailAddress.NoReply,
+          subject: 'Test Subject',
+          text: 'Test body',
+        };
+
+        await expect(sendEmail(msg)).resolves.toBe(true);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Email sent via console transport:',
+          msg,
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
 
     it('is selected explicitly through EMAIL_TRANSPORT', async () => {
       const previousTransport = process.env.EMAIL_TRANSPORT;

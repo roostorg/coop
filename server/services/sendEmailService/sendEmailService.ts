@@ -95,9 +95,15 @@ const makeSendEmail = (clientOrContainer?: SESClient | unknown) => {
   }
 
   if (process.env.EMAIL_TRANSPORT === 'console') {
-    return makeSendEmailViaConsole();
+    if (process.env.NODE_ENV === 'production') {
+      // eslint-disable-next-line no-console
+      console.error(
+        'EMAIL_TRANSPORT=console is disabled when NODE_ENV=production',
+      );
+    } else {
+      return makeSendEmailViaConsole();
+    }
   }
-
   const sendGridApiKey = process.env.SENDGRID_API_KEY;
   if (sendGridApiKey) {
     return makeSendEmailViaSendGrid(sendGridApiKey);
