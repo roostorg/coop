@@ -18,7 +18,15 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      - name: Cache AgentScan analysis
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .agentscan-cache
+          key: agentscan-cache-${{ github.event.pull_request.user.login }}
+          restore-keys: agentscan-cache-
+
       - name: Scan pull request author
         uses: MatteoGabriele/agentscan-action@8112fb79b33fafb8506159df20129a34209ac410 # v2.5.0
         with:
+          cache-path: .agentscan-cache
           mode: labels
