@@ -142,6 +142,19 @@ gql`
       }
     }
   }
+
+  query GetFullReportingResultForRule($input: GetFullResultForItemInput!) {
+    getFullReportingRuleResultForItem(input: $input) {
+      ... on ReportingRuleExecutionResult {
+        result {
+          ...SampleRuleExecutionResultConditionResultFields
+        }
+      }
+      ... on NotFoundError {
+        title
+      }
+    }
+  }
 `;
 
 export default function ReportingRuleInsightsSamplesTable(props: {
@@ -259,6 +272,8 @@ export default function ReportingRuleInsightsSamplesTable(props: {
         creatorId: sample.creatorId,
         creatorTypeId: sample.creatorTypeId,
         itemData: sample.itemData,
+        executionTimestamp:
+          sample.ts instanceof Date ? sample.ts.toISOString() : sample.ts,
         time: parseDatetimeToReadableStringInCurrentTimeZone(sample.ts),
         status:
           sample.environment === GQLRuleEnvironment.Live ||
@@ -471,7 +486,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
           const rowData = row.original.values;
           return {
             identifier: { id: rowData.id, typeId: rowData.itemTypeId },
-            date: rowData.time,
+            date: rowData.executionTimestamp,
           };
         })(),
       });
@@ -555,6 +570,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
           {detailViewData.visible && detailViewData.item && (
             <RuleInsightsSampleDetailView
               ruleId={ruleId}
+              isReportingRule
               itemIdentifier={detailViewData.item.identifier}
               itemSubmissionDate={detailViewData.item.date}
               lookback={lookback}

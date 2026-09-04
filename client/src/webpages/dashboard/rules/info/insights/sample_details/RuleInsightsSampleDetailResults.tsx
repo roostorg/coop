@@ -3,6 +3,7 @@ import {
   GQLLookbackVersion,
   GQLScalarType,
   GQLSignalType,
+  useGQLGetFullReportingResultForRuleLazyQuery,
   useGQLGetFullResultForRuleLazyQuery,
   useGQLItemTypesQuery,
   type GQLBaseField,
@@ -90,6 +91,7 @@ export function outcomeIcon(outcome?: GQLConditionOutcome) {
 
 export default function RuleInsightsSampleDetailResults(props: {
   ruleId: string;
+  isReportingRule?: boolean;
   itemIdentifier: ItemIdentifier;
   lookback: LookbackVersion;
   itemSubmissionDate?: string;
@@ -104,11 +106,19 @@ export default function RuleInsightsSampleDetailResults(props: {
   );
   const [fetchFullResult, { loading: fullResultLoading }] =
     useGQLGetFullResultForRuleLazyQuery();
+  const [fetchFullReportingResult, { loading: fullReportingResultLoading }] =
+    useGQLGetFullReportingResultForRuleLazyQuery();
 
   useEffect(() => {
+    let active = true;
+
+    setConditionSetWithResult(undefined);
     setErrorMessage(undefined);
 
-    fetchFullResult({
+    const fetchResult = props.isReportingRule
+      ? fetchFullReportingResult
+      : fetchFullResult;
+    fetchResult({
       variables: {
         input: {
           ruleId,
@@ -118,28 +128,47 @@ export default function RuleInsightsSampleDetailResults(props: {
         },
       },
       onCompleted: (data) => {
+        if (!active) return;
+
+        const fullResult =
+          'getFullReportingRuleResultForItem' in data
+            ? data.getFullReportingRuleResultForItem
+            : data.getFullRuleResultForItem;
         if (
-          data.getFullRuleResultForItem.__typename === 'RuleExecutionResult'
+          fullResult.__typename === 'RuleExecutionResult' ||
+          fullResult.__typename === 'ReportingRuleExecutionResult'
         ) {
           return setConditionSetWithResult(
-            data.getFullRuleResultForItem
-              ?.result as unknown as ConditionSetWithResult,
+            fullResult.result as unknown as ConditionSetWithResult,
           );
         } else {
           setErrorMessage('No item found for the selected row.');
         }
       },
       onError: (e) => {
+        if (!active) return;
+
         setErrorMessage(`Error: ${e.message}`);
       },
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.ruleId, itemIdentifier, fetchFullResult]);
+
+    return () => {
+      active = false;
+    };
+  }, [
+    fetchFullReportingResult,
+    fetchFullResult,
+    itemIdentifier,
+    itemSubmissionDate,
+    lookback,
+    props.isReportingRule,
+    ruleId,
+  ]);
 
   const { data: contentTypesQueryData } = useGQLItemTypesQuery();
   const itemTypes = contentTypesQueryData?.myOrg?.itemTypes;
 
-  if (fullResultLoading) {
+  if (fullResultLoading || fullReportingResultLoading) {
     return <ComponentLoading />;
   }
   if (errorMessage || !conditionSetWithResult) {
