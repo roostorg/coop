@@ -95,15 +95,14 @@ const makeSendEmail = (clientOrContainer?: SESClient | unknown) => {
   }
 
   if (process.env.EMAIL_TRANSPORT === 'console') {
-    if (process.env.NODE_ENV === 'production') {
-      // eslint-disable-next-line no-console
-      console.error(
-        'EMAIL_TRANSPORT=console is disabled when NODE_ENV=production',
+    if (process.env.NODE_ENV !== 'development') {
+      throw new Error(
+        'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
       );
-    } else {
-      return makeSendEmailViaConsole();
     }
+    return makeSendEmailViaConsole();
   }
+
   const sendGridApiKey = process.env.SENDGRID_API_KEY;
   if (sendGridApiKey) {
     return makeSendEmailViaSendGrid(sendGridApiKey);
