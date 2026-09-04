@@ -164,6 +164,16 @@ npm run runWorkerOrJob ItemProcessingWorker
 
 Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in `server/iocContainer/services/workersAndJobs.ts`.
 
+To preview emails locally without configuring SES or SendGrid, add the
+following to `server/.env`. The recipient, subject, and rendered content will
+be printed in the server terminal. This transport requires
+`NODE_ENV=development` and must not be enabled in a shared environment because
+messages can contain user information:
+
+```sh
+EMAIL_TRANSPORT=console
+```
+
 ### With distributed tracing
 
 ```sh

@@ -1,5 +1,4 @@
 import { uid } from 'uid';
-import { Headers } from 'undici';
 
 import {
   NCMECFileAnnotation,
@@ -8,95 +7,12 @@ import {
   NcmecReporting,
   type NCMECReportParams,
 } from '../../services/ncmecService/index.js';
-import {
-  type CoopRequestQuery,
-  type CoopResponse,
-  type FetchHTTP,
-  type HandleResponseBody,
-} from '../../services/networkingService/index.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
+import { makeStubFetchHTTP } from '../fixtureHelpers/makeStubFetchHTTP.js';
 import { makeTransactionalTestWithFixture } from '../harness/transactionalTest.js';
 
 const MEDIA_URL = 'https://cdn.example/sample.jpg';
 const PRESERVATION_URL = 'https://preserve.example/req';
-
-/** Shape of one recorded outgoing fetchHTTP call. */
-type RecordedCall = {
-  url: string;
-  method: string;
-  body: unknown;
-  headers?: Record<string, string | ReadonlyArray<string>>;
-};
-
-/** Records every outgoing fetchHTTP call and returns canned CyberTip
- * responses. */
-function makeStubFetchHTTP(
-  reportId: string,
-  fileId: string,
-): {
-  fetchHTTP: FetchHTTP;
-  calls: RecordedCall[];
-} {
-  const calls: RecordedCall[] = [];
-  const ok = <T extends HandleResponseBody>(body: unknown): CoopResponse<T> =>
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the stub returns a canned body through a slot typed by the caller's T.
-    ({
-      status: 200,
-      ok: true,
-      headers: new Headers(),
-      body,
-    }) as CoopResponse<T>;
-  const fetchHTTP: FetchHTTP = async <T extends HandleResponseBody>(
-    query: CoopRequestQuery<T>,
-  ): Promise<CoopResponse<T>> => {
-    const { url, method, body, headers } = query;
-    // eslint-disable-next-line functional/immutable-data -- request recorder mutates by design
-    calls.push({ url, method, body, headers });
-
-    // media download for #upload
-    if (method === 'get') {
-      const stream = new ReadableStream({
-        start(ctr) {
-          ctr.enqueue(new TextEncoder().encode('fake-media-bytes'));
-          ctr.close();
-        },
-      });
-      return ok<T>(stream);
-    }
-    // NCMEC CyberTip protocol — every XML endpoint returns responseCode=0.
-    // /submit, /upload, /fileinfo use `reportResponse`; /finish uses
-    // `reportDoneResponse`.
-    if (
-      url.endsWith('/ispws/submit') ||
-      url.endsWith('/ispws/upload') ||
-      url.endsWith('/ispws/fileinfo')
-    ) {
-      const isSubmit = url.endsWith('/ispws/submit');
-      const isUpload = url.endsWith('/ispws/upload');
-      return ok<T>({
-        reportResponse: {
-          responseCode: { _text: '0' },
-          ...(isSubmit ? { reportId: { _text: reportId } } : {}),
-          ...(isUpload ? { fileId: { _text: fileId } } : {}),
-        },
-      });
-    }
-    if (url.endsWith('/ispws/finish')) {
-      return ok<T>({
-        reportDoneResponse: {
-          responseCode: { _text: '0' },
-          reportId: { _text: reportId },
-          files: [{ fileId: { _text: fileId } }],
-        },
-      });
-    }
-    if (url === PRESERVATION_URL) {
-      return ok<T>(undefined);
-    }
-    throw new Error(`stub fetchHTTP: unexpected request ${method} ${url}`);
-  };
-  return { fetchHTTP, calls };
-}
 
 describe('NCMEC submitReport (integration)', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
@@ -134,7 +50,9 @@ describe('NCMEC submitReport (integration)', () => {
       minMediaToReview: null,
     });
 
-    const stub = makeStubFetchHTTP(reportId, fileId);
+    const stub = makeStubFetchHTTP(reportId, fileId, {
+      preservationUrl: PRESERVATION_URL,
+    });
     const ncmecReporting = new NcmecReporting(
       deps.KyselyPg,
       deps.KyselyPgReadReplica,

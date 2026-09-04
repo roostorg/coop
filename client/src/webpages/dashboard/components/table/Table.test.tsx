@@ -1,5 +1,6 @@
 import { GQLRuleStatus } from '@/graphql/generated';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -100,6 +101,78 @@ describe('Table behavior', () => {
     expect(
       within(headerRows[1]).getByRole('columnheader', { name: 'Status' }),
     ).toBeTruthy();
+  });
+
+  it('keeps placeholder headers inert while grouped sortable headers stay accessible', () => {
+    const groupedColumns = [
+      columns[0],
+      {
+        header: 'Details',
+        columns: [columns[1]],
+      },
+    ] satisfies TableColumnDef<TableRow>[];
+    renderTable(groupedColumns);
+
+    const placeholderHeader = screen
+      .getAllByRole('columnheader')
+      .find((header) => header.textContent === '');
+    expect(placeholderHeader).toBeTruthy();
+    expect(within(placeholderHeader!).queryByRole('button')).toBeNull();
+    expect(placeholderHeader!.hasAttribute('aria-sort')).toBe(false);
+
+    const nameHeader = screen.getByRole('columnheader', { name: /Name/ });
+    const nameSortButton = within(nameHeader).getByRole('button', {
+      name: /Name/,
+    });
+    expect(nameHeader.getAttribute('aria-sort')).toBe('none');
+
+    nameSortButton.focus();
+    userEvent.type(nameSortButton, '{enter}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Alpha',
+      'Rendered Alpine',
+      'Rendered Zulu',
+    ]);
+  });
+
+  it('makes sortable headers keyboard accessible and reports their sort direction', () => {
+    renderTable();
+
+    const nameHeader = screen.getByRole('columnheader', { name: /Name/ });
+    const nameSortButton = within(nameHeader).getByRole('button', {
+      name: /Name/,
+    });
+    const statusHeader = screen.getByRole('columnheader', { name: 'Status' });
+
+    expect(nameHeader.getAttribute('aria-sort')).toBe('none');
+    expect(within(statusHeader).queryByRole('button')).toBeNull();
+    expect(statusHeader.hasAttribute('aria-sort')).toBe(false);
+
+    nameSortButton.focus();
+    expect(document.activeElement).toBe(nameSortButton);
+    userEvent.type(nameSortButton, '{enter}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Alpha',
+      'Rendered Alpine',
+      'Rendered Zulu',
+    ]);
+    expect(
+      screen
+        .getByRole('columnheader', { name: /Name/ })
+        .getAttribute('aria-sort'),
+    ).toBe('ascending');
+
+    userEvent.type(nameSortButton, '{space}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Zulu',
+      'Rendered Alpine',
+      'Rendered Alpha',
+    ]);
+    expect(
+      screen
+        .getByRole('columnheader', { name: /Name/ })
+        .getAttribute('aria-sort'),
+    ).toBe('descending');
   });
 
   it('renders accessor values and sorts by raw values only on sortable headers', () => {

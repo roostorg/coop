@@ -108,11 +108,41 @@ export default function Table<TData extends Record<string, any>>(
                   ) : (
                     headerGroup.headers.map((header, index) => {
                       const sorted = header.column.getIsSorted();
+                      const isSortableHeader =
+                        !header.isPlaceholder && header.column.getCanSort();
+                      const headerContent = header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          );
+                      const sortIcon = isSortableHeader ? (
+                        sorted === 'desc' ? (
+                          <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" />
+                        ) : sorted === 'asc' ? (
+                          <SortAmountAsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full scale-y-[-1]" />
+                        ) : (
+                          <SortAmountDsc className="w-4 rounded-full fill-gray-500" />
+                        )
+                      ) : null;
                       return (
                         <th
                           key={header.id}
                           colSpan={header.colSpan}
-                          onClick={header.column.getToggleSortingHandler()}
+                          onClick={
+                            isSortableHeader
+                              ? header.column.getToggleSortingHandler()
+                              : undefined
+                          }
+                          aria-sort={
+                            isSortableHeader
+                              ? sorted === 'asc'
+                                ? 'ascending'
+                                : sorted === 'desc'
+                                  ? 'descending'
+                                  : 'none'
+                              : undefined
+                          }
                           className={`align-center font-bold text-gray-500 text-start text-base !p-0 ${
                             index === 0
                               ? 'rounded-tl-md'
@@ -121,23 +151,19 @@ export default function Table<TData extends Record<string, any>>(
                                 : ''
                           }`}
                         >
-                          <div className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3">
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext(),
-                                )}
-                            {header.column.getCanSort() ? (
-                              sorted === 'desc' ? (
-                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" />
-                              ) : sorted === 'asc' ? (
-                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full scale-y-[-1]" />
-                              ) : (
-                                <SortAmountDsc className="w-4 rounded-full fill-gray-500" />
-                              )
-                            ) : null}
-                          </div>
+                          {isSortableHeader ? (
+                            <button
+                              type="button"
+                              className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3"
+                            >
+                              {headerContent}
+                              {sortIcon}
+                            </button>
+                          ) : (
+                            <div className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3">
+                              {headerContent}
+                            </div>
+                          )}
                         </th>
                       );
                     })

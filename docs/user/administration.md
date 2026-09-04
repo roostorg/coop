@@ -38,6 +38,8 @@ Reviewer wellness controls for media displayed in the Review Console including b
 
 ![Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle](../images/settings-wellness.png)
 
+Note that wellness settings apply to images and videos by default; they will not apply to embedded content unless your Coop deployment has implemented a [content proxy](../development/deployment.md#content-proxy).
+
 ### Partial Items
 
 Configuration for the [Partial Items](../api/partial-items.md) endpoint and the request headers Coop sends to it.
