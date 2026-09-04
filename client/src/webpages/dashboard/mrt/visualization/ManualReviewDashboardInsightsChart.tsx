@@ -36,6 +36,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  Curve,
   Legend,
   Line,
   Pie,
@@ -178,6 +179,16 @@ gql`
 
 export type ManualReviewDashboardInsightsChartMetric =
   'DECISIONS' | 'JOBS' | 'REVIEWED_JOBS' | 'SKIPPED_JOBS';
+
+export function getPieChartData(
+  chartDataSums: Record<string, number>,
+  hiddenLines: string[],
+) {
+  return Object.entries(chartDataSums).map(([name, value]) => ({
+    name,
+    value: hiddenLines.includes(name) ? 0 : value,
+  }));
+}
 
 export function getEmptyFilterState(
   metric: ManualReviewDashboardInsightsChartMetric,
@@ -1113,23 +1124,33 @@ export default function ManualReviewDashboardInsightsChart(props: {
     />
   ));
 
+  const pieChartData = getPieChartData(chartDataSums, hiddenLines);
+
   const pieChart = (
     <PieChart width={400} height={400}>
       <Pie
         dataKey="value"
         nameKey="name"
         isAnimationActive={false}
-        data={Object.entries(chartDataSums).map(([key, value]) => ({
-          name: key,
-          value,
-        }))}
+        data={pieChartData}
         cx="50%"
         cy="50%"
         outerRadius={80}
         fill={PRIMARY_COLOR}
-        label
+        label={({ value }) => (value === 0 ? <></> : value)}
+        labelLine={(props) =>
+          props.value === 0 ? (
+            <></>
+          ) : (
+            <Curve
+              {...props}
+              type="linear"
+              className="recharts-pie-label-line"
+            />
+          )
+        }
       >
-        {Object.entries(chartDataSums).map((_, index) => (
+        {pieChartData.map((_, index) => (
           <Cell
             key={`cell-${index}`}
             fill={chartColors[index % chartColors.length]}

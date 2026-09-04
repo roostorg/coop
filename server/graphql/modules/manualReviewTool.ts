@@ -1698,10 +1698,7 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
           typeSelector:
             ncmecContentItemSubmission.contentItem.itemTypeIdentifier,
         });
-        if (
-          type === undefined ||
-          (type.kind !== 'CONTENT' && type.kind !== 'USER')
-        ) {
+        if (type === undefined) {
           throw new Error(
             `No Content Item Type found for id: ${ncmecContentItemSubmission.contentItem.itemTypeIdentifier.id}`,
           );

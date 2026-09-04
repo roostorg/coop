@@ -14,6 +14,7 @@
     "db:update": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts apply",
     "db:create": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts create",
     "db:drop": "cd db && npm i && NODE_OPTIONS=\"--loader ts-node/esm\" node --env-file-if-exists=.env src/index.ts drop",
+    "check:node-version": "bash scripts/check-node-versions.sh",
     "check:prepush": "cd server && npm run check:prepush && cd ../client && npm run check:prepush",
     "typecheck": "cd server && npm run typecheck && cd ../client && npx tsc --noEmit",
     "prettier": "prettier --check \"./**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,yaml,yml}\"",
