@@ -179,6 +179,8 @@ describe('sendEmailService', () => {
 
   describe('console backend', () => {
     it('prints the email and reports successful delivery', async () => {
+      const previousNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
       const consoleSpy = jest
         .spyOn(console, 'log')
         .mockImplementation(() => {});
@@ -198,6 +200,11 @@ describe('sendEmailService', () => {
           msg,
         );
       } finally {
+        if (previousNodeEnv === undefined) {
+          delete process.env.NODE_ENV;
+        } else {
+          process.env.NODE_ENV = previousNodeEnv;
+        }
         consoleSpy.mockRestore();
       }
     });
@@ -244,9 +251,14 @@ describe('sendEmailService', () => {
       process.env.NODE_ENV = 'production';
 
       try {
-        expect(() => makeSendEmail()).toThrow(
-          'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
-        );
+        for (const makeTransport of [
+          () => makeSendEmail(),
+          () => makeSendEmailViaConsole(),
+        ]) {
+          expect(makeTransport).toThrow(
+            'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
+          );
+        }
       } finally {
         if (previousTransport === undefined) {
           delete process.env.EMAIL_TRANSPORT;

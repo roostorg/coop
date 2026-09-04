@@ -80,6 +80,12 @@ export function makeSendEmailViaSendGrid(apiKey: string) {
 }
 
 export function makeSendEmailViaConsole() {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error(
+      'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
+    );
+  }
+
   return async (msg: Message) => {
     // This transport is explicitly enabled for local testing and may include
     // recipient information and rendered notification content.
@@ -95,11 +101,6 @@ const makeSendEmail = (clientOrContainer?: SESClient | unknown) => {
   }
 
   if (process.env.EMAIL_TRANSPORT === 'console') {
-    if (process.env.NODE_ENV !== 'development') {
-      throw new Error(
-        'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
-      );
-    }
     return makeSendEmailViaConsole();
   }
 
