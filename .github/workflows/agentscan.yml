@@ -1,0 +1,24 @@
+name: AgentScan
+
+on:
+  # Write access is required to label fork PRs. This workflow never checks out
+  # or executes contributor-controlled code.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    branches: [main]
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  agentscan:
+    if: github.repository == 'roostorg/coop' && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Scan pull request author
+        uses: MatteoGabriele/agentscan-action@8112fb79b33fafb8506159df20129a34209ac410 # v2.5.0
+        with:
+          mode: labels
