@@ -20284,32 +20284,18 @@ export type GQLReportingRulePassRateAnalyticsQueryVariables = Exact<{
 
 export type GQLReportingRulePassRateAnalyticsQuery = {
   readonly __typename: 'Query';
-  readonly rule?:
-    | {
-        readonly __typename: 'ContentRule';
-        readonly insights: {
-          readonly __typename: 'RuleInsights';
-          readonly passRateData?: ReadonlyArray<{
-            readonly __typename: 'RulePassRateData';
-            readonly date: string;
-            readonly totalMatches: number;
-            readonly totalRequests: number;
-          } | null> | null;
-        };
-      }
-    | {
-        readonly __typename: 'UserRule';
-        readonly insights: {
-          readonly __typename: 'RuleInsights';
-          readonly passRateData?: ReadonlyArray<{
-            readonly __typename: 'RulePassRateData';
-            readonly date: string;
-            readonly totalMatches: number;
-            readonly totalRequests: number;
-          } | null> | null;
-        };
-      }
-    | null;
+  readonly reportingRule?: {
+    readonly __typename: 'ReportingRule';
+    readonly insights: {
+      readonly __typename: 'ReportingRuleInsights';
+      readonly passRateData: ReadonlyArray<{
+        readonly __typename: 'ReportingRulePassRateData';
+        readonly date: string;
+        readonly totalMatches: number;
+        readonly totalRequests: number;
+      }>;
+    };
+  } | null;
 };
 
 export type GQLSampleReportingRuleExecutionResultFieldsFragment = {
@@ -41146,7 +41132,7 @@ export type GQLSpotTestRuleQueryResult = Apollo.QueryResult<
 >;
 export const GQLReportingRulePassRateAnalyticsDocument = gql`
   query ReportingRulePassRateAnalytics($id: ID!) {
-    rule(id: $id) {
+    reportingRule(id: $id) {
       insights {
         passRateData {
           date
