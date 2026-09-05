@@ -1,7 +1,12 @@
-// eslint-disable-next-line no-restricted-imports
-import ReviewConsoleIcon from '@/icons/lni/User/review-console.svg?react';
 import { gql } from '@apollo/client';
-import { Building2, Gavel, Heart, KeyRound, Settings2 } from 'lucide-react';
+import {
+  Building2,
+  Gavel,
+  Heart,
+  KeyRound,
+  Settings2,
+  UsersRound,
+} from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
@@ -97,7 +102,7 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   {
     value: 'review-console',
     label: 'Review Console',
-    icon: <ReviewConsoleIcon className="w-4.5 h-4.5" />,
+    icon: <UsersRound size={16} />,
   },
   { value: 'wellness', label: 'Wellness', icon: <Heart size={16} /> },
   {
