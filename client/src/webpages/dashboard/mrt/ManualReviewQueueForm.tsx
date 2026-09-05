@@ -27,7 +27,13 @@ import {
 import { titleCaseEnumStringWithArticle } from '../../../utils/string';
 import { optionWithTooltip } from './queue_routing/ManualReviewQueueRuleFormCondition';
 
-const { Option } = Select;
+const { Option, OptGroup } = Select;
+
+// The single "Manage Access" selector holds both roles and individual
+// reviewers. Values are prefixed so onChange can split them back into role
+// IDs and user IDs for the mutation.
+const ACCESS_ROLE_PREFIX = 'role:';
+const ACCESS_USER_PREFIX = 'user:';
 
 const CLEAR_REPORTS_DISPOSITION_LABELS: Record<
   GQLMrtClearReportsDisposition,
@@ -46,6 +52,10 @@ const CLEAR_REPORTS_SCOPE_LABELS: Record<GQLMrtClearReportsScope, string> = {
 
 gql`
   query QueueFormData {
+    rolesForOrg {
+      id
+      displayName
+    }
     myOrg {
       hasAppealsEnabled
       hasPartialItemsEndpoint
@@ -76,6 +86,7 @@ gql`
         explicitlyAssignedReviewers {
           id
         }
+        assignedRoleIds
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
@@ -149,6 +160,7 @@ export default function ManualReviewQueueForm() {
   const [moderatorsWithAccess, setModeratorsWithAccess] = useState<string[]>(
     [],
   );
+  const [rolesWithAccess, setRolesWithAccess] = useState<string[]>([]);
   const [hiddenActionIds, setHiddenActionIds] = useState<string[]>([]);
   const [autoCloseJobs, setAutoCloseJobs] = useState<boolean>(false);
   const [isAppealsQueue, setIsAppealsQueue] = useState<boolean>(false);
@@ -251,6 +263,7 @@ export default function ManualReviewQueueForm() {
     [data?.myOrg?.users],
   );
   const orgActions = data?.myOrg?.actions ?? [];
+  const orgRoles = data?.rolesForOrg ?? [];
 
   const userIdsWhoCanReviewEveryQueue = useMemo(
     () => (data?.myOrg?.usersWhoCanReviewEveryQueue ?? []).map((it) => it.id),
@@ -301,6 +314,28 @@ export default function ManualReviewQueueForm() {
     userIdsWhoCanReviewEveryQueue,
   ]);
 
+  const accessValue = useMemo(
+    () => [
+      ...rolesWithAccess.map((role) => `${ACCESS_ROLE_PREFIX}${role}`),
+      ...moderatorsWithAccess.map((id) => `${ACCESS_USER_PREFIX}${id}`),
+    ],
+    [rolesWithAccess, moderatorsWithAccess],
+  );
+
+  const onChangeAccess = useCallback((values: string[]) => {
+    const roleIds: string[] = [];
+    const userIds: string[] = [];
+    for (const value of values) {
+      if (value.startsWith(ACCESS_ROLE_PREFIX)) {
+        roleIds.push(value.slice(ACCESS_ROLE_PREFIX.length));
+      } else if (value.startsWith(ACCESS_USER_PREFIX)) {
+        userIds.push(value.slice(ACCESS_USER_PREFIX.length));
+      }
+    }
+    setRolesWithAccess(roleIds);
+    setModeratorsWithAccess(userIds);
+  }, []);
+
   useEffect(() => {
     if (!queue) {
       return;
@@ -308,6 +343,7 @@ export default function ManualReviewQueueForm() {
 
     setQueueName(queue.name);
     setQueueDescription(queue.description ?? undefined);
+    setRolesWithAccess([...queue.assignedRoleIds]);
     setHiddenActionIds([...queue.hiddenActionIds]);
     setAutoCloseJobs(queue.autoCloseJobs);
     setIsAppealsQueue(queue.isAppealsQueue);
@@ -342,6 +378,7 @@ export default function ManualReviewQueueForm() {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             description: queueDescription || null,
             userIds: moderatorsWithAccess,
+            roleIds: rolesWithAccess,
             hiddenActionIds,
             isAppealsQueue,
             autoCloseJobs,
@@ -365,6 +402,7 @@ export default function ManualReviewQueueForm() {
       moderatorsWithAccess,
       queueDescription,
       queueName,
+      rolesWithAccess,
     ],
   );
 
@@ -379,6 +417,7 @@ export default function ManualReviewQueueForm() {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             description: queueDescription || null,
             userIds: moderatorsWithAccess,
+            roleIds: rolesWithAccess,
             actionIdsToHide: difference(
               hiddenActionIds,
               initiallyHiddenActionIds,
@@ -408,6 +447,7 @@ export default function ManualReviewQueueForm() {
       moderatorsWithAccess,
       queueDescription,
       queueName,
+      rolesWithAccess,
       updateManualReviewQueue,
     ],
   );
@@ -471,41 +511,55 @@ export default function ManualReviewQueueForm() {
         onChangeDescription={setQueueDescription}
       />
       <div className="flex flex-col items-start mt-6">
-        <div className="font-semibold">Reviewer Access</div>
+        <div className="font-semibold">Manage Access</div>
         <div className="mb-2 text-slate-500">
-          Select which moderators should have access to this queue. Note: Users
-          who are Admins or Moderator Managers automatically have access to
-          every queue, so you don't need to add them as moderators here. You can
-          see each user's role in our{' '}
+          Grant access to individual reviewers or by role. Everyone with a
+          selected role can review this queue; Admins and Moderator Managers
+          already see every queue. You can view each user's role on the{' '}
           <Link to="/dashboard/settings/users">Users</Link> page.
         </div>
         <Select<string[]>
-          className="self-start !min-w-[160px]"
+          className="self-start !min-w-[240px]"
           mode="multiple"
-          placeholder="Add Moderators"
+          placeholder="Add roles or reviewers"
           dropdownMatchSelectWidth={false}
           allowClear
           showSearch
           filterOption={selectFilterByLabelOption}
-          value={moderatorsWithAccess}
-          onChange={setModeratorsWithAccess}
+          value={accessValue}
+          onChange={onChangeAccess}
         >
-          {orgUsers.map((user, index) => {
-            const userIsAdmin = userIdsWhoCanReviewEveryQueue.includes(user.id);
-            return optionWithTooltip({
-              title: `${user.firstName} ${user.lastName}`,
-              value: user.id,
-              disabled: userIsAdmin,
-              description: userIsAdmin
-                ? `This user is ${titleCaseEnumStringWithArticle(
-                    user.role!,
-                  )} and can therefore see every queue, so you can't remove them from individual queues`
-                : undefined,
-              key: user.id,
-              index,
-              isInOptionGroup: false,
-            });
-          })}
+          <OptGroup label="Roles">
+            {orgRoles.map((role) => (
+              <Option
+                key={`${ACCESS_ROLE_PREFIX}${role.id}`}
+                value={`${ACCESS_ROLE_PREFIX}${role.id}`}
+                label={role.displayName}
+              >
+                {role.displayName}
+              </Option>
+            ))}
+          </OptGroup>
+          <OptGroup label="Reviewers">
+            {orgUsers.map((user, index) => {
+              const userIsAdmin = userIdsWhoCanReviewEveryQueue.includes(
+                user.id,
+              );
+              return optionWithTooltip({
+                title: `${user.firstName} ${user.lastName}`,
+                value: `${ACCESS_USER_PREFIX}${user.id}`,
+                disabled: userIsAdmin,
+                description: userIsAdmin
+                  ? `This user is ${titleCaseEnumStringWithArticle(
+                      user.role!,
+                    )} and can therefore see every queue, so you can't remove them from individual queues`
+                  : undefined,
+                key: user.id,
+                index,
+                isInOptionGroup: true,
+              });
+            })}
+          </OptGroup>
         </Select>
         {orgActions.length > 0 && (
           <div className="mt-8">
