@@ -134,12 +134,12 @@ export default function ManualReviewDashboardInsightsGroupBy(props: {
               the groupByMenuVisible state.
            */}
           <ChevronUp
-            className={`ml-2 w-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
               groupByMenuVisible ? 'visible' : 'hidden'
             }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
               groupByMenuVisible ? 'hidden' : 'visible'
             }`}
           />

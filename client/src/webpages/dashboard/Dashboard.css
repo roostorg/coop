@@ -218,19 +218,11 @@ body {
 }
 
 /*
- * lucide-react renders bare <svg> elements, which Tailwind Preflight sets to
- * `display: block`. Inside an Ant Design <Button>, that pushes the label onto
- * its own line (icon stacks above text) and breaks icon-only button centering.
- * Ant's own icons carry `.anticon`; lucide's don't, so restore inline flow for
- * lucide svgs wherever antd expects an inline icon.
+ * Tailwind Preflight sets `svg { display: block }`. Lucide icons are inline
+ * content (inside buttons, links, text) and need inline-block so they flow
+ * with surrounding text and center naturally in flex/grid containers.
  */
-.ant-btn svg.lucide {
+svg.lucide {
   display: inline-block;
   vertical-align: -0.125em;
-}
-
-/* Ant spaces a leading icon from the label via `.ant-btn > .anticon + span`;
- * lucide icons miss that selector, so re-add the gap for icon-with-text buttons. */
-.ant-btn > svg.lucide:first-child + span {
-  margin-inline-start: 8px;
 }
