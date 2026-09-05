@@ -16,6 +16,7 @@ import { Link, useLocation } from 'react-router-dom';
 import DashboardMenuButton from '@/webpages/dashboard/components/DashboardMenuButton';
 
 import LogoAndWordmarkPurple from '../images/LogoAndWordmarkPurple.png';
+import ThemeToggle from './ThemeToggle';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- value consumed only via `typeof` for MenuItemName
 const MenuItemNames = makeEnumLike([
@@ -338,6 +339,12 @@ export default function Sidebar(props: SidebarProps) {
           </div>
         ) : null}
         {settingsMenu}
+        <div className="flex justify-center px-[16px] pt-[12px]">
+          <ThemeToggle
+            collapsed={collapsed}
+            className={collapsed ? '' : 'w-full'}
+          />
+        </div>
         <div className="flex justify-center gap-[20px] p-[16px] bg-slate-50">
           {!collapsed &&
             footerButton({
