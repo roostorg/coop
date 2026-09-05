@@ -22,6 +22,8 @@ export default {
         'spin-slow': 'spin 3s linear infinite',
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'collapsible-down': 'collapsible-down 0.2s ease-out',
+        'collapsible-up': 'collapsible-up 0.2s ease-out',
         'carousel-left': 'carousel-left 60s linear infinite',
         'carousel-right': 'carousel-right 60s linear infinite',
         'spin-gradient': 'glow-spin 20s ease-in-out infinite',
@@ -207,6 +209,14 @@ export default {
         },
         'accordion-up': {
           from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
+        'collapsible-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-collapsible-content-height)' },
+        },
+        'collapsible-up': {
+          from: { height: 'var(--radix-collapsible-content-height)' },
           to: { height: '0' },
         },
         'glow-spin': {
