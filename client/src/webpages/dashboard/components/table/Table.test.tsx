@@ -1,5 +1,6 @@
 import { GQLRuleStatus } from '@/graphql/generated';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -100,6 +101,78 @@ describe('Table behavior', () => {
     expect(
       within(headerRows[1]).getByRole('columnheader', { name: 'Status' }),
     ).toBeTruthy();
+  });
+
+  it('keeps placeholder headers inert while grouped sortable headers stay accessible', () => {
+    const groupedColumns = [
+      columns[0],
+      {
+        header: 'Details',
+        columns: [columns[1]],
+      },
+    ] satisfies TableColumnDef<TableRow>[];
+    renderTable(groupedColumns);
+
+    const placeholderHeader = screen
+      .getAllByRole('columnheader')
+      .find((header) => header.textContent === '');
+    expect(placeholderHeader).toBeTruthy();
+    expect(within(placeholderHeader!).queryByRole('button')).toBeNull();
+    expect(placeholderHeader!.hasAttribute('aria-sort')).toBe(false);
+
+    const nameHeader = screen.getByRole('columnheader', { name: /Name/ });
+    const nameSortButton = within(nameHeader).getByRole('button', {
+      name: /Name/,
+    });
+    expect(nameHeader.getAttribute('aria-sort')).toBe('none');
+
+    nameSortButton.focus();
+    userEvent.type(nameSortButton, '{enter}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Alpha',
+      'Rendered Alpine',
+      'Rendered Zulu',
+    ]);
+  });
+
+  it('makes sortable headers keyboard accessible and reports their sort direction', () => {
+    renderTable();
+
+    const nameHeader = screen.getByRole('columnheader', { name: /Name/ });
+    const nameSortButton = within(nameHeader).getByRole('button', {
+      name: /Name/,
+    });
+    const statusHeader = screen.getByRole('columnheader', { name: 'Status' });
+
+    expect(nameHeader.getAttribute('aria-sort')).toBe('none');
+    expect(within(statusHeader).queryByRole('button')).toBeNull();
+    expect(statusHeader.hasAttribute('aria-sort')).toBe(false);
+
+    nameSortButton.focus();
+    expect(document.activeElement).toBe(nameSortButton);
+    userEvent.type(nameSortButton, '{enter}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Alpha',
+      'Rendered Alpine',
+      'Rendered Zulu',
+    ]);
+    expect(
+      screen
+        .getByRole('columnheader', { name: /Name/ })
+        .getAttribute('aria-sort'),
+    ).toBe('ascending');
+
+    userEvent.type(nameSortButton, '{space}', { skipClick: true });
+    expect(renderedNames()).toEqual([
+      'Rendered Zulu',
+      'Rendered Alpine',
+      'Rendered Alpha',
+    ]);
+    expect(
+      screen
+        .getByRole('columnheader', { name: /Name/ })
+        .getAttribute('aria-sort'),
+    ).toBe('descending');
   });
 
   it('renders accessor values and sorts by raw values only on sortable headers', () => {
@@ -475,5 +548,53 @@ describe('Table behavior', () => {
     expect(screen.queryByText('Low score')).toBeNull();
     expect(screen.getByText('Boundary score')).toBeTruthy();
     expect(screen.getByText('High score')).toBeTruthy();
+  });
+
+  it('applies zero-valued lower and upper numeric range bounds', () => {
+    type NumericRow = {
+      score: ReactNode;
+      values: { score: number };
+    };
+    const numericData: NumericRow[] = [
+      { score: <span>Negative score</span>, values: { score: -1 } },
+      { score: <span>Zero score</span>, values: { score: 0 } },
+      { score: <span>Positive score</span>, values: { score: 1 } },
+    ];
+    const numericColumns = [
+      {
+        header: 'Score',
+        accessorKey: 'score',
+        cell: ({ getValue }): ReactNode => getValue<ReactNode>(),
+        meta: {
+          filter: (props: ColumnProps<NumericRow>) =>
+            NumberRangeColumnFilter({
+              columnProps: props,
+              accessor: 'score',
+            }),
+        },
+        filterFn: 'range',
+      },
+    ] satisfies TableColumnDef<NumericRow>[];
+    render(
+      <MemoryRouter>
+        <Table columns={numericColumns} data={numericData} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /filter/i }));
+    const filterMenu = screen
+      .getByRole('button', { name: 'Save' })
+      .closest<HTMLElement>('.absolute')!;
+    fireEvent.click(within(filterMenu).getByText('Score'));
+    fireEvent.change(screen.getByPlaceholderText('min'), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('max'), {
+      target: { value: '0' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.queryByText('Negative score')).toBeNull();
+    expect(screen.getByText('Zero score')).toBeTruthy();
+    expect(screen.queryByText('Positive score')).toBeNull();
   });
 });

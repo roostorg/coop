@@ -17,6 +17,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
 import { kyselyOrgInsert } from '../graphql/datasources/orgKyselyPersistence.js';
+import { seedSystemRolesForOrg } from '../graphql/datasources/rolePersistence.js';
 import { kyselyUserInsert } from '../graphql/datasources/userKyselyPersistence.js';
 import getBottle from '../iocContainer/index.js';
 import {
@@ -82,6 +83,8 @@ async function createOrgAndUser() {
       name: argv.name,
       websiteUrl: argv.website,
     });
+
+    await seedSystemRolesForOrg(container.KyselyPg, orgId);
 
     // Create signing keys and API key (both reference org via FK)
     await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);

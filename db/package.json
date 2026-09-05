@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
-    "knip": "^6.32.2",
+    "knip": "^6.33.0",
     "typescript": "^6.0.3"
   }
 }

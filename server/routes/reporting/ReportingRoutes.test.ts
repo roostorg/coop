@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
@@ -19,7 +18,7 @@ describe('POST Report', () => {
     );
     const userType = await deps.ModerationConfigService.createUserType(orgId, {
       name: 'test user type',
-      description: faker.datatype.string(),
+      description: faker.string.sample(),
       schema: [
         {
           name: 'name',
@@ -41,7 +40,7 @@ describe('POST Report', () => {
       orgId,
       {
         name: 'test content type',
-        description: faker.datatype.string(),
+        description: faker.string.sample(),
         schema: [
           {
             name: 'name',
@@ -64,7 +63,7 @@ describe('POST Report', () => {
       orgId,
       {
         name: 'test thread type',
-        description: faker.datatype.string(),
+        description: faker.string.sample(),
         schema: [
           {
             name: 'name',
