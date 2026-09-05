@@ -218,11 +218,16 @@ body {
 }
 
 /*
- * Tailwind Preflight sets `svg { display: block }`. Lucide icons are inline
- * content (inside buttons, links, text) and need inline-block so they flow
- * with surrounding text and center naturally in flex/grid containers.
+ * Tailwind Preflight sets `svg { display: block }`. Inside antd Buttons the
+ * icon is a direct child — block display pushes the text label onto its own
+ * line. Override to inline-block so icon + label sit on the same line.
+ * TODO: remove once antd Button is fully replaced with coop-ui components.
  */
-svg.lucide {
+.ant-btn > svg.lucide {
   display: inline-block;
-  vertical-align: -0.125em;
+  vertical-align: middle;
+}
+
+.ant-btn > svg.lucide + span {
+  margin-inline-start: 8px;
 }

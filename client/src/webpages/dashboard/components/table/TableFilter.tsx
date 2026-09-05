@@ -137,7 +137,7 @@ export default function TableFilter<TData extends TableData>(props: {
       </div>
       {menuVisible && (
         <div
-          className={`flex flex-col absolute bg-white border-solid border border-[#d4d4d8] rounded shadow-md mt-1 min-w-[320px] z-20 ${
+          className={`flex flex-col absolute bg-white border-solid border border-[#d4d4d8] rounded shadow-md mt-1 min-w-[320px] z-50 ${
             isButtonFloatedRight ? 'right-0' : 'left-0'
           }`}
         >
