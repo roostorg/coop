@@ -1,3 +1,4 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/coop-ui/Tabs';
 import { HOST_URL } from '@/lib/config';
 import { gql } from '@apollo/client';
 import { Select } from 'antd';
@@ -10,7 +11,6 @@ import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
 import DashboardHeader from '../dashboard/components/DashboardHeader';
 import RowMutations from '../dashboard/components/RowMutations';
-import TabBar from '../dashboard/components/TabBar';
 import {
   ColumnProps,
   DateRangeColumnFilter,
@@ -699,23 +699,29 @@ export default function ManageUsers() {
         title="Users"
         subtitle="Manage your organization's users and roles."
       />
-      {tabs.length > 1 && (
-        <TabBar<ManageUsersTab>
-          tabs={tabs}
-          initialSelectedTab={effectiveTab}
-          currentSelectedTab={effectiveTab}
-          onTabClick={onTabClick}
-        />
-      )}
-      {effectiveTab === 'users' && (
-        <>
+      <Tabs
+        value={effectiveTab}
+        onValueChange={(value) => onTabClick(value as ManageUsersTab)}
+      >
+        {tabs.length > 1 && (
+          <TabsList className="mb-4">
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        )}
+        <TabsContent value="users">
           {/* @ts-ignore */}
           <Table columns={columns} data={tableData} />
           <div className="divider my-9" />
           <ManageUsersInviteUserSection />
-        </>
-      )}
-      {effectiveTab === 'roles' && <ManageRolesTab />}
+        </TabsContent>
+        <TabsContent value="roles">
+          <ManageRolesTab />
+        </TabsContent>
+      </Tabs>
       {modal}
     </div>
   );
