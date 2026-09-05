@@ -15,16 +15,14 @@ import {
 
 const typeDefs = /* GraphQL */ `
   type Role {
-    "Persisted public.roles.id, or null when the row is materialized lazily on first save."
-    id: ID
+    "Persisted public.roles.id."
+    id: ID!
     "Stable role identifier (matches UserRole)."
     key: UserRole!
     displayName: String!
     description: String
     isSystem: Boolean!
     permissions: [UserPermission!]!
-    "True when permissions/metadata come from the static fallback rather than public.roles."
-    isFallback: Boolean!
     "Number of approved (non-rejected) users in the org assigned to this role."
     userCount: Int!
   }

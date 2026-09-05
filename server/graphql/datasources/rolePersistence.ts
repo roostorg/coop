@@ -49,23 +49,14 @@ export async function seedSystemRolesForOrg(
   });
 }
 
-/**
- * GraphQL `Role` parent shape returned to the role-editor UI. `id` is the
- * `public.roles.id` UUID when the org has a persisted row, otherwise `null`
- * (the row is materialized lazily on first save). `key` matches a
- * {@link UserRole} value and is the stable identifier the client sends back
- * on mutations.
- */
+/** GraphQL `Role` parent shape returned to the role-editor UI. */
 export type RoleParent = {
-  id: string | null;
+  id: string;
   key: UserRole;
   displayName: string;
   description: string | null;
   isSystem: boolean;
   permissions: UserPermission[];
-  /** True when this role is materialized from {@link SystemRoleDefaults} */
-  /** plus {@link UserPermissionsForRole} rather than `public.roles`. */
-  isFallback: boolean;
   /** Approved (non-rejected) users in the org assigned to this role. */
   userCount: number;
 };
@@ -78,13 +69,7 @@ type RoleRow = {
   is_system: boolean;
 };
 
-/**
- * Lists every system role for an org, merging persisted rows with the
- * static defaults so freshly created orgs (which haven't been seeded by
- * the role migration) still surface a complete role list. Permissions for
- * persisted rows come from `public.role_permissions`; missing rows fall
- * back to {@link UserPermissionsForRole}.
- */
+/** Lists every persisted system role for an org. */
 export async function kyselyListRolesForOrg(
   kysely: RolesKysely,
   orgId: string,
@@ -96,9 +81,7 @@ export async function kyselyListRolesForOrg(
     .where('is_system', '=', true)
     .execute();
 
-  const persistedIds = persistedRows
-    .filter((r): r is RoleRow & { id: string } => Boolean(r.id))
-    .map((r) => r.id);
+  const persistedIds = persistedRows.map((r) => r.id);
 
   const permissionRows: ReadonlyArray<{
     role_id: string;
@@ -127,39 +110,28 @@ export async function kyselyListRolesForOrg(
     persistedByKey.set(row.key, row);
   }
 
-  // Count by legacy `role` string to cover users predating the role_id backfill.
+  for (const roleKey of Object.values(UserRole)) {
+    if (!persistedByKey.has(roleKey)) {
+      throw new Error(`Missing persisted system role: ${roleKey}`);
+    }
+  }
+
   const userCountRows = await countApprovedUsersByRole(kysely, orgId);
   const userCountsByRole = new Map<string, number>();
   for (const r of userCountRows) {
-    userCountsByRole.set(r.role, r.count);
+    userCountsByRole.set(r.roleId, r.count);
   }
 
   return Object.values(UserRole).map((roleKey) => {
-    const row = persistedByKey.get(roleKey);
-    const defaults = SystemRoleDefaults[roleKey];
-    const userCount = userCountsByRole.get(roleKey) ?? 0;
-    if (row !== undefined) {
-      // Persisted rows are authoritative; an empty set is a valid saved state.
-      return {
-        id: row.id,
-        key: roleKey,
-        displayName: row.display_name,
-        description: row.description,
-        isSystem: row.is_system,
-        permissions: permissionsByRoleId.get(row.id) ?? [],
-        isFallback: false,
-        userCount,
-      };
-    }
+    const row = persistedByKey.get(roleKey)!;
     return {
-      id: null,
+      id: row.id,
       key: roleKey,
-      displayName: defaults.displayName,
-      description: defaults.description,
-      isSystem: true,
-      permissions: getPermissionsForRole(roleKey),
-      isFallback: true,
-      userCount,
+      displayName: row.display_name,
+      description: row.description,
+      isSystem: row.is_system,
+      permissions: permissionsByRoleId.get(row.id) ?? [],
+      userCount: userCountsByRole.get(row.id) ?? 0,
     };
   });
 }
@@ -167,24 +139,29 @@ export async function kyselyListRolesForOrg(
 async function countApprovedUsersByRole(
   kysely: RolesKysely,
   orgId: string,
-): Promise<ReadonlyArray<{ role: string; count: number }>> {
+): Promise<ReadonlyArray<{ roleId: string; count: number }>> {
   const rows = await kysely
-    .selectFrom('public.users')
-    .select((eb) => ['role', eb.fn.countAll<string>().as('count')])
-    .where('org_id', '=', orgId)
-    .where('rejected_by_admin', '=', false)
-    .where('role', 'is not', null)
-    .groupBy('role')
+    .selectFrom('public.users as users')
+    .innerJoin('public.roles as roles', (join) =>
+      join
+        .onRef('roles.id', '=', 'users.role_id')
+        .onRef('roles.org_id', '=', 'users.org_id'),
+    )
+    .select((eb) => [
+      'roles.id as roleId',
+      eb.fn.countAll<string>().as('count'),
+    ])
+    .where('users.org_id', '=', orgId)
+    .where('roles.org_id', '=', orgId)
+    .where('users.approved_by_admin', '=', true)
+    .where('users.rejected_by_admin', '=', false)
+    .groupBy('roles.id')
     .execute();
-  return rows
-    .filter((r): r is { role: string; count: string } => r.role != null)
-    .map((r) => ({ role: r.role, count: Number(r.count) }));
+  return rows.map((r) => ({ roleId: r.roleId, count: Number(r.count) }));
 }
 
 /**
- * Atomically replaces the permission set for `(orgId, roleKey)`. Materializes
- * the `public.roles` row on first save and backfills `role_id` on existing
- * users/invites so the next load picks up the persisted permissions.
+ * Atomically replaces the permission set for `(orgId, roleKey)`.
  */
 export async function kyselyUpdateRolePermissions(
   kysely: RolesKysely,
@@ -196,7 +173,7 @@ export async function kyselyUpdateRolePermissions(
 ): Promise<RoleParent> {
   const { orgId, roleKey, permissions } = opts;
   return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
-    const roleId = await ensureSystemRoleRow(tx, { orgId, roleKey });
+    const roleId = await getSystemRoleId(tx, { orgId, roleKey });
     await tx
       .deleteFrom('public.role_permissions')
       .where('role_id', '=', roleId)
@@ -219,7 +196,6 @@ export async function kyselyUpdateRolePermissions(
 
 /**
  * Renames a role's display name and optionally its description.
- * Materializes the `public.roles` row on first save.
  */
 export async function kyselyRenameRole(
   kysely: RolesKysely,
@@ -232,7 +208,7 @@ export async function kyselyRenameRole(
 ): Promise<RoleParent> {
   const { orgId, roleKey, displayName, description } = opts;
   return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
-    const roleId = await ensureSystemRoleRow(tx, { orgId, roleKey });
+    const roleId = await getSystemRoleId(tx, { orgId, roleKey });
     await tx
       .updateTable('public.roles')
       .set({
@@ -250,7 +226,7 @@ export function kyselyGetPermissionGroups(): readonly PermissionGroup[] {
   return getPermissionGroups();
 }
 
-async function ensureSystemRoleRow(
+async function getSystemRoleId(
   tx: RolesKysely,
   opts: { orgId: string; roleKey: UserRole },
 ): Promise<string> {
@@ -260,60 +236,8 @@ async function ensureSystemRoleRow(
     .where('org_id', '=', opts.orgId)
     .where('key', '=', opts.roleKey)
     .where('is_system', '=', true)
-    .executeTakeFirst();
-  if (existing !== undefined) {
-    return existing.id;
-  }
-
-  const defaults = SystemRoleDefaults[opts.roleKey];
-  const inserted = await tx
-    .insertInto('public.roles')
-    .values({
-      org_id: opts.orgId,
-      key: opts.roleKey,
-      display_name: defaults.displayName,
-      description: defaults.description,
-      is_system: true,
-    })
-    .returning('id')
     .executeTakeFirstOrThrow();
-
-  // Seed permissions from the static defaults so a freshly materialized
-  // row never looks like an "explicitly empty" set to readers. Callers that
-  // overwrite permissions (e.g. kyselyUpdateRolePermissions) delete these
-  // before inserting their own.
-  const seededPermissions = Array.from(
-    new Set(getPermissionsForRole(opts.roleKey)),
-  );
-  if (seededPermissions.length > 0) {
-    await tx
-      .insertInto('public.role_permissions')
-      .values(
-        seededPermissions.map((permission) => ({
-          role_id: inserted.id,
-          permission,
-        })),
-      )
-      .execute();
-  }
-
-  // Backfill role_id on rows where it's NULL; don't stomp existing links.
-  await tx
-    .updateTable('public.users')
-    .set({ role_id: inserted.id })
-    .where('org_id', '=', opts.orgId)
-    .where('role', '=', opts.roleKey)
-    .where('role_id', 'is', null)
-    .execute();
-  await tx
-    .updateTable('public.invite_user_tokens')
-    .set({ role_id: inserted.id })
-    .where('org_id', '=', opts.orgId)
-    .where('role', '=', opts.roleKey)
-    .where('role_id', 'is', null)
-    .execute();
-
-  return inserted.id;
+  return existing.id;
 }
 
 async function readRoleAfterWrite(
@@ -334,7 +258,7 @@ async function readRoleAfterWrite(
     .map((p) => p.permission)
     .filter(isUserPermission);
   const counts = await countApprovedUsersByRole(tx, opts.orgId);
-  const userCount = counts.find((c) => c.role === opts.roleKey)?.count ?? 0;
+  const userCount = counts.find((c) => c.roleId === opts.roleId)?.count ?? 0;
   return {
     id: row.id,
     key: opts.roleKey,
@@ -342,7 +266,6 @@ async function readRoleAfterWrite(
     description: row.description,
     isSystem: row.is_system,
     permissions,
-    isFallback: false,
     userCount,
   };
 }

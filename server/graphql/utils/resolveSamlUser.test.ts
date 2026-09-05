@@ -7,6 +7,7 @@ import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { type default as SafeTracer } from '../../utils/SafeTracer.js';
+import { seedSystemRolesForOrg } from '../datasources/rolePersistence.js';
 import {
   kyselyUserInsert,
   type UsersDb,
@@ -40,6 +41,7 @@ describe('resolveSamlUser', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 

@@ -22,7 +22,6 @@ gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -122,12 +121,6 @@ export default function ManageRolesTab() {
               {role.description && (
                 <div className="text-sm text-gray-600 line-clamp-4">
                   {role.description}
-                </div>
-              )}
-              {role.isFallback && (
-                <div className="text-xs text-gray-500 italic">
-                  Using default permissions. Save changes to customize for your
-                  organization.
                 </div>
               )}
               <div className="flex-1" />

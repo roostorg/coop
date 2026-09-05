@@ -7,7 +7,12 @@ import {
 } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { seedSystemRolesForOrg } from './rolePersistence.js';
+import {
+  kyselyListRolesForOrg,
+  kyselyRenameRole,
+  kyselyUpdateRolePermissions,
+  seedSystemRolesForOrg,
+} from './rolePersistence.js';
 import { kyselyUserInsert } from './userKyselyPersistence.js';
 
 describe('seedSystemRolesForOrg', () => {
@@ -182,4 +187,164 @@ describe('seedSystemRolesForOrg', () => {
 
     expect(await readState()).toEqual(before);
   });
+});
+
+describe('role persistence', () => {
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
+      {
+        KyselyPg: deps.KyselyPg,
+        ModerationConfigService: deps.ModerationConfigService,
+        ApiKeyService: deps.ApiKeyService,
+      },
+      uid(),
+    );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    return { org };
+  });
+
+  testWithFixture(
+    'lists roles in canonical order with their metadata and permissions',
+    async ({ deps, org }) => {
+      const admin = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .executeTakeFirstOrThrow();
+      await deps.KyselyPg.updateTable('public.roles')
+        .set({
+          display_name: 'Persisted administrator',
+          description: 'Persisted description',
+        })
+        .where('id', '=', admin.id)
+        .execute();
+      await deps.KyselyPg.deleteFrom('public.role_permissions')
+        .where('role_id', '=', admin.id)
+        .execute();
+      await deps.KyselyPg.insertInto('public.role_permissions')
+        .values({ role_id: admin.id, permission: 'MANAGE_ORG' })
+        .execute();
+      await deps.KyselyPg.insertInto('public.roles')
+        .values({
+          org_id: org.id,
+          key: 'UNKNOWN_ROLE',
+          display_name: 'Unknown role',
+          description: null,
+          is_system: true,
+        })
+        .execute();
+
+      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
+
+      expect(roles.map(({ key }) => key)).toEqual(Object.values(UserRole));
+      expect(roles.every(({ id }) => typeof id === 'string')).toBe(true);
+      expect(roles.find(({ key }) => key === UserRole.ADMIN)).toMatchObject({
+        id: admin.id,
+        displayName: 'Persisted administrator',
+        description: 'Persisted description',
+        permissions: ['MANAGE_ORG'],
+      });
+    },
+  );
+
+  testWithFixture(
+    'counts only approved, non-rejected users by their persisted role ID',
+    async ({ deps, org }) => {
+      const insertUser = async (
+        role: UserRole,
+        approvedByAdmin: boolean,
+        rejectedByAdmin: boolean,
+      ) =>
+        kyselyUserInsert({
+          db: deps.KyselyPg,
+          id: uid(),
+          orgId: org.id,
+          email: `${uid()}@example.com`,
+          firstName: 'Role',
+          lastName: 'Member',
+          role,
+          password: null,
+          loginMethods: ['saml'],
+          approvedByAdmin,
+          rejectedByAdmin,
+        });
+      await insertUser(UserRole.ADMIN, true, false);
+      await insertUser(UserRole.MODERATOR, false, false);
+      await insertUser(UserRole.EXTERNAL_MODERATOR, true, true);
+
+      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
+
+      expect(roles.find(({ key }) => key === UserRole.ADMIN)?.userCount).toBe(
+        1,
+      );
+      expect(
+        roles.find(({ key }) => key === UserRole.MODERATOR)?.userCount,
+      ).toBe(0);
+      expect(
+        roles.find(({ key }) => key === UserRole.EXTERNAL_MODERATOR)?.userCount,
+      ).toBe(0);
+    },
+  );
+
+  testWithFixture(
+    'retains assignments and role-ID counts across metadata and permission changes',
+    async ({ deps, org }) => {
+      const userId = uid();
+      await kyselyUserInsert({
+        db: deps.KyselyPg,
+        id: userId,
+        orgId: org.id,
+        email: `${uid()}@example.com`,
+        firstName: 'Role',
+        lastName: 'Member',
+        role: UserRole.ADMIN,
+        password: null,
+        loginMethods: ['saml'],
+        approvedByAdmin: true,
+      });
+      const adminRole = await deps.KyselyPg.selectFrom('public.roles')
+        .select('id')
+        .where('org_id', '=', org.id)
+        .where('key', '=', UserRole.ADMIN)
+        .executeTakeFirstOrThrow();
+      const inviteId = await deps.KyselyPg.insertInto(
+        'public.invite_user_tokens',
+      )
+        .values({
+          token: uid(),
+          email: `${uid()}@example.com`,
+          role_id: adminRole.id,
+          org_id: org.id,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+      const renamed = await kyselyRenameRole(deps.KyselyPg, {
+        orgId: org.id,
+        roleKey: UserRole.ADMIN,
+        displayName: 'Organization owner',
+      });
+      const updated = await kyselyUpdateRolePermissions(deps.KyselyPg, {
+        orgId: org.id,
+        roleKey: UserRole.ADMIN,
+        permissions: [],
+      });
+
+      expect(renamed.userCount).toBe(1);
+      expect(updated.userCount).toBe(1);
+      expect(updated.permissions).toEqual([]);
+      expect(
+        await deps.KyselyPg.selectFrom('public.users')
+          .select('role_id')
+          .where('id', '=', userId)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ role_id: adminRole.id });
+      expect(
+        await deps.KyselyPg.selectFrom('public.invite_user_tokens')
+          .select('role_id')
+          .where('id', '=', inviteId.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ role_id: adminRole.id });
+    },
+  );
 });
