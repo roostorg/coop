@@ -1,4 +1,5 @@
-import { Button, Popover } from 'antd';
+import { Button } from '@/coop-ui/Button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import { useState } from 'react';
 
 import PolicyDropdown from '../../../../components/PolicyDropdown';
@@ -40,13 +41,27 @@ export default function ManualReviewJobEnqueueRelatedActionWithPoliciesButton(pr
         timer = setTimeout(() => setMenuVisible(false), 250);
       }}
     >
-      <Popover
-        open={menuVisible}
-        trigger="hover"
-        showArrow={false}
-        placement="bottomLeft"
-        overlayInnerStyle={{ marginTop: '-12px' }}
-        content={
+      <Popover open={menuVisible} onOpenChange={setMenuVisible}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            color="gray"
+            className="rounded-md"
+            onClick={() => {
+              if (!requirePolicySelection) {
+                onChangeSelectedPolicies(selectedPolicyIds);
+              }
+            }}
+          >
+            {actionName}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          className="-mt-3 w-auto min-w-[144px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <PolicyDropdown
             className="min-w-[144px]"
             policies={allPolicies}
@@ -54,18 +69,7 @@ export default function ManualReviewJobEnqueueRelatedActionWithPoliciesButton(pr
             selectedPolicyIds={selectedPolicyIds}
             multiple={allowMoreThanOnePolicySelection}
           />
-        }
-      >
-        <Button
-          className="rounded-md"
-          onClick={() => {
-            if (!requirePolicySelection) {
-              onChangeSelectedPolicies(selectedPolicyIds);
-            }
-          }}
-        >
-          {actionName}
-        </Button>
+        </PopoverContent>
       </Popover>
     </div>
   );
