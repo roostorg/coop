@@ -1,6 +1,5 @@
-import CollectionIcon from '../../../icons/CollectionIcon';
-import ContentIcon from '../../../icons/ContentIcon';
-import UserIcon from '../../../icons/UserIcon';
+import { Layers, MessageSquare, User } from 'lucide-react';
+
 import CollectionItemTypeWireframe from '../../../images/CollectionItemTypeWireframe.png';
 import ContentItemTypeWireframe from '../../../images/ContentItemTypeWireframe.png';
 import UserItemTypeWireframe from '../../../images/UserItemTypeWireframe.png';
@@ -12,7 +11,7 @@ export default function ItemTypesExplainer() {
         <tbody>
           <tr>
             <td className="pt-2 align-top">
-              <UserIcon width="22px" />
+              <User size={22} />
             </td>
             <td>
               <div className="my-2 ml-4">
@@ -26,7 +25,7 @@ export default function ItemTypesExplainer() {
           </tr>
           <tr>
             <td className="pt-2 align-top">
-              <ContentIcon width="22px" />
+              <MessageSquare size={22} />
             </td>
             <td>
               <div className="my-2 ml-4">
@@ -39,7 +38,7 @@ export default function ItemTypesExplainer() {
           </tr>
           <tr>
             <td className="pt-2 align-top">
-              <CollectionIcon width="22px" />
+              <Layers size={22} />
             </td>
             <td>
               <div className="my-2 ml-4">
