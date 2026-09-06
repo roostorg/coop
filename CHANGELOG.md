@@ -18,6 +18,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
+- Replaced Ant Design with coop-ui primitives (Radix UI + cmdk) across the entire client UI
 - Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
@@ -26,6 +27,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Removed
 
+- `antd` client dependency and its stylesheets (`styles/antd.css`, `public/styles/antd.min.css`)
 - Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
 - `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen), closes [#686](https://github.com/roostorg/coop/issues/686))
 
