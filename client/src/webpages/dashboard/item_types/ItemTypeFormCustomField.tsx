@@ -1,10 +1,11 @@
+import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { Combobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { isContainerType, type ItemTypeKind } from '@roostorg/coop-types';
-import { Button, Input, Select, Tooltip } from 'antd';
 import { Trash2 } from 'lucide-react';
-
-import { selectFilterByLabelOption } from '../components/antDesignUtils';
 
 import { GQLContainerType, GQLScalarType } from '../../../graphql/generated';
 import { titleCaseEnumString } from '../../../utils/string';
@@ -13,8 +14,6 @@ import {
   SchemaFieldRoles,
   schemaFieldRolesFieldTypes,
 } from './itemTypeUtils';
-
-const { Option } = Select;
 
 export type FieldState = {
   // The index is used as the identifier (NB: front-end only! The backend does
@@ -54,38 +53,33 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
   const fieldTypeSelect = (
     <div className="flex flex-col gap-2">
       <div className="font-semibold">Field Type</div>
-      <Select
+      <Combobox
         placeholder="Select field type"
-        dropdownMatchSelectWidth={false}
         className="w-36"
         value={field.type ?? undefined}
         disabled={field.role != null}
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
-        onSelect={(value) => updateFieldState(field, { ...field, type: value })}
-      >
-        {Object.values(GQLScalarType)
-          .filter((it) => it !== 'USER_ID') // TODO: Remove this filter when we remove the USER_ID scalar type
-          .map((scalar) => (
-            <Option
-              key={scalar}
-              value={scalar}
-              label={titleCaseEnumString(scalar).replace('Id', 'ID')}
-            >
-              {titleCaseEnumString(scalar).replace('Id', 'ID')}
-            </Option>
-          ))}
-        {Object.values(GQLContainerType).map((container) => (
-          <Option
-            key={container}
-            value={container}
-            label={titleCaseEnumString(container)}
-          >
-            {titleCaseEnumString(container)}
-          </Option>
-        ))}
-      </Select>
+        onValueChange={(value) => {
+          if (value != null) {
+            updateFieldState(field, {
+              ...field,
+              type: value as GQLScalarType | GQLContainerType,
+            });
+          }
+        }}
+        options={[
+          ...Object.values(GQLScalarType)
+            .filter((it) => it !== 'USER_ID') // TODO: Remove this filter when we remove the USER_ID scalar type
+            .map((scalar) => ({
+              value: scalar,
+              label: titleCaseEnumString(scalar).replace('Id', 'ID'),
+            })),
+          ...Object.values(GQLContainerType).map((container) => ({
+            value: container,
+            label: titleCaseEnumString(container),
+          })),
+        ]}
+      />
     </div>
   );
 
@@ -95,7 +89,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         <div className="flex flex-col gap-2">
           <div className="font-semibold">Field Name</div>
           <Input
-            className="rounded-lg w-36"
+            className="w-36"
             placeholder="Field Name"
             defaultValue={field.name}
             onChange={(event) => {
@@ -105,34 +99,26 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         </div>
         <div className="flex flex-col mx-4 gap-2">
           <div className="font-semibold">Role (Optional)</div>
-          <Select<SchemaFieldRoles>
-            dropdownMatchSelectWidth={false}
+          <Combobox
             className="w-36"
-            defaultValue={SchemaFieldRoles.NONE}
             value={field.role ?? SchemaFieldRoles.NONE}
             allowClear
-            showSearch
-            filterOption={selectFilterByLabelOption}
-            onSelect={(value) =>
-              value === SchemaFieldRoles.NONE
-                ? updateFieldState(field, { ...field, role: undefined })
-                : updateFieldState(field, {
-                    ...field,
-                    type: schemaFieldRolesFieldTypes[value],
-                    role: value,
-                  })
-            }
-          >
-            {field.role && (
-              <Option
-                key={field.role}
-                value={field.role}
-                label={getDisplayStringForRole(field.role, itemTypeKind)}
-              >
-                {getDisplayStringForRole(field.role, itemTypeKind)}
-              </Option>
-            )}
-            {
+            onValueChange={(value) => {
+              if (value == null || value === SchemaFieldRoles.NONE) {
+                updateFieldState(field, { ...field, role: undefined });
+                return;
+              }
+              const role = value as Exclude<
+                SchemaFieldRoles,
+                SchemaFieldRoles.NONE
+              >;
+              updateFieldState(field, {
+                ...field,
+                type: schemaFieldRolesFieldTypes[role],
+                role,
+              });
+            }}
+            options={[
               // When we pass the availableRoles value into this component, we
               // only includes roles that have not already been assigned to
               // fields. Because this dropdown menu is just populated by the
@@ -142,7 +128,15 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               // availableRoles). But that would be a weird experience, so if
               // this field's role is set, then we manually add that role as an
               // option in the dropdown.
-              availableRoles
+              ...(field.role
+                ? [
+                    {
+                      value: field.role,
+                      label: getDisplayStringForRole(field.role, itemTypeKind),
+                    },
+                  ]
+                : []),
+              ...availableRoles
                 .sort((a, b) =>
                   a === SchemaFieldRoles.NONE
                     ? -1
@@ -150,17 +144,12 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                       ? 1
                       : a.localeCompare(b),
                 )
-                .map((it) => (
-                  <Option
-                    key={it}
-                    value={it}
-                    label={getDisplayStringForRole(it, itemTypeKind)}
-                  >
-                    {getDisplayStringForRole(it, itemTypeKind)}
-                  </Option>
-                ))
-            }
-          </Select>
+                .map((it) => ({
+                  value: it,
+                  label: getDisplayStringForRole(it, itemTypeKind),
+                })),
+            ]}
+          />
         </div>
 
         <div className="flex items-center mb-2 mr-2 space-x-2">
@@ -191,27 +180,30 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
           <Label htmlFor="hidden-checkbox">Hidden Field</Label>
         </div>
         <Button
-          className="self-end ml-2 text-red-500 border-none"
-          icon={<Trash2 className="w-4 h-4" />}
+          variant="ghost"
+          color="red"
+          size="icon"
+          className="self-end ml-2"
           aria-label="Delete field"
           onClick={onClickDelete}
-        />
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
       </div>
       <div className="flex flex-row gap-4">
         {field.role == null ? (
           fieldTypeSelect
         ) : (
-          <Tooltip
-            title={
+          <Tooltip>
+            <TooltipTrigger asChild>{fieldTypeSelect}</TooltipTrigger>
+            <TooltipContent>
               <div>
                 This field must be of type{' '}
                 <b>{titleCaseEnumString(field.type).replace('Id', 'ID')}</b>{' '}
                 because of its role is set to{' '}
                 <b>{getDisplayStringForRole(field.role, itemTypeKind)}.</b>
               </div>
-            }
-          >
-            {fieldTypeSelect}
+            </TooltipContent>
           </Tooltip>
         )}
         {isContainerType(field.type) ? (
@@ -221,23 +213,22 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                 ? 'Key Type'
                 : 'Element Type'}
             </div>
-            <Select
+            <Combobox
               placeholder={
                 field.type === GQLContainerType.Map
                   ? 'Key type'
                   : 'Element type'
               }
               className="w-36"
-              dropdownMatchSelectWidth={false}
               allowClear
-              showSearch
-              filterOption={selectFilterByLabelOption}
               value={
                 field.type === GQLContainerType.Map
                   ? (field.container?.keyScalarType ?? undefined)
                   : (field.container?.valueScalarType ?? undefined)
               }
-              onSelect={(value) =>
+              onValueChange={(next) => {
+                if (next == null) return;
+                const value = next as GQLScalarType;
                 updateFieldState(field, {
                   ...field,
                   container: {
@@ -251,37 +242,29 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                           ? field.container.valueScalarType
                           : GQLScalarType.String,
                   },
-                })
-              }
-            >
-              {Object.values(GQLScalarType).map((scalar, i) => (
-                <Option
-                  key={i}
-                  value={scalar}
-                  label={titleCaseEnumString(scalar).replace('Id', 'ID')}
-                >
-                  {titleCaseEnumString(scalar).replace('Id', 'ID')}
-                </Option>
-              ))}
-            </Select>
+                });
+              }}
+              options={Object.values(GQLScalarType).map((scalar) => ({
+                value: scalar,
+                label: titleCaseEnumString(scalar).replace('Id', 'ID'),
+              }))}
+            />
           </div>
         ) : null}
         {field.type === GQLContainerType.Map ? (
           <div className="flex flex-col gap-2">
             <div className="font-semibold">Value Type</div>
-            <Select
+            <Combobox
               className="w-36"
               placeholder="Value type"
-              dropdownMatchSelectWidth={false}
               allowClear
-              showSearch
-              filterOption={selectFilterByLabelOption}
               value={
                 field.container?.keyScalarType !== null
                   ? (field.container?.valueScalarType ?? undefined)
                   : undefined
               }
-              onSelect={(value) => {
+              onValueChange={(next) => {
+                if (next == null) return;
                 const { container } = field;
                 if (container == null) {
                   throw Error(
@@ -294,21 +277,15 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                   container: {
                     containerType: field.type as GQLContainerType,
                     keyScalarType: container.keyScalarType,
-                    valueScalarType: value,
+                    valueScalarType: next as GQLScalarType,
                   },
                 });
               }}
-            >
-              {Object.values(GQLScalarType).map((scalar, i) => (
-                <Option
-                  key={i}
-                  value={scalar}
-                  label={titleCaseEnumString(scalar).replace('Id', 'ID')}
-                >
-                  {titleCaseEnumString(scalar).replace('Id', 'ID')}
-                </Option>
-              ))}
-            </Select>
+              options={Object.values(GQLScalarType).map((scalar) => ({
+                value: scalar,
+                label: titleCaseEnumString(scalar).replace('Id', 'ID'),
+              }))}
+            />
           </div>
         ) : null}
       </div>
