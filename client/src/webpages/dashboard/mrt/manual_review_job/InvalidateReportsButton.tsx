@@ -1,8 +1,9 @@
 import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { toast } from '@/coop-ui/Toast';
 import { useGQLInvalidateReportsFromReporterMutation } from '@/graphql/generated';
 import { gql } from '@apollo/client';
-import { Input, message } from 'antd';
+import { Input } from 'antd';
 import { ShieldOff } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -63,13 +64,13 @@ export default function InvalidateReportsButton(props: {
       // detail to the console for debugging.
       // eslint-disable-next-line no-console
       console.error('[InvalidateReportsButton] mutation failed', err);
-      message.error(
+      toast.error(
         'Could not invalidate reports. Please try again or contact support.',
       );
     },
     onCompleted: (data) => {
       const result = data.invalidateReportsFromReporter;
-      message.success(
+      toast.success(
         formatSuccessMessage({
           reportsRemoved: result.reportsRemoved,
           jobsDeleted: result.jobsDeleted,
@@ -77,7 +78,7 @@ export default function InvalidateReportsButton(props: {
         }),
       );
       if (result.truncated) {
-        message.warning(
+        toast.warning(
           'Some queues had more reports than could be processed in one pass. Run the action again to continue.',
         );
       }

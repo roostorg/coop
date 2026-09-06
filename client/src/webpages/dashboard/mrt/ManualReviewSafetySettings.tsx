@@ -8,8 +8,8 @@ import {
 } from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
+import { toast } from '@/coop-ui/Toast';
 import { gql } from '@apollo/client';
-import { notification } from 'antd';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 
@@ -70,19 +70,13 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyMuteVideo: true,
     moderatorSafetySepia: false,
   });
-  const [notificationApi, notificationContextHolder] =
-    notification.useNotification();
-
   const { loading, error, data } = useGQLManualReviewSafetySettingsQuery();
 
   const [saveSafetySettings, { loading: mutationLoading }] =
     useGQLSetModeratorSafetySettingsMutation({
-      onCompleted: () =>
-        notificationApi.success({ message: 'Safety settings saved!' }),
+      onCompleted: () => toast.success('Safety settings saved!'),
       onError() {
-        notificationApi.error({
-          message: 'Your safety settings failed to save. Please try again.',
-        });
+        toast.error('Your safety settings failed to save. Please try again.');
       },
     });
 
@@ -208,7 +202,6 @@ export default function ManualReviewSafetySettings() {
           }}
         />
       </div>
-      {notificationContextHolder}
     </div>
   );
 }
