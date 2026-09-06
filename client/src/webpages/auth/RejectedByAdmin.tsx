@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { gql } from '@apollo/client';
-import { Button } from 'antd';
 import { XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -74,9 +74,7 @@ export default function RejectedByAdmin() {
           Sign Up flow. Once you create a new account, your Admin will be able
           to approve you.
         </div>
-        <Button type="primary" onClick={onDeleteUser}>
-          Delete Account
-        </Button>
+        <Button onClick={onDeleteUser}>Delete Account</Button>
       </div>
       {errorModal}
     </div>

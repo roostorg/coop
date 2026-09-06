@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import { ChevronDown } from 'lucide-react';
 
 import { RuleFormConditionParams } from '../../ManualReviewQueueRuleFormCondition';
@@ -35,6 +35,8 @@ export default function ManualReviewQueueRuleConditionSignalSubcategory(props: {
         Signal Subcategory
       </div>
       <Button
+        variant="outline"
+        color="gray"
         className={`px-3 rounded-lg ${
           condition.signal
             ? 'hover:text-black focus:text-black'

@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { GQLSignal } from '@/graphql/generated';
-import { Button } from 'antd';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
@@ -58,6 +58,9 @@ export default function RuleFormConditionSignal(props: {
       >
         <div className="pb-1 text-xs font-bold">Signal</div>
         <Button
+          type="button"
+          variant="outline"
+          color="gray"
           className={`px-3 cursor-text !flex !items-center ${
             condition.signal
               ? '!text-black !hover:text-black !focus:text-black'

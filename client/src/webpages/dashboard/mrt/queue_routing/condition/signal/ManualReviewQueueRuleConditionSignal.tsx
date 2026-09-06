@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { GQLSignal } from '@/graphql/generated';
-import { Button } from 'antd';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
@@ -59,6 +59,8 @@ export default function ManualReviewQueueRuleConditionSignal(props: {
         <div className="pb-1 text-sm font-bold whitespace-nowrap">Signal</div>
         {editing ? (
           <Button
+            variant="outline"
+            color="gray"
             className={`px-3 cursor-pointer ${
               condition.signal
                 ? '!hover:text-black !focus:text-black'
