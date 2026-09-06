@@ -343,7 +343,7 @@ describe('ContentRelatedItemComponent', () => {
     await waitFor(() => {
       expect(screen.getByText('hello world')).toBeInTheDocument();
     });
-    fireEvent.mouseDown(screen.getByTitle('Spam'));
+    fireEvent.click(screen.getByRole('button', { name: /Spam/ }));
     await waitFor(() => {
       expect(screen.getByText('Abuse')).toBeInTheDocument();
     });
