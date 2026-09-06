@@ -1,5 +1,6 @@
+import { Input } from '@/coop-ui/Input';
+import { PasswordInput } from '@/coop-ui/PasswordInput';
 import { gql } from '@apollo/client';
-import { Input } from 'antd';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -233,7 +234,6 @@ export default function SignUp() {
               placeholder="First Name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              size="large"
             />
           </div>
 
@@ -245,7 +245,6 @@ export default function SignUp() {
               placeholder="Last Name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              size="large"
             />
           </div>
 
@@ -254,11 +253,10 @@ export default function SignUp() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
-              <Input.Password
+              <PasswordInput
                 placeholder={`Password (min ${minPasswordLength} characters)`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                size="large"
               />
             </div>
           )}

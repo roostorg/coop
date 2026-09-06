@@ -1,4 +1,4 @@
-import { Input } from 'antd';
+import { Input } from '@/coop-ui/Input';
 import Geohash from 'latlon-geohash';
 import { useState } from 'react';
 

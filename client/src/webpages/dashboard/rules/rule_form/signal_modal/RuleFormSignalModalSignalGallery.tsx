@@ -1,5 +1,5 @@
+import { Input } from '@/coop-ui/Input';
 import { GQLSignal, useGQLIsDemoOrgQuery } from '@/graphql/generated';
-import { Input } from 'antd';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -52,7 +52,12 @@ export default function RuleFormSignalModalSignalGallery(props: {
         <Input
           className="max-w-xs rounded-lg"
           placeholder="Search"
-          prefix={<Search className="w-4 h-4" />}
+          startSlot={
+            <span className="flex items-center px-3 border border-r-0 border-gray-200 rounded-l-lg bg-white text-gray-400">
+              <Search className="w-4 h-4" />
+            </span>
+          }
+          value={searchTerm}
           allowClear
           onChange={(event) =>
             setSearchTerm(event.target.value.toLocaleLowerCase())

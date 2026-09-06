@@ -1,9 +1,9 @@
 import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { Textarea } from '@/coop-ui/Textarea';
 import { toast } from '@/coop-ui/Toast';
 import { useGQLInvalidateReportsFromReporterMutation } from '@/graphql/generated';
 import { gql } from '@apollo/client';
-import { Input } from 'antd';
 import { ShieldOff } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -183,7 +183,7 @@ export default function InvalidateReportsButton(props: {
           >
             Reason (optional, logged for audit)
           </label>
-          <Input.TextArea
+          <Textarea
             id="invalidate-reports-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
