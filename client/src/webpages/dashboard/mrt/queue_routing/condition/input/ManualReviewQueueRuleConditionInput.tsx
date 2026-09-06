@@ -1,9 +1,8 @@
-import { Select } from 'antd';
-
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
+import { Combobox } from '@/coop-ui/Combobox';
 
 import { safePick } from '../../../../../../utils/misc';
 import {
+  JsonOf,
   jsonParse,
   jsonStringify,
 } from '../../../../../../utils/typescript-types';
@@ -15,35 +14,7 @@ import {
 } from '../../../../rules/types';
 import { CoopInput } from '../../../../types/enums';
 import { ManualReviewQueueRoutingStaticTextField } from '../../ManualReviewQueueRoutingStaticField';
-import { optionWithTooltip } from '../../ManualReviewQueueRuleFormCondition';
 import { RoutingRuleItemType } from '../../types';
-
-const { OptGroup } = Select;
-
-const COOP_INPUT_DESCRIPTIONS = {
-  [CoopInput.ALL_TEXT]:
-    "All of the content's text is extracted and " +
-    'concatenated together (if there are multiple text fields), ' +
-    'and then the resulting string is run through whichever signal ' +
-    'you select',
-  [CoopInput.ANY_IMAGE]:
-    "All of the content's images are extracted and run " +
-    'through whichever signal you select. If any one of them ' +
-    'matches the signal, this condition will pass.',
-  [CoopInput.ANY_VIDEO]:
-    "All of the content's videos are extracted and run " +
-    'through whichever signal you select. If any one of them ' +
-    'matches the signal, this condition will pass.',
-  [CoopInput.ANY_GEOHASH]:
-    "All of the content's geohashes are extracted and run " +
-    'through whichever signal you select. If any one of them ' +
-    'matches the signal, this condition will pass.',
-  [CoopInput.AUTHOR_USER]:
-    'Use this to check inspect the user who created this content, ' +
-    'rather than inspecting the content itself.',
-  [CoopInput.POLICY_ID]: 'The policy that was used to enqueue this job.',
-  [CoopInput.SOURCE]: 'The creation source from which this job was enqueued.',
-};
 
 export default function ManualReviewQueueRuleConditionInput(props: {
   condition: RuleFormLeafCondition;
@@ -145,54 +116,35 @@ export default function ManualReviewQueueRuleConditionInput(props: {
       >
         <div className="pb-1 text-sm font-bold whitespace-nowrap">Input</div>
         {editing ? (
-          <Select
-            key={`RuleFormCondition-input-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
-            placeholder="Select input"
-            value={condition.input ? getOptionValue(condition.input) : null}
-            onSelect={(input) => onUpdateConditionInput(jsonParse(input))}
-            optionLabelProp="label"
-            allowClear
-            showSearch
-            filterOption={selectFilterByLabelOption}
-            dropdownMatchSelectWidth={false}
-            dropdownRender={(menu) => {
-              if (eligibleInputs.size > 0) {
-                return menu;
+          <>
+            {eligibleInputs.size === 0 && (
+              <div className="pb-1 text-red-600">
+                Please select at least one item type first
+              </div>
+            )}
+            <Combobox
+              key={`RuleFormCondition-input-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
+              placeholder="Select input"
+              value={
+                condition.input ? getOptionValue(condition.input) : undefined
               }
-              return (
-                <div className="p-2">
-                  <div className="text-red-600">
-                    Please select at least one item type first
-                  </div>
-                  {menu}
-                </div>
-              );
-            }}
-          >
-            {[...eligibleInputs.entries()].map(([groupTitle, inputs]) => (
-              <OptGroup
-                key={`RuleFormCondition-input-opt-group_set_index_${String(
-                  conditionSetIndex,
-                )}_index_${conditionIndex}_${groupTitle}`}
-                label={groupTitle}
-              >
-                {inputs.map((input, index) =>
-                  optionWithTooltip({
-                    title: getDisplayNameFromInput(input),
+              onValueChange={(input) => {
+                if (input != null) {
+                  onUpdateConditionInput(
+                    jsonParse(input as JsonOf<SimplifiedConditionInput>),
+                  );
+                }
+              }}
+              allowClear
+              options={[...eligibleInputs.entries()].flatMap(
+                ([groupTitle, inputs]) =>
+                  inputs.map((input) => ({
                     value: getOptionValue(input),
-                    disabled: false, // disabled
-                    description:
-                      input.type === 'CONTENT_COOP_INPUT'
-                        ? COOP_INPUT_DESCRIPTIONS[input.name]
-                        : undefined,
-                    key: `RuleFormCondition-input-opt_set_index_${conditionSetIndex}_index_${conditionIndex}_${groupTitle}_${index}`,
-                    index,
-                    isInOptionGroup: true,
-                  }),
-                )}
-              </OptGroup>
-            ))}
-          </Select>
+                    label: `${groupTitle} · ${getDisplayNameFromInput(input)}`,
+                  })),
+              )}
+            />
+          </>
         ) : (
           <ManualReviewQueueRoutingStaticTextField
             text={

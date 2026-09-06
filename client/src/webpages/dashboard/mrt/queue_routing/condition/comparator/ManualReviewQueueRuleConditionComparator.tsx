@@ -1,6 +1,4 @@
-import { Select } from 'antd';
-
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
+import { Combobox } from '@/coop-ui/Combobox';
 
 import {
   GQLScalarType,
@@ -14,8 +12,6 @@ import {
   RuleFormLeafCondition,
 } from '../../../../rules/types';
 import { ManualReviewQueueRoutingStaticTextField } from '../../ManualReviewQueueRoutingStaticField';
-
-const { Option } = Select;
 
 export default function ManualReviewQueueRuleConditionComparator(props: {
   condition: RuleFormLeafCondition;
@@ -65,27 +61,21 @@ export default function ManualReviewQueueRuleConditionComparator(props: {
     >
       <div className="pb-1 text-sm font-bold whitespace-nowrap">Comparison</div>
       {editing ? (
-        <Select
+        <Combobox
           key={`RuleFormCondition-comparator-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
           placeholder="Select a comparison"
-          defaultValue={condition.comparator}
-          value={condition.comparator}
+          value={condition.comparator ?? undefined}
           allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          onChange={(value) => onUpdateComparator(value)}
-          dropdownMatchSelectWidth={false}
-        >
-          {comparatorTypes.map((comparator) => (
-            <Option
-              key={`RuleFormCondition-comparator-option_set_index_${conditionSetIndex}_index_${conditionIndex}_${comparator}`}
-              value={comparator}
-              label={comparableToHumanReadableString(comparator)}
-            >
-              {comparableToHumanReadableString(comparator)}
-            </Option>
-          ))}
-        </Select>
+          onValueChange={(value) => {
+            if (value != null) {
+              onUpdateComparator(value as GQLValueComparator);
+            }
+          }}
+          options={comparatorTypes.map((comparator) => ({
+            value: comparator,
+            label: comparableToHumanReadableString(comparator),
+          }))}
+        />
       ) : (
         <ManualReviewQueueRoutingStaticTextField
           text={
