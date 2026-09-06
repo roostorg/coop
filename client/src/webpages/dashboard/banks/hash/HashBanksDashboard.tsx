@@ -1,4 +1,4 @@
-import { Tag } from 'antd';
+import { Badge } from '@/coop-ui/Badge';
 import { Hash } from 'lucide-react';
 import React, { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -24,9 +24,10 @@ import {
 } from '../../../../graphql/generated';
 
 const getStatusColor = (enabled_ratio: number) => {
-  if (enabled_ratio === 0) return 'red';
-  if (enabled_ratio < 1) return 'orange';
-  return 'green';
+  if (enabled_ratio === 0) return 'bg-red-100 text-red-700 border-red-200';
+  if (enabled_ratio < 1)
+    return 'bg-orange-100 text-orange-700 border-orange-200';
+  return 'bg-green-100 text-green-700 border-green-200';
 };
 
 const getStatusText = (enabled_ratio: number) => {
@@ -152,9 +153,13 @@ export default function HashBanksDashboard() {
           name: values.name,
           description: <div className="italic">{values.description}</div>,
           enabled_ratio: (
-            <Tag color={getStatusColor(values.enabled_ratio)}>
+            <Badge
+              variant="outline"
+              size="sm"
+              className={getStatusColor(values.enabled_ratio)}
+            >
               {getStatusText(values.enabled_ratio)}
-            </Tag>
+            </Badge>
           ),
           values,
         };

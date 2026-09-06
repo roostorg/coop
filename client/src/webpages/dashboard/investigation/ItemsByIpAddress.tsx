@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { Empty } from 'antd';
+import { Inbox } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
@@ -70,10 +70,12 @@ export default function ItemsByIpAddress(props: {
         }
         if (items.length === 0) {
           return (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="No other items found for this IP address"
-            />
+            <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+              <Inbox className="w-10 h-10 mb-2" />
+              <p className="text-sm">
+                No other items found for this IP address
+              </p>
+            </div>
           );
         }
         return (
