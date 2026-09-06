@@ -3,7 +3,7 @@ import { uid } from 'uid';
 
 import { expect, test } from '../fixtures/coop.js';
 
-test('an admin creates a content rule with a condition and an MRT action via the UI', async ({
+test('editing an existing live rule keeps its item types, actions, and status', async ({
   page,
   deps,
   seed,
@@ -27,7 +27,6 @@ test('an admin creates a content rule with a condition and an MRT action via the
 
   await seed.login(page, admin);
   await page.goto('/dashboard/rules/proactive/form');
-  await expect(page.getByText('Create Rule').first()).toBeVisible();
 
   const ruleName = `e2e-rule-${uid()}`;
   await page.locator('input').first().fill(ruleName);
@@ -46,7 +45,10 @@ test('an admin creates a content rule with a condition and an MRT action via the
 
   await page.getByRole('button', { name: 'Actions', exact: true }).click();
   await page
-    .getByRole('option', { name: 'Enqueue Item to Manual Review', exact: true })
+    .getByRole('option', {
+      name: 'Enqueue Item to Manual Review',
+      exact: true,
+    })
     .click();
   await page.getByText('Live', { exact: true }).click();
   await page.getByRole('button', { name: 'Create Rule' }).click();
@@ -54,5 +56,19 @@ test('an admin creates a content rule with a condition and an MRT action via the
   await expect(page.getByText('Rule Created').last()).toBeVisible();
   await page.getByRole('button', { name: 'OK' }).click();
   await expect(page).toHaveURL(/\/dashboard\/rules\/proactive/);
-  await expect(page.getByText(ruleName)).toBeVisible();
+
+  // Now open the rule for editing and confirm state populated correctly.
+  await page.getByText(ruleName).click();
+  await page.getByRole('button', { name: 'Edit Rule' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Item Types', exact: true }),
+  ).toContainText(itemType.name);
+  await expect(page.getByText(itemType.name).first()).toBeVisible();
+  await expect(
+    page.getByText('Enqueue Item to Manual Review').first(),
+  ).toBeVisible();
+  await expect(page.getByText('Live', { exact: true })).toBeVisible();
+
+  const saveButton = page.getByRole('button', { name: 'Save Changes' });
+  await expect(saveButton).toBeEnabled();
 });

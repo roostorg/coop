@@ -17,7 +17,7 @@ export type ParameterizedActionOption = {
 };
 
 type Props = {
-  // `value`/`onChange` are supplied by the wrapping `Form.Item`.
+  // `value`/`onChange` are supplied by the wrapping RHF `<Controller>`.
   value?: Record<string, ActionParameterValues>;
   onChange?: (next: Record<string, ActionParameterValues>) => void;
   actions: readonly ParameterizedActionOption[];
