@@ -1,7 +1,7 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { Combobox, MultiCombobox } from '@/coop-ui/Combobox';
 import { Label } from '@/coop-ui/Label';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
 import difference from 'lodash/difference';
 import orderBy from 'lodash/orderBy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -9,7 +9,6 @@ import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
-import { selectFilterByLabelOption } from '../components/antDesignUtils';
 import CoopButton from '../components/CoopButton';
 import CoopModal from '../components/CoopModal';
 import FormHeader from '../components/FormHeader';
@@ -25,9 +24,6 @@ import {
   useGQLUpdateManualReviewQueueMutation,
 } from '../../../graphql/generated';
 import { titleCaseEnumStringWithArticle } from '../../../utils/string';
-import { optionWithTooltip } from './queue_routing/ManualReviewQueueRuleFormCondition';
-
-const { Option } = Select;
 
 const CLEAR_REPORTS_DISPOSITION_LABELS: Record<
   GQLMrtClearReportsDisposition,
@@ -479,34 +475,28 @@ export default function ManualReviewQueueForm() {
           see each user's role in our{' '}
           <Link to="/dashboard/settings/users">Users</Link> page.
         </div>
-        <Select<string[]>
+        <MultiCombobox
           className="self-start !min-w-[160px]"
-          mode="multiple"
           placeholder="Add Moderators"
-          dropdownMatchSelectWidth={false}
           allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
           value={moderatorsWithAccess}
-          onChange={setModeratorsWithAccess}
-        >
-          {orgUsers.map((user, index) => {
+          onValueChange={setModeratorsWithAccess}
+          // TODO(antd-removal): per-option admin-explainer tooltip folded into
+          // the label (cmdk CommandItem has no per-item tooltip).
+          options={orgUsers.map((user) => {
             const userIsAdmin = userIdsWhoCanReviewEveryQueue.includes(user.id);
-            return optionWithTooltip({
-              title: `${user.firstName} ${user.lastName}`,
+            const name = `${user.firstName} ${user.lastName}`;
+            return {
               value: user.id,
-              disabled: userIsAdmin,
-              description: userIsAdmin
-                ? `This user is ${titleCaseEnumStringWithArticle(
+              label: userIsAdmin
+                ? `${name} — ${titleCaseEnumStringWithArticle(
                     user.role!,
-                  )} and can therefore see every queue, so you can't remove them from individual queues`
-                : undefined,
-              key: user.id,
-              index,
-              isInOptionGroup: false,
-            });
+                  )}; sees every queue`
+                : name,
+              disabled: userIsAdmin,
+            };
           })}
-        </Select>
+        />
         {orgActions.length > 0 && (
           <div className="mt-8">
             <div className="font-semibold">Hidden Actions</div>
@@ -516,23 +506,17 @@ export default function ManualReviewQueueForm() {
               queue. If you don't select any actions, all actions will be
               available.
             </div>
-            <Select<string[]>
+            <MultiCombobox
               className="self-start !min-w-[160px]"
-              mode="multiple"
               placeholder="Add Hidden Actions"
-              dropdownMatchSelectWidth={false}
               allowClear
-              showSearch
-              filterOption={selectFilterByLabelOption}
               value={hiddenActionIds}
-              onChange={setHiddenActionIds}
-            >
-              {orderBy(orgActions, ['name']).map((action) => (
-                <Option key={action.id} value={action.id} label={action.name}>
-                  {action.name}
-                </Option>
-              ))}
-            </Select>
+              onValueChange={setHiddenActionIds}
+              options={orderBy(orgActions, ['name']).map((action) => ({
+                value: action.id,
+                label: action.name,
+              }))}
+            />
           </div>
         )}
       </div>
@@ -559,27 +543,26 @@ export default function ManualReviewQueueForm() {
             can also clear that user's other pending reports. CSAM reports are
             never cleared.
           </div>
-          <Select<GQLMrtClearReportsDisposition | 'DISABLED'>
+          <Combobox
             className="self-start !min-w-[160px]"
-            dropdownMatchSelectWidth={false}
             value={clearReportsDisposition ?? 'DISABLED'}
-            onChange={(value) =>
-              setClearReportsDisposition(value === 'DISABLED' ? null : value)
+            onValueChange={(value) =>
+              setClearReportsDisposition(
+                value == null || value === 'DISABLED'
+                  ? null
+                  : (value as GQLMrtClearReportsDisposition),
+              )
             }
-          >
-            <Option value="DISABLED" label="Disabled">
-              Disabled
-            </Option>
-            {Object.values(GQLMrtClearReportsDisposition).map((disposition) => (
-              <Option
-                key={disposition}
-                value={disposition}
-                label={CLEAR_REPORTS_DISPOSITION_LABELS[disposition]}
-              >
-                {CLEAR_REPORTS_DISPOSITION_LABELS[disposition]}
-              </Option>
-            ))}
-          </Select>
+            options={[
+              { value: 'DISABLED', label: 'Disabled' },
+              ...Object.values(GQLMrtClearReportsDisposition).map(
+                (disposition) => ({
+                  value: disposition,
+                  label: CLEAR_REPORTS_DISPOSITION_LABELS[disposition],
+                }),
+              ),
+            ]}
+          />
           {clearReportsDisposition != null && (
             <div className="flex flex-col gap-4 mt-4">
               <div>
@@ -588,46 +571,35 @@ export default function ManualReviewQueueForm() {
                   Taking any of these actions on a user triggers clearing their
                   other reports.
                 </div>
-                <Select<string[]>
+                <MultiCombobox
                   className="self-start !min-w-[160px]"
-                  mode="multiple"
                   placeholder="Add Trigger Actions"
-                  dropdownMatchSelectWidth={false}
                   allowClear
-                  showSearch
-                  filterOption={selectFilterByLabelOption}
                   value={clearReportsTriggerActionIds}
-                  onChange={setClearReportsTriggerActionIds}
-                >
-                  {orderBy(orgActions, ['name']).map((action) => (
-                    <Option
-                      key={action.id}
-                      value={action.id}
-                      label={action.name}
-                    >
-                      {action.name}
-                    </Option>
-                  ))}
-                </Select>
+                  onValueChange={setClearReportsTriggerActionIds}
+                  options={orderBy(orgActions, ['name']).map((action) => ({
+                    value: action.id,
+                    label: action.name,
+                  }))}
+                />
               </div>
               <div>
                 <div className="mb-2 font-semibold">Scope</div>
-                <Select<GQLMrtClearReportsScope>
+                <Combobox
                   className="self-start !min-w-[160px]"
-                  dropdownMatchSelectWidth={false}
                   value={clearReportsScope}
-                  onChange={setClearReportsScope}
-                >
-                  {Object.values(GQLMrtClearReportsScope).map((scope) => (
-                    <Option
-                      key={scope}
-                      value={scope}
-                      label={CLEAR_REPORTS_SCOPE_LABELS[scope]}
-                    >
-                      {CLEAR_REPORTS_SCOPE_LABELS[scope]}
-                    </Option>
-                  ))}
-                </Select>
+                  onValueChange={(value) => {
+                    if (value != null) {
+                      setClearReportsScope(value as GQLMrtClearReportsScope);
+                    }
+                  }}
+                  options={Object.values(GQLMrtClearReportsScope).map(
+                    (scope) => ({
+                      value: scope,
+                      label: CLEAR_REPORTS_SCOPE_LABELS[scope],
+                    }),
+                  )}
+                />
               </div>
             </div>
           )}

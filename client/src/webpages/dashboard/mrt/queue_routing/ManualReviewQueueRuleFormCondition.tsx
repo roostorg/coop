@@ -1,6 +1,6 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
-import { Button, Select } from 'antd';
-import { Info, Trash2 } from 'lucide-react';
+import { Button } from '@/coop-ui/Button';
+import { Combobox } from '@/coop-ui/Combobox';
+import { Trash2 } from 'lucide-react';
 
 import {
   GQLConditionConjunction,
@@ -29,54 +29,10 @@ import {
   updateConditionInput,
 } from './utils';
 
-const { Option } = Select;
-
 export type RuleFormConditionParams = {
   condition: RuleFormLeafCondition;
   location: ConditionLocation;
 };
-
-export function optionWithTooltip(opts: {
-  title: string;
-  value: string;
-  disabled: boolean;
-  description: string | undefined;
-  key: string; // custom key for the <div> tag - should be unique
-  index: number;
-  isInOptionGroup?: boolean;
-}) {
-  const {
-    title,
-    value,
-    disabled,
-    description,
-    key,
-    index,
-    isInOptionGroup = true,
-  } = opts;
-
-  return (
-    <Option
-      className={isInOptionGroup ? 'pl-6' : 'pl-3'}
-      key={key + index}
-      value={value}
-      disabled={disabled}
-      label={title}
-    >
-      <div className="flex flex-row items-center justify-between">
-        <div className="pr-6">{title}</div>
-        {description && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="w-4 h-4 bg-transparent text-slate-500" />
-            </TooltipTrigger>
-            <TooltipContent side="right">{description}</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    </Option>
-  );
-}
 
 /**
  * Condition Options:
@@ -122,11 +78,13 @@ export default function ManualReviewQueueRuleFormCondition(props: {
       {conditionIndex === 0 ? (
         <div className={editing ? 'pl-3' : 'pl-1'}>If</div>
       ) : editing ? (
-        <Select
-          defaultValue={parentConditionSet.conjunction}
-          dropdownMatchSelectWidth={false}
+        <Combobox
           value={parentConditionSet.conjunction}
-          onSelect={(value) => {
+          onValueChange={(rawValue) => {
+            if (rawValue == null) {
+              return;
+            }
+            const value = rawValue as GQLConditionConjunction;
             const newConditionSet = hasNestedConditionSets(parentConditionSet)
               ? {
                   ...parentConditionSet,
@@ -138,20 +96,11 @@ export default function ManualReviewQueueRuleFormCondition(props: {
               : { ...parentConditionSet, conjunction: value };
             onUpdateConditionSet(newConditionSet);
           }}
-        >
-          <Option
-            key={GQLConditionConjunction.Or}
-            value={GQLConditionConjunction.Or}
-          >
-            or
-          </Option>
-          <Option
-            key={GQLConditionConjunction.And}
-            value={GQLConditionConjunction.And}
-          >
-            and
-          </Option>
-        </Select>
+          options={[
+            { value: GQLConditionConjunction.Or, label: 'or' },
+            { value: GQLConditionConjunction.And, label: 'and' },
+          ]}
+        />
       ) : (
         <div className={editing ? 'pl-3' : 'pl-1'}>
           {parentConditionSet.conjunction.toLocaleLowerCase()}
@@ -271,14 +220,17 @@ export default function ManualReviewQueueRuleFormCondition(props: {
       />
       {editing && (
         <Button
-          className="ml-4"
+          className="ml-4 rounded-full"
           key={`RuleFormCondition-delete_set_index_${conditionSetIndex}_index_${conditionIndex}`}
-          shape="circle"
-          icon={<Trash2 className="w-4 h-4" />}
+          variant="outline"
+          color="gray"
+          size="icon"
           onClick={() =>
             onUpdateConditionSet(removeCondition(parentConditionSet, location))
           }
-        />
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
       )}
     </div>
   );
