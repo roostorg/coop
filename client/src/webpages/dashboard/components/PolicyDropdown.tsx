@@ -1,5 +1,8 @@
-import { TreeSelect } from 'antd';
-import { TreeNode } from 'antd/lib/tree-select';
+import {
+  Combobox,
+  MultiCombobox,
+  type ComboboxOption,
+} from '@/coop-ui/Combobox';
 import sortBy from 'lodash/sortBy';
 import { useMemo } from 'react';
 
@@ -12,15 +15,29 @@ type Policy = {
   readonly parentId?: string | null | undefined;
 };
 
-const policyOption = (policy: CustomTreeNode<Policy>) => {
-  return (
-    <TreeNode key={policy.value.id} value={policy.value.id!} title={policy.key}>
-      {sortBy(policy.children, (policy) => policy.value.name)?.map(
-        policyOption,
-      )}
-    </TreeNode>
-  );
-};
+/**
+ * Depth-first flatten of the policy tree into a flat option list, using an
+ * em-dash prefix to convey nesting depth (antd `TreeSelect` used to render
+ * this hierarchy with tree lines; the coop-ui Combobox is flat + searchable).
+ */
+function flattenPolicyTree(
+  nodes: readonly CustomTreeNode<Policy>[],
+  depth = 0,
+): ComboboxOption[] {
+  const out: ComboboxOption[] = [];
+  for (const node of sortBy(nodes, (n) => n.value.name)) {
+    if (node.value.id != null) {
+      out.push({
+        value: node.value.id,
+        label: `${'— '.repeat(depth)}${node.key}`,
+      });
+    }
+    if (node.children.length > 0) {
+      out.push(...flattenPolicyTree(node.children, depth + 1));
+    }
+  }
+  return out;
+}
 
 export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
   policies: readonly Policy[];
@@ -40,9 +57,7 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
     placeholder,
     multiple,
     className,
-    placement,
     disabled,
-    maxTagCount,
   } = props;
 
   const policyTree = useMemo(
@@ -58,31 +73,43 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
     [policies],
   );
 
+  const options = useMemo(
+    () => flattenPolicyTree(policyTree.root.children),
+    [policyTree],
+  );
+
+  if (multiple) {
+    return (
+      <MultiCombobox
+        options={options}
+        value={[
+          ...((selectedPolicyIds as readonly string[] | undefined) ?? []),
+        ]}
+        // The generic `If<...>` return type can't be narrowed at this call site.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onValueChange={(vals) => onChange(vals as any)}
+        placeholder={placeholder ?? 'Select Policies'}
+        className={className}
+        disabled={disabled ?? false}
+        allowClear
+      />
+    );
+  }
+
   return (
-    <TreeSelect
-      className={className}
-      multiple={multiple}
-      treeLine={true}
-      maxTagCount={maxTagCount}
-      placeholder={
-        (placeholder ?? multiple) ? 'Select Policies' : 'Select policy'
-      }
-      dropdownMatchSelectWidth={false}
+    <Combobox
+      options={options}
       value={
-        multiple || !Array.isArray(selectedPolicyIds)
-          ? selectedPolicyIds
-          : selectedPolicyIds[0]
+        (Array.isArray(selectedPolicyIds)
+          ? selectedPolicyIds[0]
+          : selectedPolicyIds) ?? undefined
       }
-      onChange={onChange}
-      showSearch={true}
-      placement={placement ?? 'bottomLeft'}
-      filterTreeNode={(input, treeNode) => {
-        const title = typeof treeNode.title === 'string' ? treeNode.title : '';
-        return title.toLowerCase().includes(input.toLowerCase());
-      }}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onValueChange={(v) => onChange((v ?? '') as any)}
+      placeholder={placeholder ?? 'Select policy'}
+      className={className}
       disabled={disabled ?? false}
-    >
-      {policyTree.root.children.map(policyOption)}
-    </TreeSelect>
+      allowClear
+    />
   );
 }
