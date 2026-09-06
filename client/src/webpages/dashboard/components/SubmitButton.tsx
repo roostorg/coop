@@ -1,7 +1,20 @@
-import { Button, Form, Tooltip } from 'antd';
-import { SizeType } from 'antd/lib/config-provider/SizeContext';
-import { TooltipPlacement } from 'antd/lib/tooltip';
+import { Button } from '@/coop-ui/Button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/coop-ui/Tooltip';
+import { placementToSideAlign, type TooltipPlacement } from '@/lib/tooltip';
 import { Link } from 'react-router-dom';
+
+type SubmitButtonSize = 'small' | 'middle' | 'large';
+
+const COOP_BUTTON_SIZE: Record<SubmitButtonSize, 'sm' | 'default' | 'lg'> = {
+  small: 'sm',
+  middle: 'default',
+  large: 'lg',
+};
 
 export default function SubmitButton(props: {
   title: string;
@@ -17,7 +30,7 @@ export default function SubmitButton(props: {
   showDisabledTooltip?: boolean;
   disabledTooltipTitle?: string;
   disabledTooltipPlacement?: TooltipPlacement;
-  size?: SizeType;
+  size?: SubmitButtonSize;
 }) {
   const {
     title,
@@ -42,10 +55,9 @@ export default function SubmitButton(props: {
             ? '!bg-slate-200 !text-slate-400 cursor-not-allowed'
             : 'cursor-pointer !bg-primary hover:!bg-primary/70 !text-white'
         } rounded-lg !border-none shadow-none min-w-[64px] font-medium`}
-        type="primary"
-        htmlType="submit"
+        type="submit"
         onClick={(event) => onClick && onClick(event)}
-        size={size ?? 'large'}
+        size={COOP_BUTTON_SIZE[size ?? 'large']}
         disabled={disabled ?? false}
         loading={loading ?? false}
       >
@@ -63,19 +75,23 @@ export default function SubmitButton(props: {
     Boolean(disabled) &&
     Boolean(showDisabledTooltip) &&
     disabledTooltipTitle ? (
-      <Tooltip
-        title={disabledTooltipTitle}
-        placement={disabledTooltipPlacement ?? 'bottomRight'}
-      >
-        {button}
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent
+            {...placementToSideAlign(disabledTooltipPlacement ?? 'bottomRight')}
+          >
+            {disabledTooltipTitle}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     ) : destination != null ? (
       <Link to={destination}>{button}</Link>
     ) : (
       button
     );
   if (submitsForm) {
-    return <Form.Item className="mt-4 mb-8">{buttonWrapper}</Form.Item>;
+    return <div className="mt-4 mb-8">{buttonWrapper}</div>;
   }
   return buttonWrapper;
 }
