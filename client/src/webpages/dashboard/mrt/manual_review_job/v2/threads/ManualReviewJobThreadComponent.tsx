@@ -1,7 +1,7 @@
+import { Button } from '@/coop-ui/Button';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useEffect, useRef, useState } from 'react';
 
@@ -454,6 +454,8 @@ export function ManualReviewJobThreadComponent(props: {
         <>
           <div className="flex flex-row self-end mt-2">
             <Button
+              variant="outline"
+              color="gray"
               className="text-sm cursor-pointer rounded-md"
               onClick={() => setSelectedMessages([...newMessages])}
             >
@@ -461,6 +463,8 @@ export function ManualReviewJobThreadComponent(props: {
             </Button>
             {selectedMessages.length > 0 && (
               <Button
+                variant="outline"
+                color="gray"
                 className="ml-2 text-sm cursor-pointer rounded-md"
                 onClick={() => setSelectedMessages([])}
               >

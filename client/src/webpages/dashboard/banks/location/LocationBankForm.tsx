@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { gql } from '@apollo/client';
-import { Button } from 'antd';
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -259,11 +259,11 @@ export default function LocationBankForm() {
 
   const addLocationButton = (
     <Button
-      size="middle"
-      type="default"
+      variant="outline"
+      color="gray"
       className="mt-4"
       onClick={() => setLocationModalVisible(true)}
-      icon={<Plus className="w-4 h-4" />}
+      startIcon={Plus}
     >
       Add Location
     </Button>

@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
 import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
@@ -25,7 +25,7 @@ export default function TableFilter<TData extends TableData>(props: {
   }>({});
   const [isButtonFloatedRight, setIsButtonFloatedRight] = useState(false);
 
-  const buttonRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Determine whether the "Filter" button has floated to the left or right of the screen,
   // which helps us display the filter menu properly.
@@ -112,23 +112,23 @@ export default function TableFilter<TData extends TableData>(props: {
       <div className="flex items-center justify-start">
         <Button
           ref={buttonRef}
+          variant="outline"
+          color="gray"
           className={`font-semibold text-base rounded ${
             activeFilters.length === 0
               ? 'bg-white hover:bg-white hover:text-[#71717a] focus:bg-white focus:text-[#71717a]'
               : 'text-white bg-[#71717a] border-none focus:text-white focus:bg-[#71717a] focus:border-none hover:text-white hover:bg-[#a1a1aa] hover:border-none'
           }`}
-          icon={
-            <Filter
-              className={`w-4 h-4 font-semibold ${
-                activeFilters.length === 0 ? 'text-[#71717a]' : 'text-white'
-              }`}
-            />
-          }
           onClick={() => {
             setMenuVisible(!menuVisible);
             scrollToButton();
           }}
         >
+          <Filter
+            className={`w-4 h-4 font-semibold ${
+              activeFilters.length === 0 ? 'text-[#71717a]' : 'text-white'
+            }`}
+          />
           Filter
         </Button>
         <div className="flex items-center">
