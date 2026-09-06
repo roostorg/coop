@@ -1,5 +1,6 @@
+import { Button } from '@/coop-ui/Button';
+import { PasswordInput } from '@/coop-ui/PasswordInput';
 import { gql } from '@apollo/client';
-import { Button, Input } from 'antd';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -63,11 +64,12 @@ export default function ResetPassword() {
 
   const newPasswordInput = (
     <>
-      <Input.Password
-        className="rounded-lg"
+      <PasswordInput
+        className={
+          isPasswordTooShort ? 'rounded-lg border-red-500' : 'rounded-lg'
+        }
         placeholder={`Enter new password (min ${minPasswordLength} characters)`}
         value={newPassword}
-        status={isPasswordTooShort ? 'error' : undefined}
         aria-invalid={isPasswordTooShort}
         aria-describedby={isPasswordTooShort ? 'newPassword-error' : undefined}
         onChange={(event) => {
@@ -89,11 +91,12 @@ export default function ResetPassword() {
 
   const confirmPasswordInput = (
     <>
-      <Input.Password
-        className="rounded-lg"
+      <PasswordInput
+        className={
+          doPasswordsMismatch ? 'rounded-lg border-red-500' : 'rounded-lg'
+        }
         placeholder="Confirm new password"
         value={confirmPassword}
-        status={doPasswordsMismatch ? 'error' : undefined}
         aria-invalid={doPasswordsMismatch}
         aria-describedby={
           doPasswordsMismatch ? 'confirmPassword-error' : undefined
@@ -111,8 +114,7 @@ export default function ResetPassword() {
   const submitButton = (
     <Button
       className="w-full mt-4 !border-none rounded-lg !bg-primary"
-      type="primary"
-      htmlType="submit"
+      type="submit"
       loading={resetPasswordLoading}
       disabled={
         !newPassword ||

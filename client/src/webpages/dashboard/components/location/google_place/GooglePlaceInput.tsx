@@ -1,4 +1,5 @@
-import { Button, Input } from 'antd';
+import { Button } from '@/coop-ui/Button';
+import { Input } from '@/coop-ui/Input';
 import { useCallback, useEffect, useState } from 'react';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
@@ -197,7 +198,11 @@ export default function GooglePlaceInput(props: {
               />
             </div>
             <div className="flex justify-end">
-              <Button type="default" onClick={() => onAddRadius(radius)}>
+              <Button
+                variant="outline"
+                color="gray"
+                onClick={() => onAddRadius(radius)}
+              >
                 Add Radius
               </Button>
             </div>

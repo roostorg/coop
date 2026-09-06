@@ -1,5 +1,6 @@
+import { Button } from '@/coop-ui/Button';
+import { Input } from '@/coop-ui/Input';
 import { gql } from '@apollo/client';
-import { Button, Input } from 'antd';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
@@ -40,7 +41,7 @@ export default function ForgotPassword() {
 
   const emailInput = (
     <Input
-      className="my-6 rounded-lg"
+      className="rounded-lg"
       placeholder="Enter your email"
       value={email}
       onChange={(event) => setEmail(event.target.value)}
@@ -50,9 +51,8 @@ export default function ForgotPassword() {
   const sendButton = (
     <Button
       className="w-full !border-none rounded-lg !bg-primary"
-      type="primary"
       loading={loading}
-      htmlType="submit"
+      type="submit"
       onClick={async () => onSendPasswordReset({ email })}
     >
       Send Reset Link
