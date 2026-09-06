@@ -1,7 +1,7 @@
+import { Input } from '@/coop-ui/Input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { gql } from '@apollo/client';
 import { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
-import { Input } from 'antd';
 import {
   ChevronDown,
   ChevronUp,

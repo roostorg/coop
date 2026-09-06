@@ -1,5 +1,5 @@
+import { Input } from '@/coop-ui/Input';
 import { gql } from '@apollo/client';
-import { Input } from 'antd';
 import {
   ChevronDown,
   ChevronUp,
@@ -376,7 +376,7 @@ export default function PoliciesDashboard() {
       placeholder="Search"
       value={searchTerm}
       onChange={(event) => setSearchTerm(event.target.value)}
-      allowClear
+      // TODO(antd-removal): allowClear dropped
       // Note: we autofocus here because the input component behaves weirdly
       // otherwise...specifically, after writing the first character (or
       // removing the last character when there's only a single character in the
