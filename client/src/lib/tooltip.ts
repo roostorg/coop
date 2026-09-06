@@ -6,6 +6,21 @@
 export type RadixSide = 'top' | 'right' | 'bottom' | 'left';
 export type RadixAlign = 'start' | 'center' | 'end';
 
+/** The antd `Tooltip`/`Popover` `placement` union (replaces `antd/lib/tooltip`'s type). */
+export type TooltipPlacement =
+  | 'top'
+  | 'topLeft'
+  | 'topRight'
+  | 'bottom'
+  | 'bottomLeft'
+  | 'bottomRight'
+  | 'left'
+  | 'leftTop'
+  | 'leftBottom'
+  | 'right'
+  | 'rightTop'
+  | 'rightBottom';
+
 const PLACEMENT_MAP: Record<string, { side: RadixSide; align: RadixAlign }> = {
   top: { side: 'top', align: 'center' },
   topLeft: { side: 'top', align: 'start' },

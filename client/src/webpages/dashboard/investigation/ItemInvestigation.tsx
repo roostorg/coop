@@ -1,6 +1,7 @@
+import { Input } from '@/coop-ui/Input';
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { Alert, Input } from 'antd';
+import { Info } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -374,17 +375,21 @@ export default function ItemInvestigation(props: {
     const item = selectedWrapper.latest;
     const isSynthetic = selectedWrapper.isSynthetic === true;
     const syntheticBanner = isSynthetic ? (
-      <Alert
-        type="info"
-        showIcon
-        className="w-full mb-4"
-        message="No submission record found for this user"
-        description={
-          'Your integration has never sent this user to the Content API, so we have no profile data to show. ' +
-          'The history below (actions, strikes, related content) is derived from items where this id appears as the author. ' +
-          'To populate the user profile, POST the user to the items endpoint with the matching user type id.'
-        }
-      />
+      <div className="flex w-full gap-2 p-3 mb-4 text-sm border rounded-lg bg-blue-50 border-blue-200 text-blue-800">
+        <Info className="w-4 h-4 mt-0.5 shrink-0" />
+        <div>
+          <div className="font-medium">
+            No submission record found for this user
+          </div>
+          <div className="mt-1">
+            Your integration has never sent this user to the Content API, so we
+            have no profile data to show. The history below (actions, strikes,
+            related content) is derived from items where this id appears as the
+            author. To populate the user profile, POST the user to the items
+            endpoint with the matching user type id.
+          </div>
+        </div>
+      </div>
     ) : null;
 
     const {

@@ -1,7 +1,9 @@
-import { Tooltip } from 'antd';
-import { TooltipPlacement } from 'antd/lib/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
+import { placementToSideAlign, type TooltipPlacement } from '@/lib/tooltip';
 import { Loader2, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+export type { TooltipPlacement };
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
 export type CoopButtonType =
@@ -138,22 +140,29 @@ export default function CoopButton(
       button
     );
 
+  const tooltipContentClassName =
+    'bg-white text-gray-900 border border-gray-200 shadow-md';
+
   const finalButtonPossiblyWithTooltip =
     Boolean(disabled) && disabledTooltipTitle ? (
-      <Tooltip
-        title={disabledTooltipTitle}
-        placement={disabledTooltipPlacement ?? 'bottomRight'}
-        color="white"
-      >
-        {buttonPossiblyWithLinkWrapper}
+      <Tooltip>
+        <TooltipTrigger asChild>{buttonPossiblyWithLinkWrapper}</TooltipTrigger>
+        <TooltipContent
+          className={tooltipContentClassName}
+          {...placementToSideAlign(disabledTooltipPlacement ?? 'bottomRight')}
+        >
+          {disabledTooltipTitle}
+        </TooltipContent>
       </Tooltip>
     ) : tooltipTitle ? (
-      <Tooltip
-        title={tooltipTitle}
-        placement={tooltipPlacement ?? 'bottomRight'}
-        color="white"
-      >
-        {buttonPossiblyWithLinkWrapper}
+      <Tooltip>
+        <TooltipTrigger asChild>{buttonPossiblyWithLinkWrapper}</TooltipTrigger>
+        <TooltipContent
+          className={tooltipContentClassName}
+          {...placementToSideAlign(tooltipPlacement ?? 'bottomRight')}
+        >
+          {tooltipTitle}
+        </TooltipContent>
       </Tooltip>
     ) : (
       buttonPossiblyWithLinkWrapper

@@ -1,6 +1,7 @@
+import { Input } from '@/coop-ui/Input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { gql } from '@apollo/client';
 import { makeEnumLike } from '@roostorg/coop-types';
-import { Input, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';
@@ -228,11 +229,9 @@ export default function NCMECActions(props: {
         </div>
       );
       return isDisabled ? (
-        <Tooltip
-          title={sendDisabledReason}
-          className="relative items-center justify-center block p-2 px-4 font-medium cursor-pointer rounded-md text-slate-300 bg-slate-100 h-fit"
-        >
-          {button}
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent>{sendDisabledReason}</TooltipContent>
         </Tooltip>
       ) : (
         button
