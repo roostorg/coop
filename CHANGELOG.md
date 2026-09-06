@@ -8,6 +8,14 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced Ant Design with coop-ui primitives (Radix UI + cmdk) across the entire client UI
+
+### Removed
+
+- `antd` client dependency and its vendored stylesheets (`public/styles/antd.min.css`, `public/styles/legacyStyles.css`)
+
 ### Fixed
 
 - Zentropi Labeler signal failing on every call; labeler versions now require a labeler ID ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt))
