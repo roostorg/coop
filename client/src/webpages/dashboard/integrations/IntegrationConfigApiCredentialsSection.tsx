@@ -1,4 +1,5 @@
-import { Button, Input } from 'antd';
+import { Button } from '@/coop-ui/Button';
+import { Input } from '@/coop-ui/Input';
 import { Plus, Trash2 } from 'lucide-react';
 
 import {
@@ -126,17 +127,20 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 className="flex-1"
               />
               <Button
-                type="text"
-                icon={<Trash2 size={14} />}
+                variant="ghost"
+                color="red"
+                size="icon"
                 onClick={() => removeLabelerVersion(index)}
-                danger
                 className={compact ? 'self-end' : ''}
-              />
+              >
+                <Trash2 size={14} />
+              </Button>
             </div>
           ))}
           <Button
-            type="dashed"
-            icon={<Plus size={14} className="inline-block" />}
+            variant="outline"
+            color="gray"
+            startIcon={Plus}
             onClick={addLabelerVersion}
             className={compact ? 'w-full' : 'w-fit'}
           >
