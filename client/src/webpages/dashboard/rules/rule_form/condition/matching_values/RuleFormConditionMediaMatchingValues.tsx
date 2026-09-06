@@ -1,12 +1,9 @@
-import { Form, Select } from 'antd';
+import { MultiCombobox } from '@/coop-ui/Combobox';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
 import { useGQLHashBanksQuery } from '../../../../../../graphql/generated';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
-
-const { Option } = Select;
 
 export default function RuleFormConditionMediaMatchingValues(props: {
   condition: RuleFormLeafCondition;
@@ -42,40 +39,28 @@ export default function RuleFormConditionMediaMatchingValues(props: {
   }
 
   return (
-    <Form.Item
+    <div
       className="!mb-0 !pl-4 !align-middle"
-      name={[conditionSetIndex, conditionIndex, 'media_bank']}
-      initialValue={condition.matchingValues}
+      key={`media-bank-form-item_set_index_${conditionSetIndex}_index_${conditionIndex}`}
     >
       {/* Needs to be wrapped in a div for the state to work properly */}
       <div className="flex flex-col items-start">
-        <Select
-          mode="multiple"
+        <MultiCombobox
           placeholder="Select media bank(s)"
-          defaultValue={condition.matchingValues?.imageBankIds}
-          value={condition.matchingValues?.imageBankIds}
-          onChange={(values) => {
-            // Filter out any duplicate values
-            const uniqueValues = Array.from(new Set(values));
-            onUpdateMatchingValues({ imageBankIds: uniqueValues });
-          }}
+          value={[...(condition.matchingValues?.imageBankIds ?? [])]}
+          onValueChange={(values) =>
+            onUpdateMatchingValues({
+              imageBankIds: Array.from(new Set(values)),
+            })
+          }
           allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          dropdownMatchSelectWidth={false}
-        >
-          {hashBanks.map((bank) => (
-            <Option
-              key={bank.id}
-              value={bank.id}
-              label={bank.name}
-              disabled={selectedBankIds.has(bank.id)}
-            >
-              {bank.name}
-            </Option>
-          ))}
-        </Select>
+          options={hashBanks.map((bank) => ({
+            value: bank.id,
+            label: bank.name,
+            disabled: selectedBankIds.has(bank.id),
+          }))}
+        />
       </div>
-    </Form.Item>
+    </div>
   );
 }
