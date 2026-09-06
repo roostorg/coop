@@ -1,4 +1,4 @@
-import { Select } from 'antd';
+import { MultiCombobox } from '@/coop-ui/Combobox';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 import CloseButton from '@/components/common/CloseButton';
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
 
 import {
@@ -16,8 +15,6 @@ import {
   useGQLManualReviewDecisionInsightsFilterByInfoQuery,
 } from '../../../../../graphql/generated';
 import { safePick } from '../../../../../utils/misc';
-
-const { Option } = Select;
 
 type GQLActionStatisticsFilterByColumns = Omit<
   GQLActionStatisticsFilters,
@@ -175,27 +172,19 @@ export default function RuleInsightsFilterBy(props: {
   ) => {
     const value = unsavedFilterValues[column];
     return (
-      <Select
-        mode="multiple"
+      <MultiCombobox
         className="w-full font-normal rounded"
-        value={value}
-        onChange={(ids) => onSetUnsavedFilterValue(column, ids)}
+        value={(value as string[] | undefined) ?? []}
+        onValueChange={(ids) => onSetUnsavedFilterValue(column, ids)}
         onClick={(event) => event.stopPropagation()}
-        dropdownMatchSelectWidth={false}
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
-      >
-        {getDropdownOptions(column)?.map((option, i) => (
-          <Option
-            key={`${option.id}_${i}`}
-            value={option.id}
-            label={option.name}
-          >
-            {option.name}
-          </Option>
-        ))}
-      </Select>
+        options={
+          getDropdownOptions(column)?.map((option) => ({
+            value: option.id,
+            label: option.name,
+          })) ?? []
+        }
+      />
     );
   };
 

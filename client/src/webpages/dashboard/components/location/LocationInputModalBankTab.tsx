@@ -1,12 +1,10 @@
+import { MultiCombobox } from '@/coop-ui/Combobox';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
 
 import { useGQLMatchingBankIdsQuery } from '../../../../graphql/generated';
 import { locationSectionHeader } from './LocationInputModal';
-
-const { Option } = Select;
 
 gql`
   query MatchingBankIds {
@@ -64,29 +62,23 @@ export default function LocationInputModalBankTab(props: {
       {locationSectionHeader(
         'Select the location banks you would like to match on:',
       )}
-      <Select
-        mode="multiple"
+      <MultiCombobox
         className="flex cursor-pointer !w-full"
-        key="banks-select"
         placeholder={`Select a bank`}
-        defaultValue={bankIds as string[]}
-        value={bankIds as string[]}
-        onSelect={(value: string) => {
-          addBank(value);
-        }}
-        onDeselect={(value: string) => {
-          removeBank(value);
+        value={[...bankIds]}
+        onValueChange={(next) => {
+          const prev = [...bankIds];
+          next.filter((id) => !prev.includes(id)).forEach(addBank);
+          prev.filter((id) => !next.includes(id)).forEach(removeBank);
         }}
         allowClear
-        showSearch
-        dropdownMatchSelectWidth={false}
-      >
-        {locationBanks?.map((bank) => (
-          <Option key={bank.id} value={bank.id}>
-            {bank.name}
-          </Option>
-        ))}
-      </Select>
+        options={
+          locationBanks?.map((bank) => ({
+            value: bank.id,
+            label: bank.name,
+          })) ?? []
+        }
+      />
     </div>
   );
 }

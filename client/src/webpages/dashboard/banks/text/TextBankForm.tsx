@@ -1,5 +1,5 @@
+import { Combobox } from '@/coop-ui/Combobox';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -25,8 +25,6 @@ import {
 import { userHasPermissions } from '../../../../routing/permissions';
 import { titleCaseEnumString } from '../../../../utils/string';
 import TextTokenInput from '../../rules/TextTokenInput';
-
-const { Option } = Select;
 
 export function bankTypeName(type: GQLTextBankType, plural: boolean) {
   switch (type) {
@@ -260,21 +258,19 @@ export default function TextBankForm() {
           </li>
         </ul>
       </div>
-      <Select<GQLTextBankType>
+      <Combobox
         placeholder="Select bank type"
-        showSearch
-        dropdownMatchSelectWidth={false}
-        onChange={(value) => setBankType(value)}
         value={bankType}
-      >
-        {Object.values(GQLTextBankType).map((type) => {
-          return (
-            <Option key={type} value={type}>
-              {titleCaseEnumString(type)}
-            </Option>
-          );
-        })}
-      </Select>
+        onValueChange={(value) => {
+          if (value) {
+            setBankType(value as GQLTextBankType);
+          }
+        }}
+        options={Object.values(GQLTextBankType).map((type) => ({
+          value: type,
+          label: titleCaseEnumString(type),
+        }))}
+      />
     </TextBankFormSection>
   );
 

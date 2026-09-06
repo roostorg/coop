@@ -1,5 +1,6 @@
+import { Combobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
-import { Input, Select } from 'antd';
 import omit from 'lodash/omit';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
@@ -15,6 +16,9 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
 }) {
   const { subcategories, onSelectSubcategoryOption } = props;
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedFlatSubcategory, setSelectedFlatSubcategory] = useState<
+    string | undefined
+  >(undefined);
 
   const stripped = subcategories.map((subcategory) =>
     omit(subcategory, '__typename'),
@@ -29,10 +33,16 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
     return (
       <div className="flex flex-col">
         <div className="pb-3 text-2xl font-medium">Select Subcategory</div>
-        <Select
+        <Combobox
           className="max-w-xs"
           placeholder="Select a labeler version"
-          onChange={(value: string) => onSelectSubcategoryOption(value)}
+          value={selectedFlatSubcategory}
+          onValueChange={(value) => {
+            setSelectedFlatSubcategory(value);
+            if (value) {
+              onSelectSubcategoryOption(value);
+            }
+          }}
           options={stripped.map((s) => ({
             value: s.id,
             label: s.label,
@@ -68,8 +78,12 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
       <Input
         className="max-w-xs mb-2 rounded-lg"
         placeholder="Search"
-        prefix={<Search className="w-4 h-4" />}
-        allowClear
+        startSlot={
+          <span className="flex items-center px-3 border border-r-0 border-gray-200 rounded-l-lg bg-white text-gray-400">
+            <Search className="w-4 h-4" />
+          </span>
+        }
+        // TODO(antd-removal): allowClear dropped
         onChange={(event) =>
           setSearchTerm(event.target.value.toLocaleLowerCase())
         }
