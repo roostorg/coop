@@ -1,4 +1,4 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import difference from 'lodash/difference';
 import { useEffect, useRef, useState } from 'react';
 
@@ -38,8 +38,13 @@ export default function TruncatedListTableCell(props: { list: string[] }) {
             textToFit = itemsThatFit.length ? (
               <div className="flex gap-1">
                 <div>{itemsThatFit.join(separator)}</div>
-                <Tooltip title={difference(list, itemsThatFit)} placement="top">
-                  {remainingIndicator}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>{remainingIndicator}</span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {difference(list, itemsThatFit).join(', ')}
+                  </TooltipContent>
                 </Tooltip>
               </div>
             ) : (
@@ -50,11 +55,13 @@ export default function TruncatedListTableCell(props: { list: string[] }) {
                   hideTooltip={remainingCount > 1}
                 />
                 {remainingCount > 1 ? (
-                  <Tooltip
-                    title={difference(list, itemsThatFit).join(', ')}
-                    placement="top"
-                  >
-                    {remainingIndicator}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>{remainingIndicator}</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {difference(list, itemsThatFit).join(', ')}
+                    </TooltipContent>
                   </Tooltip>
                 ) : null}
               </div>

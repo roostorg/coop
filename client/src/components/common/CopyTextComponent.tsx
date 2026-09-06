@@ -1,4 +1,4 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Copy as CopyAlt } from 'lucide-react';
 import { ReactElement, useState } from 'react';
 
@@ -38,39 +38,41 @@ export default function CopyTextComponent(props: {
   return (
     <div className="flex flex-col">
       <Tooltip
-        title={copyTextTooltipTitle}
-        onOpenChange={(visible: boolean) => {
-          if (!visible) {
+        onOpenChange={(open) => {
+          if (!open) {
             resetTextTooltipTitle();
           }
         }}
       >
-        <div
-          className="flex flex-row items-center cursor-pointer grow"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            navigator.clipboard.writeText(value);
-            setCopyTextTooltipTitle('Copied!');
-          }}
-        >
-          {typeof displayValue === 'string' ? (
-            <span
-              className={`font-normal ${
-                isError ? 'text-red-400' : 'text-slate-400'
-              } ${wrapText ? 'break-all min-w-0' : 'whitespace-nowrap'}`}
-            >
-              {displayValue}
-            </span>
-          ) : (
-            displayValue
-          )}
-          <CopyAlt
-            className={`flex w-4 h-4 min-w-fit ${
-              displayValue && displayValue !== '' ? 'ml-1' : ''
-            } ${isError ? 'text-red-400' : 'text-slate-400'}`}
-          />
-        </div>
+        <TooltipTrigger asChild>
+          <div
+            className="flex flex-row items-center cursor-pointer grow"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              navigator.clipboard.writeText(value);
+              setCopyTextTooltipTitle('Copied!');
+            }}
+          >
+            {typeof displayValue === 'string' ? (
+              <span
+                className={`font-normal ${
+                  isError ? 'text-red-400' : 'text-slate-400'
+                } ${wrapText ? 'break-all min-w-0' : 'whitespace-nowrap'}`}
+              >
+                {displayValue}
+              </span>
+            ) : (
+              displayValue
+            )}
+            <CopyAlt
+              className={`flex w-4 h-4 min-w-fit ${
+                displayValue && displayValue !== '' ? 'ml-1' : ''
+              } ${isError ? 'text-red-400' : 'text-slate-400'}`}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>{copyTextTooltipTitle}</TooltipContent>
       </Tooltip>
       <div className="flex flex-row">{footerItems}</div>
     </div>

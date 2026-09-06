@@ -1,5 +1,5 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { Tooltip } from 'antd';
 import { Pencil, User as UserAlt4 } from 'lucide-react';
 
 import CloseButton from '@/components/common/CloseButton';
@@ -46,15 +46,18 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
           labelTruncationType="wrap"
         />
         {onEditParameters && (
-          <Tooltip title="Edit details">
-            <button
-              type="button"
-              aria-label="Edit action details"
-              className="flex items-center justify-center w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer bg-transparent border-none p-0"
-              onClick={onEditParameters}
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="Edit action details"
+                className="flex items-center justify-center w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer bg-transparent border-none p-0"
+                onClick={onEditParameters}
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Edit details</TooltipContent>
           </Tooltip>
         )}
         <CloseButton onClose={onRemove} />
