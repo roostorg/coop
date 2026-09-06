@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@/coop-ui/Tooltip';
 import {
   GQLActionParameterType,
   GQLItemTypeHiddenFieldsDocument,
@@ -115,26 +116,35 @@ function renderContentItem(
 ) {
   return render(
     <MockedProvider mocks={apolloMocks}>
-      <ContentRelatedItemComponent
-        item={item}
-        title="Post"
-        unblurAllMedia
-        allActions={[hideContentAction, deleteContentAction, banUserAction]}
-        allPolicies={policies}
-        relatedActions={[]}
-        onEnqueueAction={() => {}}
-        onRemoveAction={() => {}}
-        isActionable
-        requirePolicySelectionToEnqueueAction={false}
-        allowMoreThanOnePolicySelection={false}
-        {...overrides}
-      />
+      <TooltipProvider>
+        <ContentRelatedItemComponent
+          item={item}
+          title="Post"
+          unblurAllMedia
+          allActions={[hideContentAction, deleteContentAction, banUserAction]}
+          allPolicies={policies}
+          relatedActions={[]}
+          onEnqueueAction={() => {}}
+          onRemoveAction={() => {}}
+          isActionable
+          requirePolicySelectionToEnqueueAction={false}
+          allowMoreThanOnePolicySelection={false}
+          {...overrides}
+        />
+      </TooltipProvider>
     </MockedProvider>,
   );
 }
 
+// jsdom has no scrollIntoView; cmdk calls it when an item becomes active.
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
 async function openActionSelect() {
-  fireEvent.mouseDown(screen.getByRole('combobox'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Add an action for this item' }),
+  );
   await waitFor(() => {
     expect(screen.getByText('Hide Content')).toBeInTheDocument();
   });
@@ -442,25 +452,27 @@ describe('AdditionalReportedContentItems', () => {
   it('renders a heading and skips excluded items', async () => {
     render(
       <MockedProvider mocks={apolloMocks}>
-        <AdditionalReportedContentItems
-          items={[
-            item,
-            {
-              ...item,
-              id: 'post_2',
-              data: { body: 'other post' },
-            },
-          ]}
-          excludeItems={[{ id: 'post_1', typeId: contentTypeId }]}
-          unblurAllMedia
-          allActions={[hideContentAction]}
-          allPolicies={policies}
-          relatedActions={[]}
-          onEnqueueAction={() => {}}
-          isActionable
-          requirePolicySelectionToEnqueueAction={false}
-          allowMoreThanOnePolicySelection={false}
-        />
+        <TooltipProvider>
+          <AdditionalReportedContentItems
+            items={[
+              item,
+              {
+                ...item,
+                id: 'post_2',
+                data: { body: 'other post' },
+              },
+            ]}
+            excludeItems={[{ id: 'post_1', typeId: contentTypeId }]}
+            unblurAllMedia
+            allActions={[hideContentAction]}
+            allPolicies={policies}
+            relatedActions={[]}
+            onEnqueueAction={() => {}}
+            isActionable
+            requirePolicySelectionToEnqueueAction={false}
+            allowMoreThanOnePolicySelection={false}
+          />
+        </TooltipProvider>
       </MockedProvider>,
     );
     await waitFor(() => {
@@ -475,18 +487,20 @@ describe('AdditionalReportedContentItems', () => {
   it('does not exclude an item whose id matches a different type', async () => {
     render(
       <MockedProvider mocks={apolloMocks}>
-        <AdditionalReportedContentItems
-          items={[item]}
-          excludeItems={[{ id: 'post_1', typeId: userTypeId }]}
-          unblurAllMedia
-          allActions={[hideContentAction]}
-          allPolicies={policies}
-          relatedActions={[]}
-          onEnqueueAction={() => {}}
-          isActionable
-          requirePolicySelectionToEnqueueAction={false}
-          allowMoreThanOnePolicySelection={false}
-        />
+        <TooltipProvider>
+          <AdditionalReportedContentItems
+            items={[item]}
+            excludeItems={[{ id: 'post_1', typeId: userTypeId }]}
+            unblurAllMedia
+            allActions={[hideContentAction]}
+            allPolicies={policies}
+            relatedActions={[]}
+            onEnqueueAction={() => {}}
+            isActionable
+            requirePolicySelectionToEnqueueAction={false}
+            allowMoreThanOnePolicySelection={false}
+          />
+        </TooltipProvider>
       </MockedProvider>,
     );
     await waitFor(() => {
@@ -497,18 +511,20 @@ describe('AdditionalReportedContentItems', () => {
   it('renders nothing when every item is excluded', () => {
     const { container } = render(
       <MockedProvider mocks={apolloMocks}>
-        <AdditionalReportedContentItems
-          items={[item]}
-          excludeItems={[{ id: 'post_1', typeId: contentTypeId }]}
-          unblurAllMedia
-          allActions={[hideContentAction]}
-          allPolicies={policies}
-          relatedActions={[]}
-          onEnqueueAction={() => {}}
-          isActionable
-          requirePolicySelectionToEnqueueAction={false}
-          allowMoreThanOnePolicySelection={false}
-        />
+        <TooltipProvider>
+          <AdditionalReportedContentItems
+            items={[item]}
+            excludeItems={[{ id: 'post_1', typeId: contentTypeId }]}
+            unblurAllMedia
+            allActions={[hideContentAction]}
+            allPolicies={policies}
+            relatedActions={[]}
+            onEnqueueAction={() => {}}
+            isActionable
+            requirePolicySelectionToEnqueueAction={false}
+            allowMoreThanOnePolicySelection={false}
+          />
+        </TooltipProvider>
       </MockedProvider>,
     );
     expect(container).toBeEmptyDOMElement();

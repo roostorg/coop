@@ -1,3 +1,5 @@
+import { Combobox } from '@/coop-ui/Combobox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import {
   GQLActionParameterType,
   type GQLActionParameter,
@@ -5,12 +7,10 @@ import {
 } from '@/graphql/generated';
 import { arrayFromArrayOrSingleItem } from '@/utils/collections';
 import { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { Select, Tooltip } from 'antd';
 import { Pencil, X } from 'lucide-react';
 import { JsonObject } from 'type-fest';
 
 import CopyTextComponent from '@/components/common/CopyTextComponent';
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
 
 import {
@@ -18,8 +18,6 @@ import {
   ManualReviewJobEnqueuedActionData,
 } from '../ManualReviewJobReview';
 import FieldsComponent from './ManualReviewJobFieldsComponent';
-
-const { Option } = Select;
 
 export type RelatedContentItem = {
   id: string;
@@ -216,16 +214,18 @@ function ContentItemRelatedActionsPicker(props: {
         Take Action on This Item
       </div>
       {actionsAvailableToAdd.length > 0 ? (
-        <Select
+        <Combobox
           className="w-full max-w-sm"
+          aria-label="Add an action for this item"
           placeholder={
             activeActions.length > 0 ? 'Add another action' : 'Select an action'
           }
           value={undefined}
-          dropdownMatchSelectWidth={false}
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          onChange={(actionId: string) => {
+          options={actionsAvailableToAdd.map((action) => ({
+            value: action.id,
+            label: action.name,
+          }))}
+          onValueChange={(actionId) => {
             const action = actionsAvailableToAdd.find(
               (it) => it.id === actionId,
             );
@@ -233,13 +233,7 @@ function ContentItemRelatedActionsPicker(props: {
               enqueue(action, []);
             }
           }}
-        >
-          {actionsAvailableToAdd.map((action) => (
-            <Option key={action.id} value={action.id} label={action.name}>
-              {action.name}
-            </Option>
-          ))}
-        </Select>
+        />
       ) : null}
       {activeActions.length > 0 ? (
         <div className="flex flex-row flex-wrap items-stretch gap-2 w-full">
@@ -337,16 +331,19 @@ function ContentItemRelatedActionsPicker(props: {
                       )}
                     </div>
                     {onEditParameters ? (
-                      <Tooltip title="Edit details">
-                        <button
-                          type="button"
-                          aria-label={`Edit details for ${enqueued.action.name}`}
-                          className="flex items-center gap-1 shrink-0 text-xs font-medium text-sky-700 bg-transparent border-none p-0 cursor-pointer hover:text-sky-900"
-                          onClick={() => onEditParameters(enqueued)}
-                        >
-                          <Pencil className="w-3 h-3" />
-                          Edit
-                        </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Edit details for ${enqueued.action.name}`}
+                            className="flex items-center gap-1 shrink-0 text-xs font-medium text-sky-700 bg-transparent border-none p-0 cursor-pointer hover:text-sky-900"
+                            onClick={() => onEditParameters(enqueued)}
+                          >
+                            <Pencil className="w-3 h-3" />
+                            Edit
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit details</TooltipContent>
                       </Tooltip>
                     ) : null}
                   </div>
