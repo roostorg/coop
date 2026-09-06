@@ -1120,7 +1120,6 @@ export default function RuleForm() {
         ),
         allActions,
         allSignals: allSignals satisfies readonly GQLSignal[],
-        form,
       },
     });
   };
