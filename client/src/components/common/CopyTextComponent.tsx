@@ -1,8 +1,9 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Copy as CopyAlt } from 'lucide-react';
-import { ReactElement, useState } from 'react';
+import { ReactElement, useEffect, useRef, useState } from 'react';
 
 const DEFAULT_TOOLTIP_TEXT = 'Copy to clipboard';
+const COPIED_DISPLAY_MS = 1200;
 
 /**
  * Text component that allows the user to copy the text to their clipboard.
@@ -30,47 +31,74 @@ export default function CopyTextComponent(props: {
   } = props;
   const [copyTextTooltipTitle, setCopyTextTooltipTitle] =
     useState<string>(initialTooltipText);
+  const [open, setOpen] = useState(false);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
-  const resetTextTooltipTitle = () => {
-    setTimeout(() => setCopyTextTooltipTitle(initialTooltipText), 20);
-  };
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col">
       <Tooltip
-        title={copyTextTooltipTitle}
-        onOpenChange={(visible: boolean) => {
-          if (!visible) {
-            resetTextTooltipTitle();
+        open={open}
+        onOpenChange={(next) => {
+          // Radix closes the tooltip as part of handling the trigger's own
+          // click (it treats a click as a dismiss gesture). Ignore that close
+          // while the "Copied!" confirmation is showing, or it never has a
+          // chance to be seen.
+          if (!next && copyTextTooltipTitle !== initialTooltipText) {
+            return;
+          }
+          setOpen(next);
+          if (!next) {
+            setCopyTextTooltipTitle(initialTooltipText);
           }
         }}
       >
-        <div
-          className="flex flex-row items-center cursor-pointer grow"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            navigator.clipboard.writeText(value);
-            setCopyTextTooltipTitle('Copied!');
-          }}
-        >
-          {typeof displayValue === 'string' ? (
-            <span
-              className={`font-normal ${
-                isError ? 'text-red-400' : 'text-slate-400'
-              } ${wrapText ? 'break-all min-w-0' : 'whitespace-nowrap'}`}
-            >
-              {displayValue}
-            </span>
-          ) : (
-            displayValue
-          )}
-          <CopyAlt
-            className={`flex w-4 h-4 min-w-fit ${
-              displayValue && displayValue !== '' ? 'ml-1' : ''
-            } ${isError ? 'text-red-400' : 'text-slate-400'}`}
-          />
-        </div>
+        <TooltipTrigger asChild>
+          <div
+            className="flex flex-row items-center cursor-pointer grow"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              navigator.clipboard.writeText(value);
+              setCopyTextTooltipTitle('Copied!');
+              setOpen(true);
+              if (copiedTimeoutRef.current) {
+                clearTimeout(copiedTimeoutRef.current);
+              }
+              copiedTimeoutRef.current = setTimeout(() => {
+                setCopyTextTooltipTitle(initialTooltipText);
+                setOpen(false);
+              }, COPIED_DISPLAY_MS);
+            }}
+          >
+            {typeof displayValue === 'string' ? (
+              <span
+                className={`font-normal ${
+                  isError ? 'text-red-400' : 'text-slate-400'
+                } ${wrapText ? 'break-all min-w-0' : 'whitespace-nowrap'}`}
+              >
+                {displayValue}
+              </span>
+            ) : (
+              displayValue
+            )}
+            <CopyAlt
+              className={`flex w-4 h-4 min-w-fit ${
+                displayValue && displayValue !== '' ? 'ml-1' : ''
+              } ${isError ? 'text-red-400' : 'text-slate-400'}`}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>{copyTextTooltipTitle}</TooltipContent>
       </Tooltip>
       <div className="flex flex-row">{footerItems}</div>
     </div>
