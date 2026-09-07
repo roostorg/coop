@@ -24,10 +24,7 @@ export default class ClaimOperations {
           queue_id: queueId,
           user_id: userId,
         })
-        .executeTakeFirst({
-          signal: AbortSignal.timeout(1000),
-          inflightQueryAbortStrategy: 'cancel query',
-        });
+        .executeTakeFirst();
     } catch (e) {
       if (isForeignKeyViolationError(e)) {
         throw makeNotFoundError('Queue not found', { shouldErrorSpan: true });
