@@ -1810,6 +1810,22 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     if (user == null) {
       throw unauthenticatedError('User required.');
     }
+    const service = context.services.ManualReviewToolService;
+    const accessibleQueue = user
+      .getPermissions()
+      .includes(UserPermission.EDIT_MRT_QUEUES)
+      ? await service.getQueueForOrgAndDangerouslyBypassPermissioning({
+          orgId: user.orgId,
+          queueId: queue.id,
+        })
+      : await service.getQueueForOrg({
+          orgId: user.orgId,
+          userId: user.id,
+          queueId: queue.id,
+        });
+    if (accessibleQueue == null) {
+      throw forbiddenError('User does not have access to this queue');
+    }
     return context.services.ManualReviewToolService.getAssignedRoleIdsForQueue({
       queueId: queue.id,
       orgId: user.orgId,
