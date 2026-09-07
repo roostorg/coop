@@ -9,7 +9,9 @@
 # native modules, and we don't really care about the larger image size.
 FROM node:24.20.0-bullseye-slim AS server_base
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+# Use Debian's dedicated security host: the CDN can advertise unavailable packages.
+RUN sed -i 's|http://deb.debian.org/debian-security|http://security.debian.org/debian-security|g' /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
 COPY ["server/package.json", "server/package-lock.json", "./"]
 RUN npm ci
