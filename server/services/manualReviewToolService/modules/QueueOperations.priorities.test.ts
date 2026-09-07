@@ -251,10 +251,24 @@ describe('QueueOperations job priorities', () => {
   );
 
   testWithQueue()(
-    'switching to a constant priority restores arrival order (FIFO)',
-    async ({ org, queue, mrtService }) => {
+    'switching a queue back to FIFO restores arrival order',
+    async ({ org, queue, user, mrtService }) => {
       const queueOps = mrtService['queueOps'];
       const payloadFor = makePayloadFor(uid());
+
+      const setSortType = async (jobSortType: 'FIFO' | 'NUM_REPORTS') => {
+        await mrtService.updateManualReviewQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          userIds: [user.id],
+          actionIdsToHide: [],
+          actionIdsToUnhide: [],
+          jobSortType,
+        });
+        await mrtService.awaitPendingPriorityRecomputes();
+      };
+
+      await setSortType('NUM_REPORTS');
 
       const base = new Date('2026-01-01T00:00:00.000Z').getTime();
       const arrivalOrder = ['item-E', 'item-D', 'item-C', 'item-B', 'item-A'];
@@ -279,12 +293,7 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      await queueOps.recomputePrioritiesForQueue({
-        orgId: org.id,
-        queueId: queue.id,
-        getPriorities: async (itemIds) =>
-          new Map(itemIds.map((itemId) => [itemId, 0])),
-      });
+      await setSortType('FIFO');
 
       let dequeued: string[] = [];
       for (let i = 0; i < arrivalOrder.length; i++) {
