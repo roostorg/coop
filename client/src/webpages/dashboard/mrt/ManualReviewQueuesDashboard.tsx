@@ -1,16 +1,12 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
-import { StarFilled, TapFilled } from '@/icons';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import Star from '@/icons/lni/Web and Technology/star.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import Input from 'antd/lib/input';
-import { Info } from 'lucide-react';
 import {
   ChevronsRight as AngleDoubleRight,
   LayoutGrid as GridAlt,
+  Info,
   Star,
   Star as StarFilled,
   MousePointerClick as TapFilled,
@@ -615,9 +611,9 @@ export default function ManualReviewQueuesDashboard() {
             }
           : undefined,
         {
-          Header: 'Sort Order',
-          accessor: 'jobSortType',
-          canSort: false,
+          header: 'Sort Order',
+          accessorKey: 'jobSortType',
+          enableSorting: false,
         },
         columnVisibility.startReviewing
           ? {
