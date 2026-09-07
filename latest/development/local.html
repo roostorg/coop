@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-a5daedd5.js";
+            window.path_to_searchindex_js = "../searchindex-96d74e66.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -326,14 +326,15 @@ npm run test:prepush      # Single run
 npm run check:prepush
 </code></pre>
 <h2 id="running-ci-locally"><a class="header" href="#running-ci-locally">Running CI locally</a></h2>
-<p>All PR checks are defined as <code>docker compose</code> services to reproduce any CI job locally.</p>
+<p>Most PR checks are defined as <code>docker compose</code> services so you can reproduce them locally; formatting and GraphQL codegen run on the host Node install.</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>CI job</th><th>Local command</th></tr>
 </thead>
 <tbody>
-<tr><td><code>check_generated_graphql</code></td><td><code>docker compose run --rm codegen-check</code></td></tr>
+<tr><td><code>check_formatting</code></td><td><code>npm ci &amp;&amp; npm run prettier</code></td></tr>
+<tr><td><code>check_generated_graphql</code></td><td><code>npm ci &amp;&amp; npm run generate &amp;&amp; test -z "$(git status --porcelain)"</code></td></tr>
 <tr><td><code>check_api_server</code> (lint)</td><td><code>docker compose run --rm backend npm run lint</code></td></tr>
 <tr><td><code>check_api_server</code> (build)</td><td><code>docker compose run --rm backend npm run build</code></td></tr>
 <tr><td><code>run_frontend_checks_if_changed</code> (lint)</td><td><code>docker compose run --rm client npm run lint</code></td></tr>
@@ -343,7 +344,8 @@ npm run check:prepush
 </table>
 </div>
 <p>Run the full suite (stops at first failure):</p>
-<pre><code class="language-sh">docker compose run --rm codegen-check \
+<pre><code class="language-sh">npm ci &amp;&amp; npm run prettier \
+  &amp;&amp; npm run generate &amp;&amp; test -z "$(git status --porcelain)" \
   &amp;&amp; docker compose run --rm backend npm run lint \
   &amp;&amp; docker compose run --rm backend npm run build \
   &amp;&amp; docker compose run --rm client npm run lint \
