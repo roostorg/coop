@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Coop Client app",
   "scripts": {
-    "analyze": "VITE_SOURCEMAP=true npm run build && source-map-explorer 'build/assets/*.js'",
+    "analyze": "VITE_SOURCEMAP=true npm run build && source-map-explorer 'build/assets/*.js' --gzip",
     "start": "vite --port 3000",
     "build": "vite build",
     "test": "vitest --passWithNoTests",

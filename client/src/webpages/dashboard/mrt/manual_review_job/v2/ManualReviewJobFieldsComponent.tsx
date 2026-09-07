@@ -266,7 +266,7 @@ function TableRowComponent(props: {
       return (
         <div className="flex flex-col px-2 align-top text-start">
           {label ? <div className="pr-3 font-bold">{label}</div> : null}
-          <ReactPlayer url={url} playing controls width="100%" height="54px" />
+          <ReactPlayer url={url} controls width="100%" height="54px" />
         </div>
       );
     }
@@ -479,13 +479,7 @@ function TableRowComponent(props: {
         return (
           <div className="flex flex-col px-2 align-top text-start">
             {label ? <div className="pr-3 font-bold">{label}</div> : null}
-            <ReactPlayer
-              url={url}
-              playing
-              controls
-              width="100%"
-              height="54px"
-            />
+            <ReactPlayer url={url} controls width="100%" height="54px" />
           </div>
         );
       }
