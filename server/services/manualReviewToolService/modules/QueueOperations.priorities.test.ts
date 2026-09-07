@@ -72,8 +72,6 @@ describe('QueueOperations job priorities', () => {
 
       await mrtService.awaitPendingPriorityRecomputes();
 
-      // A lock left held would block every future sweep for this queue until
-      // the TTL expired.
       expect(await redis.get(lockKey)).toBeNull();
     },
   );
@@ -106,8 +104,6 @@ describe('QueueOperations job priorities', () => {
   testWithQueue()(
     'an appeals queue stays FIFO even when a sort mode is requested',
     async ({ org, user, mrtService }) => {
-      // Appeal jobs are enqueued without a priority, so a sort mode on an
-      // appeals queue would be a saved setting that never takes effect.
       const invokedBy = {
         userId: user.id,
         permissions: [UserPermission.EDIT_MRT_QUEUES],
@@ -142,7 +138,6 @@ describe('QueueOperations job priorities', () => {
     },
   );
 
-  // A DEFAULT-kind job payload, parameterized only by item type and item id.
   const makePayloadFor =
     (itemTypeId: string) =>
     (itemId: string): ManualReviewJobPayload => ({
@@ -171,9 +166,6 @@ describe('QueueOperations job priorities', () => {
       const queueOps = mrtService['queueOps'];
       const payloadFor = makePayloadFor(uid());
 
-      // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
-      // 'waiting'; the recompute must fetch them there. Lower number dequeues
-      // first, so initially A comes before B.
       await queueOps.addJob({
         orgId: org.id,
         queueId: queue.id,
@@ -189,8 +181,6 @@ describe('QueueOperations job priorities', () => {
         jobPayload: { policyIds: [], payload: payloadFor('item-B') },
       });
 
-      // Swap the two priorities, then confirm the swap took effect by
-      // dequeuing: B must now come out first.
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
@@ -219,8 +209,6 @@ describe('QueueOperations job priorities', () => {
       const itemTypeId = uid();
       const payloadFor = makePayloadFor(itemTypeId);
 
-      // Enqueue with distinct explicit priorities, as if stamped under some
-      // earlier sort mode.
       const items: Array<[string, number]> = [
         ['item-A', 1000],
         ['item-B', 2000],
@@ -236,9 +224,6 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      // Switching the sort mode must re-stamp jobs already in the queue, not
-      // just future enqueues. With no reports recorded, NUM_REPORTS maps every
-      // job to the same max priority.
       await mrtService.updateManualReviewQueue({
         orgId: org.id,
         queueId: queue.id,
@@ -247,7 +232,6 @@ describe('QueueOperations job priorities', () => {
         actionIdsToUnhide: [],
         jobSortType: 'NUM_REPORTS',
       });
-      // The re-stamp runs in the background after the mutation returns.
       await mrtService.awaitPendingPriorityRecomputes();
 
       const bullQueue = await queueOps['getOrCreateBullQueue']({
@@ -262,8 +246,6 @@ describe('QueueOperations job priorities', () => {
           return job?.priority;
         }),
       );
-      // All three re-stamped to the same max priority proves the switch
-      // recomputed the queued jobs (they would otherwise keep 1000/2000/3000).
       expect(priorities).toEqual([2_097_151, 2_097_151, 2_097_151]);
     },
   );
@@ -274,11 +256,6 @@ describe('QueueOperations job priorities', () => {
       const queueOps = mrtService['queueOps'];
       const payloadFor = makePayloadFor(uid());
 
-      // Five jobs arrive in this order (distinct createdAt timestamps), with
-      // priorities that put them in a completely different dequeue order. The
-      // arrival order is also the reverse of the ids' lexicographic order, so
-      // neither the priority stamps nor any incidental id ordering can
-      // accidentally produce the expected result.
       const base = new Date('2026-01-01T00:00:00.000Z').getTime();
       const arrivalOrder = ['item-E', 'item-D', 'item-C', 'item-B', 'item-A'];
       const priorityByItem: Record<string, number> = {
@@ -302,9 +279,6 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      // Demote every job to priority 0, which is what a NUM_REPORTS -> FIFO
-      // switch does: BullMQ moves them out of `prioritized` and back into the
-      // `wait` list, where they must come back out in arrival order.
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
@@ -328,15 +302,9 @@ describe('QueueOperations job priorities', () => {
   testWithQueue()(
     'a FIFO queue leaves its jobs in the wait list, not the prioritized set',
     async ({ org, queue, mrtService }) => {
-      // Regression test. Stamping FIFO jobs with a priority (even a constant
-      // one) routes them into BullMQ's `prioritized` sorted set, which empties
-      // the `wait` list for every queue in the org — including ones that never
-      // opted into a sort mode. `getOldestJobCreatedAt` only reads `wait`, so
-      // the queues dashboard silently loses its "oldest job" value.
       const queueOps = mrtService['queueOps'];
       const payloadFor = makePayloadFor(uid());
 
-      // No `priority` argument at all: this is what the FIFO enqueue path does.
       for (const itemId of ['item-A', 'item-B']) {
         await queueOps.addJob({
           orgId: org.id,
@@ -353,7 +321,6 @@ describe('QueueOperations job priorities', () => {
       expect(await bullQueue.getJobCountByTypes('prioritized')).toBe(0);
       expect(await bullQueue.getJobCountByTypes('waiting')).toBe(2);
 
-      // The dashboard's "oldest job" value has to survive.
       const oldest = await queueOps.getOldestJobCreatedAt({
         orgId: org.id,
         queueId: queue.id,
