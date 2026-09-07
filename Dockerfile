@@ -20,7 +20,7 @@ RUN npm run build
 # make a shared layer that can be the base for worker and api images.
 FROM node:24.20.0-bookworm-slim AS backend_base
 WORKDIR /app
-RUN apt-get update && apt-get install dumb-init
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 COPY --from=build_backend ["/app/package.json", "/app/package-lock.json", "./"]
 RUN npm ci --omit=dev
 COPY --from=build_backend /app/transpiled ./
