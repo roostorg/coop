@@ -338,4 +338,45 @@ describe('QueueOperations job priorities', () => {
       expect(oldest).not.toBeNull();
     },
   );
+
+  testWithQueue()(
+    'getOldestJobCreatedAt finds the oldest job on a prioritized queue',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      const base = new Date('2026-01-01T00:00:00.000Z').getTime();
+      const oldestCreatedAt = new Date(base);
+
+      const jobs: Array<[string, number, Date]> = [
+        ['item-oldest', 5000, oldestCreatedAt],
+        ['item-middle', 3000, new Date(base + 60_000)],
+        ['item-newest', 1000, new Date(base + 120_000)],
+      ];
+      for (const [itemId, priority, createdAt] of jobs) {
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority,
+          jobPayload: { createdAt, policyIds: [], payload: payloadFor(itemId) },
+        });
+      }
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      expect(await bullQueue.getJobCountByTypes('waiting')).toBe(0);
+      expect(await bullQueue.getJobCountByTypes('prioritized')).toBe(3);
+
+      const oldest = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+      expect(oldest).not.toBeNull();
+      expect(new Date(oldest!).getTime()).toBe(oldestCreatedAt.getTime());
+    },
+  );
 });

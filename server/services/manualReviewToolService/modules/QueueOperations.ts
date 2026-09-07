@@ -82,6 +82,8 @@ export type ManualReviewQueue = {
   clearReportsScope: ClearReportsScope;
 };
 
+const OLDEST_JOB_PRIORITIZED_SCAN_LIMIT = 10_000;
+
 const PgQueueSelection = [
   'id',
   'org_id as orgId',
@@ -1760,31 +1762,29 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job. getWaiting/getDelayed
-    // return jobs oldest-first, so we only need to compare the first job from
-    // each state to find the oldest overall. NB: the equivalent
-    // queue.getJobs([state], 0, 0) defaults to descending order and would
-    // return the *newest* job instead.
-    const [waitingJobs, delayedJobs] = await Promise.all([
+    // getWaiting/getDelayed return oldest-first, so their first entry is the
+    // oldest. `prioritized` is ordered by priority, so scan it instead.
+    const [waitingJobs, delayedJobs, prioritizedJobs] = await Promise.all([
       queue.getWaiting(0, 0),
       queue.getDelayed(0, 0),
+      queue.getPrioritized(0, OLDEST_JOB_PRIORITIZED_SCAN_LIMIT - 1),
     ]);
 
-    // If no jobs exist in either state, return null
-    if (waitingJobs.length === 0 && delayedJobs.length === 0) {
+    const createdAts = [
+      ...waitingJobs.slice(0, 1),
+      ...delayedJobs.slice(0, 1),
+      ...prioritizedJobs,
+    ].map((job) => job.data.createdAt);
+
+    if (createdAts.length === 0) {
       return null;
     }
 
-    // If only one type exists, return it
-    if (waitingJobs.length === 0) return delayedJobs[0].data.createdAt;
-    if (delayedJobs.length === 0) return waitingJobs[0].data.createdAt;
-
-    // Both exist, return the older one
-    const waitingTime = new Date(waitingJobs[0].data.createdAt).getTime();
-    const delayedTime = new Date(delayedJobs[0].data.createdAt).getTime();
-    return waitingTime < delayedTime
-      ? waitingJobs[0].data.createdAt
-      : delayedJobs[0].data.createdAt;
+    return createdAts.reduce((oldest, createdAt) =>
+      new Date(createdAt).getTime() < new Date(oldest).getTime()
+        ? createdAt
+        : oldest,
+    );
   }
 
   async close() {
