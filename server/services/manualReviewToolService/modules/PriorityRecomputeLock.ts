@@ -35,7 +35,7 @@ export const RECOMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
  * Two pieces:
  *
  * - A **lock** per (org, queue), so only one sweep runs at a time no matter
- *   how many API processes are deployed. An in-process Map can't do this.
+ *   how many API processes are deployed.
  * - A **version** per (org, queue), bumped every time the sort mode changes.
  *   The holder re-reads it after sweeping; if it moved, someone changed the
  *   mode mid-sweep and the sweep runs again with the new mode. That's also
