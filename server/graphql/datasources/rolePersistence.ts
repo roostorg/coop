@@ -153,7 +153,6 @@ async function countApprovedUsersByRole(
     ])
     .where('users.org_id', '=', orgId)
     .where('roles.org_id', '=', orgId)
-    .where('users.approved_by_admin', '=', true)
     .where('users.rejected_by_admin', '=', false)
     .groupBy('roles.id')
     .execute();

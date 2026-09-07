@@ -68,9 +68,10 @@ ALTER TABLE public.invite_user_tokens
         FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE RESTRICT;
 
 ALTER TABLE public.users
-    DROP COLUMN role;
+    ALTER COLUMN role DROP NOT NULL,
+    ALTER COLUMN role DROP DEFAULT;
 
 ALTER TABLE public.invite_user_tokens
-    DROP COLUMN role;
+    ALTER COLUMN role DROP NOT NULL;
 
 COMMIT;

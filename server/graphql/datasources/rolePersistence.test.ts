@@ -248,7 +248,7 @@ describe('role persistence', () => {
   );
 
   testWithFixture(
-    'counts only approved, non-rejected users by their persisted role ID',
+    'counts approved and pending non-rejected users by their persisted role ID',
     async ({ deps, org }) => {
       const insertUser = async (
         role: UserRole,
@@ -279,7 +279,7 @@ describe('role persistence', () => {
       );
       expect(
         roles.find(({ key }) => key === UserRole.MODERATOR)?.userCount,
-      ).toBe(0);
+      ).toBe(1);
       expect(
         roles.find(({ key }) => key === UserRole.EXTERNAL_MODERATOR)?.userCount,
       ).toBe(0);
