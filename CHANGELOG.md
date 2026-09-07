@@ -17,6 +17,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
+- Node container bases upgraded from Debian Bullseye to Trixie ([#1136](https://github.com/roostorg/coop/pull/1136) by [@taobojlen](https://github.com/taobojlen))
 - Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
