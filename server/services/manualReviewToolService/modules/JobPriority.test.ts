@@ -1,3 +1,8 @@
+import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
+import {
+  makeSubmissionId,
+  type NormalizedItemData,
+} from '../../itemProcessingService/index.js';
 import type { ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import {
   getJobPrioritiesForItems,
@@ -18,20 +23,19 @@ const orgId = 'org-1';
 function makeItem(opts?: {
   itemId?: string;
 }): ItemSubmissionWithTypeIdentifier {
-  // Opaque type from itemProcessingService; cast through unknown rather than
-  // wiring the full constructor — these tests only need the fields
-  // JobPriority reads.
-  return {
+  return instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
     itemId: opts?.itemId ?? 'item-1',
     itemTypeIdentifier: {
       id: 'type-1',
       version: '2026-01-01T00:00:00.000Z',
       schemaVariant: 'original',
     },
-    submissionId: 'sub-1',
+    submissionId: makeSubmissionId(),
     submissionTime: new Date(),
-    data: {},
-  } as unknown as ItemSubmissionWithTypeIdentifier;
+    creator: undefined,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    data: {} as NormalizedItemData,
+  });
 }
 
 async function priorityFor(opts: {

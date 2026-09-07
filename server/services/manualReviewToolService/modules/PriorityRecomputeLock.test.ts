@@ -96,31 +96,50 @@ describe('PriorityRecomputeLock', () => {
     });
   });
 
-  describe('version', () => {
-    test('starts at 0 for a queue nobody has touched', async () => {
-      expect(await lockA.readVersion({ orgId, queueId })).toBe(0);
+  describe('acquireWaiting', () => {
+    test('takes the lock immediately when it is free', async () => {
+      const token = await lockA.acquireWaiting({ orgId, queueId });
+      expect(token).not.toBeNull();
     });
 
-    test('bumps are visible to other instances', async () => {
-      await lockA.bumpVersion({ orgId, queueId });
-      expect(await lockB.readVersion({ orgId, queueId })).toBe(1);
+    test('waits for the holder to release, then takes it', async () => {
+      const heldBy = await lockA.acquire({ orgId, queueId });
+      expect(heldBy).not.toBeNull();
+
+      const waiting = lockB.acquireWaiting({
+        orgId,
+        queueId,
+        pollIntervalMs: 10,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await lockA.release({ orgId, queueId, token: heldBy! });
+
+      expect(await waiting).not.toBeNull();
     });
 
-    test('a change during a sweep is detectable after it', async () => {
-      // This is what stops a slow sweep from committing a stale ordering:
-      // the holder compares the version before and after its pass.
-      const before = await lockA.readVersion({ orgId, queueId });
-      await lockB.bumpVersion({ orgId, queueId });
-      const after = await lockA.readVersion({ orgId, queueId });
+    test('gives up once the timeout elapses if the holder never releases', async () => {
+      await lockA.acquire({ orgId, queueId });
 
-      expect(after).not.toBe(before);
+      expect(
+        await lockB.acquireWaiting({
+          orgId,
+          queueId,
+          timeoutMs: 60,
+          pollIntervalMs: 10,
+        }),
+      ).toBeNull();
     });
 
-    test('versions are per queue', async () => {
-      const otherQueue = `other-${uid()}`;
-      await lockA.bumpVersion({ orgId, queueId });
+    test('a waiter on one queue is not blocked by another queue', async () => {
+      await lockA.acquire({ orgId, queueId });
 
-      expect(await lockA.readVersion({ orgId, queueId: otherQueue })).toBe(0);
+      const other = await lockB.acquireWaiting({
+        orgId,
+        queueId: `other-${uid()}`,
+        timeoutMs: 60,
+        pollIntervalMs: 10,
+      });
+      expect(other).not.toBeNull();
     });
   });
 });

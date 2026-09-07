@@ -959,14 +959,6 @@ export class ManualReviewToolService {
       !updated.isAppealsQueue &&
       previous.jobSortType !== updated.jobSortType
     ) {
-      // Record that this queue's ordering is stale *before* scheduling, and
-      // await it: whichever instance ends up holding the lock re-reads this
-      // version after sweeping, so bumping it first is what guarantees this
-      // change gets picked up even if another instance is mid-sweep.
-      await this.priorityRecomputeLock.bumpVersion({
-        orgId: input.orgId,
-        queueId: input.queueId,
-      });
       this.#scheduleQueuePriorityRecompute({
         orgId: input.orgId,
         queueId: input.queueId,
@@ -979,11 +971,6 @@ export class ManualReviewToolService {
   // In-flight sweeps, tracked only so tests can await them. Coordination
   // between instances is the Redis lock's job, not this set's.
   readonly #priorityRecomputes = new Set<Promise<void>>();
-
-  // A sweep that keeps re-sorting while the mode changes under it would spin
-  // forever if an admin toggled repeatedly. Bounded; the version stays bumped,
-  // so the next change picks up where this left off.
-  static readonly #MAX_RECOMPUTE_PASSES = 5;
 
   // Re-stamps every pending job's priority in the background. Deliberately
   // not awaited by callers: a sweep is O(pending jobs) Redis round-trips,
@@ -1018,22 +1005,17 @@ export class ManualReviewToolService {
   /**
    * Sweeps a queue's priorities while holding the cross-instance lock.
    *
-   * If another instance holds the lock we return immediately rather than
-   * queueing behind it. That's safe because the caller bumped the version
-   * before scheduling, and the lock holder re-reads the version after each
-   * pass — so our change is picked up by their sweep instead of ours.
-   *
-   * The sort mode is re-read from Postgres on every pass rather than captured
-   * once. If an admin changes it mid-sweep, the next pass has to use the new
-   * mode; reusing a captured value would re-sort to a setting that is no
-   * longer current.
+   * Waits for a sweep already in progress rather than giving up
    */
   async #recomputeQueuePrioritiesUnderLock(opts: {
     orgId: string;
     queueId: string;
   }): Promise<void> {
     const { orgId, queueId } = opts;
-    const token = await this.priorityRecomputeLock.acquire({ orgId, queueId });
+    const token = await this.priorityRecomputeLock.acquireWaiting({
+      orgId,
+      queueId,
+    });
     // The rule below matches on the identifier name `token`. This is a null
     // check on a lock handle we just generated, not a secret compared against
     // attacker-supplied input, so there's no timing channel to protect.
@@ -1043,51 +1025,30 @@ export class ManualReviewToolService {
     }
 
     try {
-      for (
-        let pass = 0;
-        pass < ManualReviewToolService.#MAX_RECOMPUTE_PASSES;
-        pass++
-      ) {
-        const versionAtStart = await this.priorityRecomputeLock.readVersion({
+      const queue =
+        await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
           orgId,
           queueId,
         });
-
-        const queue =
-          await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
-            orgId,
-            queueId,
-          });
-        // Deleted while we waited for the lock.
-        if (queue === undefined) {
-          return;
-        }
-        const sortType = normalizeJobSortType(queue.jobSortType);
-
-        await this.queueOps.recomputePrioritiesForQueue({
-          orgId,
-          queueId,
-          getPriorities: async (itemIds) =>
-            getJobPrioritiesForItems({
-              orgId,
-              itemIds,
-              sortType,
-              deps: {
-                getNumTimesReportedForItems: this.getNumTimesReportedForItems(),
-              },
-            }),
-        });
-
-        const versionAtEnd = await this.priorityRecomputeLock.readVersion({
-          orgId,
-          queueId,
-        });
-        // Nobody changed the mode while we swept, so the ordering we just
-        // wrote is current.
-        if (versionAtEnd === versionAtStart) {
-          return;
-        }
+      // Deleted while we waited for the lock.
+      if (queue === undefined) {
+        return;
       }
+      const sortType = normalizeJobSortType(queue.jobSortType);
+
+      await this.queueOps.recomputePrioritiesForQueue({
+        orgId,
+        queueId,
+        getPriorities: async (itemIds) =>
+          getJobPrioritiesForItems({
+            orgId,
+            itemIds,
+            sortType,
+            deps: {
+              getNumTimesReportedForItems: this.getNumTimesReportedForItems(),
+            },
+          }),
+      });
     } finally {
       await this.priorityRecomputeLock.release({ orgId, queueId, token });
     }

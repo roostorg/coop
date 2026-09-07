@@ -18,30 +18,18 @@ end
 `;
 
 /**
- * How long a held lock survives without the holder releasing it.
- *
- * Deliberately generous rather than watchdog-extended: a sweep is O(pending
- * jobs) Redis round-trips, and a lock that expires mid-sweep would let a
- * second instance start one concurrently — the exact thing this prevents. The
- * cost of erring long is that a process which dies mid-sweep leaves the queue
- * unswept for up to this long. That degrades ordering, it doesn't break it:
- * every new and re-reported job is still stamped correctly at enqueue.
+ * How long a held lock survives without the holder releasing it. Long enough
+ * to cover a sweep, which is one Redis round-trip per pending job.
  */
 export const RECOMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
 
+export const RECOMPUTE_LOCK_WAIT_TIMEOUT_MS = RECOMPUTE_LOCK_TTL_MS;
+
+export const RECOMPUTE_LOCK_POLL_INTERVAL_MS = 500;
+
 /**
- * Cross-instance coordination for manual review queue priority sweeps.
- *
- * Two pieces:
- *
- * - A **lock** per (org, queue), so only one sweep runs at a time no matter
- *   how many API processes are deployed.
- * - A **version** per (org, queue), bumped every time the sort mode changes.
- *   The holder re-reads it after sweeping; if it moved, someone changed the
- *   mode mid-sweep and the sweep runs again with the new mode. That's also
- *   what makes it safe for a losing instance to simply drop its own sweep —
- *   it has already recorded its intent by bumping the version, and whoever
- *   holds the lock will see it.
+ * A lock per (org, queue) so only one priority sweep runs at a time, no matter
+ * how many API processes are deployed.
  *
  * Keys are hash-tagged with the org id to match the sharding QueueOperations
  * uses for its Bull queues, so an org's keys stay on one Redis slot.
@@ -53,8 +41,31 @@ export default class PriorityRecomputeLock {
     return `{${orgId}}:mrt-recompute-lock:${queueId}`;
   }
 
-  #versionKey(orgId: string, queueId: string) {
-    return `{${orgId}}:mrt-recompute-version:${queueId}`;
+
+  async acquireWaiting(opts: {
+    orgId: string;
+    queueId: string;
+    ttlMs?: number;
+    timeoutMs?: number;
+    pollIntervalMs?: number;
+  }): Promise<string | null> {
+    const {
+      timeoutMs = RECOMPUTE_LOCK_WAIT_TIMEOUT_MS,
+      pollIntervalMs = RECOMPUTE_LOCK_POLL_INTERVAL_MS,
+      ...acquireOpts
+    } = opts;
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const token = await this.acquire(acquireOpts);
+      // eslint-disable-next-line security/detect-possible-timing-attacks
+      if (token != null) {
+        return token;
+      }
+      if (Date.now() + pollIntervalMs > deadline) {
+        return null;
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
   }
 
   /** Returns the token to release with, or null if another instance holds it. */
@@ -89,17 +100,5 @@ export default class PriorityRecomputeLock {
       token,
     );
     return released === 1;
-  }
-
-  /** Records that the queue's ordering is stale. Call before scheduling. */
-  async bumpVersion(opts: { orgId: string; queueId: string }): Promise<number> {
-    const { orgId, queueId } = opts;
-    return this.redis.incr(this.#versionKey(orgId, queueId));
-  }
-
-  async readVersion(opts: { orgId: string; queueId: string }): Promise<number> {
-    const { orgId, queueId } = opts;
-    const raw = await this.redis.get(this.#versionKey(orgId, queueId));
-    return raw == null ? 0 : Number(raw);
   }
 }
