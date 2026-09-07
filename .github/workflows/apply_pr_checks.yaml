@@ -213,6 +213,12 @@ jobs:
         name: Get Migrations Logs
         run: docker compose logs migrations
 
+      - name: Verify drop_dbs service
+        # Exercise package installation and teardown after the tests have
+        # finished using this job's disposable databases. CI's target DB is
+        # postgres, so connect to template1 to avoid dropping the current DB.
+        run: docker compose run --rm --quiet-pull -e API_SERVER_DATABASE_MAINTENANCE_NAME=template1 drop_dbs
+
       - name: Test Report
         if: always() # run this step even if previous step failed
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
