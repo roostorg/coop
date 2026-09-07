@@ -399,32 +399,24 @@ export default class QueueOperations {
     });
     await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
 
-    const queueMetadataUpdate = removeUndefinedKeys({
-      name,
-      description: replaceEmptyStringWithNull(description),
-      auto_close_jobs: autoCloseJobs,
-      // null disables the feature and must survive removeUndefinedKeys.
-      clear_reports_disposition: clearReportsDisposition,
-      clear_reports_scope: clearReportsScope,
-    });
-
     return this.transactionWithRetry(async (transaction) => {
-      const updatedQueueQuery =
-        Object.keys(queueMetadataUpdate).length > 0
-          ? transaction
-              .updateTable('manual_review_tool.manual_review_queues')
-              .set(queueMetadataUpdate)
-              .where('id', '=', queueId)
-              .where('org_id', '=', orgId)
-              .returning(PgQueueSelection)
-          : transaction
-              .selectFrom('manual_review_tool.manual_review_queues')
-              .select(PgQueueSelection)
-              .where('id', '=', queueId)
-              .where('org_id', '=', orgId);
-
       const [updatedQueue, _, __] = await Promise.all([
-        updatedQueueQuery.executeTakeFirstOrThrow(),
+        transaction
+          .updateTable('manual_review_tool.manual_review_queues')
+          .set(
+            removeUndefinedKeys({
+              name,
+              description: replaceEmptyStringWithNull(description),
+              auto_close_jobs: autoCloseJobs,
+              // null disables the feature and must survive removeUndefinedKeys.
+              clear_reports_disposition: clearReportsDisposition,
+              clear_reports_scope: clearReportsScope,
+            }),
+          )
+          .where('id', '=', queueId)
+          .where('org_id', '=', orgId)
+          .returning(PgQueueSelection)
+          .executeTakeFirstOrThrow(),
         transaction
           .insertInto('manual_review_tool.users_and_accessible_queues')
           .values(

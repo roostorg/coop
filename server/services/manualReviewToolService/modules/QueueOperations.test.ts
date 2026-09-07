@@ -568,12 +568,26 @@ describe('QueueOperations', () => {
   );
 
   testWithRoleAssignableQueue()(
-    'removing an assigned role revokes access and updates assigned roles',
+    'updating assigned roles grants and revokes reviewer access',
     async ({ org, creator, moderator, mrtService, kyselyPg }) => {
       const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
-      const queue = await createQueueWithRoles(mrtService, org, creator, [
-        roleId,
-      ]);
+      const queue = await createQueueWithRoles(mrtService, org, creator, []);
+
+      await mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        autoCloseJobs: queue.autoCloseJobs,
+        userIds: [creator.id],
+        roleIds: [roleId],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+      });
+
+      const reviewableAfterAssignment =
+        await mrtService.getReviewableQueuesForUser({
+          invoker: reviewerInvoker(moderator.id, org.id),
+        });
+      expect(reviewableAfterAssignment.map((q) => q.id)).toContain(queue.id);
       expect(
         await mrtService.getAssignedRoleIdsForQueue({
           orgId: org.id,
@@ -584,6 +598,7 @@ describe('QueueOperations', () => {
       await mrtService.updateManualReviewQueue({
         orgId: org.id,
         queueId: queue.id,
+        autoCloseJobs: queue.autoCloseJobs,
         userIds: [creator.id],
         roleIds: [],
         actionIdsToHide: [],

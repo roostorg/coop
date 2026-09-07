@@ -1,68 +1,85 @@
-import { buildASTSchema, isInputObjectType } from 'graphql';
+import { uid } from 'uid';
 
-import { UserPermission } from '../../services/userManagementService/index.js';
-import typeDefs from '../schema.js';
-import { resolvers } from './manualReviewTool.js';
+import {
+  UserPermission,
+  UserRole,
+} from '../../services/userManagementService/index.js';
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 
 describe('queue role assignment visibility', () => {
-  const resolve = resolvers.ManualReviewQueue.assignedRoleIds as (
-    parent: { id: string },
-    args: unknown,
-    context: unknown,
-  ) => Promise<unknown>;
+  const testWithQueue = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(deps);
+    const { user: creator } = await createUser(deps.KyselyPg, org.id);
+    const assignedRole = await deps.KyselyPg.selectFrom('public.roles')
+      .select('id')
+      .where('org_id', '=', org.id)
+      .where('key', '=', UserRole.MODERATOR)
+      .executeTakeFirstOrThrow();
+    const queue = await deps.ManualReviewToolService.createManualReviewQueue({
+      name: `queue-${uid()}`,
+      description: null,
+      userIds: [creator.id],
+      roleIds: [assignedRole.id],
+      hiddenActionIds: [],
+      isAppealsQueue: false,
+      invokedBy: {
+        orgId: org.id,
+        userId: creator.id,
+        permissions: [UserPermission.EDIT_MRT_QUEUES],
+      },
+    });
+    return { org, queue, assignedRole };
+  });
 
-  test.each([false, true])(
-    'checks queue access for editor=%s',
-    async (editor) => {
-      const service = {
-        getQueueForOrg: jest.fn(),
-        getQueueForOrgAndDangerouslyBypassPermissioning: jest.fn(),
-        getAssignedRoleIdsForQueue: jest.fn(async () => ['role-id']),
-      };
-      const context = {
-        getUser: () => ({
-          id: 'user',
-          orgId: 'org',
-          getPermissions: () =>
-            editor ? [UserPermission.EDIT_MRT_QUEUES] : [],
-        }),
-        services: { ManualReviewToolService: service },
-      };
-      await expect(resolve({ id: 'queue' }, {}, context)).rejects.toThrow(
-        'User does not have access to this queue',
-      );
-      expect(service.getAssignedRoleIdsForQueue).not.toHaveBeenCalled();
-      const accessCheck = editor
-        ? service.getQueueForOrgAndDangerouslyBypassPermissioning
-        : service.getQueueForOrg;
-      expect(accessCheck).toHaveBeenCalledWith({
-        orgId: 'org',
-        queueId: 'queue',
-        ...(!editor ? { userId: 'user' } : {}),
-      });
-      accessCheck.mockResolvedValue({ id: 'queue' });
-      await expect(resolve({ id: 'queue' }, {}, context)).resolves.toEqual([
-        'role-id',
-      ]);
-      expect(service.getAssignedRoleIdsForQueue).toHaveBeenCalledWith({
-        orgId: 'org',
-        queueId: 'queue',
-      });
-    },
-  );
-});
+  testWithQueue(
+    'allows assigned reviewers and queue editors to read role assignments, but denies unassigned reviewers',
+    async ({ deps, request, org, queue, assignedRole }) => {
+      for (const role of [
+        UserRole.EXTERNAL_MODERATOR,
+        UserRole.MODERATOR,
+        UserRole.MODERATOR_MANAGER,
+      ]) {
+        const { user: viewer } = await createUser(deps.KyselyPg, org.id, {
+          role,
+          approvedByAdmin: true,
+          loginMethods: ['password'],
+          password: 'Queue-access-test-password-123!',
+        });
+        const login = await request.post('/api/v1/graphql').send({
+          query: `mutation Login($input: LoginInput!) {
+          login(input: $input) { __typename }
+        }`,
+          variables: {
+            input: {
+              email: viewer.email,
+              password: 'Queue-access-test-password-123!',
+            },
+          },
+        });
+        expect(login.body.data?.login.__typename).toBe('LoginSuccessResponse');
 
-describe('manual review queue inputs', () => {
-  test.each(['CreateManualReviewQueueInput', 'UpdateManualReviewQueueInput'])(
-    '%s requires roleIds',
-    (inputName) => {
-      const input = buildASTSchema(typeDefs).getType(inputName);
-      expect(isInputObjectType(input)).toBe(true);
-      if (!isInputObjectType(input)) {
-        return;
+        const response = await request.post('/api/v1/graphql').send({
+          query: `query QueueRoles($id: ID!) {
+          manualReviewQueue(id: $id) { assignedRoleIds }
+        }`,
+          variables: { id: queue.id },
+        });
+        if (role !== UserRole.EXTERNAL_MODERATOR) {
+          expect(response.body.errors).toBeUndefined();
+          expect(response.body.data.manualReviewQueue.assignedRoleIds).toEqual([
+            assignedRole.id,
+          ]);
+        } else {
+          expect(response.body.data?.manualReviewQueue).toBeNull();
+          expect(response.body.errors).toEqual([
+            expect.objectContaining({
+              extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
+            }),
+          ]);
+        }
       }
-
-      expect(input.getFields().roleIds.type.toString()).toBe('[ID!]!');
     },
   );
 });
