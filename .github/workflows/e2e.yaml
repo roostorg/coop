@@ -104,8 +104,6 @@ jobs:
           npm run db:update -- --env staging --db clickhouse
 
       - name: Build server
-        # Playwright writes artifacts under server/e2e. A compiler watcher
-        # restarts the API during tests when those directories change.
         run: npm --prefix server run build
 
       - name: Start server and client
