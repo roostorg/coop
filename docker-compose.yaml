@@ -21,7 +21,7 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24.20.0-bullseye-slim
+    image: node:24.20.0-bookworm-slim
     command: bash -c 'set -e
       npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
@@ -41,7 +41,7 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24.20.0-bullseye-slim
+    image: node:24.20.0-bookworm-slim
     command: bash -c 'npm i && npm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci
@@ -125,24 +125,6 @@ services:
       redis:
         condition: service_started
 
-  # Regenerate GraphQL types and fail if the working tree drifts.
-  # Mirrors the `check_generated_graphql` CI job.
-  # node_modules is in a dedicated volume so the install doesn't clobber the host's node_modules.
-  codegen-check:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: server_base
-    working_dir: /src
-    command: bash -c 'set -e
-      && git config --global --add safe.directory /src
-      && npm ci
-      && npm run generate
-      && [[ -z "$(git status --porcelain)" ]]'
-    volumes:
-      - .:/src
-      - codegen_node_modules:/src/node_modules
-
   backend:
     build:
       context: .
@@ -206,4 +188,3 @@ volumes:
   scylla_data:
   redis_data:
   clickhouse_data:
-  codegen_node_modules:
