@@ -21,7 +21,7 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24.18.0-bullseye-slim
+    image: node:24.20.0-bullseye-slim
     command: bash -c 'set -e
       npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
@@ -41,7 +41,7 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24.18.0-bullseye-slim
+    image: node:24.20.0-bullseye-slim
     command: bash -c 'npm i && npm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci
@@ -93,7 +93,16 @@ services:
     ports:
       - '9042:9042'
     healthcheck:
-      test: ['CMD-SHELL', 'nodetool status || exit 1']
+      # nodetool status only confirms gossip is up, not that the CQL port
+      # (9042) is accepting and completing queries yet — that gap lets
+      # dependents (e.g. db:create/db:update via cassandra-driver) connect
+      # before Scylla is actually ready, causing timeouts even though
+      # Compose reports the container healthy.
+      test:
+        [
+          'CMD-SHELL',
+          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+        ]
       interval: 5s
       timeout: 5s
       retries: 28

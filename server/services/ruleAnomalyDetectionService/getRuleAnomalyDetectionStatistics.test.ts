@@ -20,14 +20,16 @@ describe('getRuleAnomalyDetectionStatistics', () => {
   let getRulePassStatistics: Dependencies['getRuleAnomalyDetectionStatistics'];
 
   beforeAll(() => {
+    // Mirrors the real ClickHouse output shape: lowercase keys, BigInt ints,
+    // and DateTime64 strings with no timezone marker.
     const queryResult = [
       {
-        RULE_ID: 'a',
-        NUM_PASSES: 2,
-        NUM_DISTINCT_USERS: 1,
-        NUM_RUNS: 4,
-        TS_START_INCLUSIVE: '2022-05-07 23:00:00.00',
-        RULE_VERSION: '2022-05-01T12:10:00.00305Z',
+        rule_id: 'a',
+        num_passes: BigInt(2),
+        num_distinct_users: BigInt(1),
+        num_runs: BigInt(4),
+        ts_start_inclusive: '2022-05-07 23:00:00.000',
+        rule_version: '2022-05-01 12:10:00.003',
       },
     ];
 
@@ -69,8 +71,8 @@ describe('getRuleAnomalyDetectionStatistics', () => {
         passCount: 2,
         runsCount: 4,
         passingUsersCount: 1,
-        windowStart: new Date('2022-05-07 23:00:00.00'),
-        approxRuleVersion: new Date('2022-05-01T12:10:00.00305Z'),
+        windowStart: new Date('2022-05-07T23:00:00.000Z'),
+        approxRuleVersion: new Date('2022-05-01T12:10:00.003Z'),
       },
     ]);
   });
@@ -87,10 +89,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE()
+            WHERE ts_end_exclusive <= now64(3, 'UTC')
             ORDER BY ts_start_inclusive DESC;",
         {},
         [],
@@ -110,10 +112,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND ts_start_inclusive >= ?
+            WHERE ts_end_exclusive <= now64(3, 'UTC') AND ts_start_inclusive >= parseDateTime64BestEffort(?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -135,10 +137,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND rule_id IN (?,?)
+            WHERE ts_end_exclusive <= now64(3, 'UTC') AND rule_id IN (?,?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -158,10 +160,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND rule_id IN (?)
+            WHERE ts_end_exclusive <= now64(3, 'UTC') AND rule_id IN (?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [
@@ -186,10 +188,10 @@ describe('getRuleAnomalyDetectionStatistics', () => {
               rule_version,
               num_passes,
               num_runs,
-              array_size(passes_distinct_user_ids) as num_distinct_users,
+              JSONLength(passes_distinct_user_ids) as num_distinct_users,
               ts_start_inclusive
             FROM RULE_ANOMALY_DETECTION_SERVICE.RULE_EXECUTION_STATISTICS
-            WHERE ts_end_exclusive <= SYSDATE() AND ts_start_inclusive >= ? AND rule_id IN (?,?)
+            WHERE ts_end_exclusive <= now64(3, 'UTC') AND ts_start_inclusive >= parseDateTime64BestEffort(?) AND rule_id IN (?,?)
             ORDER BY ts_start_inclusive DESC;",
         {},
         [

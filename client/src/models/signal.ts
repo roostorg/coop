@@ -46,10 +46,8 @@ export function integrationForSignalType(type: string) {
     case 'AGGREGATION':
     case 'CUSTOM':
     case 'GEO_CONTAINED_WITHIN':
-    case 'IMAGE_EXACT_MATCH':
     case 'IMAGE_SIMILARITY_MATCH':
     case 'IMAGE_SIMILARITY_DOES_NOT_MATCH':
-    case 'IMAGE_SIMILARITY_SCORE':
     case 'TEXT_MATCHING_CONTAINS_REGEX':
     case 'TEXT_MATCHING_CONTAINS_TEXT':
     case 'TEXT_MATCHING_CONTAINS_VARIANT':

@@ -1,10 +1,12 @@
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
-import Pencil from '@/icons/lni/Education/pencil.svg?react';
-import Plus from '@/icons/lni/Interface and Sign/plus.svg?react';
-import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
 import { gql } from '@apollo/client';
 import { Input } from 'antd';
+import {
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  Trash2 as TrashCan,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -234,7 +236,7 @@ export default function PoliciesDashboard() {
                 <div className="flex flex-row justify-between px-6">
                   {policy.children.length ? (
                     <div
-                      className="flex items-center gap-4 font-medium cursor-pointer text-primary fill-primary"
+                      className="flex items-center gap-4 font-medium cursor-pointer text-primary"
                       onClick={() => toggleExpanded(policy.value.name)}
                     >
                       <div>
@@ -244,9 +246,9 @@ export default function PoliciesDashboard() {
                       </div>
                       <div className="flex items-center justify-start gap-1.5">
                         {expandedPolicies.includes(policy.value.name) ? (
-                          <ChevronUp className="flex text-xs" height="12px" />
+                          <ChevronUp className="flex" size={12} />
                         ) : (
-                          <ChevronDown className="flex text-xs" height="12px" />
+                          <ChevronDown className="flex" size={12} />
                         )}
                       </div>
                     </div>
@@ -263,9 +265,9 @@ export default function PoliciesDashboard() {
                             `/dashboard/policies/form?parentPolicyId=${policy.value.id}`,
                           )
                         }
-                        className="flex flex-row items-center mr-12 cursor-pointer text-primary fill-primary"
+                        className="flex flex-row items-center mr-12 cursor-pointer text-primary"
                       >
-                        <Plus height="12px" className="pr-2" />
+                        <Plus className="w-4 h-4 mr-1" />
                         Add Sub Policy
                       </div>
                       <div
@@ -274,9 +276,9 @@ export default function PoliciesDashboard() {
                             `/dashboard/policies/form/${policy.value.id}`,
                           )
                         }
-                        className="flex flex-row items-center mr-12 cursor-pointer text-primary fill-primary"
+                        className="flex flex-row items-center mr-12 cursor-pointer text-primary"
                       >
-                        <Pencil height="12px" className="pr-2" />
+                        <Pencil className="w-4 h-4 mr-1" />
                         Edit
                       </div>
                       <div
@@ -310,7 +312,7 @@ export default function PoliciesDashboard() {
                         }
                         className="flex flex-row items-center cursor-pointer text-coop-alert-red fill-coop-alert-red"
                       >
-                        <TrashCan height="12px" className="pr-2" />
+                        <TrashCan className="w-4 h-4 mr-1" />
                         Delete
                       </div>
                     </div>

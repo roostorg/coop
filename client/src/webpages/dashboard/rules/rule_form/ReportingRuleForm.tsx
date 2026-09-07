@@ -1,9 +1,7 @@
-import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
-import TrashCan from '@/icons/lni/Web and Technology/trash-can.svg?react';
-import { PlusOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Form, Radio, Select, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
+import { Copy as CopyAlt, Plus, Trash2 as TrashCan } from 'lucide-react';
 import { useMemo, useReducer } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -653,7 +651,7 @@ export default function RuleForm() {
           <Button
             shape="circle"
             type="default"
-            icon={<PlusOutlined />}
+            icon={<Plus className="w-4 h-4" />}
             onClick={() =>
               dispatch({
                 type: ReportingRuleFormReducerActionType.AddCondition,
@@ -818,7 +816,7 @@ export default function RuleForm() {
                 type: ReportingRuleFormReducerActionType.AddConditionSet,
               })
             }
-            icon={<PlusOutlined className="mt-1" />}
+            icon={<Plus className="w-4 h-4 mt-1" />}
           >
             Add Condition Set
           </Button>
@@ -1147,6 +1145,7 @@ export default function RuleForm() {
             />
             <CoopButton
               icon={CopyAlt}
+              iconStyle="stroke"
               onClick={() => {
                 navigate(`/dashboard/rules/report/form?duplicate_id=${id}`);
                 // See https://github.com/roostorg/coop/pull/3803#discussion_r1643632962
@@ -1158,6 +1157,7 @@ export default function RuleForm() {
             />
             <CoopButton
               icon={TrashCan}
+              iconStyle="stroke"
               onClick={() =>
                 dispatch({
                   type: ReportingRuleFormReducerActionType.ShowModal,

@@ -6,8 +6,12 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 
 import CoopModal from '@/webpages/dashboard/components/CoopModal';
 
-import { useGQLResetPasswordMutation } from '../../../graphql/generated';
+import {
+  useGQLPasswordRequirementsQuery,
+  useGQLResetPasswordMutation,
+} from '../../../graphql/generated';
 import LogoBlack from '../../../images/LogoBlack.png';
+import { DEFAULT_MIN_PASSWORD_LENGTH } from '../../../utils/password';
 
 gql`
   mutation ResetPassword($input: ResetPasswordInput!) {
@@ -22,11 +26,19 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState<string | undefined>(
     undefined,
   );
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(
+    undefined,
+  );
   const [showErrorModal, setShowErrorModal] = useState(false);
   const showError = () => setShowErrorModal(true);
 
   const { token } = useParams<{ token: string | undefined }>();
   const navigate = useNavigate();
+
+  const { data: passwordRequirementsData } = useGQLPasswordRequirementsQuery();
+  const minPasswordLength =
+    passwordRequirementsData?.passwordRequirements.minLength ??
+    DEFAULT_MIN_PASSWORD_LENGTH;
 
   const [resetPassword, { loading: resetPasswordLoading }] =
     useGQLResetPasswordMutation({
@@ -44,24 +56,56 @@ export default function ResetPassword() {
     return <Navigate to="/login" />;
   }
 
+  const isPasswordTooShort =
+    newPassword != null &&
+    newPassword.length > 0 &&
+    newPassword.length < minPasswordLength;
+
   const newPasswordInput = (
-    <Input.Password
-      className="rounded-lg"
-      placeholder="Enter new password"
-      value={newPassword}
-      onChange={(event) => {
-        setNewPassword(event.target.value);
-      }}
-    />
+    <>
+      <Input.Password
+        className="rounded-lg"
+        placeholder={`Enter new password (min ${minPasswordLength} characters)`}
+        value={newPassword}
+        status={isPasswordTooShort ? 'error' : undefined}
+        aria-invalid={isPasswordTooShort}
+        aria-describedby={isPasswordTooShort ? 'newPassword-error' : undefined}
+        onChange={(event) => {
+          setNewPassword(event.target.value);
+        }}
+      />
+      {isPasswordTooShort && (
+        <div id="newPassword-error" className="w-full text-xs text-red-600">
+          Password must be at least {minPasswordLength} characters long.
+        </div>
+      )}
+    </>
   );
 
+  const doPasswordsMismatch =
+    confirmPassword != null &&
+    confirmPassword.length > 0 &&
+    newPassword !== confirmPassword;
+
   const confirmPasswordInput = (
-    <Input.Password
-      className="rounded-lg"
-      placeholder="Confirm new password"
-      value={confirmPassword}
-      onChange={(event) => setConfirmPassword(event.target.value)}
-    />
+    <>
+      <Input.Password
+        className="rounded-lg"
+        placeholder="Confirm new password"
+        value={confirmPassword}
+        status={doPasswordsMismatch ? 'error' : undefined}
+        aria-invalid={doPasswordsMismatch}
+        aria-describedby={
+          doPasswordsMismatch ? 'confirmPassword-error' : undefined
+        }
+        onChange={(event) => setConfirmPassword(event.target.value)}
+      />
+      {doPasswordsMismatch && (
+        <div id="confirmPassword-error" className="w-full text-xs text-red-600">
+          Passwords do not match.
+        </div>
+      )}
+    </>
   );
 
   const submitButton = (
@@ -70,18 +114,33 @@ export default function ResetPassword() {
       type="primary"
       htmlType="submit"
       loading={resetPasswordLoading}
-      onClick={async () =>
-        resetPassword({
+      disabled={
+        !newPassword ||
+        !confirmPassword ||
+        isPasswordTooShort ||
+        doPasswordsMismatch
+      }
+      onClick={async () => {
+        if (newPassword !== confirmPassword) {
+          setErrorMessage('Passwords do not match.');
+          return;
+        }
+        if (!newPassword || newPassword.length < minPasswordLength) {
+          setErrorMessage(
+            `Password must be at least ${minPasswordLength} characters long.`,
+          );
+          return;
+        }
+        setErrorMessage(undefined);
+        await resetPassword({
           variables: {
             input: {
-              // Safe to assert non-null since onSetNewPassword is used
-              // in a component that's only rendered if data is non-null
               token,
-              newPassword: newPassword!,
+              newPassword,
             },
           },
-        })
-      }
+        });
+      }}
     >
       Update Password
     </Button>
@@ -108,6 +167,15 @@ export default function ResetPassword() {
             <img src={LogoBlack} alt="Coop Logo" className="h-12" />
           </Link>
           <div className="py-5 text-2xl font-bold">Reset Password</div>
+          {errorMessage && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-4 p-3 w-full bg-red-50 border border-red-200 rounded text-red-700 text-sm"
+            >
+              {errorMessage}
+            </div>
+          )}
           <div className="flex flex-col items-center justify-center w-full gap-4">
             {newPasswordInput}
             {confirmPasswordInput}

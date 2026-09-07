@@ -1,19 +1,23 @@
-/* eslint-disable react/jsx-key */
-import SortAmountAsc from '@/icons/lni/Text editor/sort-amount-asc.svg?react';
-import SortAmountDsc from '@/icons/lni/Text editor/sort-amount-dsc.svg?react';
+import { flexRender, useTable } from '@tanstack/react-table';
+import {
+  ArrowUpNarrowWide as SortAmountAsc,
+  ArrowDownWideNarrow as SortAmountDsc,
+} from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Column, Row, useFilters, useSortBy, useTable } from 'react-table';
 
-import { getFilterTypes } from './filters';
+import { features, TableColumnDef, TableData, TableRow } from './tableFeatures';
 import TableFilter from './TableFilter';
 
-export default function Table(
+export type TableRowData = TableData;
+export type { TableColumnDef, TableRow } from './tableFeatures';
+
+export default function Table<TData extends Record<string, any>>(
   props: {
-    columns: ReadonlyArray<Column<object>>;
-    data: readonly object[];
-    onSelectRow?: (rowData: Row<any>) => void;
-    rowLinkTo?: (rowData: Row<any>) => string;
+    columns: TableColumnDef<NoInfer<TData>, any>[];
+    data: readonly TData[];
+    onSelectRow?: (row: TableRow<TData>) => void;
+    rowLinkTo?: (row: TableRow<TData>) => string;
     topLeftComponent?: ReactNode;
     topRightComponent?: ReactNode;
     customMaxHeight?: `max-h-[${number}px]`;
@@ -28,9 +32,9 @@ export default function Table(
     | {
         isCollapsed?: boolean;
         collapsedColumnTitle?: string;
-        renderCollapsedCell?: (row: Row<any>) => ReactNode;
+        renderCollapsedCell?: (row: TableRow<TData>) => ReactNode;
       }
-    | {}
+    | Record<never, never>
   ),
 ) {
   const {
@@ -53,26 +57,21 @@ export default function Table(
   } = 'isCollapsed' in props ? props : {};
 
   const rowsAreSelectable = onSelectRow !== undefined;
+  const tableData = useMemo(() => [...data], [data]);
 
-  const filterTypes = useMemo(getFilterTypes, []);
-
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable(
-      {
-        columns,
-        data,
-        filterTypes,
-        // @ts-expect-error react-table v7's TableState typings don't include
-        // the sortBy state contributed by the useSortBy plugin.
-        initialState: { sortBy: initialSortBy ?? [] },
-      },
-      useFilters,
-      useSortBy,
-    );
-
+  const table = useTable({
+    features,
+    columns,
+    data: tableData,
+    defaultColumn: {
+      cell: ({ getValue }): ReactNode => getValue() as ReactNode,
+    },
+    initialState: { sorting: initialSortBy ?? [] },
+  });
+  const rows = table.getRowModel().rows;
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
-  const selectRow = (row: Row<any>, rowIndex: number) => {
+  const selectRow = (row: TableRow<TData>, rowIndex: number) => {
     if (rowsAreSelectable) {
       setSelectedRow(rowIndex);
       onSelectRow(row);
@@ -92,11 +91,7 @@ export default function Table(
       >
         {topLeftComponent}
         {disableFilter ? null : (
-          <TableFilter
-            headers={[...headerGroups.values()].flatMap(
-              (group) => group.headers,
-            )}
-          />
+          <TableFilter columns={table.getAllLeafColumns()} />
         )}
         {topRightComponent}
       </div>
@@ -106,10 +101,10 @@ export default function Table(
             alwaysShowScrollbar ? 'scrollbar-show' : ''
           } ${customMaxHeight ?? 'max-h-[1200px]'}`}
         >
-          <table {...getTableProps()} className="w-full">
+          <table className="w-full">
             <thead className="sticky top-0 z-10 bg-slate-50">
-              {headerGroups.map((headerGroup, _i) => (
-                <tr {...headerGroup.getHeaderGroupProps()}>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
                   {isCollapsed && collapsedColumnTitle ? (
                     <th className="p-4 text-base font-bold text-gray-500 rounded-t-md text-start align-center">
                       <div className="flex flex-row items-center justify-between flex-nowrap whitespace-nowrap">
@@ -117,32 +112,43 @@ export default function Table(
                       </div>
                     </th>
                   ) : (
-                    headerGroup.headers.map((column, index) => {
-                      // For some reason when we pass `columns` into useTable,
-                      // the `headers` prop in headerGroups doesn't receive the
-                      // canSort value from each of the columns (it's overwritten)
-                      // to true always. So we pull the canSort value from the
-                      // `columns` variable instead of the headerGroup.headers variable.
-                      // NB: canSort defaults to true
-                      const canSort =
-                        columns.find(
-                          /* @ts-ignore */
-                          (col) => col.Header === column.Header,
-                          /* @ts-ignore */
-                        )!.canSort ?? true;
-                      // If we don't set this on the header's column object directly,
-                      // the user can still click the header to sort the row, even
-                      // though the sort UI is hidden.
-                      if (!canSort) {
-                        /* @ts-ignore */
-                        column.canSort = false;
-                      }
+                    headerGroup.headers.map((header, index) => {
+                      const sorted = header.column.getIsSorted();
+                      const isSortableHeader =
+                        !header.isPlaceholder && header.column.getCanSort();
+                      const headerContent = header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          );
+                      const sortIcon = isSortableHeader ? (
+                        sorted === 'desc' ? (
+                          <SortAmountDsc className="bg-[#40ace920] w-6 h-6 p-1 text-primary rounded-full" />
+                        ) : sorted === 'asc' ? (
+                          <SortAmountAsc className="bg-[#40ace920] w-6 h-6 p-1 text-primary rounded-full" />
+                        ) : (
+                          <SortAmountDsc className="w-4 h-4 rounded-full text-gray-500" />
+                        )
+                      ) : null;
                       return (
                         <th
-                          {...column.getHeaderProps(
-                            /* @ts-ignore */
-                            column.getSortByToggleProps(),
-                          )}
+                          key={header.id}
+                          colSpan={header.colSpan}
+                          onClick={
+                            isSortableHeader
+                              ? header.column.getToggleSortingHandler()
+                              : undefined
+                          }
+                          aria-sort={
+                            isSortableHeader
+                              ? sorted === 'asc'
+                                ? 'ascending'
+                                : sorted === 'desc'
+                                  ? 'descending'
+                                  : 'none'
+                              : undefined
+                          }
                           className={`align-center font-bold text-gray-500 text-start text-base !p-0 ${
                             index === 0
                               ? 'rounded-tl-md'
@@ -151,20 +157,19 @@ export default function Table(
                                 : ''
                           }`}
                         >
-                          <div className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3">
-                            {column.render('Header')}
-                            {/* @ts-ignore */}
-                            {canSort ? (
-                              /* @ts-ignore */
-                              column.isSortedDesc ? (
-                                <SortAmountDsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full" /> /* @ts-ignore */
-                              ) : column.isSorted ? (
-                                <SortAmountAsc className="bg-[#40ace920] w-6 p-1 fill-primary rounded-full scale-y-[-1]" />
-                              ) : (
-                                <SortAmountDsc className="w-4 rounded-full fill-gray-500" />
-                              )
-                            ) : null}
-                          </div>
+                          {isSortableHeader ? (
+                            <button
+                              type="button"
+                              className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3"
+                            >
+                              {headerContent}
+                              {sortIcon}
+                            </button>
+                          ) : (
+                            <div className="flex flex-row items-center p-4 flex-nowrap whitespace-nowrap gap-3">
+                              {headerContent}
+                            </div>
+                          )}
                         </th>
                       );
                     })
@@ -172,9 +177,8 @@ export default function Table(
                 </tr>
               ))}
             </thead>
-            <tbody {...getTableBodyProps()}>
+            <tbody>
               {rows.map((row, rowIndex) => {
-                prepareRow(row);
                 const cell = renderCollapsedCell && renderCollapsedCell(row);
                 const cellWithWrapper = rowLinkTo ? (
                   <Link
@@ -190,6 +194,7 @@ export default function Table(
                 );
                 return isCollapsed ? (
                   <tr
+                    key={row.id}
                     className={
                       rowsAreSelectable || rowLinkTo !== undefined
                         ? selectedRow === rowIndex
@@ -215,7 +220,7 @@ export default function Table(
                   </tr>
                 ) : (
                   <tr
-                    {...row.getRowProps()}
+                    key={row.id}
                     className={
                       rowsAreSelectable || rowLinkTo !== undefined
                         ? selectedRow === rowIndex
@@ -229,30 +234,36 @@ export default function Table(
                     }
                     onClick={() => selectRow(row, rowIndex)}
                   >
-                    {row.cells.map((cell, index) => {
+                    {row.getAllCells().map((cell, index, cells) => {
                       const cellWithWrapper = rowLinkTo ? (
                         <Link
                           to={rowLinkTo(row)}
                           className="flex items-center px-4 py-2 text-black hover:text-black"
                         >
-                          {cell.render('Cell')}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </Link>
                       ) : (
                         <div className="flex items-center max-w-3xl px-4 py-2 overflow-hidden text-ellipsis text-black hover:text-black">
-                          {cell.render('Cell')}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </div>
                       );
 
                       return (
                         <td
-                          {...cell.getCellProps()}
+                          key={cell.id}
                           className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t text-base ${
                             rowIndex === rows.length - 1 && index === 0
                               ? 'rounded-bl-md'
                               : 'rounded-bl-none'
                           } ${
                             rowIndex === rows.length - 1 &&
-                            index === columns.length - 1
+                            index === cells.length - 1
                               ? 'rounded-br-md'
                               : 'rounded-br-none'
                           }`}

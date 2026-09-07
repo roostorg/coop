@@ -1,4 +1,4 @@
-import { PlayCircleFilled } from '@ant-design/icons';
+import { CirclePlay } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 
@@ -113,7 +113,10 @@ export default function ManualReviewJobContentBlurableVideo(props: {
             }
           }}
         >
-          <PlayCircleFilled className="text-4xl !text-white" />
+          <CirclePlay
+            className="w-12 h-12 text-white drop-shadow-lg"
+            strokeWidth={1.5}
+          />
         </div>
       )}
       <CoopModal

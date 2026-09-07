@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react';
  * Implementation details: https://www.robinwieruch.de/react-hook-detect-click-outside-component/
  */
 export function useOutsideClick(onClick: (_: MouseEvent) => void) {
-  const ref = useRef() as React.MutableRefObject<HTMLInputElement>;
+  const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {

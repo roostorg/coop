@@ -1,6 +1,6 @@
-import { PlusOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button } from 'antd';
+import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
@@ -263,7 +263,7 @@ export default function LocationBankForm() {
       type="default"
       className="mt-4"
       onClick={() => setLocationModalVisible(true)}
-      icon={<PlusOutlined />}
+      icon={<Plus className="w-4 h-4" />}
     >
       Add Location
     </Button>

@@ -8,6 +8,7 @@ function makeCompileOnlyDb<
   return new Kysely<T>({
     dialect: new PostgresDialect({
       pool: {
+        options: {},
         async connect() {
           return {
             query: jest.fn().mockResolvedValue({

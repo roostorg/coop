@@ -1,12 +1,14 @@
-import ChevronLeft from '@/icons/lni/Direction/chevron-left.svg?react';
-import ChevronRight from '@/icons/lni/Direction/chevron-right.svg?react';
-import CrossCircle from '@/icons/lni/Interface and Sign/cross-circle.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { HOST_URL } from '@/lib/config';
 import { filterNullOrUndefined } from '@/utils/collections';
-import { RedoOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Checkbox, Input, Tooltip } from 'antd';
+import {
+  ChevronLeft,
+  ChevronRight,
+  XCircle as CrossCircle,
+  LayoutGrid as GridAlt,
+  RotateCw,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -40,6 +42,10 @@ import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
 import ManualReviewRecentDecisionSummary from './ManualReviewRecentDecisionSummary';
+import {
+  getDecisionTimingFields,
+  RECENT_DECISIONS_CSV_HEADERS,
+} from './mrtAnalyticsUtils';
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
@@ -117,6 +123,8 @@ gql`
         }
       }
       createdAt
+      assignedAt
+      jobCreatedAt
       decisionReason
     }
   }
@@ -144,6 +152,7 @@ type RecentDecision =
 // Column visibility configuration
 type ColumnId =
   | 'decisionTime'
+  | 'claimedAt'
   | 'decisions'
   | 'policies'
   | 'reviewer'
@@ -154,6 +163,7 @@ const COLUMN_VISIBILITY_STORAGE_KEY = 'mrt-recent-decisions-column-visibility';
 
 const defaultColumnVisibility: Record<ColumnId, boolean> = {
   decisionTime: true,
+  claimedAt: true,
   decisions: true,
   decisionReason: true,
   policies: true,
@@ -163,6 +173,7 @@ const defaultColumnVisibility: Record<ColumnId, boolean> = {
 
 const columnLabels: Record<ColumnId, string> = {
   decisionTime: 'Decision Time',
+  claimedAt: 'Claimed At',
   decisions: 'Decisions',
   decisionReason: 'Decision Reason',
   policies: 'Policies',
@@ -365,45 +376,54 @@ export default function ManualReviewRecentDecisions() {
       filterNullOrUndefined([
         columnVisibility.decisionTime
           ? {
-              Header: 'Decision Time',
-              accessor: 'decisionTime',
+              header: 'Decision Time',
+              accessorKey: 'decisionTime',
               sortDescFirst: true,
-              sortType: stringSort,
+              sortFn: stringSort,
+            }
+          : undefined,
+        columnVisibility.claimedAt
+          ? {
+              header: 'Claimed At',
+              accessorKey: 'claimedAt',
+              sortDescFirst: true,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.decisions
           ? {
-              Header: 'Decisions',
-              accessor: 'decisions',
-              canSort: false,
+              header: 'Decisions',
+              accessorKey: 'decisions',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.decisionReason
           ? {
-              Header: 'Decision Reason',
-              accessor: 'decisionReason',
-              canSort: false,
+              header: 'Decision Reason',
+              accessorKey: 'decisionReason',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.policies
           ? {
-              Header: 'Policies',
-              accessor: 'policies',
-              canSort: false,
+              header: 'Policies',
+              accessorKey: 'policies',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.reviewer
           ? {
-              Header: 'Reviewer',
-              accessor: 'reviewer',
-              canSort: false,
+              header: 'Reviewer',
+              accessorKey: 'reviewer',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.queue
           ? {
-              Header: 'Queue',
-              accessor: 'queue',
-              canSort: true,
+              header: 'Queue',
+              accessorKey: 'queue',
+              enableSorting: true,
+              sortFn: stringSort,
             }
           : undefined,
       ]),
@@ -564,6 +584,8 @@ export default function ManualReviewRecentDecisions() {
         reviewer: getReviewerName(decisionData.reviewerId),
         queue: getQueueName(decisionData.queueId),
         decisionTime: decisionData.createdAt,
+        claimedAt: decisionData.assignedAt ?? null,
+        jobCreatedAt: decisionData.jobCreatedAt ?? null,
         originalDecisionData: decisionData,
         decisionReason: decisionData.decisionReason,
       };
@@ -615,6 +637,15 @@ export default function ManualReviewRecentDecisions() {
                 )}
               </div>
             ),
+            claimedAt: value.claimedAt ? (
+              <div>
+                {parseDatetimeToReadableStringInCurrentTimeZone(
+                  new Date(value.claimedAt),
+                )}
+              </div>
+            ) : (
+              <div className="text-slate-400">—</div>
+            ),
             decisionReason: value.decisionReason ? (
               <Tooltip title={value.decisionReason}>
                 <div className="max-w-xs truncate">
@@ -647,7 +678,7 @@ export default function ManualReviewRecentDecisions() {
 
   const refreshButton = (
     <Button
-      icon={<RedoOutlined className="self-center" />}
+      icon={<RotateCw className="w-4 h-4 self-center" />}
       className="!inline-flex"
       onClick={async () =>
         getRecentDecisions({
@@ -698,20 +729,23 @@ export default function ManualReviewRecentDecisions() {
             createdAt: parseDatetimeToReadableStringInUTC(
               new Date(decision.createdAt),
             ),
+            assignedAt: decision.assignedAt
+              ? parseDatetimeToReadableStringInUTC(
+                  new Date(decision.assignedAt),
+                )
+              : '',
+            jobCreatedAt: decision.jobCreatedAt
+              ? parseDatetimeToReadableStringInUTC(
+                  new Date(decision.jobCreatedAt),
+                )
+              : '',
+            ...getDecisionTimingFields(decision),
             policies,
             decisionReason: decision.decisionReason ?? '',
           };
         });
         // Define the CSV headers
-        const headers = [
-          'Decisions',
-          'Policies',
-          'Reviewer',
-          'Queue',
-          'Decision Time',
-          'Decision Reason',
-          'Link',
-        ];
+        const headers = [...RECENT_DECISIONS_CSV_HEADERS];
 
         // Map the data to CSV rows
         const rows = allDecisionsCsv.map((item) => [
@@ -719,7 +753,11 @@ export default function ManualReviewRecentDecisions() {
           JSON.stringify(item.policies), // Convert array/object to JSON string if necessary
           item.reviewer,
           item.queue,
+          item.jobCreatedAt,
+          item.assignedAt,
           item.createdAt,
+          item.waitTimeSeconds,
+          item.handleTimeSeconds,
           item.decisionReason,
           `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
         ]);
@@ -1013,13 +1051,13 @@ export default function ManualReviewRecentDecisions() {
           <div className={selectedDecision ? undefined : 'w-full min-w-0'}>
             <Table
               columns={columns}
-              // @ts-ignore
               data={tableData}
               alwaysShowScrollbar
               containerClassName={selectedDecision ? undefined : 'w-full'}
               onSelectRow={(rowData) =>
                 setSelectedDecision(
-                  rowData.original.values.originalDecisionData,
+                  rowData.original.values
+                    .originalDecisionData as GQLManualReviewDecision,
                 )
               }
               topLeftComponent={selectedDecision ? null : tableControls}
@@ -1028,7 +1066,10 @@ export default function ManualReviewRecentDecisions() {
               collapsedColumnTitle="Decisions"
               renderCollapsedCell={(row) => {
                 const values = row.original.values as {
-                  decisionColorNamePairs: { name: string; colors: string }[];
+                  decisionColorNamePairs: {
+                    name: string;
+                    colorVariant: BadgeColorVariant;
+                  }[];
                   reviewerId: string;
                   createdAt: string | Date;
                 };
@@ -1037,13 +1078,13 @@ export default function ManualReviewRecentDecisions() {
                   <div className="flex flex-col gap-0.5">
                     <div className="flex flex-wrap gap-1">
                       {values.decisionColorNamePairs.map(
-                        ({ name, colors }, index) => (
-                          <div
+                        ({ name, colorVariant }, index) => (
+                          <CoopBadge
                             key={index}
-                            className={`flex px-2 py-0.5 rounded font-medium text-xs ${colors}`}
-                          >
-                            {name}
-                          </div>
+                            colorVariant={colorVariant}
+                            label={name}
+                            shapeVariant="pill"
+                          />
                         ),
                       )}
                     </div>
@@ -1063,12 +1104,12 @@ export default function ManualReviewRecentDecisions() {
             {decidedJobLoading || selectedDecision ? null : (
               <div className="flex justify-between w-full mb-10">
                 <ChevronLeft
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="font-bold cursor-pointer w-7 text-slate-500"
                   onClick={() => handlePrevious()}
                 />
                 <span>Page {page + 1}</span>
                 <ChevronRight
-                  className="font-bold cursor-pointer w-7 fill-slate-500"
+                  className="font-bold cursor-pointer w-7 text-slate-500"
                   onClick={() => handleNext()}
                 />
               </div>

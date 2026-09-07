@@ -5,6 +5,7 @@ import { type Kysely } from 'kysely';
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import {
+  makeBadRequestError,
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
@@ -12,6 +13,7 @@ import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWit
 import { asyncRandomBytes } from '../../utils/misc.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
+import { MIN_PASSWORD_LENGTH } from './constants.js';
 import type { MrtChartConfig } from './dbTypes.js';
 import type { UserManagementPg } from './index.js';
 import {
@@ -472,6 +474,13 @@ class UserManagementService {
     // NB: Tokens expire one hour after creation
     if (Date.now() - new Date(fetchedToken.created_at).getTime() > HOUR_MS) {
       return;
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      throw makeBadRequestError(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+        { shouldErrorSpan: false, pointer: '/input/newPassword' },
+      );
     }
 
     const hashedPassword = await hashPassword(newPassword);

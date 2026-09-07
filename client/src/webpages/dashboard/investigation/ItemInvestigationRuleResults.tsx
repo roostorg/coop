@@ -4,7 +4,6 @@ import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Row } from 'react-table';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopBadge from '../components/CoopBadge';
@@ -20,7 +19,7 @@ import {
   ruleStatusSort,
   stringSort,
 } from '../components/table/sort';
-import Table from '../components/table/Table';
+import Table, { TableRow } from '../components/table/Table';
 
 import {
   GQLConditionOutcome,
@@ -85,76 +84,88 @@ export default function ItemInvestigationRuleResults(props: {
   const columns = useMemo(
     () => [
       {
-        Header: 'Rule',
-        accessor: 'rule',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'rule',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Rule',
+        accessorKey: 'rule',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'rule',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Result',
-        accessor: 'result',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'result',
-          }),
-        filter: 'includes',
-        sortType: conditionOutcomeSort,
+        header: 'Result',
+        accessorKey: 'result',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'result',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: conditionOutcomeSort,
       },
       {
-        Header: 'Status',
-        accessor: 'status',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'status',
-          }),
-        filter: 'includes',
-        sortType: ruleStatusSort,
+        header: 'Status',
+        accessorKey: 'status',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'status',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: ruleStatusSort,
       },
       {
-        Header: 'Policies',
-        accessor: 'policies',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'policies',
-          }),
-        filter: 'includes',
-        canSort: false,
+        header: 'Policies',
+        accessorKey: 'policies',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'policies',
+            }),
+        },
+        filterFn: 'includes' as const,
+        enableSorting: false,
       },
       {
-        Header: 'Tags',
-        accessor: 'tags',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'tags',
-          }),
-        filter: 'includes',
-        canSort: false,
+        header: 'Tags',
+        accessorKey: 'tags',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'tags',
+            }),
+        },
+        filterFn: 'includes' as const,
+        enableSorting: false,
       },
       {
-        Header: 'Actions',
-        accessor: 'actions',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'actions',
-            placeholder: 'Filter by action',
-          }),
-        filter: 'includes',
-        sortType: stringSort,
+        header: 'Actions',
+        accessorKey: 'actions',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'actions',
+              placeholder: 'Filter by action',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: stringSort,
       },
       {
-        Header: '',
-        accessor: 'edit',
-        canSort: false,
+        header: '',
+        accessorKey: 'edit',
+        enableSorting: false,
       },
     ],
     [],
@@ -227,6 +238,7 @@ export default function ItemInvestigationRuleResults(props: {
             </div>
           ),
           ruleExecutionResult: ruleResult.result,
+          values: ruleResult,
         };
       }),
     [ruleExecutionsHistory, navigate, rules],
@@ -273,7 +285,7 @@ export default function ItemInvestigationRuleResults(props: {
     </CoopModal>
   );
 
-  const onSelectRow = (rowData: Row<any>) => {
+  const onSelectRow = (rowData: TableRow<(typeof tableData)[number]>) => {
     const executionResult = ruleExecutionsHistory[rowData.index];
     if (executionResult == null) {
       return;

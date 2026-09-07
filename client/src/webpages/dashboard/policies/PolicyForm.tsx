@@ -1,13 +1,17 @@
 import { Button } from '@/coop-ui/Button';
-import { Loading } from '@/coop-ui/Button.stories';
-import { CheckmarkFilled, PlusFilled, TrashCanFilled } from '@/icons';
 import { treeFromList } from '@/utils/tree';
 import { Input } from 'antd';
+import {
+  Check as CheckmarkFilled,
+  Plus as PlusFilled,
+  Trash2 as TrashCanFilled,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import CoopModal from '../components/CoopModal';
+import ComponentLoading from '@/components/common/ComponentLoading';
 
 import {
   GQLUserPenaltySeverity,
@@ -101,7 +105,7 @@ export default function PolicyForm() {
   }, [data, existingPolicyId, parentPolicyId]);
 
   if ((existingPolicyId || parentPolicyId) && loading) {
-    return <Loading />;
+    return <ComponentLoading />;
   }
 
   const policyTree = treeFromList<Policy>(
@@ -217,7 +221,7 @@ export default function PolicyForm() {
         <div className="flex flex-row items-center">
           {existingPolicy && (
             <div
-              className="flex flex-row pr-4 text-red-800 cursor-pointer fill-red-800"
+              className="flex flex-row pr-4 text-red-800 cursor-pointer"
               onClick={() => {
                 setPolicyName(existingPolicy.name);
                 setEnforcementGuidelines(

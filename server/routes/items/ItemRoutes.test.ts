@@ -16,7 +16,7 @@ describe('POST Items', () => {
 
     const contentType = await ModerationConfigService.createContentType(orgId, {
       name: 'test',
-      description: faker.datatype.string(),
+      description: faker.string.sample(),
       schema: [
         {
           name: 'name',

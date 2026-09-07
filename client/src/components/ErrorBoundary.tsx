@@ -15,7 +15,7 @@ const withNavigate =
 // This is used twice so it has to be extracted into an interface
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children: React.ReactElement;
   buttonTitle?: string;
   buttonLinkPath?: string;
   FallbackComponent?: React.ComponentType<{

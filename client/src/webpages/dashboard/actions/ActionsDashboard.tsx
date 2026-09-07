@@ -1,5 +1,5 @@
-import { PlayCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
+import { PlayCircle } from 'lucide-react';
 import { MouseEvent, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -153,53 +153,61 @@ export default function ActionsDashboard() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Name',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Description',
-        accessor: 'description',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'description',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Description',
+        accessorKey: 'description',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'description',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Penalty',
-        accessor: 'penalty',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'penalty',
-          }),
-        filter: 'includes',
-        sortType: userPenaltySeveritySort,
+        header: 'Penalty',
+        accessorKey: 'penalty',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'penalty',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: userPenaltySeveritySort,
       },
       {
-        Header: 'ID',
-        accessor: 'id',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'id',
-          }),
-        filter: 'text',
-        canSort: false,
+        header: 'ID',
+        accessorKey: 'id',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'id',
+            }),
+        },
+        filterFn: 'text' as const,
+        enableSorting: false,
       },
       {
-        Header: '',
-        accessor: 'mutations', // accessor is the "key" in the data
-        canSort: false,
+        header: '',
+        accessorKey: 'mutations', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],
@@ -302,7 +310,7 @@ export default function ActionsDashboard() {
       buttonLinkPath="form"
       buttonTitle="Create Actions"
       dashboardName="Actions"
-      icon={<PlayCircleOutlined />}
+      icon={<PlayCircle className="w-24 h-24" />}
       buttonDisabled={!canEditActions}
     />
   );

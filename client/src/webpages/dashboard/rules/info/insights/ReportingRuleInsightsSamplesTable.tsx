@@ -1,17 +1,12 @@
-import {
-  DatabaseOutlined,
-  DownloadOutlined,
-  LinkOutlined,
-} from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import omit from 'lodash/omit';
 import uniq from 'lodash/uniq';
+import { Database, Download, Link as LucideLink } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
 import { Link } from 'react-router-dom';
-import { Row } from 'react-table';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../../components/common/CopyTextComponent';
@@ -23,7 +18,7 @@ import {
   SelectColumnFilter,
 } from '../../../components/table/filters';
 import { ruleStatusSort, stringSort } from '../../../components/table/sort';
-import Table from '../../../components/table/Table';
+import Table, { TableRow } from '../../../components/table/Table';
 
 import {
   GQLFieldType,
@@ -235,17 +230,19 @@ export default function ReportingRuleInsightsSamplesTable(props: {
     );
 
     return distinctSignalNames.map((signalName) => ({
-      Header: signalName,
-      accessor: signalName,
-      Filter: (props: ColumnProps) =>
-        NumberRangeColumnFilter({
-          columnProps: props,
-          accessor: signalName,
-          placeholder: '',
-        }),
-      filter: 'between',
+      header: signalName,
+      accessorKey: signalName,
+      meta: {
+        filter: (props: ColumnProps) =>
+          NumberRangeColumnFilter({
+            columnProps: props,
+            accessor: signalName,
+            placeholder: '',
+          }),
+      },
+      filterFn: 'range' as const,
       sortDescFirst: true,
-      sortType: stringSort,
+      sortFn: stringSort,
     }));
   }, [allSignals, samples]);
 
@@ -289,65 +286,71 @@ export default function ReportingRuleInsightsSamplesTable(props: {
   const columns = useMemo(() => {
     return [
       {
-        Header: 'Timestamp',
-        accessor: 'time',
-        Filter: (props: ColumnProps) =>
-          DateRangeColumnFilter({
-            columnProps: props,
-            accessor: 'date',
-            placeholder: '',
-          }),
-        filter: 'dateRange',
+        header: 'Timestamp',
+        accessorKey: 'time',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DateRangeColumnFilter({
+              columnProps: props,
+              accessor: 'date',
+              placeholder: '',
+            }),
+        },
+        filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortType: stringSort,
+        sortFn: stringSort,
       },
       {
-        Header: 'Status',
-        accessor: 'status',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'status',
-            placeholder: 'Live',
-          }),
-        filter: 'includes',
-        sortType: ruleStatusSort,
+        header: 'Status',
+        accessorKey: 'status',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'status',
+              placeholder: 'Live',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: ruleStatusSort,
       },
       {
-        Header: 'Item',
-        accessor: 'item',
-        canSort: false,
+        header: 'Item',
+        accessorKey: 'item',
+        enableSorting: false,
       },
       {
-        Header: 'Item Type',
-        accessor: 'itemTypeName',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'itemTypeName',
-          }),
-        filter: 'includes',
-        sortType: stringSort,
+        header: 'Item Type',
+        accessorKey: 'itemTypeName',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'itemTypeName',
+            }),
+        },
+        filterFn: 'includes' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'ID',
-        accessor: 'id', // accessor is the "key" in the data
-        canSort: false,
+        header: 'ID',
+        accessorKey: 'id', // accessor is the "key" in the data
+        enableSorting: false,
       },
       {
-        Header: 'Creator ID',
-        accessor: 'creatorId',
-        canSort: false,
+        header: 'Creator ID',
+        accessorKey: 'creatorId',
+        enableSorting: false,
       },
       ...extraColumns,
     ];
   }, [extraColumns]);
   const tableData = useMemo(
     () =>
-      (dataValues ?? []).map((values) => {
+      (dataValues ?? []).flatMap((values) => {
         const parsedItem = JSON.parse(values.itemData);
         if (itemTypeFields == null) {
-          return <ComponentLoading key={values.id} />;
+          return [];
         }
         const fields = itemTypeFields[values.itemTypeName];
         if (!fields || fields.length === 0) {
@@ -384,7 +387,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
                       <span className="mr-1 text-blue-500 cursor-pointer">
                         See Image
                       </span>
-                      <LinkOutlined />
+                      <LucideLink className="w-4 h-4" />
                     </a>
                   ) : (
                     val
@@ -394,56 +397,60 @@ export default function ReportingRuleInsightsSamplesTable(props: {
             }),
         );
 
-        return {
-          id: (
-            <CopyTextComponent
-              value={values.id}
-              displayValue={<div className="flex min-w-24">{values.id}</div>}
-            />
-          ),
-          itemTypeName: <RoundedTag title={values.itemTypeName} />,
-          creatorId: (
-            <Link
-              to={`/dashboard/manual_review/investigation?id=${values.creatorId}&typeId=${values.creatorTypeId}`}
-              onClick={(event) => event.stopPropagation()}
-              target="_blank"
-            >
-              {values.creatorId}
-            </Link>
-          ),
-          item: (
-            <CopyTextComponent
-              value={formattedItem.filter((it) => it.length > 0).join('\n')}
-              displayValue={
-                <div className="flex flex-col items-start">{item}</div>
-              }
-              footerItems={videoUrls.map((videoUrl) => (
-                <RuleInsightsSamplesPlayVideoButton
-                  key={videoUrl}
-                  onClick={() => {
-                    setVideoPlayerUrl(videoUrl);
-                  }}
-                />
-              ))}
-            />
-          ),
-          time: <div className="flex min-w-[180px]">{values.time}</div>,
-          status: (
-            <div className="flex items-center">
-              <RoundedTag
-                title={capitalize(values.status)}
-                status={values.status}
+        return [
+          {
+            id: (
+              <CopyTextComponent
+                value={values.id}
+                displayValue={<div className="flex min-w-24">{values.id}</div>}
               />
-            </div>
-          ),
-          values,
-          ...Object.fromEntries(
-            extraColumns.map((it) => [
-              it.accessor,
-              (values as { [key: string]: any })[it.accessor],
-            ]),
-          ),
-        };
+            ),
+            itemTypeName: <RoundedTag title={values.itemTypeName} />,
+            creatorId: (
+              <Link
+                to={`/dashboard/manual_review/investigation?id=${values.creatorId}&typeId=${values.creatorTypeId}`}
+                onClick={(event) => event.stopPropagation()}
+                target="_blank"
+              >
+                {values.creatorId}
+              </Link>
+            ),
+            item: (
+              <CopyTextComponent
+                value={formattedItem.filter((it) => it.length > 0).join('\n')}
+                displayValue={
+                  <div className="flex flex-col items-start">{item}</div>
+                }
+                footerItems={videoUrls.map((videoUrl) => (
+                  <RuleInsightsSamplesPlayVideoButton
+                    key={videoUrl}
+                    onClick={() => {
+                      setVideoPlayerUrl(videoUrl);
+                    }}
+                  />
+                ))}
+              />
+            ),
+            time: <div className="flex min-w-[180px]">{values.time}</div>,
+            status: (
+              <div className="flex items-center">
+                <RoundedTag
+                  title={capitalize(values.status)}
+                  status={values.status}
+                />
+              </div>
+            ),
+            values,
+            ...Object.fromEntries(
+              extraColumns.map((it) => [
+                it.accessorKey,
+                Object.entries(values).find(
+                  ([key]) => key === it.accessorKey,
+                )?.[1],
+              ]),
+            ),
+          },
+        ];
       }),
     [dataValues, itemTypeFields, extraColumns],
   );
@@ -452,12 +459,12 @@ export default function ReportingRuleInsightsSamplesTable(props: {
     throw error ?? priorRuleVersionError ?? signalsError!;
   }
 
-  const onSelectRow = (row: Row<any>) => {
+  const onSelectRow = (row: TableRow<(typeof tableData)[number]>) => {
     dataValues.length > 0 &&
       setDetailViewData({
         visible: true,
         item: (() => {
-          const rowData = dataValues[row.index];
+          const rowData = row.original.values;
           return {
             identifier: { id: rowData.id, typeId: rowData.itemTypeId },
             date: rowData.time,
@@ -482,7 +489,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
 
   const noSamples = (
     <RuleInsightsEmptyCard
-      icon={<DatabaseOutlined />}
+      icon={<Database className="w-4 h-4" />}
       title="No Samples"
       subtitle="Your report rule has not matched any reports yet. As soon as it does, you'll see a sample of those reports here."
     />
@@ -519,9 +526,7 @@ export default function ReportingRuleInsightsSamplesTable(props: {
               enclosingCharacter={`"`}
               target="_blank"
             >
-              <DownloadOutlined
-                style={{ color: '#1890ff', paddingRight: '8px' }}
-              />
+              <Download className="w-4 h-4 text-[#1890ff] pr-2" />
               Download CSV
             </CSVLink>
           ) : null}
@@ -535,7 +540,6 @@ export default function ReportingRuleInsightsSamplesTable(props: {
         <div className="flex w-full">
           <div className="w-full rounded-[5px] border-solid border-0 border-b border-[#f0f0f0] max-h-[1500px] overflow-scroll scrollbar-hide">
             <Table
-              // @ts-ignore
               columns={columns}
               data={tableData}
               onSelectRow={onSelectRow}

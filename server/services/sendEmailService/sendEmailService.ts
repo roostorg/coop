@@ -52,11 +52,13 @@ export function makeSendEmailViaSES(client: SESClient) {
 
     try {
       await client.send(command);
+      return true;
     } catch (error) {
       if (error instanceof Error) {
         // eslint-disable-next-line no-console
         console.error('Failed to send email:', error.message);
       }
+      return false;
     }
   };
 }
@@ -66,25 +68,48 @@ export function makeSendEmailViaSendGrid(apiKey: string) {
   return async (msg: Message) => {
     try {
       await sgMail.send(msg);
+      return true;
     } catch (error) {
       if (error instanceof Error) {
         // eslint-disable-next-line no-console
         console.error('Failed to send email:', error.message);
       }
+      return false;
     }
   };
 }
 
+export function makeSendEmailViaConsole() {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error(
+      'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
+    );
+  }
+
+  return async (msg: Message) => {
+    // This transport is explicitly enabled for local testing and may include
+    // recipient information and rendered notification content.
+    // eslint-disable-next-line no-console
+    console.log('Email sent via console transport:', msg);
+    return true;
+  };
+}
+
 const makeSendEmail = (clientOrContainer?: SESClient | unknown) => {
+  if (isSESClient(clientOrContainer)) {
+    return makeSendEmailViaSES(clientOrContainer);
+  }
+
+  if (process.env.EMAIL_TRANSPORT === 'console') {
+    return makeSendEmailViaConsole();
+  }
+
   const sendGridApiKey = process.env.SENDGRID_API_KEY;
   if (sendGridApiKey) {
     return makeSendEmailViaSendGrid(sendGridApiKey);
   }
 
-  const sesClient = isSESClient(clientOrContainer)
-    ? clientOrContainer
-    : new SESClient({});
-  return makeSendEmailViaSES(sesClient);
+  return makeSendEmailViaSES(new SESClient({}));
 };
 
 export default makeSendEmail;

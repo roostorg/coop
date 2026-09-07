@@ -2,6 +2,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from '@/coop-ui/Dialog';
 import {
@@ -75,10 +76,10 @@ export default function PermissionsMatrixModal(props: {
             </DialogClose>
           </div>
           <div className="px-6 pb-6 max-h-[70vh] overflow-y-auto">
-            <div className="text-sm text-gray-600 mb-4">
+            <DialogDescription className="p-0 overflow-visible text-sm text-gray-600 dark:text-gray-600 mb-4">
               Overview of which permissions are granted to each role. Changes to
               role permissions affect all users with that role.
-            </div>
+            </DialogDescription>
 
             {loading && (
               <div className="text-sm text-gray-500">Loading permissions…</div>

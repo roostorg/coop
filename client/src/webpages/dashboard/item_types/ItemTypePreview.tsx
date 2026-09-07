@@ -52,29 +52,31 @@ function ItemTypeTooltipContent(props: {
 
   return (
     <table className="mx-2 text-sm">
-      <tr className="h-2" />
-      <tr>
-        <td>
-          <div className="mr-2 text-gray-500">Name</div>
-        </td>
-        <td>
-          <div className={`${value ? 'text-black' : 'text-slate-300'}`}>
-            {value ?? 'No field assigned'}
-          </div>
-        </td>
-      </tr>
-      <tr className="h-2" />
-      <tr>
-        <td>
-          <div className="mr-2 text-gray-500">Role</div>
-        </td>
-        <td>
-          <div className="text-black">
-            {getDisplayStringForRole(role, kind)}
-          </div>
-        </td>
-      </tr>
-      <tr className="h-2" />
+      <tbody>
+        <tr className="h-2" />
+        <tr>
+          <td>
+            <div className="mr-2 text-gray-500">Name</div>
+          </td>
+          <td>
+            <div className={`${value ? 'text-black' : 'text-slate-300'}`}>
+              {value ?? 'No field assigned'}
+            </div>
+          </td>
+        </tr>
+        <tr className="h-2" />
+        <tr>
+          <td>
+            <div className="mr-2 text-gray-500">Role</div>
+          </td>
+          <td>
+            <div className="text-black">
+              {getDisplayStringForRole(role, kind)}
+            </div>
+          </td>
+        </tr>
+        <tr className="h-2" />
+      </tbody>
     </table>
   );
 }

@@ -216,3 +216,18 @@ body {
 .scrollbar-show::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/*
+ * Tailwind Preflight sets `svg { display: block }`. Inside antd Buttons the
+ * icon is a direct child — block display pushes the text label onto its own
+ * line. Override to inline-block so icon + label sit on the same line.
+ * TODO: remove once antd Button is fully replaced with coop-ui components.
+ */
+.ant-btn > svg.lucide {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.ant-btn > svg.lucide + span {
+  margin-inline-start: 8px;
+}

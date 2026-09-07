@@ -1,5 +1,5 @@
-import { GlobalOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
+import { Globe } from 'lucide-react';
 import { MouseEvent, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -107,31 +107,35 @@ export default function LocationBanksDashboard() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Name',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Description',
-        accessor: 'description',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'description',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Description',
+        accessorKey: 'description',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'description',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: '',
-        accessor: 'mutations', // accessor is the "key" in the data
-        canSort: false,
+        header: '',
+        accessorKey: 'mutations', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],
@@ -216,7 +220,7 @@ export default function LocationBanksDashboard() {
       buttonLinkPath="form/location"
       buttonTitle="Create Location Banks"
       dashboardName="Location Banks"
-      icon={<GlobalOutlined />}
+      icon={<Globe className="w-24 h-24" />}
       buttonDisabled={!canEditLocationBanks}
     />
   );

@@ -111,5 +111,31 @@ describe('RuleHistory Service', () => {
         },
       ]);
     });
+
+    test('startDate filter does not drop a newer rule when an older rule follows it in the list', async () => {
+      const mockGetRawHistory = async () => [
+        {
+          id: 'new-rule',
+          name: 'Anomaly test',
+          statusIfUnexpired: RuleStatus.LIVE,
+          exactVersion: '2026-08-22 21:59:40.059097+00',
+        },
+        {
+          id: 'old-seed',
+          name: 'Seed',
+          statusIfUnexpired: RuleStatus.LIVE,
+          exactVersion: '2025-12-09 15:40:32.761966+00',
+        },
+      ];
+
+      const res = await getSimplifiedRuleHistory(
+        mockGetRawHistory,
+        ['name', 'statusIfUnexpired'],
+        undefined,
+        new Date('2026-08-15T00:00:00.000Z'),
+      );
+
+      expect(res.map((row) => row.id)).toEqual(['old-seed', 'new-rule']);
+    });
   });
 });

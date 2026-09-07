@@ -10,9 +10,11 @@ import CoopButton from '../dashboard/components/CoopButton';
 import {
   namedOperations,
   useGQLInviteUserTokenQuery,
+  useGQLPasswordRequirementsQuery,
   useGQLSignUpMutation,
 } from '../../graphql/generated';
 import LogoBlack from '../../images/LogoBlack.png';
+import { DEFAULT_MIN_PASSWORD_LENGTH } from '../../utils/password';
 
 gql`
   query InviteUserToken($token: String!) {
@@ -73,6 +75,11 @@ export default function SignUp() {
     variables: { token: token ?? '' },
     skip: !token,
   });
+
+  const { data: passwordRequirementsData } = useGQLPasswordRequirementsQuery();
+  const minPasswordLength =
+    passwordRequirementsData?.passwordRequirements.minLength ??
+    DEFAULT_MIN_PASSWORD_LENGTH;
 
   const [signUp, { loading: signUpLoading }] = useGQLSignUpMutation({
     refetchQueries: [namedOperations.Query.LoggedInUserForRoute],
@@ -135,8 +142,10 @@ export default function SignUp() {
       });
     } else {
       // Password-based signup
-      if (!password || password.length < 8) {
-        setErrorMessage('Password must be at least 8 characters long.');
+      if (!password || password.length < minPasswordLength) {
+        setErrorMessage(
+          `Password must be at least ${minPasswordLength} characters long.`,
+        );
         return;
       }
 
@@ -246,7 +255,7 @@ export default function SignUp() {
                 Password
               </label>
               <Input.Password
-                placeholder="Password (min 8 characters)"
+                placeholder={`Password (min ${minPasswordLength} characters)`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 size="large"
@@ -262,7 +271,8 @@ export default function SignUp() {
               disabled={
                 !firstName ||
                 !lastName ||
-                (!tokenInfo.samlEnabled && (!password || password.length < 8))
+                (!tokenInfo.samlEnabled &&
+                  (!password || password.length < minPasswordLength))
               }
               size="large"
             />

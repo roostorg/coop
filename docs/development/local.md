@@ -47,7 +47,11 @@ Redis connection settings, external API keys for integrations, session secrets, 
 
 ### `client/.env`
 
-Settings for Vite, content proxying, and generating sourcemaps.
+Settings for Vite and generating sourcemaps.
+
+The content URL pattern (`VITE_CONTENT_URL_PATTERN`) determines which content URLs (if any) are rendered in an iframe versus just as links in review jobs. Domains in this list (e.g. `example.com`) match exact domains and subdomains, while substrings (e.g. `foo`) are substring-matched against content URL hostnames for backward compatibility.
+
+The content proxy URL (`VITE_CONTENT_PROXY_URL`) is optional and unset by default; without it, content matching the content URL pattern is loaded directly in an iframe. Implementing a content proxy enables you to implement wellness features that can't be applied to an iframe otherwise.
 
 ## Docker services
 
@@ -159,6 +163,16 @@ npm run runWorkerOrJob ItemProcessingWorker
 ```
 
 Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in `server/iocContainer/services/workersAndJobs.ts`.
+
+To preview emails locally without configuring SES or SendGrid, add the
+following to `server/.env`. The recipient, subject, and rendered content will
+be printed in the server terminal. This transport requires
+`NODE_ENV=development` and must not be enabled in a shared environment because
+messages can contain user information:
+
+```sh
+EMAIL_TRANSPORT=console
+```
 
 ### With distributed tracing
 

@@ -37,8 +37,8 @@ export default function ManualReviewJobContentView(props: {
   allItemTypes: readonly GQLItemType[];
   onEnqueueActions: (action: ManualReviewJobEnqueuedActionData[]) => void;
   unblurAllMedia: boolean;
-  parentRef: React.RefObject<HTMLDivElement>;
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  parentRef: React.RefObject<HTMLDivElement | null>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   requirePolicySelectionToEnqueueAction: boolean;
   allowMoreThanOnePolicySelection: boolean;
   orgId: string;

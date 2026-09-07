@@ -3,5 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "main": "index.js",
+  "type": "commonjs",
   "description": "Local ESLint rules. Stub package.json exists so Dependabot can resolve the file: dependency in client/package.json (see dependabot/dependabot-core#5100)."
 }

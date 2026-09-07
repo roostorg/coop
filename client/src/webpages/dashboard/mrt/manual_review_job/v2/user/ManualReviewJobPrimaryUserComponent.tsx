@@ -1,8 +1,7 @@
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import ItemActionHistory from '@/webpages/dashboard/items/ItemActionHistory';
-import { WarningFilled } from '@ant-design/icons';
 import { ItemIdentifier } from '@roostorg/coop-types';
+import { AlertTriangle, User as UserAlt4 } from 'lucide-react';
 import { useState } from 'react';
 
 import CoopModal from '../../../../components/CoopModal';
@@ -37,7 +36,7 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
   >[];
   allPolicies: readonly { id: string; name: string }[];
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
   isReported?: boolean;
   isActionable?: boolean;
@@ -170,12 +169,14 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
             imageUrl={profilePicUrl?.url}
             magnifiedUrls={backgroundImageUrl ? [backgroundImageUrl.url] : []}
             label={displayName}
-            fallbackComponent={<UserAlt4 className="p-3 fill-slate-500 w-11" />}
+            fallbackComponent={
+              <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+            }
           />
           {isReported ? (
             <div className="flex px-2 py-1 text-xs font-medium text-white rounded gap-1 bg-coop-alert-red h-fit">
               Reported
-              <WarningFilled className="flex items-center justify-center" />
+              <AlertTriangle className="w-4 h-4" />
             </div>
           ) : null}
         </div>

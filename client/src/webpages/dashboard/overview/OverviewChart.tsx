@@ -17,13 +17,8 @@ import sortBy from 'lodash/sortBy';
 import sum from 'lodash/sum';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type SVGProps,
-} from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   CartesianGrid,
@@ -75,7 +70,7 @@ type CountPerMetricPerTimeUnit = {
 
 export default function OverviewChart(props: {
   title: string;
-  icon: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+  icon: LucideIcon;
   iconColor: 'text-teal-300' | 'text-orange-400' | 'text-amber-400';
   metric: 'Decisions' | 'Actions';
   timeDivision: TimeDivisionOptions;

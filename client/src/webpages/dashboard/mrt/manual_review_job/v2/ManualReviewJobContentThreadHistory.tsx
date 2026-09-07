@@ -66,8 +66,8 @@ export default function ManualReviewJobContentThreadHistory(props: {
   allItemTypes: readonly GQLItemType[];
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
-  parentRef: React.RefObject<HTMLDivElement>;
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  parentRef: React.RefObject<HTMLDivElement | null>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   unblurAllMedia: boolean;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;

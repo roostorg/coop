@@ -235,8 +235,6 @@ function getDisplayStringForDerivationType(derivationType: DerivedFieldType) {
   switch (derivationType) {
     case 'VIDEO_TRANSCRIPTION':
       return 'Transcription';
-    case 'ENGLISH_TRANSLATION':
-      return 'English Translation';
     default:
       assertUnreachable(derivationType);
   }

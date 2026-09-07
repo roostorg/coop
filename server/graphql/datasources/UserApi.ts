@@ -7,6 +7,7 @@ import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   deleteSessionsForUser,
   hashPassword,
+  MIN_PASSWORD_LENGTH,
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
 import {
@@ -146,6 +147,14 @@ class UserAPI {
         { shouldErrorSpan: true },
       );
 
+    // `password != null` keeps SAML / invite-only signups (which carry no
+    // password) working — the length check only applies when one is set.
+    if (password != null && password.length < MIN_PASSWORD_LENGTH)
+      throw makeBadRequestError(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+        { shouldErrorSpan: true, pointer: '/input/password' },
+      );
+
     const existingUser = await kyselyUserFindByEmail(this.kyselyPg, email);
     if (existingUser != null) {
       throw makeSignUpUserExistsError({ shouldErrorSpan: true });
@@ -264,6 +273,12 @@ class UserAPI {
         shouldErrorSpan: true,
       });
     }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH)
+      throw makeBadRequestError(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+        { shouldErrorSpan: true, pointer: '/input/newPassword' },
+      );
 
     const hashedNewPassword = await hashPassword(newPassword);
     // Update the password and invalidate the user's other sessions atomically:

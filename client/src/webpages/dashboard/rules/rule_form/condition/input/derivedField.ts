@@ -17,7 +17,6 @@ export function getDerivedFieldOutputType(
   derivationType: GQLDerivedFieldDerivationType,
 ) {
   switch (derivationType) {
-    case 'ENGLISH_TRANSLATION':
     case 'VIDEO_TRANSCRIPTION':
       return GQLScalarType.String;
   }

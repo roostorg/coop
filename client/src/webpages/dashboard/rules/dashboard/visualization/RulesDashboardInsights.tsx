@@ -1,14 +1,7 @@
 import './recharts.css';
 
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
-import { InvestmentFilled, PieChartAltFilled } from '@/icons';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
-import {
-  BarChartOutlined,
-  DownOutlined,
-  LineChartOutlined,
-  PieChartOutlined,
-} from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { format } from 'date-fns';
 import capitalize from 'lodash/capitalize';
@@ -26,7 +19,14 @@ import sum from 'lodash/sum';
 import sumBy from 'lodash/sumBy';
 import union from 'lodash/union';
 import without from 'lodash/without';
-import { TriangleAlert } from 'lucide-react';
+import {
+  BarChart3,
+  ChevronDown,
+  TrendingUp as InvestmentFilled,
+  LineChart,
+  PieChart as PieChartIcon,
+  TriangleAlert,
+} from 'lucide-react';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Area,
@@ -60,6 +60,8 @@ import RuleInsightsEmptyCard from '../../info/insights/RuleInsightsEmptyCard';
 import { chartColors, PRIMARY_COLOR } from './chartColors';
 import { rollUpPolicyCounts } from './insightsUtils';
 import RulesDashboardInsightsStats from './RulesDashboardInsightsStats';
+
+const PieChartAltFilled = PieChartIcon;
 
 export type TimeWindow = {
   start: Date;
@@ -826,7 +828,7 @@ export default function RulesDashboardInsights() {
         {groupByOption !== InsightsGroupByOption.NONE
           ? `: ${capitalize(groupByOption.toLowerCase())}`
           : null}
-        <DownOutlined className="text-[10px]" />
+        <ChevronDown className="w-3 h-3" />
       </div>
       {groupByMenuVisible && (
         <div className="flex flex-col bg-white absolute border border-solid border-[#d4d4d8] rounded-lg shadow mt-1 p-2 min-w-[240px] z-10">
@@ -874,9 +876,9 @@ export default function RulesDashboardInsights() {
 
   const chartSelection = (
     <div className="flex items-center justify-center">
-      {chartTypeButton(ChartType.LINE, <LineChartOutlined />)}
-      {chartTypeButton(ChartType.BAR, <BarChartOutlined />)}
-      {chartTypeButton(ChartType.PIE, <PieChartOutlined />)}
+      {chartTypeButton(ChartType.LINE, <LineChart className="w-4 h-4" />)}
+      {chartTypeButton(ChartType.BAR, <BarChart3 className="w-4 h-4" />)}
+      {chartTypeButton(ChartType.PIE, <PieChartIcon className="w-4 h-4" />)}
     </div>
   );
 
@@ -906,7 +908,7 @@ export default function RulesDashboardInsights() {
           <ComponentLoading />
         ) : totalActionedSubmissionsInLookback === 0 ? (
           <RuleInsightsEmptyCard
-            icon={<LineChartOutlined />}
+            icon={<LineChart className="w-4 h-4" />}
             title="No Actions"
             subtitle="Your rules have not executed any actions yet within this time window."
           />

@@ -35,7 +35,11 @@ import {
   type GQLUserManualReviewJobPayloadResolvers,
 } from '../generated.js';
 import { formatItemSubmissionForGQL } from '../types.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 
@@ -220,6 +224,7 @@ const typeDefs = /* GraphQL */ `
     item: UserItem!
     userScore: Int
     allMediaItems: [NcmecContentItem!]!
+    reportedMessages: [ItemIdentifier!]!
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo
   }
 
@@ -319,6 +324,10 @@ const typeDefs = /* GraphQL */ `
 
   type SubmitDecisionSuccessResponse {
     success: Boolean!
+    """
+    Non-blocking, reviewer-facing notices about the decision (e.g. an NCMEC escalation that was skipped because the user was already reported). Surfaced as toasts.
+    """
+    warnings: [String!]!
   }
 
   type JobHasAlreadyBeenSubmittedError implements Error {
@@ -746,6 +755,29 @@ const typeDefs = /* GraphQL */ `
     filterBy: TimeToActionFilterByInput!
   }
 
+  enum HandleTimeGroupByColumns {
+    QUEUE_ID
+    REVIEWER_ID
+  }
+
+  input HandleTimeFilterByInput {
+    startDate: DateTime!
+    endDate: DateTime!
+    queueIds: [String!]!
+    reviewerIds: [String!]!
+  }
+
+  type HandleTime {
+    handleTimeSeconds: Int
+    reviewerId: String
+    queueId: String
+  }
+
+  input HandleTimeInput {
+    groupBy: [HandleTimeGroupByColumns!]!
+    filterBy: HandleTimeFilterByInput!
+  }
+
   union ManualReviewChartSettings =
     | GetDecisionCountSettings
     | GetJobCreationCountSettings
@@ -833,6 +865,8 @@ const typeDefs = /* GraphQL */ `
     decisions: [ManualReviewDecisionComponent!]!
     relatedActions: [ManualReviewDecisionComponent!]!
     createdAt: DateTime!
+    assignedAt: DateTime
+    jobCreatedAt: DateTime
     decisionReason: String
   }
 
@@ -976,6 +1010,7 @@ const typeDefs = /* GraphQL */ `
       itemTypeId: ID!
     ): [ManualReviewExistingJob!]!
     getTimeToAction(input: TimeToActionInput!): [TimeToAction!]
+    getHandleTime(input: HandleTimeInput!): [HandleTime!]
     getResolvedJobsForUser(timeZone: String!): Int!
     getSkippedJobsForUser(timeZone: String!): Int!
   }
@@ -1630,6 +1665,12 @@ const ThreadAppealManualReviewJobPayload: GQLThreadAppealManualReviewJobPayloadR
   };
 
 const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
+  reportedMessages(it) {
+    return (it.reportedMessages ?? []).map((id) => ({
+      id: id.id,
+      typeId: id.typeId,
+    }));
+  },
   async item(it, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -1665,10 +1706,7 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
           typeSelector:
             ncmecContentItemSubmission.contentItem.itemTypeIdentifier,
         });
-        if (
-          type === undefined ||
-          (type.kind !== 'CONTENT' && type.kind !== 'USER')
-        ) {
+        if (type === undefined) {
           throw new Error(
             `No Content Item Type found for id: ${ncmecContentItemSubmission.contentItem.itemTypeIdentifier.id}`,
           );
@@ -2020,6 +2058,34 @@ const Query: GQLQueryResolvers = {
       queueId: it.queue_id,
     }));
   },
+  async getHandleTime(_: unknown, { input }, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    const startDate = new Date(input.filterBy.startDate);
+    const endDate = new Date(input.filterBy.endDate);
+    if (startDate.getTime() > endDate.getTime()) {
+      throw userInputError('startDate must not be after endDate');
+    }
+    const result = await context.services.ManualReviewToolService.getHandleTime(
+      {
+        groupBy: input.groupBy.map((it) => it.toLowerCase()),
+        filterBy: {
+          ...input.filterBy,
+          startDate,
+          endDate,
+        },
+        orgId: user.orgId,
+      },
+    );
+    return result.map((it) => ({
+      handleTimeSeconds:
+        it.handle_time != null ? Math.round(it.handle_time) : null,
+      queueId: 'queue_id' in it ? it.queue_id : null,
+      reviewerId: 'reviewer_id' in it ? it.reviewer_id : null,
+    }));
+  },
   async getTotalPendingJobsCount(_: unknown, __: unknown, context) {
     const user = context.getUser();
     if (user == null) {
@@ -2313,20 +2379,21 @@ const Mutation: GQLMutationResolvers = {
         policyId: report.policyId === null ? undefined : report.policyId,
       }));
 
-      await context.services.ManualReviewToolService.submitDecision({
-        reportHistory: [...reportHistoryNoNullFields],
-        queueId,
-        jobId,
-        lockToken,
-        decisionComponents: decisionPayloads,
-        relatedActions: [...relatedItemActions],
-        reviewerId: userId,
-        reviewerEmail: userEmail,
-        orgId,
-        decisionReason: decisionReason ?? undefined,
-      });
+      const { warnings } =
+        await context.services.ManualReviewToolService.submitDecision({
+          reportHistory: [...reportHistoryNoNullFields],
+          queueId,
+          jobId,
+          lockToken,
+          decisionComponents: decisionPayloads,
+          relatedActions: [...relatedItemActions],
+          reviewerId: userId,
+          reviewerEmail: userEmail,
+          orgId,
+          decisionReason: decisionReason ?? undefined,
+        });
       return gqlSuccessResult(
-        { success: true },
+        { success: true, warnings },
         'SubmitDecisionSuccessResponse',
       );
     } catch (e: unknown) {
@@ -2362,12 +2429,15 @@ const Mutation: GQLMutationResolvers = {
       clearReportsScope,
       clearReportsTriggerActionIds,
     } = params.input;
+
+    // createManualReviewQueue expects userIds to be unique so as to not violate the DB primary key for users_and_accessible_queues
+    const userIdsWithCurrentUser = Array.from(new Set([...userIds, user.id]));
     try {
       const queue =
         await context.services.ManualReviewToolService.createManualReviewQueue({
           description: description ?? null,
           name,
-          userIds: [...userIds, user.id],
+          userIds: userIdsWithCurrentUser,
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,

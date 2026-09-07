@@ -1,7 +1,7 @@
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import uniqBy from 'lodash/uniqBy';
+import { User as UserAlt4 } from 'lucide-react';
 import { useState } from 'react';
 import { ReadonlyDeep } from 'type-fest';
 
@@ -114,7 +114,7 @@ function ThreadMessageItem(props: {
                   : undefined
               }
               fallbackComponent={
-                <UserAlt4 className="p-3 fill-slate-500 w-11" />
+                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
               }
               itemIdentifier={{ id: message.id, typeId: message.type.id }}
             />
@@ -156,7 +156,7 @@ export default function ThreadInvestigation(props: {
   >[];
   allPolicies: readonly { id: string; name: string }[];
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;

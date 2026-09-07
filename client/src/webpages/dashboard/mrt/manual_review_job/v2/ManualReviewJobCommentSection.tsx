@@ -1,13 +1,13 @@
 import { safeFormatDistanceToNow } from '@/utils/time';
-import {
-  CommentOutlined,
-  DeleteOutlined,
-  DownOutlined,
-  SendOutlined,
-  UpOutlined,
-} from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
+import {
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Send,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
@@ -111,11 +111,14 @@ function ManualReviewJobComment(props: {
         </div>
       </div>
       {currentUserId === comment.author?.id && (
-        <Button
-          className="self-start w-6 h-6 text-red-600 border-none"
-          icon={<DeleteOutlined className="text-xs" />}
+        <button
+          type="button"
+          aria-label="Delete comment"
+          className="flex items-center justify-center flex-none w-6 h-6 p-0 bg-transparent border-none rounded cursor-pointer text-red-600 hover:bg-red-50"
           onClick={onDelete}
-        />
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       )}
     </div>
   );
@@ -248,7 +251,7 @@ export default function ManualReviewJobCommentSection(props: {
       />
       <Button
         className="bg-transparent border-none hover:bg-transparent text-coop-blue hover:text-coop-blue-hover"
-        icon={<SendOutlined />}
+        icon={<Send className="w-4 h-4" />}
         onClick={addCommentFunc}
       />
     </div>
@@ -276,7 +279,7 @@ export default function ManualReviewJobCommentSection(props: {
       onClick={() => setShowComments((prev) => !prev)}
     >
       <div className="flex flex-row items-center gap-3">
-        <CommentOutlined />
+        <MessageSquare className="w-4 h-4" />
         {`${comments?.length ?? 0} ${
           comments?.length === 1 ? 'Comment' : 'Comments'
         }`}
@@ -284,12 +287,12 @@ export default function ManualReviewJobCommentSection(props: {
       {showComments ? (
         <div className="flex flex-row items-center gap-2 text-coop-blue hover:text-coop-blue-hover">
           Hide
-          <UpOutlined />
+          <ChevronUp className="w-4 h-4" />
         </div>
       ) : (
         <div className="flex flex-row items-center gap-2 text-coop-blue hover:text-coop-blue-hover">
           <div>Show</div>
-          <DownOutlined />
+          <ChevronDown className="w-4 h-4" />
         </div>
       )}
     </div>

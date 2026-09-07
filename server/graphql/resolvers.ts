@@ -3,7 +3,10 @@ import { type GraphQLFieldResolver } from 'graphql';
 
 import { type GQLServices } from '../api.js';
 import { type DataSources } from '../iocContainer/index.js';
-import { UserPermission } from '../services/userManagementService/index.js';
+import {
+  MIN_PASSWORD_LENGTH,
+  UserPermission,
+} from '../services/userManagementService/index.js';
 import { CoopError, isCoopErrorOfType } from '../utils/errors.js';
 import { type GraphQLUserParent } from './datasources/userKyselyPersistence.js';
 import {
@@ -130,6 +133,9 @@ const Query: GQLQueryResolvers = {
       );
       return false;
     }
+  },
+  passwordRequirements() {
+    return { minLength: MIN_PASSWORD_LENGTH };
   },
 };
 

@@ -98,7 +98,7 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
   setRelatedUser: (user: RelatedItem) => void;
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;
   allowMoreThanOnePolicySelection: boolean;

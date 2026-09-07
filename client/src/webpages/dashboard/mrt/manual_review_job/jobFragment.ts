@@ -270,6 +270,10 @@ export const JOB_FRAGMENT = gql`
           isConfirmedCSAM
           isReported
         }
+        reportedMessages {
+          id
+          typeId
+        }
         enqueueSourceInfo {
           ... on ReportEnqueueSourceInfo {
             kind

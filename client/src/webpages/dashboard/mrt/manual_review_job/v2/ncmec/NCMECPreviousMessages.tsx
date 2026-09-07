@@ -10,6 +10,7 @@ import {
   useGQLGetLatestUserSubmittedItemsWithThreadsQuery,
   type GQLMessageWithIpAddress,
 } from '../../../../../../graphql/generated';
+import { stripTypename } from '../../../../../../graphql/inputHelpers';
 import { getFieldValueForRole } from '../../../../../../utils/itemUtils';
 import { NCMECThreadComponent } from './NCMECThreadComponent';
 
@@ -66,6 +67,7 @@ export default function NCMECPreviousMessages(props: {
     threadsWithMessages: GQLNcmecThreadInput[],
   ) => void;
   selectedThreadsWithMessages: GQLNcmecThreadInput[];
+  reportedMessages: readonly ItemIdentifier[];
 }) {
   const { selectedThreadsWithMessages, setSelectedThreadsWithMessages } = props;
   const [selectedThread, setSelectedThread] = useState<
@@ -78,8 +80,9 @@ export default function NCMECPreviousMessages(props: {
   const { data, loading } = useGQLGetLatestUserSubmittedItemsWithThreadsQuery({
     variables: {
       userId: props.userIdentifier,
-      // TODO: Add reported messages
-      reportedMessages: [],
+      // These come from a query response, and GraphQL rejects the extra
+      // __typename on ItemIdentifierInput.
+      reportedMessages: props.reportedMessages.map(stripTypename),
     },
     onCompleted: (data) => {
       setSelectedThread(

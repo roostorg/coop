@@ -1,13 +1,12 @@
 import { Label } from '@/coop-ui/Label';
 import { Switch } from '@/coop-ui/Switch';
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { filterNullOrUndefined } from '@/utils/collections';
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
-import { Select, Tooltip } from 'antd';
+import { Select } from 'antd';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
+import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
@@ -345,12 +344,19 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
           Primary Actions Only
         </Label>
       </div>
-      <Tooltip
-        className="pl-2"
-        placement="right"
-        title={`A "Primary Action" is the main decision associated with each job. Including only Primary Actions will filter out other actions that were taken on surrounding context in the job. For example, if a user is reported, and your main decision is to ignore the report rather than penalizing the user, then your “Primary Action” will be “Ignore”. But if you deleted one of the user’s posts because you saw it in the job, that would be a related action, not a Primary Action. `}
-      >
-        <InfoCircleOutlined className="text-slate-500" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Info className="w-4 h-4 pl-2 text-slate-500" />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          A “Primary Action" is the main decision associated with each job.
+          Including only Primary Actions will filter out other actions that were
+          taken on surrounding context in the job. For example, if a user is
+          reported, and your main decision is to ignore the report rather than
+          penalizing the user, then your “Primary Action" will be “Ignore". But
+          if you deleted one of the user’s posts because you saw it in the job,
+          that would be a related action, not a Primary Action.
+        </TooltipContent>
       </Tooltip>
     </div>
   );
@@ -439,12 +445,12 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
             something to do with dynamically choosing whether to render each icon because when
             we render both and just hide one of them, componentRef.current.contains() works. */}
           <ChevronUp
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
               filterByMenuVisible ? '' : 'hidden'
             }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 fill-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
               filterByMenuVisible ? 'hidden' : ''
             }`}
           />
@@ -511,12 +517,12 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
                         something to do with dynamically choosing whether to render each icon because when
                         we render both and just hide one of them, componentRef.current.contains() works. */}
                         <ChevronUp
-                          className={`font-bold w-3 fill-slate-400 ${
+                          className={`font-bold w-3 h-3 text-slate-400 ${
                             isExpanded ? '' : 'hidden'
                           }`}
                         />
                         <ChevronDown
-                          className={`font-bold w-3 fill-slate-400 ${
+                          className={`font-bold w-3 h-3 text-slate-400 ${
                             isExpanded ? 'hidden' : ''
                           }`}
                         />

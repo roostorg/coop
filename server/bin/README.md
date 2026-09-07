@@ -83,7 +83,7 @@ All parameters are required:
 - `--website`: Organization website URL (must be a valid URL)
 - `--firstName`: Admin user's first name
 - `--lastName`: Admin user's last name
-- `--password`: Admin user's password (minimum 8 characters recommended)
+- `--password`: Admin user's password (minimum 15 characters, required)
 
 ### Output
 
@@ -148,7 +148,7 @@ The script performs the following actions:
 
 - The API key is only displayed once. Make sure to copy and store it securely.
 - The organization name and email must be unique in the database.
-- The password should be strong and at least 8 characters long.
+- The password must be strong and at least 15 characters long.
 - All database connections are properly closed after the script completes.
 
 ### Troubleshooting

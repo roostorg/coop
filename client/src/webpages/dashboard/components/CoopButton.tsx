@@ -1,7 +1,6 @@
-import SpinnerSolid from '@/icons/lni/Spinner/spinner-solid.svg?react';
 import { Tooltip } from 'antd';
 import { TooltipPlacement } from 'antd/lib/tooltip';
-import type { SVGProps } from 'react';
+import { Loader2, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
@@ -28,10 +27,10 @@ export default function CoopButton(
   } & (
     | {
         title: string;
-        icon?: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+        icon?: LucideIcon;
       }
     | {
-        icon: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+        icon: LucideIcon;
         title?: undefined;
       }
   ) &
@@ -118,9 +117,7 @@ export default function CoopButton(
       onClick={(e) => onClick && onClick(e)}
       disabled={buttonIsDisabled}
     >
-      {loading ? (
-        <SpinnerSolid className="w-4 mr-2 animate-spin fill-inherit" />
-      ) : null}
+      {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
       <div className="flex items-center justify-center gap-2">
         {/* See https://stackoverflow.com/a/37414418 for why this is capitalized */}
         {Icon !== undefined && iconPosition === 'left' ? (

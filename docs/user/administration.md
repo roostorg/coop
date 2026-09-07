@@ -28,9 +28,9 @@ Enable user user appeals of decisions made in Coop, and configure your platform'
 
 ### Review Console
 
-Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, queue management behavior, and webhooks.
+Behavior of the [Review Console](review-console.md) for reviewers in your org. Configure moderator requirements, queue management behavior and webhooks.
 
-![Review Console tab in Settings with toggles for Require Policy, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
+![Review Console tab in Settings with toggles for Require Policy, Multiple Policies Per Action, Require Decision Reason, Hide Skip Button, Enable Preview Jobs View, plus an Ignore Callback URL field](../images/settings-review-console.png)
 
 ### Wellness
 
@@ -38,11 +38,13 @@ Reviewer wellness controls for media displayed in the Review Console including b
 
 ![Wellness tab in Settings with Blur Media slider, Greyscale toggle, and Mute Videos toggle](../images/settings-wellness.png)
 
-### Other
+Note that wellness settings apply to images and videos by default; they will not apply to embedded content unless your Coop deployment has implemented a [content proxy](../development/deployment.md#content-proxy).
 
-Settings that don't fit cleanly into the other tabs including configuration for the [Partial Items](../api/partial-items.md) endpoint and the ability for job decisions to reference multiple policies.
+### Partial Items
 
-![Other tab in Settings with fields for Partial Items Endpoint, Partial Items Request Headers, plus toggles for Reporting Rules, Multiple Policies Per Action, and a User Strike TTL number input](../images/settings-other.png)
+Configuration for the [Partial Items](../api/partial-items.md) endpoint and the request headers Coop sends to it.
+
+![Partial Items tab in Settings with fields for Partial Items Endpoint and Partial Items Request Headers](../images/settings-partial-items.png)
 
 ## Item Types
 

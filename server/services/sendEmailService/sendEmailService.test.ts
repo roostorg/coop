@@ -1,7 +1,9 @@
 import { SendEmailCommand, type SESClient } from '@aws-sdk/client-ses';
+import sgMail from '@sendgrid/mail';
 
 import makeSendEmail, {
   CoopEmailAddress,
+  makeSendEmailViaConsole,
   makeSendEmailViaSendGrid,
   type Message,
 } from './sendEmailService.js';
@@ -33,7 +35,7 @@ describe('sendEmailService', () => {
         html: '<p>Hello</p>',
       };
 
-      await sendEmail(msg);
+      await expect(sendEmail(msg)).resolves.toBe(true);
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       const command = mockSend.mock.calls[0][0];
@@ -120,7 +122,7 @@ describe('sendEmailService', () => {
         text: 'Hello',
       };
 
-      await expect(sendEmail(msg)).resolves.not.toThrow();
+      await expect(sendEmail(msg)).resolves.toBe(false);
     });
 
     it('should log the error when SES fails', async () => {
@@ -149,9 +151,126 @@ describe('sendEmailService', () => {
   });
 
   describe('SendGrid backend', () => {
-    it('should create a function when given an API key', () => {
+    it('reports successful and failed delivery attempts', async () => {
+      const sendSpy = jest.spyOn(sgMail, 'send');
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const sendEmail = makeSendEmailViaSendGrid('SG.test-key');
-      expect(typeof sendEmail).toBe('function');
+      const msg: Message = {
+        to: 'test_user@example.com',
+        from: CoopEmailAddress.NoReply,
+        subject: 'Test Subject',
+        text: 'Test body',
+      };
+
+      try {
+        sendSpy.mockResolvedValueOnce([] as never);
+        await expect(sendEmail(msg)).resolves.toBe(true);
+
+        sendSpy.mockRejectedValueOnce(new Error('SendGrid error'));
+        await expect(sendEmail(msg)).resolves.toBe(false);
+      } finally {
+        sendSpy.mockRestore();
+        consoleSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('console backend', () => {
+    it('prints the email and reports successful delivery', async () => {
+      const previousNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      const consoleSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      try {
+        const sendEmail = makeSendEmailViaConsole();
+        const msg: Message = {
+          to: 'test_user@example.com',
+          from: CoopEmailAddress.NoReply,
+          subject: 'Test Subject',
+          text: 'Test body',
+        };
+
+        await expect(sendEmail(msg)).resolves.toBe(true);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Email sent via console transport:',
+          msg,
+        );
+      } finally {
+        if (previousNodeEnv === undefined) {
+          delete process.env.NODE_ENV;
+        } else {
+          process.env.NODE_ENV = previousNodeEnv;
+        }
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('is selected explicitly through EMAIL_TRANSPORT', async () => {
+      const previousTransport = process.env.EMAIL_TRANSPORT;
+      const previousNodeEnv = process.env.NODE_ENV;
+      process.env.EMAIL_TRANSPORT = 'console';
+      process.env.NODE_ENV = 'development';
+      const consoleSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      try {
+        const sendEmail = makeSendEmail();
+        await expect(
+          sendEmail({
+            to: 'test_user@example.com',
+            from: CoopEmailAddress.NoReply,
+            subject: 'Test Subject',
+            text: 'Test body',
+          }),
+        ).resolves.toBe(true);
+        expect(consoleSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        if (previousTransport === undefined) {
+          delete process.env.EMAIL_TRANSPORT;
+        } else {
+          process.env.EMAIL_TRANSPORT = previousTransport;
+        }
+        if (previousNodeEnv === undefined) {
+          delete process.env.NODE_ENV;
+        } else {
+          process.env.NODE_ENV = previousNodeEnv;
+        }
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('rejects console transport outside development', () => {
+      const previousTransport = process.env.EMAIL_TRANSPORT;
+      const previousNodeEnv = process.env.NODE_ENV;
+      process.env.EMAIL_TRANSPORT = 'console';
+      process.env.NODE_ENV = 'production';
+
+      try {
+        for (const makeTransport of [
+          () => makeSendEmail(),
+          () => makeSendEmailViaConsole(),
+        ]) {
+          expect(makeTransport).toThrow(
+            'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
+          );
+        }
+      } finally {
+        if (previousTransport === undefined) {
+          delete process.env.EMAIL_TRANSPORT;
+        } else {
+          process.env.EMAIL_TRANSPORT = previousTransport;
+        }
+        if (previousNodeEnv === undefined) {
+          delete process.env.NODE_ENV;
+        } else {
+          process.env.NODE_ENV = previousNodeEnv;
+        }
+      }
     });
   });
 
