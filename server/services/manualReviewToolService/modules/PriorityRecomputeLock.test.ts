@@ -5,7 +5,19 @@ import PriorityRecomputeLock from './PriorityRecomputeLock.js';
 
 // Two independent clients, so contention is exercised the way it happens in
 // production — across connections — rather than within one process.
-const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+//
+// Read the same env vars the DI container reads. There is no `REDIS_URL` in
+// this repo, so reaching for one silently fell back to localhost, which is
+// nothing inside the CI container.
+const redisOptions = {
+  host: process.env.REDIS_HOST ?? 'localhost',
+  port: parseInt(process.env.REDIS_PORT ?? '6379'),
+  // BullMQ needs `maxRetriesPerRequest: null` for its blocking commands; these
+  // tests don't, and unbounded retries turn an unreachable Redis into a hang
+  // that only ends when CI kills the job. Give up instead, so the test fails.
+  maxRetriesPerRequest: 1,
+  retryStrategy: (times: number) => (times > 3 ? null : 100),
+};
 
 describe('PriorityRecomputeLock', () => {
   let clientA: IORedis.Redis;
@@ -16,8 +28,8 @@ describe('PriorityRecomputeLock', () => {
   let queueId: string;
 
   beforeEach(() => {
-    clientA = new IORedis.default(REDIS_URL, { maxRetriesPerRequest: null });
-    clientB = new IORedis.default(REDIS_URL, { maxRetriesPerRequest: null });
+    clientA = new IORedis.default(redisOptions);
+    clientB = new IORedis.default(redisOptions);
     lockA = new PriorityRecomputeLock(clientA);
     lockB = new PriorityRecomputeLock(clientB);
     // Unique per test so runs don't collide with each other or leftover state.
