@@ -23,7 +23,7 @@ import express, { type ErrorRequestHandler, type Request } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
-import passport from 'passport';
+import { Passport } from 'passport';
 
 import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
@@ -92,6 +92,9 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
+  // Authentication callbacks capture this app's dependencies and must not
+  // outlive it or be shared with another app instance.
+  const passport = new Passport();
   const { KyselyPg, KyselyPgPool } = deps;
 
   app.use(cors());
