@@ -41,7 +41,6 @@ export default class PriorityRecomputeLock {
     return `{${orgId}}:mrt-recompute-lock:${queueId}`;
   }
 
-
   async acquireWaiting(opts: {
     orgId: string;
     queueId: string;
