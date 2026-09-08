@@ -92,8 +92,6 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
-  // Authentication callbacks capture this app's dependencies and must not
-  // outlive it or be shared with another app instance.
   const passport = new Passport();
   const { KyselyPg, KyselyPgPool } = deps;
 
