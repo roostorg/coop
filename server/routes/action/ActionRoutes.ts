@@ -6,6 +6,7 @@ import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { route } from '../../utils/route-helpers.js';
 import { type Controller } from '../index.js';
+import getActions, { type GetActionsOutput } from './getActions.js';
 import submitAction from './submitAction.js';
 
 export type SubmitActionInput = JsonObject & {
@@ -30,6 +31,10 @@ export type SubmitActionInput = JsonObject & {
 export default {
   pathPrefix: '/actions',
   routes: [
+    route.get<GetActionsOutput>('/', (deps) => [
+      createApiKeyMiddleware<never, GetActionsOutput>(deps),
+      getActions(deps),
+    ]),
     route.post<SubmitActionInput, undefined>(
       '/',
       {
