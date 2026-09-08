@@ -165,6 +165,7 @@
     "axios": "^1.18.1",
     "fast-uri": "^3.1.6",
     "protobufjs": "^7.6.3",
-    "@protobufjs/utf8": "^1.1.1"
+    "@protobufjs/utf8": "^1.1.1",
+    "decode-uri-component": "^0.5.0"
   }
 }
