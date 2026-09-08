@@ -213,21 +213,23 @@ npm run check:prepush
 
 ## Running CI locally
 
-All PR checks are defined as `docker compose` services to reproduce any CI job locally.
+Most PR checks are defined as `docker compose` services so you can reproduce them locally; formatting and GraphQL codegen run on the host Node install.
 
-| CI job                                   | Local command                                   |
-| ---------------------------------------- | ----------------------------------------------- |
-| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
-| `check_api_server` (test)                | `docker compose run --rm test`                  |
+| CI job                                   | Local command                                                       |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| `check_formatting`                       | `npm ci && npm run prettier`                                        |
+| `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                      |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                     |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                       |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                      |
+| `check_api_server` (test)                | `docker compose run --rm test`                                      |
 
 Run the full suite (stops at first failure):
 
 ```sh
-docker compose run --rm codegen-check \
+npm ci && npm run prettier \
+  && npm run generate && test -z "$(git status --porcelain)" \
   && docker compose run --rm backend npm run lint \
   && docker compose run --rm backend npm run build \
   && docker compose run --rm client npm run lint \

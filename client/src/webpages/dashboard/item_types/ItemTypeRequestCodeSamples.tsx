@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react';
-import { LightAsync as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atelierSulphurpoolLight } from 'react-syntax-highlighter/dist/cjs/styles/hljs';
 
 import CopyTextComponent from '../../../components/common/CopyTextComponent';
 
@@ -15,19 +13,6 @@ import {
   type ApiRoute,
   type RequestLanguage,
 } from './itemTypeCodeSampleUtils';
-
-const requestLanguageForComponent = (requestLanguage: RequestLanguage) => {
-  switch (requestLanguage) {
-    case 'Curl':
-      return 'shell';
-    case 'Python':
-      return 'python';
-    case 'NodeJS':
-      return 'javascript';
-    case 'PHP':
-      return 'php';
-  }
-};
 
 export default function ItemTypeRequestCodeSamples(props: {
   itemTypeId?: string;
@@ -92,26 +77,9 @@ export default function ItemTypeRequestCodeSamples(props: {
         </div>
       </div>
       <div className="relative overflow-y-scroll h-80">
-        <SyntaxHighlighter
-          customStyle={{
-            backgroundColor: '#ffffff',
-            padding: '16px 16px 0px 16px',
-          }}
-          style={{
-            ...atelierSulphurpoolLight,
-
-            'hljs-string': {
-              color: '#75787B',
-            },
-            hljs: {
-              color: 'text-gray-500',
-              fontSize: '12px',
-            },
-          }}
-          language={requestLanguageForComponent(selectedRequestLanguage)}
-        >
-          {requestCode}
-        </SyntaxHighlighter>
+        <pre className="p-4 m-0 overflow-x-auto text-xs leading-relaxed text-gray-500 bg-white whitespace-pre-wrap">
+          <code>{requestCode}</code>
+        </pre>
         <div className="absolute z-10 p-1 border border-solid rounded-sm cursor-pointer top-2 right-2 text-slate-500 border-slate-400">
           <CopyTextComponent value={requestCode} displayValue="" />
         </div>

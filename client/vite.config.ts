@@ -49,6 +49,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'build',
+      sourcemap: process.env.VITE_SOURCEMAP === 'true',
     },
     server: {
       proxy: {

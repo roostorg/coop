@@ -21,6 +21,7 @@ For more information about each release including git tags and artifacts, see [R
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
 - Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
+- Production Node images moved from Debian 11 (bullseye) to Debian 12 (bookworm) ([#1138](https://github.com/roostorg/coop/pull/1138) by [@juanmrad](https://github.com/juanmrad))
 
 ### Removed
 
