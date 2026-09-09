@@ -1696,8 +1696,9 @@ export default class QueueOperations {
     orgId: string;
     itemId: string;
     itemTypeId: string;
+    queueIds: string[];
   }) {
-    const { orgId, itemId, itemTypeId } = opts;
+    const { orgId, itemId, itemTypeId, queueIds } = opts;
     // Check postgres for creations within the last 7 days so we don't have to
     // search every bull queue for every item.
     const recentJobCreationQueues = await this.pgQuery
@@ -1707,6 +1708,7 @@ export default class QueueOperations {
       .where('item_id', '=', itemId)
       .where('item_type_id', '=', itemTypeId)
       .where('created_at', '>=', new Date(Date.now() - WEEK_MS))
+      .where('queue_id', 'in', queueIds)
       .execute();
     const jobsWithQueue = await Promise.all(
       recentJobCreationQueues.map(async (rows) => {

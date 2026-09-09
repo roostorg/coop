@@ -8,7 +8,7 @@ type ResolverFn = (
 ) => Promise<unknown>;
 
 const Query = resolvers.Query as Record<
-  'getTotalPendingJobsCount' | 'manualReviewQueue',
+  'getTotalPendingJobsCount' | 'manualReviewQueue' | 'getExistingJobsForItem',
   ResolverFn
 >;
 const Mutation = resolvers.Mutation as Record<
@@ -48,6 +48,7 @@ function makeCtx(opts: {
   const dequeueNextJob = jest.fn(async () => null);
   const getAllJobsForQueue = jest.fn(async () => []);
   const getJobsForQueue = jest.fn(async () => []);
+  const getExistingJobsForItem = jest.fn(async () => []);
   const getPendingJobCount = jest.fn(async () => 3);
   const getOldestJobCreatedAt = jest.fn(async () => new Date(0));
 
@@ -69,6 +70,7 @@ function makeCtx(opts: {
         dequeueNextJob,
         getAllJobsForQueue,
         getJobsForQueue,
+        getExistingJobsForItem,
         getPendingJobCount,
         getOldestJobCreatedAt,
       },
@@ -84,6 +86,7 @@ function makeCtx(opts: {
     dequeueNextJob,
     getAllJobsForQueue,
     getJobsForQueue,
+    getExistingJobsForItem,
     getPendingJobCount,
     getOldestJobCreatedAt,
   };
@@ -149,6 +152,76 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
       expect(
         getQueueForOrgAndDangerouslyBypassPermissioning,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Query.getExistingJobsForItem', () => {
+    it('searches only the queues the caller can review, never all org queues', async () => {
+      const { ctx, getReviewableQueuesForUser, getExistingJobsForItem } =
+        makeCtx({ reviewableQueueIds: ['q-1', 'q-2'] });
+
+      await expect(
+        Query.getExistingJobsForItem(
+          {},
+          { itemId: 'item-1', itemTypeId: 'content' },
+          ctx,
+        ),
+      ).resolves.toEqual([]);
+
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'user-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+      });
+      expect(getExistingJobsForItem).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        itemId: 'item-1',
+        itemTypeId: 'content',
+        queueIds: ['q-1', 'q-2'],
+      });
+    });
+
+    it('searches nothing for a caller with no reviewable queues', async () => {
+      const { ctx, getExistingJobsForItem } = makeCtx({
+        reviewableQueueIds: [],
+        user: {
+          id: 'user-1',
+          orgId: 'org-1',
+          permissions: [],
+        },
+      });
+
+      await expect(
+        Query.getExistingJobsForItem(
+          {},
+          { itemId: 'item-1', itemTypeId: 'content' },
+          ctx,
+        ),
+      ).resolves.toEqual([]);
+
+      expect(getExistingJobsForItem).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        itemId: 'item-1',
+        itemTypeId: 'content',
+        queueIds: [],
+      });
+    });
+
+    it('throws when there is no authenticated user', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: [],
+        user: null,
+      });
+      await expect(
+        Query.getExistingJobsForItem(
+          {},
+          { itemId: 'item-1', itemTypeId: 'content' },
+          ctx,
+        ),
+      ).rejects.toThrow('Authenticated user required');
+      expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
     });
   });
 
