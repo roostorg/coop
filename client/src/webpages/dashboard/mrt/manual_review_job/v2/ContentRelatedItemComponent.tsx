@@ -1,6 +1,8 @@
 import { GQLContentItem } from '@/graphql/generated';
 import { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 
+import CopyTextComponent from '@/components/common/CopyTextComponent';
+
 import FieldsComponent from './ManualReviewJobFieldsComponent';
 
 type LoadedContentItem = Pick<GQLContentItem, 'data'> & {
@@ -9,10 +11,11 @@ type LoadedContentItem = Pick<GQLContentItem, 'data'> & {
 
 export default function ContentRelatedItemComponent(props: {
   item: LoadedContentItem;
+  itemId?: string;
   unblurAllMedia: boolean;
   title: string;
 }) {
-  const { item, unblurAllMedia } = props;
+  const { item, itemId, unblurAllMedia } = props;
 
   const fieldData = item.type.baseFields.map(
     (
@@ -25,11 +28,24 @@ export default function ContentRelatedItemComponent(props: {
   );
   return (
     <div className="flex flex-col items-start justify-start w-full py-4 mt-8 space-y-2 bg-white border border-gray-200 border-solid rounded-lg">
-      <div className="flex flex-col w-full mx-4">
+      <div className="flex flex-row items-center justify-between w-full px-4">
         <div className="text-lg font-semibold text-start">
           {/* TODO: make this title org-agnostic  */}
           {props.title}
         </div>
+        {itemId ? (
+          <div className="min-w-0 shrink text-slate-400">
+            <CopyTextComponent
+              displayValue={
+                'ID: ' +
+                (itemId.length > 20
+                  ? itemId.slice(0, 10) + '…' + itemId.slice(-10)
+                  : itemId)
+              }
+              value={itemId}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="max-w-full min-w-[50%] grow mx-4">
