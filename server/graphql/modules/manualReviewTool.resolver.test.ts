@@ -16,7 +16,7 @@ const Mutation = resolvers.Mutation as Record<
   ResolverFn
 >;
 const ManualReviewQueue = resolvers.ManualReviewQueue as Record<
-  'jobs',
+  'jobs' | 'pendingJobCount' | 'oldestJobCreatedAt',
   ResolverFn
 >;
 
@@ -47,6 +47,9 @@ function makeCtx(opts: {
   const getTotalPendingJobCountForQueues = jest.fn(async () => 7);
   const dequeueNextJob = jest.fn(async () => null);
   const getAllJobsForQueue = jest.fn(async () => []);
+  const getJobsForQueue = jest.fn(async () => []);
+  const getPendingJobCount = jest.fn(async () => 3);
+  const getOldestJobCreatedAt = jest.fn(async () => new Date(0));
 
   const ctx = {
     getUser: () =>
@@ -65,6 +68,9 @@ function makeCtx(opts: {
         getTotalPendingJobCountForQueues,
         dequeueNextJob,
         getAllJobsForQueue,
+        getJobsForQueue,
+        getPendingJobCount,
+        getOldestJobCreatedAt,
       },
     },
   };
@@ -77,6 +83,9 @@ function makeCtx(opts: {
     getTotalPendingJobCountForQueues,
     dequeueNextJob,
     getAllJobsForQueue,
+    getJobsForQueue,
+    getPendingJobCount,
+    getOldestJobCreatedAt,
   };
 }
 
@@ -180,20 +189,129 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
     });
   });
 
-  describe('ManualReviewQueue.jobs', () => {
-    it('throws when there is no authenticated user', async () => {
+  describe('ManualReviewQueue queue-scoped fields authorize their parent', () => {
+    const jobsArgs = { ids: null, limit: null };
+
+    it('jobs throws when there is no authenticated user', async () => {
       const { ctx, getAllJobsForQueue } = makeCtx({
         reviewableQueueIds: [],
         user: null,
       });
       await expect(
-        ManualReviewQueue.jobs(
-          { orgId: 'org-1', id: 'q-1' },
-          { ids: null, limit: null },
-          ctx,
-        ),
+        ManualReviewQueue.jobs({ orgId: 'org-1', id: 'q-1' }, jobsArgs, ctx),
       ).rejects.toThrow('User required.');
       expect(getAllJobsForQueue).not.toHaveBeenCalled();
+    });
+
+    it('jobs returns jobs for a queue the caller can review', async () => {
+      const { ctx, getAllJobsForQueue } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.jobs({ orgId: 'org-1', id: 'q-1' }, jobsArgs, ctx),
+      ).resolves.toEqual([]);
+      expect(getAllJobsForQueue).toHaveBeenCalled();
+    });
+
+    // A queue stays in users_and_favorite_mrt_queues after access is revoked,
+    // so `me { favoriteMRTQueues { jobs } }` hands this resolver a queue the
+    // caller can no longer review.
+    it('jobs refuses a queue reachable only through a stale favorite', async () => {
+      const { ctx, getAllJobsForQueue } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.jobs(
+          { orgId: 'org-1', id: 'q-revoked' },
+          jobsArgs,
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getAllJobsForQueue).not.toHaveBeenCalled();
+    });
+
+    // RoutingRule.destinationQueue hands back a queue for EDIT_MRT_QUEUES
+    // holders, but getReviewableQueuesForUser returns nothing without
+    // VIEW_MRT -- so that combination must not reach jobs.
+    it('jobs refuses a caller with EDIT_MRT_QUEUES but no VIEW_MRT', async () => {
+      const { ctx, getAllJobsForQueue } = makeCtx({
+        reviewableQueueIds: [],
+        user: {
+          id: 'user-1',
+          orgId: 'org-1',
+          permissions: [
+            UserPermission.EDIT_MRT_QUEUES,
+            UserPermission.MANAGE_ROUTING_RULES,
+          ],
+        },
+      });
+      await expect(
+        ManualReviewQueue.jobs({ orgId: 'org-1', id: 'q-1' }, jobsArgs, ctx),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getAllJobsForQueue).not.toHaveBeenCalled();
+    });
+
+    it('jobs refuses a queue belonging to another org', async () => {
+      const { ctx, getAllJobsForQueue, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.jobs({ orgId: 'org-2', id: 'q-1' }, jobsArgs, ctx),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getAllJobsForQueue).not.toHaveBeenCalled();
+      expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
+    });
+
+    it('pendingJobCount refuses a queue the caller cannot review', async () => {
+      const { ctx, getPendingJobCount } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.pendingJobCount(
+          { orgId: 'org-1', id: 'q-revoked' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getPendingJobCount).not.toHaveBeenCalled();
+    });
+
+    it('oldestJobCreatedAt refuses a queue the caller cannot review', async () => {
+      const { ctx, getOldestJobCreatedAt } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.oldestJobCreatedAt(
+          { orgId: 'org-1', id: 'q-revoked' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getOldestJobCreatedAt).not.toHaveBeenCalled();
+    });
+
+    // The dashboard asks for these fields on every queue at once; the lookup is
+    // memoized per request so that stays one query rather than one per queue.
+    it('looks up reviewable queues once per request across fields and queues', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: ['q-1', 'q-2'],
+      });
+
+      await Promise.all([
+        ManualReviewQueue.jobs({ orgId: 'org-1', id: 'q-1' }, jobsArgs, ctx),
+        ManualReviewQueue.pendingJobCount(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+        ManualReviewQueue.oldestJobCreatedAt(
+          { orgId: 'org-1', id: 'q-2' },
+          {},
+          ctx,
+        ),
+      ]);
+
+      expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
     });
   });
 });

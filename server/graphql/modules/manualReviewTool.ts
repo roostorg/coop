@@ -14,6 +14,7 @@ import {
   getEndOfDayInTimezone,
   getStartOfDayInTimezone,
 } from '../../utils/time.js';
+import { type GraphQLUserParent } from '../datasources/userKyselyPersistence.js';
 import {
   type GQLContentAppealManualReviewJobPayloadResolvers,
   type GQLContentManualReviewJobPayloadResolvers,
@@ -34,6 +35,7 @@ import {
   type GQLUserAppealManualReviewJobPayloadResolvers,
   type GQLUserManualReviewJobPayloadResolvers,
 } from '../generated.js';
+import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
 import {
   forbiddenError,
@@ -1746,12 +1748,71 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
   },
 };
 
+/**
+ * The queue-scoped fields below each resolve one queue at a time, but the MRT
+ * dashboard asks for them on every reviewable queue at once. The GraphQL
+ * context is a fresh object per request, so memoizing on it keeps the
+ * reviewability lookup to one query per request instead of one per queue.
+ */
+const reviewableQueueIdsByRequest = new WeakMap<
+  Context,
+  Promise<Set<string>>
+>();
+
+// The cache is populated before the first await, so concurrent field resolvers
+// in the same request share one in-flight lookup rather than racing.
+async function getReviewableQueueIds(
+  context: Context,
+  user: GraphQLUserParent,
+) {
+  const cached = reviewableQueueIdsByRequest.get(context);
+  if (cached != null) {
+    return cached;
+  }
+
+  const queueIds =
+    context.services.ManualReviewToolService.getReviewableQueuesForUser({
+      invoker: {
+        userId: user.id,
+        permissions: user.getPermissions(),
+        orgId: user.orgId,
+      },
+    }).then((queues) => new Set(queues.map((reviewable) => reviewable.id)));
+
+  reviewableQueueIdsByRequest.set(context, queueIds);
+  return queueIds;
+}
+
+/**
+ * Throws unless the caller may review `queue`. Mirrors
+ * `getReviewableQueuesForUser`: VIEW_MRT is required, and EDIT_MRT_QUEUES sees
+ * every queue in the org. Queue objects can reach these resolvers from paths
+ * that don't themselves check membership (e.g. `User.favoriteMRTQueues`, which
+ * keeps favorites after access is revoked, and `RoutingRule.destinationQueue`,
+ * which bypasses queue permissions for EDIT_MRT_QUEUES holders), so each field
+ * has to authorize rather than trust its parent.
+ */
+async function assertQueueIsReviewable(
+  queue: { id: string; orgId: string },
+  context: Context,
+) {
+  const user = context.getUser();
+  if (user == null) {
+    throw unauthenticatedError('User required.');
+  }
+  if (user.orgId !== queue.orgId) {
+    throw forbiddenError('User does not have access to this queue');
+  }
+
+  const reviewableQueueIds = await getReviewableQueueIds(context, user);
+  if (!reviewableQueueIds.has(queue.id)) {
+    throw forbiddenError('User does not have access to this queue');
+  }
+}
+
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   async jobs(queue, { ids: jobIds, limit }, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    await assertQueueIsReviewable(queue, context);
 
     const { orgId, id: queueId } = queue;
 
@@ -1776,6 +1837,8 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async pendingJobCount(queue, _, context) {
+    await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
     return context.services.ManualReviewToolService.getPendingJobCount({
       orgId,
@@ -1783,6 +1846,8 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async oldestJobCreatedAt(queue, _, context) {
+    await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
     return context.services.ManualReviewToolService.getOldestJobCreatedAt({
       orgId,
