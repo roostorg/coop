@@ -16,7 +16,12 @@ const Mutation = resolvers.Mutation as Record<
   ResolverFn
 >;
 const ManualReviewQueue = resolvers.ManualReviewQueue as Record<
-  'jobs' | 'pendingJobCount' | 'oldestJobCreatedAt',
+  | 'jobs'
+  | 'pendingJobCount'
+  | 'oldestJobCreatedAt'
+  | 'explicitlyAssignedReviewers'
+  | 'hiddenActionIds'
+  | 'clearReportsTriggerActionIds',
   ResolverFn
 >;
 
@@ -51,6 +56,16 @@ function makeCtx(opts: {
   const getExistingJobsForItem = jest.fn(async () => []);
   const getPendingJobCount = jest.fn(async () => 3);
   const getOldestJobCreatedAt = jest.fn(async () => new Date(0));
+  const getUsersWhoCanSeeQueue = jest.fn(
+    async (): Promise<{ userId: string }[]> => [],
+  );
+  const getHiddenActionsForQueue = jest.fn(async (): Promise<string[]> => [
+    'action-1',
+  ]);
+  const getClearReportsTriggerActionsForQueue = jest.fn(
+    async (): Promise<string[]> => [],
+  );
+  const getGraphQLUsersFromIds = jest.fn(async (): Promise<unknown[]> => []);
 
   const ctx = {
     getUser: () =>
@@ -73,7 +88,13 @@ function makeCtx(opts: {
         getExistingJobsForItem,
         getPendingJobCount,
         getOldestJobCreatedAt,
+        getUsersWhoCanSeeQueue,
+        getHiddenActionsForQueue,
+        getClearReportsTriggerActionsForQueue,
       },
+    },
+    dataSources: {
+      userAPI: { getGraphQLUsersFromIds },
     },
   };
 
@@ -89,6 +110,10 @@ function makeCtx(opts: {
     getExistingJobsForItem,
     getPendingJobCount,
     getOldestJobCreatedAt,
+    getUsersWhoCanSeeQueue,
+    getHiddenActionsForQueue,
+    getClearReportsTriggerActionsForQueue,
+    getGraphQLUsersFromIds,
   };
 }
 
@@ -384,6 +409,109 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
         ),
       ]);
 
+      expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
+    });
+
+    // These fields re-check the parent queue just like jobs/pendingJobCount/
+    // oldestJobCreatedAt: a revoked member keeps the queue in
+    // `me.favoriteMRTQueues`, so it can still reach these resolvers.
+    it('explicitlyAssignedReviewers refuses a queue the caller cannot review', async () => {
+      const { ctx, getUsersWhoCanSeeQueue, getGraphQLUsersFromIds } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.explicitlyAssignedReviewers(
+          { orgId: 'org-1', id: 'q-revoked' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getUsersWhoCanSeeQueue).not.toHaveBeenCalled();
+      expect(getGraphQLUsersFromIds).not.toHaveBeenCalled();
+    });
+
+    it('explicitlyAssignedReviewers lists reviewers for a queue the caller can review', async () => {
+      const {
+        ctx,
+        getReviewableQueuesForUser,
+        getUsersWhoCanSeeQueue,
+        getGraphQLUsersFromIds,
+      } = makeCtx({ reviewableQueueIds: ['q-1', 'q-2'] });
+
+      getUsersWhoCanSeeQueue.mockResolvedValue([{ userId: 'user-2' }]);
+      getGraphQLUsersFromIds.mockResolvedValue([{ id: 'user-2' }]);
+
+      await expect(
+        ManualReviewQueue.explicitlyAssignedReviewers(
+          { orgId: 'org-1', id: 'q-2' },
+          {},
+          ctx,
+        ),
+      ).resolves.toEqual([{ id: 'user-2' }]);
+      expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('hiddenActionIds refuses a queue the caller cannot review', async () => {
+      const { ctx, getHiddenActionsForQueue } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.hiddenActionIds(
+          { orgId: 'org-1', id: 'q-revoked' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getHiddenActionsForQueue).not.toHaveBeenCalled();
+    });
+
+    it('hiddenActionIds returns actions for a queue the caller can review', async () => {
+      const { ctx, getHiddenActionsForQueue } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.hiddenActionIds(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+      ).resolves.toEqual(['action-1']);
+      expect(getHiddenActionsForQueue).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        queueId: 'q-1',
+      });
+    });
+
+    it('clearReportsTriggerActionIds refuses a queue the caller cannot review', async () => {
+      const { ctx, getClearReportsTriggerActionsForQueue } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.clearReportsTriggerActionIds(
+          { orgId: 'org-1', id: 'q-revoked' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(getClearReportsTriggerActionsForQueue).not.toHaveBeenCalled();
+    });
+
+    it('clearReportsTriggerActionIds returns actions for a queue the caller can review', async () => {
+      const {
+        ctx,
+        getReviewableQueuesForUser,
+        getClearReportsTriggerActionsForQueue,
+      } = makeCtx({ reviewableQueueIds: ['q-1'] });
+
+      getClearReportsTriggerActionsForQueue.mockResolvedValue(['trigger-1']);
+
+      await expect(
+        ManualReviewQueue.clearReportsTriggerActionIds(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+      ).resolves.toEqual(['trigger-1']);
       expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
     });
   });

@@ -1808,6 +1808,7 @@ async function assertQueueIsReviewable(
   if (!reviewableQueueIds.has(queue.id)) {
     throw forbiddenError('User does not have access to this queue');
   }
+  return user;
 }
 
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
@@ -1856,10 +1857,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async explicitlyAssignedReviewers(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     const { id: userId, orgId } = user;
 
     const userIds = (
@@ -1872,10 +1870,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     return context.dataSources.userAPI.getGraphQLUsersFromIds(userIds);
   },
   async hiddenActionIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     const { orgId } = user;
     const { id: queueId } = queue;
 
@@ -1885,10 +1880,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async clearReportsTriggerActionIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     return context.services.ManualReviewToolService.getClearReportsTriggerActionsForQueue(
       {
         orgId: user.orgId,
