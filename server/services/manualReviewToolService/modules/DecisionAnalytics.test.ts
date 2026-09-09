@@ -94,7 +94,7 @@ describe('DecisionAnalytics', () => {
       const page = await mrtService.getDecisionsForActivityFeed({
         userPermissions: [],
         orgId,
-        input: { page: 0 },
+        input: {},
         cursor,
         limit,
       });
@@ -120,7 +120,7 @@ describe('DecisionAnalytics', () => {
       const firstPage = await mrtService.getDecisionsForActivityFeed({
         userPermissions: [],
         orgId: org.id,
-        input: { page: 0 },
+        input: {},
         limit: 2,
       });
       expect(firstPage.map((d) => d.id)).toEqual([ids[2], ids[1]]);
@@ -133,7 +133,7 @@ describe('DecisionAnalytics', () => {
       const secondPage = await mrtService.getDecisionsForActivityFeed({
         userPermissions: [],
         orgId: org.id,
-        input: { page: 0 },
+        input: {},
         cursor: { ts: last.createdAt, id: last.id },
         limit: 2,
       });
@@ -185,6 +185,11 @@ describe('DecisionAnalytics', () => {
 
       expect(collected.length).toEqual(allIds.length);
       expect(new Set(collected)).toEqual(new Set(allIds));
+
+      const [firstTied, secondTied, last] = collected;
+      expect(last).toEqual(earlier);
+      expect(new Set([firstTied, secondTied])).toEqual(new Set(tiedIds));
+      expect(firstTied > secondTied).toBe(true);
     },
   );
 
@@ -198,7 +203,7 @@ describe('DecisionAnalytics', () => {
       const page = await mrtService.getDecisionsForActivityFeed({
         userPermissions: [],
         orgId: org.id,
-        input: { page: 0 },
+        input: {},
         limit: 10,
       });
 

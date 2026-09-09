@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely } from 'kysely';
+import { sql, type InferResult, type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { MONTH_MS } from '../../../utils/time.js';
@@ -9,11 +9,7 @@ import {
   type ManualReviewJob,
   type ManualReviewJobEnqueueSource,
 } from '../manualReviewToolService.js';
-import {
-  type ManualReviewDecisionComponent,
-  type ManualReviewDecisionRelatedAction,
-  type ManualReviewDecisionType,
-} from './JobDecisioning.js';
+import { type ManualReviewDecisionType } from './JobDecisioning.js';
 
 export type RecentDecisionsFilterInput = {
   userSearchString?: string;
@@ -37,6 +33,10 @@ export type RecentDecisionsFilterInput = {
   endTime?: Date;
   page: number;
 };
+
+export type ActivityFeedDecisionCursor = { ts: Date; id: string };
+
+const MAX_ACTIVITY_FEED_LIMIT = 200;
 
 export default class DecisionAnalytics {
   constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
@@ -288,7 +288,7 @@ export default class DecisionAnalytics {
   private buildRecentDecisionsQuery(opts: {
     userPermissions: UserPermission[];
     orgId: string;
-    input: RecentDecisionsFilterInput;
+    input: Omit<RecentDecisionsFilterInput, 'page'>;
   }) {
     const { userPermissions, orgId, input } = opts;
     const {
@@ -438,6 +438,7 @@ export default class DecisionAnalytics {
       input,
     })
       .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
       .limit(limit)
       .offset(page * limit)
       .execute();
@@ -459,29 +460,31 @@ export default class DecisionAnalytics {
   async getDecisionsForActivityFeed(opts: {
     userPermissions: UserPermission[];
     orgId: string;
-    input: RecentDecisionsFilterInput;
+    input: Omit<RecentDecisionsFilterInput, 'page'>;
     // The DECISIONS side of a per-store cursor. The caller must never pass
     // the actions side's id here: `id` is uuid, and a non-uuid string raises
     // 22P02 invalid input syntax for type uuid.
-    cursor?: { ts: Date; id: string };
+    cursor?: ActivityFeedDecisionCursor;
     limit: number;
   }) {
-    const { userPermissions, orgId, input, cursor, limit } = opts;
-    const decisions = await this.buildRecentDecisionsQuery({
+    const { userPermissions, orgId, input, cursor } = opts;
+    const limit = Math.min(opts.limit, MAX_ACTIVITY_FEED_LIMIT);
+    const baseQuery = this.buildRecentDecisionsQuery({
       userPermissions,
       orgId,
       input,
-    })
-      .$if(cursor !== undefined, (qb) =>
-        qb.where(
+    });
+    const pagedQuery = cursor
+      ? baseQuery.where(
           sql`(created_at, id)`,
           '<',
           // `id` is uuid. The cast is load-bearing: without it Postgres
           // infers the bind type from the column and a non-uuid string
           // raises 22P02.
-          sql`(${cursor!.ts}, ${cursor!.id}::uuid)`,
-        ),
-      )
+          sql`(${cursor.ts}, ${cursor.id}::uuid)`,
+        )
+      : baseQuery;
+    const decisions = await pagedQuery
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
       .limit(limit)
@@ -622,31 +625,10 @@ export default class DecisionAnalytics {
   }
 }
 
-/**
- * Row shape shared by `getRecentDecisions` and `getDecisionsForActivityFeed`,
- * as selected by `DecisionAnalytics['buildRecentDecisionsQuery']`.
- */
-type RecentDecisionRow = {
-  id: string;
-  item_id: string;
-  item_type_id: string;
-  queue_id: string;
-  reviewer_id: string | null;
-  decision_components: ManualReviewDecisionComponent[];
-  related_actions: ManualReviewDecisionRelatedAction[];
-  created_at: Date;
-  assigned_at: Date | null;
-  job_created_at: string | null;
-  decision_reason: string | null;
-  job_id: string;
-};
+type RecentDecisionRow = InferResult<
+  ReturnType<DecisionAnalytics['buildRecentDecisionsQuery']>
+>[number];
 
-/**
- * Projects a raw `manual_review_decisions` row into the shape both
- * `getRecentDecisions` and `getDecisionsForActivityFeed` return. Moved
- * verbatim out of `getRecentDecisions` — do not alter any field here without
- * updating both callers' consumers.
- */
 function mapDecisionRow(decision: RecentDecisionRow) {
   return {
     id: decision.id,
