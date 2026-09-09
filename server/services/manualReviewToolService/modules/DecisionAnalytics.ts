@@ -36,7 +36,7 @@ export type RecentDecisionsFilterInput = {
 
 export type ActivityFeedDecisionCursor = { ts: Date; id: string };
 
-const MAX_ACTIVITY_FEED_LIMIT = 200;
+const MAX_DECISIONS_LIMIT = 200;
 
 export default class DecisionAnalytics {
   constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
@@ -289,8 +289,10 @@ export default class DecisionAnalytics {
     userPermissions: UserPermission[];
     orgId: string;
     input: Omit<RecentDecisionsFilterInput, 'page'>;
+    limit: number;
   }) {
     const { userPermissions, orgId, input } = opts;
+    const limit = Math.min(opts.limit, MAX_DECISIONS_LIMIT);
     const {
       userSearchString,
       decisions: decisionsFilter,
@@ -421,6 +423,7 @@ export default class DecisionAnalytics {
               ),
             ),
         )
+        .limit(limit)
     );
   }
 
@@ -436,10 +439,10 @@ export default class DecisionAnalytics {
       userPermissions,
       orgId,
       input,
+      limit,
     })
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
-      .limit(limit)
       .offset(page * limit)
       .execute();
     return decisions.map(mapDecisionRow);
@@ -467,12 +470,12 @@ export default class DecisionAnalytics {
     cursor?: ActivityFeedDecisionCursor;
     limit: number;
   }) {
-    const { userPermissions, orgId, input, cursor } = opts;
-    const limit = Math.min(opts.limit, MAX_ACTIVITY_FEED_LIMIT);
+    const { userPermissions, orgId, input, cursor, limit } = opts;
     const baseQuery = this.buildRecentDecisionsQuery({
       userPermissions,
       orgId,
       input,
+      limit,
     });
     const pagedQuery = cursor
       ? baseQuery.where(
@@ -487,7 +490,6 @@ export default class DecisionAnalytics {
     const decisions = await pagedQuery
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
-      .limit(limit)
       .execute();
     return decisions.map(mapDecisionRow);
   }
