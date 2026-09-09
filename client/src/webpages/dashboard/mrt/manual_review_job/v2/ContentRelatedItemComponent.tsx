@@ -28,13 +28,13 @@ export default function ContentRelatedItemComponent(props: {
   );
   return (
     <div className="flex flex-col items-start justify-start w-full py-4 mt-8 space-y-2 bg-white border border-gray-200 border-solid rounded-lg">
-      <div className="flex flex-row items-center justify-between w-full px-4">
-        <div className="text-lg font-semibold text-start">
+      <div className="flex flex-wrap items-center justify-between gap-1 w-full px-4">
+        <div className="text-lg font-semibold text-start truncate min-w-0">
           {/* TODO: make this title org-agnostic  */}
           {props.title}
         </div>
         {itemId ? (
-          <div className="min-w-0 shrink text-slate-400">
+          <div className="shrink-0 text-slate-400">
             <CopyTextComponent
               displayValue={
                 'ID: ' +
