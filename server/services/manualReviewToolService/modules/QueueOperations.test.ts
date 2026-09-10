@@ -299,6 +299,16 @@ describe('QueueOperations', () => {
         queueIds: [otherQueue.id],
       });
       expect(otherQueueOnly).toEqual([]);
+
+      // A caller with no reviewable queues searches nothing rather than
+      // erroring on an empty `in ()`.
+      const noQueues = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [],
+      });
+      expect(noQueues).toEqual([]);
     },
   );
 

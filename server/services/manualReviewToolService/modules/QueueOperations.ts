@@ -1699,6 +1699,11 @@ export default class QueueOperations {
     queueIds: string[];
   }) {
     const { orgId, itemId, itemTypeId, queueIds } = opts;
+    // A caller with no reviewable queues searches nothing; Kysely would compile
+    // the filter below to `in ()`, which Postgres rejects.
+    if (queueIds.length === 0) {
+      return [];
+    }
     // Check postgres for creations within the last 7 days so we don't have to
     // search every bull queue for every item.
     const recentJobCreationQueues = await this.pgQuery
