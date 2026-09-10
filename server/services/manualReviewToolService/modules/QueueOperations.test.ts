@@ -245,10 +245,10 @@ describe('QueueOperations', () => {
     },
   );
 
-  // Regression: #1150 -- getExistingJobsForItem used to scan every org queue
-  // for a job on the item, so any authenticated user could read job payloads
-  // from queues they had no access to. It now only scans the caller's queue
-  // set, so the queue filter alone determines what is visible.
+  // getExistingJobsForItem only scans the caller's queue set
+  // set, so the queue filter alone determines what is visible
+  // to prevent authenticated users from reading job payloads
+  // from queues they have no access to
   testWithQueueAndActions()(
     'getExistingJobsForItem is scoped to the given queue IDs',
     async ({ org, queue, user, mrtService, kyselyPg }) => {
