@@ -248,6 +248,27 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
       ).rejects.toThrow('Authenticated user required');
       expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
     });
+
+    it('shares the per-request reviewable-queue lookup with queue fields', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+
+      await Promise.all([
+        Query.getExistingJobsForItem(
+          {},
+          { itemId: 'item-1', itemTypeId: 'content' },
+          ctx,
+        ),
+        ManualReviewQueue.pendingJobCount(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+      ]);
+
+      expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('Mutation.dequeueManualReviewJob', () => {

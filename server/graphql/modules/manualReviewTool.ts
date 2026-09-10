@@ -2272,22 +2272,13 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    const reviewableQueues =
-      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
-        {
-          invoker: {
-            userId: user.id,
-            permissions: user.getPermissions(),
-            orgId: user.orgId,
-          },
-        },
-      );
+    const reviewableQueueIds = await getReviewableQueueIds(context, user);
 
     return context.services.ManualReviewToolService.getExistingJobsForItem({
       orgId: user.orgId,
       itemId: params.itemId,
       itemTypeId: params.itemTypeId,
-      queueIds: reviewableQueues.map((queue) => queue.id),
+      queueIds: [...reviewableQueueIds],
     });
   },
   async getDecisionsTable(_, params, context) {
