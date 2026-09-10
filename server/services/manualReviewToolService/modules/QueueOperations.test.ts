@@ -290,6 +290,7 @@ describe('QueueOperations', () => {
         orgId: org.id,
         mrtService,
         userId: user.id,
+        name: `other-queue-${uid()}`,
       });
       const otherQueueOnly = await mrtService.getExistingJobsForItem({
         orgId: org.id,
