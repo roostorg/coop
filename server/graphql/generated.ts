@@ -4115,10 +4115,8 @@ export type GQLRole = {
   readonly __typename?: 'Role';
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
-  readonly id?: Maybe<Scalars['ID']['output']>;
-  /** True when permissions/metadata come from the static fallback rather than public.roles. */
-  readonly isFallback: Scalars['Boolean']['output'];
+  /** Persisted public.roles.id. */
+  readonly id: Scalars['ID']['output'];
   readonly isSystem: Scalars['Boolean']['output'];
   /** Stable role identifier (matches UserRole). */
   readonly key: GQLUserRole;
@@ -13364,8 +13362,7 @@ export type GQLRoleResolvers<
     ContextType
   >;
   displayName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  id?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
-  isFallback?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   isSystem?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   key?: Resolver<GQLResolversTypes['UserRole'], ParentType, ContextType>;
   permissions?: Resolver<
