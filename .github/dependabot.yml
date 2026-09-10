@@ -3,7 +3,8 @@
 # Please see the documentation for all configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
-# Major version updates are disabled for now across every ecosystem/directory.
+# Major version updates are disabled for now across every ecosystem/directory,
+# except `github-actions` (see the note on that block below).
 # Security updates are unaffected (Dependabot ignores `ignore` rules for
 # security advisories), so majors still land when they fix a vulnerability.
 
@@ -215,5 +216,30 @@ updates:
       nodejs-instrumentation-dev:
         dependency-type: 'development'
         applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Enable version updates for GitHub Actions
+  #
+  # Deliberately *not* ignoring `version-update:semver-major` here, unlike the
+  # ecosystems above. Actions majors are mostly runner-runtime bumps (e.g.
+  # node20 -> node24) that GitHub eventually forces anyway; blocking them means
+  # the pins rot until someone does a manual pass. Actions are also SHA-pinned
+  # and reviewed here, so a bad major cannot land silently.
+  #
+  # Note: Dependabot bumps the action SHA only. Tool versions passed *into* an
+  # action (e.g. the `version:` input of zizmorcore/zizmor-action, or the image
+  # digest inside boostsecurityio/poutine-action) still need a manual bump.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    cooldown:
+      default-days: 7
+    labels:
+      - 'dependencies'
+      - 'dependabot'
+    groups:
+      github-actions:
         patterns:
           - '*'
