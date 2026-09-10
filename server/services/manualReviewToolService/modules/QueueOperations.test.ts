@@ -245,6 +245,73 @@ describe('QueueOperations', () => {
     },
   );
 
+  // getExistingJobsForItem only scans the caller's queue set
+  // set, so the queue filter alone determines what is visible
+  // to prevent authenticated users from reading job payloads
+  // from queues they have no access to
+  testWithQueueAndActions()(
+    'getExistingJobsForItem is scoped to the given queue IDs',
+    async ({ org, queue, user, mrtService, kyselyPg }) => {
+      const jobPayload = makeDummyMrtJobPayload();
+      await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload,
+      });
+      const itemId = jobPayload.payload.item.itemId;
+      const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+      await kyselyPg
+        .insertInto('manual_review_tool.job_creations')
+        .values({
+          id: bullJobIdtoExternalJobId(
+            itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
+          ),
+          org_id: org.id,
+          item_id: itemId,
+          item_type_id: itemTypeId,
+          queue_id: queue.id,
+          created_at: new Date(),
+          enqueue_source_info: {},
+        })
+        .execute();
+
+      const inQueue = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [queue.id],
+      });
+      expect(inQueue.map((it) => it.queueId)).toEqual([queue.id]);
+
+      // The same job must stay invisible when the caller's queue set does not
+      // include its queue.
+      const { queue: otherQueue } = await createMrtQueue({
+        orgId: org.id,
+        mrtService,
+        userId: user.id,
+        name: `other-queue-${uid()}`,
+      });
+      const otherQueueOnly = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [otherQueue.id],
+      });
+      expect(otherQueueOnly).toEqual([]);
+
+      // A caller with no reviewable queues searches nothing rather than
+      // erroring on an empty `in ()`.
+      const noQueues = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [],
+      });
+      expect(noQueues).toEqual([]);
+    },
+  );
+
   // Regression: `deleteAllJobsFromQueue` is irreversible and used to accept
   // EDIT_MRT_QUEUES (held by moderator managers) -- that gap accidentally
   // cleared a production queue. It now requires MANAGE_ORG.
