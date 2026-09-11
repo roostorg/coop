@@ -202,9 +202,9 @@ export default function HashBanksDashboard() {
 
   const table = (
     <div className="rounded-2xl">
-      {/* @ts-ignore */}
       <CustomTable
         columns={columns}
+        // @ts-ignore -- tableData is possibly undefined before `banks` loads
         data={tableData}
         containerClassName="w-full"
       />
