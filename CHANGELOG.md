@@ -49,6 +49,10 @@ For more information about each release including git tags and artifacts, see [R
 - Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01), closes [#900](https://github.com/roostorg/coop/issues/900))
 - Minimum password length raised to 15 and enforced server-side ([#1065](https://github.com/roostorg/coop/pull/1065), [#1094](https://github.com/roostorg/coop/pull/1094) by [@serendipty01](https://github.com/serendipty01))
 
+### CI & infrastructure
+
+- `poutine` added to scan CI workflows for supply-chain vulnerabilities, gated on warning-level findings and reporting to code scanning ([#1156](https://github.com/roostorg/coop/pull/1156) by [@reitblatt](https://github.com/reitblatt))
+
 ## [1.0.2] - 2026-06-30
 
 This release addresses reported security advisories, improves NCMEC CyberTipline reporting, and includes front-end quality-of-life improvements.
