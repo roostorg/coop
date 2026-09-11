@@ -40,6 +40,7 @@ import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import ClaimOperations from './modules/ClaimOperations.js';
 import CommentOperations from './modules/CommentOperations.js';
 import DecisionAnalytics, {
+  type ActivityFeedDecisionCursor,
   type DecisionCountsInput,
   type DecisionCountsTableInput,
   type HandleTimeInput,
@@ -1199,6 +1200,16 @@ export class ManualReviewToolService {
     input: RecentDecisionsFilterInput;
   }) {
     return this.decisionAnalytics.getRecentDecisions(opts);
+  }
+
+  async getDecisionsForActivityFeed(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: Omit<RecentDecisionsFilterInput, 'page'>;
+    cursor?: ActivityFeedDecisionCursor;
+    limit: number;
+  }) {
+    return this.decisionAnalytics.getDecisionsForActivityFeed(opts);
   }
 
   async getSkippedJobsForRecentDecisions(opts: {
