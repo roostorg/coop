@@ -918,6 +918,7 @@ export class ManualReviewToolService {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    isAppealsQueue?: boolean;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];

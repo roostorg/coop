@@ -434,6 +434,171 @@ describe('QueueOperations', () => {
     | 'manual_review_tool.routing_rules'
     | 'manual_review_tool.appeals_routing_rules';
 
+  // Converting a queue between regular and appeals: the two kinds keep their
+  // jobs in separate Bull queues with different payload shapes, so the
+  // conversion is only allowed while nothing would be orphaned.
+  describe('updateManualReviewQueue isAppealsQueue', () => {
+    const createNonDefaultQueue = async (
+      { org, user, mrtService }: QueueFixture,
+      opts: { isAppealsQueue: boolean },
+    ) =>
+      mrtService.createManualReviewQueue({
+        name: `convert-test-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        hiddenActionIds: [],
+        isAppealsQueue: opts.isAppealsQueue,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+
+    const convert = async (
+      { org, user, mrtService }: QueueFixture,
+      queueId: string,
+      isAppealsQueue: boolean | undefined,
+    ) =>
+      mrtService.updateManualReviewQueue({
+        orgId: org.id,
+        queueId,
+        userIds: [user.id],
+        actionIdsToHide: [],
+        actionIdsToUnhide: [],
+        // Always sent by the GraphQL resolver; without at least one column to
+        // set, the UPDATE has an empty SET clause.
+        autoCloseJobs: false,
+        isAppealsQueue,
+      });
+
+    testWithQueueAndActions()(
+      'converts a non-default queue to an appeals queue and back',
+      async (fixture) => {
+        // The org already has a default appeals queue, so the converted
+        // queue must not become the default of either type.
+        await createNonDefaultQueue(fixture, { isAppealsQueue: true });
+        const queue = await createNonDefaultQueue(fixture, {
+          isAppealsQueue: false,
+        });
+        expect(queue.isDefaultQueue).toBe(false);
+
+        const converted = await convert(fixture, queue.id, true);
+        expect(converted.isAppealsQueue).toBe(true);
+        expect(converted.isDefaultQueue).toBe(false);
+
+        const reverted = await convert(fixture, queue.id, false);
+        expect(reverted.isAppealsQueue).toBe(false);
+        expect(reverted.isDefaultQueue).toBe(false);
+      },
+    );
+
+    testWithQueueAndActions()(
+      'a converted queue becomes the default appeals queue when the org has none',
+      async (fixture) => {
+        const queue = await createNonDefaultQueue(fixture, {
+          isAppealsQueue: false,
+        });
+
+        const converted = await convert(fixture, queue.id, true);
+        expect(converted.isAppealsQueue).toBe(true);
+        expect(converted.isDefaultQueue).toBe(true);
+        await expect(
+          fixture.mrtService['queueOps'].getDefaultAppealsQueueIdForOrg(
+            fixture.org.id,
+          ),
+        ).resolves.toBe(queue.id);
+      },
+    );
+
+    testWithQueueAndActions()(
+      'leaves the queue untouched when isAppealsQueue is omitted or unchanged',
+      async (fixture) => {
+        // The fixture queue is the org's default queue; passing its current
+        // type must not trip the default-queue guard.
+        const { queue } = fixture;
+        expect(queue.isDefaultQueue).toBe(true);
+
+        const omitted = await convert(fixture, queue.id, undefined);
+        expect(omitted.isAppealsQueue).toBe(false);
+        expect(omitted.isDefaultQueue).toBe(true);
+
+        const unchanged = await convert(fixture, queue.id, false);
+        expect(unchanged.isAppealsQueue).toBe(false);
+        expect(unchanged.isDefaultQueue).toBe(true);
+      },
+    );
+
+    testWithQueueAndActions()(
+      'refuses to convert the default queue',
+      async (fixture) => {
+        await expect(
+          convert(fixture, fixture.queue.id, true),
+        ).rejects.toMatchObject({
+          name: 'UnableToChangeQueueTypeError',
+          title: expect.stringContaining('default queue'),
+        });
+      },
+    );
+
+    testWithQueueAndActions()(
+      'refuses to convert a queue that still has pending jobs',
+      async (fixture) => {
+        const { org, mrtService } = fixture;
+        const queue = await createNonDefaultQueue(fixture, {
+          isAppealsQueue: false,
+        });
+        await mrtService['queueOps']['addJob']({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          jobPayload: makeDummyMrtJobPayload(),
+        });
+
+        await expect(convert(fixture, queue.id, true)).rejects.toMatchObject({
+          name: 'UnableToChangeQueueTypeError',
+          title: expect.stringContaining('pending jobs'),
+        });
+
+        const unchanged =
+          await mrtService.getQueueForOrgAndDangerouslyBypassPermissioning({
+            orgId: org.id,
+            queueId: queue.id,
+          });
+        expect(unchanged?.isAppealsQueue).toBe(false);
+      },
+    );
+
+    testWithQueueAndActions()(
+      'refuses to convert a queue referenced by a routing rule',
+      async (fixture) => {
+        const { org, user, kyselyPg } = fixture;
+        const queue = await createNonDefaultQueue(fixture, {
+          isAppealsQueue: false,
+        });
+        await kyselyPg
+          .insertInto('manual_review_tool.routing_rules')
+          .values({
+            id: uuidv1(),
+            org_id: org.id,
+            name: 'rule-blocking-conversion',
+            description: null,
+            status: 'LIVE',
+            condition_set: { conditions: [], conjunction: 'AND' },
+            destination_queue_id: queue.id,
+            creator_id: user.id,
+            sequence_number: 98,
+          })
+          .execute();
+
+        await expect(convert(fixture, queue.id, true)).rejects.toMatchObject({
+          name: 'UnableToChangeQueueTypeError',
+          title: expect.stringContaining('rule-blocking-conversion'),
+        });
+      },
+    );
+  });
+
   const expectDeletionBlockedByRoutingRule = async (
     { org, user, mrtService, kyselyPg }: QueueFixture,
     table: RuleTable,

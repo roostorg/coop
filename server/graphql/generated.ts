@@ -4840,6 +4840,21 @@ export type GQLTransformJobAndRecreateInQueueDecisionComponent =
     readonly type: GQLManualReviewDecisionType;
   };
 
+/**
+ * Returned when a queue can't be converted between a regular and an appeals
+ * queue, e.g. because it is the default queue, still has pending jobs, or is
+ * referenced by routing rules. The title explains which.
+ */
+export type GQLUnableToChangeQueueTypeError = GQLError & {
+  readonly __typename?: 'UnableToChangeQueueTypeError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLUpdateActionInput = {
   readonly applyUserStrikes?: InputMaybe<Scalars['Boolean']['input']>;
   readonly callbackUrl?: InputMaybe<Scalars['String']['input']>;
@@ -4915,6 +4930,11 @@ export type GQLUpdateManualReviewQueueInput = {
   >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
+  /**
+   * When provided, converts the queue to or from an appeals queue. Omit to
+   * leave the queue's type unchanged.
+   */
+  readonly isAppealsQueue?: InputMaybe<Scalars['Boolean']['input']>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -4922,7 +4942,8 @@ export type GQLUpdateManualReviewQueueInput = {
 export type GQLUpdateManualReviewQueueQueueResponse =
   | GQLManualReviewQueueNameExistsError
   | GQLMutateManualReviewQueueSuccessResponse
-  | GQLNotFoundError;
+  | GQLNotFoundError
+  | GQLUnableToChangeQueueTypeError;
 
 export type GQLUpdateNcmecOrgSettingsResponse = {
   readonly __typename?: 'UpdateNcmecOrgSettingsResponse';
@@ -5698,7 +5719,8 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | (Omit<GQLMutateManualReviewQueueSuccessResponse, 'data'> & {
         data: _RefType['ManualReviewQueue'];
       })
-    | GQLNotFoundError;
+    | GQLNotFoundError
+    | GQLUnableToChangeQueueTypeError;
   UpdatePolicyResponse: GQLNotFoundError | GQLPolicy;
   UpdateReportingRuleResponse:
     | (Omit<GQLMutateReportingRuleSuccessResponse, 'data'> & {
@@ -5769,7 +5791,8 @@ export type GQLResolversInterfaceTypes<
     | GQLRuleHasRunningBacktestsError
     | GQLRuleNameExistsError
     | GQLSignUpUserExistsError
-    | GQLSubmittedJobActionNotFoundError;
+    | GQLSubmittedJobActionNotFoundError
+    | GQLUnableToChangeQueueTypeError;
   Field:
     | GQLBaseField
     | (Omit<GQLDerivedField, 'spec'> & { spec: _RefType['DerivedFieldSpec'] });
@@ -6575,6 +6598,7 @@ export type GQLResolversTypes = {
   TopPolicyViolationsInput: GQLTopPolicyViolationsInput;
   TransformJobAndRecreateInQueue: GQLTransformJobAndRecreateInQueue;
   TransformJobAndRecreateInQueueDecisionComponent: ResolverTypeWrapper<GQLTransformJobAndRecreateInQueueDecisionComponent>;
+  UnableToChangeQueueTypeError: ResolverTypeWrapper<GQLUnableToChangeQueueTypeError>;
   UpdateActionInput: GQLUpdateActionInput;
   UpdateContentItemTypeInput: GQLUpdateContentItemTypeInput;
   UpdateContentRuleInput: GQLUpdateContentRuleInput;
@@ -7242,6 +7266,7 @@ export type GQLResolversParentTypes = {
   TopPolicyViolationsInput: GQLTopPolicyViolationsInput;
   TransformJobAndRecreateInQueue: GQLTransformJobAndRecreateInQueue;
   TransformJobAndRecreateInQueueDecisionComponent: GQLTransformJobAndRecreateInQueueDecisionComponent;
+  UnableToChangeQueueTypeError: GQLUnableToChangeQueueTypeError;
   UpdateActionInput: GQLUpdateActionInput;
   UpdateContentItemTypeInput: GQLUpdateContentItemTypeInput;
   UpdateContentRuleInput: GQLUpdateContentRuleInput;
@@ -9036,7 +9061,8 @@ export type GQLErrorResolvers<
     | 'RuleHasRunningBacktestsError'
     | 'RuleNameExistsError'
     | 'SignUpUserExistsError'
-    | 'SubmittedJobActionNotFoundError',
+    | 'SubmittedJobActionNotFoundError'
+    | 'UnableToChangeQueueTypeError',
     ParentType,
     ContextType
   >;
@@ -14518,6 +14544,36 @@ export type GQLTransformJobAndRecreateInQueueDecisionComponentResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLUnableToChangeQueueTypeErrorResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['UnableToChangeQueueTypeError'] =
+    GQLResolversParentTypes['UnableToChangeQueueTypeError'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLUpdateContentRuleResponseResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['UpdateContentRuleResponse'] =
@@ -14542,7 +14598,8 @@ export type GQLUpdateManualReviewQueueQueueResponseResolvers<
   __resolveType: TypeResolveFn<
     | 'ManualReviewQueueNameExistsError'
     | 'MutateManualReviewQueueSuccessResponse'
-    | 'NotFoundError',
+    | 'NotFoundError'
+    | 'UnableToChangeQueueTypeError',
     ParentType,
     ContextType
   >;
@@ -15490,6 +15547,7 @@ export type GQLResolvers<ContextType = Context> = {
   ThreadWithMessagesAndIpAddress?: GQLThreadWithMessagesAndIpAddressResolvers<ContextType>;
   TimeToAction?: GQLTimeToActionResolvers<ContextType>;
   TransformJobAndRecreateInQueueDecisionComponent?: GQLTransformJobAndRecreateInQueueDecisionComponentResolvers<ContextType>;
+  UnableToChangeQueueTypeError?: GQLUnableToChangeQueueTypeErrorResolvers<ContextType>;
   UpdateContentRuleResponse?: GQLUpdateContentRuleResponseResolvers<ContextType>;
   UpdateManualReviewQueueQueueResponse?: GQLUpdateManualReviewQueueQueueResponseResolvers<ContextType>;
   UpdateNcmecOrgSettingsResponse?: GQLUpdateNcmecOrgSettingsResponseResolvers<ContextType>;
