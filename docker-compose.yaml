@@ -14,6 +14,12 @@ services:
       - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep -qx PONG']
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     deploy:
       resources:
         limits:
@@ -123,7 +129,7 @@ services:
       migrations:
         condition: service_completed_successfully
       redis:
-        condition: service_started
+        condition: service_healthy
 
   backend:
     build:
