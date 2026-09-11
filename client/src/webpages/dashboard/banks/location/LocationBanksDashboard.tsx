@@ -211,7 +211,7 @@ export default function LocationBanksDashboard() {
   const table = (
     <div className="rounded-[15px]">
       {/* @ts-ignore */}
-      <Table columns={columns} data={tableData} />
+      <Table columns={columns} data={tableData} containerClassName="w-full" />
     </div>
   );
 
