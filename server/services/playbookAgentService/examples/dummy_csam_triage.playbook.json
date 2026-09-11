@@ -1,0 +1,144 @@
+{
+  "use_case_id": "dummy_csam_triage",
+  "version": "1.0.0",
+  "display_name": "Dummy CSAM Triage",
+  "description": "Example playbook showing deterministic escalation for a known critical hash match.",
+  "input_context": [
+    {
+      "field_name": "org_id",
+      "field_type": "string",
+      "required": true,
+      "description": "Organization id for the job."
+    },
+    {
+      "field_name": "item_id",
+      "field_type": "string",
+      "required": true,
+      "description": "Submitted item id."
+    },
+    {
+      "field_name": "item_type_id",
+      "field_type": "string",
+      "required": true,
+      "description": "Submitted item type id."
+    }
+  ],
+  "evidence_ontology": {
+    "version": "1.0.0",
+    "evidence_types": [
+      {
+        "evidence_id": "hash_match",
+        "display_name": "Hash Match",
+        "description": "Known media hash match evidence.",
+        "quality": {
+          "minimum_confidence": 1,
+          "minimum_num_required_sources": 1
+        }
+      }
+    ]
+  },
+  "baseline_catalog_refs": [
+    {
+      "catalog_id": "hash_match_history",
+      "version": "1.0.0",
+      "catalog_type": "query"
+    }
+  ],
+  "allowed_catalog_refs": [
+    {
+      "catalog_id": "hash_match_history",
+      "version": "1.0.0",
+      "catalog_type": "query"
+    }
+  ],
+  "evidence_request_policy": {
+    "query_selection_mode": "query_id",
+    "max_rounds": 1,
+    "target_confidence": 0.8,
+    "max_additional_queries": 0,
+    "stop_if_no_new_evidence": true,
+    "guidance": "Use only the supplied catalog evidence."
+  },
+  "labels": [
+    {
+      "label_id": "NO_ACTION",
+      "display_name": "No Action",
+      "description": "No enforcement needed.",
+      "severity": "INFO"
+    },
+    {
+      "label_id": "ESCALATE_FOR_REVIEW",
+      "display_name": "Escalate for Review",
+      "description": "Needs human review before enforcement.",
+      "severity": "HIGH"
+    },
+    {
+      "label_id": "REPORT_AND_REMOVE",
+      "display_name": "Report and Remove",
+      "description": "Known critical hash match requires reporting and removal.",
+      "severity": "CRITICAL"
+    }
+  ],
+  "decision_logic": {
+    "hard_rules": [
+      {
+        "rule_id": "known_critical_hash",
+        "description": "Critical hash matches are deterministic.",
+        "condition": "hash_match_history.severity_tier == 'CRITICAL'",
+        "outcome": "REPORT_AND_REMOVE",
+        "bypass_llm": true
+      }
+    ],
+    "scoring_guidance": [
+      {
+        "guidance_id": "known_hash",
+        "description": "Treat verified critical hash matches as conclusive."
+      }
+    ],
+    "default_label": "NO_ACTION"
+  },
+  "confidence_computation": {
+    "evidence_completeness_weight": 0.35,
+    "signal_strength_weight": 0.25,
+    "signal_agreement_weight": 0.25,
+    "data_quality_weight": 0.15,
+    "llm_uncertainty_alpha": 0.4,
+    "base_coverage_weight": 1,
+    "additional_coverage_weight": 0,
+    "critical_evidence_missing_penalty": 0.3,
+    "additional_query_bonus_max": 0
+  },
+  "phase_budget": {
+    "max_queries": 1,
+    "max_llm_calls": 1,
+    "max_duration_ms": 30000
+  },
+  "output_contract": {
+    "version": "1.0.0",
+    "required_fields": [
+      "verdict",
+      "rationale",
+      "confidence_score",
+      "u_llm",
+      "queries_executed",
+      "supporting_evidence",
+      "contradicting_evidence",
+      "critical_evidence_missing",
+      "has_contradictory_signals"
+    ],
+    "schema": {
+      "type": "object",
+      "required": [
+        "verdict",
+        "rationale",
+        "confidence_score",
+        "u_llm",
+        "queries_executed",
+        "supporting_evidence",
+        "contradicting_evidence",
+        "critical_evidence_missing",
+        "has_contradictory_signals"
+      ]
+    }
+  }
+}
