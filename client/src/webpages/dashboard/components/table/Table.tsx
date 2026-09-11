@@ -26,6 +26,8 @@ export default function Table<TData extends Record<string, any>>(
     /** Force the horizontal scrollbar to always render. Opt-in because tables
      * that always fit the viewport would otherwise show an unnecessary scrollbar. */
     alwaysShowScrollbar?: boolean;
+    /** Columns to sort by on first render, e.g. [{ id: 'name', desc: false }]. */
+    initialSortBy?: Array<{ id: string; desc: boolean }>;
   } & (
     | {
         isCollapsed?: boolean;
@@ -46,6 +48,7 @@ export default function Table<TData extends Record<string, any>>(
     disableFilter,
     containerClassName,
     alwaysShowScrollbar,
+    initialSortBy,
   } = props;
   const {
     isCollapsed = undefined,
@@ -63,6 +66,7 @@ export default function Table<TData extends Record<string, any>>(
     defaultColumn: {
       cell: ({ getValue }): ReactNode => getValue() as ReactNode,
     },
+    initialState: { sorting: initialSortBy ?? [] },
   });
   const rows = table.getRowModel().rows;
   const [selectedRow, setSelectedRow] = useState<number | null>(null);

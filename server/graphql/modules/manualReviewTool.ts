@@ -46,6 +46,11 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 const { omit, sumBy } = _;
 
 const typeDefs = /* GraphQL */ `
+  enum JobSortType {
+    FIFO
+    NUM_REPORTS
+  }
+
   enum MrtClearReportsDisposition {
     AUTOMATIC_CLOSE
     IGNORE
@@ -70,6 +75,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    jobSortType: JobSortType!
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope!
     clearReportsTriggerActionIds: [ID!]!
@@ -424,6 +430,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    jobSortType: JobSortType
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope
     clearReportsTriggerActionIds: [ID!]
@@ -437,6 +444,7 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
+    jobSortType: JobSortType
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope
     clearReportsTriggerActionIds: [ID!]
@@ -2416,6 +2424,7 @@ const Mutation: GQLMutationResolvers = {
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -2432,6 +2441,7 @@ const Mutation: GQLMutationResolvers = {
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,
+          jobSortType: jobSortType ?? undefined,
           clearReportsDisposition,
           clearReportsScope: clearReportsScope ?? undefined,
           clearReportsTriggerActionIds:
@@ -2473,6 +2483,7 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -2490,6 +2501,7 @@ const Mutation: GQLMutationResolvers = {
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
+          jobSortType: jobSortType ?? undefined,
           clearReportsDisposition,
           clearReportsScope: clearReportsScope ?? undefined,
           clearReportsTriggerActionIds:

@@ -858,6 +858,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
+  readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name: Scalars['String']['input'];
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -1848,6 +1849,13 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobSortType = {
+  Fifo: 'FIFO',
+  NumReports: 'NUM_REPORTS',
+} as const;
+
+export type GQLJobSortType =
+  (typeof GQLJobSortType)[keyof typeof GQLJobSortType];
 export const GQLLanguage = {
   Abkhazian: 'ABKHAZIAN',
   Afar: 'AFAR',
@@ -2315,6 +2323,7 @@ export type GQLManualReviewQueue = {
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
   readonly isDefaultQueue: Scalars['Boolean']['output'];
+  readonly jobSortType: GQLJobSortType;
   readonly jobs: ReadonlyArray<GQLManualReviewJob>;
   readonly name: Scalars['String']['output'];
   readonly oldestJobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
@@ -4915,6 +4924,7 @@ export type GQLUpdateManualReviewQueueInput = {
   >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
+  readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -6135,6 +6145,7 @@ export type GQLResolversTypes = {
   JobCreationSettingsInput: GQLJobCreationSettingsInput;
   JobCreationSourceOptions: GQLJobCreationSourceOptions;
   JobHasAlreadyBeenSubmittedError: ResolverTypeWrapper<GQLJobHasAlreadyBeenSubmittedError>;
+  JobSortType: GQLJobSortType;
   Language: GQLLanguage;
   Languages: ResolverTypeWrapper<GQLLanguages>;
   LatLng: ResolverTypeWrapper<GQLLatLng>;
@@ -10534,6 +10545,11 @@ export type GQLManualReviewQueueResolvers<
   >;
   isDefaultQueue?: Resolver<
     GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  jobSortType?: Resolver<
+    GQLResolversTypes['JobSortType'],
     ParentType,
     ContextType
   >;
