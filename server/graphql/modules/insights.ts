@@ -2,13 +2,15 @@
 // lodash as opposed to _ to avoid overloading
 import lodash from 'lodash';
 
+import type { ReportingRulePassingContentSample } from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
 import { gatherSignalsFromResult } from '../../services/analyticsQueries/index.js';
-import { jsonStringify } from '../../utils/encoding.js';
+import { jsonStringify, tryJsonParse } from '../../utils/encoding.js';
 import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
 import type {
   GQLQueryResolvers,
   GQLReportingRuleExecutionResultResolvers,
   GQLReportingRuleInsightsResolvers,
+  GQLResolversParentTypes,
   GQLRuleExecutionResultResolvers,
   GQLRuleInsightsResolvers,
 } from '../generated.js';
@@ -150,6 +152,38 @@ const ReportingRuleExecutionResult: GQLReportingRuleExecutionResultResolvers = {
     return gatherSignalsFromResult(fullResults);
   },
 };
+
+function normalizeReportingRuleSample(
+  sample: ReportingRulePassingContentSample,
+  rule: { id: string; name: string },
+): GQLResolversParentTypes['ReportingRuleExecutionResult'] {
+  const result =
+    typeof sample.result === 'string'
+      ? (tryJsonParse(sample.result) ?? sample.result)
+      : sample.result;
+
+  return {
+    date: sample.date,
+    ts: sample.ts,
+    itemId: sample.itemId,
+    itemTypeName: sample.itemTypeName,
+    itemTypeId: sample.itemTypeId,
+    itemData:
+      typeof sample.itemData === 'string'
+        ? sample.itemData
+        : jsonStringify(sample.itemData),
+    creatorId: sample.creatorId,
+    creatorTypeId: sample.creatorTypeId,
+    result:
+      result as GQLResolversParentTypes['ReportingRuleExecutionResult']['result'],
+    environment:
+      sample.environment as GQLResolversParentTypes['ReportingRuleExecutionResult']['environment'],
+    passed: true,
+    ruleId: rule.id,
+    ruleName: rule.name,
+    policyIds: sample.policyIds,
+  };
+}
 
 const RuleInsights: GQLRuleInsightsResolvers = {
   async passRateData(rule, args, context) {
@@ -363,6 +397,56 @@ const Query: GQLQueryResolvers = {
         'RuleExecutionResult',
       );
       /* eslint-enable @typescript-eslint/no-explicit-any */
+    } catch (e) {
+      if (isCoopErrorOfType(e, 'NotFoundError')) {
+        return gqlErrorResult(e);
+      }
+
+      throw e;
+    }
+  },
+  async getFullReportingRuleResultForItem(_, { input }, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    const { ruleId, item, lookback } = input;
+    try {
+      const rules = await context.services.ReportingService.getReportingRules({
+        orgId: user.orgId,
+      });
+      const rule = rules.find((candidate) => candidate.id === ruleId);
+      if (!rule) {
+        throw makeNotFoundError('Item not found', { shouldErrorSpan: true });
+      }
+      const executionTimestamp = input.date ? new Date(input.date) : undefined;
+      if (
+        executionTimestamp == null ||
+        Number.isNaN(executionTimestamp.getTime())
+      ) {
+        throw makeNotFoundError('Item not found', { shouldErrorSpan: true });
+      }
+      const samples =
+        await context.services.ReportingService.getReportingRulePassingContentSamples(
+          {
+            ruleId,
+            orgId: user.orgId,
+            source: lookback === 'LATEST' ? 'latestVersion' : 'priorVersion',
+            itemIds: [item.id],
+            itemTypeIds: [item.typeId],
+            executionTimestamp,
+            numSamples: 1,
+          },
+        );
+      if (samples.length === 0) {
+        throw makeNotFoundError('Item not found', { shouldErrorSpan: true });
+      }
+      const sample = samples[0];
+
+      return gqlSuccessResult(
+        normalizeReportingRuleSample(sample, rule),
+        'ReportingRuleExecutionResult',
+      );
     } catch (e) {
       if (isCoopErrorOfType(e, 'NotFoundError')) {
         return gqlErrorResult(e);
