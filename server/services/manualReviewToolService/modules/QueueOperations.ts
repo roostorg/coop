@@ -446,6 +446,16 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
+    // Captured before the DB row is deleted below (issue #1113): any jobs
+    // still pending in this queue get moved to the org's default queue
+    // instead of being silently wiped by `obliterate`. We need
+    // `isAppealsQueue` to know which default queue and job shape to use.
+    const queueBeingDeleted =
+      await this.getQueueForOrgAndDangerouslyBypassPermissioning({
+        orgId,
+        queueId,
+      });
+
     let numDeletedRows: bigint;
     try {
       numDeletedRows = await this.transactionWithRetry(async (transaction) => {
@@ -506,6 +516,31 @@ export default class QueueOperations {
     }
 
     if (numDeletedRows === 1n) {
+      if (queueBeingDeleted !== undefined) {
+        try {
+          const destinationQueueId = queueBeingDeleted.isAppealsQueue
+            ? await this.getDefaultAppealsQueueIdForOrg(orgId)
+            : defaultQueueId;
+          // Moving into the queue we just deleted the row for would be a
+          // no-op at best; this only happens if `queueBeingDeleted` was
+          // itself a default queue, which the guard above only rules out
+          // for the non-appeals case.
+          if (destinationQueueId !== queueId) {
+            await this.#moveAllJobsToQueue({
+              orgId,
+              sourceQueueId: queueId,
+              destinationQueueId,
+              isAppealsQueue: queueBeingDeleted.isAppealsQueue,
+            });
+          }
+        } catch (e) {
+          // Best-effort: if migrating pending jobs fails partway through,
+          // fall through to obliterate below rather than leaving the DB row
+          // deleted but the Bull queue still around.
+          this.tracer.logActiveSpanFailedIfAny(e);
+        }
+      }
+
       try {
         await queue.obliterate({ force: true });
       } catch (e) {
@@ -521,6 +556,88 @@ export default class QueueOperations {
     }
 
     return numDeletedRows === 1n;
+  }
+
+  /**
+   * Copies every job currently in `sourceQueueId` (waiting, delayed, or
+   * active) into `destinationQueueId`, best-effort per job. Used by
+   * {@link deleteManualReviewQueue} so pending work isn't silently lost when
+   * a queue is deleted (issue #1113). Does not remove jobs from the source
+   * queue -- the caller obliterates it separately once this returns.
+   */
+  async #moveAllJobsToQueue(opts: {
+    orgId: string;
+    sourceQueueId: string;
+    destinationQueueId: string;
+    isAppealsQueue: boolean;
+  }): Promise<{ moved: number; failed: number }> {
+    const { orgId, sourceQueueId, destinationQueueId, isAppealsQueue } = opts;
+    const concurrencyLimit = pLimit(10);
+    const PAGE_SIZE = 500;
+
+    const moveOne = async (
+      job: Job<StoredManualReviewJob> | Job<ManualReviewAppealJob>,
+    ): Promise<'moved' | 'failed'> => {
+      try {
+        if (isAppealsQueue) {
+          const { data } = job as Job<ManualReviewAppealJob>;
+          await this.addAppealJob({
+            orgId,
+            queueId: destinationQueueId,
+            reenqueuedFrom: { jobId: data.id },
+            jobPayload: {
+              createdAt: data.createdAt,
+              policyIds: data.policyIds,
+              payload: data.payload,
+            },
+            enqueueSourceInfo: { kind: 'APPEAL' },
+          });
+        } else {
+          const { data } = await this.legacyJobToJob(
+            job as Job<StoredManualReviewJob>,
+            orgId,
+          );
+          await this.addJob({
+            orgId,
+            queueId: destinationQueueId,
+            reenqueuedFrom: { jobId: data.id },
+            jobPayload: {
+              createdAt: data.createdAt,
+              policyIds: data.policyIds,
+              payload: data.payload,
+            },
+            enqueueSourceInfo: { kind: 'MRT_JOB' },
+          });
+        }
+        return 'moved';
+      } catch (e) {
+        this.tracer.logActiveSpanFailedIfAny(e);
+        return 'failed';
+      }
+    };
+
+    const sourceQueue = isAppealsQueue
+      ? await this.getOrCreateBullAppealQueue({ orgId, queueId: sourceQueueId })
+      : await this.getOrCreateBullQueue({ orgId, queueId: sourceQueueId });
+
+    let moved = 0;
+    let failed = 0;
+    for (let start = 0; ; start += PAGE_SIZE) {
+      const page = await sourceQueue.getJobs(
+        undefined,
+        start,
+        start + PAGE_SIZE - 1,
+      );
+      if (page.length === 0) break;
+      const results = await Promise.all(
+        page.map(async (job) => concurrencyLimit(async () => moveOne(job))),
+      );
+      for (const result of results) {
+        if (result === 'moved') moved++;
+        else failed++;
+      }
+    }
+    return { moved, failed };
   }
 
   async deleteManualReviewQueueForTestsDO_NOT_USE(

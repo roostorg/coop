@@ -20,6 +20,7 @@ For more information about each release including git tags and artifacts, see [R
 - Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
+- Deleting a queue now moves its pending jobs to the org's default queue instead of deleting them, and the delete confirmation warns about the pending job count ([#1175](https://github.com/roostorg/coop/pull/1175) by [@reitblatt](https://github.com/reitblatt), closes [#1113](https://github.com/roostorg/coop/issues/1113))
 - Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
 - Production Node images moved from Debian 11 (bullseye) to Debian 12 (bookworm) ([#1138](https://github.com/roostorg/coop/pull/1138) by [@juanmrad](https://github.com/juanmrad))
 

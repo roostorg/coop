@@ -443,6 +443,9 @@ export default function ManualReviewQueuesDashboard() {
     </CoopModal>
   );
 
+  const deleteTargetPendingJobCount =
+    queues?.find((it) => it.id === modalInfo?.id)?.pendingJobCount ?? 0;
+
   const deleteModal = (
     <CoopModal
       title={
@@ -468,8 +471,24 @@ export default function ManualReviewQueuesDashboard() {
       ]}
       onClose={onCancel}
     >
-      Are you sure you want to delete this queue? This will delete all jobs
-      inside of this queue as well. You can't undo this action.
+      <div className="space-y-2">
+        <p>
+          Are you sure you want to delete this queue? You can&apos;t undo this
+          action.
+        </p>
+        {deleteTargetPendingJobCount > 0 ? (
+          <p>
+            This queue has{' '}
+            <strong>
+              {deleteTargetPendingJobCount.toLocaleString('en')} pending job
+              {deleteTargetPendingJobCount === 1 ? '' : 's'}
+            </strong>
+            . Rather than being deleted,{' '}
+            {deleteTargetPendingJobCount === 1 ? 'it' : 'they'} will be moved to
+            your default queue.
+          </p>
+        ) : null}
+      </div>
     </CoopModal>
   );
 
