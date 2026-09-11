@@ -45,7 +45,7 @@ import RuleInsightsEmptyCard from './RuleInsightsEmptyCard';
 
 gql`
   query ReportingRulePassRateAnalytics($id: ID!) {
-    rule(id: $id) {
+    reportingRule(id: $id) {
       insights {
         passRateData {
           date
@@ -72,12 +72,14 @@ export default function ReportingRuleInsightsActionsChart(props: {
 
   const [chartType, setChartType] = useState(ChartType.LINE);
 
-  const passRateData = data?.rule?.insights.passRateData ?? undefined;
+  const passRateData = data?.reportingRule?.insights.passRateData ?? undefined;
 
   const getDataInTimeWindow = useCallback(
     (
       arr?: NonNullable<
-        NonNullable<GQLReportingRulePassRateAnalyticsQuery['rule']>['insights']
+        NonNullable<
+          GQLReportingRulePassRateAnalyticsQuery['reportingRule']
+        >['insights']
       >['passRateData'],
     ) =>
       filterNullOrUndefined(arr ?? []).filter((elemWithDate) => {
