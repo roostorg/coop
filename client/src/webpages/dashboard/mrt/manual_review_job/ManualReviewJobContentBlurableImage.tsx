@@ -1,9 +1,10 @@
+import { moderatorSafetyFilterStyle } from '@/models/safetySettings';
 import { useEffect, useState } from 'react';
 
 import CopyTextComponent from '../../../../components/common/CopyTextComponent';
 import CoopModal from '../../components/CoopModal';
 
-import { BLUR_LEVELS, BlurStrength } from './v2/ncmec/NCMECMediaViewer';
+import type { BlurStrength } from './v2/ncmec/NCMECMediaViewer';
 
 export default function ManualReviewJobContentBlurableImage(props: {
   url: string;
@@ -15,6 +16,7 @@ export default function ManualReviewJobContentBlurableImage(props: {
     grayscale?: boolean;
     disableZoom?: boolean;
     sepia?: boolean;
+    revealOnHover?: boolean;
   };
   onError?: () => void;
 }) {
@@ -27,10 +29,12 @@ export default function ManualReviewJobContentBlurableImage(props: {
     grayscale = false,
     disableZoom = false,
     sepia = false,
+    revealOnHover = true,
   } = options ?? {};
 
   const [clicked, setClicked] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
 
   // Reset error when the url changes
   useEffect(() => setError(false), [url]);
@@ -46,16 +50,25 @@ export default function ManualReviewJobContentBlurableImage(props: {
     );
   }
 
+  const filter = moderatorSafetyFilterStyle({
+    blurLevel: blurStrength,
+    shouldBlur: shouldBlur && !(revealOnHover && isHovered),
+    grayscale,
+    sepia,
+  });
+
   return (
-    <div className="my-2 rounded-lg">
+    <div
+      className="my-2 rounded-lg"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <img
-        className={`w-full rounded-lg hover:blur-none ${
-          shouldBlur ? BLUR_LEVELS[blurStrength] : 'blur-0'
-        } ${grayscale ? 'grayscale' : ''} ${sepia ? 'sepia' : ''}`}
+        className="w-full rounded-lg"
         alt=""
         src={url}
         onClick={() => setClicked(true)}
-        style={{ maxWidth, maxHeight }}
+        style={{ maxWidth, maxHeight, filter }}
         onError={() => {
           setError(true);
           onError?.();

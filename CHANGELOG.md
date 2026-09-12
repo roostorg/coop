@@ -17,6 +17,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
+- Wellness color scheme now applies to videos in the review console, not only images ([#1186](https://github.com/roostorg/coop/pull/1186) by [@maarkN](https://github.com/maarkN))
 - Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
@@ -30,6 +31,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Hovering a blurred video not unblurring it, unlike images ([#1186](https://github.com/roostorg/coop/pull/1186) by [@maarkN](https://github.com/maarkN), closes [#524](https://github.com/roostorg/coop/issues/524))
 - Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
 - `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
 - Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled), closes [#1074](https://github.com/roostorg/coop/issues/1074))

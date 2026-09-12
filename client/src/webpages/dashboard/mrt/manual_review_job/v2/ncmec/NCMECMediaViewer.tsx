@@ -11,6 +11,7 @@ import {
   colorSchemeFromPreferences,
   MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
   MODERATOR_SAFETY_COLOR_SCHEMES,
+  moderatorSafetyFilterStyle,
   preferencesFromColorScheme,
   type ModeratorSafetyColorScheme,
 } from '@/models/safetySettings';
@@ -181,11 +182,15 @@ export default function NCMECMediaViewer(props: {
                 isInInspectedView
                   ? 'w-full max-h-[600px]'
                   : 'object-scale-down w-64 h-48'
-              } ${
-                shouldBlur
-                  ? BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel]
-                  : 0
-              } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''} ${safetySettings.moderatorSafetySepia ? 'sepia' : ''}`}
+              }`}
+              style={{
+                filter: moderatorSafetyFilterStyle({
+                  blurLevel: safetySettings.moderatorSafetyBlurLevel,
+                  shouldBlur,
+                  grayscale: safetySettings.moderatorSafetyGrayscale,
+                  sepia: safetySettings.moderatorSafetySepia,
+                }),
+              }}
               alt=""
               src={mediaId.urlInfo.url}
               onError={(img) => {

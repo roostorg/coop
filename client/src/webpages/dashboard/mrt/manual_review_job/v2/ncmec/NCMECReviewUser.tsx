@@ -1,8 +1,8 @@
+import { moderatorSafetyFilterStyle } from '@/models/safetySettings';
 import { isTypingInEditableElement } from '@/utils/misc';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
 import { Button } from 'antd';
-import clsx from 'clsx';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
 import uniqWith from 'lodash/uniqWith';
@@ -40,7 +40,7 @@ import ManualReviewJobContentBlurableVideo from '../../ManualReviewJobContentBlu
 import NCMECActions from './NCMECActions';
 import NCMECInspectedMedia from './NCMECInspectedMedia';
 import NCMECMediaGallery from './NCMECMediaGallery';
-import { BLUR_LEVELS, BlurStrength } from './NCMECMediaViewer';
+import { BlurStrength } from './NCMECMediaViewer';
 import NCMECPreviousMessages from './NCMECPreviousMessages';
 
 export type NCMECUrlInfo = {
@@ -600,30 +600,30 @@ export default function NCMECReviewUser(
               moderatorSafetySepia != null ? (
                 media.urlInfo.mediaType === 'IMAGE' ? (
                   <img
-                    className={clsx(
-                      'object-scale-down w-64 h-48 rounded-2xl',
-                      unblurAllMediaInConfirmation
-                        ? 'blur-0'
-                        : BLUR_LEVELS[moderatorSafetyBlurLevel as BlurStrength],
-                      moderatorSafetyGrayscale && 'grayscale',
-                      moderatorSafetySepia && 'sepia',
-                    )}
+                    className="object-scale-down w-64 h-48 rounded-2xl"
+                    style={{
+                      filter: moderatorSafetyFilterStyle({
+                        blurLevel: moderatorSafetyBlurLevel,
+                        shouldBlur: !unblurAllMediaInConfirmation,
+                        grayscale: moderatorSafetyGrayscale,
+                        sepia: moderatorSafetySepia,
+                      }),
+                    }}
                     alt=""
                     src={media.urlInfo.url}
                   />
                 ) : (
                   <ManualReviewJobContentBlurableVideo
                     url={media.urlInfo.url}
-                    className={clsx(
-                      'object-scale-down w-64 h-48 rounded-2xl',
-                      moderatorSafetyGrayscale && 'grayscale',
-                      moderatorSafetySepia && 'sepia',
-                    )}
+                    className="object-scale-down w-64 h-48 rounded-2xl"
                     options={{
                       shouldBlur:
                         !unblurAllMediaInConfirmation &&
                         moderatorSafetyBlurLevel > 0,
                       blurStrength: moderatorSafetyBlurLevel as BlurStrength,
+                      grayscale: moderatorSafetyGrayscale,
+                      sepia: moderatorSafetySepia,
+                      revealOnHover: false,
                       muted: moderatorSafetyMuteVideo,
                     }}
                   />
