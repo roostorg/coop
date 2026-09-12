@@ -1,3 +1,5 @@
+import type { JsonObject } from 'type-fest';
+
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
@@ -26,6 +28,7 @@ interface ClickhouseActionExecutionRow {
   job_id: string | null;
   policies?: string | null;
   rules?: string | null;
+  parameters?: string | null;
   action_id: string;
   action_source?: string;
 }
@@ -36,6 +39,12 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
     private readonly tracer: SafeTracer,
   ) {}
 
+  /**
+   * Every action recorded against an item or its creator, newest first, with
+   * the policies, rules and moderator-supplied parameters each ran with.
+   * Background rule executions are excluded — they're machine bookkeeping
+   * rather than enforcement a reviewer needs to see.
+   */
   async getItemActionHistory(
     input: ItemActionHistoryInput,
   ): Promise<ReadonlyArray<ItemActionHistoryRecord>> {
@@ -52,6 +61,7 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         job_id,
         policies,
         rules,
+        parameters,
         action_id
       FROM analytics.ACTION_EXECUTIONS
       WHERE org_id = ?
@@ -86,6 +96,7 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         userTypeId: row.item_creator_type_id ?? null,
         policies: this.extractIds(this.parseJsonArray(row.policies)),
         ruleIds: this.extractIds(this.parseJsonArray(row.rules)),
+        parameters: this.parseJsonObject(row.parameters),
         occurredAt: new Date(row.ts),
       }));
   }
@@ -291,6 +302,31 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
       return null;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * `ACTION_EXECUTIONS.parameters` holds a canonical JSON object (`'{}'` by
+   * default). Anything that isn't a readable JSON object — a legacy row, an
+   * empty string, or a value that got written as an array or scalar — reads
+   * back as `{}` rather than failing the whole history query for one bad row.
+   */
+  private parseJsonObject(jsonString: string | null | undefined): JsonObject {
+    if (!jsonString) {
+      return {};
+    }
+    try {
+      const parsed = jsonParse(jsonString as JsonOf<unknown>);
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        !Array.isArray(parsed)
+      ) {
+        return parsed as JsonObject;
+      }
+      return {};
+    } catch {
+      return {};
     }
   }
 

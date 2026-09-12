@@ -1662,6 +1662,12 @@ export type GQLItemAction = {
   readonly itemId: Scalars['ID']['output'];
   readonly itemTypeId: Scalars['ID']['output'];
   readonly jobId?: Maybe<Scalars['ID']['output']>;
+  /**
+   * Moderator-supplied parameter values this action ran with, keyed by the
+   * parameter's `name`. Empty when the action takes no parameters or the
+   * execution predates parameter capture.
+   */
+  readonly parameters: Scalars['JSONObject']['output'];
   readonly policies: ReadonlyArray<Scalars['String']['output']>;
   readonly ruleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly ts: Scalars['DateTime']['output'];
@@ -9710,6 +9716,11 @@ export type GQLItemActionResolvers<
   itemId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   itemTypeId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   jobId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
+  parameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
   policies?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
     ParentType,

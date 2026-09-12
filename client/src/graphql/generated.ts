@@ -1594,6 +1594,12 @@ export type GQLItemAction = {
   readonly itemId: Scalars['ID']['output'];
   readonly itemTypeId: Scalars['ID']['output'];
   readonly jobId?: Maybe<Scalars['ID']['output']>;
+  /**
+   * Moderator-supplied parameter values this action ran with, keyed by the
+   * parameter's `name`. Empty when the action takes no parameters or the
+   * execution predates parameter capture.
+   */
+  readonly parameters: Scalars['JSONObject']['output'];
   readonly policies: ReadonlyArray<Scalars['String']['output']>;
   readonly ruleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly ts: Scalars['DateTime']['output'];
@@ -8292,6 +8298,7 @@ export type GQLItemActionHistoryQuery = {
     readonly jobId?: string | null;
     readonly policies: ReadonlyArray<string>;
     readonly ruleIds: ReadonlyArray<string>;
+    readonly parameters: JsonObject;
     readonly ts: Date | string;
   }>;
   readonly myOrg?: {
@@ -32225,6 +32232,7 @@ export const GQLItemActionHistoryDocument = gql`
         jobId
         policies
         ruleIds
+        parameters
         ts
       }
     }
