@@ -2,7 +2,6 @@
 import _ from 'lodash';
 
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../services/itemProcessingService/index.js';
-import { canResolveManualReviewContent } from '../../services/manualReviewContentResolver.js';
 import { NCMECIncidentType as NCMECIncidentTypeValues } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
@@ -1781,23 +1780,15 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     if (user == null) {
       throw unauthenticatedError('User required.');
     }
-    if (
-      !canResolveManualReviewContent({
-        jobOrgId: orgId,
-        lockToken,
-        reviewerId: user.id,
-        reviewerOrgId: user.orgId,
-      })
-    ) {
-      return jobs;
-    }
-
     return Promise.all(
       jobs.map(async (job) =>
         context.services.ManualReviewToolService.resolveContentForReview({
           job,
           queueId,
           reviewerId: user.id,
+          reviewerOrgId: user.orgId,
+          lockToken,
+          isAppealsQueue: queue.isAppealsQueue,
         }),
       ),
     );

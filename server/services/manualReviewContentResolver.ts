@@ -35,15 +35,20 @@ export function getRegisteredManualReviewContentResolver() {
   return registeredResolver ?? passThroughManualReviewContent;
 }
 
-export function canResolveManualReviewContent(opts: {
+export async function canResolveManualReviewContent(opts: {
   jobOrgId: string;
   lockToken: string;
   reviewerId: string;
   reviewerOrgId: string;
+  hasActiveLock: () => Promise<boolean>;
 }) {
-  return (
-    opts.lockToken === opts.reviewerId && opts.jobOrgId === opts.reviewerOrgId
-  );
+  if (
+    opts.lockToken !== opts.reviewerId ||
+    opts.jobOrgId !== opts.reviewerOrgId
+  ) {
+    return false;
+  }
+  return opts.hasActiveLock();
 }
 
 export async function resolveManualReviewContentSafely(

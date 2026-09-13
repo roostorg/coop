@@ -22,6 +22,7 @@ import {
 } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import {
+  canResolveManualReviewContent,
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
@@ -1100,6 +1101,9 @@ export class ManualReviewToolService {
   async resolveContentForReview(opts: {
     queueId: string;
     reviewerId: string;
+    reviewerOrgId: string;
+    lockToken: string;
+    isAppealsQueue: boolean;
     job: ManualReviewJobOrAppeal;
   }) {
     return this.tracer.addActiveSpan(
@@ -1113,16 +1117,39 @@ export class ManualReviewToolService {
           'reviewer.id': opts.reviewerId,
         },
       },
-      async (span) =>
-        resolveManualReviewContentSafely(
-          { ...opts, orgId: opts.job.orgId },
+      async (span) => {
+        const canResolve = await canResolveManualReviewContent({
+          jobOrgId: opts.job.orgId,
+          reviewerOrgId: opts.reviewerOrgId,
+          reviewerId: opts.reviewerId,
+          lockToken: opts.lockToken,
+          hasActiveLock: async () =>
+            this.queueOps.extendJobLock({
+              orgId: opts.job.orgId,
+              queueId: opts.queueId,
+              jobId: opts.job.id,
+              lockToken: opts.lockToken,
+              isAppealsQueue: opts.isAppealsQueue,
+            }),
+        });
+        span.setAttribute('content.resolution_authorized', canResolve);
+        if (!canResolve) return opts.job;
+
+        return resolveManualReviewContentSafely(
+          {
+            orgId: opts.job.orgId,
+            queueId: opts.queueId,
+            reviewerId: opts.reviewerId,
+            job: opts.job,
+          },
           this.resolveManualReviewContent,
           {
             onResolved: (count) =>
               span.setAttribute('content.resolved_count', count),
             onError: (error) => this.tracer.logSpanFailed(span, error),
           },
-        ),
+        );
+      },
     );
   }
 
@@ -1145,7 +1172,6 @@ export class ManualReviewToolService {
           jobIds: jobIds satisfies readonly string[] as readonly JobId[],
         });
   }
-
   async getAllJobsForQueue(opts: {
     orgId: string;
     queueId: string;

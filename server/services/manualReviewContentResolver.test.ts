@@ -40,19 +40,45 @@ describe('manual review content resolver', () => {
     }
   });
 
-  it.each([
-    ['matching reviewer and org', 'reviewer', 'org', true],
-    ['different reviewer', 'other-reviewer', 'org', false],
-    ['different org', 'reviewer', 'other-org', false],
-  ])('%s', (_, lockToken, reviewerOrgId, expected) => {
-    expect(
+  it('requires reviewer identity, organization, and the active lock', async () => {
+    const hasActiveLock = jest.fn(async () => true);
+    await expect(
       canResolveManualReviewContent({
         jobOrgId: 'org',
-        lockToken,
+        reviewerOrgId: 'org',
         reviewerId: 'reviewer',
-        reviewerOrgId,
+        lockToken: 'reviewer',
+        hasActiveLock,
       }),
-    ).toBe(expected);
+    ).resolves.toBe(true);
+    expect(hasActiveLock).toHaveBeenCalledTimes(1);
+
+    hasActiveLock.mockClear();
+    for (const input of [
+      { reviewerOrgId: 'other-org', lockToken: 'reviewer' },
+      { reviewerOrgId: 'org', lockToken: 'other-reviewer' },
+    ]) {
+      await expect(
+        canResolveManualReviewContent({
+          jobOrgId: 'org',
+          reviewerId: 'reviewer',
+          hasActiveLock,
+          ...input,
+        }),
+      ).resolves.toBe(false);
+    }
+    expect(hasActiveLock).not.toHaveBeenCalled();
+
+    hasActiveLock.mockResolvedValue(false);
+    await expect(
+      canResolveManualReviewContent({
+        jobOrgId: 'org',
+        reviewerOrgId: 'org',
+        reviewerId: 'reviewer',
+        lockToken: 'reviewer',
+        hasActiveLock,
+      }),
+    ).resolves.toBe(false);
   });
 
   it('passes content through by default', async () => {
