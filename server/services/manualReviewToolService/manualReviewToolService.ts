@@ -21,6 +21,10 @@ import {
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import {
+  resolveManualReviewContentSafely,
+  type ManualReviewContentResolver,
+} from '../manualReviewContentResolver.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
@@ -330,6 +334,7 @@ export class ManualReviewToolService {
       userId: string;
       userItemTypeId: string;
     }) => Promise<boolean>,
+    private readonly resolveManualReviewContent: ManualReviewContentResolver,
   ) {
     this.queueOps = new QueueOperations(
       pgQuery,
@@ -1089,6 +1094,35 @@ export class ManualReviewToolService {
     return this.queueOps.deleteManualReviewQueueForTestsDO_NOT_USE(
       orgId,
       queueId,
+    );
+  }
+
+  async resolveContentForReview(opts: {
+    queueId: string;
+    reviewerId: string;
+    job: ManualReviewJobOrAppeal;
+  }) {
+    return this.tracer.addActiveSpan(
+      {
+        resource: 'mrtService',
+        operation: 'resolveContentForReview',
+        attributes: {
+          'job.id': opts.job.id,
+          'org.id': opts.job.orgId,
+          'queue.id': opts.queueId,
+          'reviewer.id': opts.reviewerId,
+        },
+      },
+      async (span) =>
+        resolveManualReviewContentSafely(
+          { ...opts, orgId: opts.job.orgId },
+          this.resolveManualReviewContent,
+          {
+            onResolved: (count) =>
+              span.setAttribute('content.resolved_count', count),
+            onError: (error) => this.tracer.logSpanFailed(span, error),
+          },
+        ),
     );
   }
 

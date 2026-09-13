@@ -91,7 +91,7 @@ function actionHasParameters(
 gql`
   ${JOB_FRAGMENT}
   ${ITEM_TYPE_FRAGMENT}
-  query ManualReviewJobInfo($jobIds: [ID!]) {
+  query ManualReviewJobInfo($jobIds: [ID!], $lockToken: String) {
     myOrg {
       id
       policies {
@@ -164,7 +164,7 @@ gql`
         name
         pendingJobCount
         hiddenActionIds
-        jobs(ids: $jobIds) {
+        jobs(ids: $jobIds, lockToken: $lockToken) {
           ...JobFields
         }
       }
@@ -382,7 +382,10 @@ function ManualReviewJobReviewImpl(props: {
     loading,
     refetch: refetchJobInfo,
   } = useGQLManualReviewJobInfoQuery({
-    variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
+    variables: {
+      jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [],
+      lockToken: closedJob ? undefined : lockToken,
+    },
     fetchPolicy: 'no-cache',
   });
 

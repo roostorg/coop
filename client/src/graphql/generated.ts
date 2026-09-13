@@ -2257,6 +2257,7 @@ export type GQLManualReviewQueue = {
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
@@ -12365,6 +12366,7 @@ export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
   >;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 export type GQLManualReviewJobInfoQuery = {
@@ -34884,7 +34886,7 @@ export type GQLInvalidateReportsFromReporterMutationOptions =
     GQLInvalidateReportsFromReporterMutationVariables
   >;
 export const GQLManualReviewJobInfoDocument = gql`
-  query ManualReviewJobInfo($jobIds: [ID!]) {
+  query ManualReviewJobInfo($jobIds: [ID!], $lockToken: String) {
     myOrg {
       id
       policies {
@@ -34957,7 +34959,7 @@ export const GQLManualReviewJobInfoDocument = gql`
         name
         pendingJobCount
         hiddenActionIds
-        jobs(ids: $jobIds) {
+        jobs(ids: $jobIds, lockToken: $lockToken) {
           ...JobFields
         }
       }
@@ -34981,6 +34983,7 @@ export const GQLManualReviewJobInfoDocument = gql`
  * const { data, loading, error } = useGQLManualReviewJobInfoQuery({
  *   variables: {
  *      jobIds: // value for 'jobIds'
+ *      lockToken: // value for 'lockToken'
  *   },
  * });
  */

@@ -2,6 +2,7 @@
 import _ from 'lodash';
 
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../services/itemProcessingService/index.js';
+import { canResolveManualReviewContent } from '../../services/manualReviewContentResolver.js';
 import { NCMECIncidentType as NCMECIncidentTypeValues } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
@@ -63,7 +64,7 @@ const typeDefs = /* GraphQL */ `
     description: String
     orgId: ID!
     isDefaultQueue: Boolean!
-    jobs(ids: [ID!], limit: Int): [ManualReviewJob!]!
+    jobs(ids: [ID!], limit: Int, lockToken: String): [ManualReviewJob!]!
     pendingJobCount: Int!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
@@ -1747,7 +1748,7 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
 };
 
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
-  async jobs(queue, { ids: jobIds, limit }, context) {
+  async jobs(queue, { ids: jobIds, limit, lockToken }, context) {
     const { orgId, id: queueId } = queue;
 
     if (jobIds == null) {
@@ -1763,12 +1764,43 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     if (jobIds.length === 0) {
       return [];
     }
-    return context.services.ManualReviewToolService.getJobsForQueue({
-      orgId,
-      queueId,
-      jobIds,
-      isAppealsQueue: queue.isAppealsQueue,
-    });
+
+    const jobs = await context.services.ManualReviewToolService.getJobsForQueue(
+      {
+        orgId,
+        queueId,
+        jobIds,
+        isAppealsQueue: queue.isAppealsQueue,
+      },
+    );
+    if (lockToken == null) {
+      return jobs;
+    }
+
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('User required.');
+    }
+    if (
+      !canResolveManualReviewContent({
+        jobOrgId: orgId,
+        lockToken,
+        reviewerId: user.id,
+        reviewerOrgId: user.orgId,
+      })
+    ) {
+      return jobs;
+    }
+
+    return Promise.all(
+      jobs.map(async (job) =>
+        context.services.ManualReviewToolService.resolveContentForReview({
+          job,
+          queueId,
+          reviewerId: user.id,
+        }),
+      ),
+    );
   },
   async pendingJobCount(queue, _, context) {
     const { orgId, id: queueId } = queue;

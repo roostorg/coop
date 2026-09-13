@@ -116,6 +116,10 @@ import {
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
 import {
+  getRegisteredManualReviewContentResolver,
+  type ManualReviewContentResolver,
+} from '../services/manualReviewContentResolver.js';
+import {
   isReportJob,
   ManualReviewToolService,
   type ManualReviewAppealJobInput,
@@ -368,6 +372,7 @@ export interface Dependencies {
   NotificationsService: PublicInterface<NotificationsService>;
   PlacesApiService: PlacesApiService;
   ReportingService: ReportingService;
+  ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
   ItemInvestigationService: ItemInvestigationService;
@@ -462,7 +467,11 @@ export function getPgConnectionParams(): pg.ClientConfig {
  * This export is a function, not a container object, so that you can create
  * copies of the container as needed for selective rebinding.
  */
-export default async function getBottle() {
+export default async function getBottle(
+  extensions: {
+    manualReviewContentResolver?: ManualReviewContentResolver;
+  } = {},
+) {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
   const getPgPoolTuning = () => {
@@ -933,6 +942,13 @@ export default async function getBottle() {
         container.KyselyPgReadReplica,
         async (_) => {},
       ),
+  );
+
+  bottle.factory(
+    'ManualReviewContentResolver',
+    () =>
+      extensions.manualReviewContentResolver ??
+      getRegisteredManualReviewContentResolver(),
   );
 
   bottle.factory('ManualReviewToolService', (container) => {
@@ -1491,6 +1507,7 @@ export default async function getBottle() {
       // on ManualReviewToolService.
       async (params) =>
         container.NcmecService.getUserHasExistingNcmecReport(params),
+      container.ManualReviewContentResolver,
     );
   });
 
