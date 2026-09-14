@@ -12,6 +12,7 @@ export default async function (opts: {
     name: 'test-queue',
     description: null,
     userIds: [userId],
+    roleIds: [],
     hiddenActionIds: [],
     isAppealsQueue: false,
     invokedBy: {

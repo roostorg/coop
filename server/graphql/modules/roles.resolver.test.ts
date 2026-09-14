@@ -116,6 +116,12 @@ describe('roles resolvers', () => {
       await Query.rolesForOrg({}, {}, ctx);
       expect(roleAPI.listRolesForOrg).toHaveBeenCalledWith('org-1');
     });
+
+    it('delegates to roleAPI.listRolesForOrg when caller has EDIT_MRT_QUEUES', async () => {
+      const { ctx, roleAPI } = makeCtx([UserPermission.EDIT_MRT_QUEUES]);
+      await Query.rolesForOrg({}, {}, ctx);
+      expect(roleAPI.listRolesForOrg).toHaveBeenCalledWith('org-1');
+    });
   });
 
   describe('Query.permissionGroups', () => {
