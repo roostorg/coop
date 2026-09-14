@@ -261,6 +261,7 @@ export default function LocationBankForm() {
     <Button
       variant="outline"
       color="gray"
+      size="sm"
       className="mt-4"
       onClick={() => setLocationModalVisible(true)}
       startIcon={Plus}

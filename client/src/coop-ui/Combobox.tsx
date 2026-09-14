@@ -27,7 +27,7 @@ type TriggerProps = {
 };
 
 const triggerClasses =
-  'flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:border-indigo-500 focus:shadow-focus-indigo disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-indigo-500 dark:border-input dark:bg-background';
+  'flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:border-indigo-500 focus:shadow-focus-indigo disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-indigo-500 dark:border-input dark:bg-background';
 
 function ClearButton({ onClear }: { onClear: (e: React.MouseEvent) => void }) {
   return (
@@ -206,7 +206,7 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
             id={id}
             disabled={disabled}
             onClick={onClick}
-            className={cn(triggerClasses, 'h-auto min-h-10', className)}
+            className={cn(triggerClasses, 'h-auto min-h-9', className)}
             {...rest}
           >
             <span

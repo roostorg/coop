@@ -476,7 +476,7 @@ export default function ManualReviewQueueForm() {
           <Link to="/dashboard/settings/users">Users</Link> page.
         </div>
         <MultiCombobox
-          className="self-start !min-w-[160px]"
+          className="self-start w-auto !min-w-[160px]"
           placeholder="Add Moderators"
           allowClear
           value={moderatorsWithAccess}
@@ -507,7 +507,7 @@ export default function ManualReviewQueueForm() {
               available.
             </div>
             <MultiCombobox
-              className="self-start !min-w-[160px]"
+              className="self-start w-auto !min-w-[160px]"
               placeholder="Add Hidden Actions"
               allowClear
               value={hiddenActionIds}
@@ -544,7 +544,7 @@ export default function ManualReviewQueueForm() {
             never cleared.
           </div>
           <Combobox
-            className="self-start !min-w-[160px]"
+            className="self-start w-auto !min-w-[160px]"
             value={clearReportsDisposition ?? 'DISABLED'}
             onValueChange={(value) =>
               setClearReportsDisposition(
@@ -572,7 +572,7 @@ export default function ManualReviewQueueForm() {
                   other reports.
                 </div>
                 <MultiCombobox
-                  className="self-start !min-w-[160px]"
+                  className="self-start w-auto !min-w-[160px]"
                   placeholder="Add Trigger Actions"
                   allowClear
                   value={clearReportsTriggerActionIds}
@@ -586,7 +586,7 @@ export default function ManualReviewQueueForm() {
               <div>
                 <div className="mb-2 font-semibold">Scope</div>
                 <Combobox
-                  className="self-start !min-w-[160px]"
+                  className="self-start w-auto !min-w-[160px]"
                   value={clearReportsScope}
                   onValueChange={(value) => {
                     if (value != null) {

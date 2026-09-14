@@ -247,7 +247,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
   const renderTopLevelConjunction = (conjunction: GQLConditionConjunction) => {
     return (
       <div className="flex flex-row items-center">
-        <div className="flex flex-col items-center w-10 py-2 pl-16">
+        <div className="flex flex-col items-center w-24 py-2 pl-16">
           <div className="w-px h-4 m-1 bg-black" />
           {editing ? (
             <Combobox
@@ -310,7 +310,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
       <div className="text-base font-semibold">Then send report to Queue: </div>
       {editing ? (
         <Combobox
-          className="self-start min-w-[160px]"
+          className="self-start w-auto min-w-[160px]"
           placeholder="Select Queue"
           allowClear
           value={rule?.destinationQueue?.id ?? undefined}

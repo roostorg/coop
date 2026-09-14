@@ -114,6 +114,7 @@ export default function TableFilter<TData extends TableData>(props: {
           ref={buttonRef}
           variant="outline"
           color="gray"
+          size="sm"
           className={`font-semibold text-base rounded ${
             activeFilters.length === 0
               ? 'bg-white hover:bg-white hover:text-[#71717a] focus:bg-white focus:text-[#71717a]'

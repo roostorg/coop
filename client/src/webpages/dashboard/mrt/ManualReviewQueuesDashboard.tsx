@@ -346,7 +346,8 @@ export default function ManualReviewQueuesDashboard() {
         <Button
           variant="outline"
           color="gray"
-          className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+          size="sm"
+          className="w-full"
           onClick={() => navigate(`review/${id}`)}
           disabled={pendingJobCount === 0}
         >
@@ -737,7 +738,8 @@ export default function ManualReviewQueuesDashboard() {
                           <Button
                             variant="outline"
                             color="gray"
-                            className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+                            size="sm"
+                            className="w-full"
                             onClick={(event) => {
                               event.stopPropagation();
                               setDeleteAllJobsModalInfo({
@@ -872,6 +874,7 @@ export default function ManualReviewQueuesDashboard() {
       <Button
         variant="outline"
         color="gray"
+        size="sm"
         startIcon={GridAlt}
         className={`font-semibold text-base rounded ${
           visibleColumnsCount === Object.keys(columnLabels).length

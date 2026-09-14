@@ -41,7 +41,7 @@ export default function ForgotPassword() {
 
   const emailInput = (
     <Input
-      className="my-6 rounded-lg"
+      className="rounded-lg"
       placeholder="Enter your email"
       value={email}
       onChange={(event) => setEmail(event.target.value)}

@@ -180,8 +180,8 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
           <Label htmlFor="hidden-checkbox">Hidden Field</Label>
         </div>
         <Button
-          variant="ghost"
-          color="red"
+          variant="outline"
+          color="gray"
           size="icon"
           className="self-end ml-2"
           aria-label="Delete field"

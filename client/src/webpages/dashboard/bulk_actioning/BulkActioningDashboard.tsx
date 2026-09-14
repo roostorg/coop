@@ -124,6 +124,7 @@ export default function BulkActioningDashboard() {
     Record<string, ActionParameterValues>
   >({});
   const [moderatorNote, setModeratorNote] = useState<string>('');
+  const [actionSelectorOpened, setActionSelectorOpened] = useState(false);
 
   const { data: queryData, loading: queryLoading } =
     useGQLBulkActionsFormDataQuery();
@@ -256,12 +257,12 @@ export default function BulkActioningDashboard() {
 
   const actionSelector = (
     <div className="flex flex-col w-56">
-      {!selectedItemTypeId && (
+      {actionSelectorOpened && !selectedItemTypeId && (
         <div className="mb-1 text-coop-alert-red text-sm">
           Please select at least one Item Type first
         </div>
       )}
-      {selectedItemTypeId && actions.length === 0 && (
+      {actionSelectorOpened && selectedItemTypeId && actions.length === 0 && (
         <div className="mb-1 text-coop-alert-red text-sm">
           No actions available for {selectedItemType?.name ?? 'this Item Type'}.
           Add one in the <Link to="/dashboard/actions">Actions Dashboard</Link>!
@@ -271,6 +272,7 @@ export default function BulkActioningDashboard() {
         placeholder="Select action"
         value={selectedActionIds}
         onValueChange={(actionIds) => setSelectedActionIds(actionIds)}
+        onClick={() => setActionSelectorOpened(true)}
         options={orderBy(actions, ['name']).map((action) => ({
           value: action.id,
           label: action.name,

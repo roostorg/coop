@@ -564,7 +564,11 @@ export default function ItemTypeForm() {
               }}
             >
               <SelectTrigger className="w-full text-start">
-                <SelectValue placeholder="e.g. Content, User, Thread" />
+                <SelectValue placeholder="e.g. Content, User, Thread">
+                  {itemTypeKind
+                    ? displayStringForItemTypeKind(itemTypeKind)
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="font-normal">
                 {Object.values(ItemTypeKind).map((it) => (

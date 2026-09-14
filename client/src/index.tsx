@@ -149,8 +149,8 @@ const root = createRoot(document.getElementById('root')!);
 root.render(
   <ThemeProvider
     attribute="class"
-    defaultTheme="system"
-    enableSystem
+    defaultTheme="light"
+    forcedTheme="light"
     disableTransitionOnChange
   >
     <HelmetProvider>

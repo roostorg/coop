@@ -5,7 +5,7 @@ import { LoaderCircle } from 'lucide-react';
 import * as React from 'react';
 
 const buttonVariants = cva(
-  'py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none focus:outline-none',
+  'py-3 px-4 inline-flex items-center justify-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none focus:outline-none',
   {
     variants: {
       variant: {
