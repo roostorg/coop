@@ -45,6 +45,16 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 
 const { omit, sumBy } = _;
 
+export const MAX_MANUAL_REVIEW_JOB_IDS = 10;
+
+export function assertManualReviewJobIdsWithinLimit(jobIds: readonly string[]) {
+  if (jobIds.length > MAX_MANUAL_REVIEW_JOB_IDS) {
+    throw userInputError(
+      `At most ${MAX_MANUAL_REVIEW_JOB_IDS} job IDs may be requested.`,
+    );
+  }
+}
+
 const typeDefs = /* GraphQL */ `
   enum MrtClearReportsDisposition {
     AUTOMATIC_CLOSE
@@ -1757,6 +1767,8 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
         limit: limit ?? undefined,
       });
     }
+    assertManualReviewJobIdsWithinLimit(jobIds);
+
     // Empty array means "filter to no IDs" -> result is always []. Short-circuit
     // so we don't open a Bull/Redis queue handle per reviewable queue on every
     // MRT page load before a job has been dequeued.
