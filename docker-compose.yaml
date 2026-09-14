@@ -188,3 +188,10 @@ volumes:
   scylla_data:
   redis_data:
   clickhouse_data:
+
+networks:
+  default:
+    # Scylla was automatically starting on both ipv4 and ipv6 causing it to
+    # crash due to an invalid number of arguments being passed to its
+    # entrypoint.
+    enable_ipv6: false
