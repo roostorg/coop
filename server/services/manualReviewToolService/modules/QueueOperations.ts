@@ -10,7 +10,6 @@ import { type Opaque, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
-import { cached, type Cached } from '../../../utils/caching.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
   b64UrlDecode,
@@ -24,6 +23,7 @@ import {
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
+import KeyedResourceRegistry from '../../../utils/keyedResourceRegistry.js';
 import {
   isForeignKeyViolationError,
   isUniqueViolationError,
@@ -35,10 +35,7 @@ import {
 import { removeUndefinedKeys, safePick } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { WEEK_MS } from '../../../utils/time.js';
-import {
-  instantiateOpaqueType,
-  type Bind1,
-} from '../../../utils/typescript-types.js';
+import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
 import {
   getFieldValueForRole,
   makeSubmissionId,
@@ -118,6 +115,16 @@ export type QueueOperationsErrorType =
 type QueueKey = { orgId: string; queueId: string };
 
 /**
+ * Registry key for a queue's Bull resources.
+ *
+ * Org ids come from `uid()` and queue ids from `uuidv1()`, so neither can
+ * contain a colon. That matters: a separator appearing inside an id would
+ * collide two different (org, queue) pairs onto one entry, handing two orgs
+ * the same Worker. Revisit if either id format changes.
+ */
+const bullResourceKey = (key: QueueKey) => `${key.orgId}:${key.queueId}`;
+
+/**
  * This class handles everything that MRT does directly with queues: CRUDing
  * them, enqueuing and dequeueing jobs on a given queue, looking up jobs within
  * a given queue, etc. It does not deal with routing jobs to queues or forming
@@ -137,28 +144,42 @@ type QueueKey = { orgId: string; queueId: string };
  * process jobs, and a few long-lived queue object references that are used to
  * push jobs to those workers) and how we use it in MRT, where users -- not an
  * automatic worker -- manually dequeue jobs and mark them complete, and where
- * there are many, many queues (not all of which we want to keep references to
- * in memory or connected to Redis at all times).
+ * there are many, many queues.
+ *
+ * Those Queue and Worker objects live in a KeyedResourceRegistry for this
+ * service's lifetime, and must not be expired or evicted: a Worker owns its
+ * queue's stalled-job checker, so dropping one stops abandoned jobs from being
+ * recovered on that queue until something requests it again.
+ *
+ * Holding them is cheap. `autorun` is false and nothing calls `run()`, so
+ * BullMQ never opens a per-Worker blocking connection; the only per-queue cost
+ * is one stalled-check timer.
  *
  * As part of handling that mismatch, this class exposes an API that solely
  * accepts and returns plain data values, as opposed to the stateful
- * Queue/Worker/Job objects that Bull usually deals with. While this
- * occasionally adds some overhead, that overhead is minimized by smart caching
- * internally, and this sort of API also makes the class much easier to mock.
+ * Queue/Worker/Job objects that Bull usually deals with. That costs a little
+ * overhead, and makes the class much easier to mock.
  */
 export default class QueueOperations {
-  private readonly getOrCreateBullQueue: Cached<
-    Bind1<typeof getOrCreateBullQueue<StoredManualReviewJob>>
+  // Live resources, not cached values: a Worker owns the stalled-job checker
+  // for its queue. Created on first use, kept until the queue is deleted or
+  // this service shuts down.
+  private readonly bullQueues: KeyedResourceRegistry<
+    QueueKey,
+    Awaited<ReturnType<typeof getOrCreateBullQueue<StoredManualReviewJob>>>
   >;
-  private readonly getBullWorker: Cached<
-    Bind1<typeof getBullWorker<StoredManualReviewJob>>
+  private readonly bullWorkers: KeyedResourceRegistry<
+    QueueKey,
+    Awaited<ReturnType<typeof getBullWorker<StoredManualReviewJob>>>
   >;
 
-  private readonly getOrCreateBullAppealQueue: Cached<
-    Bind1<typeof getOrCreateBullQueue<ManualReviewAppealJob>>
+  private readonly bullAppealQueues: KeyedResourceRegistry<
+    QueueKey,
+    Awaited<ReturnType<typeof getOrCreateBullQueue<ManualReviewAppealJob>>>
   >;
-  private readonly getBullAppealWorker: Cached<
-    Bind1<typeof getBullWorker<ManualReviewAppealJob>>
+  private readonly bullAppealWorkers: KeyedResourceRegistry<
+    QueueKey,
+    Awaited<ReturnType<typeof getBullWorker<ManualReviewAppealJob>>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
 
@@ -170,49 +191,40 @@ export default class QueueOperations {
     private readonly tracer: Dependencies['Tracer'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
-    // Reassingment here is a hack to work around TS syntax limitations
-    // with generic instantiation expressions.
-    const getOrCreateBullQueue_ = getOrCreateBullQueue<StoredManualReviewJob>;
-    const getBullWorker_ = getBullWorker<StoredManualReviewJob>;
-    const getOrCreateBullAppealQueue_ =
-      getOrCreateBullQueue<ManualReviewAppealJob>;
-    const getBullAppealWorker_ = getBullWorker<ManualReviewAppealJob>;
 
-    this.getBullWorker = cached({
-      producer: getBullWorker_.bind(null, redis),
-      directives: { freshUntilAge: 600 },
-      numItemsLimit: 128,
-      onItemEviction: async (workerPromise) => {
-        await workerPromise.close();
-      },
+    this.bullWorkers = new KeyedResourceRegistry({
+      create: async (key) => getBullWorker<StoredManualReviewJob>(redis, key),
+      keyToString: bullResourceKey,
     });
 
-    this.getOrCreateBullQueue = cached({
-      producer: getOrCreateBullQueue_.bind(null, redis),
-      directives: { freshUntilAge: 600 },
-      numItemsLimit: 128,
-      onItemEviction: async (queuePromise) => {
-        await queuePromise.close();
-      },
+    this.bullQueues = new KeyedResourceRegistry({
+      create: async (key) =>
+        getOrCreateBullQueue<StoredManualReviewJob>(redis, key),
+      keyToString: bullResourceKey,
     });
 
-    this.getBullAppealWorker = cached({
-      producer: getBullAppealWorker_.bind(null, redis),
-      directives: { freshUntilAge: 600 },
-      numItemsLimit: 128,
-      onItemEviction: async (workerPromise) => {
-        await workerPromise.close();
-      },
+    this.bullAppealWorkers = new KeyedResourceRegistry({
+      create: async (key) => getBullWorker<ManualReviewAppealJob>(redis, key),
+      keyToString: bullResourceKey,
     });
 
-    this.getOrCreateBullAppealQueue = cached({
-      producer: getOrCreateBullAppealQueue_.bind(null, redis),
-      directives: { freshUntilAge: 600 },
-      numItemsLimit: 128,
-      onItemEviction: async (queuePromise) => {
-        await queuePromise.close();
-      },
+    this.bullAppealQueues = new KeyedResourceRegistry({
+      create: async (key) =>
+        getOrCreateBullQueue<ManualReviewAppealJob>(redis, key),
+      keyToString: bullResourceKey,
     });
+  }
+
+  /**
+   * Drops the Bull Queue/Worker handles for a queue that no longer exists.
+   */
+  async #forgetBullResources(key: QueueKey) {
+    await Promise.all([
+      this.bullQueues.remove(key),
+      this.bullWorkers.remove(key),
+      this.bullAppealQueues.remove(key),
+      this.bullAppealWorkers.remove(key),
+    ]);
   }
 
   async checkQueueExists(orgId: string, queueId: string) {
@@ -231,11 +243,11 @@ export default class QueueOperations {
 
   async #getBullQueue(orgId: string, queueId: string) {
     await this.checkQueueExists(orgId, queueId);
-    return this.getOrCreateBullQueue({ orgId, queueId });
+    return this.bullQueues.get({ orgId, queueId });
   }
   async #getBullAppealQueue(orgId: string, queueId: string) {
     await this.checkQueueExists(orgId, queueId);
-    return this.getOrCreateBullAppealQueue({ orgId, queueId });
+    return this.bullAppealQueues.get({ orgId, queueId });
   }
 
   // TODO: try/catch create and update and throw
@@ -444,8 +456,6 @@ export default class QueueOperations {
     if (queueId === defaultQueueId) {
       throw makeUnableToDeleteDefaultQueueError({ shouldErrorSpan: true });
     }
-    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
-
     let numDeletedRows: bigint;
     try {
       numDeletedRows = await this.transactionWithRetry(async (transaction) => {
@@ -506,6 +516,10 @@ export default class QueueOperations {
     }
 
     if (numDeletedRows === 1n) {
+      // Only after the row is confirmed gone: a queue id that matched nothing
+      // would otherwise register a Bull handle for a queue that never existed,
+      // and the `#forgetBullResources` below is skipped on that path.
+      const queue = await this.bullQueues.get({ orgId, queueId });
       try {
         await queue.obliterate({ force: true });
       } catch (e) {
@@ -518,6 +532,12 @@ export default class QueueOperations {
         // the DB delete itself succeeded.
         this.tracer.logActiveSpanFailedIfAny(e);
       }
+
+      // The queue row is gone, so drop our Bull handles for it whether or not
+      // obliterate() succeeded — otherwise the service keeps a Queue and a
+      // Worker (and its stalled-job checker) pointed at a queue that no longer
+      // exists.
+      await this.#forgetBullResources({ orgId, queueId });
     }
 
     return numDeletedRows === 1n;
@@ -527,7 +547,7 @@ export default class QueueOperations {
     orgId: string,
     queueId: string,
   ) {
-    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const queue = await this.bullQueues.get({ orgId, queueId });
 
     await queue.obliterate({ force: true });
 
@@ -569,7 +589,37 @@ export default class QueueOperations {
       },
     );
 
+    await this.#forgetBullResources({ orgId, queueId });
+
     return numDeletedRows === 1n;
+  }
+
+  /**
+   * Obliterates the Bull queue backing every review queue an org has and drops
+   * the local handles, leaving the Postgres rows untouched.
+   *
+   * For callers that discard their database writes by some other means but
+   * still need the Redis side cleaned up, since no Postgres transaction can
+   * reach it — a test rolling back its own transaction, say.
+   *
+   * Enumerates with a plain read and opens no transaction of its own, so it is
+   * safe to call alongside other in-flight database work.
+   *
+   * Returns the number of queues obliterated.
+   */
+  async obliterateAllQueuesForOrg(orgId: string) {
+    const queues =
+      await this.getAllQueuesForOrgAndDangerouslyBypassPermissioning(orgId);
+
+    // Serial: an org's queues share one Redis connection.
+    for (const queue of queues) {
+      const key = { orgId, queueId: queue.id };
+      const bullQueue = await this.bullQueues.get(key);
+      await bullQueue.obliterate({ force: true });
+      await this.#forgetBullResources(key);
+    }
+
+    return queues.length;
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {
@@ -1142,7 +1192,7 @@ export default class QueueOperations {
     jobId: JobId;
   }): Promise<boolean> {
     const { orgId, queueId, jobId } = opts;
-    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const queue = await this.bullQueues.get({ orgId, queueId });
     const bullJobId = parseExternalId(jobId).bullId;
 
     const job = await queue.getJob(bullJobId);
@@ -1179,7 +1229,7 @@ export default class QueueOperations {
     invokerUserId: string;
   }): Promise<boolean> {
     const { orgId, queueId, jobId, invokerUserId } = opts;
-    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const queue = await this.bullQueues.get({ orgId, queueId });
     const { bullId: bullJobId } = parseExternalId(jobId);
     const job = await queue.getJob(bullJobId);
     if (!job || job.data.id !== jobId) {
@@ -1238,7 +1288,7 @@ export default class QueueOperations {
     const { orgId, queueId, lockToken } = opts;
 
     await this.checkQueueExists(orgId, queueId);
-    const worker = await this.getBullAppealWorker({ orgId, queueId });
+    const worker = await this.bullAppealWorkers.get({ orgId, queueId });
 
     let hasDecision = true;
     while (hasDecision) {
@@ -1291,7 +1341,7 @@ export default class QueueOperations {
     const { orgId, queueId, lockToken } = opts;
 
     await this.checkQueueExists(orgId, queueId);
-    const worker = await this.getBullWorker({ orgId, queueId });
+    const worker = await this.bullWorkers.get({ orgId, queueId });
 
     let hasDecision = true;
     while (hasDecision) {
@@ -1558,7 +1608,7 @@ export default class QueueOperations {
       // The most common case where this throws if the lock token has expired,
       // so try to remove it manually.
       const { orgId, queueId, jobId } = opts;
-      const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+      const queue = await this.bullQueues.get({ orgId, queueId });
       const bullJobId = parseExternalId(jobId).bullId;
       const removeJobStatus = await queue.remove(bullJobId);
       if (removeJobStatus !== 1) {
@@ -1577,7 +1627,7 @@ export default class QueueOperations {
     lockToken: string;
   }) {
     const { orgId, queueId, lockToken, jobId } = opts;
-    const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+    const queue = await this.bullQueues.get({ orgId, queueId });
     const job = await this.#getJob(jobId, queue);
 
     await job?.moveToCompleted(null, lockToken, false);
@@ -1597,7 +1647,7 @@ export default class QueueOperations {
   }) {
     const { orgId, queueId, lockToken, jobId } = opts;
     try {
-      const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+      const queue = await this.bullQueues.get({ orgId, queueId });
       const job = await this.#getJob(jobId, queue);
 
       if (!job) {
@@ -1638,7 +1688,7 @@ export default class QueueOperations {
     const counts = await Promise.all(
       queueIds.map(async (queueId) =>
         concurrencyLimit(async () => {
-          const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+          const queue = await this.bullQueues.get({ orgId, queueId });
           return queue.count();
         }),
       ),
@@ -1685,10 +1735,10 @@ export default class QueueOperations {
 
   async close() {
     return Promise.all([
-      this.getOrCreateBullQueue.close(),
-      this.getBullWorker.close(),
-      this.getOrCreateBullAppealQueue.close(),
-      this.getBullAppealWorker.close(),
+      this.bullQueues.close(),
+      this.bullWorkers.close(),
+      this.bullAppealQueues.close(),
+      this.bullAppealWorkers.close(),
     ]);
   }
 
@@ -1711,7 +1761,7 @@ export default class QueueOperations {
     const jobsWithQueue = await Promise.all(
       recentJobCreationQueues.map(async (rows) => {
         const queueId = rows.queue_id;
-        const queue = await this.getOrCreateBullQueue({ orgId, queueId });
+        const queue = await this.bullQueues.get({ orgId, queueId });
         const legacyJob = await queue.getJob(
           itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
         );

@@ -126,7 +126,7 @@ describe('Manual Review Tool Service', () => {
   testWithService(
     'should be able to start stalled jobs checker',
     async ({ mrtService }) => {
-      const worker = await mrtService['queueOps']['getBullWorker']({
+      const worker = await mrtService['queueOps']['bullWorkers'].get({
         orgId: 'dummyOrg',
         queueId: 'dummyQueue',
       });
