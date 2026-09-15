@@ -21,6 +21,11 @@ import {
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
+import {
+  canResolveManualReviewContent,
+  resolveManualReviewContentSafely,
+  type ManualReviewContentResolver,
+} from '../manualReviewContentResolver.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
@@ -40,6 +45,7 @@ import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import ClaimOperations from './modules/ClaimOperations.js';
 import CommentOperations from './modules/CommentOperations.js';
 import DecisionAnalytics, {
+  type ActivityFeedDecisionCursor,
   type DecisionCountsInput,
   type DecisionCountsTableInput,
   type HandleTimeInput,
@@ -330,6 +336,7 @@ export class ManualReviewToolService {
       userId: string;
       userItemTypeId: string;
     }) => Promise<boolean>,
+    private readonly resolveManualReviewContent: ManualReviewContentResolver,
   ) {
     this.queueOps = new QueueOperations(
       pgQuery,
@@ -1092,6 +1099,61 @@ export class ManualReviewToolService {
     );
   }
 
+  async resolveContentForReview(opts: {
+    queueId: string;
+    reviewerId: string;
+    reviewerOrgId: string;
+    lockToken: string;
+    isAppealsQueue: boolean;
+    job: ManualReviewJobOrAppeal;
+  }) {
+    return this.tracer.addActiveSpan(
+      {
+        resource: 'mrtService',
+        operation: 'resolveContentForReview',
+        attributes: {
+          'job.id': opts.job.id,
+          'org.id': opts.job.orgId,
+          'queue.id': opts.queueId,
+          'reviewer.id': opts.reviewerId,
+        },
+      },
+      async (span) => {
+        const canResolve = await canResolveManualReviewContent({
+          jobOrgId: opts.job.orgId,
+          reviewerOrgId: opts.reviewerOrgId,
+          reviewerId: opts.reviewerId,
+          lockToken: opts.lockToken,
+          hasActiveLock: async () =>
+            this.queueOps.extendJobLock({
+              orgId: opts.job.orgId,
+              queueId: opts.queueId,
+              jobId: opts.job.id,
+              lockToken: opts.lockToken,
+              isAppealsQueue: opts.isAppealsQueue,
+            }),
+        });
+        span.setAttribute('content.resolution_authorized', canResolve);
+        if (!canResolve) return opts.job;
+
+        return resolveManualReviewContentSafely(
+          {
+            orgId: opts.job.orgId,
+            queueId: opts.queueId,
+            reviewerId: opts.reviewerId,
+            job: opts.job,
+          },
+          this.resolveManualReviewContent,
+          {
+            onResolved: (count) =>
+              span.setAttribute('content.resolved_count', count),
+            onError: (error) => this.tracer.logSpanFailed(span, error),
+          },
+        );
+      },
+    );
+  }
+
   async getJobsForQueue(opts: {
     orgId: string;
     queueId: string;
@@ -1111,7 +1173,6 @@ export class ManualReviewToolService {
           jobIds: jobIds satisfies readonly string[] as readonly JobId[],
         });
   }
-
   async getAllJobsForQueue(opts: {
     orgId: string;
     queueId: string;
@@ -1199,6 +1260,16 @@ export class ManualReviewToolService {
     input: RecentDecisionsFilterInput;
   }) {
     return this.decisionAnalytics.getRecentDecisions(opts);
+  }
+
+  async getDecisionsForActivityFeed(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: Omit<RecentDecisionsFilterInput, 'page'>;
+    cursor?: ActivityFeedDecisionCursor;
+    limit: number;
+  }) {
+    return this.decisionAnalytics.getDecisionsForActivityFeed(opts);
   }
 
   async getSkippedJobsForRecentDecisions(opts: {

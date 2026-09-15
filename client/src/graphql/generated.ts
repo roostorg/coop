@@ -1594,6 +1594,12 @@ export type GQLItemAction = {
   readonly itemId: Scalars['ID']['output'];
   readonly itemTypeId: Scalars['ID']['output'];
   readonly jobId?: Maybe<Scalars['ID']['output']>;
+  /**
+   * Moderator-supplied parameter values this action ran with, keyed by the
+   * parameter's `name`. Empty when the action takes no parameters or the
+   * execution predates parameter capture.
+   */
+  readonly parameters: Scalars['JSONObject']['output'];
   readonly policies: ReadonlyArray<Scalars['String']['output']>;
   readonly ruleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly ts: Scalars['DateTime']['output'];
@@ -2257,6 +2263,7 @@ export type GQLManualReviewQueue = {
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
@@ -4047,10 +4054,8 @@ export type GQLRole = {
   readonly __typename: 'Role';
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
-  readonly id?: Maybe<Scalars['ID']['output']>;
-  /** True when permissions/metadata come from the static fallback rather than public.roles. */
-  readonly isFallback: Scalars['Boolean']['output'];
+  /** Persisted public.roles.id. */
+  readonly id: Scalars['ID']['output'];
   readonly isSystem: Scalars['Boolean']['output'];
   /** Stable role identifier (matches UserRole). */
   readonly key: GQLUserRole;
@@ -8292,6 +8297,7 @@ export type GQLItemActionHistoryQuery = {
     readonly jobId?: string | null;
     readonly policies: ReadonlyArray<string>;
     readonly ruleIds: ReadonlyArray<string>;
+    readonly parameters: JsonObject;
     readonly ts: Date | string;
   }>;
   readonly myOrg?: {
@@ -12365,6 +12371,7 @@ export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
   >;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 export type GQLManualReviewJobInfoQuery = {
@@ -24909,12 +24916,11 @@ export type GQLRolesForOrgQuery = {
   readonly __typename: 'Query';
   readonly rolesForOrg: ReadonlyArray<{
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   }>;
@@ -25110,12 +25116,11 @@ export type GQLUpdateRolePermissionsMutation = {
   readonly __typename: 'Mutation';
   readonly updateRolePermissions: {
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   };
@@ -25129,12 +25134,11 @@ export type GQLRenameRoleMutation = {
   readonly __typename: 'Mutation';
   readonly renameRole: {
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   };
@@ -32225,6 +32229,7 @@ export const GQLItemActionHistoryDocument = gql`
         jobId
         policies
         ruleIds
+        parameters
         ts
       }
     }
@@ -34884,7 +34889,7 @@ export type GQLInvalidateReportsFromReporterMutationOptions =
     GQLInvalidateReportsFromReporterMutationVariables
   >;
 export const GQLManualReviewJobInfoDocument = gql`
-  query ManualReviewJobInfo($jobIds: [ID!]) {
+  query ManualReviewJobInfo($jobIds: [ID!], $lockToken: String) {
     myOrg {
       id
       policies {
@@ -34957,7 +34962,7 @@ export const GQLManualReviewJobInfoDocument = gql`
         name
         pendingJobCount
         hiddenActionIds
-        jobs(ids: $jobIds) {
+        jobs(ids: $jobIds, lockToken: $lockToken) {
           ...JobFields
         }
       }
@@ -34981,6 +34986,7 @@ export const GQLManualReviewJobInfoDocument = gql`
  * const { data, loading, error } = useGQLManualReviewJobInfoQuery({
  *   variables: {
  *      jobIds: // value for 'jobIds'
+ *      lockToken: // value for 'lockToken'
  *   },
  * });
  */
@@ -43636,7 +43642,6 @@ export const GQLRolesForOrgDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44579,7 +44584,6 @@ export const GQLUpdateRolePermissionsDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44637,7 +44641,6 @@ export const GQLRenameRoleDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }

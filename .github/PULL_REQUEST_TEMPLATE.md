@@ -25,9 +25,6 @@ _Only check items that apply to this PR; leave the rest unchecked._
 - [ ] **If the change is notable** (refer to [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) conventions):
   Did you update CHANGELOG.md?
 
-- [ ] **If you changed `server/models/**/{ContentTypeModel,ActionModel,RuleModel,PolicyModel}.ts`:**
-  Did you update the corresponding history tables and their triggers?
-
 - [ ] **If you changed `db/src/scripts/**` and used `CREATE TABLE`, `ADD COLUMN`, or `ALTER COLUMN`:**
   Are as many columns marked `NOT NULL` as possible? If some columns can sometimes be null depending on other columns, are there `CHECK` constraints capturing those relationships, and are these also reflected using unions in the associated Kysely types?
 

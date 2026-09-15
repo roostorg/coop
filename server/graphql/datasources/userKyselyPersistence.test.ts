@@ -5,6 +5,7 @@ import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { seedSystemRolesForOrg } from './rolePersistence.js';
 import {
   kyselyUserAddFavoriteRule,
   kyselyUserFindByEmail,
@@ -32,12 +33,6 @@ function samlUserInput(orgId: string) {
   };
 }
 
-const adminRoleSeed = {
-  key: UserRole.ADMIN,
-  display_name: 'Admin',
-  is_system: true,
-} as const;
-
 describe('userKyselyPersistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
@@ -48,6 +43,7 @@ describe('userKyselyPersistence', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 
@@ -72,7 +68,16 @@ describe('userKyselyPersistence', () => {
           approvedByAdmin: false,
           rejectedByAdmin: false,
         });
-        // Fixture orgs lack `public.roles` rows, so this hits the fallback.
+        const persisted = await deps.KyselyPg.selectFrom('public.users')
+          .select('role_id')
+          .where('id', '=', input.id)
+          .executeTakeFirstOrThrow();
+        const adminRole = await deps.KyselyPg.selectFrom('public.roles')
+          .select('id')
+          .where('org_id', '=', org.id)
+          .where('key', '=', UserRole.ADMIN)
+          .executeTakeFirstOrThrow();
+        expect(persisted.role_id).toBe(adminRole.id);
         const permissions = inserted.getPermissions();
         expect(permissions).toContain('MANAGE_ORG');
         expect(permissions).toContain('MANAGE_ROLES');
@@ -88,6 +93,12 @@ describe('userKyselyPersistence', () => {
           role: UserRole.ANALYST,
         });
         expect(updated!.role).toBe(UserRole.ANALYST);
+        const persisted = await deps.KyselyPg.selectFrom('public.users')
+          .innerJoin('public.roles', 'public.roles.id', 'public.users.role_id')
+          .select(['public.users.role_id', 'public.roles.key'])
+          .where('public.users.id', '=', input.id)
+          .executeTakeFirstOrThrow();
+        expect(persisted.key).toBe(UserRole.ANALYST);
         const permissions = updated!.getPermissions();
         expect(permissions).toContain('VIEW_INSIGHTS');
         expect(permissions).not.toContain('MANAGE_ORG');
@@ -98,10 +109,14 @@ describe('userKyselyPersistence', () => {
       'getPermissions() reads from public.role_permissions when the org has saved them',
       async ({ deps, org }) => {
         // Reduced ADMIN set distinguishes DB result from the static fallback.
-        const roleRow = await deps.KyselyPg.insertInto('public.roles')
-          .values({ ...adminRoleSeed, org_id: org.id })
-          .returning('id')
+        const roleRow = await deps.KyselyPg.selectFrom('public.roles')
+          .select('id')
+          .where('org_id', '=', org.id)
+          .where('key', '=', UserRole.ADMIN)
           .executeTakeFirstOrThrow();
+        await deps.KyselyPg.deleteFrom('public.role_permissions')
+          .where('role_id', '=', roleRow.id)
+          .execute();
         await deps.KyselyPg.insertInto('public.role_permissions')
           .values({ role_id: roleRow.id, permission: 'MANAGE_ORG' })
           .execute();
@@ -119,8 +134,13 @@ describe('userKyselyPersistence', () => {
       'getPermissions() returns [] (no static fallback) when the role has zero saved permissions',
       async ({ deps, org }) => {
         // Regression: empty `role_permissions` is least-privilege; defaults would over-grant.
-        await deps.KyselyPg.insertInto('public.roles')
-          .values({ ...adminRoleSeed, org_id: org.id })
+        const adminRole = await deps.KyselyPg.selectFrom('public.roles')
+          .select('id')
+          .where('org_id', '=', org.id)
+          .where('key', '=', UserRole.ADMIN)
+          .executeTakeFirstOrThrow();
+        await deps.KyselyPg.deleteFrom('public.role_permissions')
+          .where('role_id', '=', adminRole.id)
           .execute();
 
         const input = samlUserInput(org.id);
@@ -129,6 +149,23 @@ describe('userKyselyPersistence', () => {
           ...input,
         });
         expect(inserted.getPermissions()).toEqual([]);
+      },
+    );
+
+    testWithFixture(
+      'throws when the requested org-scoped role is missing',
+      async ({ deps, org }) => {
+        await deps.KyselyPg.deleteFrom('public.roles')
+          .where('org_id', '=', org.id)
+          .where('key', '=', UserRole.ADMIN)
+          .execute();
+
+        await expect(
+          kyselyUserInsert({
+            db: deps.KyselyPg,
+            ...samlUserInput(org.id),
+          }),
+        ).rejects.toThrow();
       },
     );
 
@@ -274,9 +311,53 @@ describe('userKyselyPersistence', () => {
         expect(rows.every((r) => r.orgId === org.id)).toBe(true);
       },
     );
+
+    testWithFixture(
+      'find and list helpers derive role from the linked role row',
+      async ({ deps, org }) => {
+        const input = samlUserInput(org.id);
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        const analyst = await deps.KyselyPg.selectFrom('public.roles')
+          .select('id')
+          .where('org_id', '=', org.id)
+          .where('key', '=', UserRole.ANALYST)
+          .executeTakeFirstOrThrow();
+        await deps.KyselyPg.updateTable('public.users')
+          .set({ role_id: analyst.id })
+          .where('id', '=', input.id)
+          .execute();
+
+        expect((await kyselyUserFindById(deps.KyselyPg, input.id))!.role).toBe(
+          UserRole.ANALYST,
+        );
+        expect(
+          (await kyselyUserListByOrg(deps.KyselyPg, org.id)).find(
+            ({ id }) => id === input.id,
+          )!.role,
+        ).toBe(UserRole.ANALYST);
+      },
+    );
   });
 
   describe('kyselyUserUpdate', () => {
+    testWithFixture(
+      'throws when updating to a missing org-scoped role',
+      async ({ deps, org }) => {
+        const input = samlUserInput(org.id);
+        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await deps.KyselyPg.deleteFrom('public.roles')
+          .where('org_id', '=', org.id)
+          .where('key', '=', UserRole.ANALYST)
+          .execute();
+
+        await expect(
+          kyselyUserUpdate(deps.KyselyPg, input.id, {
+            role: UserRole.ANALYST,
+          }),
+        ).rejects.toThrow();
+      },
+    );
+
     testWithFixture(
       'throws an invariant error for a malformed patch',
       async ({ deps, org }) => {
