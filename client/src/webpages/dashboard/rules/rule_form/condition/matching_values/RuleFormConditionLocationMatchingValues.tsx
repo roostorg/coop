@@ -114,6 +114,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     return (
       <div className="ml-3">
         <Button
+          type="button"
           variant="outline"
           color="gray"
           className="!text-slate-500"
@@ -154,6 +155,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
               );
             })}
             <Button
+              type="button"
               variant="outline"
               color="gray"
               size="icon"

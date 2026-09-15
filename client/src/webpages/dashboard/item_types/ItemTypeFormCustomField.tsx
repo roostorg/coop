@@ -54,6 +54,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
     <div className="flex flex-col gap-2">
       <div className="font-semibold">Field Type</div>
       <Combobox
+        aria-label="Field Type"
         placeholder="Select field type"
         className="w-36"
         value={field.type ?? undefined}

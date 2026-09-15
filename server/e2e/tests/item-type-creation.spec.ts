@@ -29,15 +29,9 @@ test('an admin creates an item type with mixed field types via the UI', async ({
       .nth(i)
       .fill(fields[i].name);
     if (fields[i].type !== 'String') {
+      await page.getByRole('button', { name: 'Field Type' }).nth(i).click();
       await page
-        .locator('.ant-select')
-        .nth(2 + i * 2)
-        .click();
-      await page
-        .locator(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option[title="${fields[i].type}"]`,
-        )
-        .last()
+        .getByRole('option', { name: fields[i].type, exact: true })
         .click();
     }
   }

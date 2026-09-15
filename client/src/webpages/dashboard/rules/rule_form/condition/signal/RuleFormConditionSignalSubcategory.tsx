@@ -32,6 +32,7 @@ export default function RuleFormConditionSignalSubcategory(props: {
     >
       <div className="pb-1 text-xs font-bold">Signal Subcategory</div>
       <Button
+        type="button"
         variant="outline"
         color="gray"
         className={`px-3 cursor-text ${

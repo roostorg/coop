@@ -1311,6 +1311,7 @@ export default function RuleForm() {
         ))}
         <div className="flex mt-4 items-center gap-4">
           <Button
+            type="button"
             variant="outline"
             color="gray"
             size="icon"
@@ -1328,6 +1329,7 @@ export default function RuleForm() {
           </Button>
           {canDeleteConditionSet && (
             <Button
+              type="button"
               variant="outline"
               color="red"
               onClick={() =>
@@ -1457,6 +1459,7 @@ export default function RuleForm() {
         </div>
         <div>
           <Button
+            type="button"
             variant="outline"
             color="gray"
             className="block mt-4 mb-6 text-base font-medium rounded-lg text-slate-500"
@@ -1634,6 +1637,7 @@ export default function RuleForm() {
             Select the status of your Rule. See details about what each status
             means{' '}
             <Button
+              type="button"
               className="!p-0 !font-medium"
               variant="link"
               onClick={() =>
@@ -1768,6 +1772,7 @@ export default function RuleForm() {
   const expirationTimeButton = (timeString: string, unixtime: number) => {
     return (
       <Button
+        type="button"
         key={timeString}
         className="px-2 mx-1 text-base font-medium rounded-lg text-slate-500 hover:border-coop-dark-purple-hover hover:text-coop-dark-purple-hover focus:border-coop-dark-purple focus:text-coop-dark-purple hover:bg-coop-lightpurple"
         size="sm"

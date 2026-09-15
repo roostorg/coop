@@ -162,6 +162,7 @@ export default function RuleFormCondition(props: {
       }}
     >
       <Button
+        type="button"
         key={`RuleFormCondition-delete_set_index_${conditionSetIndex}_index_${conditionIndex}`}
         variant="outline"
         color="gray"

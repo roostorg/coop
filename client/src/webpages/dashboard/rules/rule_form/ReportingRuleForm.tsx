@@ -667,6 +667,7 @@ export default function RuleForm() {
         ))}
         <div className="flex mt-4 items-center gap-4">
           <Button
+            type="button"
             variant="outline"
             color="gray"
             size="icon"
@@ -684,6 +685,7 @@ export default function RuleForm() {
           </Button>
           {canDeleteConditionSet && (
             <Button
+              type="button"
               variant="outline"
               color="red"
               onClick={() =>
@@ -816,6 +818,7 @@ export default function RuleForm() {
         </div>
         <div>
           <Button
+            type="button"
             variant="outline"
             color="gray"
             startIcon={Plus}
@@ -915,6 +918,7 @@ export default function RuleForm() {
             Select the status of your Rule. See details about what each status
             means{' '}
             <Button
+              type="button"
               className="!p-0 !font-medium"
               variant="link"
               onClick={() =>

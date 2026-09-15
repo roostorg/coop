@@ -58,6 +58,7 @@ export default function RuleFormConditionSignal(props: {
       >
         <div className="pb-1 text-xs font-bold">Signal</div>
         <Button
+          type="button"
           variant="outline"
           color="gray"
           className={`px-3 cursor-text !flex !items-center ${
