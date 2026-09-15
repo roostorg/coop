@@ -383,4 +383,50 @@ describe('HmaService', () => {
       expect(result.credentials_schema).toBeNull();
     });
   });
+
+  describe('addContentToBank', () => {
+    it('sends the url as a query param and the metadata in the JSON body', async () => {
+      const fetchHTTP = jest
+        .fn()
+        .mockResolvedValue(ok({ id: 7, signals: { pdq: 'abc' } }));
+      const svc = makeService(fetchHTTP);
+
+      const result = await svc.addContentToBank('COOP_ORG1_BANK', {
+        url: 'https://cdn.example.com/a.jpg?sig=1',
+        metadata: {
+          content_id: 'type1:item1',
+          json: { source: 'ncmec_report' },
+        },
+      });
+
+      expect(result).toEqual({ id: 7, signals: { pdq: 'abc' } });
+      expect(fetchHTTP).toHaveBeenCalledTimes(1);
+      const call = fetchHTTP.mock.calls[0][0];
+      const url = new URL(call.url);
+      expect(url.pathname).toBe('/c/bank/COOP_ORG1_BANK/content');
+      expect([...url.searchParams.keys()]).toEqual(['url']);
+      expect(url.searchParams.get('url')).toBe(
+        'https://cdn.example.com/a.jpg?sig=1',
+      );
+      expect(call.method).toBe('post');
+      expect(call.headers).toEqual({ 'Content-Type': 'application/json' });
+      expect(jsonParse(call.body)).toEqual({
+        metadata: {
+          content_id: 'type1:item1',
+          json: { source: 'ncmec_report' },
+        },
+      });
+    });
+
+    it('throws when HMA rejects the content', async () => {
+      const fetchHTTP = jest.fn().mockResolvedValue(fail(400));
+      const svc = makeService(fetchHTTP);
+
+      await expect(
+        svc.addContentToBank('COOP_ORG1_BANK', {
+          url: 'https://cdn.example.com/a.jpg',
+        }),
+      ).rejects.toThrow('Failed to add content to bank: 400');
+    });
+  });
 });

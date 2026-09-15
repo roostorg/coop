@@ -28,6 +28,7 @@ import {
   makeFormDataLikeWithStreams,
   type FormDataLikeWithStreams,
 } from '../networkingService/index.js';
+import { addReportedMediaToHashBank } from './addReportedMediaToHashBank.js';
 import { type NcmecReportingServicePg } from './dbTypes.js';
 import {
   ncmecDebugDump,
@@ -1391,6 +1392,7 @@ export default class NcmecReporting {
     private moderationConfigService: Dependencies['ModerationConfigService'],
     private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly hmaService: Dependencies['HMAHashBankService'],
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
     const ncmecOrgSettings = await this.pgQuery
@@ -2057,6 +2059,18 @@ export default class NcmecReporting {
               is_test: isTest,
             })
             .execute();
+
+          if (isTest === false) {
+            await addReportedMediaToHashBank(
+              { hmaService: this.hmaService, logError: logErrorJson },
+              {
+                orgId: reportParams.orgId,
+                bankId: ncmecConfig?.reported_media_hash_bank_id,
+                ncmecReportId: reportId,
+                media: reportParams.media,
+              },
+            );
+          }
 
           if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
             await this.#sendUserPreservationRequest({

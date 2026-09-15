@@ -1,3 +1,4 @@
+import { type HmaService } from '../../services/hmaService/index.js';
 import { userInputError } from '../utils/errors.js';
 
 /** Input shape for updateNcmecOrgSettings; mirrors NcmecOrgSettingsInput so the
@@ -20,6 +21,7 @@ export type NcmecOrgSettingsInputShape = {
   contactPersonPhone?: string | null;
   mediaReviewRequirement?: string | null;
   minMediaToReview?: number | null;
+  reportedMediaHashBankId?: string | null;
 };
 
 const VALID_NCMEC_MEDIA_REVIEW_REQUIREMENTS = ['ALL', 'MINIMUM'] as const;
@@ -98,4 +100,27 @@ export function parseMediaReviewPolicy(input: NcmecOrgSettingsInputShape): {
     );
   }
   return { mediaReviewRequirement: requirement, minMediaToReview };
+}
+
+/** Returns the bank id to store, or null to clear it. A bank that is missing
+ * and a bank owned by another org get the same error, so callers cannot probe
+ * other orgs' bank ids. */
+export async function parseReportedMediaHashBankId(
+  input: NcmecOrgSettingsInputShape,
+  orgId: string,
+  hmaService: Pick<HmaService, 'getBankById'>,
+): Promise<number | null> {
+  const raw = input.reportedMediaHashBankId?.trim() ?? '';
+  if (raw === '') {
+    return null;
+  }
+  if (!/^\d+$/.test(raw)) {
+    throw userInputError('reportedMediaHashBankId must be a hash bank ID.');
+  }
+  const bankId = Number(raw);
+  const bank = await hmaService.getBankById(orgId, bankId);
+  if (!bank) {
+    throw userInputError('Selected hash bank was not found.');
+  }
+  return bankId;
 }

@@ -14,6 +14,7 @@ import {
   isValidContactEmail,
   parseInternetDetailType,
   parseMediaReviewPolicy,
+  parseReportedMediaHashBankId,
   type NcmecOrgSettingsInputShape,
 } from './ncmecOrgSettingsValidation.js';
 
@@ -79,6 +80,7 @@ const typeDefs = /* GraphQL */ `
     contactPersonPhone: String
     mediaReviewRequirement: NcmecMediaReviewRequirement
     minMediaToReview: Int
+    reportedMediaHashBankId: ID
   }
 
   input NcmecOrgSettingsInput {
@@ -99,6 +101,7 @@ const typeDefs = /* GraphQL */ `
     contactPersonPhone: String
     mediaReviewRequirement: NcmecMediaReviewRequirement
     minMediaToReview: Int
+    reportedMediaHashBankId: ID
   }
 
   type UpdateNcmecOrgSettingsResponse {
@@ -349,6 +352,12 @@ const Mutation: GQLMutationResolvers = {
     const { mediaReviewRequirement, minMediaToReview } =
       parseMediaReviewPolicy(input);
 
+    const reportedMediaHashBankId = await parseReportedMediaHashBankId(
+      input,
+      user.orgId,
+      context.services.HMAHashBankService,
+    );
+
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
       username,
@@ -368,6 +377,7 @@ const Mutation: GQLMutationResolvers = {
       contactPersonPhone: input.contactPersonPhone ?? null,
       mediaReviewRequirement,
       minMediaToReview,
+      reportedMediaHashBankId,
     });
 
     return { success: true };

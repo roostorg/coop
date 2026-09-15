@@ -814,21 +814,17 @@ export class HmaService {
 
     let response;
     if (url) {
-      // URL-based content
-      const params = new URLSearchParams();
-      params.append('url', url);
-      if (metadata) {
-        if (metadata.content_id)
-          params.append('content_id', metadata.content_id);
-        if (metadata.content_uri)
-          params.append('content_uri', metadata.content_uri);
-        if (metadata.json)
-          params.append('metadata', jsonStringify(metadata.json));
-      }
-
+      // HMA reads `metadata` from the JSON body only; query-param metadata is dropped.
+      const params = new URLSearchParams({ url });
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bankName}/content?${params.toString()}`,
         method: 'post',
+        ...(metadata
+          ? {
+              body: jsonStringify({ metadata }),
+              headers: { 'Content-Type': 'application/json' },
+            }
+          : {}),
         handleResponseBody: 'as-json',
       });
     } else {

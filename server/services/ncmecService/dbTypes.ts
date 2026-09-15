@@ -27,6 +27,7 @@ export type NcmecReportingServicePg = {
     contact_person_phone?: string | null;
     media_review_requirement?: 'ALL' | 'MINIMUM';
     min_media_to_review?: number | null;
+    reported_media_hash_bank_id?: number | null;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
   } & (

@@ -48,6 +48,11 @@ gql`
       contactPersonPhone
       mediaReviewRequirement
       minMediaToReview
+      reportedMediaHashBankId
+    }
+    hashBanks {
+      id
+      name
     }
     myOrg {
       hasNCMECReportingEnabled
@@ -83,6 +88,7 @@ type NcmecSettings = {
   contactPersonPhone: string;
   mediaReviewRequirement: GQLNcmecMediaReviewRequirement;
   minMediaToReview: string;
+  reportedMediaHashBankId: string;
 };
 
 export default function NCMECSettings() {
@@ -104,6 +110,7 @@ export default function NCMECSettings() {
     contactPersonPhone: '',
     mediaReviewRequirement: GQLNcmecMediaReviewRequirement.All,
     minMediaToReview: '1',
+    reportedMediaHashBankId: '',
   });
 
   const { loading, error, data } = useGQLNcmecOrgSettingsQuery({
@@ -149,6 +156,8 @@ export default function NCMECSettings() {
           data.ncmecOrgSettings.mediaReviewRequirement ??
           GQLNcmecMediaReviewRequirement.All,
         minMediaToReview: String(data.ncmecOrgSettings.minMediaToReview ?? 1),
+        reportedMediaHashBankId:
+          data.ncmecOrgSettings.reportedMediaHashBankId ?? '',
       });
     }
   }, [data?.ncmecOrgSettings]);
@@ -237,6 +246,7 @@ export default function NCMECSettings() {
           contactPersonPhone: settings.contactPersonPhone || null,
           mediaReviewRequirement: settings.mediaReviewRequirement,
           minMediaToReview: isMinimumPolicy ? parsedMinMedia : null,
+          reportedMediaHashBankId: settings.reportedMediaHashBankId || null,
         },
       },
     });
@@ -570,6 +580,43 @@ export default function NCMECSettings() {
               When reviewers choose &quot;Enqueue to NCMEC&quot;, jobs will be
               sent to this queue. Leave as &quot;Use org default queue&quot; to
               use the organization&apos;s default manual review queue.
+            </Text>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label
+              htmlFor="reportedMediaHashBankId"
+              className="text-sm font-medium"
+            >
+              Hash bank for reported media
+            </Label>
+            <Select
+              value={settings.reportedMediaHashBankId || '__none__'}
+              onValueChange={(value) =>
+                setSettings({
+                  ...settings,
+                  reportedMediaHashBankId: value === '__none__' ? '' : value,
+                })
+              }
+            >
+              <SelectTrigger id="reportedMediaHashBankId">
+                <SelectValue placeholder="Don't add reported media to a bank" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">
+                  Don&apos;t add reported media to a bank
+                </SelectItem>
+                {(data?.hashBanks ?? []).map((bank) => (
+                  <SelectItem key={bank.id} value={bank.id}>
+                    {bank.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Text size="XS" className="text-gray-500">
+              Media from each report accepted by NCMEC is added to this bank so
+              it can be matched if it is uploaded again. Only applies when
+              reports are sent to the NCMEC production endpoint.
             </Text>
           </div>
 
