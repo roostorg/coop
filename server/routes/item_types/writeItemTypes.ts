@@ -61,6 +61,7 @@ async function createForKind(
   const normalized = {
     ...input,
     description: input.description ?? null,
+    hiddenFields: input.hiddenFields ?? [],
     schemaFieldRoles: roles(kind, input.schemaFieldRoles, false),
   };
   switch (kind) {
