@@ -65,7 +65,6 @@ export default function ManualReviewQueueRuleConditionComparator(props: {
           key={`RuleFormCondition-comparator-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
           placeholder="Select a comparison"
           value={condition.comparator ?? undefined}
-          allowClear
           onValueChange={(value) => {
             if (value != null) {
               onUpdateComparator(value as GQLValueComparator);

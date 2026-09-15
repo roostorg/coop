@@ -312,7 +312,6 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
         <Combobox
           className="self-start w-auto min-w-[160px]"
           placeholder="Select Queue"
-          allowClear
           value={rule?.destinationQueue?.id ?? undefined}
           onValueChange={(value) => {
             if (value != null) {

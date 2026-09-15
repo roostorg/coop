@@ -248,7 +248,6 @@ export default function ItemAction(props: {
             <PolicyDropdown
               className="w-80 max-w-full"
               policies={policiesMemo}
-              maxTagCount={1}
               onChange={policiesDropdownOnChange}
               selectedPolicyIds={selectedPolicyIds}
               multiple={

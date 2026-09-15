@@ -124,7 +124,6 @@ export default function BulkActioningDashboard() {
     Record<string, ActionParameterValues>
   >({});
   const [moderatorNote, setModeratorNote] = useState<string>('');
-  const [actionSelectorOpened, setActionSelectorOpened] = useState(false);
 
   const { data: queryData, loading: queryLoading } =
     useGQLBulkActionsFormDataQuery();
@@ -198,9 +197,7 @@ export default function BulkActioningDashboard() {
         placeholder="Select Item Type"
         allowClear
         value={selectedItemTypeId ?? undefined}
-        onValueChange={(itemTypeId) => {
-          if (itemTypeId != null) setSelectedItemTypeId(itemTypeId);
-        }}
+        onValueChange={setSelectedItemTypeId}
         options={orderBy(allItemTypes, ['name']).map((itemType) => ({
           value: itemType.id,
           label: itemType.name,
@@ -255,24 +252,24 @@ export default function BulkActioningDashboard() {
     return out;
   })();
 
+  const actionSelectorEmptyText = !selectedItemTypeId ? (
+    <div className="text-coop-alert-red">
+      Please select at least one Item Type first
+    </div>
+  ) : (
+    <div className="text-coop-alert-red">
+      No actions available for {selectedItemType?.name ?? 'this Item Type'}. Add
+      one in the <Link to="/dashboard/actions">Actions Dashboard</Link>!
+    </div>
+  );
+
   const actionSelector = (
     <div className="flex flex-col w-56">
-      {actionSelectorOpened && !selectedItemTypeId && (
-        <div className="mb-1 text-coop-alert-red text-sm">
-          Please select at least one Item Type first
-        </div>
-      )}
-      {actionSelectorOpened && selectedItemTypeId && actions.length === 0 && (
-        <div className="mb-1 text-coop-alert-red text-sm">
-          No actions available for {selectedItemType?.name ?? 'this Item Type'}.
-          Add one in the <Link to="/dashboard/actions">Actions Dashboard</Link>!
-        </div>
-      )}
       <MultiCombobox
         placeholder="Select action"
         value={selectedActionIds}
         onValueChange={(actionIds) => setSelectedActionIds(actionIds)}
-        onClick={() => setActionSelectorOpened(true)}
+        emptyText={actionSelectorEmptyText}
         options={orderBy(actions, ['name']).map((action) => ({
           value: action.id,
           label: action.name,

@@ -59,7 +59,6 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         className="w-36"
         value={field.type ?? undefined}
         disabled={field.role != null}
-        allowClear
         onValueChange={(value) => {
           if (value != null) {
             updateFieldState(field, {
@@ -221,7 +220,6 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                   : 'Element type'
               }
               className="w-36"
-              allowClear
               value={
                 field.type === GQLContainerType.Map
                   ? (field.container?.keyScalarType ?? undefined)
@@ -258,7 +256,6 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
             <Combobox
               className="w-36"
               placeholder="Value type"
-              allowClear
               value={
                 field.container?.keyScalarType !== null
                   ? (field.container?.valueScalarType ?? undefined)

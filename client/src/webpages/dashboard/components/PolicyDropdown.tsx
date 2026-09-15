@@ -46,9 +46,7 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
   placeholder?: string | undefined;
   multiple: SelectMultiple;
   className?: string;
-  placement?: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
   disabled?: boolean;
-  maxTagCount?: number;
 }) {
   const {
     policies,

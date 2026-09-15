@@ -305,8 +305,18 @@ export default function RuleForm() {
           policyIds: rule.policies.map((it) => it.id),
         },
       });
+      // `useForm`'s `defaultValues` are only read on the first render, but
+      // `rule` isn't available until this query resolves — without this,
+      // editing an existing rule would leave status/itemTypes/actions at
+      // their empty initial values and silently wipe them out on save.
+      form.reset({
+        status: rule.status ?? GQLReportingRuleStatus.Draft,
+        itemTypes:
+          'itemTypes' in rule ? (rule.itemTypes?.map((it) => it.id) ?? []) : [],
+        actions: rule.actions?.map((a) => a.id) ?? [],
+      });
     }
-  }, [rule, allItemTypes.length, allSignals, allActions]);
+  }, [rule, allItemTypes.length, allSignals, allActions, form]);
 
   const showRuleMutationError = (isUpdate: boolean) => {
     dispatch({

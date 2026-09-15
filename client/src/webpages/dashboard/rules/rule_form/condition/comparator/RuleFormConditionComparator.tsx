@@ -69,7 +69,6 @@ export default function RuleFormConditionComparator(props: {
               onUpdateConditionComparator(value as GQLValueComparator);
             }
           }}
-          allowClear
           options={comparatorTypes.map((comparator) => ({
             value: comparator,
             label: comparableToHumanReadableString(comparator),

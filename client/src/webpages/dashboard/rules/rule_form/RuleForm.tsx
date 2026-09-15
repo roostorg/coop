@@ -790,6 +790,19 @@ export default function RuleForm() {
               : RuleType.USER,
         },
       });
+      // `useForm`'s `defaultValues` are only read on the first render, but
+      // `rule` isn't available until this query resolves — without this,
+      // editing an existing rule would leave status/itemTypes/actions at
+      // their empty initial values and silently wipe them out on save.
+      form.reset({
+        status: rule.status ?? GQLRuleStatus.Draft,
+        itemTypes:
+          rule.__typename === 'ContentRule'
+            ? (rule.itemTypes?.map((it) => it.id) ?? [])
+            : [],
+        actions: rule.actions?.map((a) => a.id) ?? [],
+        actionParameters: initialActionParameters,
+      });
     }
   }, [
     rule,
@@ -800,6 +813,8 @@ export default function RuleForm() {
     policies,
     duplicateId,
     allActions,
+    form,
+    initialActionParameters,
   ]);
 
   const showRuleMutationError = (isUpdate: boolean) => {
@@ -1993,13 +2008,13 @@ export default function RuleForm() {
           // advanced section, but this should be comprehensive enough for
           // this particular purpose
           const formHasBeenEdited =
-            form.getFieldValue('name') ||
+            state.ruleName ||
             state.selectedContentTypes.length !== 0 ||
             state.conditionSet.conditions.some((c) =>
               conditionHasUserInput(c)
             ) ||
-            form.getFieldValue('actions') ||
-            form.getFieldValue('policies');
+            form.getValues('actions').length !== 0 ||
+            state.policyIds.length !== 0;
 
           // If the form has been edited, show a warning letting the user
           // know that they'll use their work if they switch the rule type.
@@ -2014,7 +2029,7 @@ export default function RuleForm() {
                   title: 'Warning',
                   body: 'Switching the rule type will clear the rule form, and you will lose any unsaved work. Do you want to continue?',
                   onOk: () => {
-                    form.resetFields();
+                    form.reset();
                     switchRuleType();
                     onHideModal();
                   },

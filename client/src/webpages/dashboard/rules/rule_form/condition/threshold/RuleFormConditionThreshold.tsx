@@ -65,7 +65,7 @@ export default function RuleFormConditionThreshold(props: {
       className={`rounded-lg ${hasInvalidThreshold ? 'border-red-500' : ''}`}
       startSlot={
         hasInvalidThreshold ? (
-          <span className="flex items-center px-3 border border-r-0 border-gray-200 bg-white">
+          <span className="flex items-center px-3 border border-r-0 border-red-500 bg-white">
             <Tooltip>
               <TooltipTrigger asChild>
                 <AlertCircle className="w-4 h-4 text-red-500" />

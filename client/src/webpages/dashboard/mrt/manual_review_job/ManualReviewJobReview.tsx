@@ -1457,7 +1457,6 @@ function ManualReviewJobReviewImpl(props: {
       }}
       selectedPolicyIds={selectedPrimaryPolicies.map((policy) => policy.id)}
       multiple={org.allowMultiplePoliciesPerAction}
-      placement="topLeft"
       disabled={
         selectedPrimaryActions.length === 1 &&
         'type' in selectedPrimaryActions[0].action &&

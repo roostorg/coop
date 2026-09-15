@@ -8,7 +8,7 @@ import {
 } from '@/coop-ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import { cn } from '@/lib/utils';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, ChevronsUpDown, LoaderCircle, X } from 'lucide-react';
 import * as React from 'react';
 
 export type ComboboxOption = {
@@ -52,10 +52,12 @@ export type ComboboxProps = TriggerProps & {
   value: string | undefined;
   onValueChange: (value: string | undefined) => void;
   searchPlaceholder?: string;
-  emptyText?: string;
+  emptyText?: React.ReactNode;
   /** Show an X to reset the selection. Mirrors antd `allowClear`. */
   allowClear?: boolean;
   contentClassName?: string;
+  /** Shows a spinner in place of the chevron and disables the trigger. */
+  loading?: boolean;
 };
 
 const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
@@ -69,6 +71,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       emptyText = 'No results.',
       allowClear = false,
       disabled,
+      loading = false,
       className,
       contentClassName,
       id,
@@ -87,7 +90,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
             ref={ref}
             type="button"
             id={id}
-            disabled={disabled}
+            disabled={loading || disabled}
             onClick={onClick}
             className={cn(triggerClasses, className)}
             {...rest}
@@ -96,7 +99,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
               {selected ? selected.label : placeholder}
             </span>
             <span className="flex shrink-0 items-center gap-1">
-              {allowClear && value != null && value !== '' && (
+              {allowClear && !loading && value != null && value !== '' && (
                 <ClearButton
                   onClear={(e) => {
                     e.stopPropagation();
@@ -104,7 +107,11 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                   }}
                 />
               )}
-              <ChevronsUpDown className="h-4 w-4 opacity-50" />
+              {loading ? (
+                <LoaderCircle className="h-4 w-4 animate-spin opacity-50" />
+              ) : (
+                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+              )}
             </span>
           </button>
         </PopoverTrigger>
@@ -123,12 +130,11 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                 {options.map((option) => (
                   <CommandItem
                     key={option.value}
-                    value={option.label}
+                    value={option.value}
+                    keywords={[option.label]}
                     disabled={option.disabled}
                     onSelect={() => {
-                      onValueChange(
-                        option.value === value ? undefined : option.value,
-                      );
+                      onValueChange(option.value);
                       setOpen(false);
                     }}
                   >
@@ -160,7 +166,7 @@ export type MultiComboboxProps = TriggerProps & {
   value: string[];
   onValueChange: (value: string[]) => void;
   searchPlaceholder?: string;
-  emptyText?: string;
+  emptyText?: React.ReactNode;
   allowClear?: boolean;
   contentClassName?: string;
 };
@@ -244,24 +250,29 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label}
-                    disabled={option.disabled}
-                    onSelect={() => toggle(option.value)}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 h-4 w-4',
-                        value.includes(option.value)
-                          ? 'opacity-100'
-                          : 'opacity-0',
-                      )}
-                    />
-                    {option.label}
-                  </CommandItem>
-                ))}
+                {options.map((option) => {
+                  const isSelected = value.includes(option.value);
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      keywords={[option.label]}
+                      // A disabled option can still be individually removed
+                      // once selected (e.g. it became incompatible after
+                      // selection) — only block adding a *new* disabled one.
+                      disabled={option.disabled && !isSelected}
+                      onSelect={() => toggle(option.value)}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4',
+                          isSelected ? 'opacity-100' : 'opacity-0',
+                        )}
+                      />
+                      {option.label}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
             </CommandList>
           </Command>

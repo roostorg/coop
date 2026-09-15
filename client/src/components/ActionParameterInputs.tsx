@@ -135,11 +135,24 @@ function ParameterInput({
             min={param.min ?? undefined}
             max={param.max ?? undefined}
             value={typeof value === 'number' ? String(value) : ''}
-            onChange={(e) =>
-              onChange(
-                e.target.value === '' ? undefined : Number(e.target.value),
-              )
-            }
+            onChange={(e) => {
+              if (e.target.value === '') {
+                onChange(undefined);
+                return;
+              }
+              const parsed = Number(e.target.value);
+              if (Number.isNaN(parsed)) {
+                return;
+              }
+              // The native min/max attrs only affect validity styling, not
+              // the value itself — clamp so out-of-range input can't reach
+              // the mutation payload.
+              const clamped = Math.min(
+                param.max ?? Infinity,
+                Math.max(param.min ?? -Infinity, parsed),
+              );
+              onChange(clamped);
+            }}
           />
         );
       case GQLActionParameterType.Boolean:

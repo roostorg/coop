@@ -148,7 +148,6 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
       onChange={(policyId) => onUpdateThreshold(policyId)}
       selectedPolicyIds={condition.threshold}
       multiple={false}
-      placement="topLeft"
     />
   );
 

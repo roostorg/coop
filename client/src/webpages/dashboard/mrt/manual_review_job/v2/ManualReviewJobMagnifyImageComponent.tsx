@@ -1,6 +1,13 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { ReactElement, useContext, useMemo, useState } from 'react';
+import {
+  ReactElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useGQLGetMoreInfoForPartialItemsQuery } from '../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../utils/itemUtils';
@@ -52,6 +59,26 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
 
   const actionStore = useContext(ManualReviewActionStore);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  // Closing immediately on mouse-leave doesn't leave the cursor time to
+  // cross the small gap between the trigger and the popover content, so the
+  // content unmounts before the cursor ever reaches it. Delay the close and
+  // cancel it if the cursor lands on either the trigger or the content.
+  const closePopoverTimeoutRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
+  const cancelClosePopover = () => {
+    if (closePopoverTimeoutRef.current) {
+      clearTimeout(closePopoverTimeoutRef.current);
+    }
+  };
+  const scheduleClosePopover = () => {
+    cancelClosePopover();
+    closePopoverTimeoutRef.current = setTimeout(
+      () => setPopoverOpen(false),
+      150,
+    );
+  };
+  useEffect(() => cancelClosePopover, []);
 
   const borderAndTextColor = ((actions) => {
     if (!itemIdentifier) {
@@ -132,8 +159,11 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger
         asChild
-        onMouseEnter={() => setPopoverOpen(true)}
-        onMouseLeave={() => setPopoverOpen(false)}
+        onMouseEnter={() => {
+          cancelClosePopover();
+          setPopoverOpen(true);
+        }}
+        onMouseLeave={scheduleClosePopover}
       >
         <div className="flex flex-row items-center cursor-pointer min-w-0">
           {finalImageUrl ? (
@@ -181,8 +211,8 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
         side="bottom"
         align="start"
         className="w-auto max-w-[90vw]"
-        onMouseEnter={() => setPopoverOpen(true)}
-        onMouseLeave={() => setPopoverOpen(false)}
+        onMouseEnter={cancelClosePopover}
+        onMouseLeave={scheduleClosePopover}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex flex-col">

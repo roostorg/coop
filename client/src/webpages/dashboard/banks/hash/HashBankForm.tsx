@@ -700,6 +700,7 @@ export default function HashBankForm() {
             <Combobox
               value={selectedExchangeApi ?? undefined}
               placeholder="No exchange (standalone bank)"
+              loading={exchangeApisQuery.loading}
               allowClear
               onValueChange={(val) => setSelectedExchangeApi(val ?? null)}
               className="max-w-md"

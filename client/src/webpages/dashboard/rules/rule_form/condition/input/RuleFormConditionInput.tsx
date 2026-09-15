@@ -15,6 +15,34 @@ import {
 import { RuleFormConfigResponse } from '../../RuleFormReducers';
 import { SimplifiedConditionInput } from '../../RuleFormUtils';
 
+// Lost the per-option tooltip UI in the antd -> coop-ui migration (Combobox
+// options are plain {value, label} pairs); folded into the label instead so
+// the explanation isn't lost entirely.
+const COOP_INPUT_DESCRIPTIONS: Partial<Record<CoopInput, string>> = {
+  [CoopInput.ALL_TEXT]:
+    "All of the content's text is extracted and " +
+    'concatenated together (if there are multiple text fields), ' +
+    'and then the resulting string is run through whichever signal ' +
+    'you select',
+  [CoopInput.ANY_IMAGE]:
+    "All of the content's images are extracted and run " +
+    'through whichever signal you select. If any one of them ' +
+    'matches the signal, this condition will pass.',
+  [CoopInput.ANY_VIDEO]:
+    "All of the content's videos are extracted and run " +
+    'through whichever signal you select. If any one of them ' +
+    'matches the signal, this condition will pass.',
+  [CoopInput.ANY_GEOHASH]:
+    "All of the content's geohashes are extracted and run " +
+    'through whichever signal you select. If any one of them ' +
+    'matches the signal, this condition will pass.',
+  [CoopInput.AUTHOR_USER]:
+    'Use this to check inspect the user who created this content, ' +
+    'rather than inspecting the content itself.',
+  [CoopInput.POLICY_ID]: 'The policy that was used to enqueue this job.',
+  [CoopInput.SOURCE]: 'The source from which this job was enqueued.',
+};
+
 export default function RuleFormConditionInput(props: {
   condition: RuleFormLeafCondition;
   location: ConditionLocation;
@@ -129,7 +157,6 @@ export default function RuleFormConditionInput(props: {
             value={
               condition.input ? getOptionValue(condition.input) : undefined
             }
-            allowClear
             onValueChange={(input) => {
               if (input != null) {
                 onUpdateInput(
@@ -140,10 +167,18 @@ export default function RuleFormConditionInput(props: {
             }}
             options={[...eligibleInputs.entries()].flatMap(
               ([groupTitle, inputs]) =>
-                inputs.map((input) => ({
-                  value: getOptionValue(input),
-                  label: `${groupTitle} · ${getDisplayNameFromInput(input)}`,
-                })),
+                inputs.map((input) => {
+                  const description =
+                    input.type === 'CONTENT_COOP_INPUT'
+                      ? COOP_INPUT_DESCRIPTIONS[input.name]
+                      : undefined;
+                  return {
+                    value: getOptionValue(input),
+                    label: `${groupTitle} · ${getDisplayNameFromInput(input)}${
+                      description ? ` — ${description}` : ''
+                    }`,
+                  };
+                }),
             )}
           />
           <div className="invisible pb-1 text-xs font-bold">Input</div>
