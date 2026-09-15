@@ -8,8 +8,19 @@
 # security advisories), so majors still land when they fix a vulnerability.
 
 version: 2
+
+# Group Dockerfile and docker-compose node updates into the same PR to keep
+# node versions in sync; .nvmrc still needs to be bumped separately to match.
+multi-ecosystem-groups:
+  docker-images:
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
+
 updates:
-  # Enable version updates for Docker
+  # Dockerfiles
   - package-ecosystem: 'docker'
     directories:
       - '/'
@@ -17,8 +28,9 @@ updates:
       - '/db'
       - '/hma'
       - '/nodejs-instrumentation'
-    schedule:
-      interval: 'weekly'
+    patterns:
+      - '*'
+    multi-ecosystem-group: 'docker-images'
     cooldown:
       default-days: 7
     labels:
@@ -28,16 +40,23 @@ updates:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
     groups:
-      docker-images:
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
       docker-images-security:
         applies-to: 'security-updates'
         patterns:
           - '*'
 
-  # Enable version updates for npm
+  # Node images in Docker Compose
+  - package-ecosystem: 'docker-compose'
+    directory: '/'
+    patterns:
+      - 'node'
+    multi-ecosystem-group: 'docker-images'
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
