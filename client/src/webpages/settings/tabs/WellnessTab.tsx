@@ -17,10 +17,10 @@ import {
 } from '@/graphql/generated';
 import GoldenRetrieverPuppies from '@/images/GoldenRetrieverPuppies.png';
 import {
-  colorSchemeClassName,
   colorSchemeFromPreferences,
   MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
   MODERATOR_SAFETY_COLOR_SCHEMES,
+  moderatorSafetyFilterStyle,
   preferencesFromColorScheme,
   type ModeratorSafetyColorScheme,
 } from '@/models/safetySettings';
@@ -205,9 +205,15 @@ export default function WellnessTab() {
             </div>
           </div>
           <img
-            className={`rounded object-scale-down w-72 h-44 ${
-              BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${colorSchemeClassName(colorSchemeFromPreferences(safetySettings))}`}
+            className="rounded object-scale-down w-72 h-44"
+            style={{
+              filter: moderatorSafetyFilterStyle({
+                blurLevel: safetySettings.moderatorSafetyBlurLevel,
+                shouldBlur: true,
+                grayscale: safetySettings.moderatorSafetyGrayscale,
+                sepia: safetySettings.moderatorSafetySepia,
+              }),
+            }}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

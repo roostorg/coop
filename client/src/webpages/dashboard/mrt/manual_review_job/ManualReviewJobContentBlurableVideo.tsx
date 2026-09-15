@@ -1,10 +1,11 @@
+import { moderatorSafetyFilterStyle } from '@/models/safetySettings';
 import { CirclePlay } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 
 import CoopModal from '../../components/CoopModal';
 
-import { BLUR_LEVELS, BlurStrength } from './v2/ncmec/NCMECMediaViewer';
+import type { BlurStrength } from './v2/ncmec/NCMECMediaViewer';
 
 export default function ManualReviewJobContentBlurableVideo(props: {
   url: string;
@@ -13,6 +14,9 @@ export default function ManualReviewJobContentBlurableVideo(props: {
     shouldBlur?: boolean;
     muted?: boolean;
     blurStrength?: BlurStrength;
+    grayscale?: boolean;
+    sepia?: boolean;
+    revealOnHover?: boolean;
     controlsDisabled?: boolean;
     maxWidth?: number | string;
     maxHeight?: number | string;
@@ -26,7 +30,10 @@ export default function ManualReviewJobContentBlurableVideo(props: {
   const {
     shouldBlur = false,
     muted = false,
-    blurStrength,
+    blurStrength = 1,
+    grayscale = false,
+    sepia = false,
+    revealOnHover = true,
     controlsDisabled,
     lightMode = false,
     maxWidth = Infinity,
@@ -34,6 +41,7 @@ export default function ManualReviewJobContentBlurableVideo(props: {
   } = options ?? {};
   const [videoError, setVideoError] = useState<boolean>(false);
   const [playing, setPlaying] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
   const playerRef = useRef<ReactPlayer>(null);
 
@@ -64,19 +72,21 @@ export default function ManualReviewJobContentBlurableVideo(props: {
     );
   });
 
+  const filter = moderatorSafetyFilterStyle({
+    blurLevel: blurStrength,
+    shouldBlur: shouldBlur && !(revealOnHover && isHovered),
+    grayscale,
+    sepia,
+  });
+
   return (
-    <div className={`${className} relative rounded-lg shadow h-fit`} ref={ref}>
-      <div
-        className={`shadow ${
-          shouldBlur
-            ? blurStrength
-              ? BLUR_LEVELS[blurStrength]
-              : !playing
-                ? 'blur-sm'
-                : 'blur-0'
-            : 'blur-0'
-        }`}
-      >
+    <div
+      className={`${className} relative rounded-lg shadow h-fit`}
+      ref={ref}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="shadow" style={{ filter }}>
         <ReactPlayer
           style={{ display: 'flex', maxWidth, maxHeight }}
           playing={playing}
