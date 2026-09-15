@@ -43,6 +43,9 @@ import {
   assertBackwardCompatibleItemSchema,
   assertHiddenFieldsExist,
   assertValidItemSchema,
+  assertValidItemTypeFieldRoles,
+  mergeItemTypeRoleColumns,
+  type ItemTypeRoleColumns,
 } from './itemTypeSchemaValidation.js';
 
 const versionTextExpression = sql<string>`to_char(timezone('UTC'::text, version), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'::text)`;
@@ -74,21 +77,18 @@ type ItemTypeDbResult = Selection<
 >;
 
 export type ItemTypeHiddenFields = readonly string[];
-type ItemTypeRoleColumns = Partial<
-  Pick<
-    ModerationConfigServicePg['public.item_types'],
-    | 'display_name_field'
-    | 'creator_id_field'
-    | 'thread_id_field'
-    | 'parent_id_field'
-    | 'created_at_field'
-    | 'profile_icon_field'
-    | 'background_image_field'
-    | 'is_deleted_field'
-    | 'ip_address_field'
-    | 'email_field'
-  >
->;
+const itemTypeRoleColumnNames = [
+  'display_name_field',
+  'creator_id_field',
+  'thread_id_field',
+  'parent_id_field',
+  'created_at_field',
+  'profile_icon_field',
+  'background_image_field',
+  'is_deleted_field',
+  'ip_address_field',
+  'email_field',
+] as const;
 
 export default class ItemTypeOperations {
   private readonly itemTypeVersionsCache: Cached<
@@ -184,17 +184,6 @@ export default class ItemTypeOperations {
     hiddenFields: readonly string[];
   }): Promise<void> {
     await this.transactionWithRetry(async (trx) => {
-      // Deletion cleanup calls this after the item-type row is gone. Treat an
-      // empty list as idempotent cleanup rather than trying to reinsert it.
-      if (opts.hiddenFields.length === 0) {
-        await trx
-          .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
-          .where('org_id', '=', opts.orgId)
-          .where('item_type_id', '=', opts.itemTypeId)
-          .execute();
-        return;
-      }
-
       const itemType = await trx
         .selectFrom('public.item_types')
         .select('fields')
@@ -203,6 +192,14 @@ export default class ItemTypeOperations {
         .forUpdate()
         .executeTakeFirst();
       if (itemType === undefined) {
+        if (opts.hiddenFields.length === 0) {
+          await trx
+            .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
+            .where('org_id', '=', opts.orgId)
+            .where('item_type_id', '=', opts.itemTypeId)
+            .execute();
+          return;
+        }
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
         });
@@ -571,6 +568,7 @@ export default class ItemTypeOperations {
     try {
       await this.transactionWithRetry(async (trx) => {
         assertValidItemSchema(input.schema);
+        assertValidItemTypeFieldRoles(input.schema, kind, roleColumns);
         assertHiddenFieldsExist(input.schema, input.hiddenFields ?? []);
         await trx
           .insertInto('public.item_types')
@@ -613,7 +611,7 @@ export default class ItemTypeOperations {
       itemTypeId = await this.transactionWithRetry(async (trx) => {
         const current = await trx
           .selectFrom('public.item_types')
-          .select(['id', 'fields'])
+          .select(['id', 'fields', ...itemTypeRoleColumnNames])
           .where('id', '=', input.id)
           .where('org_id', '=', orgId)
           .where('kind', '=', kind)
@@ -627,6 +625,15 @@ export default class ItemTypeOperations {
         const proposedSchema = input.schema ?? current.fields;
         assertValidItemSchema(proposedSchema);
         assertBackwardCompatibleItemSchema(current.fields, proposedSchema);
+        const proposedRoleColumns = mergeItemTypeRoleColumns(
+          current,
+          roleColumns,
+        );
+        assertValidItemTypeFieldRoles(
+          proposedSchema,
+          kind,
+          proposedRoleColumns,
+        );
         const existingHiddenFields = await this.getHiddenFields(
           trx,
           orgId,
