@@ -34,6 +34,7 @@ import {
   type ThreadItemType,
   type UserItemType,
 } from './types/itemTypes.js';
+import { type ModerationConfigMutationActor } from './types/mutationActor.js';
 import type { PolicyType } from './types/policies.js';
 import { type PlainRuleWithLatestVersion } from './types/rules.js';
 
@@ -304,35 +305,53 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.policyOps.getPolicy(opts);
   }
 
-  async createPolicy(opts: {
-    orgId: string;
-    policy: {
-      name: string;
-      parentId: string | null;
-      policyText: string | null;
-      enforcementGuidelines: string | null;
-      policyType: PolicyType | null;
-    };
-    invokedBy: Invoker;
-  }): Promise<Policy> {
-    return this.policyOps.createPolicy(opts);
+  async createPolicy(
+    opts: {
+      orgId: string;
+      policy: {
+        name: string;
+        parentId?: string | null;
+        policyText?: string | null;
+        enforcementGuidelines?: string | null;
+        policyType?: PolicyType | null;
+        userStrikeCount?: number;
+        applyUserStrikeCountConfigToChildren?: boolean;
+      };
+    } & (
+      | { actor: ModerationConfigMutationActor }
+      | { invokedBy: Invoker; actor?: never }
+    ),
+  ): Promise<Policy> {
+    const actor =
+      opts.actor !== undefined
+        ? opts.actor
+        : ({ type: 'user', ...opts.invokedBy } as const);
+    return this.policyOps.createPolicy({ ...opts, actor });
   }
 
-  async updatePolicy(opts: {
-    orgId: string;
-    policy: {
-      id: string;
-      name?: string;
-      parentId?: string | null;
-      policyText?: string | null;
-      enforcementGuidelines?: string | null;
-      policyType?: PolicyType | null;
-      userStrikeCount?: number | null;
-      applyUserStrikeCountConfigToChildren?: boolean | null;
-    };
-    invokedBy: Invoker;
-  }): Promise<Policy> {
-    return this.policyOps.updatePolicy(opts);
+  async updatePolicy(
+    opts: {
+      orgId: string;
+      policy: {
+        id: string;
+        name?: string;
+        parentId?: string | null;
+        policyText?: string | null;
+        enforcementGuidelines?: string | null;
+        policyType?: PolicyType | null;
+        userStrikeCount?: number | null;
+        applyUserStrikeCountConfigToChildren?: boolean | null;
+      };
+    } & (
+      | { actor: ModerationConfigMutationActor }
+      | { invokedBy: Invoker; actor?: never }
+    ),
+  ): Promise<Policy> {
+    const actor =
+      opts.actor !== undefined
+        ? opts.actor
+        : ({ type: 'user', ...opts.invokedBy } as const);
+    return this.policyOps.updatePolicy({ ...opts, actor });
   }
 
   async deletePolicy(opts: {
