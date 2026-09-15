@@ -84,6 +84,10 @@ export type ManualReviewQueue = {
 
 const OLDEST_JOB_PRIORITIZED_SCAN_LIMIT = 10_000;
 
+const OLDEST_JOB_HEAP_SIZE = 3;
+
+type OldestJobEntry = { bullJobId: string; createdAt: Date };
+
 const PgQueueSelection = [
   'id',
   'org_id as orgId',
@@ -168,6 +172,11 @@ export default class QueueOperations {
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+
+  // Mini-heap cache: keeps the N oldest pending jobs per queue so
+  // getOldestJobCreatedAt can return in O(1) instead of scanning up to
+  // 10k prioritized jobs. Keyed by `${orgId}:${queueId}`.
+  readonly #oldestJobHeaps = new Map<string, OldestJobEntry[]>();
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -525,6 +534,7 @@ export default class QueueOperations {
     if (numDeletedRows === 1n) {
       try {
         await queue.obliterate({ force: true });
+        this.#oldestJobHeaps.delete(`${orgId}:${queueId}`);
       } catch (e) {
         // The DB row is already gone at this point, so a retry would see
         // numDeletedRows === 0n and skip obliterate() entirely, silently
@@ -547,6 +557,7 @@ export default class QueueOperations {
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
     await queue.obliterate({ force: true });
+    this.#oldestJobHeaps.delete(`${orgId}:${queueId}`);
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
@@ -896,6 +907,13 @@ export default class QueueOperations {
       },
     );
 
+    this.#insertIntoOldestJobHeap({
+      orgId,
+      queueId,
+      bullJobId,
+      createdAt,
+    });
+
     // Again, because new job data comes in in the non-legacy format, it's safe
     // to cast.
     return newJob.data satisfies StoredManualReviewJob as ManualReviewJob;
@@ -1050,7 +1068,14 @@ export default class QueueOperations {
       return undefined;
     }
     if (priority != null) {
-      await job.changePriority({ priority });
+      const state = await job.getState();
+      if (
+        state === 'waiting' ||
+        state === 'prioritized' ||
+        state === 'delayed'
+      ) {
+        await job.changePriority({ priority });
+      }
     }
     await job.updateData(data);
 
@@ -1111,7 +1136,8 @@ export default class QueueOperations {
       for (const job of jobs) {
         if (job?.id != null) {
           const item = (job.data as ManualReviewJob).payload.item;
-          // Legacy jobs use `id` instead of `itemId`.
+          // Legacy jobs stored `id` instead of `itemId`; the runtime shape
+          // may not match the current type.
           const itemId =
             'itemId' in item ? item.itemId : (item as { id: string }).id;
           pending.push({
@@ -1137,7 +1163,14 @@ export default class QueueOperations {
       const bullJob = await queue.getJob(bullId);
       // Dequeued or removed since the snapshot — nothing to re-stamp.
       if (!bullJob) continue;
-      await bullJob.changePriority({ priority });
+      const state = await bullJob.getState();
+      if (
+        state === 'waiting' ||
+        state === 'prioritized' ||
+        state === 'delayed'
+      ) {
+        await bullJob.changePriority({ priority });
+      }
     }
   }
 
@@ -1296,6 +1329,9 @@ export default class QueueOperations {
     // doesn't conflate them with "already gone".
     try {
       const status = await queue.remove(bullJobId);
+      if (status === 1) {
+        this.#evictFromOldestJobHeap({ orgId, queueId, bullJobId });
+      }
       return status === 1;
     } catch (err: unknown) {
       if (isJobLockedError(err)) {
@@ -1330,6 +1366,7 @@ export default class QueueOperations {
     try {
       const status = await queue.remove(bullJobId);
       if (status === 1) {
+        this.#evictFromOldestJobHeap({ orgId, queueId, bullJobId });
         return true;
       }
     } catch (err: unknown) {
@@ -1341,6 +1378,7 @@ export default class QueueOperations {
 
     try {
       await job.moveToCompleted(null, invokerUserId, false);
+      this.#evictFromOldestJobHeap({ orgId, queueId, bullJobId });
       return true;
     } catch {
       // Lock token mismatch (different user) or the job's state moved
@@ -1366,6 +1404,7 @@ export default class QueueOperations {
 
     const queue = await this.#getBullQueue(orgId, queueId);
     await queue.obliterate({ force: true });
+    this.#oldestJobHeaps.delete(`${orgId}:${queueId}`);
   }
 
   async dequeueNextAppealJobWithLock(opts: {
@@ -1415,6 +1454,13 @@ export default class QueueOperations {
       } else {
         // this is the most likely case, where there is a job
         // and it has never been decided before
+        if (job.id != null) {
+          this.#evictFromOldestJobHeap({
+            orgId,
+            queueId,
+            bullJobId: job.id,
+          });
+        }
         return { job: job.data, lockToken };
       }
     }
@@ -1471,6 +1517,13 @@ export default class QueueOperations {
       } else {
         // this is the most likely case, where there is a job
         // and it has never been decided before
+        if (job.id != null) {
+          this.#evictFromOldestJobHeap({
+            orgId,
+            queueId,
+            bullJobId: job.id,
+          });
+        }
         return { job: convertedJob.data, lockToken };
       }
     }
@@ -1693,19 +1746,20 @@ export default class QueueOperations {
     jobId: JobId;
     lockToken: string;
   }) {
+    const { orgId, queueId, jobId } = opts;
+    const bullJobId = parseExternalId(jobId).bullId;
     try {
       await this.#markLockedJobCompleted(opts);
     } catch (error: unknown) {
       // The most common case where this throws if the lock token has expired,
       // so try to remove it manually.
-      const { orgId, queueId, jobId } = opts;
       const queue = await this.getOrCreateBullQueue({ orgId, queueId });
-      const bullJobId = parseExternalId(jobId).bullId;
       const removeJobStatus = await queue.remove(bullJobId);
       if (removeJobStatus !== 1) {
         throw new Error('Failed to remove job');
       }
     }
+    this.#evictFromOldestJobHeap({ orgId, queueId, bullJobId });
   }
 
   /**
@@ -1793,33 +1847,85 @@ export default class QueueOperations {
     isAppealsQueue: boolean;
   }): Promise<Date | null> {
     const { orgId, queueId, isAppealsQueue } = opts;
+    const heapKey = `${orgId}:${queueId}`;
+    const cached = this.#oldestJobHeaps.get(heapKey);
+
+    if (cached != null && cached.length > 0) {
+      return cached[0].createdAt;
+    }
+
+    // Cache miss — do the full scan and populate the heap.
+    const heap = await this.#scanOldestJobs({ orgId, queueId, isAppealsQueue });
+    this.#oldestJobHeaps.set(heapKey, heap);
+    return heap.length > 0 ? heap[0].createdAt : null;
+  }
+
+  // Evicts a job from the heap when it's dequeued or removed. If the heap
+  // drops to empty, the next getOldestJobCreatedAt call will rescan.
+  #evictFromOldestJobHeap(opts: {
+    orgId: string;
+    queueId: string;
+    bullJobId: string;
+  }): void {
+    const heapKey = `${opts.orgId}:${opts.queueId}`;
+    const heap = this.#oldestJobHeaps.get(heapKey);
+    if (heap == null) return;
+    const idx = heap.findIndex((e) => e.bullJobId === opts.bullJobId);
+    if (idx !== -1) {
+      heap.splice(idx, 1);
+    }
+  }
+
+  #insertIntoOldestJobHeap(opts: {
+    orgId: string;
+    queueId: string;
+    bullJobId: string;
+    createdAt: Date;
+  }): void {
+    const heapKey = `${opts.orgId}:${opts.queueId}`;
+    const heap = this.#oldestJobHeaps.get(heapKey);
+    if (heap == null) return;
+    const entry: OldestJobEntry = {
+      bullJobId: opts.bullJobId,
+      createdAt: opts.createdAt,
+    };
+    heap.push(entry);
+    heap.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (heap.length > OLDEST_JOB_HEAP_SIZE) {
+      heap.length = OLDEST_JOB_HEAP_SIZE;
+    }
+  }
+
+  // Scans BullMQ for the N oldest pending jobs across all states.
+  async #scanOldestJobs(opts: {
+    orgId: string;
+    queueId: string;
+    isAppealsQueue: boolean;
+  }): Promise<OldestJobEntry[]> {
+    const { orgId, queueId, isAppealsQueue } = opts;
     const queue = isAppealsQueue
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // getWaiting/getDelayed return oldest-first, so their first entry is the
-    // oldest. `prioritized` is ordered by priority, so scan it instead.
     const [waitingJobs, delayedJobs, prioritizedJobs] = await Promise.all([
       queue.getWaiting(0, 0),
       queue.getDelayed(0, 0),
       queue.getPrioritized(0, OLDEST_JOB_PRIORITIZED_SCAN_LIMIT - 1),
     ]);
 
-    const createdAts = [
+    const entries: OldestJobEntry[] = [
       ...waitingJobs.slice(0, 1),
       ...delayedJobs.slice(0, 1),
       ...prioritizedJobs,
-    ].map((job) => job.data.createdAt);
+    ]
+      .filter((job) => job.id != null)
+      .map((job) => ({
+        bullJobId: job.id!,
+        createdAt: new Date(job.data.createdAt),
+      }));
 
-    if (createdAts.length === 0) {
-      return null;
-    }
-
-    return createdAts.reduce((oldest, createdAt) =>
-      new Date(createdAt).getTime() < new Date(oldest).getTime()
-        ? createdAt
-        : oldest,
-    );
+    entries.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    return entries.slice(0, OLDEST_JOB_HEAP_SIZE);
   }
 
   async close() {

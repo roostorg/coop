@@ -379,4 +379,210 @@ describe('QueueOperations job priorities', () => {
       expect(new Date(oldest!).getTime()).toBe(oldestCreatedAt.getTime());
     },
   );
+
+  testWithQueue()(
+    'getOldestJobCreatedAt returns cached value on subsequent calls',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      const base = new Date('2026-01-01T00:00:00.000Z').getTime();
+
+      for (const [itemId, priority, offset] of [
+        ['item-A', 3000, 0],
+        ['item-B', 1000, 60_000],
+      ] as const) {
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority,
+          jobPayload: {
+            createdAt: new Date(base + offset),
+            policyIds: [],
+            payload: payloadFor(itemId),
+          },
+        });
+      }
+
+      const first = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+      const second = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+
+      expect(first).not.toBeNull();
+      expect(second).toEqual(first);
+    },
+  );
+
+  testWithQueue()(
+    'getOldestJobCreatedAt updates after the oldest job is dequeued',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      const base = new Date('2026-01-01T00:00:00.000Z').getTime();
+      const oldestCreatedAt = new Date(base);
+      const secondOldest = new Date(base + 60_000);
+
+      for (const [itemId, createdAt] of [
+        ['item-oldest', oldestCreatedAt],
+        ['item-second', secondOldest],
+        ['item-newest', new Date(base + 120_000)],
+      ] as const) {
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          jobPayload: {
+            createdAt,
+            policyIds: [],
+            payload: payloadFor(itemId),
+          },
+        });
+      }
+
+      // Populate the cache.
+      const before = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+      expect(new Date(before!).getTime()).toBe(oldestCreatedAt.getTime());
+
+      // Dequeue the oldest job (FIFO — oldest is first).
+      await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-1',
+      });
+
+      // The heap should have promoted the second-oldest.
+      const after = await queueOps.getOldestJobCreatedAt({
+        orgId: org.id,
+        queueId: queue.id,
+        isAppealsQueue: false,
+      });
+      expect(new Date(after!).getTime()).toBe(secondOldest.getTime());
+    },
+  );
+
+  testWithQueue()(
+    'getOldestJobCreatedAt returns null after all jobs are dequeued',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: { policyIds: [], payload: payloadFor('only-item') },
+      });
+
+      // Populate the cache.
+      expect(
+        await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        }),
+      ).not.toBeNull();
+
+      // Dequeue the only job.
+      await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-1',
+      });
+
+      // Heap is empty, rescan finds nothing.
+      expect(
+        await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  testWithQueue()(
+    'deleteAllJobsFromQueue clears the oldest job cache',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: { policyIds: [], payload: payloadFor('item-A') },
+      });
+
+      // Populate the cache.
+      expect(
+        await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        }),
+      ).not.toBeNull();
+
+      await queueOps.deleteAllJobsFromQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        userPermissions: [UserPermission.MANAGE_ORG],
+      });
+
+      // Cache was cleared; rescan finds nothing.
+      expect(
+        await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  testWithQueue()(
+    'changePriority is skipped for active jobs during recompute',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: { policyIds: [], payload: payloadFor('item-A') },
+      });
+
+      // Dequeue to make it active.
+      const dequeued = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-1',
+      });
+      expect(dequeued).not.toBeNull();
+
+      // Recompute should not throw on the active job.
+      await expect(
+        queueOps.recomputePrioritiesForQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          getPriorities: async (itemIds) =>
+            new Map(itemIds.map((id) => [id, 500])),
+        }),
+      ).resolves.toBeUndefined();
+    },
+  );
 });
