@@ -55,6 +55,8 @@ const typeDefs = /* GraphQL */ `
     parentId: ID
     parentName: String
     policyType: PolicyType
+    userStrikeCount: Int
+    applyUserStrikeCountConfigToChildren: Boolean
   }
 
   input UpdatePolicyInput {
@@ -74,7 +76,29 @@ const typeDefs = /* GraphQL */ `
     deletePolicy(id: ID!): Boolean
   }
 
-  union UpdatePolicyResponse = Policy | NotFoundError
+  union UpdatePolicyResponse =
+    | Policy
+    | NotFoundError
+    | InvalidPolicyParentError
+    | PolicyHierarchyCycleError
+
+  type InvalidPolicyParentError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
+  type PolicyHierarchyCycleError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
 
   type PolicyNameExistsError implements Error {
     title: String!
@@ -93,7 +117,9 @@ const typeDefs = /* GraphQL */ `
 
 const UpdatePolicyResponse: GQLUpdatePolicyResponseResolvers = {
   __resolveType(response) {
-    return 'title' in response ? 'NotFoundError' : 'Policy';
+    return (
+      response.__typename ?? ('title' in response ? 'NotFoundError' : 'Policy')
+    );
   },
 };
 
@@ -104,10 +130,12 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.services.ModerationConfigService.getPolicy({
-      policyId: id,
-      orgId: user.orgId,
-    });
+    return (
+      (await context.services.ModerationConfigService.getPolicy({
+        policyId: id,
+        orgId: user.orgId,
+      })) ?? null
+    );
   },
 };
 
@@ -127,9 +155,13 @@ const Mutation: GQLMutationResolvers = {
           policyText: policy.policyText ?? null,
           enforcementGuidelines: policy.enforcementGuidelines ?? null,
           policyType: policy.policyType ?? null,
+          userStrikeCount: policy.userStrikeCount ?? undefined,
+          applyUserStrikeCountConfigToChildren:
+            policy.applyUserStrikeCountConfigToChildren ?? undefined,
         },
         orgId: user.orgId,
-        invokedBy: {
+        actor: {
+          type: 'user',
           userId: user.id,
           permissions: user.getPermissions(),
           orgId: user.orgId,
@@ -187,7 +219,8 @@ const Mutation: GQLMutationResolvers = {
             applyUserStrikeCountConfigToChildren,
           },
           orgId: user.orgId,
-          invokedBy: {
+          actor: {
+            type: 'user',
             userId: user.id,
             permissions: user.getPermissions(),
             orgId: user.orgId,
@@ -196,7 +229,13 @@ const Mutation: GQLMutationResolvers = {
 
       return gqlSuccessResult(updatedPolicy, 'Policy');
     } catch (e) {
-      if (isCoopErrorOfType(e, 'NotFoundError')) {
+      if (
+        isCoopErrorOfType(e, [
+          'NotFoundError',
+          'InvalidPolicyParentError',
+          'PolicyHierarchyCycleError',
+        ])
+      ) {
         return gqlErrorResult(e);
       }
 
