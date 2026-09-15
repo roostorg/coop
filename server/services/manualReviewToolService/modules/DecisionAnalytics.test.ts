@@ -109,7 +109,7 @@ describe('DecisionAnalytics', () => {
   };
 
   testWithDecisions()(
-    'pages a real cursor across the id-cast boundary without erroring',
+    'paginates using a cursor',
     async ({ org, mrtService, insertDecision }) => {
       const ids = await Promise.all([
         insertDecision(minutesAfterBase(0)),
@@ -126,10 +126,6 @@ describe('DecisionAnalytics', () => {
       expect(firstPage.map((d) => d.id)).toEqual([ids[2], ids[1]]);
 
       const last = firstPage[firstPage.length - 1];
-      // The cursor's `id` is a real uuid pulled from a previous row, exactly
-      // as a real caller would pass it. If the `::uuid` cast on the cursor
-      // predicate were missing or wrong, this call raises
-      // `22P02 invalid input syntax for type uuid` instead of returning.
       const secondPage = await mrtService.getDecisionsForActivityFeed({
         userPermissions: [],
         orgId: org.id,

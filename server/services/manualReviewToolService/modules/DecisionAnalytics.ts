@@ -279,11 +279,9 @@ export default class DecisionAnalytics {
   }
 
   /**
-   * Shared query body for `getRecentDecisions` and
-   * `getDecisionsForActivityFeed`: the select list, every filter predicate,
-   * the `userSearchString` branch, and the NCMEC permission gate. Stops
-   * short of `orderBy`/`limit`/`offset` so each caller applies its own
-   * paging.
+   * Shared query body for recent decisions: the select list, every filter
+   * predicate, the `userSearchString` branch, and the NCMEC permission gate.
+   * Stops short of `orderBy`/`offset` so each caller applies its own paging.
    */
   private buildRecentDecisionsQuery(opts: {
     userPermissions: UserPermission[];
@@ -449,24 +447,16 @@ export default class DecisionAnalytics {
   }
 
   /**
-   * Cursor-paged twin of `getRecentDecisions`, for the merged activity feed.
-   *
-   * Kept separate rather than folded into `getRecentDecisions`: that query is
-   * offset-paged and consumed elsewhere, and changing its contract would
-   * break callers this feature has no reason to touch.
+   * Cursor-paged recent decisions, for the merged activity feed.
    *
    * Ordering is `(created_at, id)` descending. The id leg makes each row's
-   * position unique so the merged feed's cursor is exact — a
-   * `created_at`-only bound would drop or repeat decisions sharing an
-   * instant.
+   * position unique so the cursor is exact — a `created_at`-only bound would
+   * drop or repeat decisions sharing an instant.
    */
   async getDecisionsForActivityFeed(opts: {
     userPermissions: UserPermission[];
     orgId: string;
     input: Omit<RecentDecisionsFilterInput, 'page'>;
-    // The DECISIONS side of a per-store cursor. The caller must never pass
-    // the actions side's id here: `id` is uuid, and a non-uuid string raises
-    // 22P02 invalid input syntax for type uuid.
     cursor?: ActivityFeedDecisionCursor;
     limit: number;
   }) {
@@ -481,9 +471,8 @@ export default class DecisionAnalytics {
       ? baseQuery.where(
           sql`(created_at, id)`,
           '<',
-          // `id` is uuid. The cast is load-bearing: without it Postgres
-          // infers the bind type from the column and a non-uuid string
-          // raises 22P02.
+          // `id` is uuid. Without the cast Postgres infers the bind type from
+          // the column, and a non-uuid string raises a Postgres error.
           sql`(${cursor.ts}, ${cursor.id}::uuid)`,
         )
       : baseQuery;
