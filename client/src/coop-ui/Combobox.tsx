@@ -14,6 +14,8 @@ import * as React from 'react';
 export type ComboboxOption = {
   value: string;
   label: string;
+  /** Optional secondary line, e.g. a help/tooltip-style explanation. */
+  description?: string;
   disabled?: boolean;
 };
 
@@ -131,7 +133,11 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                   <CommandItem
                     key={option.value}
                     value={option.value}
-                    keywords={[option.label]}
+                    keywords={
+                      option.description
+                        ? [option.label, option.description]
+                        : [option.label]
+                    }
                     disabled={option.disabled}
                     onSelect={() => {
                       onValueChange(option.value);
@@ -140,11 +146,18 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                   >
                     <Check
                       className={cn(
-                        'mr-2 h-4 w-4',
+                        'mr-2 h-4 w-4 shrink-0',
                         option.value === value ? 'opacity-100' : 'opacity-0',
                       )}
                     />
-                    {option.label}
+                    <span className="flex flex-col">
+                      <span>{option.label}</span>
+                      {option.description && (
+                        <span className="text-xs text-gray-400">
+                          {option.description}
+                        </span>
+                      )}
+                    </span>
                   </CommandItem>
                 ))}
               </CommandGroup>

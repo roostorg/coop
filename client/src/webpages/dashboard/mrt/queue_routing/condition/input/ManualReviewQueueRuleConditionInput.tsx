@@ -165,18 +165,14 @@ export default function ManualReviewQueueRuleConditionInput(props: {
               }}
               options={[...eligibleInputs.entries()].flatMap(
                 ([groupTitle, inputs]) =>
-                  inputs.map((input) => {
-                    const description =
+                  inputs.map((input) => ({
+                    value: getOptionValue(input),
+                    label: `${groupTitle} · ${getDisplayNameFromInput(input)}`,
+                    description:
                       input.type === 'CONTENT_COOP_INPUT'
                         ? COOP_INPUT_DESCRIPTIONS[input.name]
-                        : undefined;
-                    return {
-                      value: getOptionValue(input),
-                      label: `${groupTitle} · ${getDisplayNameFromInput(input)}${
-                        description ? ` — ${description}` : ''
-                      }`,
-                    };
-                  }),
+                        : undefined,
+                  })),
               )}
             />
           </>
