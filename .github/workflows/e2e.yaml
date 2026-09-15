@@ -75,7 +75,7 @@ jobs:
           echo "::error::image prep failed after 3 attempts"; exit 1
 
       - name: Start backing services
-        run: docker compose up --detach --quiet-pull postgres clickhouse scylla redis
+        run: docker compose up --detach --wait --quiet-pull postgres clickhouse scylla redis
 
       - name: Configure env
         run: |

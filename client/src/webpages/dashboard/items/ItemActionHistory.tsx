@@ -40,6 +40,7 @@ gql`
         jobId
         policies
         ruleIds
+        parameters
         ts
       }
     }
@@ -109,6 +110,17 @@ gql`
     }
   }
 `;
+/**
+ * An executed action paired with the parameter values the moderator supplied.
+ * Rows are grouped by job, so several of these can share one table row —
+ * keeping name and parameters together is what stops one action's values from
+ * being shown against another's.
+ */
+type ActionWithParameters = {
+  name: string;
+  parameters: Readonly<Record<string, unknown>>;
+};
+
 export default function ItemActionHistory(props: {
   itemIdentifier: ItemIdentifier;
   submissionTime?: string | undefined;
@@ -224,7 +236,14 @@ export default function ItemActionHistory(props: {
       ts: decisionData.ts,
       jobId: decisionData.jobId,
       ruleIds: decisionData.ruleIds,
-      actions: [getActionName(decisionData.actionId)],
+      actions: [
+        {
+          name: getActionName(decisionData.actionId),
+          // Already narrowed to the action's declared parameters by the
+          // `itemActionHistory` resolver.
+          parameters: decisionData.parameters,
+        },
+      ],
     }));
 
     const tableData = Object.values(
@@ -235,7 +254,7 @@ export default function ItemActionHistory(props: {
           ts: string | Date;
           jobId: string | null | undefined;
           ruleIds: readonly string[];
-          actions: string[];
+          actions: ActionWithParameters[];
         };
       }>((acc, item) => {
         if (item.jobId == null) {
@@ -261,7 +280,7 @@ export default function ItemActionHistory(props: {
         ts: it.createdAt,
         jobId: it.jobId,
         ruleIds: [],
-        actions: ['Ignore'],
+        actions: [{ name: 'Ignore', parameters: {} }],
       })),
     ];
   }, [data, recentIgnores, getPolicyName, getReviewerName, getActionName]);
@@ -277,7 +296,11 @@ export default function ItemActionHistory(props: {
           const jobId = value.jobId;
           return {
             actions: value.actions.map((it, index) => (
-              <InvestigationTag key={`${i}-${index}`} title={it} />
+              <InvestigationTag
+                key={`${i}-${index}`}
+                title={it.name}
+                parameters={it.parameters}
+              />
             )),
             policies: (
               <div className="flex flex-wrap gap-1">

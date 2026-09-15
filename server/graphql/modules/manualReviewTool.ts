@@ -45,6 +45,16 @@ import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 
 const { omit, sumBy } = _;
 
+export const MAX_MANUAL_REVIEW_JOB_IDS = 10;
+
+export function assertManualReviewJobIdsWithinLimit(jobIds: readonly string[]) {
+  if (jobIds.length > MAX_MANUAL_REVIEW_JOB_IDS) {
+    throw userInputError(
+      `At most ${MAX_MANUAL_REVIEW_JOB_IDS} job IDs may be requested.`,
+    );
+  }
+}
+
 const typeDefs = /* GraphQL */ `
   enum MrtClearReportsDisposition {
     AUTOMATIC_CLOSE
@@ -63,7 +73,7 @@ const typeDefs = /* GraphQL */ `
     description: String
     orgId: ID!
     isDefaultQueue: Boolean!
-    jobs(ids: [ID!], limit: Int): [ManualReviewJob!]!
+    jobs(ids: [ID!], limit: Int, lockToken: String): [ManualReviewJob!]!
     pendingJobCount: Int!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
@@ -1747,7 +1757,7 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
 };
 
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
-  async jobs(queue, { ids: jobIds, limit }, context) {
+  async jobs(queue, { ids: jobIds, limit, lockToken }, context) {
     const { orgId, id: queueId } = queue;
 
     if (jobIds == null) {
@@ -1757,18 +1767,43 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
         limit: limit ?? undefined,
       });
     }
+    assertManualReviewJobIdsWithinLimit(jobIds);
+
     // Empty array means "filter to no IDs" -> result is always []. Short-circuit
     // so we don't open a Bull/Redis queue handle per reviewable queue on every
     // MRT page load before a job has been dequeued.
     if (jobIds.length === 0) {
       return [];
     }
-    return context.services.ManualReviewToolService.getJobsForQueue({
-      orgId,
-      queueId,
-      jobIds,
-      isAppealsQueue: queue.isAppealsQueue,
-    });
+
+    const jobs = await context.services.ManualReviewToolService.getJobsForQueue(
+      {
+        orgId,
+        queueId,
+        jobIds,
+        isAppealsQueue: queue.isAppealsQueue,
+      },
+    );
+    if (lockToken == null) {
+      return jobs;
+    }
+
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('User required.');
+    }
+    return Promise.all(
+      jobs.map(async (job) =>
+        context.services.ManualReviewToolService.resolveContentForReview({
+          job,
+          queueId,
+          reviewerId: user.id,
+          reviewerOrgId: user.orgId,
+          lockToken,
+          isAppealsQueue: queue.isAppealsQueue,
+        }),
+      ),
+    );
   },
   async pendingJobCount(queue, _, context) {
     const { orgId, id: queueId } = queue;

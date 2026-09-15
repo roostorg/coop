@@ -6,7 +6,6 @@ import type {
   JobCreationsInput,
 } from '../manualReviewToolService/modules/DecisionAnalytics.js';
 import { type OrgSettingsPg } from '../orgSettingsService/index.js';
-import type { UserRole } from './permissioning.js';
 
 export type MrtChartConfig = {
   title: string;
@@ -72,8 +71,7 @@ export type UserManagementPg = {
     id: GeneratedAlways<string>;
     token: string;
     email: string;
-    role: UserRole;
-    role_id: string | null;
+    role_id: string;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
     org_id: string;
