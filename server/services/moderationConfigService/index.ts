@@ -83,11 +83,22 @@ export {
 } from './moderationConfigService.js';
 
 export {
+  type ItemTypeErrorType,
+  makeItemTypeSchemaIncompatibleError,
+  makeInvalidItemTypeSchemaError,
+  makeInvalidItemTypeHiddenFieldsError,
+  makeItemTypeNameAlreadyExistsError,
   makeRuleNameExistsError,
   makeRuleIsMissingContentTypeError,
   makeRuleHasRunningBacktestsError,
   makeLocationBankNameExistsError,
 } from './errors.js';
+
+export {
+  assertValidItemSchema,
+  assertBackwardCompatibleItemSchema,
+  assertHiddenFieldsExist,
+} from './modules/itemTypeSchemaValidation.js';
 
 export {
   ACTION_PARAMETER_TYPES,
