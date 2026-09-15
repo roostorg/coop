@@ -1,6 +1,5 @@
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { List } from 'antd';
 import { useState } from 'react';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';
@@ -119,40 +118,38 @@ export default function NCMECPreviousMessages(props: {
     });
   return (
     <div className="flex items-start">
-      <List
-        bordered
-        dataSource={threadsWithMessages.map((it) => {
-          return { id: it.threadId, typeId: it.threadTypeId };
-        })}
-        renderItem={(thread) => {
-          const reportedMessagesInThread = selectedThreadsWithMessages.find(
-            (it) =>
-              it.threadId === thread.id && it.threadTypeId === thread.typeId,
-          )?.reportedContent;
-          return (
-            <List.Item
-              className={`cursor-pointer self-start flex ${
-                selectedThread &&
-                selectedThread.id === thread.id &&
-                selectedThread.typeId === thread.typeId
-                  ? 'bg-gray-200'
-                  : ''
-              }`}
-              onClick={() => {
-                setSelectedThread(thread);
-              }}
-              key={thread.id}
-            >
-              {thread.id}
-              {reportedMessagesInThread ? (
-                <span className="ml-2 text-xs text-gray-500">
-                  {reportedMessagesInThread.length} reported
-                </span>
-              ) : undefined}
-            </List.Item>
-          );
-        }}
-      />
+      <ul className="border border-solid rounded border-slate-200 divide-y divide-slate-200">
+        {threadsWithMessages
+          .map((it) => ({ id: it.threadId, typeId: it.threadTypeId }))
+          .map((thread) => {
+            const reportedMessagesInThread = selectedThreadsWithMessages.find(
+              (it) =>
+                it.threadId === thread.id && it.threadTypeId === thread.typeId,
+            )?.reportedContent;
+            return (
+              <li
+                className={`flex px-4 py-3 cursor-pointer self-start ${
+                  selectedThread &&
+                  selectedThread.id === thread.id &&
+                  selectedThread.typeId === thread.typeId
+                    ? 'bg-gray-200'
+                    : ''
+                }`}
+                onClick={() => {
+                  setSelectedThread(thread);
+                }}
+                key={thread.id}
+              >
+                {thread.id}
+                {reportedMessagesInThread ? (
+                  <span className="ml-2 text-xs text-gray-500">
+                    {reportedMessagesInThread.length} reported
+                  </span>
+                ) : undefined}
+              </li>
+            );
+          })}
+      </ul>
       {selectedThread === undefined ? undefined : selectedThreadMessages ===
           undefined || selectedThreadMessages.length === 0 ? (
         <div>No messages found</div>

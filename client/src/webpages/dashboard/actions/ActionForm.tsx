@@ -1,13 +1,14 @@
+import { MultiCombobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
+import { Link } from '@/coop-ui/Link';
+import { Textarea } from '@/coop-ui/Textarea';
 import { DOCS_URL } from '@/lib/config';
 import { gql } from '@apollo/client';
-import { Input, Select } from 'antd';
-import Link from 'antd/lib/typography/Link';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
-import { selectFilterByLabelOption } from '../components/antDesignUtils';
 import CoopButton from '../components/CoopButton';
 import CoopModal from '../components/CoopModal';
 import FormHeader from '../components/FormHeader';
@@ -31,8 +32,6 @@ import ActionParametersEditor, {
   validateDrafts,
   type ActionParameterDraft,
 } from './ActionParametersEditor';
-
-const { Option } = Select;
 
 gql`
   fragment CustomActionFragment on CustomAction {
@@ -281,25 +280,21 @@ export default function ActionForm() {
         title="Eligible Item Types"
         subtitle="Select the item types that this action can be run on."
       />
-      <Select<string[]>
-        mode="multiple"
+      <MultiCombobox
         placeholder="Select item types"
         allowClear
-        showSearch
-        dropdownMatchSelectWidth={false}
-        filterOption={selectFilterByLabelOption}
-        onChange={setActionItemTypeIds}
-        value={actionItemTypeIds}
-      >
-        {itemTypes
-          ?.slice()
-          ?.sort((a, b) => a.name.localeCompare(b.name))
-          ?.map((itemType) => (
-            <Option key={itemType.id} value={itemType.id} label={itemType.name}>
-              {itemType.name}
-            </Option>
-          ))}
-      </Select>
+        onValueChange={setActionItemTypeIds}
+        value={actionItemTypeIds ?? []}
+        options={
+          itemTypes
+            ?.slice()
+            ?.sort((a, b) => a.name.localeCompare(b.name))
+            ?.map((itemType) => ({
+              value: itemType.id,
+              label: itemType.name,
+            })) ?? []
+        }
+      />
     </div>
   );
 
@@ -315,7 +310,7 @@ export default function ActionForm() {
       />
       <Input
         placeholder="https://yourwebsite.com/api/your_action..."
-        style={{ borderRadius: '8px' }}
+        className="rounded-lg"
         onChange={(e) => setActionCallbackUrl(e.target.value)}
         value={actionCallbackUrl}
       />
@@ -333,9 +328,10 @@ export default function ActionForm() {
         required to access your API, you can add it below, in the normal HTTP
         header JSON format.
       </div>
-      <Input.TextArea
+      <Textarea
         className="mt-3 rounded-xl"
-        autoSize={{ minRows: 6, maxRows: 24 }}
+        rows={6}
+        // TODO(antd-removal): antd TextArea autoSize dropped
         placeholder={`{
     "my-header": "SOME_API_KEY",
      ...
@@ -351,15 +347,15 @@ export default function ActionForm() {
         properly, you can add that information below, in the normal HTTP body
         JSON format.
       </div>
-      <Input.TextArea
+      <Textarea
         className="mt-3 rounded-xl"
-        autoSize={{ minRows: 6, maxRows: 24 }}
+        rows={6}
+        // TODO(antd-removal): antd TextArea autoSize dropped
         placeholder={`{
     "my-param-1": "SOME_VALUE",
     "my-param-2": "SOME_OTHER_VALUE"
      ...
 }`}
-        style={{ borderRadius: '12px' }}
         onChange={(e) => setActionCallbackUrlBody(e.target.value)}
         value={actionCallbackUrlBody}
       />

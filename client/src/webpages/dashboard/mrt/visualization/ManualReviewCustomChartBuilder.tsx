@@ -1,4 +1,6 @@
-import { Input, Radio } from 'antd';
+import { Input } from '@/coop-ui/Input';
+import { Label } from '@/coop-ui/Label';
+import { RadioGroup, RadioGroupItem } from '@/coop-ui/RadioGroup';
 import { Trash2 } from 'lucide-react';
 
 import { GQLManualReviewChartMetric } from '../../../../graphql/generated';
@@ -46,19 +48,31 @@ const ManualReviewCustomChartBuilder = ({
       </div>
       <div className="flex items-center">
         <div className="pr-3 font-medium text-slate-500">Select a metric:</div>
-        <Radio.Group
+        <RadioGroup
           className="flex items-center justify-end"
-          onChange={(event) =>
+          onValueChange={(value) =>
             updateChart({
               ...chart,
-              metric: event.target.value,
+              metric: value as GQLManualReviewChartMetric,
             })
           }
-          value={chart.metric}
+          value={chart.metric ?? undefined}
         >
-          <Radio value={GQLManualReviewChartMetric.Decisions}>Decisions</Radio>
-          <Radio value={GQLManualReviewChartMetric.Jobs}>Jobs</Radio>
-        </Radio.Group>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem
+              value={GQLManualReviewChartMetric.Decisions}
+              id="chart-metric-decisions"
+            />
+            <Label htmlFor="chart-metric-decisions">Decisions</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem
+              value={GQLManualReviewChartMetric.Jobs}
+              id="chart-metric-jobs"
+            />
+            <Label htmlFor="chart-metric-jobs">Jobs</Label>
+          </div>
+        </RadioGroup>
       </div>
     </div>
     <div className="flex h-px mx-6 bg-slate-200" />

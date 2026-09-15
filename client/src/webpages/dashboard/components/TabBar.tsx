@@ -1,4 +1,4 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { useEffect, useState, type ReactElement } from 'react';
 
 type TabInfo<T extends string> = {
@@ -51,8 +51,9 @@ export default function TabBar<T extends string>(props: {
     );
 
     return tooltip ? (
-      <Tooltip key={value} title={tooltip}>
-        {tabButton}
+      <Tooltip key={value}>
+        <TooltipTrigger asChild>{tabButton}</TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     ) : (
       tabButton

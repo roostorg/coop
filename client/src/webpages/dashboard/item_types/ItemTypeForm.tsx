@@ -1,6 +1,14 @@
+import { Button } from '@/coop-ui/Button';
+import { Input } from '@/coop-ui/Input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/coop-types';
-import { Button, Input, Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import invert from 'lodash/invert';
 import pickBy from 'lodash/pickBy';
@@ -46,8 +54,6 @@ import {
   SchemaFieldRoles,
   type FieldRoles,
 } from './itemTypeUtils';
-
-const { Option } = Select;
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
@@ -535,7 +541,6 @@ export default function ItemTypeForm() {
               className="w-full rounded-md"
               onChange={(event) => setName(event.target.value)}
               value={name}
-              defaultValue={name}
             />
           </div>
           <div className="flex flex-col gap-2 w-96">
@@ -545,35 +550,35 @@ export default function ItemTypeForm() {
               className="w-full rounded-md"
               onChange={(event) => setDescription(event.target.value)}
               value={description}
-              defaultValue={description}
             />
           </div>
           <div className="flex flex-col w-48 gap-2">
             <div className="font-semibold">Item Kind</div>
             <Select
-              className="w-full text-start"
-              placeholder="e.g. Content, User, Thread"
-              dropdownMatchSelectWidth={false}
-              value={itemTypeKind}
-              defaultValue={itemTypeKind}
-              onChange={(value) => {
-                setItemTypeKind(value);
+              value={itemTypeKind ?? undefined}
+              onValueChange={(value) => {
+                setItemTypeKind(value as ItemTypeKind);
                 setCustomFields(
                   customFields.map((it) => ({ ...it, role: undefined })),
                 );
               }}
-              showArrow
-              showSearch={false}
-              listHeight={500}
-              popupClassName="font-normal"
             >
-              {Object.values(ItemTypeKind).map((it) => (
-                <Option key={it} value={it}>
-                  <div className="break-words whitespace-normal text-wrap w-96">
-                    {itemKindDropdownEntry(it, it === itemTypeKind)}
-                  </div>
-                </Option>
-              ))}
+              <SelectTrigger className="w-full text-start">
+                <SelectValue placeholder="e.g. Content, User, Thread">
+                  {itemTypeKind
+                    ? displayStringForItemTypeKind(itemTypeKind)
+                    : undefined}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="font-normal">
+                {Object.values(ItemTypeKind).map((it) => (
+                  <SelectItem key={it} value={it}>
+                    <div className="break-words whitespace-normal text-wrap w-96">
+                      {itemKindDropdownEntry(it, it === itemTypeKind)}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>
@@ -586,6 +591,8 @@ export default function ItemTypeForm() {
             />
           </div>
           <Button
+            variant="outline"
+            color="gray"
             className="self-start mb-8 font-semibold bg-white border border-solid rounded-md cursor-pointer select-none border-coop-purple hover:border-coop-purple-hover text-coop-purple hover:text-coop-purple-hover focus:text-coop-purple focus:border-coop-purple"
             onClick={() =>
               setCustomFields([

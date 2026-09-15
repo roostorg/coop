@@ -1,5 +1,6 @@
 import { Button } from '@/coop-ui/Button';
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
+import { placementToSideAlign } from '@/lib/tooltip';
 import { Pencil as PencilFilled, Trash2 as TrashCanFilled } from 'lucide-react';
 import { MouseEvent, ReactNode } from 'react';
 
@@ -27,47 +28,53 @@ export default function RowMutations(props: {
 
   return (
     <div className="flex">
-      <Tooltip
-        title={
-          canEdit || editDisabledTooltipTitle == null
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="px-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled={!canEdit}
+              onClick={onEdit}
+            >
+              <PencilFilled className="w-6 h-6 text-primary" />
+            </Button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent
+          {...placementToSideAlign(
+            canEdit || editDisabledTooltipTitle == null ? 'top' : 'topRight',
+          )}
+        >
+          {canEdit || editDisabledTooltipTitle == null
             ? 'Edit'
-            : editDisabledTooltipTitle
-        }
-        placement={
-          canEdit || editDisabledTooltipTitle == null ? 'top' : 'topRight'
-        }
-      >
-        <div className="px-2">
-          <Button
-            size="icon"
-            variant="ghost"
-            disabled={!canEdit}
-            onClick={onEdit}
-          >
-            <PencilFilled className="w-6 h-6 text-primary" />
-          </Button>
-        </div>
+            : editDisabledTooltipTitle}
+        </TooltipContent>
       </Tooltip>
-      <Tooltip
-        title={
-          canDelete || deleteDisabledTooltipTitle == null
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="px-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled={!canDelete}
+              onClick={onDelete}
+            >
+              <TrashCanFilled className="w-6 h-6 text-red-800" />
+            </Button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent
+          {...placementToSideAlign(
+            canDelete || deleteDisabledTooltipTitle == null
+              ? 'top'
+              : 'topRight',
+          )}
+        >
+          {canDelete || deleteDisabledTooltipTitle == null
             ? 'Delete'
-            : deleteDisabledTooltipTitle
-        }
-        placement={
-          canDelete || deleteDisabledTooltipTitle == null ? 'top' : 'topRight'
-        }
-      >
-        <div className="px-2">
-          <Button
-            size="icon"
-            variant="ghost"
-            disabled={!canDelete}
-            onClick={onDelete}
-          >
-            <TrashCanFilled className="w-6 h-6 text-red-800" />
-          </Button>
-        </div>
+            : deleteDisabledTooltipTitle}
+        </TooltipContent>
       </Tooltip>
     </div>
   );

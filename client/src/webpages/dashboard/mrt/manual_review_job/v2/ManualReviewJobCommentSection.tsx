@@ -1,6 +1,7 @@
+import { Button } from '@/coop-ui/Button';
+import { Textarea } from '@/coop-ui/Textarea';
 import { safeFormatDistanceToNow } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { Button, Input } from 'antd';
 import {
   ChevronDown,
   ChevronUp,
@@ -242,7 +243,7 @@ export default function ManualReviewJobCommentSection(props: {
         }
       }}
     >
-      <Input.TextArea
+      <Textarea
         className="rounded-md"
         onChange={(event) => setInputText(event.target.value)}
         value={inputText}
@@ -250,10 +251,12 @@ export default function ManualReviewJobCommentSection(props: {
         placeholder="Leave a comment"
       />
       <Button
+        size="icon"
         className="bg-transparent border-none hover:bg-transparent text-coop-blue hover:text-coop-blue-hover"
-        icon={<Send className="w-4 h-4" />}
         onClick={addCommentFunc}
-      />
+      >
+        <Send className="w-4 h-4" />
+      </Button>
     </div>
   );
 

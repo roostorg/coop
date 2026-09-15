@@ -1,4 +1,5 @@
-import { DatePicker, Input, Select } from 'antd';
+import { MultiCombobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import intersection from 'lodash/intersection';
 import uniq from 'lodash/uniq';
 import { MouseEvent } from 'react';
@@ -9,8 +10,6 @@ import type {
   TableData,
 } from './tableFeatures';
 
-const { Option } = Select;
-const { RangePicker } = DatePicker;
 type RawRow = { values: Record<string, any> };
 
 export type ColumnProps<TData extends TableData = TableData> =
@@ -79,8 +78,9 @@ export function getFilterTypes() {
       if (filterValue == null) {
         return true;
       }
-      const start = filterValue[0]?.format('YYYY-MM-DD');
-      const end = filterValue[1]?.format('YYYY-MM-DD');
+      // filterValue is a `[startYYYY-MM-DD, endYYYY-MM-DD]` string tuple.
+      const start = filterValue[0] || undefined;
+      const end = filterValue[1] || undefined;
       const rowValue = raw(row, id);
       if (start && start > rowValue) {
         return false;
@@ -128,22 +128,19 @@ export function SelectColumnFilter(props: FilterProps) {
 
   // Render a multi-select box
   return (
-    <Select
-      mode="multiple"
-      placeholder={placeholder}
-      value={unsavedFilterValue}
-      onChange={(value) => {
-        setUnsavedFilterValue(value || undefined);
-      }}
-      onClick={onClickFilter}
-      dropdownMatchSelectWidth={false}
-    >
-      {uniqueOptions.map((option, i) => (
-        <Option key={i} value={option}>
-          {option}
-        </Option>
-      ))}
-    </Select>
+    <div onClick={onClickFilter}>
+      <MultiCombobox
+        placeholder={placeholder}
+        value={(unsavedFilterValue as string[] | undefined) ?? []}
+        onValueChange={(value) => {
+          setUnsavedFilterValue(value.length > 0 ? value : undefined);
+        }}
+        options={uniqueOptions.map((option) => ({
+          value: String(option),
+          label: String(option),
+        }))}
+      />
+    </div>
   );
 }
 
@@ -200,18 +197,35 @@ export function DateRangeColumnFilter(props: FilterProps) {
   const { columnProps } = props;
   const { unsavedFilterValue, setUnsavedFilterValue } = columnProps;
 
-  // RangePicker does not forward onClick, so intercept it on a wrapper.
+  const [start, end] = (unsavedFilterValue as
+    [string | undefined, string | undefined] | undefined) ?? [
+    undefined,
+    undefined,
+  ];
+
+  const update = (next: [string | undefined, string | undefined]) => {
+    setUnsavedFilterValue(next[0] || next[1] ? next : undefined);
+  };
+
   return (
-    <div onClick={onClickFilter}>
-      <RangePicker
-        className="!min-w-[250px]"
-        placeholder={['Start', 'End']}
-        value={unsavedFilterValue}
-        format="YYYY-MM-DD"
-        showTime={{ format: 'hh:mm a' }}
-        onChange={(value: any) => {
-          setUnsavedFilterValue(value);
-        }}
+    <div
+      className="flex items-center gap-2 min-w-[250px]"
+      onClick={onClickFilter}
+    >
+      <Input
+        type="date"
+        aria-label="Start date"
+        className="!w-36"
+        value={start ?? ''}
+        onChange={(e) => update([e.target.value || undefined, end])}
+      />
+      <span className="text-slate-400">to</span>
+      <Input
+        type="date"
+        aria-label="End date"
+        className="!w-36"
+        value={end ?? ''}
+        onChange={(e) => update([start, e.target.value || undefined])}
       />
     </div>
   );

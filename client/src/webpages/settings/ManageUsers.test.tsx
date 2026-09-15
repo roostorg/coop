@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@/coop-ui/Tooltip';
 import { MockedProvider, MockedResponse } from '@apollo/client/testing';
 import {
   fireEvent,
@@ -76,9 +77,13 @@ it('sorts approval statuses by their raw string values in both directions', asyn
   render(
     <HelmetProvider>
       <MockedProvider mocks={mocks}>
-        <MemoryRouter initialEntries={['/dashboard/settings/users?tab=users']}>
-          <ManageUsers />
-        </MemoryRouter>
+        <TooltipProvider>
+          <MemoryRouter
+            initialEntries={['/dashboard/settings/users?tab=users']}
+          >
+            <ManageUsers />
+          </MemoryRouter>
+        </TooltipProvider>
       </MockedProvider>
     </HelmetProvider>,
   );

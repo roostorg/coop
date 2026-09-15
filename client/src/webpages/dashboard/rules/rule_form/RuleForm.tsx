@@ -1,5 +1,15 @@
+import { Button } from '@/coop-ui/Button';
+import { Combobox, MultiCombobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import { RadioGroup, RadioGroupItem } from '@/coop-ui/RadioGroup';
 import { Switch } from '@/coop-ui/Switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/coop-ui/Tooltip';
 import {
   GQLAction,
   GQLConditionConjunction,
@@ -18,8 +28,6 @@ import {
   type GQLRuleActionParameterValuesInput,
 } from '@/graphql/generated';
 import { gql } from '@apollo/client';
-import { Button, Form, Input, Radio, Select, Tooltip } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { format } from 'date-fns';
 import {
   ChevronDown,
@@ -30,10 +38,10 @@ import {
 } from 'lucide-react';
 import { useMemo, useReducer } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
-import { selectFilterByLabelOption } from '../../components/antDesignUtils';
 import CoopButton from '../../components/CoopButton';
 import CoopModal from '../../components/CoopModal';
 import { CoopModalFooterButtonProps } from '../../components/CoopModalFooter';
@@ -71,8 +79,6 @@ import {
   ruleHasValidConditions,
   serializeConditionSet,
 } from './RuleFormUtils';
-
-const { Option } = Select;
 
 export enum VisibleSections {
   BASIC_INFO = 0,
@@ -716,7 +722,24 @@ export default function RuleForm() {
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const [form] = useForm();
+  const form = useForm<{
+    status: GQLRuleStatus;
+    itemTypes: string[];
+    actions: string[];
+    actionParameters: Record<string, Record<string, unknown>>;
+  }>({
+    defaultValues: {
+      status: rule?.status ?? GQLRuleStatus.Draft,
+      itemTypes:
+        rule && 'itemTypes' in rule
+          ? (rule.itemTypes?.map((it) => it.id) ?? [])
+          : [],
+      actions: rule?.actions?.map((a) => a.id) ?? [],
+      actionParameters: initialActionParameters,
+    },
+  });
+  const watchedActions =
+    useWatch({ control: form.control, name: 'actions' }) ?? [];
 
   const onDeleteRule = (id: string) => {
     deleteRule({
@@ -1120,7 +1143,6 @@ export default function RuleForm() {
         ),
         allActions,
         allSignals: allSignals satisfies readonly GQLSignal[],
-        form,
       },
     });
   };
@@ -1132,40 +1154,38 @@ export default function RuleForm() {
           title="Item Types"
           subtitle="Select the item types that your Rule will run on"
         />
-        <Form.Item
-          label=""
+        <Controller
           name="itemTypes"
-          style={{ width: '25%' }}
-          initialValue={rule?.itemTypes?.map((itemType) => itemType.id)}
-          rules={[
-            {
-              required: true,
-              message: 'Please select at least one Item Type',
-            },
-          ]}
-        >
-          <Select
-            mode="multiple"
-            placeholder="Select item types"
-            allowClear
-            showSearch
-            filterOption={selectFilterByLabelOption}
-            dropdownMatchSelectWidth={false}
-            onChange={onUpdateItemTypes}
-          >
-            {[...allItemTypes]
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((itemType) => (
-                <Option
-                  key={itemType.id}
-                  value={itemType.id}
-                  label={itemType.name}
-                >
-                  {itemType.name}
-                </Option>
-              ))}
-          </Select>
-        </Form.Item>
+          control={form.control}
+          rules={{
+            validate: (v) =>
+              (v && v.length > 0) || 'Please select at least one Item Type',
+          }}
+          render={({ field, fieldState }) => (
+            <div className="w-1/4">
+              <MultiCombobox
+                value={field.value ?? []}
+                onValueChange={(v) => {
+                  field.onChange(v);
+                  onUpdateItemTypes(v);
+                }}
+                placeholder="Select item types"
+                allowClear
+                options={[...allItemTypes]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((itemType) => ({
+                    value: itemType.id,
+                    label: itemType.name,
+                  }))}
+              />
+              {fieldState.error && (
+                <div className="pt-1 text-xs text-coop-alert-red">
+                  {fieldState.error.message}
+                </div>
+              )}
+            </div>
+          )}
+        />
       </div>
     );
 
@@ -1291,9 +1311,10 @@ export default function RuleForm() {
         ))}
         <div className="flex mt-4 items-center gap-4">
           <Button
-            shape="circle"
-            type="default"
-            icon={<Plus className="w-4 h-4" />}
+            variant="outline"
+            color="gray"
+            size="icon"
+            className="rounded-full"
             onClick={() =>
               dispatch({
                 type: RuleFormReducerActionType.AddCondition,
@@ -1302,11 +1323,13 @@ export default function RuleForm() {
                 },
               })
             }
-          />
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
           {canDeleteConditionSet && (
             <Button
-              type="default"
-              danger
+              variant="outline"
+              color="red"
               onClick={() =>
                 dispatch({
                   type: RuleFormReducerActionType.DeleteConditionSet,
@@ -1327,35 +1350,25 @@ export default function RuleForm() {
   const renderTopLevelConjunction = (conjunction: GQLConditionConjunction) => {
     return (
       <div className="flex items-center">
-        <div className="flex flex-col items-center w-10 py-2 pl-16">
+        <div className="flex flex-col items-center w-24 py-2 pl-16">
           <div className="w-px h-4 m-1 bg-black" />
-          <Select
-            style={{ paddingTop: 8, paddingBottom: 8 }}
-            defaultValue={conjunction}
+          <Combobox
             value={conjunction}
-            dropdownMatchSelectWidth={false}
-            onSelect={(value: GQLConditionConjunction) =>
-              dispatch({
-                type: RuleFormReducerActionType.UpdateTopLevelConjunction,
-                payload: {
-                  conjunction: value,
-                },
-              })
-            }
-          >
-            <Option
-              key={GQLConditionConjunction.Or}
-              value={GQLConditionConjunction.Or}
-            >
-              OR
-            </Option>
-            <Option
-              key={GQLConditionConjunction.And}
-              value={GQLConditionConjunction.And}
-            >
-              AND
-            </Option>
-          </Select>
+            onValueChange={(value) => {
+              if (value != null) {
+                dispatch({
+                  type: RuleFormReducerActionType.UpdateTopLevelConjunction,
+                  payload: {
+                    conjunction: value as GQLConditionConjunction,
+                  },
+                });
+              }
+            }}
+            options={[
+              { value: GQLConditionConjunction.Or, label: 'OR' },
+              { value: GQLConditionConjunction.And, label: 'AND' },
+            ]}
+          />
           <div className="w-px h-4 m-1 bg-black" />
         </div>
       </div>
@@ -1364,51 +1377,47 @@ export default function RuleForm() {
 
   const divider = <div className="mt-5 divider mb-9" />;
 
-  const nextSectionButton = (
-    <Form.Item shouldUpdate>
-      {() => {
-        const nextButtonEnabled = (() => {
-          switch (state.lastVisibleSection) {
-            case VisibleSections.BASIC_INFO: {
-              return (
-                (isUserRule || state.selectedItemTypes.length > 0) &&
-                state.ruleName.length > 0
-              );
-            }
-            case VisibleSections.CONDITIONS: {
-              return state.conditionSet.conditions.every(isConditionComplete);
-            }
-            case VisibleSections.ACTIONS_AND_METADATA: {
-              // This button should never be used at this point,
-              // since we have the submit button instead
-              return false;
-            }
-          }
-        })();
+  const nextSectionButton = (() => {
+    const nextButtonEnabled = (() => {
+      switch (state.lastVisibleSection) {
+        case VisibleSections.BASIC_INFO: {
+          return (
+            (isUserRule || state.selectedItemTypes.length > 0) &&
+            state.ruleName.length > 0
+          );
+        }
+        case VisibleSections.CONDITIONS: {
+          return state.conditionSet.conditions.every(isConditionComplete);
+        }
+        case VisibleSections.ACTIONS_AND_METADATA: {
+          // This button should never be used at this point,
+          // since we have the submit button instead
+          return false;
+        }
+      }
+    })();
 
-        return (
-          <div className="flex flex-col items-end justify-end">
-            {nextButtonEnabled && (
-              <div className="mb-4 text-base font-medium text-primary">
-                {state.lastVisibleSection === VisibleSections.BASIC_INFO
-                  ? "Next, configure your Rule's conditions"
-                  : 'Finally, select which Action(s) your Rule should trigger'}
-              </div>
-            )}
-            <CoopButton
-              title="Continue"
-              disabled={!nextButtonEnabled}
-              onClick={() =>
-                dispatch({
-                  type: RuleFormReducerActionType.ShowNextVisibleSection,
-                })
-              }
-            />
+    return (
+      <div className="flex flex-col items-end justify-end">
+        {nextButtonEnabled && (
+          <div className="mb-4 text-base font-medium text-primary">
+            {state.lastVisibleSection === VisibleSections.BASIC_INFO
+              ? "Next, configure your Rule's conditions"
+              : 'Finally, select which Action(s) your Rule should trigger'}
           </div>
-        );
-      }}
-    </Form.Item>
-  );
+        )}
+        <CoopButton
+          title="Continue"
+          disabled={!nextButtonEnabled}
+          onClick={() =>
+            dispatch({
+              type: RuleFormReducerActionType.ShowNextVisibleSection,
+            })
+          }
+        />
+      </div>
+    );
+  })();
 
   const basicInfoSection = (
     <div className="flex flex-col gap-6">
@@ -1448,12 +1457,13 @@ export default function RuleForm() {
         </div>
         <div>
           <Button
-            type="default"
+            variant="outline"
+            color="gray"
             className="block mt-4 mb-6 text-base font-medium rounded-lg text-slate-500"
             onClick={() =>
               dispatch({ type: RuleFormReducerActionType.AddConditionSet })
             }
-            icon={<Plus className="w-4 h-4 mt-1" />}
+            startIcon={Plus}
           >
             Add Condition Set
           </Button>
@@ -1474,8 +1484,9 @@ export default function RuleForm() {
         }
       />
       <div className="flex items-center">
-        <Form.Item name="maxDailyActions" initialValue={state.maxDailyActions}>
+        <div className="w-1/4">
           <Input
+            value={state.maxDailyActions ?? ''}
             disabled={state.unlimitedDailyActionsChecked}
             placeholder={state.unlimitedDailyActionsChecked ? '' : 'ex: 1000'}
             onChange={(event) =>
@@ -1486,9 +1497,9 @@ export default function RuleForm() {
                 },
               })
             }
-            style={{ borderRadius: '8px' }}
+            className="rounded-lg"
           />
-        </Form.Item>
+        </div>
         <div className="flex items-center mb-6 ml-6 gap-1.5">
           <div className="flex items-center space-x-2">
             <Switch
@@ -1513,65 +1524,54 @@ export default function RuleForm() {
         title="Actions"
         subtitle="Select the actions that will get executed if all the conditions above are met."
       />
-      <Form.Item
-        label=""
+      <Controller
         name="actions"
-        style={{ width: '25%' }}
-        initialValue={rule?.actions?.map((action) => action.id) ?? []}
-        rules={[
-          { required: true, message: 'Please select at least one Action' },
-        ]}
-      >
-        <Select
-          mode="multiple"
-          placeholder="Select actions"
-          allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          dropdownMatchSelectWidth={false}
-          onSelect={() => {
-            dispatch({ type: RuleFormReducerActionType.HideRuleMutationError });
-          }}
-          dropdownRender={(menu) => {
-            if (state.selectedItemTypes.length > 0 || isUserRule) {
-              return menu;
-            }
-            return (
-              <div className="p-2">
-                <div className="text-coop-alert-red">
-                  Please select at least one item type first
-                </div>
-                {menu}
+        control={form.control}
+        rules={{
+          validate: (v) =>
+            (v && v.length > 0) || 'Please select at least one Action',
+        }}
+        render={({ field, fieldState }) => (
+          <div className="w-1/4">
+            {state.selectedItemTypes.length === 0 && !isUserRule && (
+              <div className="pb-1 text-coop-alert-red">
+                Please select at least one item type first
               </div>
-            );
-          }}
-        >
-          {[...(state.eligibleActions ?? [])]
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((action) => (
-              <Option key={action.id} value={action.id} label={action.name}>
-                {action.name}
-              </Option>
-            ))}
-        </Select>
-      </Form.Item>
-      <Form.Item
-        noStyle
-        shouldUpdate={(prev, cur) => prev.actions !== cur.actions}
-      >
-        {() => (
-          <Form.Item
-            name="actionParameters"
-            noStyle
-            initialValue={initialActionParameters}
-          >
-            <RuleActionParametersEditor
-              actions={parameterizedActions}
-              selectedActionIds={form.getFieldValue('actions') ?? []}
+            )}
+            <MultiCombobox
+              value={field.value ?? []}
+              onValueChange={(v) => {
+                field.onChange(v);
+                dispatch({
+                  type: RuleFormReducerActionType.HideRuleMutationError,
+                });
+              }}
+              placeholder="Select actions"
+              allowClear
+              options={[...(state.eligibleActions ?? [])]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((action) => ({ value: action.id, label: action.name }))}
             />
-          </Form.Item>
+            {fieldState.error && (
+              <div className="pt-1 text-xs text-coop-alert-red">
+                {fieldState.error.message}
+              </div>
+            )}
+          </div>
         )}
-      </Form.Item>
+      />
+      <Controller
+        name="actionParameters"
+        control={form.control}
+        render={({ field }) => (
+          <RuleActionParametersEditor
+            actions={parameterizedActions}
+            selectedActionIds={watchedActions}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )}
+      />
     </div>
   );
 
@@ -1581,12 +1581,7 @@ export default function RuleForm() {
         title="Policies"
         subtitle="Assign this rule to the policy (or policies) to which it corresponds. This is useful for measuring how well you're enforcing each policy."
       />
-      <Form.Item
-        label=""
-        name="policies"
-        style={{ width: '25%' }}
-        initialValue={state.policyIds}
-      >
+      <div className="w-1/4">
         <PolicyDropdown
           policies={policies ?? []}
           placeholder="Select policies"
@@ -1601,7 +1596,7 @@ export default function RuleForm() {
           selectedPolicyIds={state.policyIds}
           multiple={true}
         />
-      </Form.Item>
+      </div>
     </div>
   );
 
@@ -1611,7 +1606,7 @@ export default function RuleForm() {
         title="Tags"
         subtitle="Optionally add tags to this rule to group them together with other similar rules."
       />
-      <Form.Item style={{ width: '25%' }}>
+      <div className="w-1/4">
         <TextTokenInput
           key="text-token-input-tags"
           uniqueKey="tags"
@@ -1626,7 +1621,7 @@ export default function RuleForm() {
           }
           initialValues={state.tags}
         />
-      </Form.Item>
+      </div>
     </div>
   );
 
@@ -1640,7 +1635,7 @@ export default function RuleForm() {
             means{' '}
             <Button
               className="!p-0 !font-medium"
-              type="link"
+              variant="link"
               onClick={() =>
                 dispatch({ type: RuleFormReducerActionType.ShowStatusModal })
               }
@@ -1651,55 +1646,96 @@ export default function RuleForm() {
           </span>
         }
       />
-      <Form.Item
-        className="w-3/5"
-        label=""
+      <Controller
         name="status"
-        initialValue={rule?.status ?? GQLRuleStatus.Draft}
-      >
-        <Radio.Group className="w-full" onChange={() => {}} value={null}>
-          <div className="flex flex-col items-start w-full pl-2 gap-1">
-            <Radio
-              className="font-medium text-slate-900"
-              value={GQLRuleStatus.Draft}
-            >
-              Draft
-            </Radio>
-            <Radio
-              className="font-medium text-slate-900"
-              value={GQLRuleStatus.Background}
-            >
-              Background
-            </Radio>
-            {canEditLiveRules ? (
-              <Radio
-                className="font-medium text-slate-900"
-                value={GQLRuleStatus.Live}
-              >
-                Live
-              </Radio>
-            ) : (
-              <Tooltip title="To edit Live rules, ask your organization's admin to upgrade your role to Rules Manager or Admin.">
-                <Radio
+        control={form.control}
+        render={({ field }) => (
+          <RadioGroup
+            className="w-3/5"
+            value={field.value}
+            onValueChange={field.onChange}
+          >
+            <div className="flex flex-col items-start w-full pl-2 gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem
+                  value={GQLRuleStatus.Draft}
+                  id="rule-status-draft"
+                />
+                <Label
+                  htmlFor="rule-status-draft"
                   className="font-medium text-slate-900"
-                  value={GQLRuleStatus.Live}
-                  disabled={true}
                 >
-                  Live
-                </Radio>
-              </Tooltip>
-            )}
-            {id ? (
-              <Radio
-                className="font-medium text-slate-900"
-                value={GQLRuleStatus.Archived}
-              >
-                Archived
-              </Radio>
-            ) : null}
-          </div>
-        </Radio.Group>
-      </Form.Item>
+                  Draft
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem
+                  value={GQLRuleStatus.Background}
+                  id="rule-status-background"
+                />
+                <Label
+                  htmlFor="rule-status-background"
+                  className="font-medium text-slate-900"
+                >
+                  Background
+                </Label>
+              </div>
+              {canEditLiveRules ? (
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem
+                    value={GQLRuleStatus.Live}
+                    id="rule-status-live"
+                  />
+                  <Label
+                    htmlFor="rule-status-live"
+                    className="font-medium text-slate-900"
+                  >
+                    Live
+                  </Label>
+                </div>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 opacity-50">
+                        <RadioGroupItem
+                          value={GQLRuleStatus.Live}
+                          id="rule-status-live"
+                          disabled
+                        />
+                        <Label
+                          htmlFor="rule-status-live"
+                          className="font-medium text-slate-900"
+                        >
+                          Live
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      To edit Live rules, ask your organization's admin to
+                      upgrade your role to Rules Manager or Admin.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {id ? (
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem
+                    value={GQLRuleStatus.Archived}
+                    id="rule-status-archived"
+                  />
+                  <Label
+                    htmlFor="rule-status-archived"
+                    className="font-medium text-slate-900"
+                  >
+                    Archived
+                  </Label>
+                </div>
+              ) : null}
+            </div>
+          </RadioGroup>
+        )}
+      />
     </div>
   );
 
@@ -1734,7 +1770,7 @@ export default function RuleForm() {
       <Button
         key={timeString}
         className="px-2 mx-1 text-base font-medium rounded-lg text-slate-500 hover:border-coop-dark-purple-hover hover:text-coop-dark-purple-hover focus:border-coop-dark-purple focus:text-coop-dark-purple hover:bg-coop-lightpurple"
-        size="small"
+        size="sm"
         onClick={() =>
           dispatch({
             type: RuleFormReducerActionType.UpdateExpirationTime,
@@ -1805,65 +1841,59 @@ export default function RuleForm() {
     </div>
   );
 
-  const createButton = (
-    <Form.Item shouldUpdate>
-      {() => {
-        const actionsSelected = Boolean(form.getFieldValue('actions')?.length);
+  const createButton = (() => {
+    const actionsSelected = watchedActions.length > 0;
 
-        const hasInvalidThreshold = containsInvalidThreshold(
-          state.conditionSet,
-        );
+    const hasInvalidThreshold = containsInvalidThreshold(state.conditionSet);
 
-        // NB: We don't want to allow users to create content rules that only contain
-        // conditions based on user signals, because those should be user-only rules
-        // rather than content rules. This is important because user-only rules are
-        // run at set time intervals, whereas content rules are run for every piece
-        // of ingested content, and it's massively inefficient to run rules based solely
-        // on user signals for every piece of content.
-        const conditionsValid = ruleHasValidConditions(state.conditionSet);
+    // NB: We don't want to allow users to create content rules that only contain
+    // conditions based on user signals, because those should be user-only rules
+    // rather than content rules. This is important because user-only rules are
+    // run at set time intervals, whereas content rules are run for every piece
+    // of ingested content, and it's massively inefficient to run rules based solely
+    // on user signals for every piece of content.
+    const conditionsValid = ruleHasValidConditions(state.conditionSet);
 
-        return (
-          <div className="flex justify-end">
-            <SubmitButton
-              title={id == null ? 'Create Rule' : 'Save Changes'}
-              disabled={
-                !canEditNonLiveRules ||
-                state.ruleMutationError ||
-                (rule?.status === GQLRuleStatus.Live && !canEditLiveRules) ||
-                !actionsSelected ||
-                hasInvalidThreshold ||
-                !conditionsValid
-              }
-              loading={state.submitButtonLoading}
-              submitsForm={true}
-              error={state.ruleMutationError}
-              showDisabledTooltip={
-                !canEditNonLiveRules ||
-                (rule?.status === GQLRuleStatus.Live && !canEditLiveRules) ||
-                !actionsSelected ||
-                hasInvalidThreshold ||
-                !conditionsValid
-              }
-              disabledTooltipTitle={
-                !canEditLiveRules
-                  ? "To edit Live rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
-                  : !canEditNonLiveRules
-                    ? "To edit rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
-                    : !actionsSelected
-                      ? 'Please select at least one action.'
-                      : hasInvalidThreshold
-                        ? 'At least one threshold has an invalid input.'
-                        : !conditionsValid
-                          ? 'This rule only has user-based conditions, but rules must contain at least one content-based condition.'
-                          : undefined
-              }
-              disabledTooltipPlacement="bottomLeft"
-            />
-          </div>
-        );
-      }}
-    </Form.Item>
-  );
+    return (
+      <div className="flex justify-end">
+        <SubmitButton
+          title={id == null ? 'Create Rule' : 'Save Changes'}
+          disabled={
+            !canEditNonLiveRules ||
+            state.ruleMutationError ||
+            (rule?.status === GQLRuleStatus.Live && !canEditLiveRules) ||
+            !actionsSelected ||
+            hasInvalidThreshold ||
+            !conditionsValid
+          }
+          loading={state.submitButtonLoading}
+          submitsForm={true}
+          error={state.ruleMutationError}
+          showDisabledTooltip={
+            !canEditNonLiveRules ||
+            (rule?.status === GQLRuleStatus.Live && !canEditLiveRules) ||
+            !actionsSelected ||
+            hasInvalidThreshold ||
+            !conditionsValid
+          }
+          disabledTooltipTitle={
+            !canEditLiveRules
+              ? "To edit Live rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
+              : !canEditNonLiveRules
+                ? "To edit rules, ask your organization's admin to upgrade your role to Rules Manager or Admin."
+                : !actionsSelected
+                  ? 'Please select at least one action.'
+                  : hasInvalidThreshold
+                    ? 'At least one threshold has an invalid input.'
+                    : !conditionsValid
+                      ? 'This rule only has user-based conditions, but rules must contain at least one content-based condition.'
+                      : undefined
+          }
+          disabledTooltipPlacement="bottomLeft"
+        />
+      </div>
+    );
+  })();
 
   const modalFooter: CoopModalFooterButtonProps[] = [
     {
@@ -2079,76 +2109,75 @@ export default function RuleForm() {
           </div>
         )}
       </div>
-      <Form
-        form={form}
-        initialValues={{ remember: true }}
-        layout="vertical"
-        name="rule_form"
-        requiredMark={false}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-          }
-        }}
-        onFinish={(values) => {
-          const invalidRegexes = getInvalidRegexesInCondition(
-            state.conditionSet,
-          );
-          if (invalidRegexes.length > 0) {
-            dispatch({
-              type: RuleFormReducerActionType.ShowModal,
-              payload: {
-                modalInfo: {
-                  ...state.modalInfo,
-                  title: 'Rule Validation Failed',
-                  body:
-                    invalidRegexes.length > 0
-                      ? `"${invalidRegexes.join(
-                          ', ',
-                        )}" are not valid regular expressions. Please check the syntax.`
-                      : `"${invalidRegexes[0]}" is not a valid regular expression. Please check the syntax.`,
-                  onOk: onHideModal,
-                  okText: 'OK',
-                  okIsDangerButton: false,
-                  cancelVisible: false,
-                },
-              },
-            });
-            return;
-          }
+      <FormProvider {...form}>
+        <form
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+            }
+          }}
+          onSubmit={form.handleSubmit(
+            (values) => {
+              const invalidRegexes = getInvalidRegexesInCondition(
+                state.conditionSet,
+              );
+              if (invalidRegexes.length > 0) {
+                dispatch({
+                  type: RuleFormReducerActionType.ShowModal,
+                  payload: {
+                    modalInfo: {
+                      ...state.modalInfo,
+                      title: 'Rule Validation Failed',
+                      body:
+                        invalidRegexes.length > 0
+                          ? `"${invalidRegexes.join(
+                              ', ',
+                            )}" are not valid regular expressions. Please check the syntax.`
+                          : `"${invalidRegexes[0]}" is not a valid regular expression. Please check the syntax.`,
+                      onOk: onHideModal,
+                      okText: 'OK',
+                      okIsDangerButton: false,
+                      cancelVisible: false,
+                    },
+                  },
+                });
+                return;
+              }
 
-          switch (state.ruleType) {
-            case RuleType.CONTENT: {
-              if (id == null) {
-                onCreateContentRule(values);
-              } else {
-                onUpdateContentRule(values);
+              switch (state.ruleType) {
+                case RuleType.CONTENT: {
+                  if (id == null) {
+                    onCreateContentRule(values);
+                  } else {
+                    onUpdateContentRule(values);
+                  }
+                  break;
+                }
+                case RuleType.USER: {
+                  if (id == null) {
+                    onCreateUserRule(values);
+                  } else {
+                    onUpdateUserRule(values);
+                  }
+                  break;
+                }
               }
-              break;
-            }
-            case RuleType.USER: {
-              if (id == null) {
-                onCreateUserRule(values);
-              } else {
-                onUpdateUserRule(values);
-              }
-              break;
-            }
-          }
-        }}
-        onFinishFailed={() => {
-          dispatch({
-            type: RuleFormReducerActionType.ShowRuleMutationError,
-          });
-        }}
-      >
-        {basicInfoSection}
-        {state.lastVisibleSection >= VisibleSections.CONDITIONS &&
-          conditionsSection}
-        {state.lastVisibleSection >= VisibleSections.ACTIONS_AND_METADATA &&
-          actionsAndMetadataSection}
-        {statusModal}
-      </Form>
+            },
+            () => {
+              dispatch({
+                type: RuleFormReducerActionType.ShowRuleMutationError,
+              });
+            },
+          )}
+        >
+          {basicInfoSection}
+          {state.lastVisibleSection >= VisibleSections.CONDITIONS &&
+            conditionsSection}
+          {state.lastVisibleSection >= VisibleSections.ACTIONS_AND_METADATA &&
+            actionsAndMetadataSection}
+          {statusModal}
+        </form>
+      </FormProvider>
       {modal}
     </div>
   );

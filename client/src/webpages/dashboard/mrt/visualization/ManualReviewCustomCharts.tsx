@@ -1,5 +1,5 @@
+import { toast } from '@/coop-ui/Toast';
 import { gql } from '@apollo/client';
-import { notification } from 'antd';
 import { Plus as PlusOutlined } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -101,8 +101,6 @@ const ManualReviewCustomCharts = ({
   timeWindow,
 }: ManualReviewCustomChartsProps) => {
   const [charts, setCharts] = useState<ManualReviewCustomChartConfig[]>([]);
-  const [notificationApi, notificationContextHolder] =
-    notification.useNotification();
   const [modalVisible, setModalVisible] = useState(false);
 
   const { error, data } = useGQLManualReviewChartConfigurationSettingsQuery();
@@ -139,7 +137,7 @@ const ManualReviewCustomCharts = ({
   const [saveMrtCharts, { loading: mutationLoading, error: mutationError }] =
     useGQLSetMrtChartConfigurationSettingsMutation({
       onCompleted: () => {
-        notificationApi.success({ message: 'Charts saved!' });
+        toast.success('Charts saved!');
         setCharts((prevCharts) =>
           prevCharts
             .filter(
@@ -149,9 +147,7 @@ const ManualReviewCustomCharts = ({
         );
       },
       onError: () => {
-        notificationApi.error({
-          message: 'Charts failed to save. Please try again. ',
-        });
+        toast.error('Charts failed to save. Please try again. ');
       },
     });
 
@@ -346,7 +342,6 @@ const ManualReviewCustomCharts = ({
         </div>
       </div>
       {modal}
-      {notificationContextHolder}
     </div>
   );
 };

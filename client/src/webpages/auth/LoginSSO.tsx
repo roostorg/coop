@@ -1,8 +1,8 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
 import { useGQLGetSsoRedirectUrlLazyQuery } from '@/graphql/generated';
 import { gql } from '@apollo/client';
-import { Input } from 'antd';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';

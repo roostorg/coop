@@ -1,4 +1,10 @@
+import { Badge } from '@/coop-ui/Badge';
+import { Button } from '@/coop-ui/Button';
+import { Checkbox } from '@/coop-ui/Checkbox';
+import { Input } from '@/coop-ui/Input';
+import { Label } from '@/coop-ui/Label';
 import { toast } from '@/coop-ui/Toast';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import {
   GQLUserPermission,
   useGQLAllNcmecReportsQuery,
@@ -6,10 +12,10 @@ import {
   useGQLPermissionsQuery,
   useGQLRetryNcmecSubmissionMutation,
 } from '@/graphql/generated';
+import { placementToSideAlign } from '@/lib/tooltip';
 import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { gql } from '@apollo/client';
-import { Button, Checkbox, Input, Tag, Tooltip } from 'antd';
 import { format } from 'date-fns';
 import { Download, LayoutGrid as GridAlt, Scale } from 'lucide-react';
 import {
@@ -476,7 +482,15 @@ export default function NcmecReportsDashboard() {
             },
             date: <div>{format(new Date(report.ts), 'MM/dd/yy h:mm a')}</div>,
             reviewer: <div className="whitespace-nowrap">{reviewerName}</div>,
-            status: <Tag color="success">Successful</Tag>,
+            status: (
+              <Badge
+                variant="outline"
+                size="sm"
+                className="bg-green-100 text-green-700 border-green-200"
+              >
+                Successful
+              </Badge>
+            ),
             reportId: (
               <div key={report.reportId} className="flex flex-row">
                 <CopyTextComponent value={report.reportId} />
@@ -601,7 +615,15 @@ export default function NcmecReportsDashboard() {
               },
               date: <div>{format(new Date(failed.ts), 'MM/dd/yy h:mm a')}</div>,
               reviewer: <div className="whitespace-nowrap">{reviewerName}</div>,
-              status: <Tag color="error">Failed</Tag>,
+              status: (
+                <Badge
+                  variant="outline"
+                  size="sm"
+                  className="bg-red-100 text-red-700 border-red-200"
+                >
+                  Failed
+                </Badge>
+              ),
               reportId: <span className="text-zinc-400">—</span>,
               userId: <CopyTextComponent value={failed.userId} />,
               userItemType: <div>{failed.userItemType.name}</div>,
@@ -610,18 +632,22 @@ export default function NcmecReportsDashboard() {
               reportedMessages: <span className="text-zinc-400">—</span>,
               isTest: <span className="text-zinc-400">—</span>,
               lastError: failed.lastError ? (
-                <Tooltip title={failed.lastError} placement="topLeft">
-                  <div className="max-w-xs overflow-hidden text-xs text-ellipsis whitespace-nowrap text-red-700">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="max-w-xs overflow-hidden text-xs text-ellipsis whitespace-nowrap text-red-700">
+                      {failed.lastError}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent {...placementToSideAlign('topLeft')}>
                     {failed.lastError}
-                  </div>
+                  </TooltipContent>
                 </Tooltip>
               ) : (
                 <span className="text-zinc-400">—</span>
               ),
               action: (
                 <Button
-                  size="small"
-                  type="primary"
+                  size="sm"
                   loading={retryingDecisionId === failed.decisionId}
                   disabled={
                     retryingDecisionId !== null &&
@@ -722,7 +748,7 @@ export default function NcmecReportsDashboard() {
                     className="rounded-lg w-[300px]"
                     onChange={(event) => setSearchId(event.target.value)}
                     autoFocus
-                    allowClear
+                    // TODO(antd-removal): allowClear dropped
                   />
                 </div>
                 <div
@@ -730,13 +756,15 @@ export default function NcmecReportsDashboard() {
                   className="relative inline-block text-start"
                 >
                   <Button
+                    variant="outline"
+                    color="gray"
+                    startIcon={GridAlt}
                     className={`font-semibold text-base rounded ${
                       Object.values(columnVisibility).filter(Boolean).length ===
                       Object.keys(columnLabels).length
                         ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
                         : 'bg-gray-600 text-white border-none hover:bg-gray-500'
                     }`}
-                    icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
                     onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
                   >
                     Columns
@@ -750,15 +778,20 @@ export default function NcmecReportsDashboard() {
                       <div className="flex flex-col px-4 py-2">
                         {(Object.keys(columnLabels) as ColumnId[]).map(
                           (columnId) => (
-                            <div key={columnId} className="py-2">
+                            <div
+                              key={columnId}
+                              className="flex items-center gap-2 py-2"
+                            >
                               <Checkbox
+                                id={`ncmec-col-vis-${columnId}`}
                                 checked={columnVisibility[columnId]}
-                                onChange={() =>
+                                onCheckedChange={() =>
                                   toggleColumnVisibility(columnId)
                                 }
-                              >
+                              />
+                              <Label htmlFor={`ncmec-col-vis-${columnId}`}>
                                 {columnLabels[columnId]}
-                              </Checkbox>
+                              </Label>
                             </div>
                           ),
                         )}
@@ -772,7 +805,7 @@ export default function NcmecReportsDashboard() {
           {searchId && tableData?.length === 0 ? (
             <div className="flex items-center self-center justify-center h-full p-8 mt-8 text-base text-center rounded shadow w-fit bg-slate-100 text-slate-600">
               Don't see the report?{' '}
-              <Button type="link" onClick={fetchReportById}>
+              <Button variant="link" onClick={fetchReportById}>
                 Click here to search further back
               </Button>
             </div>

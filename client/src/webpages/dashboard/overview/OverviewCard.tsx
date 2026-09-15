@@ -498,30 +498,35 @@ export default function OverviewCard(props: {
 
   const orderedListComponent = (
     list: ({ name: string } & ({ link: string } | { count: number }))[],
-  ) => (
-    <div className="flex flex-col w-full gap-1 pt-3 text-3xl font-semibold text-slate-900">
-      {list.slice(0, 3).map((value) => (
-        <div
-          className="flex justify-between w-full text-sm font-normal"
-          key={value.name}
-        >
-          <div className="text-slate-700">{value.name}</div>
-          {'link' in value ? (
-            <Link
-              className="no-underline flex items-center gap-1.5 hover:text-primary/70"
-              href={value.link}
-              target="_blank"
-            >
-              View
-              <ArrowRight className="w-3 h-3 text-primary" />
-            </Link>
-          ) : (
-            <div className="text-primary">{formatNumber(value.count)}</div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+  ) =>
+    list.length === 0 ? (
+      <div className="py-4 text-sm text-slate-400">
+        No data for this period.
+      </div>
+    ) : (
+      <div className="flex flex-col w-full gap-1 pt-3 text-3xl font-semibold text-slate-900">
+        {list.slice(0, 3).map((value) => (
+          <div
+            className="flex justify-between w-full text-sm font-normal"
+            key={value.name}
+          >
+            <div className="text-slate-700">{value.name}</div>
+            {'link' in value ? (
+              <Link
+                className="no-underline flex items-center gap-1.5 hover:text-primary/70"
+                href={value.link}
+                target="_blank"
+              >
+                View
+                <ArrowRight className="w-3 h-3 text-primary" />
+              </Link>
+            ) : (
+              <div className="text-primary">{formatNumber(value.count)}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
 
   const errorComponent = (
     <div className="py-4 text-sm text-slate-400">No data available.</div>

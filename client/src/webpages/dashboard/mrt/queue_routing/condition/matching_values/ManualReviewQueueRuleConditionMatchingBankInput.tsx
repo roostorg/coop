@@ -1,7 +1,6 @@
-import { Select } from 'antd';
+import { MultiCombobox } from '@/coop-ui/Combobox';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
 import {
   GQLTextBankType,
@@ -16,9 +15,6 @@ import {
   RuleFormLeafCondition,
 } from '../../../../rules/types';
 import { ManualReviewQueueRoutingStaticTokenField } from '../../ManualReviewQueueRoutingStaticField';
-import { optionWithTooltip } from '../../ManualReviewQueueRuleFormCondition';
-
-const { Option } = Select;
 
 export default function ManualReviewQueueRuleConditionMatchingBankInput<
   T extends MatchingBankType,
@@ -70,48 +66,33 @@ export default function ManualReviewQueueRuleConditionMatchingBankInput<
         {titleCaseEnumString(bankType)} Banks to Match
       </div>
       {editing ? (
-        <Select
+        <MultiCombobox
           className="w-full"
-          mode="multiple"
           key={`matching-bank-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
           placeholder={`Select ${bankType.toLowerCase()} bank(s)`}
-          defaultValue={bankIds}
-          value={bankIds}
-          onChange={(selectedBankIds) =>
+          value={[...bankIds]}
+          onValueChange={(selectedBankIds) =>
             onUpdateSelectedBankIds(selectedBankIds)
           }
           allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          dropdownMatchSelectWidth={false}
-        >
-          {allBanks?.map((bank, index) => {
+          options={(allBanks ?? []).map((bank) => {
             const bankIsTextBank = bank.__typename === 'TextBank';
             const isRegexTextBank =
               bankIsTextBank && bank.type === GQLTextBankType.Regex;
-
-            if (bankIsTextBank && isRegexSignal !== isRegexTextBank) {
-              const reason = `This is a ${bankTypeName(
-                bank.type,
-                false,
-              )} bank, which cannot be used for the signal you selected.`;
-              return optionWithTooltip({
-                title: bank.name,
-                value: bank.id,
-                disabled: true, // disabled
-                description: reason,
-                key: bank.id,
-                index,
-                isInOptionGroup: false,
-              });
-            }
-            return (
-              <Option key={bank.id} value={bank.id} label={bank.name}>
-                {bank.name}
-              </Option>
-            );
+            const incompatible =
+              bankIsTextBank && isRegexSignal !== isRegexTextBank;
+            return {
+              value: bank.id,
+              label: incompatible
+                ? `${bank.name} — incompatible ${bankTypeName(
+                    bank.type,
+                    false,
+                  )} bank for this signal`
+                : bank.name,
+              disabled: incompatible,
+            };
           })}
-        </Select>
+        />
       ) : (
         <ManualReviewQueueRoutingStaticTokenField
           tokens={bankIds.map((it) => allBanks.find((i) => i.id === it)!.name)}

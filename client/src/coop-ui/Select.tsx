@@ -24,7 +24,7 @@ type SelectTriggerProps = React.ComponentPropsWithoutRef<
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectTriggerProps
->(({ className, children, size = 'medium', ...props }, ref) => (
+>(({ className, children, size = 'small', ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(

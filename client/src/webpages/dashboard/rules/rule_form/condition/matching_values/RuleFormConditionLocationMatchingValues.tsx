@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -114,8 +114,10 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     return (
       <div className="ml-3">
         <Button
+          variant="outline"
+          color="gray"
           className="!text-slate-500"
-          icon={<Plus className="w-4 h-4" />}
+          startIcon={Plus}
           onClick={() => setModalVisible(true)}
         >
           Select Locations
@@ -152,9 +154,13 @@ export default function RuleFormConditionLocationMatchingValues(props: {
               );
             })}
             <Button
+              variant="outline"
+              color="gray"
+              size="icon"
               onClick={() => setModalVisible(true)}
-              icon={<Plus className="w-4 h-4" />}
-            />
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
           </div>
         </div>
         <div className="invisible pb-1 text-xs font-bold">

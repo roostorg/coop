@@ -1,7 +1,14 @@
-import { Tooltip } from 'antd';
-import { TooltipPlacement } from 'antd/lib/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/coop-ui/Tooltip';
+import { placementToSideAlign, type TooltipPlacement } from '@/lib/tooltip';
 import { Loader2, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+export type { TooltipPlacement };
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
 export type CoopButtonType =
@@ -138,26 +145,37 @@ export default function CoopButton(
       button
     );
 
-  const finalButtonPossiblyWithTooltip =
-    Boolean(disabled) && disabledTooltipTitle ? (
-      <Tooltip
-        title={disabledTooltipTitle}
-        placement={disabledTooltipPlacement ?? 'bottomRight'}
-        color="white"
-      >
-        {buttonPossiblyWithLinkWrapper}
+  const tooltipContentClassName =
+    'bg-white text-gray-900 border border-gray-200 shadow-md';
+
+  const showingDisabledTooltip =
+    Boolean(disabled) && Boolean(disabledTooltipTitle);
+  const tooltipTitleToShow = showingDisabledTooltip
+    ? disabledTooltipTitle
+    : (tooltipTitle ?? undefined);
+
+  // Self-provide the Tooltip context so consumers (and tests) that render a
+  // bare CoopButton don't need to wrap it in a TooltipProvider. Radix allows
+  // nesting this inside the app-level provider.
+  const finalButtonPossiblyWithTooltip = tooltipTitleToShow ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{buttonPossiblyWithLinkWrapper}</TooltipTrigger>
+        <TooltipContent
+          className={tooltipContentClassName}
+          {...placementToSideAlign(
+            (showingDisabledTooltip
+              ? disabledTooltipPlacement
+              : tooltipPlacement) ?? 'bottomRight',
+          )}
+        >
+          {tooltipTitleToShow}
+        </TooltipContent>
       </Tooltip>
-    ) : tooltipTitle ? (
-      <Tooltip
-        title={tooltipTitle}
-        placement={tooltipPlacement ?? 'bottomRight'}
-        color="white"
-      >
-        {buttonPossiblyWithLinkWrapper}
-      </Tooltip>
-    ) : (
-      buttonPossiblyWithLinkWrapper
-    );
+    </TooltipProvider>
+  ) : (
+    buttonPossiblyWithLinkWrapper
+  );
 
   return finalButtonPossiblyWithTooltip;
 }

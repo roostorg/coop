@@ -1,7 +1,11 @@
+import { Button } from '@/coop-ui/Button';
+import { Checkbox } from '@/coop-ui/Checkbox';
+import { Input } from '@/coop-ui/Input';
+import { Label } from '@/coop-ui/Label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { HOST_URL } from '@/lib/config';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { gql } from '@apollo/client';
-import { Button, Checkbox, Input, Tooltip } from 'antd';
 import {
   ChevronLeft,
   ChevronRight,
@@ -647,15 +651,19 @@ export default function ManualReviewRecentDecisions() {
               <div className="text-slate-400">—</div>
             ),
             decisionReason: value.decisionReason ? (
-              <Tooltip title={value.decisionReason}>
-                <div className="max-w-xs truncate">
-                  {value.decisionReason.length > DECISION_REASON_PREVIEW_LENGTH
-                    ? `${value.decisionReason.slice(
-                        0,
-                        DECISION_REASON_PREVIEW_LENGTH,
-                      )}…`
-                    : value.decisionReason}
-                </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs truncate">
+                    {value.decisionReason.length >
+                    DECISION_REASON_PREVIEW_LENGTH
+                      ? `${value.decisionReason.slice(
+                          0,
+                          DECISION_REASON_PREVIEW_LENGTH,
+                        )}…`
+                      : value.decisionReason}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>{value.decisionReason}</TooltipContent>
               </Tooltip>
             ) : (
               <div className="text-slate-400">—</div>
@@ -678,7 +686,9 @@ export default function ManualReviewRecentDecisions() {
 
   const refreshButton = (
     <Button
-      icon={<RotateCw className="w-4 h-4 self-center" />}
+      variant="outline"
+      color="gray"
+      startIcon={RotateCw}
       className="!inline-flex"
       onClick={async () =>
         getRecentDecisions({
@@ -696,6 +706,8 @@ export default function ManualReviewRecentDecisions() {
 
   const downloadButton = (
     <Button
+      variant="outline"
+      color="gray"
       className="rounded"
       onClick={async () => {
         const decisions: GQLGetRecentDecisionsQuery[] = [];
@@ -788,6 +800,8 @@ export default function ManualReviewRecentDecisions() {
 
   const downloadSkips = (
     <Button
+      variant="outline"
+      color="gray"
       className="rounded"
       onClick={async () => {
         const result = await getSkipsForRecentDecisions({
@@ -939,17 +953,24 @@ export default function ManualReviewRecentDecisions() {
             searchForUser();
           }
         }}
-        suffix={
+        endSlot={
           userSearchString ? (
-            <CrossCircle
-              onClick={() => setUserSearchString('')}
-              className="cursor-pointer"
-            />
+            <span className="flex items-center px-3 border border-l-0 border-gray-200 rounded-r-lg bg-white">
+              <CrossCircle
+                onClick={() => setUserSearchString('')}
+                className="w-4 h-4 cursor-pointer text-gray-400"
+              />
+            </span>
           ) : null
         }
         autoFocus
       />
-      <Button disabled={userSearchString === undefined} onClick={searchForUser}>
+      <Button
+        variant="outline"
+        color="gray"
+        disabled={userSearchString === undefined}
+        onClick={searchForUser}
+      >
         Search
       </Button>
     </div>
@@ -961,14 +982,14 @@ export default function ManualReviewRecentDecisions() {
   const columnsButton = (
     <div ref={columnsMenuRef} className="relative inline-block text-start">
       <Button
+        variant="outline"
+        color="gray"
+        startIcon={GridAlt}
         className={`font-semibold text-base rounded ${
           visibleColumnsCount === Object.keys(columnLabels).length
             ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
-        icon={
-          <GridAlt className="inline-block w-4 h-4 mr-2" fill="currentColor" />
-        }
         onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
       >
         Columns
@@ -979,16 +1000,18 @@ export default function ManualReviewRecentDecisions() {
           <div className="!p-0 !m-0 divider" />
           <div className="flex flex-col px-4 py-2">
             {(Object.keys(columnLabels) as ColumnId[]).map((columnId) => (
-              <div key={columnId} className="py-2">
+              <div key={columnId} className="flex items-center gap-2 py-2">
                 <Checkbox
+                  id={`recent-col-vis-${columnId}`}
                   checked={columnVisibility[columnId]}
                   disabled={
                     columnVisibility[columnId] && visibleColumnsCount === 1
                   }
-                  onChange={() => toggleColumnVisibility(columnId)}
-                >
+                  onCheckedChange={() => toggleColumnVisibility(columnId)}
+                />
+                <Label htmlFor={`recent-col-vis-${columnId}`}>
                   {columnLabels[columnId]}
-                </Checkbox>
+                </Label>
               </div>
             ))}
           </div>

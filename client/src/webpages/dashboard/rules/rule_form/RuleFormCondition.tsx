@@ -1,6 +1,6 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
-import { Button, Form, Select } from 'antd';
-import { Info, Trash2 } from 'lucide-react';
+import { Button } from '@/coop-ui/Button';
+import { Combobox } from '@/coop-ui/Combobox';
+import { Trash2 } from 'lucide-react';
 
 import {
   GQLConditionConjunction,
@@ -25,40 +25,6 @@ import RuleFormConditionSignalArgs from './condition/signal/RuleFormConditionSig
 import RuleFormConditionThreshold from './condition/threshold/RuleFormConditionThreshold';
 import { RuleFormConfigResponse } from './RuleFormReducers';
 import { getGQLScalarType, SimplifiedConditionInput } from './RuleFormUtils';
-
-const { Option } = Select;
-
-export function optionWithTooltip(
-  title: string,
-  value: string,
-  disabled: boolean,
-  description: string | undefined,
-  key: string, // custom key for the <div> tag - should be unique
-  index: number,
-  isInOptionGroup: boolean = true,
-) {
-  return (
-    <Option
-      key={key + index}
-      value={value}
-      disabled={disabled}
-      style={{ paddingLeft: isInOptionGroup ? 24 : 12 }}
-      label={title}
-    >
-      <div className="flex items-center justify-between">
-        <div style={{ paddingRight: 24 }}>{title}</div>
-        {description && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="w-4 h-4 text-slate-500" />
-            </TooltipTrigger>
-            <TooltipContent side="right">{description}</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    </Option>
-  );
-}
 
 function getInputScalarType(
   itemTypes: RuleFormConfigResponse['itemTypes'],
@@ -156,49 +122,40 @@ export default function RuleFormCondition(props: {
   const { conditionIndex, conditionSetIndex } = location;
 
   const prefix = (
-    <Form.Item
+    <div
       className={`!mb-0 !align-middle !text-start ${
         parentConditionSet.conditions.length === 1 ? '!w-8' : '!w-[72px]'
       }`}
-      name="prefix"
       key={`condition_${conditionSetIndex}_${conditionIndex}`}
     >
       {conditionIndex === 0 ? (
         <span className="pl-3 whitespace-nowrap">If</span>
       ) : (
-        <Select
-          defaultValue={parentConditionSet.conjunction}
-          dropdownMatchSelectWidth={false}
+        <Combobox
+          className="whitespace-nowrap"
           value={parentConditionSet.conjunction}
-          onSelect={(value) => onUpdateNestedConditionSetConjunction(value)}
-        >
-          <Option
-            className="whitespace-nowrap"
-            key={GQLConditionConjunction.Or}
-            value={GQLConditionConjunction.Or}
-          >
-            or
-          </Option>
-          <Option
-            className="whitespace-nowrap"
-            key={GQLConditionConjunction.And}
-            value={GQLConditionConjunction.And}
-          >
-            and
-          </Option>
-        </Select>
+          onValueChange={(value) => {
+            if (value != null) {
+              onUpdateNestedConditionSetConjunction(
+                value as GQLConditionConjunction,
+              );
+            }
+          }}
+          options={[
+            { value: GQLConditionConjunction.Or, label: 'or' },
+            { value: GQLConditionConjunction.And, label: 'and' },
+          ]}
+        />
       )}
-    </Form.Item>
+    </div>
   );
 
   const deleteButton = (
-    <Form.Item
+    <div
       key={`RuleFormCondition-delete-form-item_set_index_${conditionSetIndex}_index_${conditionIndex}`}
-      name="button"
       // Override default form item styles
       style={{
         width: 32,
-        verticalAlign: 'middle',
         marginBottom: 0,
         paddingLeft: 16,
         marginRight: 16,
@@ -206,11 +163,15 @@ export default function RuleFormCondition(props: {
     >
       <Button
         key={`RuleFormCondition-delete_set_index_${conditionSetIndex}_index_${conditionIndex}`}
-        shape="circle"
-        icon={<Trash2 className="w-4 h-4" />}
+        variant="outline"
+        color="gray"
+        size="icon"
+        className="rounded-full"
         onClick={onDeleteCondition}
-      />
-    </Form.Item>
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
   );
 
   const inputScalarType = getInputScalarType(

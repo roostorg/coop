@@ -1,16 +1,15 @@
+import { MultiCombobox } from '@/coop-ui/Combobox';
 import { Label } from '@/coop-ui/Label';
 import { Switch } from '@/coop-ui/Switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
-import { selectFilterByLabelOption } from '../../components/antDesignUtils';
 import CoopButton from '../../components/CoopButton';
 import CloseButton from '@/components/common/CloseButton';
 
@@ -28,8 +27,6 @@ import {
 import { safePick } from '../../../../utils/misc';
 import { ManualReviewDashboardInsightsChartMetric } from './ManualReviewDashboardInsightsChart';
 import { ManualReviewDashboardInsightsGroupByColumns } from './ManualReviewDashboardInsightsGroupBy';
-
-const { Option } = Select;
 
 type GQLDecisionCountFilterByColumns = Omit<
   GQLDecisionCountFilterByInput,
@@ -383,27 +380,19 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
               : [];
 
     return (
-      <Select
-        mode="multiple"
+      <MultiCombobox
         className="w-full font-normal rounded"
-        value={value}
+        value={(value as string[] | undefined) ?? []}
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
-        onChange={(ids) => onSetUnsavedFilterValue(column, ids)}
+        onValueChange={(ids) => onSetUnsavedFilterValue(column, ids)}
         onClick={(event) => event.stopPropagation()}
-        dropdownMatchSelectWidth={false}
-      >
-        {getDropdownOptions(column)?.map((option, i) => (
-          <Option
-            key={`${option.id}_${i}`}
-            value={option.id}
-            label={option.name}
-          >
-            {option.name}
-          </Option>
-        ))}
-      </Select>
+        options={
+          getDropdownOptions(column)?.map((option) => ({
+            value: option.id,
+            label: option.name,
+          })) ?? []
+        }
+      />
     );
   };
 

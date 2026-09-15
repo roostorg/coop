@@ -9,7 +9,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, startSlot, endSlot, ...props }, ref) => {
     const inputClasses = cn(
-      'py-3 px-4 w-full text-sm font-medium transition-colors placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none',
+      'py-2 px-3 w-full text-sm font-medium transition-colors placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none',
       'border border-gray-200 bg-white',
       'hover:border-gray-300',
       'focus:z-10 focus:outline-none focus:border-indigo-500 focus:shadow-focus-indigo',
