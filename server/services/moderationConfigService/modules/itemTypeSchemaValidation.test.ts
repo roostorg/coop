@@ -6,6 +6,8 @@ import {
   assertBackwardCompatibleItemSchema,
   assertHiddenFieldsExist,
   assertValidItemSchema,
+  assertValidItemTypeFieldRoles,
+  mergeItemTypeRoleColumns,
 } from './itemTypeSchemaValidation.js';
 
 const scalar = (
@@ -83,6 +85,69 @@ describe('assertValidItemSchema', () => {
         field: 'duplicate',
       },
     );
+  });
+});
+
+describe('item type field roles', () => {
+  const roleSchema = schema(
+    scalar('created', false, 'DATETIME'),
+    scalar('thread', false, 'RELATED_ITEM'),
+    scalar('parent', false, 'RELATED_ITEM'),
+    scalar('title'),
+  );
+
+  test('merges retained roles and explicitly cleared roles', () => {
+    expect(
+      mergeItemTypeRoleColumns(
+        { created_at_field: 'created', display_name_field: 'title' },
+        { created_at_field: undefined, display_name_field: null },
+      ),
+    ).toMatchObject({
+      created_at_field: 'created',
+      display_name_field: null,
+    });
+  });
+
+  test.each([
+    ['missing', { display_name_field: 'absent' }, 'does not exist'],
+    [
+      'wrong type',
+      { display_name_field: 'created' },
+      'must reference a STRING',
+    ],
+  ])('rejects a %s role field', (_case, roles, detail) => {
+    expect(() =>
+      assertValidItemTypeFieldRoles(roleSchema, 'CONTENT', roles),
+    ).toThrow(
+      expect.objectContaining({
+        name: 'InvalidItemTypeSchemaError',
+        detail: expect.stringContaining(detail),
+      }),
+    );
+  });
+
+  test('rejects invalid content role dependencies', () => {
+    expect(() =>
+      assertValidItemTypeFieldRoles(roleSchema, 'CONTENT', {
+        parent_id_field: 'parent',
+        created_at_field: 'created',
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: 'InvalidItemTypeSchemaError',
+        detail: expect.stringContaining('requires threadId and createdAt'),
+      }),
+    );
+  });
+
+  test('accepts valid content role dependencies', () => {
+    expect(() =>
+      assertValidItemTypeFieldRoles(roleSchema, 'CONTENT', {
+        parent_id_field: 'parent',
+        thread_id_field: 'thread',
+        created_at_field: 'created',
+      }),
+    ).not.toThrow();
   });
 });
 
