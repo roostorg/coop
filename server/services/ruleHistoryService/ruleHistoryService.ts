@@ -135,21 +135,24 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
     approxVersion: new Date(it.exactVersion),
   }));
 
-  return startDate
-    ? allVersions.filter(
+  if (!startDate) {
+    return allVersions;
+  }
+
+  // "Version in effect at startDate, plus later versions" is per rule. The
+  // raw list is every rule concatenated; applying the neighbor check globally
+  // drops a rule whose next *row* belongs to a different, older rule.
+  return Object.values(_.groupBy(allVersions, (it) => it.id))
+    .flatMap((versions) => {
+      const ordered = [...versions].sort(
+        (a, b) => a.approxVersion.getTime() - b.approxVersion.getTime(),
+      );
+      return ordered.filter(
         (_, i) =>
-          // Always keep the last version (which is what we're looking at if
-          // i == allVersions.length - 1), because that's definitely still
-          // in effect at the start date. Then, if we're not looking at the
-          // last version, keep this version if the _next_ version was
-          // created after the start date (which'd mean this was the version
-          // in effect _at_ the start date). The overall result here is to
-          // keep last version created at or before the start date, plus all
-          // created after it.
-          i === allVersions.length - 1 ||
-          allVersions[i + 1].approxVersion > startDate,
-      )
-    : allVersions;
+          i === ordered.length - 1 || ordered[i + 1].approxVersion > startDate,
+      );
+    })
+    .sort((a, b) => a.approxVersion.getTime() - b.approxVersion.getTime());
 }
 
 /**

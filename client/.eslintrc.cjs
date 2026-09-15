@@ -113,7 +113,7 @@ module.exports = {
           {
             name: '@ant-design/icons',
             message:
-              'AntDesign icons are now deprecated in our codebase. Please use line icons instead.',
+              'AntDesign icons have been removed. Use lucide-react instead.',
           },
           {
             name: '@/icons',

@@ -1,16 +1,17 @@
 import { randomUUID } from 'crypto';
-import { Kysely, type CompiledQuery, type QueryResult } from 'kysely';
+import { Kysely } from 'kysely';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
-import { makeMockWarehouseDialect } from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
+import {
+  makeMockWarehouseDialect,
+  type WarehouseExecute,
+} from '../../test/stubs/makeMockWarehouseKyselyDialect.js';
 import { safePick } from '../../utils/misc.js';
 import { makeFetchUserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
 
 describe('fetchUserSubmissionStatistics', () => {
-  let warehouseMock: MockedFn<
-    (it: CompiledQuery) => Promise<QueryResult<unknown>>
-  >;
+  let warehouseMock: MockedFn<WarehouseExecute>;
   let sut: ReturnType<typeof makeFetchUserSubmissionStatistics>;
 
   beforeEach(() => {

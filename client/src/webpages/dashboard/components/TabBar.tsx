@@ -35,6 +35,7 @@ export default function TabBar<T extends string>(props: {
 
     const tabButton = (
       <div
+        key={value}
         className={`inline-flex items-center bg-transparent border-solid border-0 border-b-2 p-4 gap-x-2 whitespace-nowrap hover:text-primary focus:outline-none focus:text-primary disabled:opacity-50 disabled:pointer-events-none dark:text-neutral-400 dark:hover:text-primary ${
           isActive
             ? 'font-semibold  border-b-primary text-primary'
@@ -49,7 +50,13 @@ export default function TabBar<T extends string>(props: {
       </div>
     );
 
-    return tooltip ? <Tooltip title={tooltip}>{tabButton}</Tooltip> : tabButton;
+    return tooltip ? (
+      <Tooltip key={value} title={tooltip}>
+        {tabButton}
+      </Tooltip>
+    ) : (
+      tabButton
+    );
   };
 
   return (

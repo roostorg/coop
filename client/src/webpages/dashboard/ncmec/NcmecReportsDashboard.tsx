@@ -6,13 +6,12 @@ import {
   useGQLPermissionsQuery,
   useGQLRetryNcmecSubmissionMutation,
 } from '@/graphql/generated';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { userHasPermissions } from '@/routing/permissions';
 import { filterNullOrUndefined } from '@/utils/collections';
-import { AuditOutlined, DownloadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Checkbox, Input, Tag, Tooltip } from 'antd';
 import { format } from 'date-fns';
+import { Download, LayoutGrid as GridAlt, Scale } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -326,106 +325,118 @@ export default function NcmecReportsDashboard() {
       filterNullOrUndefined([
         columnVisibility.date
           ? {
-              Header: 'Date',
-              accessor: 'date',
-              sortType: stringSort,
+              header: 'Date',
+              accessorKey: 'date',
+              sortFn: stringSort,
               sortDescFirst: true,
-              Filter: (props: ColumnProps) =>
-                DateRangeColumnFilter({
-                  columnProps: props,
-                  accessor: 'date',
-                  placeholder: '',
-                }),
-              filter: 'dateRange',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DateRangeColumnFilter({
+                    columnProps: props,
+                    accessor: 'date',
+                    placeholder: '',
+                  }),
+              },
+              filterFn: 'dateRange' as const,
             }
           : undefined,
         columnVisibility.reviewer
           ? {
-              Header: 'Reviewer',
-              accessor: 'reviewer',
-              filter: 'includes',
-              sortType: stringSort,
-              Filter: (props: ColumnProps) =>
-                SelectColumnFilter({
-                  columnProps: props,
-                  accessor: 'reviewer',
-                }),
+              header: 'Reviewer',
+              accessorKey: 'reviewer',
+              filterFn: 'includes' as const,
+              sortFn: stringSort,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  SelectColumnFilter({
+                    columnProps: props,
+                    accessor: 'reviewer',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.status
           ? {
               // Cell renders the colored Tag from row.status; the filter
               // reads the plain string from row.original.values.status.
-              Header: 'Status',
-              accessor: 'status',
-              filter: 'includes',
-              sortType: stringSort,
-              Filter: (props: ColumnProps) =>
-                SelectColumnFilter({
-                  columnProps: props,
-                  accessor: 'status',
-                }),
+              header: 'Status',
+              accessorKey: 'status',
+              filterFn: 'includes' as const,
+              sortFn: stringSort,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  SelectColumnFilter({
+                    columnProps: props,
+                    accessor: 'status',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.reportId
           ? {
-              Header: 'Report ID',
-              accessor: 'reportId',
-              filter: 'text',
-              canSort: false,
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'reportId',
-                  placeholder: 'Report ID',
-                }),
+              header: 'Report ID',
+              accessorKey: 'reportId',
+              filterFn: 'text' as const,
+              enableSorting: false,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'reportId',
+                    placeholder: 'Report ID',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.userId
           ? {
-              Header: 'User ID',
-              accessor: 'userId',
-              filter: 'text',
-              canSort: false,
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'userId',
-                  placeholder: 'User ID',
-                }),
+              header: 'User ID',
+              accessorKey: 'userId',
+              filterFn: 'text' as const,
+              enableSorting: false,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'userId',
+                    placeholder: 'User ID',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.userItemType
           ? {
-              Header: 'User Item Type',
-              accessor: 'userItemType',
-              filter: 'text',
-              canSort: false,
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'userItemType',
-                  placeholder: 'User Type',
-                }),
+              header: 'User Item Type',
+              accessorKey: 'userItemType',
+              filterFn: 'text' as const,
+              enableSorting: false,
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'userItemType',
+                    placeholder: 'User Type',
+                  }),
+              },
             }
           : undefined,
         columnVisibility.reportedMedia
-          ? { Header: 'Reported Media', accessor: 'reportedMedia' }
+          ? { header: 'Reported Media', accessorKey: 'reportedMedia' }
           : undefined,
         columnVisibility.additionalFiles
-          ? { Header: 'Additional Files', accessor: 'additionalFiles' }
+          ? { header: 'Additional Files', accessorKey: 'additionalFiles' }
           : undefined,
         columnVisibility.reportedMessages
-          ? { Header: 'Reported Messages', accessor: 'reportedMessages' }
+          ? { header: 'Reported Messages', accessorKey: 'reportedMessages' }
           : undefined,
         columnVisibility.isTest
-          ? { Header: 'Test Report', accessor: 'isTest' }
+          ? { header: 'Test Report', accessorKey: 'isTest' }
           : undefined,
         columnVisibility.lastError
-          ? { Header: 'Last Error', accessor: 'lastError' }
+          ? { header: 'Last Error', accessorKey: 'lastError' }
           : undefined,
         columnVisibility.action
-          ? { Header: 'Action', accessor: 'action' }
+          ? { header: 'Action', accessorKey: 'action' }
           : undefined,
       ]),
     [columnVisibility],
@@ -475,7 +486,7 @@ export default function NcmecReportsDashboard() {
                     contents={formatXml(report.reportXml)}
                     mimeType="text/plain"
                   >
-                    <DownloadOutlined />
+                    <Download className="w-4 h-4" />
                   </BlobDownloadLink>
                 </div>
               </div>
@@ -497,7 +508,7 @@ export default function NcmecReportsDashboard() {
                           contents={formatXml(media.xml)}
                           mimeType="text/plain"
                         >
-                          <DownloadOutlined />
+                          <Download className="w-4 h-4" />
                         </BlobDownloadLink>
                       </div>
                     </div>
@@ -522,7 +533,7 @@ export default function NcmecReportsDashboard() {
                           contents={formatXml(additionalFile.xml)}
                           mimeType="text/plain"
                         >
-                          <DownloadOutlined className="pr-1" />
+                          <Download className="w-4 h-4 pr-1" />
                         </BlobDownloadLink>
                       </div>
                       <div className="overflow-ellipsis">
@@ -551,7 +562,7 @@ export default function NcmecReportsDashboard() {
                           contents={reportedMessage.csv}
                           mimeType="text/csv"
                         >
-                          <DownloadOutlined />
+                          <Download className="w-4 h-4" />
                         </BlobDownloadLink>
                       </div>
                     </div>
@@ -675,7 +686,7 @@ export default function NcmecReportsDashboard() {
         <div className="flex items-center justify-center w-full h-full">
           <div className="flex flex-col items-center justify-center p-12 mt-24">
             <div className="pb-3 text-zinc-500 text-8xl">
-              {<AuditOutlined />}
+              {<Scale className="w-24 h-24" />}
             </div>
             <div className="pb-2 text-3xl text-zinc-500 max-w-100">
               No NCMEC Reports
@@ -725,12 +736,7 @@ export default function NcmecReportsDashboard() {
                         ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
                         : 'bg-gray-600 text-white border-none hover:bg-gray-500'
                     }`}
-                    icon={
-                      <GridAlt
-                        className="inline-block w-4 h-4 mr-2"
-                        fill="currentColor"
-                      />
-                    }
+                    icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
                     onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
                   >
                     Columns

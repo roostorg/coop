@@ -1,6 +1,7 @@
 import {
   buildInternetDetailsFromOrgSetting,
   clampIncidentDateTimeToPast,
+  latestEvidenceTimestamp,
   mergeFieldRoleIpIntoEvents,
   NCMECEvent,
   resolveReportedPersonEmail,
@@ -143,7 +144,80 @@ describe('NCMEC reporting', () => {
 
     it('throws on invalid timestamps', () => {
       expect(() => clampIncidentDateTimeToPast('not-a-date', NOW_MS)).toThrow(
-        /Invalid media createdAt timestamp/,
+        /Invalid timestamp for incidentDateTime/,
+      );
+    });
+  });
+
+  describe('latestEvidenceTimestamp', () => {
+    const media = (createdAt: string) => ({ createdAt });
+    const thread = (...sentAts: (string | Date)[]) => ({
+      reportedContent: sentAts.map((sentAt) => ({ sentAt })),
+    });
+
+    it('returns the most recent media createdAt', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [
+            media('2026-01-10T00:00:00.000Z'),
+            media('2026-01-12T00:00:00.000Z'),
+          ],
+          [],
+        ),
+      ).toEqual('2026-01-12T00:00:00.000Z');
+    });
+
+    it('derives the timestamp from messages for a text-only report', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread('2026-01-05T00:00:00.000Z', '2026-01-08T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-08T00:00:00.000Z');
+    });
+
+    it('takes the max across both media and messages', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [media('2026-01-12T00:00:00.000Z')],
+          [thread('2026-01-20T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-20T00:00:00.000Z');
+    });
+
+    it('accepts Date-valued message timestamps', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread(new Date('2026-01-09T00:00:00.000Z'))],
+        ),
+      ).toEqual('2026-01-09T00:00:00.000Z');
+    });
+
+    it('throws when there is no evidence at all', () => {
+      expect(() => latestEvidenceTimestamp([], [])).toThrow(
+        /Report has neither media nor messages/,
+      );
+      expect(() => latestEvidenceTimestamp([], [thread()])).toThrow(
+        /Report has neither media nor messages/,
+      );
+    });
+
+    it('skips an unparseable timestamp and uses the latest valid one', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread('not-a-date', '2026-01-08T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-08T00:00:00.000Z');
+    });
+
+    it('throws when evidence exists but no timestamp parses', () => {
+      expect(() => latestEvidenceTimestamp([media('not-a-date')], [])).toThrow(
+        /Invalid timestamp for incidentDateTime/,
+      );
+      expect(() => latestEvidenceTimestamp([], [thread('not-a-date')])).toThrow(
+        /Invalid timestamp for incidentDateTime/,
       );
     });
   });

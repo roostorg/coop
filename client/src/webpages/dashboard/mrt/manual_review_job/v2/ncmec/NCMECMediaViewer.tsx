@@ -14,7 +14,7 @@ import {
   preferencesFromColorScheme,
   type ModeratorSafetyColorScheme,
 } from '@/models/safetySettings';
-import { SearchOutlined } from '@ant-design/icons';
+import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
@@ -244,7 +244,7 @@ export default function NCMECMediaViewer(props: {
             }`}
           >
             {!isInInspectedView && (
-              <SearchOutlined className="invisible text-5xl text-blue-500 group-hover:visible" />
+              <Search className="invisible w-12 h-12 text-blue-500 group-hover:visible" />
             )}
           </div>
         </div>

@@ -68,7 +68,11 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
         (placeholder ?? multiple) ? 'Select Policies' : 'Select policy'
       }
       dropdownMatchSelectWidth={false}
-      value={selectedPolicyIds}
+      value={
+        multiple || !Array.isArray(selectedPolicyIds)
+          ? selectedPolicyIds
+          : selectedPolicyIds[0]
+      }
       onChange={onChange}
       showSearch={true}
       placement={placement ?? 'bottomLeft'}

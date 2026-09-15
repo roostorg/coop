@@ -11,7 +11,7 @@ import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
 import { DynamicPool } from 'node-worker-threads-pool';
-import type pg from 'pg';
+import pg from 'pg';
 import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
@@ -115,6 +115,10 @@ import {
   type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
+import {
+  getRegisteredManualReviewContentResolver,
+  type ManualReviewContentResolver,
+} from '../services/manualReviewContentResolver.js';
 import {
   isReportJob,
   ManualReviewToolService,
@@ -368,6 +372,7 @@ export interface Dependencies {
   NotificationsService: PublicInterface<NotificationsService>;
   PlacesApiService: PlacesApiService;
   ReportingService: ReportingService;
+  ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
   ItemInvestigationService: ItemInvestigationService;
@@ -462,7 +467,11 @@ export function getPgConnectionParams(): pg.ClientConfig {
  * This export is a function, not a container object, so that you can create
  * copies of the container as needed for selective rebinding.
  */
-export default async function getBottle() {
+export default async function getBottle(
+  extensions: {
+    manualReviewContentResolver?: ManualReviewContentResolver;
+  } = {},
+) {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
   const getPgPoolTuning = () => {
@@ -566,6 +575,7 @@ export default async function getBottle() {
     (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
+          controlClient: pg.Client,
           pool: container.KyselyPgPool,
           cursor: Cursor,
         }),
@@ -578,6 +588,7 @@ export default async function getBottle() {
     () =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
+          controlClient: pg.Client,
           pool: createPgPool({
             ...getPgMasterConnectionInfo(),
             max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
@@ -931,6 +942,13 @@ export default async function getBottle() {
         container.KyselyPgReadReplica,
         async (_) => {},
       ),
+  );
+
+  bottle.factory(
+    'ManualReviewContentResolver',
+    () =>
+      extensions.manualReviewContentResolver ??
+      getRegisteredManualReviewContentResolver(),
   );
 
   bottle.factory('ManualReviewToolService', (container) => {
@@ -1485,6 +1503,11 @@ export default async function getBottle() {
         _input: ManualReviewJobInput | ManualReviewAppealJobInput,
         _queueId: string,
       ) {},
+      // Resolved lazily off the container because NcmecService itself depends
+      // on ManualReviewToolService.
+      async (params) =>
+        container.NcmecService.getUserHasExistingNcmecReport(params),
+      container.ManualReviewContentResolver,
     );
   });
 

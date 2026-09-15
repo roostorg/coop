@@ -191,19 +191,19 @@ function RecentUserStrikeActionsTable() {
   const columns = useMemo(
     () => [
       {
-        Header: 'User',
-        accessor: 'user',
-        canSort: false,
+        header: 'User',
+        accessorKey: 'user',
+        enableSorting: false,
       },
       {
-        Header: 'Action Taken',
-        accessor: 'action',
-        canSort: false,
+        header: 'Action Taken',
+        accessorKey: 'action',
+        enableSorting: false,
       },
       {
-        Header: 'Date',
-        accessor: 'date',
-        canSort: false,
+        header: 'Date',
+        accessorKey: 'date',
+        enableSorting: false,
       },
     ],
     [],

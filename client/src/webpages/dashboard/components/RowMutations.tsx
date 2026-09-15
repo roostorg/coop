@@ -1,6 +1,6 @@
 import { Button } from '@/coop-ui/Button';
-import { PencilFilled, TrashCanFilled } from '@/icons';
 import { Tooltip } from 'antd';
+import { Pencil as PencilFilled, Trash2 as TrashCanFilled } from 'lucide-react';
 import { MouseEvent, ReactNode } from 'react';
 
 export type DeleteRowModalInfo = {

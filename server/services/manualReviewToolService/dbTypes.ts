@@ -101,6 +101,7 @@ export type ManualReviewToolServicePg = {
     reviewer_id: string | null;
     org_id: string;
     created_at: GeneratedAlways<Date>;
+    assigned_at: ColumnType<Date | null, Date | null | undefined, Date | null>;
     decision_components: ManualReviewDecisionComponent[];
     related_actions: ManualReviewDecisionRelatedAction[];
     enqueue_source_info:
@@ -255,6 +256,13 @@ export type ManualReviewToolServicePg = {
     job_id: string;
     queue_id: string;
     ts: GeneratedAlways<Date>;
+  };
+  'manual_review_tool.job_claims': {
+    org_id: string;
+    user_id: string;
+    job_id: string;
+    queue_id: string;
+    claimed_at: GeneratedAlways<Date>;
   };
   // This table is more general than the ManualReviewToolService, and
   // doesn't need to be exclusively managed by it - but we don't really have a

@@ -95,12 +95,6 @@ export const derivedFieldRecipes = {
       args: { id: { type: SignalType.OPEN_AI_WHISPER_TRANSCRIPTION } },
     },
   ] satisfies DerivedFieldRecipe as DerivedFieldRecipe,
-  ENGLISH_TRANSLATION: [
-    {
-      type: DerivedFieldOperationType.RUN_SIGNAL,
-      args: { id: { type: SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL } },
-    },
-  ] satisfies DerivedFieldRecipe as DerivedFieldRecipe,
 };
 
 export type DerivedFieldRecipe = ReadonlyDeep<

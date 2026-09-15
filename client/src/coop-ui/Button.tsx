@@ -282,9 +282,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
 
         {size === 'icon' &&
-          React.isValidElement(children) &&
+          React.isValidElement<{ className?: string }>(children) &&
           React.cloneElement(children, {
-            ...children.props,
             className: cn(children.props.className, 'size-4'),
           })}
 

@@ -1,17 +1,22 @@
-import ChevronDown from '@/icons/lni/Direction/chevron-down.svg?react';
-import ChevronUp from '@/icons/lni/Direction/chevron-up.svg?react';
-import { FilterOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import omit from 'lodash/omit';
 import without from 'lodash/without';
+import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import CloseButton from '@/components/common/CloseButton';
 
 import CoopButton from '../CoopButton';
+import { TableColumn, TableData } from './tableFeatures';
 
-export default function TableFilter(props: { headers: any[] }) {
-  const { headers } = props;
+export default function TableFilter<TData extends TableData>(props: {
+  columns: TableColumn<TData, unknown>[];
+}) {
+  const { columns } = props;
+
+  const filterColumns = columns.filter(
+    (column) => column.getCanFilter() && column.columnDef.meta?.filter,
+  );
 
   const [menuVisible, setMenuVisible] = useState<boolean>(false);
   const [expandedColumnNames, setExpandedColumnNames] = useState<string[]>([]);
@@ -65,8 +70,17 @@ export default function TableFilter(props: { headers: any[] }) {
   };
 
   const onSave = () => {
+    const missingColumnIds: string[] = [];
     for (const [columnId, value] of Object.entries(unsavedFilterValues)) {
-      headers.find((header) => header.id === columnId)!.setFilter(value);
+      const column = filterColumns.find((column) => column.id === columnId);
+      if (!column) {
+        missingColumnIds.push(columnId);
+        continue;
+      }
+      column.setFilterValue(value);
+    }
+    if (missingColumnIds.length > 0) {
+      setUnsavedFilterValues(omit(unsavedFilterValues, missingColumnIds));
     }
     setMenuVisible(false);
   };
@@ -74,18 +88,26 @@ export default function TableFilter(props: { headers: any[] }) {
   const onSetUnsavedFilterValue = (columnId: string, value: any) => {
     setUnsavedFilterValues({
       ...unsavedFilterValues,
-      [columnId]: value,
+      [columnId]:
+        typeof value === 'function'
+          ? value(unsavedFilterValues[columnId])
+          : value,
     });
   };
 
   const removeFilter = (columnId: string) => {
     setUnsavedFilterValues(omit(unsavedFilterValues, columnId));
-    headers.find((header) => header.id === columnId)!.setFilter(undefined);
+    const column = filterColumns.find((column) => column.id === columnId);
+    if (column) {
+      column.setFilterValue(undefined);
+    }
   };
 
-  const activeFilters = headers.filter((header) => header.filterValue);
+  const activeFilters = filterColumns.filter((column) =>
+    column.getFilterValue(),
+  );
 
-  return headers.some((header) => header.filter) ? (
+  return filterColumns.length > 0 ? (
     <div className="relative inline-block text-start">
       <div className="flex items-center justify-start">
         <Button
@@ -96,8 +118,8 @@ export default function TableFilter(props: { headers: any[] }) {
               : 'text-white bg-[#71717a] border-none focus:text-white focus:bg-[#71717a] focus:border-none hover:text-white hover:bg-[#a1a1aa] hover:border-none'
           }`}
           icon={
-            <FilterOutlined
-              className={`font-semibold ${
+            <Filter
+              className={`w-4 h-4 font-semibold ${
                 activeFilters.length === 0 ? 'text-[#71717a]' : 'text-white'
               }`}
             />
@@ -115,7 +137,7 @@ export default function TableFilter(props: { headers: any[] }) {
               key={i}
               className="flex items-center gap-1.5 p-2 ml-3 font-semibold text-gray-600 bg-gray-200 rounded"
             >
-              {`${column.Header}: ${column.filterValue}`}
+              {`${String(column.columnDef.header)}: ${column.getFilterValue()}`}
               <CloseButton onClose={() => removeFilter(column.id)} />
             </div>
           ))}
@@ -123,7 +145,7 @@ export default function TableFilter(props: { headers: any[] }) {
       </div>
       {menuVisible && (
         <div
-          className={`flex flex-col absolute bg-white border-solid border border-[#d4d4d8] rounded shadow-md mt-1 min-w-[320px] z-20 ${
+          className={`flex flex-col absolute bg-white border-solid border border-[#d4d4d8] rounded shadow-md mt-1 min-w-[320px] z-50 ${
             isButtonFloatedRight ? 'right-0' : 'left-0'
           }`}
         >
@@ -133,11 +155,13 @@ export default function TableFilter(props: { headers: any[] }) {
           </div>
           <div className="!p-0 !m-0 divider" />
           <div className="flex flex-col">
-            {headers.map((column, index) => {
-              if (!column || !column.Header.length || !column.Filter) {
+            {filterColumns.map((column, index) => {
+              const label = String(column.columnDef.header);
+              if (!label.length || !column.columnDef.meta?.filter) {
                 return null;
               }
-              const expanded = expandedColumnNames.includes(column.Header);
+              const expanded = expandedColumnNames.includes(label);
+              const Renderer = column.columnDef.meta.filter;
               return (
                 <div
                   className={`flex flex-col ${expanded ? 'bg-gray-100' : ''}`}
@@ -145,19 +169,19 @@ export default function TableFilter(props: { headers: any[] }) {
                 >
                   <div
                     className="flex items-center p-4 cursor-pointer"
-                    onClick={(_) => toggleColumn(column.Header)}
+                    onClick={(_) => toggleColumn(label)}
                     key={`${index}_column_cell`}
                   >
                     <div
                       className="text-[13px] text-start mr-2"
                       key={`${index}_column_name`}
                     >
-                      {column.Header}
+                      {label}
                     </div>
                     {expanded ? (
-                      <ChevronUp className="w-3 font-bold fill-slate-400" />
+                      <ChevronUp className="w-3 h-3 text-slate-400" />
                     ) : (
-                      <ChevronDown className="w-3 font-bold fill-slate-400" />
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
                     )}
                   </div>
                   {expanded && (
@@ -165,13 +189,14 @@ export default function TableFilter(props: { headers: any[] }) {
                       className="flex flex-col px-4 pt-0 pb-4"
                       key={`${index}_content`}
                     >
-                      {column.Filter({
-                        ...column,
-                        setUnsavedFilterValue: (value: any) =>
-                          onSetUnsavedFilterValue(column.id, value),
-                        unsavedFilterValue: unsavedFilterValues[column.id],
-                        onSave,
-                      })}
+                      <Renderer
+                        preFilteredRows={column.getFacetedRowModel().flatRows}
+                        setUnsavedFilterValue={(value: any) =>
+                          onSetUnsavedFilterValue(column.id, value)
+                        }
+                        unsavedFilterValue={unsavedFilterValues[column.id]}
+                        onSave={onSave}
+                      />
                     </div>
                   )}
                 </div>

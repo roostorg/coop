@@ -1,5 +1,5 @@
-import { DeleteOutlined } from '@ant-design/icons';
 import { Input, Radio } from 'antd';
+import { Trash2 } from 'lucide-react';
 
 import { GQLManualReviewChartMetric } from '../../../../graphql/generated';
 import {
@@ -40,7 +40,7 @@ const ManualReviewCustomChartBuilder = ({
           className="flex items-center justify-center p-1 text-white rounded cursor-pointer gap-2 bg-coop-alert-red hover:bg-coop-alert-red-hover h-fit whitespace-nowrap"
           onClick={() => deleteChart(chart)}
         >
-          <DeleteOutlined className="flex items-center justify-center rounded-full" />{' '}
+          <Trash2 className="w-4 h-4 flex items-center justify-center rounded-full" />{' '}
           Delete Chart
         </div>
       </div>

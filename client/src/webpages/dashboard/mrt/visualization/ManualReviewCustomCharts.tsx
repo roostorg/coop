@@ -1,6 +1,6 @@
-import { PlusOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { notification } from 'antd';
+import { Plus as PlusOutlined } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import CoopButton from '../../components/CoopButton';

@@ -2,7 +2,6 @@ import { safeFormat } from '@/utils/time';
 import { gql } from '@apollo/client';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row } from 'react-table';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import DashboardHeader from '../components/DashboardHeader';
@@ -12,7 +11,7 @@ import {
   SelectColumnFilter,
 } from '../components/table/filters';
 import { stringSort } from '../components/table/sort';
-import Table from '../components/table/Table';
+import Table, { TableRow } from '../components/table/Table';
 
 import { useGQLManualReviewQueueJobsPreviewQuery } from '../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../utils/collections';
@@ -116,33 +115,37 @@ export default function ManualReviewQueueJobsPreview() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Preview',
-        accessor: 'preview',
-        canSort: false,
+        header: 'Preview',
+        accessorKey: 'preview',
+        enableSorting: false,
       },
       {
-        Header: 'Policies',
-        accessor: 'policies',
-        Filter: (props: ColumnProps) =>
-          SelectColumnFilter({
-            columnProps: props,
-            accessor: 'policies',
-          }),
-        filter: 'includes',
-        canSort: false,
+        header: 'Policies',
+        accessorKey: 'policies',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'policies',
+            }),
+        },
+        filterFn: 'includes' as const,
+        enableSorting: false,
       },
       {
-        Header: 'Created At',
-        accessor: 'createdAt',
-        Filter: (props: ColumnProps) =>
-          DateRangeColumnFilter({
-            columnProps: props,
-            accessor: 'createdAt',
-            placeholder: '',
-          }),
-        filter: 'dateRange',
+        header: 'Created At',
+        accessorKey: 'createdAt',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DateRangeColumnFilter({
+              columnProps: props,
+              accessor: 'createdAt',
+              placeholder: '',
+            }),
+        },
+        filterFn: 'dateRange' as const,
         sortDescFirst: true,
-        sortType: stringSort,
+        sortFn: stringSort,
       },
     ],
     [],
@@ -218,7 +221,7 @@ export default function ManualReviewQueueJobsPreview() {
     throw Error(`Queue not found for ID ${queueId}`);
   }
 
-  const rowLinkTo = (row: Row<any>) => {
+  const rowLinkTo = (row: TableRow<(typeof tableData)[number]>) => {
     // I don't know why but the jobs do not ever render unless you put a fake lock token
     // at the end of the URL, so the `/1` is actually necessary here
     return `/dashboard/manual_review/queues/review/${queueId}/${row.original.jobId}/1`;

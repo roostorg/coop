@@ -18,8 +18,20 @@ export type IntegrationServer = {
   shutdown: () => Promise<void>;
 };
 
-export async function makeIntegrationServer(): Promise<IntegrationServer> {
+export type MakeIntegrationServerOptions = {
+  /** A hash of mocked dependencies to replace in the bottle  */
+  mockedDeps?: Partial<Dependencies>;
+};
+
+export async function makeIntegrationServer(
+  opts: MakeIntegrationServerOptions = {},
+): Promise<IntegrationServer> {
   const bottle = await getBottle();
+  if (opts.mockedDeps != null) {
+    for (const [name, value] of Object.entries(opts.mockedDeps)) {
+      bottle.factory(name as keyof Dependencies, () => value);
+    }
+  }
   const deps = bottle.container as Dependencies;
 
   const { app, shutdown: shutdownServer } = await makeServer(deps);

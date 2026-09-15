@@ -1,7 +1,7 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { GQLDisabledInfo, GQLSignal, GQLSignalType } from '@/graphql/generated';
-import { RightOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
 import startCase from 'lodash/startCase';
+import { ChevronRight } from 'lucide-react';
 
 import LogoWhiteWithBackground from '../../../../../images/LogoWhiteWithBackground.png';
 import { INTEGRATION_CONFIGS } from '../../../integrations/integrationConfigs';
@@ -12,7 +12,7 @@ export function vendorName(signal: GQLSignal) {
     return 'Custom';
   }
   if (!signal.integration) {
-    return 'Coop';
+    return 'ROOST';
   }
   if (signal.integrationTitle) {
     return signal.integrationTitle;
@@ -87,11 +87,11 @@ export default function RuleFormSignalModalMenuItem(props: {
       <div className="flex-1" />
       <div className="flex h-px my-4 bg-slate-300" />
       <div className="flex flex-row items-center justify-between">
-        <div className="overflow-hidden text-sm text-gray-400 text-ellipsis line-clamp-2">
+        <div className="min-w-0 overflow-hidden text-sm text-gray-400 text-ellipsis line-clamp-2">
           {signal.description}
         </div>
-        <RightOutlined
-          className="p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300"
+        <ChevronRight
+          className="w-5 h-5 p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300 box-content shrink-0"
           onClick={(event) => {
             event.stopPropagation();
             infoButtonTapped();
@@ -102,7 +102,12 @@ export default function RuleFormSignalModalMenuItem(props: {
   );
 
   if (disabledInfo.disabled) {
-    return <Tooltip title={disabledInfo.disabledMessage}>{item}</Tooltip>;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipContent>{disabledInfo.disabledMessage}</TooltipContent>
+      </Tooltip>
+    );
   }
   return item;
 }

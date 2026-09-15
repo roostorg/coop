@@ -1,9 +1,15 @@
-import Sparkles from '@/icons/lni/Weather/sparkles.svg?react';
-import CopyAlt from '@/icons/lni/Web and Technology/copy-alt.svg?react';
-import { ReadOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/coop-types';
 import capitalize from 'lodash/capitalize';
+import {
+  BookOpen,
+  Layers as CollectionIcon,
+  FileText as ContentIcon,
+  Copy as CopyAlt,
+  CircleHelp as QuestionCircleIcon,
+  Sparkles,
+  User as UserIcon,
+} from 'lucide-react';
 import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -26,10 +32,6 @@ import {
   useGQLItemTypesQuery,
   type GQLItemType,
 } from '../../../graphql/generated';
-import CollectionIcon from '../../../icons/CollectionIcon';
-import ContentIcon from '../../../icons/ContentIcon';
-import QuestionCircleIcon from '../../../icons/QuestionCircleIcon';
-import UserIcon from '../../../icons/UserIcon';
 import { userHasPermissions } from '../../../routing/permissions';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
 import ItemTypesExplainer from './ItemTypesExplainer';
@@ -168,13 +170,13 @@ export default function ItemTypesDashboard() {
   const iconForTab = (tab: ItemTypeDashboardTab) => {
     switch (tab) {
       case 'CONTENT':
-        return <ContentIcon width="22px" />;
+        return <ContentIcon size={22} />;
       case 'THREAD':
-        return <CollectionIcon width="22px" />;
+        return <CollectionIcon size={22} />;
       case 'USER':
-        return <UserIcon width="22px" />;
+        return <UserIcon size={22} />;
       case 'EXPLAINER':
-        return <QuestionCircleIcon width="22px" />;
+        return <QuestionCircleIcon size={22} />;
     }
   };
   const tabBar = (
@@ -262,42 +264,48 @@ export default function ItemTypesDashboard() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Name',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Description',
-        accessor: 'description',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'description',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Description',
+        accessorKey: 'description',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'description',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'ID',
-        accessor: 'id',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'id',
-          }),
-        filter: 'text',
-        canSort: false,
+        header: 'ID',
+        accessorKey: 'id',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'id',
+            }),
+        },
+        filterFn: 'text' as const,
+        enableSorting: false,
       },
       {
-        Header: '',
-        accessor: 'mutations', // accessor is the "key" in the data
-        canSort: false,
+        header: '',
+        accessorKey: 'mutations', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],
@@ -459,7 +467,7 @@ export default function ItemTypesDashboard() {
       buttonLinkPath={`form?kind=${selectedTab}`}
       buttonTitle={`Create ${capitalize(selectedTab)} Type`}
       dashboardName={`${capitalize(selectedTab)} Types`}
-      icon={<ReadOutlined />}
+      icon={<BookOpen className="w-24 h-24" />}
       buttonDisabled={!canEditItemTypes}
     />
   );

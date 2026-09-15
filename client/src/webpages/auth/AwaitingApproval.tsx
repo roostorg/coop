@@ -1,4 +1,4 @@
-import { ClockCircleOutlined } from '@ant-design/icons';
+import { Clock } from 'lucide-react';
 
 export default function AwaitingApproval() {
   return (
@@ -6,7 +6,7 @@ export default function AwaitingApproval() {
       <div className="flex flex-col items-center justify-center w-full min-h-screen">
         <div className="flex flex-col items-center justify-center p-12 shadow">
           <div className="pb-3 text-6xl text-indigo-500">
-            <ClockCircleOutlined />
+            <Clock className="w-12 h-12" />
           </div>
           <div className="py-2 text-3xl max-w-96">Pending Approval</div>
           <div className="pt-2 pb-10 text-center max-w-96">

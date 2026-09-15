@@ -4,6 +4,7 @@ import { uid } from 'uid';
 import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { seedSystemRolesForOrg } from './rolePersistence.js';
 import {
   kyselyUserFindByEmailAndOrg,
   kyselyUserInsert,
@@ -14,8 +15,8 @@ function samlUserInput(orgId: string) {
     id: uid(),
     orgId,
     email: faker.internet.email(),
-    firstName: faker.name.firstName(),
-    lastName: faker.name.lastName(),
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
     role: UserRole.ADMIN,
     loginMethods: ['saml'] as const,
     password: null,
@@ -32,6 +33,7 @@ describe('kyselyUserFindByEmailAndOrg', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 

@@ -1119,6 +1119,11 @@ export class ItemInvestigationService {
     throw new Error('Not Implemented');
   }
 
+  /**
+   * The item's action history, shaped for GraphQL. Records missing an item id
+   * or type id are dropped rather than surfaced partially, since the pair is
+   * what identifies an item.
+   */
   async getItemActionHistory(opts: {
     orgId: string;
     itemId: string;
@@ -1150,6 +1155,7 @@ export class ItemInvestigationService {
           itemCreatorTypeId: record.userTypeId ?? undefined,
           policies: record.policies,
           ruleIds: record.ruleIds,
+          parameters: record.parameters,
           ts: record.occurredAt,
         };
       }),

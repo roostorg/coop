@@ -4,7 +4,7 @@ import {
 } from '@/graphql/generated';
 import { gql } from '@apollo/client';
 import sum from 'lodash/sum';
-import type { SVGProps } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 import ComponentLoading from '@/components/common/ComponentLoading';
 
@@ -21,7 +21,7 @@ gql`
 
 export default function OverviewTable(props: {
   title: string;
-  icon: React.JSXElementConstructor<SVGProps<SVGSVGElement>>;
+  icon: LucideIcon;
   iconColor: 'text-teal-300' | 'text-orange-400' | 'text-amber-400';
   groupBy: 'policy';
   timeWindow: TimeWindow;

@@ -7,6 +7,7 @@ import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { type default as SafeTracer } from '../../utils/SafeTracer.js';
+import { seedSystemRolesForOrg } from '../datasources/rolePersistence.js';
 import {
   kyselyUserInsert,
   type UsersDb,
@@ -22,8 +23,8 @@ function samlUserInput(orgId: string) {
     id: uid(),
     orgId,
     email: faker.internet.email(),
-    firstName: faker.name.firstName(),
-    lastName: faker.name.lastName(),
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
     role: UserRole.ADMIN,
     loginMethods: ['saml'] as const,
     password: null,
@@ -40,6 +41,7 @@ describe('resolveSamlUser', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 

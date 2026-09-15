@@ -59,6 +59,8 @@ export type ManualReviewJobPayloadInput = Satisfies<
       item: ItemSubmissionWithTypeIdentifier; // must be a user
       // Slightly misnamed - a list of the user's media that have been deemed urgent enough to show
       allMediaItems: NcmecContentItemSubmission[];
+      // Identifiers of the reported content item(s); empty for account-level reports.
+      reportedMessages?: ItemIdentifier[];
       reportHistory: ReportHistory;
     },
   { kind: string }

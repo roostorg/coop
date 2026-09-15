@@ -457,12 +457,17 @@ const typeDefs = /* GraphQL */ `
 
   directive @publicResolver on FIELD_DEFINITION
 
+  type PasswordRequirements {
+    minLength: Int!
+  }
+
   type Query {
     myOrg: Org
     userFromToken(token: String!): ID
     inviteUserToken(token: String!): InviteUserTokenResponse! @publicResolver
     allRuleInsights: AllRuleInsights
     isWarehouseAvailable: Boolean!
+    passwordRequirements: PasswordRequirements! @publicResolver
   }
 
   type Mutation {

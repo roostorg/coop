@@ -1116,7 +1116,6 @@ export type GQLDerivedFieldCoopInputSourceInput = {
 };
 
 export const GQLDerivedFieldDerivationType = {
-  EnglishTranslation: 'ENGLISH_TRANSLATION',
   VideoTranscription: 'VIDEO_TRANSCRIPTION',
 } as const;
 
@@ -1441,6 +1440,32 @@ export type GQLGooglePlaceLocationInfo = {
   readonly id: Scalars['ID']['output'];
 };
 
+export type GQLHandleTime = {
+  readonly __typename?: 'HandleTime';
+  readonly handleTimeSeconds?: Maybe<Scalars['Int']['output']>;
+  readonly queueId?: Maybe<Scalars['String']['output']>;
+  readonly reviewerId?: Maybe<Scalars['String']['output']>;
+};
+
+export type GQLHandleTimeFilterByInput = {
+  readonly endDate: Scalars['DateTime']['input'];
+  readonly queueIds: ReadonlyArray<Scalars['String']['input']>;
+  readonly reviewerIds: ReadonlyArray<Scalars['String']['input']>;
+  readonly startDate: Scalars['DateTime']['input'];
+};
+
+export const GQLHandleTimeGroupByColumns = {
+  QueueId: 'QUEUE_ID',
+  ReviewerId: 'REVIEWER_ID',
+} as const;
+
+export type GQLHandleTimeGroupByColumns =
+  (typeof GQLHandleTimeGroupByColumns)[keyof typeof GQLHandleTimeGroupByColumns];
+export type GQLHandleTimeInput = {
+  readonly filterBy: GQLHandleTimeFilterByInput;
+  readonly groupBy: ReadonlyArray<GQLHandleTimeGroupByColumns>;
+};
+
 export type GQLHashBank = {
   readonly __typename?: 'HashBank';
   readonly description?: Maybe<Scalars['String']['output']>;
@@ -1637,6 +1662,12 @@ export type GQLItemAction = {
   readonly itemId: Scalars['ID']['output'];
   readonly itemTypeId: Scalars['ID']['output'];
   readonly jobId?: Maybe<Scalars['ID']['output']>;
+  /**
+   * Moderator-supplied parameter values this action ran with, keyed by the
+   * parameter's `name`. Empty when the action takes no parameters or the
+   * execution predates parameter capture.
+   */
+  readonly parameters: Scalars['JSONObject']['output'];
   readonly policies: ReadonlyArray<Scalars['String']['output']>;
   readonly ruleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly ts: Scalars['DateTime']['output'];
@@ -2185,12 +2216,14 @@ export type GQLManualReviewChartSettingsInput = {
 
 export type GQLManualReviewDecision = {
   readonly __typename?: 'ManualReviewDecision';
+  readonly assignedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly createdAt: Scalars['DateTime']['output'];
   readonly decisionReason?: Maybe<Scalars['String']['output']>;
   readonly decisions: ReadonlyArray<GQLManualReviewDecisionComponent>;
   readonly id: Scalars['String']['output'];
   readonly itemId?: Maybe<Scalars['String']['output']>;
   readonly itemTypeId?: Maybe<Scalars['String']['output']>;
+  readonly jobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly jobId: Scalars['String']['output'];
   readonly queueId: Scalars['String']['output'];
   readonly relatedActions: ReadonlyArray<GQLManualReviewDecisionComponent>;
@@ -2298,6 +2331,7 @@ export type GQLManualReviewQueue = {
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
@@ -3145,6 +3179,7 @@ export type GQLNcmecManualReviewJobPayload = {
   readonly allMediaItems: ReadonlyArray<GQLNcmecContentItem>;
   readonly enqueueSourceInfo?: Maybe<GQLManualReviewJobEnqueueSourceInfo>;
   readonly item: GQLUserItem;
+  readonly reportedMessages: ReadonlyArray<GQLItemIdentifier>;
   readonly userScore?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -3397,6 +3432,11 @@ export type GQLPartialItemsSuccessResponse = {
   readonly items: ReadonlyArray<GQLItem>;
 };
 
+export type GQLPasswordRequirements = {
+  readonly __typename?: 'PasswordRequirements';
+  readonly minLength: Scalars['Int']['output'];
+};
+
 export type GQLPendingInvite = {
   readonly __typename?: 'PendingInvite';
   readonly createdAt: Scalars['DateTime']['output'];
@@ -3516,6 +3556,7 @@ export type GQLQuery = {
   readonly getExistingJobsForItem: ReadonlyArray<GQLManualReviewExistingJob>;
   readonly getFullReportingRuleResultForItem: GQLGetFullReportingRuleResultForItemResponse;
   readonly getFullRuleResultForItem: GQLGetFullResultForItemResponse;
+  readonly getHandleTime?: Maybe<ReadonlyArray<GQLHandleTime>>;
   readonly getJobCreationCounts: ReadonlyArray<GQLJobCreationCount>;
   readonly getRecentDecisions: ReadonlyArray<GQLManualReviewDecision>;
   readonly getResolvedJobCounts: ReadonlyArray<GQLResolvedJobCount>;
@@ -3552,6 +3593,7 @@ export type GQLQuery = {
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
+  readonly passwordRequirements: GQLPasswordRequirements;
   /** Server-owned grouping + ordering for the role-editor UI. Gated on MANAGE_ROLES. */
   readonly permissionGroups: ReadonlyArray<GQLPermissionGroup>;
   readonly policy?: Maybe<GQLPolicy>;
@@ -3613,6 +3655,10 @@ export type GQLQueryGetFullReportingRuleResultForItemArgs = {
 
 export type GQLQueryGetFullRuleResultForItemArgs = {
   input: GQLGetFullResultForItemInput;
+};
+
+export type GQLQueryGetHandleTimeArgs = {
+  input: GQLHandleTimeInput;
 };
 
 export type GQLQueryGetJobCreationCountsArgs = {
@@ -4076,10 +4122,8 @@ export type GQLRole = {
   readonly __typename?: 'Role';
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
-  readonly id?: Maybe<Scalars['ID']['output']>;
-  /** True when permissions/metadata come from the static fallback rather than public.roles. */
-  readonly isFallback: Scalars['Boolean']['output'];
+  /** Persisted public.roles.id. */
+  readonly id: Scalars['ID']['output'];
   readonly isSystem: Scalars['Boolean']['output'];
   /** Stable role identifier (matches UserRole). */
   readonly key: GQLUserRole;
@@ -4511,10 +4555,8 @@ export const GQLSignalType = {
   Custom: 'CUSTOM',
   GeoContainedWithin: 'GEO_CONTAINED_WITHIN',
   GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
-  ImageExactMatch: 'IMAGE_EXACT_MATCH',
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
-  ImageSimilarityScore: 'IMAGE_SIMILARITY_SCORE',
   OpenAiGraphicViolenceImageModel: 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL',
   OpenAiGraphicViolenceTextModel: 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
@@ -4625,6 +4667,8 @@ export type GQLSubmitDecisionResponse =
 export type GQLSubmitDecisionSuccessResponse = {
   readonly __typename?: 'SubmitDecisionSuccessResponse';
   readonly success: Scalars['Boolean']['output'];
+  /** Non-blocking, reviewer-facing notices about the decision (e.g. an NCMEC escalation that was skipped because the user was already reported). Surfaced as toasts. */
+  readonly warnings: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLSubmitNcmecReportDecisionComponent =
@@ -6003,6 +6047,10 @@ export type GQLResolversTypes = {
   GoogleContentSafetyApiIntegrationApiCredential: ResolverTypeWrapper<GQLGoogleContentSafetyApiIntegrationApiCredential>;
   GoogleContentSafetyApiIntegrationApiCredentialInput: GQLGoogleContentSafetyApiIntegrationApiCredentialInput;
   GooglePlaceLocationInfo: ResolverTypeWrapper<GQLGooglePlaceLocationInfo>;
+  HandleTime: ResolverTypeWrapper<GQLHandleTime>;
+  HandleTimeFilterByInput: GQLHandleTimeFilterByInput;
+  HandleTimeGroupByColumns: GQLHandleTimeGroupByColumns;
+  HandleTimeInput: GQLHandleTimeInput;
   HashBank: ResolverTypeWrapper<HashBank>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   IgnoreDecisionComponent: ResolverTypeWrapper<GQLIgnoreDecisionComponent>;
@@ -6312,6 +6360,7 @@ export type GQLResolversTypes = {
       items: ReadonlyArray<GQLResolversTypes['Item']>;
     }
   >;
+  PasswordRequirements: ResolverTypeWrapper<GQLPasswordRequirements>;
   PendingInvite: ResolverTypeWrapper<GQLPendingInvite>;
   PermissionGroup: ResolverTypeWrapper<GQLPermissionGroup>;
   PermissionGroupItem: ResolverTypeWrapper<GQLPermissionGroupItem>;
@@ -6799,6 +6848,9 @@ export type GQLResolversParentTypes = {
   GoogleContentSafetyApiIntegrationApiCredential: GQLGoogleContentSafetyApiIntegrationApiCredential;
   GoogleContentSafetyApiIntegrationApiCredentialInput: GQLGoogleContentSafetyApiIntegrationApiCredentialInput;
   GooglePlaceLocationInfo: GQLGooglePlaceLocationInfo;
+  HandleTime: GQLHandleTime;
+  HandleTimeFilterByInput: GQLHandleTimeFilterByInput;
+  HandleTimeInput: GQLHandleTimeInput;
   HashBank: HashBank;
   ID: Scalars['ID']['output'];
   IgnoreDecisionComponent: GQLIgnoreDecisionComponent;
@@ -7018,6 +7070,7 @@ export type GQLResolversParentTypes = {
   PartialItemsSuccessResponse: Omit<GQLPartialItemsSuccessResponse, 'items'> & {
     items: ReadonlyArray<GQLResolversParentTypes['Item']>;
   };
+  PasswordRequirements: GQLPasswordRequirements;
   PendingInvite: GQLPendingInvite;
   PermissionGroup: GQLPermissionGroup;
   PermissionGroupItem: GQLPermissionGroupItem;
@@ -9225,6 +9278,28 @@ export type GQLGooglePlaceLocationInfoResolvers<
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
 };
 
+export type GQLHandleTimeResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['HandleTime'] =
+    GQLResolversParentTypes['HandleTime'],
+> = {
+  handleTimeSeconds?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  queueId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  reviewerId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLHashBankResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['HashBank'] =
@@ -9640,6 +9715,11 @@ export type GQLItemActionResolvers<
   itemId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   itemTypeId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   jobId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
+  parameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
   policies?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
     ParentType,
@@ -10236,6 +10316,11 @@ export type GQLManualReviewDecisionResolvers<
   ParentType extends GQLResolversParentTypes['ManualReviewDecision'] =
     GQLResolversParentTypes['ManualReviewDecision'],
 > = {
+  assignedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
+    ParentType,
+    ContextType
+  >;
   createdAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
   decisionReason?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -10255,6 +10340,11 @@ export type GQLManualReviewDecisionResolvers<
   >;
   itemTypeId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  jobCreatedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
     ParentType,
     ContextType
   >;
@@ -11698,6 +11788,11 @@ export type GQLNcmecManualReviewJobPayloadResolvers<
     ContextType
   >;
   item?: Resolver<GQLResolversTypes['UserItem'], ParentType, ContextType>;
+  reportedMessages?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ItemIdentifier']>,
+    ParentType,
+    ContextType
+  >;
   userScore?: Resolver<
     Maybe<GQLResolversTypes['Int']>,
     ParentType,
@@ -12253,6 +12348,14 @@ export type GQLPartialItemsSuccessResponseResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GQLPasswordRequirementsResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['PasswordRequirements'] =
+    GQLResolversParentTypes['PasswordRequirements'],
+> = {
+  minLength?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type GQLPendingInviteResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['PendingInvite'] =
@@ -12527,6 +12630,12 @@ export type GQLQueryResolvers<
     ContextType,
     RequireFields<GQLQueryGetFullRuleResultForItemArgs, 'input'>
   >;
+  getHandleTime?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['HandleTime']>>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLQueryGetHandleTimeArgs, 'input'>
+  >;
   getJobCreationCounts?: Resolver<
     ReadonlyArray<GQLResolversTypes['JobCreationCount']>,
     ParentType,
@@ -12727,6 +12836,11 @@ export type GQLQueryResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLQueryPartialItemsArgs, 'input'>
+  >;
+  passwordRequirements?: Resolver<
+    GQLResolversTypes['PasswordRequirements'],
+    ParentType,
+    ContextType
   >;
   permissionGroups?: Resolver<
     ReadonlyArray<GQLResolversTypes['PermissionGroup']>,
@@ -13260,8 +13374,7 @@ export type GQLRoleResolvers<
     ContextType
   >;
   displayName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  id?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
-  isFallback?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   isSystem?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   key?: Resolver<GQLResolversTypes['UserRole'], ParentType, ContextType>;
   permissions?: Resolver<
@@ -14056,6 +14169,11 @@ export type GQLSubmitDecisionSuccessResponseResolvers<
     GQLResolversParentTypes['SubmitDecisionSuccessResponse'],
 > = {
   success?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  warnings?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -15175,6 +15293,7 @@ export type GQLResolvers<ContextType = Context> = {
   GetJobCreationCountSettings?: GQLGetJobCreationCountSettingsResolvers<ContextType>;
   GoogleContentSafetyApiIntegrationApiCredential?: GQLGoogleContentSafetyApiIntegrationApiCredentialResolvers<ContextType>;
   GooglePlaceLocationInfo?: GQLGooglePlaceLocationInfoResolvers<ContextType>;
+  HandleTime?: GQLHandleTimeResolvers<ContextType>;
   HashBank?: GQLHashBankResolvers<ContextType>;
   IgnoreDecisionComponent?: GQLIgnoreDecisionComponentResolvers<ContextType>;
   IntegrationApiCredential?: GQLIntegrationApiCredentialResolvers<ContextType>;
@@ -15290,6 +15409,7 @@ export type GQLResolvers<ContextType = Context> = {
   PartialItemsMissingEndpointError?: GQLPartialItemsMissingEndpointErrorResolvers<ContextType>;
   PartialItemsResponse?: GQLPartialItemsResponseResolvers<ContextType>;
   PartialItemsSuccessResponse?: GQLPartialItemsSuccessResponseResolvers<ContextType>;
+  PasswordRequirements?: GQLPasswordRequirementsResolvers<ContextType>;
   PendingInvite?: GQLPendingInviteResolvers<ContextType>;
   PermissionGroup?: GQLPermissionGroupResolvers<ContextType>;
   PermissionGroupItem?: GQLPermissionGroupItemResolvers<ContextType>;

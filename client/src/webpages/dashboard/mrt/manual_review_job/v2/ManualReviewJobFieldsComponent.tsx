@@ -1,6 +1,5 @@
 import { getFieldValueForRole } from '@/utils/itemUtils';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { DownOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import {
   isContainerField,
@@ -9,8 +8,9 @@ import {
   ScalarTypeRuntimeType,
 } from '@roostorg/coop-types';
 import isPlainObject from 'lodash/isPlainObject';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import ReactAudioPlayer from 'react-audio-player';
+import ReactPlayer from 'react-player/lazy';
 import { Link } from 'react-router-dom';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
@@ -266,7 +266,7 @@ function TableRowComponent(props: {
       return (
         <div className="flex flex-col px-2 align-top text-start">
           {label ? <div className="pr-3 font-bold">{label}</div> : null}
-          <ReactAudioPlayer src={url} autoPlay controls />
+          <ReactPlayer url={url} controls width="100%" height="54px" />
         </div>
       );
     }
@@ -479,7 +479,7 @@ function TableRowComponent(props: {
         return (
           <div className="flex flex-col px-2 align-top text-start">
             {label ? <div className="pr-3 font-bold">{label}</div> : null}
-            <ReactAudioPlayer src={url} autoPlay controls />
+            <ReactPlayer url={url} controls width="100%" height="54px" />
           </div>
         );
       }
@@ -763,7 +763,7 @@ function ContainerComponent(props: {
           >
             Expand{' '}
             {`(${itemComponents.length - collapsedItemLimit} more items)`}
-            <DownOutlined className="pt-1 pl-2" />
+            <ChevronDown className="w-4 h-4 pt-1 pl-2" />
           </div>
         </div>
       );

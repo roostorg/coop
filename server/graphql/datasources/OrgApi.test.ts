@@ -6,6 +6,7 @@ import createContentItemTypes from '../../test/fixtureHelpers/createContentItemT
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { CoopError } from '../../utils/errors.js';
+import { seedSystemRolesForOrg } from './rolePersistence.js';
 import { kyselyUserInsert } from './userKyselyPersistence.js';
 
 describe('OrgAPI', () => {
@@ -18,6 +19,7 @@ describe('OrgAPI', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 
@@ -193,8 +195,8 @@ describe('OrgAPI', () => {
           id: adminId,
           orgId: org.id,
           email: faker.internet.email(),
-          firstName: faker.name.firstName(),
-          lastName: faker.name.lastName(),
+          firstName: faker.person.firstName(),
+          lastName: faker.person.lastName(),
           role: UserRole.ADMIN,
           loginMethods: ['saml'],
           password: null,
@@ -204,8 +206,8 @@ describe('OrgAPI', () => {
           id: analystId,
           orgId: org.id,
           email: faker.internet.email(),
-          firstName: faker.name.firstName(),
-          lastName: faker.name.lastName(),
+          firstName: faker.person.firstName(),
+          lastName: faker.person.lastName(),
           role: UserRole.ANALYST,
           loginMethods: ['saml'],
           password: null,
@@ -243,14 +245,15 @@ describe('OrgAPI', () => {
           },
           uid(),
         );
+        await seedSystemRolesForOrg(deps.KyselyPg, otherOrg.id);
         const otherUserId = uid();
         await kyselyUserInsert({
           db: deps.KyselyPg,
           id: otherUserId,
           orgId: otherOrg.id,
           email: faker.internet.email(),
-          firstName: faker.name.firstName(),
-          lastName: faker.name.lastName(),
+          firstName: faker.person.firstName(),
+          lastName: faker.person.lastName(),
           role: UserRole.ADMIN,
           loginMethods: ['saml'],
           password: null,

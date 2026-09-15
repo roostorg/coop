@@ -117,6 +117,8 @@ export type QueueOperationsErrorType =
 // scaling by orgId, so you need the orgId to find the queue.
 type QueueKey = { orgId: string; queueId: string };
 
+const MANUAL_REVIEW_LOCK_DURATION_MS = 600_000;
+
 /**
  * This class handles everything that MRT does directly with queues: CRUDing
  * them, enqueuing and dequeueing jobs on a given queue, looking up jobs within
@@ -956,6 +958,31 @@ export default class QueueOperations {
     );
 
     return filterNullOrUndefined(jobs).map((job) => job.data);
+  }
+
+  async extendJobLock(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    lockToken: string;
+    isAppealsQueue: boolean;
+  }) {
+    const { orgId, queueId, jobId, lockToken, isAppealsQueue } = opts;
+    if (isAppealsQueue) {
+      const queue = await this.#getBullAppealQueue(orgId, queueId);
+      const job = await this.#getAppealJob(jobId, queue);
+      if (!job) return false;
+      return (
+        (await job.extendLock(lockToken, MANUAL_REVIEW_LOCK_DURATION_MS)) === 1
+      );
+    }
+
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const job = await this.#getJob(jobId, queue);
+    if (!job) return false;
+    return (
+      (await job.extendLock(lockToken, MANUAL_REVIEW_LOCK_DURATION_MS)) === 1
+    );
   }
 
   async getAllJobsForQueue(opts: {
@@ -1916,7 +1943,7 @@ export async function getBullWorker<JobData = unknown>(
     },
     {
       connection: redisConnection,
-      lockDuration: 600000,
+      lockDuration: MANUAL_REVIEW_LOCK_DURATION_MS,
       prefix: getPrefix(orgId),
       autorun: false,
       // A job is put into stalled when a user claims it and then doesn't action
