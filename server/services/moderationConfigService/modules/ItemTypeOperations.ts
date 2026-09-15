@@ -11,6 +11,7 @@ import {
   isCoopErrorOfType,
   makeNotFoundError,
 } from '../../../utils/errors.js';
+import { isUniqueViolationError } from '../../../utils/kysely.js';
 import {
   makeKyselyTransactionWithRetry,
   type KyselyTransactionWithRetry,
@@ -23,6 +24,7 @@ import {
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { type CollapseCases } from '../../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
+import { makeItemTypeNameAlreadyExistsError } from '../errors.js';
 import {
   type ContentItemType,
   type ItemType,
@@ -37,6 +39,11 @@ import {
   type ItemSchema,
   type ItemTypeSelector,
 } from '../types/itemTypes.js';
+import {
+  assertBackwardCompatibleItemSchema,
+  assertHiddenFieldsExist,
+  assertValidItemSchema,
+} from './itemTypeSchemaValidation.js';
 
 const versionTextExpression = sql<string>`to_char(timezone('UTC'::text, version), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'::text)`;
 const itemTypeDbSelection = [
@@ -64,6 +71,23 @@ type ItemTypeDbResult = Selection<
   ModerationConfigServicePg,
   'public.item_type_versions',
   (typeof itemTypeDbSelection)[number]
+>;
+
+export type ItemTypeHiddenFields = readonly string[];
+type ItemTypeRoleColumns = Partial<
+  Pick<
+    ModerationConfigServicePg['public.item_types'],
+    | 'display_name_field'
+    | 'creator_id_field'
+    | 'thread_id_field'
+    | 'parent_id_field'
+    | 'created_at_field'
+    | 'profile_icon_field'
+    | 'background_image_field'
+    | 'is_deleted_field'
+    | 'ip_address_field'
+    | 'email_field'
+  >
 >;
 
 export default class ItemTypeOperations {
@@ -133,38 +157,59 @@ export default class ItemTypeOperations {
     await this.latestItemTypesCache.invalidate!(orgId);
   }
 
-  // Pass trx to every participating service call. The callback can be retried.
-  async withItemTypeTransaction<T extends ReadonlyDeep<ItemType>>(
-    orgId: string,
-    run: (trx: Transaction<ModerationConfigServicePg>) => Promise<T>,
-  ): Promise<T> {
-    const result = await this.transactionWithRetry(run);
-    await this.invalidateLatestItemTypesCache(orgId);
-    return result;
-  }
-
-  private async readAfterWrite(
-    orgId: string,
-    trx?: Transaction<ModerationConfigServicePg>,
-  ): Promise<readonly ReadonlyDeep<ItemType>[]> {
-    if (trx) {
-      const rows = await getItemTypeVersionsBaseQuery({
-        orgId,
-        currentVersionsOnly: true,
-        pgQuery: trx,
-      }).execute();
-      return rows.map((row) => dbResultToItemType(row, 'original'));
-    }
-    await this.invalidateLatestItemTypesCache(orgId);
-    return this.latestItemTypesCache(orgId, { maxAge: 0 });
-  }
-
   async getItemTypes(opts: {
     orgId: string;
     directives?: ConsumerDirectives;
   }): Promise<readonly ReadonlyDeep<ItemType>[]> {
     const { orgId, directives } = opts;
     return this.latestItemTypesCache(orgId, directives);
+  }
+
+  async getHiddenFieldsForItemType(opts: {
+    orgId: string;
+    itemTypeId: string;
+  }): Promise<ItemTypeHiddenFields> {
+    const row = await this.pgQuery
+      .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
+      .select('hidden_fields')
+      .where('org_id', '=', opts.orgId)
+      .where('item_type_id', '=', opts.itemTypeId)
+      .executeTakeFirst();
+    return row?.hidden_fields ?? [];
+  }
+
+  async setHiddenFieldsForItemType(opts: {
+    orgId: string;
+    itemTypeId: string;
+    hiddenFields: readonly string[];
+  }): Promise<void> {
+    await this.transactionWithRetry(async (trx) => {
+      // Deletion cleanup calls this after the item-type row is gone. Treat an
+      // empty list as idempotent cleanup rather than trying to reinsert it.
+      if (opts.hiddenFields.length === 0) {
+        await trx
+          .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
+          .where('org_id', '=', opts.orgId)
+          .where('item_type_id', '=', opts.itemTypeId)
+          .execute();
+        return;
+      }
+
+      const itemType = await trx
+        .selectFrom('public.item_types')
+        .select('fields')
+        .where('id', '=', opts.itemTypeId)
+        .where('org_id', '=', opts.orgId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (itemType === undefined) {
+        throw makeNotFoundError('Item type not found', {
+          shouldErrorSpan: false,
+        });
+      }
+      assertHiddenFieldsExist(itemType.fields, opts.hiddenFields);
+      await this.setHiddenFields(trx, opts);
+    });
   }
 
   async getItemType(opts: {
@@ -298,33 +343,18 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
+      hiddenFields?: readonly string[] | null;
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: contentItemTypeId } = await (trx ?? this.pgQuery)
-      .insertInto('public.item_types')
-      .values({
-        id: uid(),
-        name: input.name,
-        description: input.description,
-        org_id: orgId,
-        kind: 'CONTENT',
-        fields: input.schema,
-        creator_id_field: input.schemaFieldRoles.creatorId,
-        thread_id_field: input.schemaFieldRoles.threadId,
-        parent_id_field: input.schemaFieldRoles.parentId,
-        created_at_field: input.schemaFieldRoles.createdAt,
-        display_name_field: input.schemaFieldRoles.displayName,
-        is_deleted_field: input.schemaFieldRoles.isDeleted,
-        ip_address_field: input.schemaFieldRoles.ipAddress,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-
-    return (await this.readAfterWrite(orgId, trx)).find(
-      (it): it is ReadonlyDeep<ContentItemType> =>
-        it.kind === 'CONTENT' && it.id === contentItemTypeId,
-    )!;
+    return this.createItemType<ContentItemType>(orgId, 'CONTENT', input, {
+      creator_id_field: input.schemaFieldRoles.creatorId,
+      thread_id_field: input.schemaFieldRoles.threadId,
+      parent_id_field: input.schemaFieldRoles.parentId,
+      created_at_field: input.schemaFieldRoles.createdAt,
+      display_name_field: input.schemaFieldRoles.displayName,
+      is_deleted_field: input.schemaFieldRoles.isDeleted,
+      ip_address_field: input.schemaFieldRoles.ipAddress,
+    });
   }
 
   async updateContentType(
@@ -334,7 +364,7 @@ export default class ItemTypeOperations {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
+      schemaFieldRoles?: {
         creatorId?: string | null;
         threadId?: string | null;
         parentId?: string | null;
@@ -343,48 +373,39 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
+      hiddenFields?: readonly string[] | null;
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: contentItemTypeId } = await (trx ?? this.pgQuery)
-      .updateTable('public.item_types')
-      .set(
-        removeUndefinedKeys({
-          name: input.name,
-          description: replaceEmptyStringWithNull(input.description),
-          fields: input.schema,
-          creator_id_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.creatorId,
-          ),
-          thread_id_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.threadId,
-          ),
-          parent_id_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.parentId,
-          ),
-          created_at_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.createdAt,
-          ),
-          display_name_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.displayName,
-          ),
-          is_deleted_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.isDeleted,
-          ),
-          ip_address_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.ipAddress,
-          ),
-        }),
-      )
-      .where('id', '=', input.id)
-      .where('org_id', '=', orgId)
-      .returning('id')
-      .executeTakeFirstOrThrow();
-
-    return (await this.readAfterWrite(orgId, trx)).find(
-      (it): it is ReadonlyDeep<ContentItemType> =>
-        it.kind === 'CONTENT' && it.id === contentItemTypeId,
-    )!;
+    return this.updateItemType<ContentItemType>(
+      orgId,
+      'CONTENT',
+      input,
+      input.schemaFieldRoles === undefined
+        ? {}
+        : {
+            creator_id_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.creatorId,
+            ),
+            thread_id_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.threadId,
+            ),
+            parent_id_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.parentId,
+            ),
+            created_at_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.createdAt,
+            ),
+            display_name_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.displayName,
+            ),
+            is_deleted_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.isDeleted,
+            ),
+            ip_address_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.ipAddress,
+            ),
+          },
+    );
   }
 
   async createThreadType(
@@ -400,31 +421,16 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
+      hiddenFields?: readonly string[] | null;
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<ThreadItemType> {
-    const { id: threadItemTypeId } = await (trx ?? this.pgQuery)
-      .insertInto('public.item_types')
-      .values({
-        id: uid(),
-        name: input.name,
-        description: input.description,
-        org_id: orgId,
-        kind: 'THREAD',
-        fields: input.schema,
-        created_at_field: input.schemaFieldRoles.createdAt,
-        display_name_field: input.schemaFieldRoles.displayName,
-        creator_id_field: input.schemaFieldRoles.creatorId,
-        is_deleted_field: input.schemaFieldRoles.isDeleted,
-        ip_address_field: input.schemaFieldRoles.ipAddress,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-
-    return (await this.readAfterWrite(orgId, trx)).find(
-      (it): it is ReadonlyDeep<ThreadItemType> =>
-        it.kind === 'THREAD' && it.id === threadItemTypeId,
-    )!;
+    return this.createItemType<ThreadItemType>(orgId, 'THREAD', input, {
+      created_at_field: input.schemaFieldRoles.createdAt,
+      display_name_field: input.schemaFieldRoles.displayName,
+      creator_id_field: input.schemaFieldRoles.creatorId,
+      is_deleted_field: input.schemaFieldRoles.isDeleted,
+      ip_address_field: input.schemaFieldRoles.ipAddress,
+    });
   }
 
   async updateThreadType(
@@ -434,49 +440,40 @@ export default class ItemTypeOperations {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
+      schemaFieldRoles?: {
         createdAt?: string | null;
         displayName?: string | null;
         creatorId?: string | null;
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
+      hiddenFields?: readonly string[] | null;
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: threadItemTypeId } = await (trx ?? this.pgQuery)
-      .updateTable('public.item_types')
-      .set(
-        removeUndefinedKeys({
-          name: input.name,
-          description: replaceEmptyStringWithNull(input.description),
-          fields: input.schema,
-          created_at_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.createdAt,
-          ),
-          display_name_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.displayName,
-          ),
-          creator_id_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.creatorId,
-          ),
-          is_deleted_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.isDeleted,
-          ),
-          ip_address_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.ipAddress,
-          ),
-        }),
-      )
-      .where('id', '=', input.id)
-      .where('org_id', '=', orgId)
-      .returning('id')
-      .executeTakeFirstOrThrow();
-
-    return (await this.readAfterWrite(orgId, trx)).find(
-      (it): it is ReadonlyDeep<ThreadItemType> =>
-        it.kind === 'THREAD' && it.id === threadItemTypeId,
-    )!;
+    return this.updateItemType<ThreadItemType>(
+      orgId,
+      'THREAD',
+      input,
+      input.schemaFieldRoles === undefined
+        ? {}
+        : {
+            created_at_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.createdAt,
+            ),
+            display_name_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.displayName,
+            ),
+            creator_id_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.creatorId,
+            ),
+            is_deleted_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.isDeleted,
+            ),
+            ip_address_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.ipAddress,
+            ),
+          },
+    );
   }
 
   async createUserType(
@@ -494,33 +491,18 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
         email?: string | null;
       };
+      hiddenFields?: readonly string[] | null;
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: userItemTypeId } = await (trx ?? this.pgQuery)
-      .insertInto('public.item_types')
-      .values({
-        id: uid(),
-        name: input.name,
-        description: input.description,
-        org_id: orgId,
-        kind: 'USER',
-        fields: input.schema,
-        profile_icon_field: input.schemaFieldRoles.profileIcon,
-        background_image_field: input.schemaFieldRoles.backgroundImage,
-        created_at_field: input.schemaFieldRoles.createdAt,
-        display_name_field: input.schemaFieldRoles.displayName,
-        is_deleted_field: input.schemaFieldRoles.isDeleted,
-        ip_address_field: input.schemaFieldRoles.ipAddress,
-        email_field: input.schemaFieldRoles.email,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
-
-    return (await this.readAfterWrite(orgId, trx)).find(
-      (it): it is ReadonlyDeep<UserItemType> =>
-        it.kind === 'USER' && it.id === userItemTypeId,
-    )!;
+    return this.createItemType<UserItemType>(orgId, 'USER', input, {
+      profile_icon_field: input.schemaFieldRoles.profileIcon,
+      background_image_field: input.schemaFieldRoles.backgroundImage,
+      created_at_field: input.schemaFieldRoles.createdAt,
+      display_name_field: input.schemaFieldRoles.displayName,
+      is_deleted_field: input.schemaFieldRoles.isDeleted,
+      ip_address_field: input.schemaFieldRoles.ipAddress,
+      email_field: input.schemaFieldRoles.email,
+    });
   }
 
   async updateUserType(
@@ -530,7 +512,7 @@ export default class ItemTypeOperations {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      schemaFieldRoles: {
+      schemaFieldRoles?: {
         profileIcon?: string | null;
         backgroundImage?: string | null;
         createdAt?: string | null;
@@ -539,46 +521,219 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
         email?: string | null;
       };
+      hiddenFields?: readonly string[] | null;
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<UserItemType> {
-    const { id: userItemTypeId } = await (trx ?? this.pgQuery)
-      .updateTable('public.item_types')
-      .set(
-        removeUndefinedKeys({
-          name: input.name,
-          description: replaceEmptyStringWithNull(input.description),
-          fields: input.schema,
-          profile_icon_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.profileIcon,
-          ),
-          background_image_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.backgroundImage,
-          ),
-          created_at_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.createdAt,
-          ),
-          display_name_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.displayName,
-          ),
-          is_deleted_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.isDeleted,
-          ),
-          ip_address_field: replaceEmptyStringWithNull(
-            input.schemaFieldRoles.ipAddress,
-          ),
-          email_field: replaceEmptyStringWithNull(input.schemaFieldRoles.email),
-        }),
-      )
-      .where('id', '=', input.id)
-      .where('org_id', '=', orgId)
-      .returning('id')
-      .executeTakeFirstOrThrow();
+    return this.updateItemType<UserItemType>(
+      orgId,
+      'USER',
+      input,
+      input.schemaFieldRoles === undefined
+        ? {}
+        : {
+            profile_icon_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.profileIcon,
+            ),
+            background_image_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.backgroundImage,
+            ),
+            created_at_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.createdAt,
+            ),
+            display_name_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.displayName,
+            ),
+            is_deleted_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.isDeleted,
+            ),
+            ip_address_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.ipAddress,
+            ),
+            email_field: replaceEmptyStringWithNull(
+              input.schemaFieldRoles.email,
+            ),
+          },
+    );
+  }
 
-    return (await this.readAfterWrite(orgId, trx)).find(
-      (it): it is ReadonlyDeep<UserItemType> =>
-        it.kind === 'USER' && it.id === userItemTypeId,
-    )!;
+  private async createItemType<T extends ItemType>(
+    orgId: string,
+    kind: ItemTypeKind,
+    input: {
+      name: string;
+      schema: ItemSchema;
+      description?: string | null;
+      hiddenFields?: readonly string[] | null;
+    },
+    roleColumns: ItemTypeRoleColumns,
+  ): Promise<T> {
+    const itemTypeId = uid();
+    try {
+      await this.transactionWithRetry(async (trx) => {
+        assertValidItemSchema(input.schema);
+        assertHiddenFieldsExist(input.schema, input.hiddenFields ?? []);
+        await trx
+          .insertInto('public.item_types')
+          .values({
+            id: itemTypeId,
+            name: input.name,
+            description: input.description,
+            org_id: orgId,
+            kind,
+            fields: input.schema,
+            ...roleColumns,
+          })
+          .execute();
+        await this.setHiddenFields(trx, {
+          orgId,
+          itemTypeId,
+          hiddenFields: input.hiddenFields ?? [],
+        });
+      });
+    } catch (error) {
+      this.rethrowItemTypeNameConflict(error);
+    }
+    return this.reloadAfterWrite<T>(orgId, itemTypeId, kind);
+  }
+
+  private async updateItemType<T extends ItemType>(
+    orgId: string,
+    kind: ItemTypeKind,
+    input: {
+      id: string;
+      name?: string;
+      schema?: ItemSchema;
+      description?: string | null;
+      hiddenFields?: readonly string[] | null;
+    },
+    roleColumns: ItemTypeRoleColumns,
+  ): Promise<T> {
+    let itemTypeId: string;
+    try {
+      itemTypeId = await this.transactionWithRetry(async (trx) => {
+        const current = await trx
+          .selectFrom('public.item_types')
+          .select(['id', 'fields'])
+          .where('id', '=', input.id)
+          .where('org_id', '=', orgId)
+          .where('kind', '=', kind)
+          .forUpdate()
+          .executeTakeFirst();
+        if (current === undefined) {
+          throw makeNotFoundError('Item type not found', {
+            shouldErrorSpan: false,
+          });
+        }
+        const proposedSchema = input.schema ?? current.fields;
+        assertValidItemSchema(proposedSchema);
+        assertBackwardCompatibleItemSchema(current.fields, proposedSchema);
+        const existingHiddenFields = await this.getHiddenFields(
+          trx,
+          orgId,
+          current.id,
+        );
+        const proposedHiddenFields = input.hiddenFields ?? existingHiddenFields;
+        assertHiddenFieldsExist(proposedSchema, proposedHiddenFields);
+        if (input.hiddenFields != null) {
+          await this.setHiddenFields(trx, {
+            orgId,
+            itemTypeId: current.id,
+            hiddenFields: input.hiddenFields,
+          });
+        }
+        const updated = await trx
+          .updateTable('public.item_types')
+          .set(
+            removeUndefinedKeys({
+              name: input.name,
+              description: replaceEmptyStringWithNull(input.description),
+              fields: proposedSchema,
+              ...roleColumns,
+            }),
+          )
+          .where('id', '=', current.id)
+          .where('org_id', '=', orgId)
+          .where('kind', '=', kind)
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        return updated.id;
+      });
+    } catch (error) {
+      this.rethrowItemTypeNameConflict(error);
+    }
+    return this.reloadAfterWrite<T>(orgId, itemTypeId, kind);
+  }
+
+  private async getHiddenFields(
+    query: Transaction<ModerationConfigServicePg>,
+    orgId: string,
+    itemTypeId: string,
+  ) {
+    const row = await query
+      .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
+      .select('hidden_fields')
+      .where('org_id', '=', orgId)
+      .where('item_type_id', '=', itemTypeId)
+      .executeTakeFirst();
+    return row?.hidden_fields ?? [];
+  }
+
+  private async setHiddenFields(
+    query: Transaction<ModerationConfigServicePg>,
+    opts: {
+      orgId: string;
+      itemTypeId: string;
+      hiddenFields: readonly string[];
+    },
+  ) {
+    await query
+      .insertInto('manual_review_tool.manual_review_hidden_item_fields')
+      .values({
+        org_id: opts.orgId,
+        item_type_id: opts.itemTypeId,
+        hidden_fields: [...opts.hiddenFields],
+      })
+      .onConflict((oc) =>
+        oc
+          .columns(['org_id', 'item_type_id'])
+          .doUpdateSet({ hidden_fields: [...opts.hiddenFields] }),
+      )
+      .execute();
+  }
+
+  private rethrowItemTypeNameConflict(error: unknown): never {
+    const pgError = error as {
+      constraint?: string;
+      table?: string;
+      schema?: string;
+    };
+    if (
+      isUniqueViolationError(error) &&
+      pgError.constraint === 'org_id_name_key' &&
+      pgError.table === 'item_types' &&
+      pgError.schema === 'public'
+    ) {
+      throw makeItemTypeNameAlreadyExistsError({ shouldErrorSpan: false });
+    }
+    throw error;
+  }
+
+  private async reloadAfterWrite<T extends ItemType>(
+    orgId: string,
+    itemTypeId: string,
+    kind: ItemTypeKind,
+  ): Promise<T> {
+    await this.invalidateLatestItemTypesCache(orgId);
+    const itemType = (
+      await this.latestItemTypesCache(orgId, { maxAge: 0 })
+    ).find(
+      (itemType): itemType is T =>
+        itemType.kind === kind && itemType.id === itemTypeId,
+    );
+    if (itemType === undefined) {
+      throw new Error('Committed item type missing after cache reload');
+    }
+    return itemType;
   }
 
   /**
