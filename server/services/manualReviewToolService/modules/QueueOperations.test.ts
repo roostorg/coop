@@ -497,4 +497,70 @@ describe('QueueOperations', () => {
         'block-appeals-rule',
       ),
   );
+
+  // Issue #1113: deleting a queue used to obliterate its pending jobs
+  // without warning. It now moves them into the org's default queue first.
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue moves pending jobs into the default queue',
+    async ({ org, user, queue, mrtService }) => {
+      const secondQueue = await mrtService.createManualReviewQueue({
+        name: `delete-test-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        hiddenActionIds: [],
+        isAppealsQueue: false,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+
+      const firstJob = await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: secondQueue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: makeDummyMrtJobPayload(),
+      });
+      const secondJob = await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: secondQueue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: makeDummyMrtJobPayload(),
+      });
+
+      const result = await mrtService.deleteManualReviewQueue(
+        org.id,
+        secondQueue.id,
+      );
+      expect(result).toEqual(true);
+
+      const defaultQueuePendingCount = await mrtService.getPendingJobCount({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      expect(defaultQueuePendingCount).toEqual(2);
+
+      const movedItemIds = (
+        await mrtService.getAllJobsForQueue({
+          orgId: org.id,
+          queueId: queue.id,
+        })
+      ).map((job) => job.payload.item.itemId);
+      expect(movedItemIds).toEqual(
+        expect.arrayContaining([
+          firstJob.payload.item.itemId,
+          secondJob.payload.item.itemId,
+        ]),
+      );
+
+      // The deleted queue itself is gone -- both the DB row and the Bull queue.
+      await expect(
+        mrtService.getAllJobsForQueue({
+          orgId: org.id,
+          queueId: secondQueue.id,
+        }),
+      ).rejects.toMatchObject({ name: 'QueueDoesNotExistError' });
+    },
+  );
 });
