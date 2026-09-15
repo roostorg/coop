@@ -149,6 +149,11 @@ gql`
 type RecentDecision =
   GQLGetRecentDecisionsQuery['getRecentDecisions'][number]['decisions'][number];
 
+// Mirrors the server-side `limit` in
+// server/services/manualReviewToolService/modules/DecisionAnalytics.ts. A page
+// with fewer rows than this is the last page.
+const RECENT_DECISIONS_PAGE_SIZE = 100;
+
 // Column visibility configuration
 type ColumnId =
   | 'decisionTime'
@@ -313,24 +318,37 @@ export default function ManualReviewRecentDecisions() {
   const navigate = useNavigate();
 
   const [page, setPage] = useState(0);
+  // A full page means there may be more; a short (or empty) page is the last one.
+  const hasNextPage =
+    (allDecisionsData?.getRecentDecisions.length ?? 0) >=
+    RECENT_DECISIONS_PAGE_SIZE;
+
   // Handle clicking the page left icon
   const handlePrevious = () => {
-    setPage((prevOffset) => Math.max(0, prevOffset - 1));
+    // Fetch the page we're moving to, not the stale `page` from this render's
+    // closure — `setPage` is async, so reading `page` here would refetch the
+    // page we're leaving.
+    const nextPage = Math.max(0, page - 1);
+    setPage(nextPage);
     getRecentDecisions({
       fetchPolicy: 'network-only',
       variables: {
-        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, nextPage),
       },
     });
   };
 
   // Handle clicking the page right icon
   const handleNext = () => {
-    setPage((prevOffset) => prevOffset + 1);
+    if (!hasNextPage) {
+      return;
+    }
+    const nextPage = page + 1;
+    setPage(nextPage);
     getRecentDecisions({
       fetchPolicy: 'network-only',
       variables: {
-        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, page),
+        input: getRecentDecisionsInput(unsavedFilterValue ?? {}, nextPage),
       },
     });
   };
@@ -1109,7 +1127,12 @@ export default function ManualReviewRecentDecisions() {
                 />
                 <span>Page {page + 1}</span>
                 <ChevronRight
-                  className="font-bold cursor-pointer w-7 text-slate-500"
+                  className={
+                    hasNextPage
+                      ? 'font-bold cursor-pointer w-7 text-slate-500'
+                      : 'w-7 text-slate-300 cursor-not-allowed pointer-events-none'
+                  }
+                  aria-disabled={!hasNextPage}
                   onClick={() => handleNext()}
                 />
               </div>
