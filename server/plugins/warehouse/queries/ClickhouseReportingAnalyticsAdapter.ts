@@ -1,5 +1,6 @@
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
+import { getUtcDateOnlyString } from '../../../utils/time.js';
 import {
   type IReportingAnalyticsAdapter,
   type ReportingRulePassingContentSample,
@@ -79,17 +80,17 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
         FROM REPORTING_SERVICE.REPORTING_RULE_EXECUTION_STATISTICS
         WHERE org_id = ?
           AND rule_id = ?
-          AND ts_start_inclusive > ?
+          AND ts_start_inclusive > parseDateTime64BestEffort(?)
         GROUP BY date
         ORDER BY date
       `,
-      [orgId, ruleId, startDate],
+      [orgId, ruleId, startDate.toISOString()],
     );
 
     return rows.map((row) => ({
       totalMatches: Number(row.totalMatches),
       totalRequests: Number(row.totalRequests),
-      date: new Date(row.date).toJSON(),
+      date: row.date,
     }));
   }
 
@@ -112,19 +113,19 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
     }
 
     if (filter.type === 'latestVersion') {
-      conditions.push('rule_version >= ?');
+      conditions.push('rule_version >= parseDateTime64BestEffort(?)');
       conditions.push('ds >= toDate(?)');
-      params.push(new Date(filter.minVersion), filter.minDate);
+      params.push(filter.minVersion, getUtcDateOnlyString(filter.minDate));
     } else {
-      conditions.push('rule_version >= ?');
-      conditions.push('rule_version < ?');
+      conditions.push('rule_version >= parseDateTime64BestEffort(?)');
+      conditions.push('rule_version < parseDateTime64BestEffort(?)');
       conditions.push('ds >= toDate(?)');
       conditions.push('ds <= toDate(?)');
       params.push(
-        new Date(filter.fromVersion),
-        new Date(filter.toVersion),
-        filter.fromDate,
-        filter.toDate,
+        filter.fromVersion,
+        filter.toVersion,
+        getUtcDateOnlyString(filter.fromDate),
+        getUtcDateOnlyString(filter.toDate),
       );
     }
 
