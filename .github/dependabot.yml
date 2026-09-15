@@ -33,6 +33,9 @@ updates:
     multi-ecosystem-group: 'docker-images'
     cooldown:
       default-days: 7
+    labels:
+      - 'dependencies'
+      - 'dependabot'
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
