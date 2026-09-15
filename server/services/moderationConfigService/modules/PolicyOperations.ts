@@ -1,10 +1,11 @@
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 import { type Writable } from 'type-fest';
 import { uid } from 'uid';
 
 import {
   CoopError,
   ErrorType,
+  makeNotFoundError,
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
@@ -12,6 +13,10 @@ import {
   isUniqueViolationError,
   type FixKyselyRowCorrelation,
 } from '../../../utils/kysely.js';
+import {
+  makeKyselyTransactionWithRetry,
+  type KyselyTransactionWithRetry,
+} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
 import {
   UserPermission,
@@ -19,6 +24,7 @@ import {
 } from '../../userManagementService/index.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Policy } from '../index.js';
+import { type ModerationConfigMutationActor } from '../types/mutationActor.js';
 import type { PolicyType } from '../types/policies.js';
 
 const policyDbSelection = [
@@ -62,6 +68,8 @@ type PolicyDbResult = FixKyselyRowCorrelation<
 >;
 
 export default class PolicyOperations {
+  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
+
   constructor(
     private readonly pgQuery: Kysely<ModerationConfigServicePg>,
     private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
@@ -69,7 +77,9 @@ export default class PolicyOperations {
       policyId: string;
       orgId: string;
     }) => Promise<void>,
-  ) {}
+  ) {
+    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+  }
 
   async getPolicies(opts: { orgId: string; readFromReplica?: boolean }) {
     const { orgId, readFromReplica } = opts;
@@ -141,9 +151,9 @@ export default class PolicyOperations {
       .select(policyDbSelection)
       .where('org_id', '=', orgId)
       .where('id', '=', policyId);
-    const result = (await query.executeTakeFirst()) as PolicyDbResult;
+    const result = await query.executeTakeFirst();
 
-    return this.#dbResultToPolicy(result);
+    return result === undefined ? undefined : this.#dbResultToPolicy(result);
   }
 
   async createPolicy(opts: {
@@ -154,18 +164,27 @@ export default class PolicyOperations {
       policyText?: string | null;
       enforcementGuidelines?: string | null;
       policyType?: PolicyType | null;
+      userStrikeCount?: number;
+      applyUserStrikeCountConfigToChildren?: boolean;
     };
-    invokedBy: Invoker;
+    actor: ModerationConfigMutationActor;
   }) {
-    const { orgId: org_id, policy, invokedBy } = opts;
+    const { orgId: org_id, policy, actor } = opts;
     const {
       name,
       parentId: parent_id,
       policyText: policy_text,
       enforcementGuidelines: enforcement_guidelines,
       policyType: policy_type,
+      userStrikeCount: user_strike_count,
+      applyUserStrikeCountConfigToChildren:
+        apply_user_strike_count_config_to_children,
     } = policy;
-    if (!invokedBy.permissions.includes(UserPermission.MANAGE_POLICIES)) {
+    if (
+      actor.orgId !== org_id ||
+      (actor.type === 'user' &&
+        !actor.permissions.includes(UserPermission.MANAGE_POLICIES))
+    ) {
       throw makeUnauthorizedError(
         'You do not have permission to create policies',
         { shouldErrorSpan: true },
@@ -173,22 +192,34 @@ export default class PolicyOperations {
     }
 
     try {
-      const newPolicy = await this.pgQuery
-        .insertInto('public.policies')
-        .values({
-          id: uid(),
-          name,
-          org_id,
-          parent_id,
-          penalty: 'NONE',
-          policy_text,
-          enforcement_guidelines,
-          policy_type,
-          semantic_version: 1,
-          updated_at: new Date(),
-        })
-        .returning(policyDbSelection)
-        .executeTakeFirstOrThrow();
+      const id = uid();
+      const newPolicy = await this.transactionWithRetry(
+        { isolationLevel: 'serializable' },
+        async (trx) => {
+          const policies = await this.#lockPolicies(trx, org_id);
+          this.#validateParent(policies, id, parent_id);
+          return trx
+            .insertInto('public.policies')
+            .values({
+              id,
+              name,
+              org_id,
+              penalty: 'NONE',
+              semantic_version: 1,
+              updated_at: new Date(),
+              ...removeUndefinedKeys({
+                parent_id,
+                policy_text,
+                enforcement_guidelines,
+                policy_type,
+                user_strike_count,
+                apply_user_strike_count_config_to_children,
+              }),
+            })
+            .returning(policyDbSelection)
+            .executeTakeFirstOrThrow();
+        },
+      );
 
       return this.#dbResultToPolicy(newPolicy);
     } catch (e: unknown) {
@@ -210,10 +241,14 @@ export default class PolicyOperations {
       userStrikeCount?: number | null;
       applyUserStrikeCountConfigToChildren?: boolean | null;
     };
-    invokedBy: Invoker;
+    actor: ModerationConfigMutationActor;
   }) {
-    const { orgId, policy, invokedBy } = opts;
-    if (!invokedBy.permissions.includes(UserPermission.MANAGE_POLICIES)) {
+    const { orgId, policy, actor } = opts;
+    if (
+      actor.orgId !== orgId ||
+      (actor.type === 'user' &&
+        !actor.permissions.includes(UserPermission.MANAGE_POLICIES))
+    ) {
       throw makeUnauthorizedError(
         'You do not have permission to update policies',
         { shouldErrorSpan: true },
@@ -221,25 +256,40 @@ export default class PolicyOperations {
     }
 
     try {
-      const updatedPolicy = await this.pgQuery
-        .updateTable('public.policies')
-        .set(
-          removeUndefinedKeys({
-            name: policy.name,
-            parent_id: policy.parentId,
-            policy_text: policy.policyText,
-            enforcement_guidelines: policy.enforcementGuidelines,
-            policy_type: policy.policyType,
-            user_strike_count: policy.userStrikeCount ?? undefined,
-            apply_user_strike_count_config_to_children:
-              policy.applyUserStrikeCountConfigToChildren ?? undefined,
-            updated_at: new Date(),
-          }),
-        )
-        .where('org_id', '=', orgId)
-        .where('id', '=', policy.id)
-        .returning(policyDbSelection)
-        .executeTakeFirstOrThrow();
+      const updatedPolicy = await this.transactionWithRetry(
+        { isolationLevel: 'serializable' },
+        async (trx) => {
+          const policies = await this.#lockPolicies(trx, orgId);
+          const current = policies.find(({ id }) => id === policy.id);
+          if (current === undefined) {
+            throw makeNotFoundError('Policy not found', {
+              shouldErrorSpan: true,
+            });
+          }
+          const proposedParent =
+            policy.parentId === undefined ? current.parent_id : policy.parentId;
+          this.#validateParent(policies, policy.id, proposedParent);
+          return trx
+            .updateTable('public.policies')
+            .set(
+              removeUndefinedKeys({
+                name: policy.name,
+                parent_id: policy.parentId,
+                policy_text: policy.policyText,
+                enforcement_guidelines: policy.enforcementGuidelines,
+                policy_type: policy.policyType,
+                user_strike_count: policy.userStrikeCount ?? undefined,
+                apply_user_strike_count_config_to_children:
+                  policy.applyUserStrikeCountConfigToChildren ?? undefined,
+                updated_at: new Date(),
+              }),
+            )
+            .where('org_id', '=', orgId)
+            .where('id', '=', policy.id)
+            .returning(policyDbSelection)
+            .executeTakeFirstOrThrow();
+        },
+      );
 
       return this.#dbResultToPolicy(updatedPolicy);
     } catch (e: unknown) {
@@ -286,9 +336,47 @@ export default class PolicyOperations {
   #getPgQuery(readFromReplica: boolean = false) {
     return readFromReplica ? this.pgQueryReplica : this.pgQuery;
   }
+
+  async #lockPolicies(
+    trx: Transaction<ModerationConfigServicePg>,
+    orgId: string,
+  ) {
+    return trx
+      .selectFrom('public.policies')
+      .select(['id', 'parent_id'])
+      .where('org_id', '=', orgId)
+      .orderBy('id')
+      .forUpdate()
+      .execute();
+  }
+
+  #validateParent(
+    policies: readonly { id: string; parent_id: string | null }[],
+    policyId: string,
+    parentId: string | null | undefined,
+  ) {
+    if (parentId == null) return;
+    const parents = new Map(
+      policies.map((policy) => [policy.id, policy.parent_id]),
+    );
+    if (!parents.has(parentId))
+      throw makeInvalidPolicyParentError({ shouldErrorSpan: true });
+    parents.set(policyId, parentId);
+    const visited = new Set<string>();
+    let cursor: string | null | undefined = policyId;
+    while (cursor != null) {
+      if (visited.has(cursor))
+        throw makePolicyHierarchyCycleError({ shouldErrorSpan: true });
+      visited.add(cursor);
+      cursor = parents.get(cursor);
+    }
+  }
 }
 
-export type PolicyErrorType = 'PolicyNameExistsError';
+export type PolicyErrorType =
+  | 'PolicyNameExistsError'
+  | 'InvalidPolicyParentError'
+  | 'PolicyHierarchyCycleError';
 
 // TODO: throw this error on failed policy creation/update when appropriate.
 export const makePolicyNameExistsError = (data: ErrorInstanceData) =>
@@ -297,5 +385,23 @@ export const makePolicyNameExistsError = (data: ErrorInstanceData) =>
     type: [ErrorType.UniqueViolation],
     title: 'A policy with that name already exists in this organization.',
     name: 'PolicyNameExistsError',
+    ...data,
+  });
+
+export const makeInvalidPolicyParentError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title: 'The selected parent policy is invalid.',
+    name: 'InvalidPolicyParentError',
+    ...data,
+  });
+
+export const makePolicyHierarchyCycleError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.Conflict],
+    title: 'The policy hierarchy cannot contain a cycle.',
+    name: 'PolicyHierarchyCycleError',
     ...data,
   });
