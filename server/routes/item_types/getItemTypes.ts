@@ -7,7 +7,7 @@ import { makeUnauthenticatedError } from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 
 export type GetItemTypesOutput = {
-  itemTypes: readonly ReadonlyDeep<ItemType>[];
+  itemTypes: readonly ReadonlyDeep<Omit<ItemType, 'orgId'>>[];
 };
 
 export default function getItemTypes({
@@ -23,6 +23,8 @@ export default function getItemTypes({
       orgId: req.orgId,
       directives: { maxAge: 0 },
     });
-    res.status(200).json({ itemTypes });
+    res.status(200).json({
+      itemTypes: itemTypes.map(({ orgId: _orgId, ...itemType }) => itemType),
+    });
   };
 }

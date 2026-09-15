@@ -8,14 +8,13 @@ When Coop triggers an Action—whether through an automated rule, a moderator's 
 GET /api/v1/actions/
 ```
 
-Authentication: `X-API-KEY` header. Returns `200` with your organization's custom and built-in actions:
+Returns your organization's custom and built-in actions:
 
 ```json
 {
   "actions": [
     {
       "id": "action-id",
-      "orgId": "org-id",
       "name": "Remove post",
       "description": null,
       "actionType": "CUSTOM_ACTION",
@@ -27,8 +26,6 @@ Authentication: `X-API-KEY` header. Returns `200` with your organization's custo
   ]
 }
 ```
-
-`itemTypeIds` lists applicable current item types, including kind-based assignments for built-in actions. `parameters` contains custom-action parameter definitions; built-ins return `[]`. Callback URLs, headers, and bodies are omitted to avoid exposing credentials. This endpoint reads configuration; it does not execute actions.
 
 ## Setting up your callback endpoint
 

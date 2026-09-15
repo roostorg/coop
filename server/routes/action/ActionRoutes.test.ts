@@ -89,7 +89,6 @@ describe('GET actions', () => {
     async ({
       request,
       apiKey,
-      orgId,
       custom,
       unassigned,
       builtIns,
@@ -115,7 +114,6 @@ describe('GET actions', () => {
         expect.arrayContaining([
           {
             id: custom.id,
-            orgId,
             name: 'Remove',
             description: 'Remove post',
             actionType: 'CUSTOM_ACTION',
@@ -126,7 +124,6 @@ describe('GET actions', () => {
           },
           {
             id: unassigned.id,
-            orgId,
             name: 'Unassigned',
             description: 'Remove post',
             actionType: 'CUSTOM_ACTION',
@@ -137,7 +134,6 @@ describe('GET actions', () => {
           },
           ...builtIns.map((action) => ({
             id: action.id,
-            orgId,
             name: action.name,
             description: action.description,
             actionType: action.actionType,

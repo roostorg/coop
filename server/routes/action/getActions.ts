@@ -14,7 +14,6 @@ export type GetActionsOutput = {
   actions: (Pick<
     Action,
     | 'id'
-    | 'orgId'
     | 'name'
     | 'description'
     | 'actionType'
@@ -41,7 +40,6 @@ export default function getActions({
       // Explicitly allowlist metadata: webhook URLs, headers, and bodies may
       // contain credentials and must never be exposed by this read API.
       id: action.id,
-      orgId: action.orgId,
       name: action.name,
       description: action.description,
       actionType: action.actionType,

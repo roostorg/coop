@@ -19,7 +19,6 @@ Returns `200` with an `itemTypes` array:
   "itemTypes": [
     {
       "id": "item-type-id",
-      "orgId": "org-id",
       "kind": "CONTENT",
       "name": "Post",
       "description": null,
@@ -39,6 +38,6 @@ Returns `200` with an `itemTypes` array:
 }
 ```
 
-`kind` is `CONTENT`, `THREAD`, or `USER`. `schemaFieldRoles` maps roles to field names; unset roles are omitted. User item types also include `isDefaultUserType`, a boolean.
+`kind` is `CONTENT`, `THREAD`, or `USER`.
 
-Only current original schemas are returned, not historical versions or partial variants. Use `id` when referencing an item type; its `version` changes when the configuration is updated.
+Only current original schemas are returned, not historical versions or partial variants.

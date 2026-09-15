@@ -33,7 +33,7 @@ const testWithTypes = makeTransactionalTestWithFixture(async ({ deps }) => {
 describe('GET item types', () => {
   testWithTypes(
     'returns only current schemas and roles for the authenticated organization',
-    async ({ request, apiKey, orgId, content, thread, user }) => {
+    async ({ request, apiKey, content, thread, user }) => {
       const response = await request
         .get('/api/v1/item_types/')
         .set('x-api-key', apiKey)
@@ -44,7 +44,6 @@ describe('GET item types', () => {
         expect.arrayContaining([
           {
             id: content.id,
-            orgId,
             name: 'Updated Post',
             description: 'A post',
             kind: 'CONTENT',
@@ -55,7 +54,6 @@ describe('GET item types', () => {
           },
           {
             id: thread.id,
-            orgId,
             name: 'Conversation',
             description: null,
             kind: 'THREAD',
@@ -66,7 +64,6 @@ describe('GET item types', () => {
           },
           {
             id: user.id,
-            orgId,
             name: user.name,
             description: user.description,
             kind: 'USER',
