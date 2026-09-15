@@ -37,31 +37,6 @@ updates:
         patterns:
           - '*'
 
-  # Enable node version updates for Docker Compose
-  - package-ecosystem: 'docker-compose'
-    directory: '/'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    allow:
-      - dependency-name: 'node'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      docker-compose-images:
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      docker-compose-images-security:
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-
   # Enable version updates for npm
   - package-ecosystem: 'npm'
     directory: '/'
