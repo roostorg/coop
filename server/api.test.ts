@@ -4,8 +4,11 @@ import { makeMockedServer } from './test/setupMockedServer.js';
 
 it('authenticates sessions after another app has shut down', async () => {
   const previous = await makeMockedServer();
-  await previous.rollback();
-  await previous.shutdown();
+  try {
+    await previous.rollback();
+  } finally {
+    await previous.shutdown();
+  }
 
   const { deps, request, rollback, shutdown } = await makeMockedServer();
   try {
