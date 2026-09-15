@@ -192,7 +192,7 @@ describe.each(variants)(
       ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields });
     });
 
-    it('preserves omitted hidden fields and clears an explicit empty list', async () => {
+    it('preserves omitted/null hidden fields and clears an explicit empty list', async () => {
       const first = makeContext();
       await callMutation(updateResolver, { id: itemTypeId }, first.context);
       expect(first.transactionConfig[updateService]).toHaveBeenCalledWith(
@@ -202,7 +202,7 @@ describe.each(variants)(
           name: undefined,
           description: undefined,
           schema: undefined,
-          schemaFieldRoles: {},
+          schemaFieldRoles: undefined,
         },
       );
       expect(
@@ -222,12 +222,22 @@ describe.each(variants)(
           name: undefined,
           description: undefined,
           schema: undefined,
-          schemaFieldRoles: {},
+          schemaFieldRoles: undefined,
         },
       );
       expect(
         second.ManualReviewToolService.setHiddenFieldsForItemType,
       ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] });
+
+      const third = makeContext();
+      await callMutation(
+        updateResolver,
+        { id: itemTypeId, hiddenFields: null },
+        third.context,
+      );
+      expect(
+        third.ManualReviewToolService.setHiddenFieldsForItemType,
+      ).not.toHaveBeenCalled();
     });
 
     it.each(domainErrors)(

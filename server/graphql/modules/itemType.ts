@@ -928,7 +928,7 @@ const Mutation: GQLMutationResolvers = {
             id,
             description,
             name: name ?? undefined,
-            schemaFieldRoles: fieldRoles ?? {},
+            schemaFieldRoles: fieldRoles ?? undefined,
             schema: fields,
           });
           if (hiddenFields != null) {
@@ -1030,7 +1030,7 @@ const Mutation: GQLMutationResolvers = {
           id,
           description,
           name: name ?? undefined,
-          schemaFieldRoles: fieldRoles ?? {},
+          schemaFieldRoles: fieldRoles ?? undefined,
           schema: fields,
         });
         if (hiddenFields != null) {
@@ -1126,7 +1126,7 @@ const Mutation: GQLMutationResolvers = {
           id,
           description,
           name: name ?? undefined,
-          schemaFieldRoles: fieldRoles ?? {},
+          schemaFieldRoles: fieldRoles ?? undefined,
           schema: fields,
         });
         if (hiddenFields != null) {

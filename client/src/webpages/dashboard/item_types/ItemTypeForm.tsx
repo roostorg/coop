@@ -82,6 +82,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -94,6 +95,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -106,6 +108,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -118,6 +121,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -130,6 +134,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -142,6 +147,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -175,13 +181,14 @@ export default function ItemTypeForm() {
       Object.values(ItemTypeKind).includes(kindInSearchParams as ItemTypeKind)
         ? (kindInSearchParams as ItemTypeKind)
         : ItemTypeKind.CONTENT,
-    customFields: [getDefaultEmptyField(0)],
+    customFields: [getDefaultEmptyField(0, false)],
   });
 
   const [modalInfo, setModalInfo] = useState<{
     visible: boolean;
     body: string | undefined;
-  }>({ visible: false, body: '' });
+    domainError: boolean;
+  }>({ visible: false, body: '', domainError: false });
   const { name, description, itemTypeKind, customFields } = state;
   const setName = (name: string) => setState((prev) => ({ ...prev, name }));
   const setDescription = (description: string) =>
@@ -191,13 +198,22 @@ export default function ItemTypeForm() {
   const setCustomFields = (fields: FieldState[]) =>
     setState((prev) => ({ ...prev, customFields: fields }));
 
-  const showModal = (errorText?: string) =>
-    setModalInfo({ visible: true, body: errorText! });
-  const hideModal = () => setModalInfo({ visible: false, body: undefined });
+  const showModal = (errorText?: string, domainError = false) =>
+    setModalInfo({ visible: true, body: errorText, domainError });
+  const hideModal = () =>
+    setModalInfo({ visible: false, body: undefined, domainError: false });
 
   const setNameAlreadyExistsError = () => {
-    showModal('An item type with that name already exists. Please try again.');
+    showModal(
+      'An item type with that name already exists. Please try again.',
+      true,
+    );
   };
+  const showDomainError = (error: { title: string; detail?: string | null }) =>
+    showModal(
+      error.detail ? `${error.title}\n\n${error.detail}` : error.title,
+      true,
+    );
 
   const [
     createContentType,
@@ -212,6 +228,8 @@ export default function ItemTypeForm() {
         case 'ItemTypeNameAlreadyExistsError':
           setNameAlreadyExistsError();
           break;
+        default:
+          showDomainError(response.createContentItemType);
       }
     },
   });
@@ -228,6 +246,8 @@ export default function ItemTypeForm() {
         case 'ItemTypeNameAlreadyExistsError':
           setNameAlreadyExistsError();
           break;
+        default:
+          showDomainError(response.updateContentItemType);
       }
     },
   });
@@ -245,6 +265,8 @@ export default function ItemTypeForm() {
         case 'ItemTypeNameAlreadyExistsError':
           setNameAlreadyExistsError();
           break;
+        default:
+          showDomainError(response.createUserItemType);
       }
     },
   });
@@ -261,6 +283,8 @@ export default function ItemTypeForm() {
         case 'ItemTypeNameAlreadyExistsError':
           setNameAlreadyExistsError();
           break;
+        default:
+          showDomainError(response.updateUserItemType);
       }
     },
   });
@@ -278,6 +302,8 @@ export default function ItemTypeForm() {
         case 'ItemTypeNameAlreadyExistsError':
           setNameAlreadyExistsError();
           break;
+        default:
+          showDomainError(response.createThreadItemType);
       }
     },
   });
@@ -294,6 +320,8 @@ export default function ItemTypeForm() {
         case 'ItemTypeNameAlreadyExistsError':
           setNameAlreadyExistsError();
           break;
+        default:
+          showDomainError(response.updateThreadItemType);
       }
     },
   });
@@ -460,8 +488,9 @@ export default function ItemTypeForm() {
 
   const { modalTitle, modalBody, modalButtonText } = (() => {
     const isCreateForm = id == null;
+    const encounteredError = hasError || modalInfo.domainError;
 
-    return !hasError
+    return !encounteredError
       ? {
           modalTitle: isCreateForm
             ? `${readableKind} Type Created`
@@ -484,7 +513,7 @@ export default function ItemTypeForm() {
 
   const onHideModal = () => {
     hideModal();
-    if (!hasError) {
+    if (!hasError && !modalInfo.domainError) {
       if (itemTypeKind) {
         navigate(`/dashboard/item_types?kind=${itemTypeKind}`);
       } else {
@@ -566,6 +595,7 @@ export default function ItemTypeForm() {
               showSearch={false}
               listHeight={500}
               popupClassName="font-normal"
+              disabled={id != null}
             >
               {Object.values(ItemTypeKind).map((it) => (
                 <Option key={it} value={it}>
@@ -590,7 +620,7 @@ export default function ItemTypeForm() {
             onClick={() =>
               setCustomFields([
                 ...customFields,
-                getDefaultEmptyField(nextFieldIndex(customFields)),
+                getDefaultEmptyField(nextFieldIndex(customFields), id != null),
               ])
             }
           >
@@ -687,15 +717,21 @@ export function nextFieldIndex(fields: readonly FieldState[]): number {
   return fields.reduce((max, field) => Math.max(max, field.index), -1) + 1;
 }
 
-function getDefaultEmptyField(index: number): FieldState {
+function getDefaultEmptyField(
+  index: number,
+  editingExistingItemType: boolean,
+): FieldState {
   return {
     index,
     name: '',
     type: GQLScalarType.String,
-    required: true,
+    required: !editingExistingItemType,
     container: undefined,
     hidden: false,
     role: undefined,
+    persisted: false,
+    originallyRequired: false,
+    addedToExistingItemType: editingExistingItemType,
   };
 }
 
@@ -764,6 +800,9 @@ function baseFieldsToFieldState<T extends ItemTypeKind>(
           : undefined,
         hidden: hiddenFields.some((it) => it === field.name),
         role: fieldsToRoles[field.name],
+        persisted: true,
+        originallyRequired: field.required,
+        addedToExistingItemType: false,
       }) satisfies FieldState,
   );
 }
