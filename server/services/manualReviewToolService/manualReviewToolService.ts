@@ -1212,6 +1212,7 @@ export class ManualReviewToolService {
     orgId: string;
     itemId: string;
     itemTypeId: string;
+    queueIds: string[];
   }) {
     return this.queueOps.getExistingJobsForItem(opts);
   }

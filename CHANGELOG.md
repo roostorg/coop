@@ -43,6 +43,7 @@ For more information about each release including git tags and artifacts, see [R
 - Scylla healthcheck probing gossip instead of CQL readiness ([#1041](https://github.com/roostorg/coop/pull/1041) by [@reitblatt](https://github.com/reitblatt))
 - Podman Compose setup failing to resolve the backend ([#981](https://github.com/roostorg/coop/pull/981) by [@juanmrad](https://github.com/juanmrad))
 - DB Migrator rejecting non-standard Scylla ports ([#878](https://github.com/roostorg/coop/pull/878) by [@jess-upscrolled](https://github.com/jess-upscrolled))
+- Review queue and job access control hardening ([#1151](https://github.com/roostorg/coop/pull/1151) by [@serendipty01](https://github.com/serendipty01) and [@cassidyjames](https://github.com/cassidyjames))
 
 ### Security
 
