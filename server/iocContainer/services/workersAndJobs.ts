@@ -48,3 +48,12 @@ export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
     makeRetryFailedNcmecDecisionsJob,
   );
 }
+
+export const WORKERS = ['ItemProcessingWorker'];
+export const JOBS = [
+  'RunUserRulesJob',
+  'RefreshMRTDecisionsMaterializedViewJob',
+  'DetectRulePassRateAnomaliesJob',
+  'RefreshUserScoresCacheJob',
+  'RetryFailedNcmecDecisionsJob',
+];

@@ -2,12 +2,25 @@
 import _ from 'lodash';
 
 import getBottle, { type Dependencies } from '../iocContainer/index.js';
+import { JOBS, WORKERS } from '../iocContainer/services/workersAndJobs.js';
 import { logErrorJson } from '../utils/logging.js';
 import { type WorkerOrJob } from '../workers_jobs/index.js';
 
+// Validate before building the container, so a mistyped name exits without
+// opening Postgres, Redis and Scylla connections just to reject the argument.
+const workerOrJobName = process.argv[2];
+if (!WORKERS.includes(workerOrJobName) && !JOBS.includes(workerOrJobName)) {
+  // A usage error aimed at whoever ran the command, so it goes to stderr as
+  // plain text rather than through the structured logger.
+  // eslint-disable-next-line no-console
+  console.error(
+    `Invalid worker or job name argument, available options: ${[...WORKERS, ...JOBS].join(', ')}.`,
+  );
+  process.exit(1);
+}
+
 const { container } = await getBottle();
 
-const workerOrJobName = process.argv[2];
 const workerOrJob = container[
   workerOrJobName as keyof Dependencies
 ] as WorkerOrJob;
