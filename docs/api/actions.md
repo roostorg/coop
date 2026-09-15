@@ -2,6 +2,34 @@
 
 When Coop triggers an Action—whether through an automated rule, a moderator's decision in the Review Console, or a user crossing a User Strike threshold—it sends a POST request to the callback URL you configured for that Action. Your server receives this request and performs the corresponding operation.
 
+## List actions
+
+```http
+GET /api/v1/actions/
+```
+
+Authentication: `X-API-KEY` header. Returns `200` with your organization's custom and built-in actions:
+
+```json
+{
+  "actions": [
+    {
+      "id": "action-id",
+      "orgId": "org-id",
+      "name": "Remove post",
+      "description": null,
+      "actionType": "CUSTOM_ACTION",
+      "applyUserStrikes": false,
+      "penalty": "NONE",
+      "itemTypeIds": ["item-type-id"],
+      "parameters": []
+    }
+  ]
+}
+```
+
+`itemTypeIds` lists applicable current item types, including kind-based assignments for built-in actions. `parameters` contains custom-action parameter definitions; built-ins return `[]`. Callback URLs, headers, and bodies are omitted to avoid exposing credentials. This endpoint reads configuration; it does not execute actions.
+
 ## Setting up your callback endpoint
 
 For each Action you define in Coop, provide a publicly accessible callback URL and any authentication headers your endpoint requires (e.g. an API key Coop should send). Coop includes these headers on every outgoing request to that endpoint.
