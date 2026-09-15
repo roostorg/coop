@@ -8,8 +8,6 @@ Fetch your organization's current item schemas and field roles.
 GET /api/v1/item_types/
 ```
 
-Authentication: `X-API-KEY` header. See [API Keys & Authentication](../development/api-auth.md).
-
 ## Response
 
 Returns `200` with an `itemTypes` array:
