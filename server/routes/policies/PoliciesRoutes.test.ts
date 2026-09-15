@@ -1,54 +1,79 @@
-import { uid } from 'uid';
-
+import { UserPermission } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
-import createPolicy from '../../test/fixtureHelpers/createPolicy.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 
-describe('GET policies', () => {
-  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
-    const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
-    const { org, apiKey } = await createOrg(
-      { KyselyPg, ModerationConfigService, ApiKeyService },
-      uid(),
-    );
-    return { orgId: org.id, apiKey };
-  });
+const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
+  const { org, apiKey } = await createOrg(deps);
+  const other = await createOrg(deps);
+  return { orgId: org.id, apiKey, otherOrgId: other.org.id };
+});
 
-  testWithFixture.skip(
-    'Should return expected response',
-    async ({ deps, request, orgId, apiKey }) => {
-      const policy1 = await createPolicy({
-        moderationConfigService: deps.ModerationConfigService,
+describe('GET policies', () => {
+  testWithOrg(
+    'returns the full public shape for only the authenticated organization',
+    async ({ request, deps, apiKey, orgId, otherOrgId }) => {
+      const policyInput = {
+        name: 'Spam',
+        parentId: null,
+        policyText: 'No spam',
+        enforcementGuidelines: 'Remove unsolicited advertising',
+        policyType: 'SPAM' as const,
+      };
+      const policy = await deps.ModerationConfigService.createPolicy({
         orgId,
+        policy: policyInput,
+        invokedBy: {
+          userId: '',
+          orgId,
+          permissions: [UserPermission.MANAGE_POLICIES],
+        },
       });
-      const policy2 = await createPolicy({
-        moderationConfigService: deps.ModerationConfigService,
-        orgId,
+      await deps.ModerationConfigService.createPolicy({
+        orgId: otherOrgId,
+        policy: policyInput,
+        invokedBy: {
+          userId: '',
+          orgId: otherOrgId,
+          permissions: [UserPermission.MANAGE_POLICIES],
+        },
       });
-      await request
-        .post('/api/v1/policies')
+      const response = await request
+        .get('/api/v1/policies/')
         .set('x-api-key', apiKey)
-        .send()
-        .expect(200)
-        .expect(({ body }) => {
-          expect(body).toMatchInlineSnapshot(`
+        .expect(200);
+      expect(response.body).toEqual({
+        policies: [
           {
-            policies:
-              [
-                {
-                  id: '${policy1.policy.id}',
-                  name: '${policy1.policy.name}',
-                  parentId: null,
-                },
-                {
-                  id: '${policy2.policy.id}',
-                  name: '${policy2.policy.name}',
-                  parentId: null
-                }
-              ]
-          }
-        `);
-        });
+            id: policy.id,
+            ...policyInput,
+            semanticVersion: 1,
+            userStrikeCount: 1,
+            applyUserStrikeCountConfigToChildren: false,
+            penalty: 'NONE',
+          },
+        ],
+      });
     },
   );
+
+  testWithOrg(
+    'rejects missing and invalid API keys before reading policies',
+    async ({ request, deps }) => {
+      const read = jest.spyOn(deps.ModerationConfigService, 'getPolicies');
+      await request.get('/api/v1/policies/').expect(401);
+      await request
+        .get('/api/v1/policies/')
+        .set('x-api-key', 'invalid-key')
+        .expect(401);
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  testWithOrg('returns an empty collection', async ({ request, apiKey }) => {
+    const response = await request
+      .get('/api/v1/policies/')
+      .set('x-api-key', apiKey)
+      .expect(200);
+    expect(response.body).toEqual({ policies: [] });
+  });
 });
