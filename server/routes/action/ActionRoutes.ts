@@ -5,9 +5,15 @@ import { MAX_ACTOR_NOTE_LENGTH } from '../../services/moderationConfigService/in
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { route } from '../../utils/route-helpers.js';
+import {
+  createActionSchema,
+  patchActionSchema,
+  type ActionWrite,
+} from '../configurationWrites.js';
 import { type Controller } from '../index.js';
 import getActions, { type GetActionsOutput } from './getActions.js';
 import submitAction from './submitAction.js';
+import { createCustomAction, patchCustomAction } from './writeActions.js';
 
 export type SubmitActionInput = JsonObject & {
   actionId: string;
@@ -98,6 +104,16 @@ export default {
         createApiKeyMiddleware<SubmitActionInput, undefined>(deps),
         submitAction(deps),
       ],
+    ),
+    route.post<ActionWrite, JsonObject>(
+      '/custom',
+      { bodySchema: createActionSchema as JSONSchemaV4<ActionWrite> },
+      (deps) => [createApiKeyMiddleware(deps), createCustomAction(deps)],
+    ),
+    route.patch<ActionWrite, JsonObject>(
+      '/:id',
+      { bodySchema: patchActionSchema as JSONSchemaV4<ActionWrite> },
+      (deps) => [createApiKeyMiddleware(deps), patchCustomAction(deps)],
     ),
   ],
 } as Controller;
