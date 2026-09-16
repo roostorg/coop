@@ -572,25 +572,31 @@ function NumberInput({
   return (
     <Input
       id={id}
-      type="number"
+      type="text"
+      inputMode="numeric"
+      // Not type="number": the browser lets you type non-numeric text into
+      // it (e.g. "abc123xyz") and keeps displaying it on screen while its
+      // `.value` silently normalizes to '' underneath — a React-controlled
+      // number input doesn't reliably resync the DOM display once that
+      // happens, so the field can show garbage that was never actually
+      // stored (worse in Firefox). Plain text + manual digit filtering
+      // keeps what's on screen always equal to what's actually stored.
       value={value ?? ''}
-      min={min}
-      max={max}
       disabled={disabled}
       onChange={(e) => {
-        const raw = e.target.value;
-        if (raw === '') {
+        const digitsOnly = e.target.value.replace(/[^-\d]/g, '');
+        if (digitsOnly === '' || digitsOnly === '-') {
           onChange(undefined);
           return;
         }
-        const parsed = Number(raw);
+        const parsed = Number(digitsOnly);
         if (!Number.isFinite(parsed)) {
           onChange(undefined);
           return;
         }
-        // `<input type="number" min/max>` only constrains the spinner UI;
-        // direct typing can still produce out-of-range values. Clamp here so
-        // the parent state never sees e.g. a negative `maxLength`.
+        // min/max are no longer enforced by a native `type="number"` attr,
+        // so clamp here — this also still catches e.g. a negative
+        // `maxLength` from direct typing.
         let clamped = parsed;
         if (min !== undefined && clamped < min) clamped = min;
         if (max !== undefined && clamped > max) clamped = max;
