@@ -331,7 +331,6 @@ export default function ActionForm() {
       <Textarea
         className="mt-3 rounded-xl"
         rows={6}
-        // TODO(antd-removal): antd TextArea autoSize dropped
         placeholder={`{
     "my-header": "SOME_API_KEY",
      ...
@@ -350,7 +349,6 @@ export default function ActionForm() {
       <Textarea
         className="mt-3 rounded-xl"
         rows={6}
-        // TODO(antd-removal): antd TextArea autoSize dropped
         placeholder={`{
     "my-param-1": "SOME_VALUE",
     "my-param-2": "SOME_OTHER_VALUE"

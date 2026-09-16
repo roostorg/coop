@@ -120,7 +120,6 @@ function ParameterInput({
             id={id}
             disabled={disabled}
             maxLength={param.maxLength ?? undefined}
-            // TODO(antd-removal): antd Input `showCount` char-counter dropped
             value={typeof value === 'string' ? value : ''}
             onChange={(e) =>
               onChange(e.target.value === '' ? undefined : e.target.value)

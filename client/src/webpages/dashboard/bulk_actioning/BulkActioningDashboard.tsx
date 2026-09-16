@@ -212,7 +212,6 @@ export default function BulkActioningDashboard() {
       <Textarea
         className="pt-1 pb-2 rounded-lg"
         rows={10}
-        // TODO(antd-removal): antd TextArea autoSize dropped
         placeholder="Enter comma-separated or newline-separated Item IDs here."
         onChange={(event) =>
           setInputIds(splitByWhitespaceAndCommas(event.target.value))
