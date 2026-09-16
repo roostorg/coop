@@ -191,7 +191,7 @@ export default function LocationBankForm() {
         'MutateLocationBankSuccessResponse';
     setModalInfo(undefined);
     if (succeeded) {
-      navigate(-1);
+      navigate('/dashboard/rules/banks?kind=LOCATION');
     }
   };
 
