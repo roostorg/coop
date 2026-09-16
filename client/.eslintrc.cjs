@@ -18,7 +18,12 @@ const restrictedSyntax = [
       'being passed to.',
   },
   {
-    selector: 'JSXAttribute[name.name="type"][value.value="number"]',
+    // Scoped to `<input>`/`<Input>` specifically — an unscoped selector on
+    // any `type="number"` attribute also flags unrelated same-named props,
+    // e.g. Recharts' `<XAxis type="number">`/`<YAxis type="number">` (axis
+    // data type, nothing to do with HTML inputs).
+    selector:
+      ':matches(JSXOpeningElement[name.name="input"], JSXOpeningElement[name.name="Input"]) > JSXAttribute[name.name="type"][value.value="number"]',
     message:
       'Avoid `type="number"` on a React-controlled input. The browser lets ' +
       'you type non-numeric text into it and displays it on screen exactly ' +
