@@ -481,19 +481,22 @@ export default function ManualReviewQueueForm() {
           allowClear
           value={moderatorsWithAccess}
           onValueChange={setModeratorsWithAccess}
-          // TODO(antd-removal): per-option admin-explainer tooltip folded into
-          // the label (cmdk CommandItem has no per-item tooltip).
           options={orgUsers.map((user) => {
             const userIsAdmin = userIdsWhoCanReviewEveryQueue.includes(user.id);
-            const name = `${user.firstName} ${user.lastName}`;
             return {
               value: user.id,
-              label: userIsAdmin
-                ? `${name} — ${titleCaseEnumStringWithArticle(
+              label: `${user.firstName} ${user.lastName}`,
+              description: userIsAdmin
+                ? `${titleCaseEnumStringWithArticle(
                     user.role!,
                   )}; sees every queue`
-                : name,
-              disabled: userIsAdmin,
+                : undefined,
+              // Admins/Moderator Managers already see every queue, so this
+              // control should never let you (de)select them, even if a
+              // stale pre-migration row already has one saved as a
+              // moderator — matches the old antd Select's behavior, where
+              // the only way to clear a legacy entry is `allowClear`.
+              alwaysDisabled: userIsAdmin,
             };
           })}
         />
