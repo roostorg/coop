@@ -2,6 +2,7 @@ import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import { NumberInput } from '@/coop-ui/NumberInput';
 import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import {
   Select,
@@ -317,6 +318,8 @@ function ConstraintsRow({
           <NumberInput
             id={`${id}-min`}
             value={param.min}
+            allowDecimal
+            allowNegative
             disabled={disabled}
             onChange={(min) => onChange({ min })}
           />
@@ -329,6 +332,8 @@ function ConstraintsRow({
           <NumberInput
             id={`${id}-max`}
             value={param.max}
+            allowDecimal
+            allowNegative
             disabled={disabled}
             onChange={(max) => onChange({ max })}
           />
@@ -374,6 +379,8 @@ function DefaultValueInput({
           value={value}
           min={param.min}
           max={param.max}
+          allowDecimal
+          allowNegative
           disabled={disabled}
           onChange={(next) => onChange(next)}
         />
@@ -551,58 +558,6 @@ function MultiSelectDropdown({
         </div>
       </PopoverContent>
     </Popover>
-  );
-}
-
-function NumberInput({
-  id,
-  value,
-  min,
-  max,
-  disabled,
-  onChange,
-}: {
-  id?: string;
-  value: number | undefined;
-  min?: number;
-  max?: number;
-  disabled?: boolean;
-  onChange: (next: number | undefined) => void;
-}) {
-  return (
-    <Input
-      id={id}
-      type="text"
-      inputMode="numeric"
-      // Not type="number": the browser lets you type non-numeric text into
-      // it (e.g. "abc123xyz") and keeps displaying it on screen while its
-      // `.value` silently normalizes to '' underneath — a React-controlled
-      // number input doesn't reliably resync the DOM display once that
-      // happens, so the field can show garbage that was never actually
-      // stored (worse in Firefox). Plain text + manual digit filtering
-      // keeps what's on screen always equal to what's actually stored.
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(e) => {
-        const digitsOnly = e.target.value.replace(/[^-\d]/g, '');
-        if (digitsOnly === '' || digitsOnly === '-') {
-          onChange(undefined);
-          return;
-        }
-        const parsed = Number(digitsOnly);
-        if (!Number.isFinite(parsed)) {
-          onChange(undefined);
-          return;
-        }
-        // min/max are no longer enforced by a native `type="number"` attr,
-        // so clamp here — this also still catches e.g. a negative
-        // `maxLength` from direct typing.
-        let clamped = parsed;
-        if (min !== undefined && clamped < min) clamped = min;
-        if (max !== undefined && clamped > max) clamped = max;
-        onChange(clamped);
-      }}
-    />
   );
 }
 

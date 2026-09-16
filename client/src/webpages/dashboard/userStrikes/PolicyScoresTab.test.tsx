@@ -62,8 +62,8 @@ describe('PolicyScoresTab', () => {
 
     fireEvent.click(await screen.findByText('Show all'));
 
-    const scoreInputs = screen.getAllByRole('spinbutton');
-    expect(scoreInputs[0]).toHaveValue(4);
-    expect(scoreInputs[1]).toHaveValue(3);
+    const scoreInputs = screen.getAllByRole('textbox');
+    expect(scoreInputs[0]).toHaveValue('4');
+    expect(scoreInputs[1]).toHaveValue('3');
   });
 });

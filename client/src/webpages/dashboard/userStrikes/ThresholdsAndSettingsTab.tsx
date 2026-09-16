@@ -1,5 +1,6 @@
 import { Button } from '@/coop-ui/Button';
 import { Input } from '@/coop-ui/Input';
+import { NumberInput } from '@/coop-ui/NumberInput';
 import {
   useGQLActionsQuery,
   useGQLSetAllUserStrikeThresholdMutation,
@@ -243,31 +244,16 @@ function StrikeTTLForm(props: {
             <div className="flex flex-col mr-12 gap-3">
               <div className="text-sm">User strikes stay on record for</div>
               <div className="flex flex-row items-center gap-2">
-                <Input
-                  type="number"
+                <NumberInput
                   disabled={!editingTTL}
-                  // Wide enough for 3 digits (max 365) plus the browser's
-                  // number-input spinner controls in the editing state.
+                  // Wide enough for 3 digits (max 365) plus room for the
+                  // inline error below to not wrap awkwardly.
                   style={{ width: '6em' }}
                   min={0}
                   max={365}
-                  maxLength={3}
                   placeholder="90"
-                  // value must be a plain number string for type="number" —
-                  // any trailing non-numeric chars (like " days") cause the
-                  // browser to silently render the placeholder instead.
                   value={ttlFormState}
-                  onChange={(value) => {
-                    if (value.target.value === '') {
-                      setTTLFormState(0);
-                    }
-                    if (
-                      !isNaN(parseInt(value.target.value)) &&
-                      parseInt(value.target.value) >= 0
-                    ) {
-                      setTTLFormState(parseInt(value.target.value, 10));
-                    }
-                  }}
+                  onChange={(next) => setTTLFormState(next ?? 0)}
                 />
                 <span className="text-sm">days</span>
               </div>

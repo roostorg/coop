@@ -1,5 +1,6 @@
 import { Combobox, MultiCombobox } from '@/coop-ui/Combobox';
 import { Input } from '@/coop-ui/Input';
+import { NumberInput } from '@/coop-ui/NumberInput';
 import { Switch } from '@/coop-ui/Switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Info } from 'lucide-react';
@@ -128,31 +129,15 @@ function ParameterInput({
         );
       case GQLActionParameterType.Number:
         return (
-          <Input
+          <NumberInput
             id={id}
-            type="number"
-            disabled={disabled}
+            allowDecimal
+            allowNegative
             min={param.min ?? undefined}
             max={param.max ?? undefined}
-            value={typeof value === 'number' ? String(value) : ''}
-            onChange={(e) => {
-              if (e.target.value === '') {
-                onChange(undefined);
-                return;
-              }
-              const parsed = Number(e.target.value);
-              if (Number.isNaN(parsed)) {
-                return;
-              }
-              // The native min/max attrs only affect validity styling, not
-              // the value itself — clamp so out-of-range input can't reach
-              // the mutation payload.
-              const clamped = Math.min(
-                param.max ?? Infinity,
-                Math.max(param.min ?? -Infinity, parsed),
-              );
-              onChange(clamped);
-            }}
+            disabled={disabled}
+            value={typeof value === 'number' ? value : undefined}
+            onChange={onChange}
           />
         );
       case GQLActionParameterType.Boolean:

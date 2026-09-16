@@ -1,5 +1,6 @@
 import { Button } from '@/coop-ui/Button';
 import { Input } from '@/coop-ui/Input';
+import { NumberInput } from '@/coop-ui/NumberInput';
 import { Switch } from '@/coop-ui/Switch';
 import {
   useGQLPoliciesQuery,
@@ -252,8 +253,7 @@ export default function PolicyScoresTab() {
               <div className="flex flex-row items-start gap-4 mt-4 text-start">
                 <div className="flex flex-col gap-2 ">
                   <div className="text-sm">User Strike Score</div>
-                  <Input
-                    type="number"
+                  <NumberInput
                     min={0}
                     max={100}
                     disabled={!editingPolicies.includes(policy.value.id)}
@@ -262,27 +262,15 @@ export default function PolicyScoresTab() {
                       policy.value.userStrikeCount
                     }
                     placeholder="1"
-                    onChange={(value) => {
-                      if (value.target.value === '') {
-                        setUpdatedPolicyScores({
-                          ...updatedPolicyScores,
-                          [policy.value.id]: {
-                            ...policy.value,
-                            ...updatedPolicyScores[policy.value.id],
-                            userStrikeCount: 0,
-                          },
-                        });
-                      }
-                      if (!isNaN(parseInt(value.target.value))) {
-                        setUpdatedPolicyScores({
-                          ...updatedPolicyScores,
-                          [policy.value.id]: {
-                            ...policy.value,
-                            ...updatedPolicyScores[policy.value.id],
-                            userStrikeCount: parseInt(value.target.value, 10),
-                          },
-                        });
-                      }
+                    onChange={(next) => {
+                      setUpdatedPolicyScores({
+                        ...updatedPolicyScores,
+                        [policy.value.id]: {
+                          ...policy.value,
+                          ...updatedPolicyScores[policy.value.id],
+                          userStrikeCount: next ?? 0,
+                        },
+                      });
                     }}
                   />
                 </div>
@@ -456,9 +444,16 @@ function ChildPoliciesTable(props: {
         name: policy.value.name,
         userStrikeCount: (
           <Input
-            type="number"
-            min={0}
-            max={100}
+            type="text"
+            inputMode="numeric"
+            // Not type="number": the browser lets you type non-numeric
+            // text into it and keeps displaying it on screen while its
+            // `.value` silently normalizes to '' underneath — a
+            // React-controlled input doesn't reliably resync the DOM
+            // display once that happens (worse in Firefox). Filter to
+            // digits and clamp manually instead — min/max attrs on
+            // type="number" only affected validity styling, never the
+            // value.
             disabled={editingDisabled}
             value={
               // order to display user strike values for the child policies
@@ -482,27 +477,17 @@ function ChildPoliciesTable(props: {
                   policy.value.userStrikeCount)
             }
             placeholder="1"
-            onChange={(value) => {
-              if (value.target.value === '') {
-                setUpdatedPolicyScores({
-                  ...updatedPolicyScores,
-                  [policy.value.id]: {
-                    ...policy.value,
-                    ...updatedPolicyScores[policy.value.id],
-                    userStrikeCount: 0,
-                  },
-                });
-              }
-              if (!isNaN(parseInt(value.target.value))) {
-                setUpdatedPolicyScores({
-                  ...updatedPolicyScores,
-                  [policy.value.id]: {
-                    ...policy.value,
-                    ...updatedPolicyScores[policy.value.id],
-                    userStrikeCount: parseInt(value.target.value, 10),
-                  },
-                });
-              }
+            onChange={(e) => {
+              const digitsOnly = e.target.value.replace(/\D/g, '');
+              const parsed = digitsOnly === '' ? 0 : parseInt(digitsOnly, 10);
+              setUpdatedPolicyScores({
+                ...updatedPolicyScores,
+                [policy.value.id]: {
+                  ...policy.value,
+                  ...updatedPolicyScores[policy.value.id],
+                  userStrikeCount: Math.min(100, Math.max(0, parsed)),
+                },
+              });
             }}
           />
         ),
