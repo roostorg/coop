@@ -54,7 +54,11 @@ export default function CoopModal({
       }}
     >
       <DialogContent
-        className={`w-auto max-w-5xl p-8 ${className ?? ''}`}
+        // Also override the base Dialog's `sm:w-full` — otherwise it wins the
+        // cascade at any desktop viewport and the modal always fills
+        // max-width instead of shrinking to fit its content, unlike antd's
+        // old `width="auto"` Modal.
+        className={`w-auto sm:w-auto max-w-5xl p-8 ${className ?? ''}`}
         // The wrapper renders its own header/close affordance below.
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
