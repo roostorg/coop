@@ -722,6 +722,7 @@ export default function RuleForm() {
           <div className="w-px h-4 m-1 bg-black" />
           <Combobox
             className="w-24"
+            showSearch={false}
             value={conjunction}
             onValueChange={(value) => {
               if (value != null) {

@@ -35,12 +35,7 @@ test('editing an existing live rule keeps its item types, actions, and status', 
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await page.getByRole('button', { name: 'Select input' }).click();
-  await page
-    .getByRole('option', {
-      name: `${itemType.name} Fields · text`,
-      exact: true,
-    })
-    .click();
+  await page.getByRole('option', { name: 'text', exact: true }).click();
   await page.getByRole('button', { name: 'Select Signal' }).click();
   await page.getByPlaceholder('Search', { exact: true }).fill('Contains text');
   await page.getByText('Contains text', { exact: true }).click();

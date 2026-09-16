@@ -133,6 +133,7 @@ export default function RuleFormCondition(props: {
       ) : (
         <Combobox
           className="whitespace-nowrap"
+          showSearch={false}
           value={parentConditionSet.conjunction}
           onValueChange={(value) => {
             if (value != null) {

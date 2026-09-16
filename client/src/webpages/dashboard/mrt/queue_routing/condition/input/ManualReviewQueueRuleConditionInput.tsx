@@ -16,9 +16,8 @@ import { CoopInput } from '../../../../types/enums';
 import { ManualReviewQueueRoutingStaticTextField } from '../../ManualReviewQueueRoutingStaticField';
 import { RoutingRuleItemType } from '../../types';
 
-// Lost the per-option tooltip UI in the antd -> coop-ui migration (Combobox
-// options are plain {value, label} pairs); folded into the label instead so
-// the explanation isn't lost entirely.
+// Shown as a hover tooltip (info icon) on each option; see Combobox's
+// `description` field.
 const COOP_INPUT_DESCRIPTIONS: Partial<Record<CoopInput, string>> = {
   [CoopInput.ALL_TEXT]:
     "All of the content's text is extracted and " +
@@ -153,6 +152,7 @@ export default function ManualReviewQueueRuleConditionInput(props: {
             <Combobox
               key={`RuleFormCondition-input-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
               placeholder="Select input"
+              contentClassName="w-max min-w-[--radix-popover-trigger-width] max-w-sm"
               value={
                 condition.input ? getOptionValue(condition.input) : undefined
               }
@@ -167,7 +167,8 @@ export default function ManualReviewQueueRuleConditionInput(props: {
                 ([groupTitle, inputs]) =>
                   inputs.map((input) => ({
                     value: getOptionValue(input),
-                    label: `${groupTitle} · ${getDisplayNameFromInput(input)}`,
+                    label: getDisplayNameFromInput(input),
+                    group: groupTitle,
                     description:
                       input.type === 'CONTENT_COOP_INPUT'
                         ? COOP_INPUT_DESCRIPTIONS[input.name]

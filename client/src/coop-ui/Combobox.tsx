@@ -7,17 +7,48 @@ import {
   CommandList,
 } from '@/coop-ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { cn } from '@/lib/utils';
-import { Check, ChevronsUpDown, LoaderCircle, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Info, LoaderCircle, X } from 'lucide-react';
 import * as React from 'react';
 
 export type ComboboxOption = {
   value: string;
   label: string;
-  /** Optional secondary line, e.g. a help/tooltip-style explanation. */
+  /** Optional explanation shown in a hover tooltip via an info icon. */
   description?: string;
   disabled?: boolean;
+  /**
+   * `MultiCombobox` only. Unlike `disabled` (which a `MultiCombobox` row
+   * ignores once the option is already selected, so a stale/incompatible
+   * selection can still be individually removed — see its `toggle`
+   * comment), this keeps the row disabled no matter what. Use it for
+   * options that must never be toggled from this control at all, where
+   * the only way to clear a pre-existing selection should be the field's
+   * own `allowClear`.
+   */
+  alwaysDisabled?: boolean;
+  /**
+   * Optional group heading. Options sharing the same `group` are rendered
+   * together under a non-selectable heading row, in first-seen order.
+   * Options without a `group` render in a single ungrouped list, unchanged.
+   */
+  group?: string;
 };
+
+/** Buckets options by `group`, preserving first-seen order of both groups and options. */
+function groupOptions(options: ComboboxOption[]) {
+  const groups = new Map<string | undefined, ComboboxOption[]>();
+  for (const option of options) {
+    const bucket = groups.get(option.group);
+    if (bucket) {
+      bucket.push(option);
+    } else {
+      groups.set(option.group, [option]);
+    }
+  }
+  return [...groups.entries()];
+}
 
 type TriggerProps = {
   disabled?: boolean;
@@ -60,6 +91,8 @@ export type ComboboxProps = TriggerProps & {
   contentClassName?: string;
   /** Shows a spinner in place of the chevron and disables the trigger. */
   loading?: boolean;
+  /** Hide the search input, e.g. for a short fixed list like AND/OR. */
+  showSearch?: boolean;
 };
 
 const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
@@ -74,6 +107,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       allowClear = false,
       disabled,
       loading = false,
+      showSearch = true,
       className,
       contentClassName,
       id,
@@ -125,42 +159,58 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           align="start"
         >
           <Command>
-            <CommandInput placeholder={searchPlaceholder} />
+            {showSearch && <CommandInput placeholder={searchPlaceholder} />}
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
-              <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    keywords={
-                      option.description
-                        ? [option.label, option.description]
-                        : [option.label]
-                    }
-                    disabled={option.disabled}
-                    onSelect={() => {
-                      onValueChange(option.value);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 h-4 w-4 shrink-0',
-                        option.value === value ? 'opacity-100' : 'opacity-0',
-                      )}
-                    />
-                    <span className="flex flex-col">
-                      <span>{option.label}</span>
+              {groupOptions(options).map(([group, groupOptions]) => (
+                <CommandGroup key={group ?? ''} heading={group}>
+                  {groupOptions.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      keywords={
+                        option.description
+                          ? [option.label, option.description]
+                          : [option.label]
+                      }
+                      disabled={option.disabled}
+                      onSelect={() => {
+                        onValueChange(option.value);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4 shrink-0',
+                          option.value === value ? 'opacity-100' : 'opacity-0',
+                        )}
+                      />
+                      <span className="flex-1 truncate">{option.label}</span>
                       {option.description && (
-                        <span className="text-xs text-gray-400">
-                          {option.description}
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger
+                            asChild
+                            // Keep the info icon from also acting as the
+                            // row's select target.
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Info
+                              // Row-level `data-[disabled=true]:pointer-events-none`
+                              // (see Command.tsx) would otherwise also block
+                              // hovering this icon — override it back on so a
+                              // disabled option's tooltip stays reachable.
+                              className="ml-2 h-4 w-4 shrink-0 pointer-events-auto text-gray-400"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {option.description}
+                          </TooltipContent>
+                        </Tooltip>
                       )}
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
             </CommandList>
           </Command>
         </PopoverContent>
@@ -269,20 +319,49 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
                     <CommandItem
                       key={option.value}
                       value={option.value}
-                      keywords={[option.label]}
+                      keywords={
+                        option.description
+                          ? [option.label, option.description]
+                          : [option.label]
+                      }
                       // A disabled option can still be individually removed
                       // once selected (e.g. it became incompatible after
                       // selection) — only block adding a *new* disabled one.
-                      disabled={option.disabled && !isSelected}
+                      // `alwaysDisabled` opts out of that carve-out entirely.
+                      disabled={
+                        option.alwaysDisabled ||
+                        (option.disabled && !isSelected)
+                      }
                       onSelect={() => toggle(option.value)}
                     >
                       <Check
                         className={cn(
-                          'mr-2 h-4 w-4',
+                          'mr-2 h-4 w-4 shrink-0',
                           isSelected ? 'opacity-100' : 'opacity-0',
                         )}
                       />
-                      {option.label}
+                      <span className="flex-1 truncate">{option.label}</span>
+                      {option.description && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            asChild
+                            // Keep the info icon from also acting as the
+                            // row's select target.
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Info
+                              // Row-level `data-[disabled=true]:pointer-events-none`
+                              // (see Command.tsx) would otherwise also block
+                              // hovering this icon — override it back on so a
+                              // disabled option's tooltip stays reachable.
+                              className="ml-2 h-4 w-4 shrink-0 pointer-events-auto text-gray-400"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {option.description}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </CommandItem>
                   );
                 })}

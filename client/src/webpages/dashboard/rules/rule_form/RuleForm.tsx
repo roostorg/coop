@@ -1371,6 +1371,7 @@ export default function RuleForm() {
           <div className="w-px h-4 m-1 bg-black" />
           <Combobox
             className="w-24"
+            showSearch={false}
             value={conjunction}
             onValueChange={(value) => {
               if (value != null) {
@@ -1519,7 +1520,7 @@ export default function RuleForm() {
             className="rounded-lg"
           />
         </div>
-        <div className="flex items-center mb-6 ml-6 gap-1.5">
+        <div className="flex items-center ml-6 gap-1.5">
           <div className="flex items-center space-x-2">
             <Switch
               id="unlimited-daily-actions"
@@ -1790,6 +1791,8 @@ export default function RuleForm() {
       <Button
         type="button"
         key={timeString}
+        variant="outline"
+        color="gray"
         className="px-2 mx-1 text-base font-medium rounded-lg text-slate-500 hover:border-coop-dark-purple-hover hover:text-coop-dark-purple-hover focus:border-coop-dark-purple focus:text-coop-dark-purple hover:bg-coop-lightpurple"
         size="sm"
         onClick={() =>
