@@ -26,6 +26,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Removed
 
+- Unused `GRAPHQL_OPAQUE_SCALAR_SECRET` and `LAUNCHDARKLY_SECRET` environment variables ([#1246](https://github.com/roostorg/coop/pull/1246) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
 - `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen), closes [#686](https://github.com/roostorg/coop/issues/686))
 
