@@ -746,9 +746,10 @@ export default function NcmecReportsDashboard() {
                   <div className="mb-2 font-semibold">Search By Report ID</div>
                   <Input
                     className="rounded-lg w-[300px]"
+                    value={searchId ?? ''}
                     onChange={(event) => setSearchId(event.target.value)}
                     autoFocus
-                    // TODO(antd-removal): allowClear dropped
+                    allowClear
                   />
                 </div>
                 <div

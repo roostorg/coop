@@ -376,7 +376,7 @@ export default function PoliciesDashboard() {
       placeholder="Search"
       value={searchTerm}
       onChange={(event) => setSearchTerm(event.target.value)}
-      // TODO(antd-removal): allowClear dropped
+      allowClear
       // Note: we autofocus here because the input component behaves weirdly
       // otherwise...specifically, after writing the first character (or
       // removing the last character when there's only a single character in the

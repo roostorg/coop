@@ -57,7 +57,8 @@ export default function RuleFormSignalModalSignalGallery(props: {
               <Search className="w-4 h-4" />
             </span>
           }
-          // TODO(antd-removal): allowClear dropped
+          value={searchTerm}
+          allowClear
           onChange={(event) =>
             setSearchTerm(event.target.value.toLocaleLowerCase())
           }

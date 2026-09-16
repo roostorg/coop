@@ -149,7 +149,7 @@ export default function GooglePlaceInput(props: {
     <div className="flex flex-col mt-3">
       <Input
         placeholder="Search for a location..."
-        // TODO(antd-removal): allowClear dropped
+        allowClear
         onChange={(event) => {
           setPlace(event.target.value);
           fetchSuggestions(event.target.value);
