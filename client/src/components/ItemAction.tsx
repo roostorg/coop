@@ -1,3 +1,6 @@
+import { Button } from '@/coop-ui/Button';
+import { MultiCombobox } from '@/coop-ui/Combobox';
+import { Textarea } from '@/coop-ui/Textarea';
 import {
   namedOperations,
   useGQLBulkActionExecutionMutation,
@@ -6,7 +9,6 @@ import {
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { Button, Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { Pencil } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -16,12 +18,9 @@ import { type ActionParameterValues } from '@/components/ActionParameterInputs';
 import ActionParametersModal, {
   defaultValuesForParameters,
 } from '@/components/ActionParametersModal';
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
 import CoopModal from '@/webpages/dashboard/components/CoopModal';
 import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
-
-const { Option } = Select;
 
 type EligibleAction = {
   id: string;
@@ -156,21 +155,6 @@ export default function ItemAction(props: {
     [paramsModal],
   );
 
-  const selectDropdownRender = useCallback(
-    (menu: React.ReactElement) => {
-      if (eligibleActions.length === 0) {
-        return (
-          <div>
-            <div className="text-coop-alert-red">No actions available</div>
-            {menu}
-          </div>
-        );
-      }
-      return menu;
-    },
-    [eligibleActions.length],
-  );
-
   const policies = queryData?.myOrg?.policies;
   const policiesMemo = useMemo(
     () => (policies ? policies.map((p) => stripTypename(p)) : []),
@@ -247,23 +231,16 @@ export default function ItemAction(props: {
       <div className="flex flex-row flex-wrap items-end gap-4">
         <div className="flex flex-col items-start">
           <div>
-            <Select
+            <MultiCombobox
               className="w-80 max-w-full"
-              mode="multiple"
-              maxTagCount={1}
               placeholder="Select action"
-              dropdownMatchSelectWidth={false}
-              filterOption={selectFilterByLabelOption}
               value={selectedActionIds}
-              onChange={selectOnChange}
-              dropdownRender={selectDropdownRender}
-            >
-              {orderBy(eligibleActions, ['name']).map((action) => (
-                <Option key={action.id} value={action.id} label={action.name}>
-                  {action.name}
-                </Option>
-              ))}
-            </Select>
+              onValueChange={selectOnChange}
+              options={orderBy(eligibleActions, ['name']).map((action) => ({
+                value: action.id,
+                label: action.name,
+              }))}
+            />
           </div>
         </div>
         <div className="flex flex-col items-start">
@@ -271,7 +248,6 @@ export default function ItemAction(props: {
             <PolicyDropdown
               className="w-80 max-w-full"
               policies={policiesMemo}
-              maxTagCount={1}
               onChange={policiesDropdownOnChange}
               selectedPolicyIds={selectedPolicyIds}
               multiple={
@@ -297,9 +273,9 @@ export default function ItemAction(props: {
             >
               <span className="text-gray-700">{action.name} details:</span>
               <Button
-                type="link"
-                size="small"
-                icon={<Pencil className="w-3 h-3" />}
+                variant="link"
+                size="sm"
+                startIcon={Pencil}
                 onClick={() =>
                   setParamsModal({
                     open: true,
@@ -322,7 +298,7 @@ export default function ItemAction(props: {
           >
             Note (optional)
           </label>
-          <Input.TextArea
+          <Textarea
             id="item-action-moderator-note"
             placeholder="Why are you taking this action? This note will be recorded in the audit log and included in any configured webhook payload."
             rows={2}

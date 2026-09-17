@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { Button } from 'antd';
 import { User as UserAlt4 } from 'lucide-react';
 import { JsonObject } from 'type-fest';
 
@@ -35,19 +35,20 @@ export default function ManualReviewJobUserVerticalComponent(props: {
             <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
           }
         />
-        <Button
-          className="rounded-md"
-          type="default"
-          href={`/dashboard/manual_review/investigation?id=${user.id}&typeId=${
-            user.type.id
-          }${
-            props.submissionTime
-              ? `&submissionTime=${props.submissionTime}`
-              : ''
-          }`}
-          target="_blank"
-        >
-          Full History
+        <Button asChild variant="outline" color="gray" className="rounded-md">
+          <a
+            href={`/dashboard/manual_review/investigation?id=${user.id}&typeId=${
+              user.type.id
+            }${
+              props.submissionTime
+                ? `&submissionTime=${props.submissionTime}`
+                : ''
+            }`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Full History
+          </a>
         </Button>
       </div>
       <div className="flex h-px my-4 bg-gray-200" />

@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import { ChevronDown } from 'lucide-react';
 
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
@@ -32,6 +32,9 @@ export default function RuleFormConditionSignalSubcategory(props: {
     >
       <div className="pb-1 text-xs font-bold">Signal Subcategory</div>
       <Button
+        type="button"
+        variant="outline"
+        color="gray"
         className={`px-3 cursor-text ${
           condition.signal
             ? '!text-black !hover:text-black !focus:text-black'

@@ -17,6 +17,23 @@ const restrictedSyntax = [
       'suggests an issue with the type definition of the function that `x` is ' +
       'being passed to.',
   },
+  {
+    // Scoped to `<input>`/`<Input>` specifically — an unscoped selector on
+    // any `type="number"` attribute also flags unrelated same-named props,
+    // e.g. Recharts' `<XAxis type="number">`/`<YAxis type="number">` (axis
+    // data type, nothing to do with HTML inputs).
+    selector:
+      ':matches(JSXOpeningElement[name.name="input"], JSXOpeningElement[name.name="Input"]) > JSXAttribute[name.name="type"][value.value="number"]',
+    message:
+      'Avoid `type="number"` on a React-controlled input. The browser lets ' +
+      'you type non-numeric text into it and displays it on screen exactly ' +
+      "as typed, while the input's real .value silently normalizes to '' " +
+      'underneath — and a controlled input does not reliably resync the ' +
+      'DOM back once that happens, so the field can show text that was ' +
+      'never actually stored (worse in Firefox). Use `type="text"` + ' +
+      '`inputMode="numeric"` and filter non-digit characters in onChange ' +
+      'instead.',
+  },
 ];
 
 module.exports = {

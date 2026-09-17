@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
 import { useMemo, useState } from 'react';
@@ -225,8 +225,9 @@ export default function ItemInvestigationRuleResults(props: {
           edit: (
             <div className="flex items-center justify-end">
               <Button
+                variant="outline"
+                color="gray"
                 className="rounded-lg cursor-pointer"
-                size="middle"
                 onClick={() =>
                   navigate(
                     `/dashboard/rules/proactive/form/${ruleResult.ruleId}`,

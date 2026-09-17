@@ -1,6 +1,13 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/coop-ui/Tabs';
 import { HOST_URL } from '@/lib/config';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -10,7 +17,6 @@ import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
 import DashboardHeader from '../dashboard/components/DashboardHeader';
 import RowMutations from '../dashboard/components/RowMutations';
-import TabBar from '../dashboard/components/TabBar';
 import {
   ColumnProps,
   DateRangeColumnFilter,
@@ -39,8 +45,6 @@ import { titleCaseEnumString } from '../../utils/string';
 import ManageRolesTab from './ManageRolesTab';
 import { getRoleDescription } from './ManageUsersFormUtils';
 import ManageUsersInviteUserSection from './ManageUsersInviteUserSection';
-
-const { Option } = Select;
 
 export enum ManageUsersModalState {
   DELETE_CONFIRMATION = 'DELETE_CONFIRMATION',
@@ -552,27 +556,28 @@ export default function ManageUsers() {
                 <div className="text-xl font-bold mb-4">Edit Role</div>
                 <div className="mb-2 font-semibold">Select Role</div>
                 <Select
-                  className="!w-full"
                   value={selectedRole ?? selectedUser?.role}
-                  onSelect={(value) => setSelectedRole(value)}
-                  dropdownMatchSelectWidth={false}
+                  onValueChange={(value) =>
+                    setSelectedRole(value as GQLUserRole)
+                  }
                 >
-                  {Object.values(GQLUserRole)
-                    // If the org doesn't have NCMEC reporting enabled, don't show the CHILD_SAFETY_MODERATOR role
-                    .filter((role) =>
-                      !hasNCMECReportingEnabled
-                        ? role !== GQLUserRole.ChildSafetyModerator
-                        : true,
-                    )
-                    .map((roleType) => (
-                      <Option
-                        key={roleType}
-                        value={roleType}
-                        label={labelForRole(roleType)}
-                      >
-                        {labelForRole(roleType)}
-                      </Option>
-                    ))}
+                  <SelectTrigger className="!w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(GQLUserRole)
+                      // If the org doesn't have NCMEC reporting enabled, don't show the CHILD_SAFETY_MODERATOR role
+                      .filter((role) =>
+                        !hasNCMECReportingEnabled
+                          ? role !== GQLUserRole.ChildSafetyModerator
+                          : true,
+                      )
+                      .map((roleType) => (
+                        <SelectItem key={roleType} value={roleType}>
+                          {labelForRole(roleType)}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
                 </Select>
               </div>
 
@@ -699,23 +704,29 @@ export default function ManageUsers() {
         title="Users"
         subtitle="Manage your organization's users and roles."
       />
-      {tabs.length > 1 && (
-        <TabBar<ManageUsersTab>
-          tabs={tabs}
-          initialSelectedTab={effectiveTab}
-          currentSelectedTab={effectiveTab}
-          onTabClick={onTabClick}
-        />
-      )}
-      {effectiveTab === 'users' && (
-        <>
+      <Tabs
+        value={effectiveTab}
+        onValueChange={(value) => onTabClick(value as ManageUsersTab)}
+      >
+        {tabs.length > 1 && (
+          <TabsList className="mb-4">
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        )}
+        <TabsContent value="users">
           {/* @ts-ignore */}
           <Table columns={columns} data={tableData} />
           <div className="divider my-9" />
           <ManageUsersInviteUserSection />
-        </>
-      )}
-      {effectiveTab === 'roles' && <ManageRolesTab />}
+        </TabsContent>
+        <TabsContent value="roles">
+          <ManageRolesTab />
+        </TabsContent>
+      </Tabs>
       {modal}
     </div>
   );

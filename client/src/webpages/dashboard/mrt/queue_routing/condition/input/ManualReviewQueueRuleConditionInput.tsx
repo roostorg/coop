@@ -1,9 +1,8 @@
-import { Select } from 'antd';
-
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
+import { Combobox } from '@/coop-ui/Combobox';
 
 import { safePick } from '../../../../../../utils/misc';
 import {
+  JsonOf,
   jsonParse,
   jsonStringify,
 } from '../../../../../../utils/typescript-types';
@@ -15,12 +14,11 @@ import {
 } from '../../../../rules/types';
 import { CoopInput } from '../../../../types/enums';
 import { ManualReviewQueueRoutingStaticTextField } from '../../ManualReviewQueueRoutingStaticField';
-import { optionWithTooltip } from '../../ManualReviewQueueRuleFormCondition';
 import { RoutingRuleItemType } from '../../types';
 
-const { OptGroup } = Select;
-
-const COOP_INPUT_DESCRIPTIONS = {
+// Shown as a hover tooltip (info icon) on each option; see Combobox's
+// `description` field.
+const COOP_INPUT_DESCRIPTIONS: Partial<Record<CoopInput, string>> = {
   [CoopInput.ALL_TEXT]:
     "All of the content's text is extracted and " +
     'concatenated together (if there are multiple text fields), ' +
@@ -145,54 +143,40 @@ export default function ManualReviewQueueRuleConditionInput(props: {
       >
         <div className="pb-1 text-sm font-bold whitespace-nowrap">Input</div>
         {editing ? (
-          <Select
-            key={`RuleFormCondition-input-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
-            placeholder="Select input"
-            value={condition.input ? getOptionValue(condition.input) : null}
-            onSelect={(input) => onUpdateConditionInput(jsonParse(input))}
-            optionLabelProp="label"
-            allowClear
-            showSearch
-            filterOption={selectFilterByLabelOption}
-            dropdownMatchSelectWidth={false}
-            dropdownRender={(menu) => {
-              if (eligibleInputs.size > 0) {
-                return menu;
+          <>
+            {eligibleInputs.size === 0 && (
+              <div className="pb-1 text-red-600">
+                Please select at least one item type first
+              </div>
+            )}
+            <Combobox
+              key={`RuleFormCondition-input-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
+              placeholder="Select input"
+              contentClassName="w-max min-w-[--radix-popover-trigger-width] max-w-sm"
+              value={
+                condition.input ? getOptionValue(condition.input) : undefined
               }
-              return (
-                <div className="p-2">
-                  <div className="text-red-600">
-                    Please select at least one item type first
-                  </div>
-                  {menu}
-                </div>
-              );
-            }}
-          >
-            {[...eligibleInputs.entries()].map(([groupTitle, inputs]) => (
-              <OptGroup
-                key={`RuleFormCondition-input-opt-group_set_index_${String(
-                  conditionSetIndex,
-                )}_index_${conditionIndex}_${groupTitle}`}
-                label={groupTitle}
-              >
-                {inputs.map((input, index) =>
-                  optionWithTooltip({
-                    title: getDisplayNameFromInput(input),
+              onValueChange={(input) => {
+                if (input != null) {
+                  onUpdateConditionInput(
+                    jsonParse(input as JsonOf<SimplifiedConditionInput>),
+                  );
+                }
+              }}
+              options={[...eligibleInputs.entries()].flatMap(
+                ([groupTitle, inputs]) =>
+                  inputs.map((input) => ({
                     value: getOptionValue(input),
-                    disabled: false, // disabled
+                    label: getDisplayNameFromInput(input),
+                    group: groupTitle,
                     description:
                       input.type === 'CONTENT_COOP_INPUT'
                         ? COOP_INPUT_DESCRIPTIONS[input.name]
                         : undefined,
-                    key: `RuleFormCondition-input-opt_set_index_${conditionSetIndex}_index_${conditionIndex}_${groupTitle}_${index}`,
-                    index,
-                    isInOptionGroup: true,
-                  }),
-                )}
-              </OptGroup>
-            ))}
-          </Select>
+                  })),
+              )}
+            />
+          </>
         ) : (
           <ManualReviewQueueRoutingStaticTextField
             text={

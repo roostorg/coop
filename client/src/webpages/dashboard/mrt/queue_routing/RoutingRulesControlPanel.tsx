@@ -1,6 +1,6 @@
+import { toast } from '@/coop-ui/Toast';
 import { gql } from '@apollo/client';
 import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd';
-import { notification } from 'antd';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 
@@ -132,9 +132,6 @@ gql`
 export default function ManualReviewQueueRoutingRulesControls(props: {
   isAppeals: boolean;
 }) {
-  const [notificationApi, notificationContextHolder] =
-    notification.useNotification();
-
   const [state, setState] = useState<{
     orderedRules: readonly EditableRoutingRule[];
     isReordering: boolean;
@@ -158,20 +155,18 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
     useGQLCreateRoutingRuleMutation({
       onCompleted: ({ createRoutingRule }) => {
         if (createRoutingRule.__typename === 'RoutingRuleNameExistsError') {
-          notificationApi.error({
-            message:
-              'There is already another rule with the same name. Please rename this rule and try saving again.',
-          });
+          toast.error(
+            'There is already another rule with the same name. Please rename this rule and try saving again.',
+          );
           return;
         } else if (createRoutingRule.__typename === 'QueueDoesNotExistError') {
-          notificationApi.error({
-            message:
-              'The destination queue you selected does not exist. Please select a different queue and try again.',
-          });
+          toast.error(
+            'The destination queue you selected does not exist. Please select a different queue and try again.',
+          );
           return;
         }
 
-        notificationApi.success({ message: 'Rule created successfully!' });
+        toast.success('Rule created successfully!');
         setState({
           ...state,
           isReordering: false,
@@ -190,34 +185,30 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
         });
       },
       onError() {
-        notificationApi.error({
-          message: 'Rule creation failed. Please try again.',
-        });
+        toast.error('Rule creation failed. Please try again.');
       },
     });
   const [updateRoutingRule, { loading: updateLoading }] =
     useGQLUpdateRoutingRuleMutation({
       onCompleted: ({ updateRoutingRule }) => {
         if (updateRoutingRule.__typename === 'RoutingRuleNameExistsError') {
-          notificationApi.error({
-            message:
-              'There is already another rule with the same name. Please rename this rule and try saving again.',
-          });
+          toast.error(
+            'There is already another rule with the same name. Please rename this rule and try saving again.',
+          );
           return;
         } else if (updateRoutingRule.__typename === 'NotFoundError') {
-          notificationApi.error({
-            message: "We couldn't find a rule with this ID. Please try again.",
-          });
+          toast.error(
+            "We couldn't find a rule with this ID. Please try again.",
+          );
           return;
         } else if (updateRoutingRule.__typename === 'QueueDoesNotExistError') {
-          notificationApi.error({
-            message:
-              'The destination queue you selected does not exist. Please select a different queue and try again.',
-          });
+          toast.error(
+            'The destination queue you selected does not exist. Please select a different queue and try again.',
+          );
           return;
         }
 
-        notificationApi.success({ message: 'Rule updated successfully!' });
+        toast.success('Rule updated successfully!');
         setState({
           ...state,
           isReordering: false,
@@ -236,9 +227,7 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
         });
       },
       onError() {
-        notificationApi.error({
-          message: 'Rule update failed. Please try again.',
-        });
+        toast.error('Rule update failed. Please try again.');
       },
     });
   const [
@@ -246,13 +235,11 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
     { loading: reorderLoading, reset: reorderReset },
   ] = useGQLReorderRoutingRulesMutation({
     onCompleted(_data, _clientOptions) {
-      notificationApi.success({ message: 'Rules reordered successfully!' });
+      toast.success('Rules reordered successfully!');
       reorderReset();
     },
     onError(_error) {
-      notificationApi.error({
-        message: 'Setting rule order failed. Please try again.',
-      });
+      toast.error('Setting rule order failed. Please try again.');
       reorderReset();
       resetRules();
     },
@@ -260,12 +247,10 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
   const [deleteRule, { loading: deleteLoading, reset: deleteReset }] =
     useGQLDeleteRoutingRuleMutation({
       onCompleted(_data, _clientOptions) {
-        notificationApi.success({ message: 'Rule deleted successfully!' });
+        toast.success('Rule deleted successfully!');
       },
       onError(_error) {
-        notificationApi.error({
-          message: 'Rule deletion failed. Please try again.',
-        });
+        toast.error('Rule deletion failed. Please try again.');
       },
     });
 
@@ -560,7 +545,6 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
     if (isReordering) {
       return (
         <>
-          {notificationContextHolder}
           <ManualReviewQueueRoutingSaveButtonPanel
             loading={reorderLoading}
             onClickSave={async () => {
@@ -597,7 +581,6 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
       return (
         <>
           <FullScreenLoading size="small" />
-          {notificationContextHolder}
         </>
       );
     }
@@ -640,7 +623,6 @@ export default function ManualReviewQueueRoutingRulesControls(props: {
         {rulesSection}
       </div>
       {deleteModal}
-      {notificationContextHolder}
     </div>
   );
 }

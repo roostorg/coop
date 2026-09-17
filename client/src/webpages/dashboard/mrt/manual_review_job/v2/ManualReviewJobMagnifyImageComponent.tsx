@@ -1,6 +1,13 @@
+import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { Popover } from 'antd';
-import { ReactElement, useContext, useMemo } from 'react';
+import {
+  ReactElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useGQLGetMoreInfoForPartialItemsQuery } from '../../../../../graphql/generated';
 import { getFieldValueForRole } from '../../../../../utils/itemUtils';
@@ -51,6 +58,27 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
   });
 
   const actionStore = useContext(ManualReviewActionStore);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  // Closing immediately on mouse-leave doesn't leave the cursor time to
+  // cross the small gap between the trigger and the popover content, so the
+  // content unmounts before the cursor ever reaches it. Delay the close and
+  // cancel it if the cursor lands on either the trigger or the content.
+  const closePopoverTimeoutRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
+  const cancelClosePopover = () => {
+    if (closePopoverTimeoutRef.current) {
+      clearTimeout(closePopoverTimeoutRef.current);
+    }
+  };
+  const scheduleClosePopover = () => {
+    cancelClosePopover();
+    closePopoverTimeoutRef.current = setTimeout(
+      () => setPopoverOpen(false),
+      150,
+    );
+  };
+  useEffect(() => cancelClosePopover, []);
 
   const borderAndTextColor = ((actions) => {
     if (!itemIdentifier) {
@@ -128,10 +156,65 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
   }
 
   return (
-    <Popover
-      trigger="hover"
-      placement="bottomLeft"
-      content={
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <PopoverTrigger
+        asChild
+        onMouseEnter={() => {
+          cancelClosePopover();
+          setPopoverOpen(true);
+        }}
+        onMouseLeave={scheduleClosePopover}
+      >
+        <div className="flex flex-row items-center cursor-pointer min-w-0">
+          {finalImageUrl ? (
+            <img
+              alt=""
+              className={`rounded-full shrink-0 ${
+                borderAndTextColor
+                  ? `p-0.5 border-2 border-solid ${borderAndTextColor} w-12 h-12`
+                  : 'border-current w-12 h-12'
+              }`}
+              src={finalImageUrl}
+            />
+          ) : (
+            <div
+              className={`flex shrink-0 border border-solid rounded-full ${
+                borderAndTextColor ?? 'border-slate-500'
+              }`}
+            >
+              {fallbackComponent}
+            </div>
+          )}
+          {label ? (
+            <div className="flex flex-col min-w-0 flex-1">
+              <div
+                className={`ml-2 font-medium ${
+                  labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
+                } ${borderAndTextColor ?? 'text-slate-500'}`}
+              >
+                {label}
+              </div>
+              {sublabel ? (
+                <div
+                  className={`ml-2 text-xs ${
+                    labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
+                  }`}
+                >
+                  {sublabel}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        className="w-auto max-w-[90vw]"
+        onMouseEnter={cancelClosePopover}
+        onMouseLeave={scheduleClosePopover}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="flex flex-col">
           {finalImageUrl ? (
             <div className="flex flex-row items-start justify-between font-semibold space-x-2 text-slate-500">
@@ -160,49 +243,7 @@ export default function ManualReviewJobMagnifyImageComponent(props: {
           ) : null}
           {footerComponent}
         </div>
-      }
-    >
-      <div className="flex flex-row items-center cursor-pointer min-w-0">
-        {finalImageUrl ? (
-          <img
-            alt=""
-            className={`rounded-full shrink-0 ${
-              borderAndTextColor
-                ? `p-0.5 border-2 border-solid ${borderAndTextColor} w-12 h-12`
-                : 'border-current w-12 h-12'
-            }`}
-            src={finalImageUrl}
-          />
-        ) : (
-          <div
-            className={`flex shrink-0 border border-solid rounded-full ${
-              borderAndTextColor ?? 'border-slate-500'
-            }`}
-          >
-            {fallbackComponent}
-          </div>
-        )}
-        {label ? (
-          <div className="flex flex-col min-w-0 flex-1">
-            <div
-              className={`ml-2 font-medium ${
-                labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
-              } ${borderAndTextColor ?? 'text-slate-500'}`}
-            >
-              {label}
-            </div>
-            {sublabel ? (
-              <div
-                className={`ml-2 text-xs ${
-                  labelTruncationType === 'wrap' ? 'break-all' : 'truncate'
-                }`}
-              >
-                {sublabel}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      </PopoverContent>
     </Popover>
   );
 }

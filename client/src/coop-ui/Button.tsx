@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot, Slottable } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { LoaderCircle } from 'lucide-react';
 import * as React from 'react';
 
 const buttonVariants = cva(
-  'py-3 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none focus:outline-none',
+  'py-3 px-4 inline-flex items-center justify-center gap-x-2 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:pointer-events-none focus:outline-none',
   {
     variants: {
       variant: {
@@ -254,6 +254,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       startIcon: StartIcon,
       endIcon: EndIcon,
       children,
+      disabled,
       ...props
     },
     ref,
@@ -281,13 +282,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           </span>
         )}
 
-        {size === 'icon' &&
-          React.isValidElement<{ className?: string }>(children) &&
-          React.cloneElement(children, {
-            className: cn(children.props.className, 'size-4'),
-          })}
-
-        {size !== 'icon' && children}
+        <Slottable>
+          {size === 'icon'
+            ? React.isValidElement<{ className?: string }>(children)
+              ? React.cloneElement(children, {
+                  className: cn(children.props.className, 'size-4'),
+                })
+              : null
+            : children}
+        </Slottable>
 
         {!loading && EndIcon && (
           <span className="ml-1" data-testid="end-icon">
@@ -305,7 +308,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           loading && 'pointer-events-none',
         )}
         ref={ref}
-        disabled={loading || props.disabled}
+        disabled={loading || disabled}
         {...props}
       >
         {content}

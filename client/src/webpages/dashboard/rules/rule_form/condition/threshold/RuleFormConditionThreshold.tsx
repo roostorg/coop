@@ -1,8 +1,7 @@
+import { Combobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
-import { Form, Input, Select } from 'antd';
 import { AlertCircle } from 'lucide-react';
-
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
 import { GQLScalarType } from '../../../../../../graphql/generated';
 import { titleCaseEnumString } from '../../../../../../utils/string';
@@ -15,8 +14,6 @@ import {
   isComparatorTerminal,
   shouldConditionPromptForComparatorAndThreshold,
 } from '../../RuleFormUtils';
-
-const { Option } = Select;
 
 export default function RuleFormConditionThreshold(props: {
   condition: RuleFormLeafCondition;
@@ -45,73 +42,55 @@ export default function RuleFormConditionThreshold(props: {
   const renderBooleanThreshold = outputScalarType === GQLScalarType.Geohash;
 
   const booleanThreshold = (
-    <Select
+    <Combobox
       key={`RuleFormCondition-boolean-threshold-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
       placeholder="Select true or false"
-      defaultValue={condition.threshold}
-      onChange={(value) => onUpdateThreshold(value)}
+      value={condition.threshold ?? undefined}
+      onValueChange={(value) => onUpdateThreshold(value ?? '')}
       allowClear
-      dropdownMatchSelectWidth={false}
-    >
-      <Option
-        key={`RuleFormCondition-comparator-option_set_index_${conditionSetIndex}_index_${conditionIndex}_true`}
-        // Threshold is treated as a string until the CreateRule
-        // or UpdateRule mutations are called
-        value="1"
-      >
-        true
-      </Option>
-      <Option
-        key={`RuleFormCondition-comparator-option_set_index_${conditionSetIndex}_index_${conditionIndex}_false`}
-        // Threshold is treated as a string until the CreateRule
-        // or UpdateRule mutations are called
-        value="0"
-      >
-        false
-      </Option>
-    </Select>
+      // Threshold is treated as a string until the CreateRule
+      // or UpdateRule mutations are called
+      options={[
+        { value: '1', label: 'true' },
+        { value: '0', label: 'false' },
+      ]}
+    />
   );
 
   const defaultThreshold = (
     <Input
       key={`RuleFormCondition-threshold-input_set_index_${conditionSetIndex}_index_${conditionIndex}`}
-      value={condition.threshold}
+      value={condition.threshold ?? ''}
       placeholder="Input a threshold"
-      style={{ borderRadius: '8px' }}
-      status={hasInvalidThreshold ? 'error' : ''}
-      prefix={
+      className={`rounded-lg ${hasInvalidThreshold ? 'border-red-500' : ''}`}
+      startSlot={
         hasInvalidThreshold ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertCircle className="w-4 h-4 text-red-500" />
-            </TooltipTrigger>
-            <TooltipContent>Enter a number</TooltipContent>
-          </Tooltip>
-        ) : (
-          <span />
-        )
+          <span className="flex items-center px-3 border border-r-0 border-red-500 bg-white">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              </TooltipTrigger>
+              <TooltipContent>Enter a number</TooltipContent>
+            </Tooltip>
+          </span>
+        ) : undefined
       }
       onChange={(event) => onUpdateThreshold(event.target.value)}
     />
   );
 
   const selectThreshold = (options: string[]) => {
-    const selectOptions = (() => {
+    const selectOptions: { value: string; label: string }[] = (() => {
       if (
         outputType?.__typename === 'EnumSignalOutputType' &&
         !outputType.ordered
       ) {
         return options
           .sort((a, b) => a.localeCompare(b))
-          .map((option) => (
-            <Option
-              key={option}
-              value={option}
-              label={titleCaseEnumString(option)}
-            >
-              {titleCaseEnumString(option)}
-            </Option>
-          ));
+          .map((option) => ({
+            value: option,
+            label: titleCaseEnumString(option),
+          }));
       }
 
       /**
@@ -120,35 +99,28 @@ export default function RuleFormConditionThreshold(props: {
        * requires. We want to display the options in highest-to-lowest order
        * in the UI, which is more intuitive.
        */
-      return [...signalOutputOptions].reverse().map((option) => (
-        <Option key={option} value={option} label={option}>
-          {option}
-        </Option>
-      ));
+      return [...signalOutputOptions].reverse().map((option) => ({
+        value: option,
+        label: option,
+      }));
     })();
 
     return (
-      <Select
+      <Combobox
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
         placeholder="Select a threshold"
-        dropdownMatchSelectWidth={false}
-        value={condition.threshold}
-        onChange={(threshold) => onUpdateThreshold(threshold)}
-      >
-        {selectOptions}
-      </Select>
+        value={condition.threshold ?? undefined}
+        onValueChange={(threshold) => onUpdateThreshold(threshold ?? '')}
+        options={selectOptions}
+      />
     );
   };
 
   return (
     <div className="flex items-center">
-      <Form.Item
+      <div
         key={`RuleFormCondition-threshold-form-item_set_index_${conditionSetIndex}_index_${conditionIndex}`}
         className="!mb-0 !pl-4 !align-middle"
-        name={[conditionSetIndex, conditionIndex, 'threshold']}
-        initialValue={condition.threshold}
       >
         {/* Needs to be wrapped in a div for the state to work properly */}
         <div
@@ -167,7 +139,7 @@ export default function RuleFormConditionThreshold(props: {
             {renderBooleanThreshold ? 'Value' : 'Threshold'}
           </div>
         </div>
-      </Form.Item>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
+import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { RelatedItem } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import { AlertTriangle, User as UserAlt4 } from 'lucide-react';
 import { useContext } from 'react';
 import { JsonObject } from 'type-fest';
@@ -143,6 +143,8 @@ export default function ManualReviewJobThreadItemComponent(props: {
                 footerComponent={
                   <div className="flex gap-2">
                     <Button
+                      variant="outline"
+                      color="gray"
                       className="self-end my-2 text-sm cursor-pointer rounded-md"
                       onClick={() => {
                         inspectUser(author);
@@ -152,6 +154,8 @@ export default function ManualReviewJobThreadItemComponent(props: {
                       Inspect User
                     </Button>
                     <Button
+                      variant="outline"
+                      color="gray"
                       className="self-end my-2 text-sm cursor-pointer rounded-md"
                       onClick={() => {
                         if (allAuthorMessagesAreSelected) {

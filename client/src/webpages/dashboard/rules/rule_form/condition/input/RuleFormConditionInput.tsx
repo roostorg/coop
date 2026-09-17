@@ -1,7 +1,5 @@
+import { Combobox } from '@/coop-ui/Combobox';
 import { GQLSignal } from '@/graphql/generated';
-import { Form, Select } from 'antd';
-
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
 import { safePick } from '../../../../../../utils/misc';
 import {
@@ -14,13 +12,12 @@ import {
   ConditionLocation,
   RuleFormLeafCondition,
 } from '../../../types';
-import { optionWithTooltip } from '../../RuleFormCondition';
 import { RuleFormConfigResponse } from '../../RuleFormReducers';
 import { SimplifiedConditionInput } from '../../RuleFormUtils';
 
-const { OptGroup } = Select;
-
-const COOP_INPUT_DESCRIPTIONS = {
+// Shown as a hover tooltip (info icon) on each option; see Combobox's
+// `description` field.
+const COOP_INPUT_DESCRIPTIONS: Partial<Record<CoopInput, string>> = {
   [CoopInput.ALL_TEXT]:
     "All of the content's text is extracted and " +
     'concatenated together (if there are multiple text fields), ' +
@@ -138,10 +135,9 @@ export default function RuleFormConditionInput(props: {
       className="flex items-center"
       key={`RuleFormCondition-input-form-item-wrapper_set_index_${conditionSetIndex}_index_${conditionIndex}`}
     >
-      <Form.Item
+      <div
         key={`RuleFormCondition-input-form-item_set_index_${conditionSetIndex}_index_${conditionIndex}`}
         className="!mb-0 !pl-4 !align-middle"
-        name={[conditionSetIndex, conditionIndex, 'input']}
       >
         {/* Needs to be wrapped in a div for the state to work properly */}
         <div
@@ -149,60 +145,42 @@ export default function RuleFormConditionInput(props: {
           className="flex flex-col items-start"
         >
           <div className="pb-1 text-xs font-bold">Input</div>
-          <Select
+          {eligibleInputs.size === 0 && (
+            <div className="pb-1 text-coop-alert-red">
+              Please select at least one content type first
+            </div>
+          )}
+          <Combobox
             key={`RuleFormCondition-input-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
             placeholder="Select input"
-            value={condition.input ? getOptionValue(condition.input) : null}
-            allowClear
-            showSearch
-            filterOption={selectFilterByLabelOption}
-            onSelect={(input: ReturnType<typeof getOptionValue>) =>
-              onUpdateInput(
-                jsonParse(input),
-                allSignals satisfies readonly GQLSignal[],
-              )
+            contentClassName="w-max min-w-[--radix-popover-trigger-width] max-w-sm"
+            value={
+              condition.input ? getOptionValue(condition.input) : undefined
             }
-            optionLabelProp="label"
-            dropdownMatchSelectWidth={false}
-            dropdownRender={(menu) => {
-              if (eligibleInputs.size > 0) {
-                return menu;
+            onValueChange={(input) => {
+              if (input != null) {
+                onUpdateInput(
+                  jsonParse(input as ReturnType<typeof getOptionValue>),
+                  allSignals satisfies readonly GQLSignal[],
+                );
               }
-              return (
-                <div className="p-2">
-                  <div className="text-coop-alert-red">
-                    Please select at least one content type first
-                  </div>
-                  {menu}
-                </div>
-              );
             }}
-          >
-            {[...eligibleInputs.entries()].map(([groupTitle, inputs]) => (
-              <OptGroup
-                key={`RuleFormCondition-input-opt-group_set_index_${String(
-                  conditionSetIndex,
-                )}_index_${conditionIndex}_${groupTitle}`}
-                label={groupTitle}
-              >
-                {inputs.map((input, index) => {
-                  return optionWithTooltip(
-                    getDisplayNameFromInput(input),
-                    getOptionValue(input),
-                    false, // disabled
+            options={[...eligibleInputs.entries()].flatMap(
+              ([groupTitle, inputs]) =>
+                inputs.map((input) => ({
+                  value: getOptionValue(input),
+                  label: getDisplayNameFromInput(input),
+                  group: groupTitle,
+                  description:
                     input.type === 'CONTENT_COOP_INPUT'
                       ? COOP_INPUT_DESCRIPTIONS[input.name]
                       : undefined,
-                    `RuleFormCondition-input-opt_set_index_${conditionSetIndex}_index_${conditionIndex}_${groupTitle}_${index}`,
-                    index,
-                  );
-                })}
-              </OptGroup>
-            ))}
-          </Select>
+                })),
+            )}
+          />
           <div className="invisible pb-1 text-xs font-bold">Input</div>
         </div>
-      </Form.Item>
+      </div>
     </div>
   );
 }

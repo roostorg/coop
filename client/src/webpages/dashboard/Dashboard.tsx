@@ -721,7 +721,14 @@ export default function Dashboard() {
       {isUsingLegacyCSS ? (
         <>
           <div className="w-px h-full bg-[#e5e7eb]" />
-          <div className="flex justify-center w-full px-12 py-8 overflow-auto">
+          {/* Not `flex justify-center`: a flex container with overflow-auto
+              clips scrollable content at the end of the centering axis in
+              most browsers whenever justify-content/align-items isn't the
+              default flex-start — the child's trailing padding (and, on
+              tall content, part of the child itself) never becomes
+              reachable by scrolling. Centering via margin auto on a plain
+              block container doesn't trigger it. */}
+          <div className="w-full overflow-auto">
             <ErrorBoundary
               key={pathname}
               containedInLayout
@@ -736,7 +743,7 @@ export default function Dashboard() {
             >
               {/* min-w-0 lets descendants' overflow-x-auto scroll instead of
                   the whole page when content is wider than the viewport. */}
-              <div className="w-full max-w-[1800px] min-w-0">
+              <div className="w-full max-w-[1800px] min-w-0 mx-auto px-12 py-8">
                 {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
               </div>
             </ErrorBoundary>

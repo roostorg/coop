@@ -11,6 +11,7 @@ import {
 } from '@apollo/client';
 import { KeyFieldsContext } from '@apollo/client/cache/inmemory/policies';
 import { RetryLink } from '@apollo/client/link/retry';
+import { ThemeProvider } from 'next-themes';
 import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import stringify from 'safe-stable-stringify';
@@ -146,14 +147,21 @@ const client = new ApolloClient({
 // Pasted from https://react.dev/blog/2022/03/08/react-18-upgrade-guide#updates-to-client-rendering-apis
 const root = createRoot(document.getElementById('root')!);
 root.render(
-  <HelmetProvider>
-    <ApolloProvider client={client}>
-      <TooltipProvider>
-        <App />
-        <Toast position="bottom-right" />
-      </TooltipProvider>
-    </ApolloProvider>
-  </HelmetProvider>,
+  <ThemeProvider
+    attribute="class"
+    defaultTheme="light"
+    forcedTheme="light"
+    disableTransitionOnChange
+  >
+    <HelmetProvider>
+      <ApolloProvider client={client}>
+        <TooltipProvider>
+          <App />
+          <Toast position="bottom-right" />
+        </TooltipProvider>
+      </ApolloProvider>
+    </HelmetProvider>
+  </ThemeProvider>,
 );
 
 // If you want to start measuring performance in your app, pass a function

@@ -1,7 +1,8 @@
+import { Button } from '@/coop-ui/Button';
+import { Checkbox } from '@/coop-ui/Checkbox';
+import { Input } from '@/coop-ui/Input';
+import { Label } from '@/coop-ui/Label';
 import { gql } from '@apollo/client';
-import Button from 'antd/lib/button';
-import Checkbox from 'antd/lib/checkbox';
-import Input from 'antd/lib/input';
 import {
   ChevronsRight as AngleDoubleRight,
   LayoutGrid as GridAlt,
@@ -343,7 +344,10 @@ export default function ManualReviewQueuesDashboard() {
     (id: string, pendingJobCount: number) => {
       return (
         <Button
-          className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+          variant="outline"
+          color="gray"
+          size="sm"
+          className="w-full"
           onClick={() => navigate(`review/${id}`)}
           disabled={pendingJobCount === 0}
         >
@@ -732,7 +736,10 @@ export default function ManualReviewQueuesDashboard() {
                     ? {
                         deleteJobs: (
                           <Button
-                            className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+                            variant="outline"
+                            color="gray"
+                            size="sm"
+                            className="w-full"
                             onClick={(event) => {
                               event.stopPropagation();
                               setDeleteAllJobsModalInfo({
@@ -753,6 +760,8 @@ export default function ManualReviewQueuesDashboard() {
                     ? {
                         previewJobs: (
                           <Button
+                            variant="outline"
+                            color="gray"
                             className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
                             onClick={() => navigate(`jobs/${id}`)}
                             disabled={pendingJobCount === 0}
@@ -863,12 +872,15 @@ export default function ManualReviewQueuesDashboard() {
   const columnsButton = (
     <div ref={columnsMenuRef} className="relative inline-block text-start">
       <Button
+        variant="outline"
+        color="gray"
+        size="sm"
+        startIcon={GridAlt}
         className={`font-semibold text-base rounded ${
           visibleColumnsCount === Object.keys(columnLabels).length
             ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
-        icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
         onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
       >
         Columns
@@ -899,13 +911,15 @@ export default function ManualReviewQueuesDashboard() {
                 return true;
               })
               .map((columnId) => (
-                <div key={columnId} className="py-2">
+                <div key={columnId} className="flex items-center gap-2 py-2">
                   <Checkbox
+                    id={`col-vis-${columnId}`}
                     checked={columnVisibility[columnId]}
-                    onChange={() => toggleColumnVisibility(columnId)}
-                  >
+                    onCheckedChange={() => toggleColumnVisibility(columnId)}
+                  />
+                  <Label htmlFor={`col-vis-${columnId}`}>
                     {columnLabels[columnId]}
-                  </Checkbox>
+                  </Label>
                 </div>
               ))}
           </div>

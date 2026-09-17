@@ -1,4 +1,8 @@
-import { Input, InputNumber, Select, Switch, Tooltip } from 'antd';
+import { Combobox, MultiCombobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
+import { NumberInput } from '@/coop-ui/NumberInput';
+import { Switch } from '@/coop-ui/Switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Info } from 'lucide-react';
 import { useMemo } from 'react';
 
@@ -6,8 +10,6 @@ import {
   GQLActionParameterType,
   type GQLActionParameter,
 } from '../graphql/generated';
-
-const { Option } = Select;
 
 export type ActionParameterValues = Readonly<Record<string, unknown>>;
 
@@ -22,7 +24,7 @@ type Props = {
 
 /**
  * Renders one input widget per `ActionParameter`, using the appropriate
- * Ant Design control for each parameter `type`. Designed as the single source
+ * coop-ui control for each parameter `type`. Designed as the single source
  * of truth for moderator-facing parameter entry across the dashboard
  * (ItemAction modal, BulkActioningDashboard, MRT review).
  *
@@ -92,8 +94,13 @@ function ParameterInput({
       {param.displayName}
       {param.required && <span className="ml-1 text-coop-alert-red">*</span>}
       {labelTooltip && (
-        <Tooltip title={labelTooltip}>
-          <Info className="ml-1 w-4 h-4 text-gray-400" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="ml-1 inline-flex">
+              <Info className="w-4 h-4 text-gray-400" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{labelTooltip}</TooltipContent>
         </Tooltip>
       )}
     </label>
@@ -113,9 +120,6 @@ function ParameterInput({
             id={id}
             disabled={disabled}
             maxLength={param.maxLength ?? undefined}
-            // `showCount` adds the live "n / max" indicator when a maxLength
-            // is declared so moderators see how close they are to the limit.
-            showCount={param.maxLength != null}
             value={typeof value === 'string' ? value : ''}
             onChange={(e) =>
               onChange(e.target.value === '' ? undefined : e.target.value)
@@ -124,14 +128,15 @@ function ParameterInput({
         );
       case GQLActionParameterType.Number:
         return (
-          <InputNumber
+          <NumberInput
             id={id}
-            disabled={disabled}
+            allowDecimal
+            allowNegative
             min={param.min ?? undefined}
             max={param.max ?? undefined}
+            disabled={disabled}
             value={typeof value === 'number' ? value : undefined}
-            onChange={(next) => onChange(next ?? undefined)}
-            style={{ width: '100%' }}
+            onChange={onChange}
           />
         );
       case GQLActionParameterType.Boolean:
@@ -143,51 +148,46 @@ function ParameterInput({
               id={id}
               disabled={disabled}
               checked={value === true}
-              onChange={(checked) => onChange(checked)}
+              onCheckedChange={(checked) => onChange(checked)}
             />
           </span>
         );
       case GQLActionParameterType.Select: {
         const options = param.options ?? [];
         return (
-          <Select
+          <Combobox
             id={id}
             disabled={disabled}
-            style={{ width: '100%' }}
-            value={typeof value === 'string' ? value : undefined}
-            onChange={(next) => onChange(next ?? undefined)}
             allowClear
-          >
-            {options.map((opt) => (
-              <Option key={opt.value} value={opt.value}>
-                {opt.label}
-              </Option>
-            ))}
-          </Select>
+            value={typeof value === 'string' ? value : undefined}
+            onValueChange={(next) => onChange(next ?? undefined)}
+            options={options.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
         );
       }
       case GQLActionParameterType.Multiselect: {
         const options = param.options ?? [];
         return (
-          <Select<string[]>
+          <MultiCombobox
             id={id}
             disabled={disabled}
-            mode="multiple"
-            style={{ width: '100%' }}
+            allowClear
             value={
               Array.isArray(value)
                 ? value.filter((v): v is string => typeof v === 'string')
                 : []
             }
-            onChange={(next) => onChange(next.length === 0 ? undefined : next)}
-            allowClear
-          >
-            {options.map((opt) => (
-              <Option key={opt.value} value={opt.value}>
-                {opt.label}
-              </Option>
-            ))}
-          </Select>
+            onValueChange={(next) =>
+              onChange(next.length === 0 ? undefined : next)
+            }
+            options={options.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
         );
       }
       default:

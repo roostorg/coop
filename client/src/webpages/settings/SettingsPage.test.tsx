@@ -186,7 +186,9 @@ describe('SettingsPage', () => {
     it('switches tabs on click', () => {
       renderWithProviders([orgSettingsMock, deploymentSettingsMock]);
       const ssoTab = screen.getByRole('tab', { name: /single sign-on/i });
-      fireEvent.click(ssoTab);
+      // Radix Tabs activate on the pointer/mousedown sequence, so drive the
+      // switch through userEvent (a real click) rather than a bare click event.
+      userEvent.click(ssoTab);
       expect(ssoTab).toHaveAttribute('aria-selected', 'true');
       expect(
         screen.getByRole('tab', { name: /organization/i }),

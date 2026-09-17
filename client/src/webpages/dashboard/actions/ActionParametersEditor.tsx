@@ -2,6 +2,7 @@ import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import { NumberInput } from '@/coop-ui/NumberInput';
 import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import {
   Select,
@@ -317,6 +318,8 @@ function ConstraintsRow({
           <NumberInput
             id={`${id}-min`}
             value={param.min}
+            allowDecimal
+            allowNegative
             disabled={disabled}
             onChange={(min) => onChange({ min })}
           />
@@ -329,6 +332,8 @@ function ConstraintsRow({
           <NumberInput
             id={`${id}-max`}
             value={param.max}
+            allowDecimal
+            allowNegative
             disabled={disabled}
             onChange={(max) => onChange({ max })}
           />
@@ -374,6 +379,8 @@ function DefaultValueInput({
           value={value}
           min={param.min}
           max={param.max}
+          allowDecimal
+          allowNegative
           disabled={disabled}
           onChange={(next) => onChange(next)}
         />
@@ -551,52 +558,6 @@ function MultiSelectDropdown({
         </div>
       </PopoverContent>
     </Popover>
-  );
-}
-
-function NumberInput({
-  id,
-  value,
-  min,
-  max,
-  disabled,
-  onChange,
-}: {
-  id?: string;
-  value: number | undefined;
-  min?: number;
-  max?: number;
-  disabled?: boolean;
-  onChange: (next: number | undefined) => void;
-}) {
-  return (
-    <Input
-      id={id}
-      type="number"
-      value={value ?? ''}
-      min={min}
-      max={max}
-      disabled={disabled}
-      onChange={(e) => {
-        const raw = e.target.value;
-        if (raw === '') {
-          onChange(undefined);
-          return;
-        }
-        const parsed = Number(raw);
-        if (!Number.isFinite(parsed)) {
-          onChange(undefined);
-          return;
-        }
-        // `<input type="number" min/max>` only constrains the spinner UI;
-        // direct typing can still produce out-of-range values. Clamp here so
-        // the parent state never sees e.g. a negative `maxLength`.
-        let clamped = parsed;
-        if (min !== undefined && clamped < min) clamped = min;
-        if (max !== undefined && clamped > max) clamped = max;
-        onChange(clamped);
-      }}
-    />
   );
 }
 

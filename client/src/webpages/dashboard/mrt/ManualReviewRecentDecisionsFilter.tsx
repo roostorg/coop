@@ -1,11 +1,10 @@
+import { MultiCombobox } from '@/coop-ui/Combobox';
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
-import { Select } from 'antd';
 import without from 'lodash/without';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
-import { selectFilterByLabelOption } from '../components/antDesignUtils';
 import CoopButton from '../components/CoopButton';
 import CloseButton from '@/components/common/CloseButton';
 
@@ -17,8 +16,6 @@ import {
 import { filterNullOrUndefined } from '../../../utils/collections';
 import { safePick } from '../../../utils/misc';
 import { JsonOf, jsonStringify } from '../../../utils/typescript-types';
-
-const { Option } = Select;
 
 type GQLRecentDecisionsFilterByColumns = Omit<
   GQLRecentDecisionsFilterInput,
@@ -193,27 +190,19 @@ export default function ManualReviewRecentDecisionsFilter(props: {
   ) => {
     const value = unsavedFilterValues[column];
     return (
-      <Select
-        mode="multiple"
+      <MultiCombobox
         className="w-full font-normal rounded"
-        value={value}
+        value={(value as string[] | undefined) ?? []}
         allowClear
-        showSearch
-        onChange={(ids) => onSetUnsavedFilterValue(column, ids)}
+        onValueChange={(ids) => onSetUnsavedFilterValue(column, ids)}
         onClick={(event) => event.stopPropagation()}
-        dropdownMatchSelectWidth={false}
-        filterOption={selectFilterByLabelOption}
-      >
-        {getDropdownOptions(column)?.map((option, i) => (
-          <Option
-            key={`${option.id}_${i}`}
-            value={option.id}
-            label={option.name}
-          >
-            {option.name}
-          </Option>
-        ))}
-      </Select>
+        options={
+          getDropdownOptions(column)?.map((option) => ({
+            value: option.id,
+            label: option.name,
+          })) ?? []
+        }
+      />
     );
   };
 

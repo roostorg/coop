@@ -1,4 +1,5 @@
-import { Button, Input } from 'antd';
+import { Button } from '@/coop-ui/Button';
+import { Input } from '@/coop-ui/Input';
 import { useCallback, useEffect, useState } from 'react';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
@@ -192,12 +193,27 @@ export default function GooglePlaceInput(props: {
             </div>
             <div className="w-1/12">
               <Input
-                type="number"
-                onChange={(e) => setRadius(parseFloat(e.target.value))}
+                type="text"
+                inputMode="decimal"
+                // Not type="number": still uncontrolled here, so it doesn't
+                // hit the DOM-vs-.value desync a React-controlled number
+                // input can (see AGENTS.md's no-restricted-syntax note),
+                // but it's still a footgun (accidental scroll-wheel edits,
+                // stray e/+ characters) for no benefit — this field already
+                // parses manually. Guard the parse so an invalid/empty value
+                // can't set radius to NaN.
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value);
+                  setRadius(Number.isFinite(parsed) ? parsed : 0);
+                }}
               />
             </div>
             <div className="flex justify-end">
-              <Button type="default" onClick={() => onAddRadius(radius)}>
+              <Button
+                variant="outline"
+                color="gray"
+                onClick={() => onAddRadius(radius)}
+              >
                 Add Radius
               </Button>
             </div>

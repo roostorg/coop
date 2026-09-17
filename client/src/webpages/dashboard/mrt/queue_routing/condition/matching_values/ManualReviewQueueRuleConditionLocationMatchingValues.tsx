@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -111,8 +111,10 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
     return (
       <div className="ml-3">
         <Button
+          variant="outline"
+          color="gray"
           className="font-semibold rounded-lg text-primary hover:border hover:border-solid hover:border-slate-200 hover:bg-slate-100"
-          icon={<Plus className="w-4 h-4" />}
+          startIcon={Plus}
           onClick={() => setModalVisible(true)}
         >
           Select Locations
@@ -153,10 +155,14 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
                   );
                 })}
                 <Button
+                  variant="outline"
+                  color="gray"
+                  size="icon"
                   className="rounded-lg p-0 ml-[2px] mr-[2px]"
                   onClick={() => setModalVisible(true)}
-                  icon={<Plus className="w-4 h-4" />}
-                />
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
               </>
             ) : (
               <ManualReviewQueueRoutingStaticTokenField

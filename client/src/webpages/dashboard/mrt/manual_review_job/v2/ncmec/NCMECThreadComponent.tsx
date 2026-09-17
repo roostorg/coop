@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useRef, useState } from 'react';
 
@@ -212,6 +212,8 @@ export function NCMECThreadComponent(props: {
         <div className="self-end pr-2">
           {isBeingReported ? (
             <Button
+              variant="outline"
+              color="gray"
               className="self-center mr-4"
               onClick={() => {
                 props.setSelectedThreadsWithMessages(
@@ -227,6 +229,8 @@ export function NCMECThreadComponent(props: {
             </Button>
           ) : undefined}
           <Button
+            variant="outline"
+            color="gray"
             className="self-center mt-5"
             disabled={
               selectedMessagePair?.secondMessage === undefined ||

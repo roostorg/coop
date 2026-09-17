@@ -1,5 +1,5 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { type GQLActionParameter } from '@/graphql/generated';
-import { Tooltip } from 'antd';
 import { useEffect, useState } from 'react';
 
 import CoopModal from '@/webpages/dashboard/components/CoopModal';
@@ -86,14 +86,17 @@ export default function ActionParametersModal({
           idPrefix={`action-params-modal-${actionName}`}
         />
         {!canSave && (
-          <Tooltip title={`Missing: ${missing.join(', ')}`}>
-            <div className="mt-3 text-xs text-coop-alert-red">
-              Fill in{' '}
-              {missing.length === 1
-                ? 'the required field'
-                : 'all required fields'}{' '}
-              to continue.
-            </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-3 text-xs text-coop-alert-red">
+                Fill in{' '}
+                {missing.length === 1
+                  ? 'the required field'
+                  : 'all required fields'}{' '}
+                to continue.
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{`Missing: ${missing.join(', ')}`}</TooltipContent>
           </Tooltip>
         )}
       </div>

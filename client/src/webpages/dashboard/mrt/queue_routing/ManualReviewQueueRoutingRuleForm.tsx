@@ -1,8 +1,7 @@
-import { Button, Select } from 'antd';
+import { Button } from '@/coop-ui/Button';
+import { Combobox, MultiCombobox } from '@/coop-ui/Combobox';
 import cloneDeep from 'lodash/cloneDeep';
 import { Plus } from 'lucide-react';
-
-import { selectFilterByLabelOption } from '../../components/antDesignUtils';
 
 import {
   GQLConditionConjunction,
@@ -29,8 +28,6 @@ import {
   getNewEligibleInputs,
   updateTopLevelConjunction,
 } from './utils';
-
-const { Option } = Select;
 
 export default function ManualReviewQueueRoutingRuleForm(props: {
   rule: EditableRoutingRule;
@@ -67,30 +64,27 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
         </div>
       </div>
       {editing ? (
-        <Select
+        <MultiCombobox
           className="min-w-[160px]"
-          mode="multiple"
           placeholder="Select item types"
           allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          dropdownMatchSelectWidth={false}
-          onSelect={(value) => addSelectedItemTypeId(value)}
-          onDeselect={(value) => removeSelectedItemTypeId(value)}
-          value={rule.itemTypeIds}
-        >
-          {[...itemTypes]
+          value={[...rule.itemTypeIds]}
+          onValueChange={(next) => {
+            const prev = rule.itemTypeIds;
+            next
+              .filter((id) => !prev.includes(id))
+              .forEach(addSelectedItemTypeId);
+            prev
+              .filter((id) => !next.includes(id))
+              .forEach(removeSelectedItemTypeId);
+          }}
+          options={[...itemTypes]
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map((contentType) => (
-              <Option
-                key={contentType.id}
-                value={contentType.id}
-                label={contentType.name}
-              >
-                {contentType.name}
-              </Option>
-            ))}
-        </Select>
+            .map((contentType) => ({
+              value: contentType.id,
+              label: contentType.name,
+            }))}
+        />
       ) : (
         <ManualReviewQueueRoutingStaticTokenField
           tokens={
@@ -212,10 +206,10 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
         {editing && (
           <div className="flex flex-row mt-4 items-center gap-4">
             <Button
-              className="hover:bg-coop-lightblue"
-              shape="circle"
-              type="default"
-              icon={<Plus className="w-4 h-4" />}
+              className="hover:bg-coop-lightblue rounded-full"
+              variant="outline"
+              color="gray"
+              size="icon"
               onClick={() => {
                 const newConditionSet = addCondition(
                   conditionSet,
@@ -226,11 +220,13 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
                   conditionSetIndex,
                 );
               }}
-            />
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
             {canDeleteConditionSet && (
               <Button
-                type="default"
-                danger
+                variant="outline"
+                color="red"
                 onClick={() => {
                   const newConditionSet = removeConditionSet(
                     rule.conditionSet,
@@ -251,33 +247,27 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
   const renderTopLevelConjunction = (conjunction: GQLConditionConjunction) => {
     return (
       <div className="flex flex-row items-center">
-        <div className="flex flex-col items-center w-10 py-2 pl-16">
+        <div className="flex flex-col items-center w-24 py-2 pl-16">
           <div className="w-px h-4 m-1 bg-black" />
           {editing ? (
-            <Select
+            <Combobox
               className="py-2"
-              defaultValue={conjunction}
               value={conjunction}
-              dropdownMatchSelectWidth={false}
-              onSelect={(value) =>
-                setTopLevelConditionSet(
-                  updateTopLevelConjunction(rule.conditionSet, value),
-                )
-              }
-            >
-              <Option
-                key={GQLConditionConjunction.Or}
-                value={GQLConditionConjunction.Or}
-              >
-                OR
-              </Option>
-              <Option
-                key={GQLConditionConjunction.And}
-                value={GQLConditionConjunction.And}
-              >
-                AND
-              </Option>
-            </Select>
+              onValueChange={(value) => {
+                if (value != null) {
+                  setTopLevelConditionSet(
+                    updateTopLevelConjunction(
+                      rule.conditionSet,
+                      value as GQLConditionConjunction,
+                    ),
+                  );
+                }
+              }}
+              options={[
+                { value: GQLConditionConjunction.Or, label: 'OR' },
+                { value: GQLConditionConjunction.And, label: 'AND' },
+              ]}
+            />
           ) : (
             <ManualReviewQueueRoutingStaticTextField text={conjunction} />
           )}
@@ -319,33 +309,25 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
     <div className="flex flex-col items-start gap-3">
       <div className="text-base font-semibold">Then send report to Queue: </div>
       {editing ? (
-        <Select
-          className="self-start min-w-[160px]"
+        <Combobox
+          className="self-start w-auto min-w-[160px]"
           placeholder="Select Queue"
-          dropdownMatchSelectWidth={false}
-          allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          onSelect={(value) =>
-            setSelectedQueue({
-              id: value,
-              name: queues.find((q) => q.id === value)?.name ?? '',
-            })
-          }
-          value={rule?.destinationQueue?.id}
-        >
-          {[...queues]
+          value={rule?.destinationQueue?.id ?? undefined}
+          onValueChange={(value) => {
+            if (value != null) {
+              setSelectedQueue({
+                id: value,
+                name: queues.find((q) => q.id === value)?.name ?? '',
+              });
+            }
+          }}
+          options={[...queues]
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map((contentType) => (
-              <Option
-                key={contentType.id}
-                value={contentType.id}
-                label={contentType.name}
-              >
-                {contentType.name}
-              </Option>
-            ))}
-        </Select>
+            .map((contentType) => ({
+              value: contentType.id,
+              label: contentType.name,
+            }))}
+        />
       ) : (
         <ManualReviewQueueRoutingStaticTextField
           text={rule?.destinationQueue?.name ?? ''}

@@ -1,3 +1,11 @@
+import { Input } from '@/coop-ui/Input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import {
   useGQLItemTypesQuery,
   useGQLRuleQuery,
@@ -7,8 +15,6 @@ import {
 } from '@/graphql/generated';
 import { assertUnreachable } from '@/utils/misc';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
-import Input from 'antd/lib/input/Input';
 import { useEffect, useState } from 'react';
 
 import CoopModal from '../../components/CoopModal';
@@ -20,8 +26,6 @@ import {
   SAMPLE_RULE_EXECUTION_RESULT_FIELDS,
 } from './insights/RuleInsightsSamplesTable';
 import { RuleInsightsSampleDetailResultsImpl } from './insights/sample_details/RuleInsightsSampleDetailResults';
-
-const { Option } = Select;
 
 gql`
   ${SAMPLE_RULE_EXECUTION_RESULT_FIELDS}
@@ -201,24 +205,23 @@ export default function RuleTestModal(props: {
         ) : null}
         <div className="flex flex-row items-center gap-2">
           Item Type:
-          <Select<string>
-            placeholder="Select Item Type"
-            dropdownMatchSelectWidth={false}
-            onChange={(value) => {
+          <Select
+            value={selectedItemTypeId}
+            onValueChange={(value) => {
               setSelectedItemTypeId(value);
               setResult(undefined);
             }}
-            value={selectedItemTypeId}
           >
-            {rule.itemTypes?.map((itemType) => (
-              <Option
-                key={itemType.id}
-                value={itemType.id}
-                label={itemType.name}
-              >
-                {itemType.name}
-              </Option>
-            ))}
+            <SelectTrigger className="w-auto min-w-[12rem]">
+              <SelectValue placeholder="Select Item Type" />
+            </SelectTrigger>
+            <SelectContent>
+              {rule.itemTypes?.map((itemType) => (
+                <SelectItem key={itemType.id} value={itemType.id}>
+                  {itemType.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
         {selectedItemType?.baseFields

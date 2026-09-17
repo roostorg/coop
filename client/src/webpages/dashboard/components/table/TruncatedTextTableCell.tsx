@@ -1,4 +1,4 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
 
 export default function TruncatedTextTableCell(props: {
@@ -61,8 +61,11 @@ export default function TruncatedTextTableCell(props: {
       className="w-full overflow-hidden whitespace-nowrap"
     >
       {truncatedText.endsWith(ellipsis) && !hideTooltip ? (
-        <Tooltip title={text} placement="top">
-          {truncatedText}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{truncatedText}</span>
+          </TooltipTrigger>
+          <TooltipContent side="top">{text}</TooltipContent>
         </Tooltip>
       ) : (
         truncatedText

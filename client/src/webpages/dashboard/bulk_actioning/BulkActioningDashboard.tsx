@@ -1,5 +1,6 @@
+import { Combobox, MultiCombobox } from '@/coop-ui/Combobox';
+import { Textarea } from '@/coop-ui/Textarea';
 import { gql } from '@apollo/client';
-import { Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -11,7 +12,6 @@ import ActionParameterInputs, {
   type ActionParameterValues,
 } from '../../../components/ActionParameterInputs';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
-import { selectFilterByLabelOption } from '../components/antDesignUtils';
 import CoopButton from '../components/CoopButton';
 import CoopModal from '../components/CoopModal';
 import DashboardHeader from '../components/DashboardHeader';
@@ -27,9 +27,6 @@ import {
 import { stripTypename } from '../../../graphql/inputHelpers';
 import { userHasPermissions } from '../../../routing/permissions';
 import { splitByWhitespaceAndCommas } from '../../../utils/string';
-
-const { TextArea } = Input;
-const { Option } = Select;
 
 gql`
   query BulkActionsFormData {
@@ -196,31 +193,26 @@ export default function BulkActioningDashboard() {
 
   const itemTypeSelector = (
     <div className="flex flex-col w-56 pb-4">
-      <Select
+      <Combobox
         placeholder="Select Item Type"
-        dropdownMatchSelectWidth={false}
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
-        onSelect={(itemTypeId: string) => setSelectedItemTypeId(itemTypeId)}
-      >
-        {orderBy(allItemTypes, ['name']).map((itemType) => (
-          <Option key={itemType.id} value={itemType.id} label={itemType.name}>
-            {itemType.name}
-          </Option>
-        ))}
-      </Select>
+        value={selectedItemTypeId ?? undefined}
+        onValueChange={setSelectedItemTypeId}
+        options={orderBy(allItemTypes, ['name']).map((itemType) => ({
+          value: itemType.id,
+          label: itemType.name,
+        }))}
+      />
     </div>
   );
 
   const idInput = (
     <div className="w-3/4">
       <div className="mb-2 font-semibold">Input IDs</div>
-      <TextArea
+      <Textarea
         className="pt-1 pb-2 rounded-lg"
         rows={10}
         placeholder="Enter comma-separated or newline-separated Item IDs here."
-        autoSize={{ minRows: 5, maxRows: 20 }}
         onChange={(event) =>
           setInputIds(splitByWhitespaceAndCommas(event.target.value))
         }
@@ -259,47 +251,30 @@ export default function BulkActioningDashboard() {
     return out;
   })();
 
-  const actionSelector = (
-    <Select<string[]>
-      className="w-56"
-      mode="multiple"
-      placeholder="Select action"
-      dropdownMatchSelectWidth={false}
-      onChange={(actionIds) => setSelectedActionIds(actionIds)}
-      filterOption={selectFilterByLabelOption}
-      dropdownRender={(menu) => {
-        if (!selectedItemTypeId) {
-          return (
-            <div className="p-2">
-              <div className="text-coop-alert-red">
-                Please select at least one Item Type first
-              </div>
-              {menu}
-            </div>
-          );
-        }
+  const actionSelectorEmptyText = !selectedItemTypeId ? (
+    <div className="text-coop-alert-red">
+      Please select at least one Item Type first
+    </div>
+  ) : (
+    <div className="text-coop-alert-red">
+      No actions available for {selectedItemType?.name ?? 'this Item Type'}. Add
+      one in the <Link to="/dashboard/actions">Actions Dashboard</Link>!
+    </div>
+  );
 
-        if (actions.length === 0) {
-          return (
-            <div className="p-2">
-              <div className="text-coop-alert-red">
-                No actions available for{' '}
-                {selectedItemType?.name ?? 'this Item Type'}. Add one in the{' '}
-                <Link to="/dashboard/actions">Actions Dashboard</Link>!
-              </div>
-              {menu}
-            </div>
-          );
-        }
-        return menu;
-      }}
-    >
-      {orderBy(actions, ['name']).map((action) => (
-        <Option key={action.id} value={action.id} label={action.name}>
-          {action.name}
-        </Option>
-      ))}
-    </Select>
+  const actionSelector = (
+    <div className="flex flex-col w-56">
+      <MultiCombobox
+        placeholder="Select action"
+        value={selectedActionIds}
+        onValueChange={(actionIds) => setSelectedActionIds(actionIds)}
+        emptyText={actionSelectorEmptyText}
+        options={orderBy(actions, ['name']).map((action) => ({
+          value: action.id,
+          label: action.name,
+        }))}
+      />
+    </div>
   );
 
   const policySelector = (
@@ -510,7 +485,7 @@ export default function BulkActioningDashboard() {
           >
             Note (optional)
           </label>
-          <Input.TextArea
+          <Textarea
             id="bulk-actioning-moderator-note"
             placeholder="Add a short note explaining this decision — it will be recorded in the audit log and included in any configured webhook payload."
             rows={2}

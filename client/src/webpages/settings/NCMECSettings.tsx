@@ -1,5 +1,6 @@
 import { Button } from '@/coop-ui/Button';
 import { Input } from '@/coop-ui/Input';
+import { NumberInput } from '@/coop-ui/NumberInput';
 import { Label } from '@/coop-ui/Label';
 import {
   Select,
@@ -494,23 +495,24 @@ export default function NCMECSettings() {
                   Minimum media to review{' '}
                   <span className="text-red-500">*</span>
                 </Label>
-                <Input
+                <NumberInput
                   id="minMediaToReview"
-                  type="number"
                   min={1}
-                  step={1}
-                  inputMode="numeric"
-                  value={settings.minMediaToReview}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Whole numbers only — fractional thresholds are invalid.
-                    if (value === '' || /^\d+$/.test(value)) {
-                      setSettings({
-                        ...settings,
-                        minMediaToReview: value,
-                      });
-                    }
-                  }}
+                  // Local form state keeps every settings field as a string
+                  // (parsed to Number only at submit, see parsedMinMedia
+                  // below) — adapt NumberInput's number|undefined contract
+                  // to that rather than changing the field's shape.
+                  value={
+                    settings.minMediaToReview === ''
+                      ? undefined
+                      : Number(settings.minMediaToReview)
+                  }
+                  onChange={(next) =>
+                    setSettings({
+                      ...settings,
+                      minMediaToReview: next === undefined ? '' : String(next),
+                    })
+                  }
                   placeholder="1"
                 />
                 <Text size="XS" className="text-gray-500">

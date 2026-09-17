@@ -1,5 +1,10 @@
+import {
+  Tooltip as InfoTooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/coop-ui/Tooltip';
+import { placementToSideAlign } from '@/lib/tooltip';
 import { gql } from '@apollo/client';
-import { Tooltip as AntTooltip } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { Info, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -280,13 +285,19 @@ export default function HandleTimeByModeratorChart({
               <div className="pb-2 text-base font-medium text-slate-500">
                 {title}
                 {infoText && (
-                  <AntTooltip
-                    title={infoText}
-                    placement="topRight"
-                    color="white"
-                  >
-                    <Info className="pl-2 w-4 h-4 text-slate-300" />
-                  </AntTooltip>
+                  <InfoTooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex pl-2">
+                        <Info className="w-4 h-4 text-slate-300" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      className="bg-white text-gray-900 border border-gray-200 shadow-md"
+                      {...placementToSideAlign('topRight')}
+                    >
+                      {infoText}
+                    </TooltipContent>
+                  </InfoTooltip>
                 )}
               </div>
             </div>

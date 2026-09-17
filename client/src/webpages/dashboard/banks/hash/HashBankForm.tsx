@@ -1,5 +1,10 @@
-import { Button, Form, Input, Select, Slider, Switch, Tag } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/coop-ui/Badge';
+import { Button } from '@/coop-ui/Button';
+import { Combobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
+import { Slider } from '@/coop-ui/Slider';
+import { Switch } from '@/coop-ui/Switch';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -38,12 +43,6 @@ const EXCHANGE_DISPLAY_NAMES: Record<string, string> = {
 function formatEnumChoice(value: string): string {
   return value;
 }
-
-const getSliderColor = (value: number) => {
-  if (value === 0) return '#ff4d4f';
-  if (value < 1) return '#faad14';
-  return '#ffffff';
-};
 
 function isCollectionType(type: string): boolean {
   return type.startsWith('set_of_') || type.startsWith('list_of_');
@@ -118,14 +117,18 @@ function DynamicSchemaFields({
               )}
 
               {field.type === 'enum' && field.choices ? (
-                <Select
+                <Combobox
                   value={
                     values[field.name] != null
                       ? String(values[field.name])
                       : undefined
                   }
                   placeholder={`Select ${label}`}
-                  onChange={(val) => handleFieldChange(field.name, field, val)}
+                  onValueChange={(val) => {
+                    if (val != null) {
+                      handleFieldChange(field.name, field, val);
+                    }
+                  }}
                   options={field.choices.map((c) => ({
                     label: formatEnumChoice(c),
                     value: c,
@@ -135,7 +138,7 @@ function DynamicSchemaFields({
               ) : field.type === 'boolean' ? (
                 <Switch
                   checked={values[field.name] === true}
-                  onChange={(checked) =>
+                  onCheckedChange={(checked) =>
                     onChange({ ...values, [field.name]: checked })
                   }
                 />
@@ -176,7 +179,6 @@ function DynamicSchemaFields({
 export default function HashBankForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
-  const [form] = Form.useForm();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalInfo, setModalInfo] = useState<{
     title: string;
@@ -338,13 +340,8 @@ export default function HashBankForm() {
       setBankName(bank.name);
       setBankDescription(bank.description ?? '');
       setEnabledRatio(bank.enabled_ratio);
-      form.setFieldsValue({
-        name: bank.name,
-        description: bank.description ?? '',
-        enabled_ratio: bank.enabled_ratio,
-      });
     }
-  }, [bank, form]);
+  }, [bank]);
 
   const bankExchangeApi = bank?.exchange?.api;
 
@@ -530,23 +527,63 @@ export default function HashBankForm() {
                     Connected to Exchange
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Tag color="blue">{exchangeApiDisplayName}</Tag>
-                    <Tag color={bank.exchange.enabled ? 'green' : 'default'}>
+                    <Badge
+                      variant="outline"
+                      size="sm"
+                      className="bg-blue-100 text-blue-700 border-blue-200"
+                    >
+                      {exchangeApiDisplayName}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      size="sm"
+                      className={
+                        bank.exchange.enabled
+                          ? 'bg-green-100 text-green-700 border-green-200'
+                          : 'bg-gray-100 text-gray-700 border-gray-200'
+                      }
+                    >
                       {bank.exchange.enabled ? 'Enabled' : 'Disabled'}
-                    </Tag>
-                    <Tag color={bank.exchange.has_auth ? 'green' : 'orange'}>
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      size="sm"
+                      className={
+                        bank.exchange.has_auth
+                          ? 'bg-green-100 text-green-700 border-green-200'
+                          : 'bg-orange-100 text-orange-700 border-orange-200'
+                      }
+                    >
                       {bank.exchange.has_auth
                         ? 'Credentials Set'
                         : 'Credentials Missing'}
-                    </Tag>
+                    </Badge>
                     {bank.exchange.last_fetch_succeeded === false && (
-                      <Tag color="red">Fetch Failed</Tag>
+                      <Badge
+                        variant="outline"
+                        size="sm"
+                        className="bg-red-100 text-red-700 border-red-200"
+                      >
+                        Fetch Failed
+                      </Badge>
                     )}
                     {bank.exchange.last_fetch_succeeded === true && (
-                      <Tag color="green">Fetch OK</Tag>
+                      <Badge
+                        variant="outline"
+                        size="sm"
+                        className="bg-green-100 text-green-700 border-green-200"
+                      >
+                        Fetch OK
+                      </Badge>
                     )}
                     {bank.exchange.is_fetching && (
-                      <Tag color="processing">Fetching...</Tag>
+                      <Badge
+                        variant="outline"
+                        size="sm"
+                        className="bg-blue-100 text-blue-700 border-blue-200"
+                      >
+                        Fetching...
+                      </Badge>
                     )}
                   </div>
                   {bank.exchange.last_fetch_time && (
@@ -569,7 +606,7 @@ export default function HashBankForm() {
                 {schema?.credentials_schema &&
                   schema.credentials_schema.fields.length > 0 && (
                     <Button
-                      type="link"
+                      variant="link"
                       onClick={() => {
                         setShowCredForm((prev) => !prev);
                         if (showCredForm) setEditCredValues({});
@@ -633,29 +670,21 @@ export default function HashBankForm() {
             min={0}
             max={1}
             step={0.05}
-            value={enabledRatio}
-            marks={{
-              0: 'Disabled',
-              0.5: '50%',
-              1: 'Enabled',
-            }}
-            tooltip={{
-              formatter: (value) => `${Math.round((value ?? 0) * 100)}%`,
-            }}
-            style={
-              {
-                '--ant-slider-track-background-color':
-                  getSliderColor(enabledRatio),
-                maxWidth: '100%',
-              } as React.CSSProperties
-            }
-            onChange={(value) => {
+            value={[enabledRatio]}
+            className="max-w-full"
+            onValueChange={([value]) => {
               setEnabledRatio(value);
             }}
           />
+          <div className="mt-1 flex justify-between text-xs text-gray-400">
+            <span>Disabled</span>
+            <span>50%</span>
+            <span>Enabled</span>
+          </div>
         </div>
         <div className="text-sm text-gray-500">
-          0 = Fully disabled, 1 = Fully enabled
+          {Math.round(enabledRatio * 100)}% &middot; 0 = Fully disabled, 1 =
+          Fully enabled
         </div>
       </div>
 
@@ -668,12 +697,12 @@ export default function HashBankForm() {
               title="Exchange Connection"
               subtitle="Optionally connect this bank to a signal exchange to automatically receive shared threat intelligence data."
             />
-            <Select
+            <Combobox
               value={selectedExchangeApi ?? undefined}
               placeholder="No exchange (standalone bank)"
-              allowClear
-              onChange={(val) => setSelectedExchangeApi(val ?? null)}
               loading={exchangeApisQuery.loading}
+              allowClear
+              onValueChange={(val) => setSelectedExchangeApi(val ?? null)}
               className="max-w-md"
               options={exchangeApis.map((api) => ({
                 label:

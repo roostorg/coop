@@ -1,8 +1,8 @@
+import { Combobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
-import { Input, Select } from 'antd';
 import { AlertCircle } from 'lucide-react';
 
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 import PolicyDropdown from '@/webpages/dashboard/components/PolicyDropdown';
 
 import {
@@ -23,8 +23,6 @@ import { CoopInput } from '../../../../types/enums';
 import { ManualReviewQueueRoutingStaticTextField } from '../../ManualReviewQueueRoutingStaticField';
 import { RoutingRuleItemType } from '../../types';
 import { getInputScalarType } from '../../utils';
-
-const { Option } = Select;
 
 export default function ManualReviewQueueRuleConditionThreshold(props: {
   condition: RuleFormLeafCondition;
@@ -69,31 +67,19 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
     condition.input.name === CoopInput.SOURCE;
 
   const booleanThreshold = (
-    <Select
+    <Combobox
       key={`RuleFormCondition-boolean-threshold-select_set_index_${conditionSetIndex}_index_${conditionIndex}`}
       placeholder="Select true or false"
-      defaultValue={condition.threshold}
-      onChange={(value) => onUpdateThreshold(value)}
+      value={condition.threshold ?? undefined}
+      onValueChange={(value) => onUpdateThreshold(value ?? '')}
       allowClear
-      dropdownMatchSelectWidth={false}
-    >
-      <Option
-        key={`RuleFormCondition-comparator-option_set_index_${conditionSetIndex}_index_${conditionIndex}_true`}
-        // Threshold is treated as a string until the CreateRule
-        // or UpdateRule mutations are called
-        value="1"
-      >
-        True
-      </Option>
-      <Option
-        key={`RuleFormCondition-comparator-option_set_index_${conditionSetIndex}_index_${conditionIndex}_false`}
-        // Threshold is treated as a string until the CreateRule
-        // or UpdateRule mutations are called
-        value="0"
-      >
-        False
-      </Option>
-    </Select>
+      // Threshold is treated as a string until the CreateRule / UpdateRule
+      // mutations are called
+      options={[
+        { value: '1', label: 'True' },
+        { value: '0', label: 'False' },
+      ]}
+    />
   );
 
   const defaultThreshold = (
@@ -101,41 +87,37 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
       key={`RuleFormCondition-threshold-input_set_index_${conditionSetIndex}_index_${conditionIndex}`}
       value={condition.threshold}
       placeholder="Input a threshold"
-      className="rounded-lg"
-      status={hasInvalidThreshold ? 'error' : ''}
-      prefix={
+      className={
+        hasInvalidThreshold ? 'rounded-lg border-red-500' : 'rounded-lg'
+      }
+      startSlot={
         hasInvalidThreshold ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertCircle className="w-4 h-4 text-red-500" />
-            </TooltipTrigger>
-            <TooltipContent>Enter a number</TooltipContent>
-          </Tooltip>
-        ) : (
-          <span />
-        )
+          <span className="flex items-center px-3 border border-r-0 border-red-500 rounded-l-lg bg-white">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              </TooltipTrigger>
+              <TooltipContent>Enter a number</TooltipContent>
+            </Tooltip>
+          </span>
+        ) : undefined
       }
       onChange={(event) => onUpdateThreshold(event.target.value)}
     />
   );
 
   const selectThreshold = (options: string[]) => {
-    const selectOptions = (() => {
+    const comboOptions = (() => {
       if (
         outputType?.__typename === 'EnumSignalOutputType' &&
         !outputType.ordered
       ) {
         return options
           .sort((a, b) => a.localeCompare(b))
-          .map((option) => (
-            <Option
-              key={option}
-              value={option}
-              label={titleCaseEnumString(option)}
-            >
-              {titleCaseEnumString(option)}
-            </Option>
-          ));
+          .map((option) => ({
+            value: option,
+            label: titleCaseEnumString(option),
+          }));
       }
 
       /**
@@ -144,25 +126,19 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
        * requires. We want to display the options in highest-to-lowest order
        * in the UI, which is more intuitive.
        */
-      return [...signalOutputOptions].reverse().map((option) => (
-        <Option key={option} value={option} label={option}>
-          {option}
-        </Option>
-      ));
+      return [...signalOutputOptions]
+        .reverse()
+        .map((option) => ({ value: option, label: option }));
     })();
 
     return (
-      <Select
+      <Combobox
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
         placeholder="Select a threshold"
-        dropdownMatchSelectWidth={false}
-        value={condition.threshold}
-        onChange={(threshold) => onUpdateThreshold(threshold)}
-      >
-        {selectOptions}
-      </Select>
+        value={condition.threshold ?? undefined}
+        onValueChange={(threshold) => onUpdateThreshold(threshold ?? '')}
+        options={comboOptions}
+      />
     );
   };
 
@@ -172,7 +148,6 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
       onChange={(policyId) => onUpdateThreshold(policyId)}
       selectedPolicyIds={condition.threshold}
       multiple={false}
-      placement="topLeft"
     />
   );
 
@@ -182,27 +157,18 @@ export default function ManualReviewQueueRuleConditionThreshold(props: {
       { value: 'automated-rule', displayName: 'Automated Rule' },
       { value: 'manual-action-run', displayName: 'Manual Action Run' },
       { value: 'mrt-decision', displayName: 'Reviewer Decision' },
-    ].map((source) => (
-      <Option
-        key={source.value}
-        value={source.value}
-        label={source.displayName}
-      >
-        {source.displayName}
-      </Option>
-    ));
+    ].map((source) => ({
+      value: source.value,
+      label: source.displayName,
+    }));
     return (
-      <Select
+      <Combobox
         allowClear
-        showSearch
-        filterOption={selectFilterByLabelOption}
         placeholder="Select a source"
-        dropdownMatchSelectWidth={false}
-        value={condition.threshold}
-        onChange={(threshold) => onUpdateThreshold(threshold)}
-      >
-        {sourceTypes}
-      </Select>
+        value={condition.threshold ?? undefined}
+        onValueChange={(threshold) => onUpdateThreshold(threshold ?? '')}
+        options={sourceTypes}
+      />
     );
   };
 

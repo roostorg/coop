@@ -1,5 +1,5 @@
+import { Button } from '@/coop-ui/Button';
 import { ItemIdentifier, RelatedItem } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import uniq from 'lodash/uniq';
 import { useEffect, useRef, useState } from 'react';
 
@@ -261,6 +261,8 @@ export function ManualReviewJobOtherItemsComponent(props: {
         <>
           <div className="flex flex-row self-end mt-2">
             <Button
+              variant="outline"
+              color="gray"
               className="text-sm cursor-pointer rounded-md"
               onClick={() => setSelectedMessages([...otherItems])}
             >
@@ -268,6 +270,8 @@ export function ManualReviewJobOtherItemsComponent(props: {
             </Button>
             {selectedMessages.length > 0 && (
               <Button
+                variant="outline"
+                color="gray"
                 className="ml-2 text-sm cursor-pointer rounded-md"
                 onClick={() => setSelectedMessages([])}
               >
