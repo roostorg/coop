@@ -11,6 +11,7 @@ import {
 } from '@apollo/client';
 import { KeyFieldsContext } from '@apollo/client/cache/inmemory/policies';
 import { RetryLink } from '@apollo/client/link/retry';
+import { ThemeProvider } from 'next-themes';
 import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import stringify from 'safe-stable-stringify';
@@ -148,10 +149,22 @@ const root = createRoot(document.getElementById('root')!);
 root.render(
   <HelmetProvider>
     <ApolloProvider client={client}>
-      <TooltipProvider>
-        <App />
-        <Toast position="bottom-right" />
-      </TooltipProvider>
+      {/* defaultTheme is "light" (not "system") until the app-wide dark
+          restyle lands — otherwise every dark-OS user gets unconverted
+          components on day one. Users can still opt into System/Dark in
+          account settings. */}
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem
+        enableColorScheme
+        disableTransitionOnChange
+      >
+        <TooltipProvider>
+          <App />
+          <Toast position="bottom-right" />
+        </TooltipProvider>
+      </ThemeProvider>
     </ApolloProvider>
   </HelmetProvider>,
 );

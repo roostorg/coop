@@ -163,7 +163,7 @@ export default function App() {
   );
 
   return (
-    <div className="bg-[#F9F9F9] flex flex-col w-full h-full bottom-0 relative">
+    <div className="bg-background flex flex-col w-full h-full bottom-0 relative">
       <RouterProvider router={router} />
     </div>
   );
