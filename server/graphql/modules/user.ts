@@ -1,5 +1,3 @@
-import jwt from 'jsonwebtoken';
-
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   type GQLGetDecisionCountSettings,
@@ -69,7 +67,6 @@ const typeDefs = /* GraphQL */ `
     # Extra wrapper types here are so that we can eventually turn notifications
     # into a proper Connection in a non-breaking way if we ever need pagination.
     notifications: UserNotifications!
-    readMeJWT: String
     favoriteRules: [Rule!]!
     favoriteMRTQueues: [ManualReviewQueue!]!
     interfacePreferences: UserInterfacePreferences!
@@ -350,43 +347,6 @@ const User: GQLUserResolvers = {
     const api = context.dataSources.notificationsAPI;
     const notifications = await api.getNotificationsForUser(user.id);
     return { edges: notifications.map((it) => ({ node: it })) };
-  },
-  async readMeJWT(user, __, { dataSources, getUser }) {
-    try {
-      const authedUser = getUser();
-      if (!authedUser || user.id !== authedUser.id) {
-        throw forbiddenError('Must be signed in as this user to read JWT.');
-      }
-
-      const { email, firstName, lastName, orgId } = user;
-      const name = `${firstName} ${lastName}`;
-
-      // The ReadMe JWT can include the org's API key and webhook signing key
-      // so docs can prefill them — but only for users who are already
-      // entitled to see those secrets via the normal MANAGE_ORG-gated
-      // surfaces. Otherwise, decoding the JWT would leak org secrets to any
-      // authenticated user.
-      const canSeeOrgSecrets = authedUser
-        .getPermissions()
-        .includes(UserPermission.MANAGE_ORG);
-      let apiKey: string | null = null;
-      let publicSigningKey: string | null = null;
-      if (canSeeOrgSecrets) {
-        const [apiKeyRes, signingKey] = await Promise.all([
-          dataSources.orgAPI.getActivatedApiKeyForOrg(orgId),
-          dataSources.orgAPI.getPublicSigningKeyPem(orgId),
-        ]);
-        apiKey = apiKeyRes === false ? null : apiKeyRes.key;
-        publicSigningKey = signingKey;
-      }
-
-      return jwt.sign(
-        { name, email, apiKey, publicSigningKey },
-        process.env.READ_ME_JWT_SECRET!,
-      );
-    } catch (e) {
-      return null;
-    }
   },
   async favoriteRules(user, _, context) {
     return context.dataSources.userAPI.getFavoriteRules(user.id, user.orgId);
