@@ -54,6 +54,45 @@ describe('user resolvers', () => {
     });
   });
 
+  describe('Mutation.setThemePreference', () => {
+    function makeCtx(user: { id: string; orgId: string } | null) {
+      const upsertUserInterfaceSettings = jest.fn(async () => []);
+      const ctx = {
+        getUser: () => user,
+        services: { UserManagementService: { upsertUserInterfaceSettings } },
+      };
+      return { ctx, upsertUserInterfaceSettings };
+    }
+
+    const Mutation = resolvers.Mutation as {
+      setThemePreference: (
+        parent: unknown,
+        args: { themePreference: 'SYSTEM' | 'LIGHT' | 'DARK' },
+        ctx: unknown,
+      ) => Promise<unknown>;
+    };
+
+    it('throws unauthenticatedError when there is no signed-in user', async () => {
+      const { ctx, upsertUserInterfaceSettings } = makeCtx(null);
+      await expect(
+        Mutation.setThemePreference({}, { themePreference: 'DARK' }, ctx),
+      ).rejects.toThrow('User required.');
+      expect(upsertUserInterfaceSettings).not.toHaveBeenCalled();
+    });
+
+    it('persists the preference for the signed-in user', async () => {
+      const { ctx, upsertUserInterfaceSettings } = makeCtx({
+        id: 'user-1',
+        orgId: 'org-1',
+      });
+      await Mutation.setThemePreference({}, { themePreference: 'DARK' }, ctx);
+      expect(upsertUserInterfaceSettings).toHaveBeenCalledWith({
+        userId: 'user-1',
+        userInterfaceSettings: { themePreference: 'DARK' },
+      });
+    });
+  });
+
   describe('User.readMeJWT does not leak org secrets to non-admins', () => {
     const TEST_JWT_SECRET = 'test-readme-jwt-secret';
     let originalSecret: string | undefined;

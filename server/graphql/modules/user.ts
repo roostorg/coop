@@ -82,6 +82,21 @@ const typeDefs = /* GraphQL */ `
     moderatorSafetySepia: Boolean!
     moderatorSafetyBlurLevel: Int!
     mrtChartConfigurations: [ManualReviewChartSettings!]!
+    """
+    Null means the user has never chosen a theme; the client falls back to
+    its default (currently light).
+    """
+    themePreference: ThemePreference
+  }
+
+  """
+  The user's color scheme preference. SYSTEM means "follow the operating
+  system / browser color scheme".
+  """
+  enum ThemePreference {
+    SYSTEM
+    LIGHT
+    DARK
   }
 
   input ModeratorSafetySettingsInput {
@@ -157,6 +172,9 @@ const typeDefs = /* GraphQL */ `
     setMrtChartConfigurationSettings(
       mrtChartConfigurationSettings: ManualReviewChartConfigurationsInput!
     ): SetMrtChartConfigurationSettingsSuccessResponse
+    setThemePreference(
+      themePreference: ThemePreference!
+    ): SetThemePreferenceSuccessResponse
   }
 
   union AddFavoriteRuleResponse = AddFavoriteRuleSuccessResponse
@@ -174,6 +192,10 @@ const typeDefs = /* GraphQL */ `
   }
 
   type SetMrtChartConfigurationSettingsSuccessResponse {
+    _: Boolean
+  }
+
+  type SetThemePreferenceSuccessResponse {
     _: Boolean
   }
 
@@ -295,6 +317,20 @@ const Mutation: GQLMutationResolvers = {
       },
     });
     return gqlSuccessResult({}, 'SetModeratorSafetySettingsSuccessResponse');
+  },
+
+  async setThemePreference(_, params, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('User required.');
+    }
+    await context.services.UserManagementService.upsertUserInterfaceSettings({
+      userId: user.id,
+      userInterfaceSettings: {
+        themePreference: params.themePreference,
+      },
+    });
+    return gqlSuccessResult({}, 'SetThemePreferenceSuccessResponse');
   },
 
   async setMrtChartConfigurationSettings(_, params, context) {
