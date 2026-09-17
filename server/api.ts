@@ -457,11 +457,6 @@ function makeGqlServices(deps: Dependencies) {
       'UserStrikeService',
       'SSOService',
     ]),
-    // Calling sendEmail straight from a resolver is hella sketch, as the
-    // resolvers shouldn’t have real business logic in them. Future sendEmail
-    // calls should be encapsulated inside some business-logic-containing
-    // service, and it’s that service that should be called from the resolvers.
-    legacy_DO_NOT_USE_DIRECTLY_sendEmail: deps.sendEmail,
   };
 }
 
