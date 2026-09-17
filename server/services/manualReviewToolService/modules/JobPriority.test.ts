@@ -60,6 +60,7 @@ describe('JobPriority', () => {
     });
 
     test('score above MAX clamps to priority 1 (front of the queue)', () => {
+      expect(toBullPriority(MAX_BULL_PRIORITY)).toBe(1);
       expect(toBullPriority(MAX_BULL_PRIORITY + 1)).toBe(1);
       expect(toBullPriority(MAX_BULL_PRIORITY * 1000)).toBe(1);
     });
