@@ -110,7 +110,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash": "^4.14.179",
     "@types/morgan": "^1.9.3",
-    "@types/node": "^18.11.9",
+    "@types/node": "^24.13.5",
     "@types/passport": "^1.0.7",
     "@types/pg": "^8.23.1",
     "@types/pg-cursor": "^2.7.0",
