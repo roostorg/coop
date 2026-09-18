@@ -28,6 +28,7 @@ import { Passport } from 'passport';
 import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
 import typeDefs from './graphql/schema.js';
+import { makeGqlServices } from './graphql/services.js';
 import { authSchemaWrapper } from './graphql/utils/authorization.js';
 import { getOrgIdFromPath } from './graphql/utils/orgIdFromPath.js';
 import { buildPassportContext } from './graphql/utils/passportContext.js';
@@ -430,34 +431,3 @@ export default async function makeApiServer(deps: Dependencies) {
 function pickStatus(safeErrors: NonEmptyArray<SerializableError>) {
   return safeErrors[0].status;
 }
-
-function makeGqlServices(deps: Dependencies) {
-  return {
-    ...safePick(deps, [
-      'ApiKeyService',
-      'DataWarehouse',
-      'DerivedFieldsService',
-      'getItemTypeEventuallyConsistent',
-      'getEnabledRulesForItemTypeEventuallyConsistent',
-      'ItemInvestigationService',
-      'ModerationConfigService',
-      'ManualReviewToolService',
-      'HMAHashBankService',
-      'NcmecService',
-      'OrgSettingsService',
-      'PartialItemsService',
-      'ReportingService',
-      'RuleEvaluator',
-      'SignalsService',
-      'SigningKeyPairService',
-      'Tracer',
-      'UserManagementService',
-      'UserStatisticsService',
-      'UserHistoryQueries',
-      'UserStrikeService',
-      'SSOService',
-    ]),
-  };
-}
-
-export type GQLServices = ReturnType<typeof makeGqlServices>;
