@@ -710,7 +710,11 @@ export default function ManageUsers() {
       {effectiveTab === 'users' && (
         <>
           {/* @ts-ignore */}
-          <Table columns={columns} data={tableData} />
+          <Table
+            columns={columns}
+            data={tableData}
+            containerClassName="w-full"
+          />
           <div className="divider my-9" />
           <ManageUsersInviteUserSection />
         </>
