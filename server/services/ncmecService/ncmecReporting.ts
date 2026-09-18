@@ -1442,6 +1442,13 @@ export default class NcmecReporting {
     userId: ItemIdentifier,
     reportedMedia: readonly ItemIdentifier[],
   ) {
+    // The message-preservation backend is deployment-specific. Without a
+    // configured endpoint there is nothing to fetch, so the NCMEC Messages
+    // tab simply shows no threads.
+    const ncmecMessagesUrl = process.env.NCMEC_MESSAGES_URL;
+    if (!ncmecMessagesUrl) {
+      return [];
+    }
     const fetchWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -1451,7 +1458,7 @@ export default class NcmecReporting {
       },
       async () => {
         const response = await this.fetchHTTP({
-          url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get',
+          url: ncmecMessagesUrl,
           method: 'post',
           body: jsonStringify({
             userId: userId.id,

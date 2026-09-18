@@ -249,6 +249,7 @@ namespace NodeJS {
     ANALYTICS_ADAPTER?: string;
     DATA_WAREHOUSE_PROVIDER?: string;
     NCMEC_ENV?: string;
+    NCMEC_MESSAGES_URL?: string;
     NODE_ENV?: string;
     EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS?: string;
     ALLOW_USER_INPUT_LOCALHOST_URIS?: string;
