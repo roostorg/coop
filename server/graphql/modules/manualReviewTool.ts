@@ -422,9 +422,24 @@ const typeDefs = /* GraphQL */ `
     | MutateManualReviewQueueSuccessResponse
     | ManualReviewQueueNameExistsError
 
+  """
+  Returned when a queue can't be converted between a regular and an appeals
+  queue, e.g. because it is the default queue, still has pending jobs, or is
+  referenced by routing rules. The title explains which.
+  """
+  type UnableToChangeQueueTypeError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
   union UpdateManualReviewQueueQueueResponse =
     | MutateManualReviewQueueSuccessResponse
     | ManualReviewQueueNameExistsError
+    | UnableToChangeQueueTypeError
     | NotFoundError
 
   input CreateManualReviewQueueInput {
@@ -447,6 +462,11 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
+    """
+    When provided, converts the queue to or from an appeals queue. Omit to
+    leave the queue's type unchanged.
+    """
+    isAppealsQueue: Boolean
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope
     clearReportsTriggerActionIds: [ID!]
@@ -2508,6 +2528,7 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      isAppealsQueue,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -2525,6 +2546,7 @@ const Mutation: GQLMutationResolvers = {
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
+          isAppealsQueue: isAppealsQueue ?? undefined,
           clearReportsDisposition,
           clearReportsScope: clearReportsScope ?? undefined,
           clearReportsTriggerActionIds:
@@ -2535,7 +2557,12 @@ const Mutation: GQLMutationResolvers = {
         'MutateManualReviewQueueSuccessResponse',
       );
     } catch (e: unknown) {
-      if (isCoopErrorOfType(e, 'ManualReviewQueueNameExistsError')) {
+      if (
+        isCoopErrorOfType(e, [
+          'ManualReviewQueueNameExistsError',
+          'UnableToChangeQueueTypeError',
+        ])
+      ) {
         return gqlErrorResult(e);
       }
 

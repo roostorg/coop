@@ -121,6 +121,11 @@ gql`
         status
         type
       }
+      ... on UnableToChangeQueueTypeError {
+        title
+        status
+        type
+      }
       ... on NotFoundError {
         title
         status
@@ -212,6 +217,13 @@ export default function ManualReviewQueueForm() {
           setModalInfo({
             title: 'Error Saving Changes',
             body: 'Your organization already has a queue with this name.',
+            buttonText: 'OK',
+          });
+          break;
+        case 'UnableToChangeQueueTypeError':
+          setModalInfo({
+            title: 'Error Saving Changes',
+            body: response.updateManualReviewQueue.title,
             buttonText: 'OK',
           });
           break;
@@ -388,6 +400,7 @@ export default function ManualReviewQueueForm() {
               hiddenActionIds,
             ),
             autoCloseJobs,
+            isAppealsQueue,
             clearReportsDisposition,
             clearReportsScope,
             clearReportsTriggerActionIds:
@@ -405,6 +418,7 @@ export default function ManualReviewQueueForm() {
       hiddenActionIds,
       id,
       initiallyHiddenActionIds,
+      isAppealsQueue,
       moderatorsWithAccess,
       queueDescription,
       queueName,
@@ -633,7 +647,7 @@ export default function ManualReviewQueueForm() {
           )}
         </div>
       )}
-      {isCreateForm && data?.myOrg?.hasAppealsEnabled ? (
+      {data?.myOrg?.hasAppealsEnabled ? (
         <div className="mt-8">
           <div className="flex items-center space-x-2">
             <Checkbox
@@ -643,6 +657,13 @@ export default function ManualReviewQueueForm() {
             />
             <Label htmlFor="is-appeals-queue">This is an Appeals Queue</Label>
           </div>
+          {!isCreateForm && (
+            <div className="mt-2 text-slate-500">
+              An existing queue can only be converted to or from an appeals
+              queue while it has no pending jobs and no routing rules point to
+              it. The default queue cannot be converted.
+            </div>
+          )}
         </div>
       ) : null}
       {divider()}
