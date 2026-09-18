@@ -184,10 +184,10 @@ export class SignalsService {
     externalOnly?: boolean;
     directives?: ConsumerDirectives;
   }): Promise<Signal[]> {
-    const { orgId, externalOnly = true } = opts;
+    const { externalOnly = true } = opts;
 
     const allSignals = Object.values(this.signalsByType).filter((signal) =>
-      isSignalEnabledForOrg(signal.id, orgId),
+      isSignalSelectable(signal.id),
     );
 
     const finalSignals = externalOnly
@@ -385,13 +385,11 @@ function makeSignalNotFoundError(it: SignalReference) {
   });
 }
 
-function isSignalEnabledForOrg(signalId: SignalId, orgId: string) {
-  if (signalId.type === 'AGGREGATION') {
-    return [
-      'e7c89ce7729' /* Local Test Example */,
-      '53d45130ba1' /* Prod ML Test */,
-    ].includes(orgId);
-  }
-
-  return true;
+/**
+ * AGGREGATION is left out because the rule form can't build its aggregation
+ * clause yet (see `AggregationSignalArgs` in the client's RuleFormUtils.ts).
+ * Rules that already use it still run.
+ */
+export function isSignalSelectable(signalId: SignalId) {
+  return signalId.type !== 'AGGREGATION';
 }
