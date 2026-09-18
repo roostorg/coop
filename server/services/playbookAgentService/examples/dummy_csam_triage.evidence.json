@@ -1,0 +1,22 @@
+{
+  "query": {
+    "catalog_id": "hash_match_history",
+    "version": "1.0.0",
+    "parameters": {
+      "org_id": "org-1",
+      "item_id": "dummy-item-123",
+      "item_type_id": "content-type"
+    }
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "item_id": "dummy-item-123",
+        "severity_tier": "CRITICAL",
+        "total_matches": 1,
+        "matched_bank": "known-critical-hash-bank"
+      }
+    ]
+  }
+}
