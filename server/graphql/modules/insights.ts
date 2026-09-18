@@ -2,13 +2,15 @@
 // lodash as opposed to _ to avoid overloading
 import lodash from 'lodash';
 
+import type { ReportingRulePassingContentSample } from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
 import { gatherSignalsFromResult } from '../../services/analyticsQueries/index.js';
-import { jsonStringify } from '../../utils/encoding.js';
+import { jsonStringify, tryJsonParse } from '../../utils/encoding.js';
 import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
 import type {
   GQLQueryResolvers,
   GQLReportingRuleExecutionResultResolvers,
   GQLReportingRuleInsightsResolvers,
+  GQLResolversParentTypes,
   GQLRuleExecutionResultResolvers,
   GQLRuleInsightsResolvers,
 } from '../generated.js';
@@ -151,6 +153,39 @@ const ReportingRuleExecutionResult: GQLReportingRuleExecutionResultResolvers = {
   },
 };
 
+function normalizeReportingRuleSample(
+  sample: ReportingRulePassingContentSample,
+  rule: { id: string; name: string },
+): GQLResolversParentTypes['ReportingRuleExecutionResult'] {
+  const result =
+    typeof sample.result === 'string'
+      ? (tryJsonParse(sample.result) ?? sample.result)
+      : sample.result;
+
+  return {
+    date: sample.date,
+    ts: sample.ts,
+    itemId: sample.itemId,
+    itemTypeName: sample.itemTypeName,
+    itemTypeId: sample.itemTypeId,
+    itemData:
+      typeof sample.itemData === 'string'
+        ? sample.itemData
+        : jsonStringify(sample.itemData),
+    creatorId: sample.creatorId,
+    creatorTypeId: sample.creatorTypeId,
+    // The warehouse boundary types these JSON and enum columns broadly.
+    result:
+      result as GQLResolversParentTypes['ReportingRuleExecutionResult']['result'],
+    environment:
+      sample.environment as GQLResolversParentTypes['ReportingRuleExecutionResult']['environment'],
+    passed: true,
+    ruleId: rule.id,
+    ruleName: rule.name,
+    policyIds: sample.policyIds,
+  };
+}
+
 const RuleInsights: GQLRuleInsightsResolvers = {
   async passRateData(rule, args, context) {
     const user = context.getUser();
@@ -233,11 +268,13 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.dataSources.ruleAPI.ruleInsights.getRulePassRateData(
-      rule.id,
-      rule.orgId,
-      args.lookbackStartDate ? new Date(args.lookbackStartDate) : undefined,
-    );
+    return context.services.ReportingService.getReportingRulePassRateData({
+      ruleId: rule.id,
+      orgId: rule.orgId,
+      startDate: args.lookbackStartDate
+        ? new Date(args.lookbackStartDate)
+        : undefined,
+    });
   },
   async latestVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -246,7 +283,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
     }
 
     const samples =
-      await context.dataSources.ruleAPI.ruleInsights.getRulePassingContentSamples(
+      await context.services.ReportingService.getReportingRulePassingContentSamples(
         {
           ruleId: rule.id,
           orgId: rule.orgId,
@@ -255,20 +292,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // TODO: type this properly. graphql queries would throw an exception if
-    // asking for fields that aren't populated here. To provide them, we'll
-    // have to update (and add better typings for) getRulePassingContentSamples.
-    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
-    return samples.map((it) => ({
-      ...it,
-      itemId: it.contentId,
-      itemData: jsonStringify(it.content),
-      policyIds: it.policyIds,
-      passed: true,
-      ruleId: rule.id,
-      ruleName: rule.name,
-    })) as any[];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+    return samples.map((sample) => normalizeReportingRuleSample(sample, rule));
   },
   async priorVersionSamples(rule, _args, context) {
     const user = context.getUser();
@@ -277,7 +301,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
     }
 
     const samples =
-      await context.dataSources.ruleAPI.ruleInsights.getRulePassingContentSamples(
+      await context.services.ReportingService.getReportingRulePassingContentSamples(
         {
           ruleId: rule.id,
           orgId: rule.orgId,
@@ -286,18 +310,7 @@ const ReportingRuleInsights: GQLReportingRuleInsightsResolvers = {
         },
       );
 
-    // TODO: type this properly. See latestVersionSamples for context.
-    /* eslint-disable @typescript-eslint/no-explicit-any -- see TODO above */
-    return samples.map((it) => ({
-      ...it,
-      itemId: it.contentId,
-      itemData: jsonStringify(it.content),
-      policyIds: it.policyIds,
-      passed: true,
-      ruleId: rule.id,
-      ruleName: rule.name,
-    })) as any[];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+    return samples.map((sample) => normalizeReportingRuleSample(sample, rule));
   },
 };
 
