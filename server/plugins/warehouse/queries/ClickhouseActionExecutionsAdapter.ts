@@ -3,8 +3,18 @@ import type { JsonObject } from 'type-fest';
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
-import { SIX_MONTHS_MS } from '../../../utils/time.js';
+import {
+  getUtcDateOnlyString,
+  parseClickhouseTimestamp,
+  SIX_MONTHS_MS,
+} from '../../../utils/time.js';
 import { formatClickhouseQuery } from '../utils/clickhouseSql.js';
+import {
+  type ClickhouseActionExecutionRow,
+  type ClickhouseManualActionItemRow,
+  type ClickhouseModeratorActionGroupRow,
+} from './clickhouseActionExecutionRows.js';
+import { extractIds, parseJsonIdArray } from './clickhouseJsonIdArray.js';
 import {
   type ContentCreatorIdentityInput,
   type ContentCreatorIdentityRecord,
@@ -13,25 +23,15 @@ import {
   type InferredUserIdentityRecord,
   type ItemActionHistoryInput,
   type ItemActionHistoryRecord,
+  type ManualActionItemsInput,
+  type ManualActionItemsResult,
+  type ModeratorActionGroupRecord,
+  type RecentModeratorActionsInput,
   type UserStrikeActionRecord,
   type UserStrikeActionsInput,
 } from './IActionExecutionsAdapter.js';
 
-interface ClickhouseActionExecutionRow {
-  ts: string;
-  item_id: string | null;
-  item_type_id: string | null;
-  item_type_kind: string;
-  item_creator_id: string | null;
-  item_creator_type_id: string | null;
-  actor_id: string | null;
-  job_id: string | null;
-  policies?: string | null;
-  rules?: string | null;
-  parameters?: string | null;
-  action_id: string;
-  action_source?: string;
-}
+const MODERATOR_ACTION_SOURCES = ['manual-action-run'];
 
 export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapter {
   constructor(
@@ -94,11 +94,150 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         jobId: row.job_id ?? null,
         userId: row.item_creator_id ?? null,
         userTypeId: row.item_creator_type_id ?? null,
-        policies: this.extractIds(this.parseJsonArray(row.policies)),
-        ruleIds: this.extractIds(this.parseJsonArray(row.rules)),
+        policies: extractIds(parseJsonIdArray(row.policies)),
+        ruleIds: extractIds(parseJsonIdArray(row.rules)),
         parameters: this.parseJsonObject(row.parameters),
         occurredAt: new Date(row.ts),
       }));
+  }
+
+  async getRecentModeratorActions(
+    input: RecentModeratorActionsInput,
+  ): Promise<ReadonlyArray<ModeratorActionGroupRecord>> {
+    const { orgId, cursor, after, before, limit, actorIds, policyIds, itemId } =
+      input;
+
+    const upperBound = cursor
+      ? before && before.valueOf() < cursor.ts.valueOf()
+        ? before
+        : cursor.ts
+      : before;
+
+    const conditions = [
+      'org_id = ?',
+      `action_source IN (${MODERATOR_ACTION_SOURCES.map(() => '?').join(', ')})`,
+    ];
+    const params: unknown[] = [orgId, ...MODERATOR_ACTION_SOURCES];
+
+    if (after) {
+      conditions.push('ds >= toDate(?) - 1');
+      params.push(getUtcDateOnlyString(after));
+    }
+    if (upperBound) {
+      conditions.push('ds <= toDate(?) + 1');
+      params.push(getUtcDateOnlyString(upperBound));
+    }
+
+    if (actorIds && actorIds.length > 0) {
+      conditions.push(`actor_id IN (${actorIds.map(() => '?').join(', ')})`);
+      params.push(...actorIds);
+    }
+    if (policyIds && policyIds.length > 0) {
+      // `policies` is a JSON array of objects; `policy_ids` exists on the table
+      // but ActionExecutionLogger never populates it, so extract from the JSON.
+      conditions.push(
+        `hasAny(arrayMap(p -> JSONExtractString(p, 'id'), JSONExtractArrayRaw(policies)), ?)`,
+      );
+      params.push([...policyIds]);
+    }
+
+    const having: string[] = [];
+    if (cursor) {
+      having.push(
+        '(max(ts), correlation_id) < (parseDateTime64BestEffort(?), ?)',
+      );
+      params.push(cursor.ts.toISOString(), cursor.correlationId);
+    }
+    if (after) {
+      having.push('max(ts) >= parseDateTime64BestEffort(?)');
+      params.push(after.toISOString());
+    }
+    if (before) {
+      having.push('max(ts) <= parseDateTime64BestEffort(?)');
+      params.push(before.toISOString());
+    }
+    if (itemId) {
+      having.push('has(groupUniqArray(item_id), ?)');
+      params.push(itemId);
+    }
+
+    const sql = `
+      SELECT
+        correlation_id,
+        max(ts) AS last_ts,
+        any(actor_id) AS actor_id,
+        any(item_type_id) AS item_type_id,
+        any(actor_note) AS actor_note,
+        any(policies) AS policies,
+        groupUniqArray(action_id) AS action_ids,
+        uniqExact(item_id) AS item_count,
+        uniqExactIf(item_id, failed = 1) AS failed_count
+      FROM analytics.ACTION_EXECUTIONS
+      WHERE ${conditions.join('\n        AND ')}
+      GROUP BY correlation_id
+      ${having.length > 0 ? `HAVING ${having.join('\n        AND ')}` : ''}
+      ORDER BY last_ts DESC, correlation_id DESC
+      LIMIT ${Number(limit)}
+    `;
+
+    const rows = await this.query<ClickhouseModeratorActionGroupRow>(
+      sql,
+      params,
+    );
+
+    return rows.map<ModeratorActionGroupRecord>((row) => ({
+      correlationId: row.correlation_id,
+      actorId: row.actor_id ?? null,
+      itemTypeId: row.item_type_id ?? null,
+      actionIds: row.action_ids ?? [],
+      policyIds: extractIds(parseJsonIdArray(row.policies)),
+      actorNote: row.actor_note ?? null,
+      itemCount: Number(row.item_count) || 0,
+      failedCount: Number(row.failed_count) || 0,
+      occurredAt: parseClickhouseTimestamp(row.last_ts),
+    }));
+  }
+
+  async getManualActionItems(
+    input: ManualActionItemsInput,
+  ): Promise<ManualActionItemsResult> {
+    const { orgId, correlationId, occurredAt, limit, offset } = input;
+
+    const sql = `
+      SELECT
+        item_id,
+        any(item_type_id) AS item_type_id,
+        max(failed) AS failed,
+        count() OVER () AS total_count
+      FROM (
+        SELECT item_id, item_type_id, failed
+        FROM analytics.ACTION_EXECUTIONS
+        WHERE org_id = ?
+          AND ds <= toDate(?) + 1
+          AND correlation_id = ?
+          AND item_id IS NOT NULL
+          AND action_source IN (${MODERATOR_ACTION_SOURCES.map(() => '?').join(', ')})
+      )
+      GROUP BY item_id
+      ORDER BY item_id ASC
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `;
+
+    const rows = await this.query<ClickhouseManualActionItemRow>(sql, [
+      orgId,
+      getUtcDateOnlyString(occurredAt),
+      correlationId,
+      ...MODERATOR_ACTION_SOURCES,
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        itemId: row.item_id,
+        itemTypeId: row.item_type_id ?? null,
+        failed: Number(row.failed) === 1,
+      })),
+      totalCount: Number(rows[0]?.total_count ?? 0) || 0,
+    };
   }
 
   async getRecentUserStrikeActions(
@@ -282,29 +421,6 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
     };
   }
 
-  private parseJsonArray(
-    jsonString: string | null | undefined,
-  ): Array<{ id: string }> | null {
-    if (!jsonString || jsonString === '[]') {
-      return null;
-    }
-    try {
-      const parsed = jsonParse(jsonString as JsonOf<unknown>);
-      if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (item): item is { id: string } =>
-            typeof item === 'object' &&
-            item !== null &&
-            'id' in item &&
-            typeof item.id === 'string',
-        );
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
   /**
    * `ACTION_EXECUTIONS.parameters` holds a canonical JSON object (`'{}'` by
    * default). Anything that isn't a readable JSON object — a legacy row, an
@@ -328,17 +444,6 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
     } catch {
       return {};
     }
-  }
-
-  private extractIds(
-    values: Array<{ id: string }> | null | undefined,
-  ): readonly string[] {
-    if (!values) {
-      return [];
-    }
-    return values
-      .map((entry) => entry.id)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
   }
 
   private async query<T>(
