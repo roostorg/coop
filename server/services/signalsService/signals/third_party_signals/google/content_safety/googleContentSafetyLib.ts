@@ -38,7 +38,10 @@ export class GoogleContentSafetyClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly fetchHTTP: FetchHTTP;
+  // Overridable so deployments can point at a different Content Safety
+  // API endpoint instead of contentsafety.googleapis.com.
   private readonly baseUrl =
+    process.env.GOOGLE_CONTENT_SAFETY_BASE_URL ??
     'https://contentsafety.googleapis.com/v1beta1/images:classify';
 
   constructor(options: GoogleContentSafetyOptions) {

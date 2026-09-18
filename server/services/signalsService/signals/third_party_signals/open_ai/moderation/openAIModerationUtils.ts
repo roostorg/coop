@@ -49,6 +49,11 @@ export type OpenAiImageModelName = Extract<
 
 const OPEN_AI_MODERATION_MODEL = 'omni-moderation-latest';
 
+// Overridable so deployments can point at Azure OpenAI or another
+// OpenAI-compatible endpoint instead of api.openai.com.
+const OPEN_AI_BASE_URL =
+  process.env.OPEN_AI_BASE_URL ?? 'https://api.openai.com/v1';
+
 export function openAiModerationDocsUrl() {
   return 'https://beta.openai.com/docs/guides/moderation/overview';
 }
@@ -252,7 +257,7 @@ export async function getOpenAiModerationScores(
   const reqBody = { model: OPEN_AI_MODERATION_MODEL, input };
   try {
     const response = await fetchHTTP({
-      url: 'https://api.openai.com/v1/moderations',
+      url: `${OPEN_AI_BASE_URL}/moderations`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',

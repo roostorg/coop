@@ -260,7 +260,9 @@ namespace NodeJS {
     GROQ_SECRET_KEY?: string;
     SENDGRID_API_KEY?: string;
     GOOGLE_PLACES_API_KEY?: string;
+    GOOGLE_CONTENT_SAFETY_BASE_URL?: string;
     OPEN_AI_API_KEY?: string;
+    OPEN_AI_BASE_URL?: string;
     SLACK_APP_BEARER_TOKEN?: string;
   }
 }

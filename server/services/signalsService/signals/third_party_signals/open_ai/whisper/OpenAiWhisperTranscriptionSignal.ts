@@ -15,6 +15,11 @@ import { SignalPricingStructure } from '../../../../types/SignalPricingStructure
 import { SignalType } from '../../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../../SignalBase.js';
 
+// Overridable so deployments can point at Azure OpenAI or another
+// OpenAI-compatible endpoint instead of api.openai.com.
+const OPEN_AI_BASE_URL =
+  process.env.OPEN_AI_BASE_URL ?? 'https://api.openai.com/v1';
+
 export type FetchOpenAiTranscription = Bind1<
   typeof getOpenAiTranscription,
   FetchHTTP
@@ -213,7 +218,7 @@ export async function getOpenAiTranscription(
   const { url, apiKey } = req;
   const formData = await getWhisperAPIFormDataForUrl(fetchHTTP, url);
   const response = await fetchHTTP({
-    url: 'https://api.openai.com/v1/audio/transcriptions',
+    url: `${OPEN_AI_BASE_URL}/audio/transcriptions`,
     method: 'post',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
