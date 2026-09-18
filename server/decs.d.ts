@@ -249,6 +249,8 @@ namespace NodeJS {
     ANALYTICS_ADAPTER?: string;
     DATA_WAREHOUSE_PROVIDER?: string;
     NCMEC_ENV?: string;
+    NCMEC_MESSAGES_URL?: string;
+    ENABLE_AGGREGATION_SIGNAL?: string;
     NODE_ENV?: string;
     EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS?: string;
     ALLOW_USER_INPUT_LOCALHOST_URIS?: string;
@@ -260,7 +262,10 @@ namespace NodeJS {
     GROQ_SECRET_KEY?: string;
     SENDGRID_API_KEY?: string;
     GOOGLE_PLACES_API_KEY?: string;
+    GOOGLE_CONTENT_SAFETY_BASE_URL?: string;
     OPEN_AI_API_KEY?: string;
+    OPEN_AI_BASE_URL?: string;
     SLACK_APP_BEARER_TOKEN?: string;
+    MANUAL_REVIEW_LOCK_DURATION_MS?: string;
   }
 }
