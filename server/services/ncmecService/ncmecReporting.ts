@@ -36,6 +36,14 @@ import {
 } from './ncmecDebug.js';
 import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 
+// NCMEC's CyberTipline endpoints are fixed by NCMEC, not per-deployment
+// config, so these are consts rather than env vars. Which one applies is
+// determined by NCMEC_ENV (see the `isTest` flag threaded through this file).
+const NCMEC_CYBERTIP_BASE_URL = {
+  test: 'https://exttest.cybertip.org/ispws',
+  production: 'https://report.cybertip.org/ispws',
+} as const;
+
 export const NCMECEvent = makeEnumLike([
   'Login',
   'Registration',
@@ -2506,9 +2514,6 @@ export default class NcmecReporting {
     const username = cybertipAuthenticationCredentials.username;
     const password = cybertipAuthenticationCredentials.password;
 
-    // TODO: update this to https://report.cybertip.org/ispws when we want to submit
-    // real reports
-
     const sendCyberTipRequestWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -2517,9 +2522,7 @@ export default class NcmecReporting {
         jitter: true,
       },
       async () => {
-        const url = isTest
-          ? `https://exttest.cybertip.org/ispws${route}`
-          : `https://report.cybertip.org/ispws${route}`;
+        const url = `${NCMEC_CYBERTIP_BASE_URL[isTest ? 'test' : 'production']}${route}`;
         ncmecDebugLog('cybertip.request', {
           route,
           isTest,
