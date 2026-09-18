@@ -36,12 +36,6 @@ export default function PolicyScoresTab() {
     undefined,
   );
   const [updatePolicy] = useGQLUpdatePolicyMutation({
-    onCompleted: async () => {
-      // Because of the cascading policy updates (i.e. parent policies affect
-      // the children), we should refetch the whole policy tree when one is
-      // updated
-      refetchAllPolicies();
-    },
     onError: () => {
       setErrorMessage('Error saving policy. Please try again.');
     },
@@ -137,13 +131,9 @@ export default function PolicyScoresTab() {
       const childPolicyIds = flattenedChildPolicies.map((p) => p.value.id);
 
       const discardChanges = (policyId: string) => {
-        const filteredScores = omit(updatedPolicyScores, [
-          policyId,
-          ...childPolicyIds,
-        ]);
-        setUpdatedPolicyScores({
-          ...filteredScores,
-        });
+        setUpdatedPolicyScores((currentScores) =>
+          omit(currentScores, [policyId, ...childPolicyIds]),
+        );
       };
 
       const savePolicyScores = async (policyId: string) => {
@@ -162,6 +152,10 @@ export default function PolicyScoresTab() {
             }
           }),
         );
+        // Because parent policy updates can cascade to children, refresh the
+        // policy tree before removing the local draft values.
+        await refetchAllPolicies();
+        discardChanges(policyId);
       };
 
       // don't allow editing child policies when this is set to true
@@ -351,7 +345,13 @@ export default function PolicyScoresTab() {
         </div>
       );
     },
-    [editingPolicies, expandedPolicies, updatedPolicyScores, updatePolicy],
+    [
+      editingPolicies,
+      expandedPolicies,
+      refetchAllPolicies,
+      updatedPolicyScores,
+      updatePolicy,
+    ],
   );
   const errorModal = (
     <CoopModal
@@ -510,8 +510,12 @@ function ChildPoliciesTable(props: {
           <div className="mt-1">
             <Switch
               disabled={editingDisabled}
-              onChange={(event) => {
-                const { checked } = event.target as HTMLInputElement;
+              checked={
+                updatedPolicyScores[policy.value.id]
+                  ?.applyUserStrikeCountConfigToChildren ??
+                policy.value.applyUserStrikeCountConfigToChildren
+              }
+              onCheckedChange={(checked) => {
                 setUpdatedPolicyScores({
                   ...updatedPolicyScores,
                   [policy.value.id]: {
