@@ -39,6 +39,8 @@ import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 // NCMEC's CyberTipline endpoints are fixed by NCMEC, not per-deployment
 // config, so these are consts rather than env vars. Which one applies is
 // determined by NCMEC_ENV (see the `isTest` flag threaded through this file).
+// See https://report.cybertip.org/ispws/documentation/index.html#access for
+// NCMEC's documentation of both environments.
 const NCMEC_CYBERTIP_BASE_URL = {
   test: 'https://exttest.cybertip.org/ispws',
   production: 'https://report.cybertip.org/ispws',
