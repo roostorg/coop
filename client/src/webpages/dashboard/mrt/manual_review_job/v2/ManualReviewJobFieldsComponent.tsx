@@ -407,6 +407,8 @@ function TableRowComponent(props: {
                 : safetySettings?.moderatorSafetyBlurLevel
                   ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                   : (2 as const),
+              grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+              sepia: safetySettings?.moderatorSafetySepia ?? false,
               maxWidth: maxWidthVideo,
               maxHeight: maxHeightVideo,
               muted: safetySettings?.moderatorSafetyMuteVideo ?? true,
@@ -466,6 +468,8 @@ function TableRowComponent(props: {
                   : safetySettings?.moderatorSafetyBlurLevel
                     ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                     : (2 as const),
+                grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+                sepia: safetySettings?.moderatorSafetySepia ?? false,
                 maxWidth: maxWidthVideo,
                 maxHeight: maxHeightVideo,
                 muted: safetySettings?.moderatorSafetyMuteVideo ?? true,

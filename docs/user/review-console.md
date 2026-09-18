@@ -54,7 +54,7 @@ Moderators can add internal comments to any job to communicate with teammates—
 
 Reviewer wellness and safety is a core concern in trust & safety work. Coop includes configurable settings to reduce the impact of reviewing harmful content. Coop supports:
 
-- **Blur**: Images and videos are blurred by default. Hover over an image to temporarily unblur it; move the cursor away to blur it again. Playing a video unblurs it. You can set the blur strength or disable blurring entirely.
+- **Blur**: Images and videos are blurred by default. Hover over an image or a video to temporarily unblur it; move the cursor away to blur it again. Playing a video does not unblur it, and media in NCMEC review stays blurred on hover. You can set the blur strength or disable blurring entirely.
 
 - **Grayscale**: Display media in grayscale instead of full color. Can reduce the emotional impact of graphic content.
 
