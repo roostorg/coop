@@ -183,11 +183,9 @@ export class SignalsService {
     externalOnly?: boolean;
     directives?: ConsumerDirectives;
   }): Promise<Signal[]> {
-    const { orgId, externalOnly = true } = opts;
+    const { externalOnly = true } = opts;
 
-    const allSignals = Object.values(this.signalsByType).filter((signal) =>
-      isSignalEnabledForOrg(signal.id, orgId),
-    );
+    const allSignals = Object.values(this.signalsByType);
 
     const finalSignals = externalOnly
       ? allSignals.filter((it) => signalIsExternal(it.id))
@@ -382,15 +380,4 @@ function makeSignalNotFoundError(it: SignalReference) {
     detail: `Signal requested was ${jsonStringify(it)}.`,
     shouldErrorSpan: true,
   });
-}
-
-function isSignalEnabledForOrg(signalId: SignalId, orgId: string) {
-  if (signalId.type === 'AGGREGATION') {
-    return [
-      'e7c89ce7729' /* Local Test Example */,
-      '53d45130ba1' /* Prod ML Test */,
-    ].includes(orgId);
-  }
-
-  return true;
 }
